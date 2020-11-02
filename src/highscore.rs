@@ -1,11 +1,11 @@
-use crate::defs::*;
+use crate::defs::{self, DATE_LEN, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN};
 
 use log::{info, warn};
 use std::{
     ffi::CStr,
     fmt,
     fs::File,
-    io::Read,
+    io::{Read, Write},
     mem,
     os::raw::{c_char, c_int, c_long},
     path::Path,
@@ -84,7 +84,7 @@ fn init_highscores(config_dir: Option<&Path>) {
     });
 
     unsafe { num_highscores = MAX_HIGHSCORES.into() };
-    let mut highscores: Box<_> = match file {
+    let highscores: Box<_> = match file {
         Some(mut file) => (0..MAX_HIGHSCORES)
             .map(|_| {
                 let mut entry = mem::MaybeUninit::uninit();
@@ -104,20 +104,68 @@ fn init_highscores(config_dir: Option<&Path>) {
     };
 
     unsafe {
-        Highscores = highscores.as_mut_ptr() as *mut *mut HighscoreEntry;
+        Highscores = Box::into_raw(highscores) as *mut *mut HighscoreEntry;
     }
-    mem::forget(highscores);
 }
 
-#[no_mangle]
-pub extern "C" fn InitHighscores() {
-    let config_dir = if unsafe { ConfigDir[0] } == 0 {
+fn save_highscores(config_dir: Option<&Path>) -> Result<(), ()> {
+    match config_dir {
+        Some(config_dir) => {
+            let path = config_dir.join("highscores");
+            let mut file = match File::create(&path) {
+                Ok(file) => file,
+                Err(_) => {
+                    warn!("Failed to create highscores file. Giving up...");
+                    return Err(());
+                }
+            };
+
+            let highscores = unsafe {
+                std::slice::from_raw_parts(
+                    Highscores as *mut Box<HighscoreEntry>,
+                    MAX_HIGHSCORES.into(),
+                )
+            };
+            for entry in highscores.iter() {
+                let as_slice = unsafe {
+                    std::slice::from_raw_parts(
+                        entry.as_ref() as *const HighscoreEntry as *const u8,
+                        mem::size_of::<HighscoreEntry>(),
+                    )
+                };
+                file.write_all(as_slice).unwrap();
+            }
+            file.sync_all().unwrap();
+            info!("Successfully updated highscores file '{}'", path.display());
+
+            Ok(())
+        }
+        None => {
+            warn!("No config-dir found, cannot save highscores!");
+            Err(())
+        }
+    }
+}
+
+fn get_config_dir() -> Option<&'static Path> {
+    if unsafe { ConfigDir[0] } == 0 {
         None
     } else {
         let config_dir = unsafe { CStr::from_ptr(ConfigDir.as_ptr()) };
         let config_dir = Path::new(config_dir.to_str().unwrap());
         Some(config_dir)
-    };
+    }
+}
 
-    init_highscores(config_dir);
+#[no_mangle]
+pub extern "C" fn InitHighscores() {
+    init_highscores(get_config_dir());
+}
+
+#[no_mangle]
+pub extern "C" fn SaveHighscores() -> c_int {
+    match save_highscores(get_config_dir()) {
+        Ok(()) => defs::OK,
+        Err(()) => defs::ERR,
+    }
 }

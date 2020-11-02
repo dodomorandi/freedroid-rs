@@ -84,35 +84,35 @@
  * Save highscores to disk
  *
  *----------------------------------------------------------------------*/
-int
-SaveHighscores (void)
-{
-  int i;
-  char fname[255];
-  FILE *file = NULL;
+/* int */
+/* SaveHighscores (void) */
+/* { */
+/*   int i; */
+/*   char fname[255]; */
+/*   FILE *file = NULL; */
 
-  if (ConfigDir[0] == '\0')
-    {
-      DebugPrintf (0, "WARNING: no config-dir found, cannot save highscores!\n");
-      return (ERR);
-    }
+/*   if (ConfigDir[0] == '\0') */
+/*     { */
+/*       DebugPrintf (0, "WARNING: no config-dir found, cannot save highscores!\n"); */
+/*       return (ERR); */
+/*     } */
 
-  sprintf (fname, "%s/highscores", ConfigDir);
-  if ( (file = fopen (fname, "w")) == NULL)
-    {
-      DebugPrintf (0, "WARNING: failed to create highscores file. Giving up... \n");
-      return (ERR);
-    }
+/*   sprintf (fname, "%s/highscores", ConfigDir); */
+/*   if ( (file = fopen (fname, "w")) == NULL) */
+/*     { */
+/*       DebugPrintf (0, "WARNING: failed to create highscores file. Giving up... \n"); */
+/*       return (ERR); */
+/*     } */
 
-  for (i=0; i < MAX_HIGHSCORES;  i++)
-    fwrite (Highscores[i], sizeof(highscore_entry), sizeof(char), file);
+/*   for (i=0; i < MAX_HIGHSCORES;  i++) */
+/*     fwrite (Highscores[i], sizeof(highscore_entry), sizeof(char), file); */
 
-  fclose (file);
-  DebugPrintf (0, "Successfully updated highscores file '%s'\n", fname );
+/*   fclose (file); */
+/*   DebugPrintf (0, "Successfully updated highscores file '%s'\n", fname ); */
 
-  return (OK);
+/*   return (OK); */
 
-} // SaveHighscores
+/* } // SaveHighscores */
 
 /*----------------------------------------------------------------------
  * managing of highscore entries: check if user has entered the list,
