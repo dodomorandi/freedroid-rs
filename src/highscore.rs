@@ -1,14 +1,26 @@
-use crate::defs::{self, DATE_LEN, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN};
+#[cfg(target_os = "android")]
+use crate::input::wait_for_key_pressed;
+use crate::{
+    b_font::{FontHeight, GetCurrentFont, Highscore_BFont, Para_BFont, SetCurrentFont},
+    defs::{self, DATE_LEN, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN},
+    graphics::MakeGridOnScreen,
+    text::{printf_SDL, DisplayText},
+    view::Assemble_Combat_Picture,
+    Influence, InfluenceStatus,
+};
 
+use cstr::cstr;
 use log::{info, warn};
+use sdl::video::ll::{SDL_Flip, SDL_Rect, SDL_SetClipRect, SDL_Surface, SDL_UpperBlit};
 use std::{
     ffi::CStr,
     fmt,
     fs::File,
     io::{Read, Write},
     mem,
-    os::raw::{c_char, c_int, c_long},
+    os::raw::{c_char, c_float, c_int, c_long, c_void},
     path::Path,
+    ptr::null_mut,
 };
 
 extern "C" {
@@ -18,6 +30,22 @@ extern "C" {
     static mut Highscores: *mut *mut HighscoreEntry;
     #[no_mangle]
     static mut ConfigDir: [c_char; 255];
+    #[no_mangle]
+    static mut RealScore: c_float;
+    #[no_mangle]
+    static mut ShowScore: c_long;
+    #[no_mangle]
+    static mut Me: Influence;
+    #[no_mangle]
+    static mut User_Rect: SDL_Rect;
+    #[no_mangle]
+    static mut Portrait_Rect: SDL_Rect;
+    #[no_mangle]
+    static mut pic999: *mut SDL_Surface;
+    #[no_mangle]
+    static mut ne_screen: *mut SDL_Surface;
+    #[no_mangle]
+    fn GetString(max_len: c_int, echo: c_int) -> *mut c_char;
 }
 
 #[repr(C)]
@@ -68,6 +96,30 @@ impl Default for HighscoreEntry {
         let score = -1;
 
         Self { name, date, score }
+    }
+}
+
+impl HighscoreEntry {
+    fn new(name: &str, score: i64, date: &str) -> Self {
+        let mut real_name = [0; MAX_NAME_LEN + 5];
+        name.bytes()
+            .take(MAX_NAME_LEN)
+            .zip(real_name.iter_mut())
+            .for_each(|(src, dst)| *dst = src as c_char);
+
+        let score = score.into();
+
+        let mut real_date = [0; DATE_LEN + 5];
+        date.bytes()
+            .take(DATE_LEN.into())
+            .zip(real_date.iter_mut())
+            .for_each(|(src, dst)| *dst = src as c_char);
+
+        Self {
+            name: real_name,
+            score,
+            date: real_date,
+        }
     }
 }
 
@@ -147,6 +199,101 @@ fn save_highscores(config_dir: Option<&Path>) -> Result<(), ()> {
     }
 }
 
+fn update_highscores() {
+    let score = unsafe { RealScore };
+    unsafe {
+        RealScore = 0.;
+        ShowScore = 0;
+    }
+
+    if score <= 0. {
+        return;
+    }
+
+    unsafe {
+        Me.status = InfluenceStatus::Debriefing as c_int;
+    }
+
+    let hightscores = unsafe {
+        std::slice::from_raw_parts_mut(
+            Highscores as *mut Box<HighscoreEntry>,
+            MAX_HIGHSCORES.into(),
+        )
+    };
+    let entry_pos = match hightscores
+        .iter()
+        .position(|entry| entry.score < score as c_long)
+    {
+        Some(entry_pos) => entry_pos,
+        None => return,
+    };
+
+    unsafe {
+        let prev_font = GetCurrentFont();
+        SetCurrentFont(Highscore_BFont);
+
+        let user_center_x: i16 = User_Rect.x + (User_Rect.w / 2) as i16;
+        let user_center_y: i16 = User_Rect.y + (User_Rect.h / 2) as i16;
+
+        Assemble_Combat_Picture(0);
+        MakeGridOnScreen(&mut User_Rect as *mut _);
+        let mut dst = SDL_Rect::new(
+            user_center_x - (Portrait_Rect.w / 2) as i16,
+            user_center_y - (Portrait_Rect.h / 2) as i16,
+            Portrait_Rect.w,
+            Portrait_Rect.h,
+        );
+        SDL_UpperBlit(pic999, null_mut(), ne_screen, &mut dst);
+        let h = FontHeight(Para_BFont);
+        DisplayText(
+            cstr!("Great Score !").as_ptr(),
+            i32::from(dst.x) - h,
+            i32::from(dst.y) - h,
+            &User_Rect,
+        );
+
+        // TODO ARCADEINPUT
+        #[cfg(not(target_os = "android"))]
+        DisplayText(
+            cstr!("Enter your name: ").as_ptr(),
+            i32::from(dst.x) - 5 * h,
+            i32::from(dst.y) + i32::from(dst.h),
+            &User_Rect,
+        );
+
+        #[cfg(target_os = "android")]
+        wait_for_key_pressed();
+
+        // TODO More ARCADEINPUT
+
+        SDL_Flip(ne_screen);
+        SDL_SetClipRect(ne_screen, null_mut());
+
+        let date = format!("{}", chrono::Local::today().format("%Y/%m/%d"));
+
+        #[cfg(target_os = "android")]
+        let new_entry = HighscoreEntry::new("Player", score as i64, &date);
+        #[cfg(not(target_os = "android"))]
+        let new_entry = {
+            let tmp_name = GetString(MAX_NAME_LEN as c_int, 2);
+            let mut new_entry = HighscoreEntry::new("", score as i64, &date);
+            libc::strcpy(new_entry.name.as_mut_ptr(), tmp_name);
+            libc::free(tmp_name as *mut c_void);
+            new_entry
+        };
+
+        printf_SDL(ne_screen, -1, -1, cstr!("\n").as_ptr() as *mut c_char);
+
+        hightscores[entry_pos..]
+            .iter_mut()
+            .fold(new_entry, |new_entry, cur_entry| {
+                mem::replace(cur_entry, new_entry)
+            });
+
+        SetCurrentFont(prev_font);
+    }
+}
+
 fn get_config_dir() -> Option<&'static Path> {
     if unsafe { ConfigDir[0] } == 0 {
         None
@@ -168,4 +315,9 @@ pub extern "C" fn SaveHighscores() -> c_int {
         Ok(()) => defs::OK,
         Err(()) => defs::ERR,
     }
+}
+
+#[no_mangle]
+pub extern "C" fn UpdateHighscores() {
+    update_highscores()
 }

@@ -7,3 +7,5 @@ pub const DATE_LEN: usize = 10;
 
 pub const OK: c_int = 0;
 pub const ERR: c_int = -1;
+
+pub const MAX_INFLU_POSITION_HISTORY: usize = 100;

@@ -119,94 +119,94 @@
  * and if so, insert a new entry
  *
  *----------------------------------------------------------------------*/
-void
-UpdateHighscores (void)
-{
-  int i, entry;
-  Highscore_entry new_entry;
-  char *tmp_name;
-  BFont_Info *prev_font;
-  struct tm *timeinfo;
-  time_t tsec;
-  float score;
-  SDL_Rect dst;
-  int h;
+/* void */
+/* UpdateHighscores (void) */
+/* { */
+/*   int i, entry; */
+/*   Highscore_entry new_entry; */
+/*   char *tmp_name; */
+/*   BFont_Info *prev_font; */
+/*   struct tm *timeinfo; */
+/*   time_t tsec; */
+/*   float score; */
+/*   SDL_Rect dst; */
+/*   int h; */
 
-  score = RealScore;
+/*   score = RealScore; */
 
-  // reset score counters
-  RealScore = 0.0;
-  ShowScore = 0.0;
+/*   // reset score counters */
+/*   RealScore = 0.0; */
+/*   ShowScore = 0.0; */
 
 
-  if (score <= 0)  /* don't even bother.. */
-    return;
+/*   if (score <= 0)  /1* don't even bother.. *1/ */
+/*     return; */
 
-  Me.status = DEBRIEFING;
+/*   Me.status = DEBRIEFING; */
 
-  /* now find out the position of player's score in list */
-  entry = 0;
-  while ( (entry < num_highscores) && (Highscores[entry]->score >= score) )
-    entry ++;
+/*   /1* now find out the position of player's score in list *1/ */
+/*   entry = 0; */
+/*   while ( (entry < num_highscores) && (Highscores[entry]->score >= score) ) */
+/*     entry ++; */
 
-  if (entry == num_highscores) /* sorry, you didnt' make it */
-    return;
+/*   if (entry == num_highscores) /1* sorry, you didnt' make it *1/ */
+/*     return; */
 
-  /* ok, the last one always has to go... */
-  free (Highscores[num_highscores-1]);
+/*   /1* ok, the last one always has to go... *1/ */
+/*   free (Highscores[num_highscores-1]); */
 
-  /* now shuffle down the lower scores to make space */
-  for (i=num_highscores-1; i> entry; i--)
-    Highscores[i] = Highscores[i-1];
+/*   /1* now shuffle down the lower scores to make space *1/ */
+/*   for (i=num_highscores-1; i> entry; i--) */
+/*     Highscores[i] = Highscores[i-1]; */
 
-  /* get the new entry */
-  new_entry = MyMalloc (sizeof(highscore_entry));
+/*   /1* get the new entry *1/ */
+/*   new_entry = MyMalloc (sizeof(highscore_entry)); */
 
-  prev_font = GetCurrentFont();
-  SetCurrentFont (Highscore_BFont);
+/*   prev_font = GetCurrentFont(); */
+/*   SetCurrentFont (Highscore_BFont); */
 
-  Assemble_Combat_Picture ( 0);
-  MakeGridOnScreen (&User_Rect);
-  Set_Rect (dst, UserCenter_x - Portrait_Rect.w/2, UserCenter_y - Portrait_Rect.h/2,
-	    Portrait_Rect.w, Portrait_Rect.h);
-  SDL_BlitSurface (pic999, NULL, ne_screen, &dst);
-  h = FontHeight (Para_BFont);
-  DisplayText ("Great Score !",  dst.x - h, dst.y - h, &User_Rect);
-#if !defined ANDROID && !defined ARCADEINPUT
-  DisplayText ("Enter your name: ",  dst.x - 5*h, dst.y + dst.h, &User_Rect);
-#endif
-#ifdef ANDROID
-  wait_for_key_pressed();
-#endif
-#ifdef ARCADEINPUT
-  DisplayText ("Enter with U/D, (L/R skip 5 chars),",  dst.x - 6*h, dst.y + dst.h, &User_Rect);
-  DisplayText ("Act = toggle case, Fire to enter,",  dst.x - 5*h, dst.y + dst.h + h, &User_Rect);
-  DisplayText ("Start when ready: ",  dst.x - 5*h, dst.y + dst.h + h*2, &User_Rect);
-#endif
-  SDL_Flip (ne_screen);
+/*   Assemble_Combat_Picture ( 0); */
+/*   MakeGridOnScreen (&User_Rect); */
+/*   Set_Rect (dst, UserCenter_x - Portrait_Rect.w/2, UserCenter_y - Portrait_Rect.h/2, */
+/* 	    Portrait_Rect.w, Portrait_Rect.h); */
+/*   SDL_BlitSurface (pic999, NULL, ne_screen, &dst); */
+/*   h = FontHeight (Para_BFont); */
+/*   DisplayText ("Great Score !",  dst.x - h, dst.y - h, &User_Rect); */
+/* #if !defined ANDROID && !defined ARCADEINPUT */
+/*   DisplayText ("Enter your name: ",  dst.x - 5*h, dst.y + dst.h, &User_Rect); */
+/* #endif */
+/* #ifdef ANDROID */
+/*   wait_for_key_pressed(); */
+/* #endif */
+/* #ifdef ARCADEINPUT */
+/*   DisplayText ("Enter with U/D, (L/R skip 5 chars),",  dst.x - 6*h, dst.y + dst.h, &User_Rect); */
+/*   DisplayText ("Act = toggle case, Fire to enter,",  dst.x - 5*h, dst.y + dst.h + h, &User_Rect); */
+/*   DisplayText ("Start when ready: ",  dst.x - 5*h, dst.y + dst.h + h*2, &User_Rect); */
+/* #endif */
+/*   SDL_Flip (ne_screen); */
 
-  SDL_SetClipRect (ne_screen, NULL);
-#if !defined ANDROID
-  tmp_name = GetString (MAX_NAME_LEN, 2);
-  strcpy (new_entry->name, tmp_name);
-  free (tmp_name);
-#else
-  strcpy (new_entry->name, "Player");
-#endif
-  printf_SDL(ne_screen, -1, -1, "\n");
+/*   SDL_SetClipRect (ne_screen, NULL); */
+/* #if !defined ANDROID */
+/*   tmp_name = GetString (MAX_NAME_LEN, 2); */
+/*   strcpy (new_entry->name, tmp_name); */
+/*   free (tmp_name); */
+/* #else */
+/*   strcpy (new_entry->name, "Player"); */
+/* #endif */
+/*   printf_SDL(ne_screen, -1, -1, "\n"); */
 
-  tsec = time (NULL);
-  timeinfo = gmtime (&tsec);
-  sprintf (new_entry->date, "20%02d/%02d/%02d", timeinfo->tm_year - 100, timeinfo->tm_mon +1, timeinfo->tm_mday );
+/*   tsec = time (NULL); */
+/*   timeinfo = gmtime (&tsec); */
+/*   sprintf (new_entry->date, "20%02d/%02d/%02d", timeinfo->tm_year - 100, timeinfo->tm_mon +1, timeinfo->tm_mday ); */
 
-  new_entry->score = score;
-  Highscores[entry] = new_entry;
+/*   new_entry->score = score; */
+/*   Highscores[entry] = new_entry; */
 
-  SetCurrentFont (prev_font);
+/*   SetCurrentFont (prev_font); */
 
-  return;
+/*   return; */
 
-} /* UpdateHighscores */
+/* } /1* UpdateHighscores *1/ */
 
 
 /*-----------------------------------------------------------------
