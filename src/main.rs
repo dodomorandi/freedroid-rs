@@ -1,3 +1,6 @@
+mod defs;
+mod highscore;
+
 use std::{
     env,
     ffi::CString,
@@ -10,6 +13,8 @@ extern "C" {
 }
 
 fn main() {
+    env_logger::init();
+
     let args: Vec<_> = env::args().map(|arg| CString::new(arg).unwrap()).collect();
     let c_args: Vec<_> = args.iter().map(|arg| arg.as_ptr()).collect();
 

@@ -41,43 +41,43 @@
  * set up a new highscore list: load from disk if found
  *
  *-----------------------------------------------------------------*/
-void
-InitHighscores (void)
-{
-  int i;
-  char fname[255];
-  FILE *file = NULL;
+/* void */
+/* InitHighscores (void) */
+/* { */
+/*   int i; */
+/*   char fname[255]; */
+/*   FILE *file = NULL; */
 
-  if (ConfigDir[0] != '\0')
-    {
-      sprintf (fname, "%s/highscores", ConfigDir);
-      if ( (file = fopen (fname, "r")) == NULL)
-	DebugPrintf (0, "WARNING: no highscores file found... \n");
-      else
-        DebugPrintf (0, "Found highscore file '%s'\n", fname );
-    }
+/*   if (ConfigDir[0] != '\0') */
+/*     { */
+/*       sprintf (fname, "%s/highscores", ConfigDir); */
+/*       if ( (file = fopen (fname, "r")) == NULL) */
+/* 	DebugPrintf (0, "WARNING: no highscores file found... \n"); */
+/*       else */
+/*         DebugPrintf (0, "Found highscore file '%s'\n", fname ); */
+/*     } */
 
 
-  num_highscores = MAX_HIGHSCORES;  /* hardcoded for now... */
-  Highscores = MyMalloc (num_highscores * sizeof(Highscore_entry) + 10);
+/*   num_highscores = MAX_HIGHSCORES;  /1* hardcoded for now... *1/ */
+/*   Highscores = MyMalloc (num_highscores * sizeof(Highscore_entry) + 10); */
 
-  for (i=0; i< num_highscores; i++)
-    {
-      Highscores[i] = MyMalloc (sizeof(highscore_entry));
-      if (file)
-	fread (Highscores[i], sizeof(highscore_entry), sizeof(char), file);
-      else
-	{
-	  strcpy (Highscores[i]->name, HS_EMPTY_ENTRY);
-	  strcpy (Highscores[i]->date, " --- ");
-	  Highscores[i]->score = -1;
-	}
-    }
+/*   for (i=0; i< num_highscores; i++) */
+/*     { */
+/*       Highscores[i] = MyMalloc (sizeof(highscore_entry)); */
+/*       if (file) */
+/* 	fread (Highscores[i], sizeof(highscore_entry), sizeof(char), file); */
+/*       else */
+/* 	{ */
+/* 	  strcpy (Highscores[i]->name, HS_EMPTY_ENTRY); */
+/* 	  strcpy (Highscores[i]->date, " --- "); */
+/* 	  Highscores[i]->score = -1; */
+/* 	} */
+/*     } */
 
-  if (file) fclose (file);
+/*   if (file) fclose (file); */
 
-  return;
-} /* InitHighscores */
+/*   return; */
+/* } /1* InitHighscores *1/ */
 
 
 /*----------------------------------------------------------------------
