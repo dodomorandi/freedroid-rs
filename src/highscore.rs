@@ -3,6 +3,7 @@ use crate::input::wait_for_key_pressed;
 use crate::{
     b_font::{FontHeight, GetCurrentFont, Highscore_BFont, Para_BFont, SetCurrentFont},
     defs::{self, DATE_LEN, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN},
+    global::ne_screen,
     graphics::MakeGridOnScreen,
     text::{printf_SDL, DisplayText},
     view::Assemble_Combat_Picture,
@@ -42,8 +43,6 @@ extern "C" {
     static mut Portrait_Rect: SDL_Rect;
     #[no_mangle]
     static mut pic999: *mut SDL_Surface;
-    #[no_mangle]
-    static mut ne_screen: *mut SDL_Surface;
     #[no_mangle]
     fn GetString(max_len: c_int, echo: c_int) -> *mut c_char;
 }
@@ -107,11 +106,9 @@ impl HighscoreEntry {
             .zip(real_name.iter_mut())
             .for_each(|(src, dst)| *dst = src as c_char);
 
-        let score = score.into();
-
         let mut real_date = [0; DATE_LEN + 5];
         date.bytes()
-            .take(DATE_LEN.into())
+            .take(DATE_LEN)
             .zip(real_date.iter_mut())
             .for_each(|(src, dst)| *dst = src as c_char);
 

@@ -723,15 +723,15 @@ wait_for_all_keys_released (void)
   return;
 }
 
-int
-wait_for_key_pressed ( void )
-{
-  int key;
-  while ( (key = any_key_just_pressed()) == 0 ) {
-    SDL_Delay(1);
-  }
-  return key;
-}
+/* int */
+/* wait_for_key_pressed ( void ) */
+/* { */
+/*   int key; */
+/*   while ( (key = any_key_just_pressed()) == 0 ) { */
+/*     SDL_Delay(1); */
+/*   } */
+/*   return key; */
+/* } */
 
 bool
 ModIsPressed (SDLMod mod)
@@ -763,29 +763,29 @@ JoyAxisMotion ( void )
   return ( input_state[JOY_UP] || input_state[JOY_DOWN] || input_state[JOY_LEFT] || input_state[JOY_RIGHT] );
 }
 
-// check if any keys have been 'freshly' pressed
-// if yes, return key-code, otherwise 0
-int
-any_key_just_pressed (void)
-{
-#ifdef ANDROID
-    SDL_Flip(ne_screen);	// make sure we keep updating screen to read out Android inputs
-#endif
-  update_input();
+/* // check if any keys have been 'freshly' pressed */
+/* // if yes, return key-code, otherwise 0 */
+/* int */
+/* any_key_just_pressed (void) */
+/* { */
+/* #ifdef ANDROID */
+/*     SDL_Flip(ne_screen);	// make sure we keep updating screen to read out Android inputs */
+/* #endif */
+/*   update_input(); */
 
-  int key;
-  for (key=0; key < INPUT_LAST; key++)
-    {
-      if ( just_pressed(input_state[key]) )
-        {
-          clear_fresh(input_state[key]);
-          return key;
-        }
-    }
+/*   int key; */
+/*   for (key=0; key < INPUT_LAST; key++) */
+/*     { */
+/*       if ( just_pressed(input_state[key]) ) */
+/*         { */
+/*           clear_fresh(input_state[key]); */
+/*           return key; */
+/*         } */
+/*     } */
 
-  return 0;
+/*   return 0; */
 
-}  // any_key_just_pressed()
+/* }  // any_key_just_pressed() */
 
 // check if any keys are in a current 'pressed' state, and soft-release them
 bool

@@ -9,3 +9,27 @@ pub const OK: c_int = 0;
 pub const ERR: c_int = -1;
 
 pub const MAX_INFLU_POSITION_HISTORY: usize = 100;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum PointerStates {
+    MouseUp = sdl::event::Key::Last as isize + 1,
+    MouseRight,
+    MouseDown,
+    MouseLeft,
+    MouseButton1,
+    MouseButton2,
+    MouseButton3,
+    MouseWheelup,
+    MouseWheeldown,
+
+    JoyUp,
+    JoyRight,
+    JoyDown,
+    JoyLeft,
+    JoyButton1,
+    JoyButton2,
+    JoyButton3,
+    JoyButton4,
+
+    Last,
+}
