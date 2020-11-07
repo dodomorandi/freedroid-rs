@@ -1,16 +1,16 @@
 use bitflags::bitflags;
 
-const MAX_THEMES: usize = 100;
+pub const MAX_THEMES: usize = 100;
 
-const JOY_MAX_VAL: usize = 32767; // maximal amplitude of joystick axis values
+pub const JOY_MAX_VAL: usize = 32767; // maximal amplitude of joystick axis values
 
-const RESET: usize = 0x01;
-const UPDATE: usize = 0x02;
-const INIT_ONLY: usize = 0x04;
-const FREE_ONLY: usize = 0x08;
+pub const RESET: usize = 0x01;
+pub const UPDATE: usize = 0x02;
+pub const INIT_ONLY: usize = 0x04;
+pub const FREE_ONLY: usize = 0x08;
 
-const DROID_ROTATION_TIME: f64 = 3.0;
-const NUM_DECAL_PICS: usize = 2;
+pub const DROID_ROTATION_TIME: f64 = 3.0;
+pub const NUM_DECAL_PICS: usize = 2;
 
 // #define UserCenter_x (User_Rect.x + User_Rect.w/2)
 // #define UserCenter_y (User_Rect.y + User_Rect.h/2)
@@ -33,6 +33,7 @@ const NUM_DECAL_PICS: usize = 2;
 // some input-related defines and macros
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(C)]
 pub enum PointerStates {
     MouseUp = sdl::event::Key::Last as isize + 1,
     MouseRight,
@@ -59,6 +60,7 @@ pub enum PointerStates {
 //--------------------------------------------------
 // here come the actual game-"commands"
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(C)]
 pub enum Cmds {
     Up = 0,
     Down,
@@ -142,7 +144,8 @@ pub enum Cmds {
 // ----------------------------------------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum MenuAction {
+#[repr(C)]
+pub enum MenuAction {
     None = 0b0000_0000_0000,
     Info = 0b0000_0000_0001,
     Back = 0b0000_0000_0010,
@@ -157,27 +160,29 @@ enum MenuAction {
     Last = 0b0100_0000_0000,
 }
 
-const COLLISION_STEPSIZE: f64 = 0.1;
+pub const COLLISION_STEPSIZE: f64 = 0.1;
 
 /* ************************************************************
  * Highscore related defines
  *************************************************************/
-const HS_BACKGROUND_FILE: &str = "transfer.jpg";
-const HS_EMPTY_ENTRY: &str = "--- empty ---";
-const MAX_NAME_LEN: usize = 15; /* max len of highscore name entry */
-const MAX_HIGHSCORES: usize = 10; /* only keep Top10 */
-const DATE_LEN: usize = 10; /* reserved for the date-string */
+pub const HS_BACKGROUND_FILE: &str = "transfer.jpg";
+pub const HS_EMPTY_ENTRY: &str = "--- empty ---";
+pub const MAX_NAME_LEN: usize = 15; /* max len of highscore name entry */
+pub const MAX_HIGHSCORES: usize = 10; /* only keep Top10 */
+pub const DATE_LEN: usize = 10; /* reserved for the date-string */
 //***************************************************************
 
 // find_file(): use current-theme subdir in search or not
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum Themed {
+#[repr(C)]
+pub enum Themed {
     NoTheme = 0,
     UseTheme,
 }
 // find_file(): how important is the file in question:
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum Criticality {
+#[repr(C)]
+pub enum Criticality {
     Ignore = 0, // ignore if not found and return NULL
     WarnOnly,   // warn if not found and return NULL
     Critical,   // Error-message and Terminate
@@ -203,7 +208,8 @@ bitflags! {
 
 // symbolic Alert-names
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum AlertNames {
+#[repr(C)]
+pub enum AlertNames {
     Green = 0,
     Yellow,
     Amber,
@@ -218,61 +224,61 @@ enum AlertNames {
 // #ifndef FD_DATADIR
 
 #[cfg(target_os = "macosx")]
-const FD_DATADIR: &str = "FreeDroid.app/Contents/Resources"; // our local fallback
+pub const FD_DATADIR: &str = "FreeDroid.app/Contents/Resources"; // our local fallback
 
 #[cfg(not(target_os = "macosx"))]
-const FD_DATADIR: &str = "."; // our local fallback
+pub const FD_DATADIR: &str = "."; // our local fallback
 
 // #endif // !FD_DATADIR
 
 // #ifndef LOCAL_DATADIR
-const LOCAL_DATADIR: &str = ".."; // local fallback
-                                  // #endif
+pub const LOCAL_DATADIR: &str = ".."; // local fallback
+                                      // #endif
 
-const GRAPHICS_DIR: &str = "graphics/";
-const SOUND_DIR: &str = "sound/";
-const MAP_DIR: &str = "map/";
+pub const GRAPHICS_DIR: &str = "graphics/";
+pub const SOUND_DIR: &str = "sound/";
+pub const MAP_DIR: &str = "map/";
 
-const MAP_BLOCK_FILE: &str = "map_blocks.png";
-const DROID_BLOCK_FILE: &str = "droids.png";
-const BULLET_BLOCK_FILE: &str = "bullet.png";
-const BLAST_BLOCK_FILE: &str = "blast.png";
-const DIGIT_BLOCK_FILE: &str = "digits.png";
+pub const MAP_BLOCK_FILE: &str = "map_blocks.png";
+pub const DROID_BLOCK_FILE: &str = "droids.png";
+pub const BULLET_BLOCK_FILE: &str = "bullet.png";
+pub const BLAST_BLOCK_FILE: &str = "blast.png";
+pub const DIGIT_BLOCK_FILE: &str = "digits.png";
 
-const BANNER_BLOCK_FILE: &str = "banner.png";
-const TITLE_PIC_FILE: &str = "title.jpg";
-const CONSOLE_PIC_FILE: &str = "console_fg.png";
-const CONSOLE_BG_PIC1_FILE: &str = "console_bg1.jpg";
-const CONSOLE_BG_PIC2_FILE: &str = "console_bg2.jpg";
-const TAKEOVER_BG_PIC_FILE: &str = "takeover_bg.jpg";
-const CREDITS_PIC_FILE: &str = "credits.jpg";
+pub const BANNER_BLOCK_FILE: &str = "banner.png";
+pub const TITLE_PIC_FILE: &str = "title.jpg";
+pub const CONSOLE_PIC_FILE: &str = "console_fg.png";
+pub const CONSOLE_BG_PIC1_FILE: &str = "console_bg1.jpg";
+pub const CONSOLE_BG_PIC2_FILE: &str = "console_bg2.jpg";
+pub const TAKEOVER_BG_PIC_FILE: &str = "takeover_bg.jpg";
+pub const CREDITS_PIC_FILE: &str = "credits.jpg";
 
-const SHIP_ON_PIC_FILE: &str = "ship_on.png";
-const SHIP_OFF_PIC_FILE: &str = "ship_off.png";
+pub const SHIP_ON_PIC_FILE: &str = "ship_on.png";
+pub const SHIP_OFF_PIC_FILE: &str = "ship_off.png";
 
-const PROGRESS_METER_FILE: &str = "progress_meter.png";
-const PROGRESS_FILLER_FILE: &str = "progress_filler.png";
+pub const PROGRESS_METER_FILE: &str = "progress_meter.png";
+pub const PROGRESS_FILLER_FILE: &str = "progress_filler.png";
 
-const STANDARD_MISSION: &str = "Paradroid.mission";
-const NEW_MISSION: &str = "CleanPrivateGoodsStorageCellar.mission";
+pub const STANDARD_MISSION: &str = "Paradroid.mission";
+pub const NEW_MISSION: &str = "CleanPrivateGoodsStorageCellar.mission";
 
-const PARA_FONT_FILE: &str = "parafont.png";
-const FONT0_FILE: &str = "font05.png";
-const FONT1_FILE: &str = "font05_green.png";
-const FONT2_FILE: &str = "font05_red.png";
+pub const PARA_FONT_FILE: &str = "parafont.png";
+pub const FONT0_FILE: &str = "font05.png";
+pub const FONT1_FILE: &str = "font05_green.png";
+pub const FONT2_FILE: &str = "font05_red.png";
 // const ICON_FILE: &str =		"paraicon.bmp";
-const ICON_FILE: &str = "paraicon_48x48.png";
+pub const ICON_FILE: &str = "paraicon_48x48.png";
 
 // **********************************************************************
 
-const DIGITNUMBER: usize = 10;
+pub const DIGITNUMBER: usize = 10;
 
-const TEXT_STRETCH: f64 = 1.2;
-const LEFT_TEXT_LEN: usize = 10;
-const RIGHT_TEXT_LEN: usize = 6;
+pub const TEXT_STRETCH: f64 = 1.2;
+pub const LEFT_TEXT_LEN: usize = 10;
+pub const RIGHT_TEXT_LEN: usize = 6;
 
-const BULLET_BULLET_COLLISION_DIST: f64 = 10.0 / 64.0;
-const BULLET_COLL_DIST2: f64 = 0.0244140625;
+pub const BULLET_BULLET_COLLISION_DIST: f64 = 10.0 / 64.0;
+pub const BULLET_COLL_DIST2: f64 = 0.0244140625;
 // **********************************************************************
 //
 //
@@ -282,6 +288,7 @@ const BULLET_COLL_DIST2: f64 = 0.0244140625;
 // The order of appearance here should match the order of appearance
 // in the SoundSampleFilenames definition located in sound.c!
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(C)]
 pub enum Sound {
     Error = 0,
     Blast,
@@ -320,46 +327,47 @@ pub enum Sound {
 
 // choose background music by level-color:
 // if filename_raw==BYCOLOR then chose bg_music[color]
-const BYCOLOR: &str = "BYCOLOR";
+pub const BYCOLOR: &str = "BYCOLOR";
 
 // The sounds when the influencers energy is low or when he is in transfer mode
 // occur periodically.  These constants specify which intervals are to be used
 // for these periodic happenings...
-const CRY_SOUND_INTERVAL: usize = 2;
-const TRANSFER_SOUND_INTERVAL: f64 = 1.1;
+pub const CRY_SOUND_INTERVAL: usize = 2;
+pub const TRANSFER_SOUND_INTERVAL: f64 = 1.1;
 
 // **********************************************************************
 
-const ERR: i8 = -1;
-const OK: i8 = 0;
+pub const ERR: i8 = -1;
+pub const OK: i8 = 0;
 
 /* Ship-Elevator Picture */
 
-const DIRECTIONS: usize = 8;
+pub const DIRECTIONS: usize = 8;
 
-const ALLSHIPS: usize = 4;
-const ENEMYPHASES: usize = 8;
-const DROID_PHASES: usize = ENEMYPHASES;
+pub const ALLSHIPS: usize = 4;
+pub const ENEMYPHASES: usize = 8;
+pub const DROID_PHASES: usize = ENEMYPHASES;
 
-const WAIT_LEVELEMPTY: f64 = 0.5; /* warte bevor Graufaerben (in seconds)*/
-const SLOWMO_FACTOR: f64 = 0.33; // slow-motion effect on last blast when level is going empty
-const WAIT_AFTER_KILLED: usize = 2000; // time (in ms) to wait and still display pictures after the destruction of
-const SHOW_WAIT: usize = 3500; // std amount of time to show something
-                               // the players droid.  This is now measured in seconds and can be a float
-const WAIT_SHIPEMPTY: usize = 20;
-const WAIT_TRANSFERMODE: f64 = 0.3; /* this is a "float" indicating the number of seconds the influence
-                                    stand still with space pressed, before switching into transfermode
-                                    This variable describes the amount in SECONDS */
-const WAIT_COLLISION: usize = 1; // after a little collision with influ, enemys hold position for a while
-                                 // this variable describes the amount of time in SECONDS
-const ENEMYMAXWAIT: f64 = 2.0; // after each robot has reached its current destination waypoint is waits a
-                               // while.  This variable describes the amount of time in SECONDS.  However,
-                               // the final wait time is a random number within [0,ENEMYMAXWAIT].
-const FLASH_DURATION: f64 = 0.1; // in seconds
+pub const WAIT_LEVELEMPTY: f64 = 0.5; /* warte bevor Graufaerben (in seconds)*/
+pub const SLOWMO_FACTOR: f64 = 0.33; // slow-motion effect on last blast when level is going empty
+pub const WAIT_AFTER_KILLED: usize = 2000; // time (in ms) to wait and still display pictures after the destruction of
+pub const SHOW_WAIT: usize = 3500; // std amount of time to show something
+                                   // the players droid.  This is now measured in seconds and can be a float
+pub const WAIT_SHIPEMPTY: usize = 20;
+pub const WAIT_TRANSFERMODE: f64 = 0.3; /* this is a "float" indicating the number of seconds the influence
+                                        stand still with space pressed, before switching into transfermode
+                                        This variable describes the amount in SECONDS */
+pub const WAIT_COLLISION: usize = 1; // after a little collision with influ, enemys hold position for a while
+                                     // this variable describes the amount of time in SECONDS
+pub const ENEMYMAXWAIT: f64 = 2.0; // after each robot has reached its current destination waypoint is waits a
+                                   // while.  This variable describes the amount of time in SECONDS.  However,
+                                   // the final wait time is a random number within [0,ENEMYMAXWAIT].
+pub const FLASH_DURATION: f64 = 0.1; // in seconds
 
 /* direction definitions (fireing bullets and testing blockedness of positions) */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum Direction {
+#[repr(C)]
+pub enum Direction {
     Oben = 0,
     Rechtsoben,
     Rechts,
@@ -374,56 +382,57 @@ enum Direction {
 
 /* Maximal number of ... */
 
-const NUM_MAP_BLOCKS: usize = 51; // total number of map-blocks
-const NUM_COLORS: usize = 7; // how many different level colorings?/different tilesets?
+pub const NUM_MAP_BLOCKS: usize = 51; // total number of map-blocks
+pub const NUM_COLORS: usize = 7; // how many different level colorings?/different tilesets?
 
 // const #define: usize = ALLBULLETTYPES;		4	/* number of bullet-types */
-const ALLBLASTTYPES: usize = 2; /* number of different exposions */
+pub const ALLBLASTTYPES: usize = 2; /* number of different exposions */
 
-const MAXBULLETS: usize = 100; /* maximum possible Bullets in the air */
-const MAXBLASTS: usize = 100; /* max. possible Blasts visible */
-const AGGRESSIONMAX: usize = 100;
-const ROBOT_MAX_WAIT_BETWEEN_SHOTS: usize = 5; // how long shoud each droid wait at most until
-                                               // is considers fireing again?
+pub const MAXBULLETS: usize = 100; /* maximum possible Bullets in the air */
+pub const MAXBLASTS: usize = 100; /* max. possible Blasts visible */
+pub const AGGRESSIONMAX: usize = 100;
+pub const ROBOT_MAX_WAIT_BETWEEN_SHOTS: usize = 5; // how long shoud each droid wait at most until
+                                                   // is considers fireing again?
 
 /* Map-related defines:
     WARNING leave them here, they are required in struct.h
 */
-const MAX_WP_CONNECTIONS: usize = 12;
-const MAX_MAP_ROWS: usize = 255;
-const MAX_MAP_COLS: usize = 255;
-const MAX_ENEMYS_ON_SHIP: usize = 300;
-const MAX_CHAT_KEYWORDS_PER_DROID: usize = 30;
-const MAX_INFLU_POSITION_HISTORY: usize = 100;
+pub const MAX_WP_CONNECTIONS: usize = 12;
+pub const MAX_MAP_ROWS: usize = 255;
+pub const MAX_MAP_COLS: usize = 255;
+pub const MAX_ENEMYS_ON_SHIP: usize = 300;
+pub const MAX_CHAT_KEYWORDS_PER_DROID: usize = 30;
+pub const MAX_INFLU_POSITION_HISTORY: usize = 100;
 
-const MAX_LIFTS: usize = 50; /* actually the entries to the lifts */
-const MAX_LEVELS: usize = 29; /* don't change this easily */
+pub const MAX_LIFTS: usize = 50; /* actually the entries to the lifts */
+pub const MAX_LEVELS: usize = 29; /* don't change this easily */
 /* corresponds to a reserved palette range ! */
-const MAX_LIFT_ROWS: usize = 15; /* the different lift "rows" */
+pub const MAX_LIFT_ROWS: usize = 15; /* the different lift "rows" */
 /* don't change this easily */
 /* corresponds to a reserved palette range !*/
-const MAX_LEVEL_RECTS: usize = 20; // how many rects compose a level
-const MAX_EVENT_TRIGGERS: usize = 20; // how many event triggers at most to allow
-const MAX_TRIGGERED_ACTIONS: usize = 20; // how many triggerable actions to allow at most
+pub const MAX_LEVEL_RECTS: usize = 20; // how many rects compose a level
+pub const MAX_EVENT_TRIGGERS: usize = 20; // how many event triggers at most to allow
+pub const MAX_TRIGGERED_ACTIONS: usize = 20; // how many triggerable actions to allow at most
 
-const MAXWAYPOINTS: usize = 100;
-const MAX_DOORS_ON_LEVEL: usize = 60;
-const MAX_REFRESHES_ON_LEVEL: usize = 40;
-const MAX_ALERTS_ON_LEVEL: usize = 40;
-const MAX_TELEPORTERS_ON_LEVEL: usize = 10;
+pub const MAXWAYPOINTS: usize = 100;
+pub const MAX_DOORS_ON_LEVEL: usize = 60;
+pub const MAX_REFRESHES_ON_LEVEL: usize = 40;
+pub const MAX_ALERTS_ON_LEVEL: usize = 40;
+pub const MAX_TELEPORTERS_ON_LEVEL: usize = 10;
 
-const MAX_PHASES_IN_A_BULLET: usize = 12;
-const MAX_STEPS_IN_GIVEN_COURSE: usize = 1000;
+pub const MAX_PHASES_IN_A_BULLET: usize = 12;
+pub const MAX_STEPS_IN_GIVEN_COURSE: usize = 1000;
 
-const BREMSDREHUNG: usize = 3; /* warte 3*, bevor Influencer weitergedreht wird */
+pub const BREMSDREHUNG: usize = 3; /* warte 3*, bevor Influencer weitergedreht wird */
 
 /* Wegstossgeschw. von Tueren u.ae. */
 // NORMALISATION #define PUSHSPEED 2
-const PUSHSPEED: usize = 2;
+pub const PUSHSPEED: usize = 2;
 
 /* Schusstypen */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum Bullet {
+#[repr(C)]
+pub enum Bullet {
     Pulse = 0,
     SinglePulse,
     Military,
@@ -434,17 +443,19 @@ enum Bullet {
 
 /* Explosionstypen */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum Explosion {
+#[repr(C)]
+pub enum Explosion {
     Bulletblast = 0,
     Druidblast,
     Rejectblast,
 }
 
-const BLINKENERGY: usize = 25;
+pub const BLINKENERGY: usize = 25;
 
 /* Druidtypen */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum Druid {
+#[repr(C)]
+pub enum Druid {
     Druid001 = 0, /* You will know why are the numbers there, when you */
     Druid123 = 1, /* enter the crew of a level !! */
     Druid139 = 2,
@@ -474,6 +485,7 @@ enum Druid {
 
 /* Status- Werte der Druids */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(C)]
 pub enum Status {
     Mobile,
     Transfermode,
@@ -494,10 +506,11 @@ pub enum Status {
     Out,
 }
 
-const DECKCOMPLETEBONUS: usize = 500;
+pub const DECKCOMPLETEBONUS: usize = 500;
 
 /* Konstanten die die Kartenwerte anschaulich machen */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(C)]
 pub enum UnknownVariant {
     Floor = 0,
     EckLu = 1,
