@@ -455,31 +455,31 @@ pub const BLINKENERGY: usize = 25;
 /* Druidtypen */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(C)]
-pub enum Druid {
-    Druid001 = 0, /* You will know why are the numbers there, when you */
-    Druid123 = 1, /* enter the crew of a level !! */
-    Druid139 = 2,
-    Druid247 = 3,
-    Druid249 = 4,
-    Druid296 = 5,
-    Druid302 = 6,
-    Druid329 = 7,
-    Druid420 = 8,
-    Druid476 = 9,
-    Druid493 = 10,
-    Druid516 = 11,
-    Druid571 = 12,
-    Druid598 = 13,
-    Druid614 = 14,
-    Druid615 = 15,
-    Druid629 = 16,
-    Druid711 = 17,
-    Druid742 = 18,
-    Druid751 = 19,
-    Druid821 = 20,
-    Druid834 = 21,
-    Druid883 = 22,
-    Druid999 = 23,
+pub enum Droid {
+    Droid001 = 0, /* You will know why are the numbers there, when you */
+    Droid123 = 1, /* enter the crew of a level !! */
+    Droid139 = 2,
+    Droid247 = 3,
+    Droid249 = 4,
+    Droid296 = 5,
+    Droid302 = 6,
+    Droid329 = 7,
+    Droid420 = 8,
+    Droid476 = 9,
+    Droid493 = 10,
+    Droid516 = 11,
+    Droid571 = 12,
+    Droid598 = 13,
+    Droid614 = 14,
+    Droid615 = 15,
+    Droid629 = 16,
+    Droid711 = 17,
+    Droid742 = 18,
+    Droid751 = 19,
+    Droid821 = 20,
+    Droid834 = 21,
+    Droid883 = 22,
+    Droid999 = 23,
     NumDroids,
 }
 
