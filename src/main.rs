@@ -4,6 +4,7 @@ mod global;
 mod graphics;
 mod highscore;
 mod input;
+mod structs;
 mod text;
 mod view;
 
