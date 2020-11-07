@@ -5,6 +5,7 @@ mod graphics;
 mod highscore;
 mod input;
 mod structs;
+mod takeover;
 mod text;
 mod view;
 
