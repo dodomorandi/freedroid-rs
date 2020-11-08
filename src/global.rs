@@ -111,9 +111,9 @@ extern "C" {
     #[no_mangle]
     pub static mut Me: Influence; /* the influence data */
     #[no_mangle]
-    pub static mut Druidmap: DruidSpec;
+    pub static mut Druidmap: *mut DruidSpec;
     #[no_mangle]
-    pub static mut Bulletmap: BulletSpec;
+    pub static mut Bulletmap: *mut BulletSpec;
     #[no_mangle]
     pub static mut Blastmap: [BlastSpec; ALLBLASTTYPES];
 
@@ -151,7 +151,7 @@ extern "C" {
     pub static mut NumEnemys: i32;
 
     #[no_mangle]
-    pub static mut CurLevel: Level; /* the current level data */
+    pub static mut CurLevel: *mut Level; /* the current level data */
     #[no_mangle]
     pub static mut curShip: Ship; /* the current ship-data */
 
@@ -230,9 +230,9 @@ extern "C" {
     pub static mut EnemyDigitSurfacePointer: [*mut SDL_Surface; DIGITNUMBER]; // A pointer to the surfaces containing the pictures of the
                                                                               // influencer in different phases of rotation
     #[no_mangle]
-    pub static mut MapBlockSurfacePointer: [[*mut SDL_Surface; NUM_COLORS]; NUM_MAP_BLOCKS]; // A pointer to the surfaces containing the map-pics, which may be rescaled with respect to
+    pub static mut MapBlockSurfacePointer: [[*mut SDL_Surface; NUM_MAP_BLOCKS]; NUM_COLORS]; // A pointer to the surfaces containing the map-pics, which may be rescaled with respect to
     #[no_mangle]
-    pub static mut OrigMapBlockSurfacePointer: [[*mut SDL_Surface; NUM_COLORS]; NUM_MAP_BLOCKS]; // A pointer to the surfaces containing the original map-pics as read from disk
+    pub static mut OrigMapBlockSurfacePointer: [[*mut SDL_Surface; NUM_MAP_BLOCKS]; NUM_COLORS]; // A pointer to the surfaces containing the original map-pics as read from disk
     #[no_mangle]
     pub static mut BuildBlock: *mut SDL_Surface; // a block for temporary pic-construction
 

@@ -4,6 +4,8 @@ mod global;
 mod graphics;
 mod highscore;
 mod input;
+mod map;
+mod misc;
 mod structs;
 mod takeover;
 mod text;

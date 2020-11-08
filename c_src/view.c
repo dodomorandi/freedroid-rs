@@ -83,170 +83,170 @@ Map2ScreenXY (finepoint mappos, point *screenpos)
 -----------------------------------------------------------------
 */
 
-void
-Assemble_Combat_Picture (int mask)
-{
-  int MapBrick;
-  int line, col;
-  int i;
-  static float TimeSinceLastFPSUpdate=10;
-  static int FPS_Displayed=1;
-  SDL_Rect TargetRectangle;
-  SDL_Rect TxtRect;
-  finepoint pos, vect;
-  float len;
-  grob_point upleft, downright;
+/* void */
+/* Assemble_Combat_Picture (int mask) */
+/* { */
+/*   int MapBrick; */
+/*   int line, col; */
+/*   int i; */
+/*   static float TimeSinceLastFPSUpdate=10; */
+/*   static int FPS_Displayed=1; */
+/*   SDL_Rect TargetRectangle; */
+/*   SDL_Rect TxtRect; */
+/*   finepoint pos, vect; */
+/*   float len; */
+/*   grob_point upleft, downright; */
 
 
-#define UPDATE_FPS_HOW_OFTEN 0.75
+/* #define UPDATE_FPS_HOW_OFTEN 0.75 */
 
-  DebugPrintf (2, "\nvoid Assemble_Combat_Picture(...): Real function call confirmed.");
-
-
-
-  SDL_SetClipRect (ne_screen , &User_Rect);
-
-  if ( !GameConfig.AllMapVisible )
-    Fill_Rect (User_Rect, Black);
-
-  if ( (mask & SHOW_FULL_MAP) != 0 )
-    {
-      upleft.x = -5; upleft.y = -5;
-      downright.x = CurLevel->xlen + 5; downright.y = CurLevel->ylen + 5;
-    }
-  else
-    {
-      upleft.x = Me.pos.x - 6; upleft.y = Me.pos.y - 5;
-      downright.x = Me.pos.x + 7; downright.y = Me.pos.y + 5;
-    }
+/*   DebugPrintf (2, "\nvoid Assemble_Combat_Picture(...): Real function call confirmed."); */
 
 
-  for (line = (int)upleft.y; line < (int)downright.y; line++)
-    {
-      for (col = (int)upleft.x; col < (int)downright.x; col++)
-	{
-	  if ( !GameConfig.AllMapVisible && ( (mask & SHOW_FULL_MAP) == 0x0) )
-	    {
-	      pos.x = col;
-	      pos.y = line;
-	      vect.x = Me.pos.x - pos.x;
-	      vect.y = Me.pos.y - pos.y;
-	      len = sqrt( vect.x * vect.x + vect.y * vect.y) + 0.01;
-	      vect.x /= len;
-	      vect.y /= len;
-	      if (len > 0.5)
-		{
-		  pos.x += vect.x;
-		  pos.y += vect.y;
-		}
-	      if ( !IsVisible (&pos) )
-		continue;
-	    }
 
-	  MapBrick = GetMapBrick( CurLevel, col , line );
-	  TargetRectangle.x = UserCenter_x + (int)rint( (-Me.pos.x+1.0*col-0.5 )*Block_Rect.w);
-	  TargetRectangle.y = UserCenter_y + (int)rint( (-Me.pos.y+1.0*line-0.5 )*Block_Rect.h);
-	  SDL_BlitSurface( MapBlockSurfacePointer[CurLevel->color][MapBrick], NULL, ne_screen, &TargetRectangle);
-	}			// for(col)
-    }				// for(line)
+/*   SDL_SetClipRect (ne_screen , &User_Rect); */
+
+/*   if ( !GameConfig.AllMapVisible ) */
+/*     Fill_Rect (User_Rect, Black); */
+
+/*   if ( (mask & SHOW_FULL_MAP) != 0 ) */
+/*     { */
+/*       upleft.x = -5; upleft.y = -5; */
+/*       downright.x = CurLevel->xlen + 5; downright.y = CurLevel->ylen + 5; */
+/*     } */
+/*   else */
+/*     { */
+/*       upleft.x = Me.pos.x - 6; upleft.y = Me.pos.y - 5; */
+/*       downright.x = Me.pos.x + 7; downright.y = Me.pos.y + 5; */
+/*     } */
 
 
-  // if we don't use Fullscreen mode, we have to clear the text-background manually
-  // for the info-line text:
+/*   for (line = (int)upleft.y; line < (int)downright.y; line++) */
+/*     { */
+/*       for (col = (int)upleft.x; col < (int)downright.x; col++) */
+/* 	{ */
+/* 	  if ( !GameConfig.AllMapVisible && ( (mask & SHOW_FULL_MAP) == 0x0) ) */
+/* 	    { */
+/* 	      pos.x = col; */
+/* 	      pos.y = line; */
+/* 	      vect.x = Me.pos.x - pos.x; */
+/* 	      vect.y = Me.pos.y - pos.y; */
+/* 	      len = sqrt( vect.x * vect.x + vect.y * vect.y) + 0.01; */
+/* 	      vect.x /= len; */
+/* 	      vect.y /= len; */
+/* 	      if (len > 0.5) */
+/* 		{ */
+/* 		  pos.x += vect.x; */
+/* 		  pos.y += vect.y; */
+/* 		} */
+/* 	      if ( !IsVisible (&pos) ) */
+/* 		continue; */
+/* 	    } */
 
-  TxtRect.x = Full_User_Rect.x;
-  TxtRect.y = Full_User_Rect.y+Full_User_Rect.h - FontHeight (Font0_BFont);
-  TxtRect.h = FontHeight (Font0_BFont);
-  TxtRect.w = Full_User_Rect.w;
-  SDL_SetClipRect (ne_screen, &TxtRect);
-  if (!GameConfig.FullUserRect)
-    SDL_FillRect(ne_screen, &TxtRect, 0);
-
-
-  if ( GameConfig.Draw_Position )
-    {
-      PrintStringFont( ne_screen , Font0_BFont , Full_User_Rect.x+Full_User_Rect.w/6 ,
-		       Full_User_Rect.y+Full_User_Rect.h - FontHeight( Font0_BFont ),
-		       "GPS: X=%d Y=%d Lev=%d" , (int) rintf(Me.pos.x) , (int) rintf(Me.pos.y) ,
-		       CurLevel->levelnum );
-    }
-
-
-  if (!(mask & ONLY_SHOW_MAP) )
-    {
-      if ( GameConfig.Draw_Framerate )
-	{
-	  TimeSinceLastFPSUpdate += Frame_Time();
-	  if ( TimeSinceLastFPSUpdate > UPDATE_FPS_HOW_OFTEN )
-	    {
-	      FPS_Displayed=(int)(1.0/Frame_Time());
-	      TimeSinceLastFPSUpdate=0;
-	    }
-
-	  PrintStringFont( ne_screen , Font0_BFont , Full_User_Rect.x ,
-			   Full_User_Rect.y+Full_User_Rect.h - FontHeight( Font0_BFont ),
-			   "FPS: %d " , FPS_Displayed );
-	}
-
-      if ( GameConfig.Draw_Energy )
-	{
-	  PrintStringFont( ne_screen , Font0_BFont , Full_User_Rect.x+Full_User_Rect.w/2 ,
-			   Full_User_Rect.y+Full_User_Rect.h - FontHeight( Font0_BFont ),
-			   "Energy: %d" , (int)Me.energy);
-	}
-      if (GameConfig.Draw_DeathCount)
-	{
-	  PrintStringFont( ne_screen , Font0_BFont , Full_User_Rect.x+2*Full_User_Rect.w/3 ,
-			   Full_User_Rect.y+Full_User_Rect.h - FontHeight( Font0_BFont ),
-			   "Deathcount: %d", (int)DeathCount );
-	}
+/* 	  MapBrick = GetMapBrick( CurLevel, col , line ); */
+/* 	  TargetRectangle.x = UserCenter_x + (int)rint( (-Me.pos.x+1.0*col-0.5 )*Block_Rect.w); */
+/* 	  TargetRectangle.y = UserCenter_y + (int)rint( (-Me.pos.y+1.0*line-0.5 )*Block_Rect.h); */
+/* 	  SDL_BlitSurface( MapBlockSurfacePointer[CurLevel->color][MapBrick], NULL, ne_screen, &TargetRectangle); */
+/* 	}			// for(col) */
+/*     }				// for(line) */
 
 
-      SDL_SetClipRect (ne_screen, &User_Rect);
+/*   // if we don't use Fullscreen mode, we have to clear the text-background manually */
+/*   // for the info-line text: */
+
+/*   TxtRect.x = Full_User_Rect.x; */
+/*   TxtRect.y = Full_User_Rect.y+Full_User_Rect.h - FontHeight (Font0_BFont); */
+/*   TxtRect.h = FontHeight (Font0_BFont); */
+/*   TxtRect.w = Full_User_Rect.w; */
+/*   SDL_SetClipRect (ne_screen, &TxtRect); */
+/*   if (!GameConfig.FullUserRect) */
+/*     SDL_FillRect(ne_screen, &TxtRect, 0); */
 
 
-      // make sure Ashes are displayed _before_ droids, so that they are _under_ them!
-      for (i = 0; i < NumEnemys ; i++)
-	if ( (AllEnemys[i].status == TERMINATED) && (AllEnemys[i].levelnum == CurLevel->levelnum) )
-	  {
-	    if (IsVisible (&(AllEnemys[i].pos) ) )
-	      PutAshes (AllEnemys[i].pos.x, AllEnemys[i].pos.y);
-	  }
+/*   if ( GameConfig.Draw_Position ) */
+/*     { */
+/*       PrintStringFont( ne_screen , Font0_BFont , Full_User_Rect.x+Full_User_Rect.w/6 , */
+/* 		       Full_User_Rect.y+Full_User_Rect.h - FontHeight( Font0_BFont ), */
+/* 		       "GPS: X=%d Y=%d Lev=%d" , (int) rintf(Me.pos.x) , (int) rintf(Me.pos.y) , */
+/* 		       CurLevel->levelnum ); */
+/*     } */
 
-      for (i = 0; i < NumEnemys ; i++)
-	if ( (AllEnemys[i].levelnum != CurLevel->levelnum) || (AllEnemys[i].status == OUT) ||
-	     (AllEnemys[i].status == TERMINATED) )
-	  continue;
-	else
-	  PutEnemy (i , -1 , -1 );
 
-      if (Me.energy > 0)
-	PutInfluence ( -1 , -1 );
+/*   if (!(mask & ONLY_SHOW_MAP) ) */
+/*     { */
+/*       if ( GameConfig.Draw_Framerate ) */
+/* 	{ */
+/* 	  TimeSinceLastFPSUpdate += Frame_Time(); */
+/* 	  if ( TimeSinceLastFPSUpdate > UPDATE_FPS_HOW_OFTEN ) */
+/* 	    { */
+/* 	      FPS_Displayed=(int)(1.0/Frame_Time()); */
+/* 	      TimeSinceLastFPSUpdate=0; */
+/* 	    } */
 
-      for (i = 0; i < (MAXBULLETS); i++)
-	if (AllBullets[i].type != OUT)
-	  PutBullet (i);
+/* 	  PrintStringFont( ne_screen , Font0_BFont , Full_User_Rect.x , */
+/* 			   Full_User_Rect.y+Full_User_Rect.h - FontHeight( Font0_BFont ), */
+/* 			   "FPS: %d " , FPS_Displayed ); */
+/* 	} */
 
-      for (i = 0; i < (MAXBLASTS); i++)
-	if (AllBlasts[i].type != OUT)
-	  PutBlast (i);
+/*       if ( GameConfig.Draw_Energy ) */
+/* 	{ */
+/* 	  PrintStringFont( ne_screen , Font0_BFont , Full_User_Rect.x+Full_User_Rect.w/2 , */
+/* 			   Full_User_Rect.y+Full_User_Rect.h - FontHeight( Font0_BFont ), */
+/* 			   "Energy: %d" , (int)Me.energy); */
+/* 	} */
+/*       if (GameConfig.Draw_DeathCount) */
+/* 	{ */
+/* 	  PrintStringFont( ne_screen , Font0_BFont , Full_User_Rect.x+2*Full_User_Rect.w/3 , */
+/* 			   Full_User_Rect.y+Full_User_Rect.h - FontHeight( Font0_BFont ), */
+/* 			   "Deathcount: %d", (int)DeathCount ); */
+/* 	} */
 
-    }
 
-  // At this point we are done with the drawing procedure
-  // and all that remains to be done is updating the screen.
+/*       SDL_SetClipRect (ne_screen, &User_Rect); */
 
-  if ( mask & DO_SCREEN_UPDATE )
-    {
-      SDL_UpdateRect (ne_screen, User_Rect.x, User_Rect.y, User_Rect.w, User_Rect.h);
-      SDL_UpdateRect (ne_screen, TxtRect.x, TxtRect.y, TxtRect.w, TxtRect.h);
-    }
 
-  SDL_SetClipRect (ne_screen, NULL);
+/*       // make sure Ashes are displayed _before_ droids, so that they are _under_ them! */
+/*       for (i = 0; i < NumEnemys ; i++) */
+/* 	if ( (AllEnemys[i].status == TERMINATED) && (AllEnemys[i].levelnum == CurLevel->levelnum) ) */
+/* 	  { */
+/* 	    if (IsVisible (&(AllEnemys[i].pos) ) ) */
+/* 	      PutAshes (AllEnemys[i].pos.x, AllEnemys[i].pos.y); */
+/* 	  } */
 
-  return;
+/*       for (i = 0; i < NumEnemys ; i++) */
+/* 	if ( (AllEnemys[i].levelnum != CurLevel->levelnum) || (AllEnemys[i].status == OUT) || */
+/* 	     (AllEnemys[i].status == TERMINATED) ) */
+/* 	  continue; */
+/* 	else */
+/* 	  PutEnemy (i , -1 , -1 ); */
 
-} // void Assemble_Combat_Picture(...)
+/*       if (Me.energy > 0) */
+/* 	PutInfluence ( -1 , -1 ); */
+
+/*       for (i = 0; i < (MAXBULLETS); i++) */
+/* 	if (AllBullets[i].type != OUT) */
+/* 	  PutBullet (i); */
+
+/*       for (i = 0; i < (MAXBLASTS); i++) */
+/* 	if (AllBlasts[i].type != OUT) */
+/* 	  PutBlast (i); */
+
+/*     } */
+
+/*   // At this point we are done with the drawing procedure */
+/*   // and all that remains to be done is updating the screen. */
+
+/*   if ( mask & DO_SCREEN_UPDATE ) */
+/*     { */
+/*       SDL_UpdateRect (ne_screen, User_Rect.x, User_Rect.y, User_Rect.w, User_Rect.h); */
+/*       SDL_UpdateRect (ne_screen, TxtRect.x, TxtRect.y, TxtRect.w, TxtRect.h); */
+/*     } */
+
+/*   SDL_SetClipRect (ne_screen, NULL); */
+
+/*   return; */
+
+/* } // void Assemble_Combat_Picture(...) */
 
 /*
 -----------------------------------------------------------------
@@ -454,21 +454,21 @@ PutEnemy (int Enum , int x , int y)
 // ----------------------------------------------------------------------
 // put some ashes at (x,y)
 //----------------------------------------------------------------------
-void
-PutAshes (float x, float y)
-{
-  SDL_Rect dst;
+/* void */
+/* PutAshes (float x, float y) */
+/* { */
+/*   SDL_Rect dst; */
 
-  if (!GameConfig.ShowDecals)
-    return;
+/*   if (!GameConfig.ShowDecals) */
+/*     return; */
 
-  dst.x = UserCenter_x + ( -Me.pos.x + x ) * Block_Rect.w  -Block_Rect.w/2;
-  dst.y = UserCenter_y + ( -Me.pos.y + y ) * Block_Rect.h -Block_Rect.h/2;
-  SDL_BlitSurface( Decal_pics[0], NULL , ne_screen, &dst);
+/*   dst.x = UserCenter_x + ( -Me.pos.x + x ) * Block_Rect.w  -Block_Rect.w/2; */
+/*   dst.y = UserCenter_y + ( -Me.pos.y + y ) * Block_Rect.h -Block_Rect.h/2; */
+/*   SDL_BlitSurface( Decal_pics[0], NULL , ne_screen, &dst); */
 
-  return;
+/*   return; */
 
-} // PutAshes
+/* } // PutAshes */
 
 /*@Function============================================================
 @Desc: PutBullet: draws a Bullet into the combat window.  The only
@@ -618,20 +618,20 @@ SetUserfenster (int color)
  * Fill given rectangle with given RBG color
  *
  *-----------------------------------------------------------------*/
-void
-Fill_Rect (SDL_Rect rect, SDL_Color color)
-{
-  Uint32 pixcolor;
-  SDL_Rect tmp;
+/* void */
+/* Fill_Rect (SDL_Rect rect, SDL_Color color) */
+/* { */
+/*   Uint32 pixcolor; */
+/*   SDL_Rect tmp; */
 
-  Copy_Rect (rect, tmp);
+/*   Copy_Rect (rect, tmp); */
 
-  pixcolor = SDL_MapRGB (ne_screen->format, color.r, color.g, color.b);
+/*   pixcolor = SDL_MapRGB (ne_screen->format, color.r, color.g, color.b); */
 
-  SDL_FillRect (ne_screen, &tmp, pixcolor);
+/*   SDL_FillRect (ne_screen, &tmp, pixcolor); */
 
-  return;
-}
+/*   return; */
+/* } */
 
 /*-----------------------------------------------------------------
  * @Desc: This function updates the top status bar.

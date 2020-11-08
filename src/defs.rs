@@ -1,4 +1,7 @@
+use crate::global::User_Rect;
+
 use bitflags::bitflags;
+use sdl::sdl::Rect;
 
 pub const MAX_THEMES: usize = 100;
 
@@ -12,8 +15,16 @@ pub const FREE_ONLY: usize = 0x08;
 pub const DROID_ROTATION_TIME: f64 = 3.0;
 pub const NUM_DECAL_PICS: usize = 2;
 
-// #define UserCenter_x (User_Rect.x + User_Rect.w/2)
-// #define UserCenter_y (User_Rect.y + User_Rect.h/2)
+#[inline]
+pub unsafe fn get_user_center() -> Rect {
+    let Rect { x, y, w, h } = User_Rect;
+    Rect {
+        x: x + (w / 2) as i16,
+        y: y + (h / 2) as i16,
+        w,
+        h,
+    }
+}
 
 // #define ScaleRect(rect,scale) do {\
 // (rect).x *= scale; (rect).y *= scale; (rect).w *= scale; (rect).h *= scale; } while(0)
@@ -190,7 +201,7 @@ pub enum Criticality {
 
 // The flags for DisplayBanner are:
 bitflags! {
-    struct DisplayBannerFlags: u8 {
+    pub struct DisplayBannerFlags: u8 {
         const FORCE_UPDATE=1;
         const DONT_TOUCH_TEXT=2;
         const NO_SDL_UPDATE=4;
@@ -199,7 +210,7 @@ bitflags! {
 
 // The flags for AssembleCombatWindow are:
 bitflags! {
-    struct AssembleCombatWindowFlags: u8 {
+    pub struct AssembleCombatWindowFlags: u8 {
         const ONLY_SHOW_MAP = 0x01;
         const DO_SCREEN_UPDATE = 0x02;
         const SHOW_FULL_MAP = 0x04;

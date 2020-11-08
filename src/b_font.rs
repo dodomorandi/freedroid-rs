@@ -1,5 +1,5 @@
 use sdl::video::ll::{SDL_Rect, SDL_Surface};
-use std::os::raw::c_int;
+use std::os::raw::{c_char, c_int};
 
 extern "C" {
     #[no_mangle]
@@ -10,6 +10,17 @@ extern "C" {
 
     #[no_mangle]
     pub static mut CurrentFont: *mut BFontInfo;
+
+    #[no_mangle]
+    pub fn PrintStringFont(
+        surface: *mut SDL_Surface,
+        font: *mut BFontInfo,
+        x: c_int,
+        y: c_int,
+        fmt: *mut c_char,
+        ...
+    );
+
 }
 
 #[derive(Clone)]

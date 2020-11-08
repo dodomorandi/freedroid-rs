@@ -58,7 +58,7 @@ pub struct Config {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Finepoint {
     pub x: f32,
     pub y: f32,
