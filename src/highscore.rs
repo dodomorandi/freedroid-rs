@@ -85,7 +85,7 @@ impl Default for HighscoreEntry {
     fn default() -> Self {
         let mut name = [0; MAX_NAME_LEN + 5];
         name.iter_mut()
-            .zip(HS_EMPTY_ENTRY.iter().copied().map(|c| c as c_char))
+            .zip(HS_EMPTY_ENTRY.bytes().map(|c| c as c_char))
             .for_each(|(dst, src)| *dst = src);
 
         let mut date = [0; DATE_LEN + 5];
@@ -132,7 +132,7 @@ fn init_highscores(config_dir: Option<&Path>) {
         file
     });
 
-    unsafe { num_highscores = MAX_HIGHSCORES.into() };
+    unsafe { num_highscores = MAX_HIGHSCORES as _ };
     let highscores: Box<_> = match file {
         Some(mut file) => (0..MAX_HIGHSCORES)
             .map(|_| {
@@ -309,8 +309,8 @@ pub extern "C" fn InitHighscores() {
 #[no_mangle]
 pub extern "C" fn SaveHighscores() -> c_int {
     match save_highscores(get_config_dir()) {
-        Ok(()) => defs::OK,
-        Err(()) => defs::ERR,
+        Ok(()) => defs::OK.into(),
+        Err(()) => defs::ERR.into(),
     }
 }
 
