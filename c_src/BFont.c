@@ -198,25 +198,25 @@ SetFontColor (BFont_Info * Font, Uint8 r, Uint8 g, Uint8 b)
 }
 
 /* Set the current font */
-void
-SetCurrentFont (BFont_Info * Font)
-{
-  CurrentFont = Font;
-}
+/* void */
+/* SetCurrentFont (BFont_Info * Font) */
+/* { */
+/*   CurrentFont = Font; */
+/* } */
 
 /* Returns the pointer to the current font strucure in use */
-BFont_Info *
-GetCurrentFont (void)
-{
-  return CurrentFont;
-}
+/* BFont_Info * */
+/* GetCurrentFont (void) */
+/* { */
+/*   return CurrentFont; */
+/* } */
 
 /* Return the font height */
-int
-FontHeight (BFont_Info * Font)
-{
-  return (Font->h);
-}
+/* int */
+/* FontHeight (BFont_Info * Font) */
+/* { */
+/*   return (Font->h); */
+/* } */
 
 void
 SetFontHeight (BFont_Info * Font, int height)

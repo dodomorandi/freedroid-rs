@@ -3,19 +3,13 @@ use std::os::raw::c_int;
 
 extern "C" {
     #[no_mangle]
-    pub fn GetCurrentFont() -> *mut BFontInfo;
-
-    #[no_mangle]
-    pub fn SetCurrentFont(font: *mut BFontInfo);
-
-    #[no_mangle]
-    pub fn FontHeight(font: *mut BFontInfo) -> c_int;
-
-    #[no_mangle]
     pub static mut Highscore_BFont: *mut BFontInfo;
 
     #[no_mangle]
     pub static mut Para_BFont: *mut BFontInfo;
+
+    #[no_mangle]
+    pub static mut CurrentFont: *mut BFontInfo;
 }
 
 #[derive(Clone)]
@@ -29,4 +23,19 @@ pub struct BFontInfo {
 
     /// characters width
     chars: [SDL_Rect; 256],
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn GetCurrentFont() -> *mut BFontInfo {
+    CurrentFont
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn SetCurrentFont(font: *mut BFontInfo) {
+    CurrentFont = font;
+}
+
+#[no_mangle]
+pub fn FontHeight(font: &BFontInfo) -> c_int {
+    font.h
 }

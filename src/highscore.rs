@@ -225,7 +225,7 @@ fn update_highscores() {
             Portrait_Rect.h,
         );
         SDL_UpperBlit(pic999, null_mut(), ne_screen, &mut dst);
-        let h = FontHeight(Para_BFont);
+        let h = FontHeight(&*Para_BFont);
         DisplayText(
             cstr!("Great Score !").as_ptr(),
             i32::from(dst.x) - h,
