@@ -12,56 +12,56 @@ pub struct Point {
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ThemeList {
-    num_themes: i32,
-    cur_tnum: i32,
-    theme_name: [*mut u8; MAX_THEMES],
+    pub num_themes: i32,
+    pub cur_tnum: i32,
+    pub theme_name: [*mut u8; MAX_THEMES],
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct HighscoreEntry {
-    name: [i8; MAX_NAME_LEN + 5],
-    score: i64, /* use -1 for an empty entry */
-    date: [i8; DATE_LEN + 5],
+    pub name: [i8; MAX_NAME_LEN + 5],
+    pub score: i64, /* use -1 for an empty entry */
+    pub date: [i8; DATE_LEN + 5],
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Color {
-    rot: u8,
-    gruen: u8,
-    blau: u8,
+    pub rot: u8,
+    pub gruen: u8,
+    pub blau: u8,
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Config {
-    WantedTextVisibleTime: f32,
-    Draw_Framerate: i32,
-    Draw_Energy: i32,
-    Draw_Position: i32,
-    Draw_DeathCount: i32,
-    Droid_Talk: i32,
-    Current_BG_Music_Volume: f32,
-    Current_Sound_FX_Volume: f32,
-    Current_Gamma_Correction: f32,
-    Theme_Name: [i8; 100], // name of graphics-theme : dirname = graphics/TNAME_theme/
-    FullUserRect: i32,     // use "full" or "classic" (=small) User_Rect
-    UseFullscreen: i32,    // toggle for use of fullscreen vs. X11-window
-    TakeoverActivates: i32, // toggle if takeover-mode also does 'Activate' (i.e. lifts/consoles)
-    FireHoldTakeover: i32, // Activate Takeover-mode after a delay if fire is held without a direction
-    ShowDecals: i32,       // show dead droids-ashes...
-    AllMapVisible: i32,    // complete map is visible?
-    scale: f32,            // scale the whole graphics by this at load-time
-    HogCPU: i32,           // use 100% CPU or leave it some air to breathe?
-    emptyLevelSpeedup: f32, // time speedup factor to use on empty levels
+    pub WantedTextVisibleTime: f32,
+    pub Draw_Framerate: i32,
+    pub Draw_Energy: i32,
+    pub Draw_Position: i32,
+    pub Draw_DeathCount: i32,
+    pub Droid_Talk: i32,
+    pub Current_BG_Music_Volume: f32,
+    pub Current_Sound_FX_Volume: f32,
+    pub Current_Gamma_Correction: f32,
+    pub Theme_Name: [i8; 100], // name of graphics-theme : dirname = graphics/TNAME_theme/
+    pub FullUserRect: i32,     // use "full" or "classic" (=small) User_Rect
+    pub UseFullscreen: i32,    // toggle for use of fullscreen vs. X11-window
+    pub TakeoverActivates: i32, // toggle if takeover-mode also does 'Activate' (i.e. lifts/consoles)
+    pub FireHoldTakeover: i32, // Activate Takeover-mode after a delay if fire is held without a direction
+    pub ShowDecals: i32,       // show dead droids-ashes...
+    pub AllMapVisible: i32,    // complete map is visible?
+    pub scale: f32,            // scale the whole graphics by this at load-time
+    pub HogCPU: i32,           // use 100% CPU or leave it some air to breathe?
+    emptyLevelSpeedup: f32,    // time speedup factor to use on empty levels
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Finepoint {
-    x: f32,
-    y: f32,
+    pub x: f32,
+    pub y: f32,
 }
 
 pub type Vect = Finepoint;
@@ -69,196 +69,196 @@ pub type Vect = Finepoint;
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GrobPoint {
-    x: i8,
-    y: i8,
+    pub x: i8,
+    pub y: i8,
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Gps {
-    x: f32,
-    y: f32,
-    z: i32,
+    pub x: f32,
+    pub y: f32,
+    pub z: i32,
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DruidSpec {
-    druidname: [i8; 20],
-    maxspeed: f32, /* the maximum of speed it can go */
-    class: i32,
-    accel: f32,       /* its acceleration */
-    maxenergy: f32,   /* the maximum energy the batteries can carry */
-    lose_health: f32, /* the energy/time the duid loses under influence-control */
-    gun: i32,         /* Which gun does this druid use */
-    aggression: i32,  /* The aggressiveness of this druidtype */
-    flashimmune: i32, /* is the droid immune to FLASH-bullets */
-    score: i32,       /* score for the elimination of one droid of this type */
-    height: f32,      // the height of this droid
-    weight: i32,      // the weight of this droid
-    drive: i32,
-    brain: i32,
-    sensor1: i32,
-    sensor2: i32,
-    sensor3: i32,
-    notes: *mut i8, /* notes on the druid of this type */
+    pub druidname: [i8; 20],
+    pub maxspeed: f32, /* the maximum of speed it can go */
+    pub class: i32,
+    pub accel: f32,       /* its acceleration */
+    pub maxenergy: f32,   /* the maximum energy the batteries can carry */
+    pub lose_health: f32, /* the energy/time the duid loses under influence-control */
+    pub gun: i32,         /* Which gun does this druid use */
+    pub aggression: i32,  /* The aggressiveness of this druidtype */
+    pub flashimmune: i32, /* is the droid immune to FLASH-bullets */
+    pub score: i32,       /* score for the elimination of one droid of this type */
+    pub height: f32,      // the height of this droid
+    pub weight: i32,      // the weight of this droid
+    pub drive: i32,
+    pub brain: i32,
+    pub sensor1: i32,
+    pub sensor2: i32,
+    pub sensor3: i32,
+    pub notes: *mut i8, /* notes on the druid of this type */
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Influence {
-    ty: i32,          /* what kind of druid is this ? */
-    status: i32,      /* attacking, defense, dead, ... */
-    speed: Finepoint, /* the current speed of the druid */
-    pos: Finepoint,   /* current position in level levelnum */
-    health: f32,      /* the max. possible energy in the moment */
-    energy: f32,      /* current energy */
-    firewait: f32,    /* counter after fire */
-    phase: f32,       /* the current phase of animation */
-    timer: f32,
-    LastCrysoundTime: f32,
-    LastTransferSoundTime: f32,
-    TextVisibleTime: f32,
-    TextToBeDisplayed: *mut i8,
-    Position_History_Ring_Buffer: [Gps; MAX_INFLU_POSITION_HISTORY],
+    pub ty: i32,          /* what kind of druid is this ? */
+    pub status: i32,      /* attacking, defense, dead, ... */
+    pub speed: Finepoint, /* the current speed of the druid */
+    pub pos: Finepoint,   /* current position in level levelnum */
+    pub health: f32,      /* the max. possible energy in the moment */
+    pub energy: f32,      /* current energy */
+    pub firewait: f32,    /* counter after fire */
+    pub phase: f32,       /* the current phase of animation */
+    pub timer: f32,
+    pub LastCrysoundTime: f32,
+    pub LastTransferSoundTime: f32,
+    pub TextVisibleTime: f32,
+    pub TextToBeDisplayed: *mut i8,
+    pub Position_History_Ring_Buffer: [Gps; MAX_INFLU_POSITION_HISTORY],
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Enemy {
-    ty: i32,           /* gibt die Nummer in Druidmap an */
-    levelnum: i32,     /* Level in dem sich enemy befindet */
-    pos: Finepoint,    /* gibt die Koordinaten der Momentanposition an */
-    speed: Finepoint,  /* current speed  */
-    energy: f32,       /* gibt die Energie dieses Robots an */
-    phase: f32,        /* gibt die Phase an in der der Feind gedreht ist */
-    nextwaypoint: i32, /* gibt den naechsten Zielpunkt an */
-    lastwaypoint: i32, /* Waypoint, von dem ausgegangen wurde */
-    status: i32,       /* gibt z.B. an ob der Robotter abgeschossen wurde */
-    warten: f32,       // time till the droid will start to move again
-    passable: u8,      /* Zeit (counter), in der druid passable ist */
-    firewait: f32,     /* gibt die Zeit bis zum naechsten Schuss an */
-    TextVisibleTime: f32,
-    TextToBeDisplayed: *mut i8,
-    NumberOfPeriodicSpecialStatements: i32,
-    PeriodicSpecialStatements: *mut *mut i8,
+    pub ty: i32,           /* gibt die Nummer in Druidmap an */
+    pub levelnum: i32,     /* Level in dem sich enemy befindet */
+    pub pos: Finepoint,    /* gibt die Koordinaten der Momentanposition an */
+    pub speed: Finepoint,  /* current speed  */
+    pub energy: f32,       /* gibt die Energie dieses Robots an */
+    pub phase: f32,        /* gibt die Phase an in der der Feind gedreht ist */
+    pub nextwaypoint: i32, /* gibt den naechsten Zielpunkt an */
+    pub lastwaypoint: i32, /* Waypoint, von dem ausgegangen wurde */
+    pub status: i32,       /* gibt z.B. an ob der Robotter abgeschossen wurde */
+    pub warten: f32,       // time till the droid will start to move again
+    pub passable: u8,      /* Zeit (counter), in der druid passable ist */
+    pub firewait: f32,     /* gibt die Zeit bis zum naechsten Schuss an */
+    pub TextVisibleTime: f32,
+    pub TextToBeDisplayed: *mut i8,
+    pub NumberOfPeriodicSpecialStatements: i32,
+    pub PeriodicSpecialStatements: *mut *mut i8,
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BulletSpec {
-    recharging_time: f32, // time until the next shot can be made, measures in seconds
-    speed: f32,           /* speed of the bullet */
-    damage: i32,          /* damage done by this bullettype */
-    phases: i32,          /* how many phases in motion to show */
-    phase_changes_per_second: f32, // how many different phases to display every second
-    blast: i32,           /* which blast does this bullet create */
-    SurfacePointer: [*mut SDL_Surface; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
-                                                                // the bullet images of this bullet
+    pub recharging_time: f32, // time until the next shot can be made, measures in seconds
+    pub speed: f32,           /* speed of the bullet */
+    pub damage: i32,          /* damage done by this bullettype */
+    pub phases: i32,          /* how many phases in motion to show */
+    pub phase_changes_per_second: f32, // how many different phases to display every second
+    pub blast: i32,           /* which blast does this bullet create */
+    pub SurfacePointer: [*mut SDL_Surface; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
+                                                                    // the bullet images of this bullet
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Bullet {
-    pos: Finepoint,
-    prev_pos: Finepoint, // use this for improved collision checks (for low FPS machines)
-    speed: Finepoint,
-    ty: u8,
-    phase: u8,
-    time_in_frames: i32, // how i64 does the bullet exist, measured in number of frames
-    time_in_seconds: f32, // how i64 does the bullet exist in seconds
-    mine: bool,
-    owner: i32,
-    angle: f32,
-    Surfaces_were_generated: i32,
-    SurfacePointer: [*mut SDL_Surface; MAX_PHASES_IN_A_BULLET],
+    pub pos: Finepoint,
+    pub prev_pos: Finepoint, // use this for improved collision checks (for low FPS machines)
+    pub speed: Finepoint,
+    pub ty: u8,
+    pub phase: u8,
+    pub time_in_frames: i32, // how i64 does the bullet exist, measured in number of frames
+    pub time_in_seconds: f32, // how i64 does the bullet exist in seconds
+    pub mine: bool,
+    pub owner: i32,
+    pub angle: f32,
+    pub Surfaces_were_generated: i32,
+    pub SurfacePointer: [*mut SDL_Surface; MAX_PHASES_IN_A_BULLET],
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BlastSpec {
-    phases: i32,
-    picpointer: *mut u8,
-    block: *mut SDL_Rect, /* the coordinates of the blocks in ne_blocks */
-    total_animation_time: f32,
-    SurfacePointer: [*mut SDL_Surface; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
-                                                                // the blast images of this blast type
+    pub phases: i32,
+    pub picpointer: *mut u8,
+    pub block: *mut SDL_Rect, /* the coordinates of the blocks in ne_blocks */
+    pub total_animation_time: f32,
+    pub SurfacePointer: [*mut SDL_Surface; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
+                                                                    // the blast images of this blast type
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Blast {
-    PX: f32, /* PosX */
-    PY: f32, /* PosY */
-    ty: i32,
-    phase: f32,
-    MessageWasDone: i32,
-    mine: bool,
+    pub PX: f32, /* PosX */
+    pub PY: f32, /* PosY */
+    pub ty: i32,
+    pub phase: f32,
+    pub MessageWasDone: i32,
+    pub mine: bool,
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Lift {
-    level: i32, // The level, where this elevtor entrance is located
-    x: i32,     // The position in x of this elevator entrance within the level
-    y: i32,     // The position in y of this elevator entrance within the level
+    pub level: i32, // The level, where this elevtor entrance is located
+    pub x: i32,     // The position in x of this elevator entrance within the level
+    pub y: i32,     // The position in y of this elevator entrance within the level
 
     /* connections: Numbers in Lift-Array */
-    up: i32,
-    down: i32,
+    pub up: i32,
+    pub down: i32,
 
-    lift_row: i32, // which lift column does this lift entrance belong to?
+    pub lift_row: i32, // which lift column does this lift entrance belong to?
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Waypoint {
-    x: u8, /* Grob */
-    y: u8,
-    num_connections: i32,
-    connections: [i32; MAX_WP_CONNECTIONS],
+    pub x: u8, /* Grob */
+    pub y: u8,
+    pub num_connections: i32,
+    pub connections: [i32; MAX_WP_CONNECTIONS],
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Level {
-    empty: i32,
-    timer: f32,
-    levelnum: i32,      /* Number of this level */
-    Levelname: *mut i8, /* Name of this level */
-    Background_Song_Name: *mut i8,
-    Level_Enter_Comment: *mut i8,
-    xlen: i32, /* X dimension */
-    ylen: i32,
-    color: i32,
-    map: [*mut i8; MAX_MAP_ROWS], /* this is a vector of pointers ! */
-    refreshes: [GrobPoint; MAX_REFRESHES_ON_LEVEL],
-    doors: [GrobPoint; MAX_DOORS_ON_LEVEL],
-    alerts: [GrobPoint; MAX_ALERTS_ON_LEVEL],
-    num_waypoints: i32,
-    AllWaypoints: [Waypoint; MAXWAYPOINTS],
+    pub empty: i32,
+    pub timer: f32,
+    pub levelnum: i32,      /* Number of this level */
+    pub Levelname: *mut i8, /* Name of this level */
+    pub Background_Song_Name: *mut i8,
+    pub Level_Enter_Comment: *mut i8,
+    pub xlen: i32, /* X dimension */
+    pub ylen: i32,
+    pub color: i32,
+    pub map: [*mut i8; MAX_MAP_ROWS], /* this is a vector of pointers ! */
+    pub refreshes: [GrobPoint; MAX_REFRESHES_ON_LEVEL],
+    pub doors: [GrobPoint; MAX_DOORS_ON_LEVEL],
+    pub alerts: [GrobPoint; MAX_ALERTS_ON_LEVEL],
+    pub num_waypoints: i32,
+    pub AllWaypoints: [Waypoint; MAXWAYPOINTS],
 }
 
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq)]
 pub struct Ship {
-    num_levels: i32,
-    num_lifts: i32,
-    num_lift_rows: i32,
-    AreaName: [i8; 100],
-    AllLevels: [Level; MAX_LEVELS],
-    AllLifts: [Lift; MAX_LIFTS],
-    LiftRow_Rect: [SDL_Rect; MAX_LIFT_ROWS], /* the lift-row rectangles */
-    Level_Rects: [[SDL_Rect; MAX_LEVELS]; MAX_LEVEL_RECTS], /* level rectangles */
-    num_level_rects: [i32; MAX_LEVELS],      /* how many rects has a level */
+    pub num_levels: i32,
+    pub num_lifts: i32,
+    pub num_lift_rows: i32,
+    pub AreaName: [i8; 100],
+    pub AllLevels: [Level; MAX_LEVELS],
+    pub AllLifts: [Lift; MAX_LIFTS],
+    pub LiftRow_Rect: [SDL_Rect; MAX_LIFT_ROWS], /* the lift-row rectangles */
+    pub Level_Rects: [[SDL_Rect; MAX_LEVELS]; MAX_LEVEL_RECTS], /* level rectangles */
+    pub num_level_rects: [i32; MAX_LEVELS],      /* how many rects has a level */
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Bar {
-    pos: Point,
-    len: i32,
-    hgt: i32,
-    oldval: i32,
-    col: i32,
+    pub pos: Point,
+    pub len: i32,
+    pub hgt: i32,
+    pub oldval: i32,
+    pub col: i32,
 }
