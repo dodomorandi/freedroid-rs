@@ -226,11 +226,11 @@ SetFontHeight (BFont_Info * Font, int height)
 
 
 /* Return the width of the "c" character */
-int
-CharWidth (BFont_Info * Font, int c)
-{
-  return Font->Chars[c].w;
-}
+/* int */
+/* CharWidth (BFont_Info * Font, int c) */
+/* { */
+/*   return Font->Chars[c].w; */
+/* } */
 
 /* Puts a single char on the surface */
 int
@@ -240,23 +240,23 @@ PutChar (SDL_Surface * Surface, int x, int y, int c)
 }
 
 /* Puts a single char on the surface with the specified font */
-int
-PutCharFont (SDL_Surface * Surface, BFont_Info * Font, int x, int y, int c)
-{
-  int r = 0;
-  SDL_Rect dest;
+/* int */
+/* PutCharFont (SDL_Surface * Surface, BFont_Info * Font, int x, int y, int c) */
+/* { */
+/*   int r = 0; */
+/*   SDL_Rect dest; */
 
-  dest.w = CharWidth (Font, ' ');
-  dest.h = FontHeight (Font);
-  dest.x = x;
-  dest.y = y;
-  if (c != ' ')
-    {
-      SDL_BlitSurface (Font->Surface, &Font->Chars[c], Surface, &dest);
-    }
-  r = dest.w;
-  return r;
-}
+/*   dest.w = CharWidth (Font, ' '); */
+/*   dest.h = FontHeight (Font); */
+/*   dest.x = x; */
+/*   dest.y = y; */
+/*   if (c != ' ') */
+/*     { */
+/*       SDL_BlitSurface (Font->Surface, &Font->Chars[c], Surface, &dest); */
+/*     } */
+/*   r = dest.w; */
+/*   return r; */
+/* } */
 
 void
 PutString (SDL_Surface * Surface, int x, int y, const char *text)
@@ -264,16 +264,16 @@ PutString (SDL_Surface * Surface, int x, int y, const char *text)
   PutStringFont (Surface, CurrentFont, x, y, text);
 }
 
-void
-PutStringFont (SDL_Surface * Surface, BFont_Info * Font, int x, int y, const char *text)
-{
-  int i = 0;
-  while (text[i] != '\0')
-    {
-      x += PutCharFont (Surface, Font, x, y, text[i]);
-      i++;
-    }
-}
+/* void */
+/* PutStringFont (SDL_Surface * Surface, BFont_Info * Font, int x, int y, const char *text) */
+/* { */
+/*   int i = 0; */
+/*   while (text[i] != '\0') */
+/*     { */
+/*       x += PutCharFont (Surface, Font, x, y, text[i]); */
+/*       i++; */
+/*     } */
+/* } */
 
 
 int

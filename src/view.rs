@@ -1,17 +1,20 @@
 use crate::{
-    b_font::{FontHeight, PrintStringFont},
-    defs::{get_user_center, AssembleCombatWindowFlags, Status, MAXBLASTS, MAXBULLETS},
+    b_font::{FontHeight, PrintStringFont, PutStringFont},
+    defs::{self, get_user_center, AssembleCombatWindowFlags, Status, MAXBLASTS, MAXBULLETS},
     global::{
-        ne_screen, AllBlasts, AllBullets, AllEnemys, Black, Block_Rect, CurLevel, DeathCount,
-        Decal_pics, Font0_BFont, Full_User_Rect, GameConfig, MapBlockSurfacePointer, Me, User_Rect,
+        ne_screen, show_all_droids, AllBlasts, AllBullets, AllEnemys, Black, Block_Rect,
+        BuildBlock, CurLevel, DeathCount, Decal_pics, Druidmap, EnemyDigitSurfacePointer,
+        EnemySurfacePointer, FirstDigit_Rect, Font0_BFont, Full_User_Rect, GameConfig,
+        MapBlockSurfacePointer, Me, Number_Of_Droid_Types, SecondDigit_Rect, ThirdDigit_Rect,
+        User_Rect,
     },
     map::{GetMapBrick, IsVisible},
-    misc::Frame_Time,
-    structs::{Finepoint, GrobPoint},
+    misc::{Frame_Time, Terminate},
+    structs::{Enemy, Finepoint, GrobPoint},
 };
 
 use cstr::cstr;
-use log::info;
+use log::{error, info, trace};
 use sdl::{
     sdl::Rect,
     video::ll::{
@@ -26,9 +29,6 @@ use std::{
 };
 
 extern "C" {
-    #[no_mangle]
-    pub fn PutEnemy(enemy: c_int, x: c_int, y: c_int);
-
     #[no_mangle]
     pub fn PutInfluence(x: c_int, y: c_int);
 
@@ -306,4 +306,105 @@ pub unsafe extern "C" fn PutAshes(x: f32, y: f32) {
         0,
     );
     SDL_UpperBlit(Decal_pics[0], null_mut(), ne_screen, &mut dst);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PutEnemy(enemy_index: c_int, x: c_int, y: c_int) {
+    let droid: &mut Enemy = &mut AllEnemys[usize::try_from(enemy_index).unwrap()];
+    let ty = droid.ty;
+    let phase = droid.phase;
+    let name = &mut (&mut *Druidmap.offset(ty.try_into().unwrap())).druidname;
+
+    if (droid.status == Status::Terminated as i32)
+        || (droid.status == Status::Out as i32)
+        || (droid.levelnum != (*CurLevel).levelnum)
+    {
+        return;
+    }
+
+    // if the enemy is out of sight, we need not do anything more here
+    if show_all_droids == 0 && IsVisible(&mut droid.pos) == 0 {
+        trace!("ONSCREEN=FALSE --> usual end of function reached.");
+        return;
+    }
+
+    // We check for incorrect droid types, which sometimes might occor, especially after
+    // heavy editing of the crew initialisation functions ;)
+    if droid.ty >= Number_Of_Droid_Types {
+        error!("nonexistant droid-type encountered: {}", droid.ty);
+        Terminate(defs::ERR.into());
+    }
+
+    //--------------------
+    // First blit just the enemy hat and shoes.
+    SDL_UpperBlit(
+        EnemySurfacePointer[phase as usize],
+        null_mut(),
+        BuildBlock,
+        null_mut(),
+    );
+
+    //--------------------
+    // Now the numbers should be blittet.
+    let mut dst = FirstDigit_Rect.clone();
+    SDL_UpperBlit(
+        EnemyDigitSurfacePointer[usize::try_from(name[0] - b'1' as i8 + 1).unwrap()],
+        null_mut(),
+        BuildBlock,
+        &mut dst,
+    );
+
+    dst = SecondDigit_Rect.clone();
+    SDL_UpperBlit(
+        EnemyDigitSurfacePointer[usize::try_from(name[1] - b'1' as i8 + 1).unwrap()],
+        null_mut(),
+        BuildBlock,
+        &mut dst,
+    );
+
+    dst = ThirdDigit_Rect.clone();
+    SDL_UpperBlit(
+        EnemyDigitSurfacePointer[usize::try_from(name[2] - b'1' as i8 + 1).unwrap()],
+        null_mut(),
+        BuildBlock,
+        &mut dst,
+    );
+
+    // now blit the whole construction to screen:
+    if x == -1 {
+        let user_center = get_user_center();
+        dst.x = (f32::from(user_center.x) + (droid.pos.x - Me.pos.x) * f32::from(Block_Rect.w)
+            - f32::from(Block_Rect.w / 2)) as i16;
+        dst.y = (f32::from(user_center.y) + (droid.pos.y - Me.pos.y) * f32::from(Block_Rect.h)
+            - f32::from(Block_Rect.h / 2)) as i16;
+    } else {
+        dst.x = x.try_into().unwrap();
+        dst.y = y.try_into().unwrap();
+    }
+    SDL_UpperBlit(BuildBlock, null_mut(), ne_screen, &mut dst);
+
+    //--------------------
+    // At this point we can assume, that the enemys has been blittet to the
+    // screen, whether it's a friendly enemy or not.
+    //
+    // So now we can add some text the enemys says.  That might be fun.
+    //
+    if x == -1
+        && droid.TextVisibleTime < GameConfig.WantedTextVisibleTime
+        && GameConfig.Droid_Talk != 0
+    {
+        PutStringFont(
+            ne_screen,
+            Font0_BFont,
+            (f32::from(User_Rect.x)
+                + f32::from(User_Rect.w / 2)
+                + f32::from(Block_Rect.w / 3)
+                + (droid.pos.x - Me.pos.x) * f32::from(Block_Rect.w)) as i32,
+            (f32::from(User_Rect.y) + f32::from(User_Rect.h / 2) - f32::from(Block_Rect.h / 2)
+                + (droid.pos.y - Me.pos.y) * f32::from(Block_Rect.h)) as i32,
+            droid.TextToBeDisplayed,
+        );
+    }
+
+    info!("ENEMY HAS BEEN PUT --> usual end of function reached.");
 }

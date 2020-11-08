@@ -369,86 +369,86 @@ PutInfluence ( int x, int y)
 
 @Ret: void
 * $Function----------------------------------------------------------*/
-void
-PutEnemy (int Enum , int x , int y)
-{
-  SDL_Rect dst;
-  enemy *droid  = &AllEnemys[Enum];
-  int type = droid->type;
-  int phase = droid->phase;
-  char *name = Druidmap[type].druidname;
+/* void */
+/* PutEnemy (int Enum , int x , int y) */
+/* { */
+/*   SDL_Rect dst; */
+/*   enemy *droid  = &AllEnemys[Enum]; */
+/*   int type = droid->type; */
+/*   int phase = droid->phase; */
+/*   char *name = Druidmap[type].druidname; */
 
-  if ( (droid->status == TERMINATED) || (droid->status == OUT) ||
-       (droid->levelnum != CurLevel->levelnum) )
-    return;
+/*   if ( (droid->status == TERMINATED) || (droid->status == OUT) || */
+/*        (droid->levelnum != CurLevel->levelnum) ) */
+/*     return; */
 
-  // if the enemy is out of sight, we need not do anything more here
-  if ((!show_all_droids) && (!IsVisible (&AllEnemys[Enum].pos)) )
-    {
-      DebugPrintf (3, "\nvoid PutEnemy(int Enum): ONSCREEN=FALSE --> usual end of function reached.\n");
-      return;
-    }
+/*   // if the enemy is out of sight, we need not do anything more here */
+/*   if ((!show_all_droids) && (!IsVisible (&AllEnemys[Enum].pos)) ) */
+/*     { */
+/*       DebugPrintf (3, "\nvoid PutEnemy(int Enum): ONSCREEN=FALSE --> usual end of function reached.\n"); */
+/*       return; */
+/*     } */
 
-  // We check for incorrect droid types, which sometimes might occor, especially after
-  // heavy editing of the crew initialisation functions ;)
-  if ( droid->type >= Number_Of_Droid_Types )
-    {
-      DebugPrintf (0, "ERROR: nonexistant droid-type encountered: %d\n", droid->type);
-      Terminate(ERR);
-    }
+/*   // We check for incorrect droid types, which sometimes might occor, especially after */
+/*   // heavy editing of the crew initialisation functions ;) */
+/*   if ( droid->type >= Number_Of_Droid_Types ) */
+/*     { */
+/*       DebugPrintf (0, "ERROR: nonexistant droid-type encountered: %d\n", droid->type); */
+/*       Terminate(ERR); */
+/*     } */
 
-  //--------------------
-  // First blit just the enemy hat and shoes.
-  SDL_BlitSurface (EnemySurfacePointer[phase], NULL, BuildBlock, NULL);
+/*   //-------------------- */
+/*   // First blit just the enemy hat and shoes. */
+/*   SDL_BlitSurface (EnemySurfacePointer[phase], NULL, BuildBlock, NULL); */
 
-  //--------------------
-  // Now the numbers should be blittet.
-  dst.x = FirstDigit_Rect.x;
-  dst.y = FirstDigit_Rect.y;
-  SDL_BlitSurface( EnemyDigitSurfacePointer[name[0]-'1'+1 ], NULL, BuildBlock, &dst);
+/*   //-------------------- */
+/*   // Now the numbers should be blittet. */
+/*   dst.x = FirstDigit_Rect.x; */
+/*   dst.y = FirstDigit_Rect.y; */
+/*   SDL_BlitSurface( EnemyDigitSurfacePointer[name[0]-'1'+1 ], NULL, BuildBlock, &dst); */
 
-  dst.x = SecondDigit_Rect.x;
-  dst.y = SecondDigit_Rect.y;
-  SDL_BlitSurface( EnemyDigitSurfacePointer[name[1]-'1'+1 ], NULL, BuildBlock, &dst);
+/*   dst.x = SecondDigit_Rect.x; */
+/*   dst.y = SecondDigit_Rect.y; */
+/*   SDL_BlitSurface( EnemyDigitSurfacePointer[name[1]-'1'+1 ], NULL, BuildBlock, &dst); */
 
-  dst.x = ThirdDigit_Rect.x;
-  dst.y = ThirdDigit_Rect.y;
-  SDL_BlitSurface( EnemyDigitSurfacePointer[name[2]-'1'+1], NULL,  BuildBlock, &dst);
+/*   dst.x = ThirdDigit_Rect.x; */
+/*   dst.y = ThirdDigit_Rect.y; */
+/*   SDL_BlitSurface( EnemyDigitSurfacePointer[name[2]-'1'+1], NULL,  BuildBlock, &dst); */
 
-  // now blit the whole construction to screen:
-  if ( x == -1 )
-    {
-      dst.x=UserCenter_x + (droid->pos.x - Me.pos.x) * Block_Rect.w - Block_Rect.w/2;
-      dst.y=UserCenter_y + (droid->pos.y - Me.pos.y) * Block_Rect.h - Block_Rect.h/2;
-    }
-  else
-    {
-      dst.x=x ;
-      dst.y=y ;
-    }
-  SDL_BlitSurface (BuildBlock, NULL, ne_screen, &dst);
+/*   // now blit the whole construction to screen: */
+/*   if ( x == -1 ) */
+/*     { */
+/*       dst.x=UserCenter_x + (droid->pos.x - Me.pos.x) * Block_Rect.w - Block_Rect.w/2; */
+/*       dst.y=UserCenter_y + (droid->pos.y - Me.pos.y) * Block_Rect.h - Block_Rect.h/2; */
+/*     } */
+/*   else */
+/*     { */
+/*       dst.x=x ; */
+/*       dst.y=y ; */
+/*     } */
+/*   SDL_BlitSurface (BuildBlock, NULL, ne_screen, &dst); */
 
-  //--------------------
-  // At this point we can assume, that the enemys has been blittet to the
-  // screen, whether it's a friendly enemy or not.
-  //
-  // So now we can add some text the enemys says.  That might be fun.
-  //
-  if ( (x == -1)
-       && ( AllEnemys[Enum].TextVisibleTime < GameConfig.WantedTextVisibleTime )
-       && GameConfig.Droid_Talk )
-    {
-      PutStringFont ( ne_screen , Font0_BFont ,
-		      User_Rect.x+(User_Rect.w/2) + Block_Rect.w/3 + (AllEnemys[Enum].pos.x - Me.pos.x) * Block_Rect.w ,
-		      User_Rect.y+(User_Rect.h/2) - Block_Rect.h/2 + (AllEnemys[Enum].pos.y - Me.pos.y) * Block_Rect.h ,
-		      AllEnemys[Enum].TextToBeDisplayed );
-    }
+/*   //-------------------- */
+/*   // At this point we can assume, that the enemys has been blittet to the */
+/*   // screen, whether it's a friendly enemy or not. */
+/*   // */
+/*   // So now we can add some text the enemys says.  That might be fun. */
+/*   // */
+/*   if ( (x == -1) */
+/*        && ( AllEnemys[Enum].TextVisibleTime < GameConfig.WantedTextVisibleTime ) */
+/*        && GameConfig.Droid_Talk ) */
+/*     { */
+/*       PutStringFont ( ne_screen , Font0_BFont , */
+/* 		      User_Rect.x+(User_Rect.w/2) + Block_Rect.w/3 + (AllEnemys[Enum].pos.x - Me.pos.x) * Block_Rect.w , */
+/* 		      User_Rect.y+(User_Rect.h/2) - Block_Rect.h/2 + (AllEnemys[Enum].pos.y - Me.pos.y) * Block_Rect.h , */
+/* 		      AllEnemys[Enum].TextToBeDisplayed ); */
+/*     } */
 
 
 
-  DebugPrintf (2, "\nvoid PutEnemy(int Enum): ENEMY HAS BEEN PUT --> usual end of function reached.\n");
+/*   DebugPrintf (2, "\nvoid PutEnemy(int Enum): ENEMY HAS BEEN PUT --> usual end of function reached.\n"); */
 
-}	// void PutEnemy(int Enum , int x , int y)
+/* }	// void PutEnemy(int Enum , int x , int y) */
 
 
 // ----------------------------------------------------------------------
