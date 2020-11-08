@@ -2,47 +2,31 @@
 use crate::input::wait_for_key_pressed;
 use crate::{
     b_font::{FontHeight, GetCurrentFont, Highscore_BFont, Para_BFont, SetCurrentFont},
-    defs::{self, DATE_LEN, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN},
-    global::ne_screen,
+    defs::{self, Status, DATE_LEN, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN},
+    global::{
+        ne_screen, num_highscores, pic999, ConfigDir, Highscores, Me, Portrait_Rect, RealScore,
+        ShowScore, User_Rect,
+    },
     graphics::MakeGridOnScreen,
     text::{printf_SDL, DisplayText},
     view::Assemble_Combat_Picture,
-    Influence, InfluenceStatus,
 };
 
 use cstr::cstr;
 use log::{info, warn};
-use sdl::video::ll::{SDL_Flip, SDL_Rect, SDL_SetClipRect, SDL_Surface, SDL_UpperBlit};
+use sdl::video::ll::{SDL_Flip, SDL_Rect, SDL_SetClipRect, SDL_UpperBlit};
 use std::{
     ffi::CStr,
     fmt,
     fs::File,
     io::{Read, Write},
     mem,
-    os::raw::{c_char, c_float, c_int, c_long, c_void},
+    os::raw::{c_char, c_int, c_long, c_void},
     path::Path,
     ptr::null_mut,
 };
 
 extern "C" {
-    #[no_mangle]
-    static mut num_highscores: c_int;
-    #[no_mangle]
-    static mut Highscores: *mut *mut HighscoreEntry;
-    #[no_mangle]
-    static mut ConfigDir: [c_char; 255];
-    #[no_mangle]
-    static mut RealScore: c_float;
-    #[no_mangle]
-    static mut ShowScore: c_long;
-    #[no_mangle]
-    static mut Me: Influence;
-    #[no_mangle]
-    static mut User_Rect: SDL_Rect;
-    #[no_mangle]
-    static mut Portrait_Rect: SDL_Rect;
-    #[no_mangle]
-    static mut pic999: *mut SDL_Surface;
     #[no_mangle]
     fn GetString(max_len: c_int, echo: c_int) -> *mut c_char;
 }
@@ -208,7 +192,7 @@ fn update_highscores() {
     }
 
     unsafe {
-        Me.status = InfluenceStatus::Debriefing as c_int;
+        Me.status = Status::Debriefing as c_int;
     }
 
     let hightscores = unsafe {
