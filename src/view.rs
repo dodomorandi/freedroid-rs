@@ -5,7 +5,7 @@ use crate::{
         CRY_SOUND_INTERVAL, FLASH_DURATION, MAXBLASTS, MAXBULLETS, TRANSFER_SOUND_INTERVAL,
     },
     global::{
-        ne_screen, show_all_droids, AllBlasts, AllBullets, AllEnemys, Black, Block_Rect,
+        ne_screen, show_all_droids, AllBlasts, AllBullets, AllEnemys, Black, Blastmap, Block_Rect,
         BuildBlock, Bulletmap, CurLevel, DeathCount, Decal_pics, Druidmap,
         EnemyDigitSurfacePointer, EnemySurfacePointer, FirstDigit_Rect, Font0_BFont,
         Full_User_Rect, GameConfig, InfluDigitSurfacePointer, InfluencerSurfacePointer,
@@ -37,9 +37,6 @@ use std::{
 };
 
 extern "C" {
-    #[no_mangle]
-    pub fn PutBlast(blasts_number: c_int);
-
     #[no_mangle]
     pub fn rotozoomSurface(
         src: *mut SDL_Surface,
@@ -647,4 +644,35 @@ pub unsafe extern "C" fn PutBullet(bullet_number: c_int) {
     );
 
     info!("end of function reached.");
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PutBlast(blast_number: c_int) {
+    let cur_blast = &mut AllBlasts[usize::try_from(blast_number).unwrap()];
+
+    // If the blast is already long deat, we need not do anything else here
+    if cur_blast.ty == Status::Out as i32 {
+        return;
+    }
+
+    let user_center = get_user_center();
+    let mut dst = Rect::new(
+        (f32::from(user_center.x)
+            - (Me.pos.x - cur_blast.PX) * f32::from(Block_Rect.w)
+            - f32::from(Block_Rect.w / 2)) as i16,
+        (f32::from(user_center.y)
+            - (Me.pos.y - cur_blast.PY) * f32::from(Block_Rect.h)
+            - f32::from(Block_Rect.h / 2)) as i16,
+        0,
+        0,
+    );
+    // SDL_BlitSurface( ne_blocks,
+    // Blastmap[CurBlast->type].block + ((int) floorf(CurBlast->phase)), ne_screen , &dst);
+    SDL_UpperBlit(
+        Blastmap[usize::try_from(cur_blast.ty).unwrap()].SurfacePointer
+            [(cur_blast.phase).floor() as usize],
+        null_mut(),
+        ne_screen,
+        &mut dst,
+    );
 }

@@ -576,24 +576,24 @@ for using the influencer as a cursor in the menus.
 
 @Ret: void
 * $Function----------------------------------------------------------*/
-void
-PutBlast (int BlastNummer)
-{
-  Blast CurBlast = &AllBlasts[BlastNummer];
-  SDL_Rect dst;
+/* void */
+/* PutBlast (int BlastNummer) */
+/* { */
+/*   Blast CurBlast = &AllBlasts[BlastNummer]; */
+/*   SDL_Rect dst; */
 
-  // If the blast is already long deat, we need not do anything else here
-  if (CurBlast->type == OUT)
-    return;
+/*   // If the blast is already long deat, we need not do anything else here */
+/*   if (CurBlast->type == OUT) */
+/*     return; */
 
 
-  dst.x=UserCenter_x - (Me.pos.x - CurBlast->PX)*Block_Rect.w  -Block_Rect.w/2;
-  dst.y=UserCenter_y - (Me.pos.y - CurBlast->PY)*Block_Rect.h -Block_Rect.h/2;
-  // SDL_BlitSurface( ne_blocks,
-  // Blastmap[CurBlast->type].block + ((int) floorf(CurBlast->phase)), ne_screen , &dst);
-  SDL_BlitSurface( Blastmap[CurBlast->type].SurfacePointer[ (int)floorf(CurBlast->phase) ] , NULL , ne_screen , &dst);
+/*   dst.x=UserCenter_x - (Me.pos.x - CurBlast->PX)*Block_Rect.w  -Block_Rect.w/2; */
+/*   dst.y=UserCenter_y - (Me.pos.y - CurBlast->PY)*Block_Rect.h -Block_Rect.h/2; */
+/*   // SDL_BlitSurface( ne_blocks, */
+/*   // Blastmap[CurBlast->type].block + ((int) floorf(CurBlast->phase)), ne_screen , &dst); */
+/*   SDL_BlitSurface( Blastmap[CurBlast->type].SurfacePointer[ (int)floorf(CurBlast->phase) ] , NULL , ne_screen , &dst); */
 
-}  // void PutBlast(int BlastNummer)
+/* }  // void PutBlast(int BlastNummer) */
 
 /*@Function============================================================
 @Desc: This function fills the whole combat window with the one color
