@@ -373,7 +373,7 @@ pub const WAIT_COLLISION: usize = 1; // after a little collision with influ, ene
 pub const ENEMYMAXWAIT: f64 = 2.0; // after each robot has reached its current destination waypoint is waits a
                                    // while.  This variable describes the amount of time in SECONDS.  However,
                                    // the final wait time is a random number within [0,ENEMYMAXWAIT].
-pub const FLASH_DURATION: f64 = 0.1; // in seconds
+pub const FLASH_DURATION: f32 = 0.1; // in seconds
 
 /* direction definitions (fireing bullets and testing blockedness of positions) */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

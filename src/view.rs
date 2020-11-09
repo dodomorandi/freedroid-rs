@@ -1,15 +1,16 @@
 use crate::{
     b_font::{FontHeight, PrintStringFont, PutStringFont, SetCurrentFont},
     defs::{
-        self, get_user_center, AssembleCombatWindowFlags, Status, BLINKENERGY, CRY_SOUND_INTERVAL,
-        MAXBLASTS, MAXBULLETS, TRANSFER_SOUND_INTERVAL,
+        self, get_user_center, AssembleCombatWindowFlags, Bullet, Status, BLINKENERGY,
+        CRY_SOUND_INTERVAL, FLASH_DURATION, MAXBLASTS, MAXBULLETS, TRANSFER_SOUND_INTERVAL,
     },
     global::{
         ne_screen, show_all_droids, AllBlasts, AllBullets, AllEnemys, Black, Block_Rect,
-        BuildBlock, CurLevel, DeathCount, Decal_pics, Druidmap, EnemyDigitSurfacePointer,
-        EnemySurfacePointer, FirstDigit_Rect, Font0_BFont, Full_User_Rect, GameConfig,
-        InfluDigitSurfacePointer, InfluencerSurfacePointer, MapBlockSurfacePointer, Me,
-        Number_Of_Droid_Types, SecondDigit_Rect, ThirdDigit_Rect, User_Rect,
+        BuildBlock, Bulletmap, CurLevel, DeathCount, Decal_pics, Druidmap,
+        EnemyDigitSurfacePointer, EnemySurfacePointer, FirstDigit_Rect, Font0_BFont,
+        Full_User_Rect, GameConfig, InfluDigitSurfacePointer, InfluencerSurfacePointer,
+        MapBlockSurfacePointer, Me, Number_Of_Droid_Types, SecondDigit_Rect, ThirdDigit_Rect,
+        User_Rect,
     },
     graphics::ApplyFilter,
     map::{GetMapBrick, IsVisible},
@@ -19,30 +20,48 @@ use crate::{
     text::DisplayText,
 };
 
-const BLINK_LEN: f32 = 1.0;
-
 use cstr::cstr;
 use log::{error, info, trace};
 use sdl::{
     sdl::Rect,
     video::ll::{
-        SDL_Color, SDL_FillRect, SDL_MapRGB, SDL_SetClipRect, SDL_UpdateRect, SDL_UpperBlit,
+        SDL_Color, SDL_FillRect, SDL_MapRGB, SDL_SetClipRect, SDL_Surface, SDL_UpdateRect,
+        SDL_UpperBlit,
     },
 };
 use std::{
     cell::Cell,
     convert::{TryFrom, TryInto},
-    os::raw::c_int,
+    os::raw::{c_double, c_int},
     ptr::null_mut,
 };
 
 extern "C" {
     #[no_mangle]
-    pub fn PutBullet(bullets_number: c_int);
+    pub fn PutBlast(blasts_number: c_int);
 
     #[no_mangle]
-    pub fn PutBlast(blasts_number: c_int);
+    pub fn rotozoomSurface(
+        src: *mut SDL_Surface,
+        angle: c_double,
+        zoom: c_double,
+        smooth: c_int,
+    ) -> *mut SDL_Surface;
 }
+
+const BLINK_LEN: f32 = 1.0;
+const FLASH_LIGHT: SDL_Color = SDL_Color {
+    r: 11,
+    g: 11,
+    b: 11,
+    unused: 0,
+};
+const FLASH_DARK: SDL_Color = SDL_Color {
+    r: 230,
+    g: 230,
+    b: 230,
+    unused: 0,
+};
 
 #[no_mangle]
 pub unsafe extern "C" fn Fill_Rect(mut rect: Rect, color: SDL_Color) {
@@ -540,4 +559,92 @@ pub unsafe extern "C" fn PutInfluence(x: c_int, y: c_int) {
     }
 
     info!("void PutInfluence(void): enf of function reached.");
+}
+
+/// PutBullet: draws a Bullet into the combat window.  The only
+/// parameter given is the number of the bullet in the AllBullets
+/// array. Everything else is computed in here.
+#[no_mangle]
+pub unsafe extern "C" fn PutBullet(bullet_number: c_int) {
+    let cur_bullet = &mut AllBullets[usize::try_from(bullet_number).unwrap()];
+
+    info!("void PutBullet(int BulletNummer): real function call confirmed.");
+
+    //--------------------
+    // in case our bullet is of the type "FLASH", we only
+    // draw a big white or black rectangle right over the
+    // combat window, white for even frames and black for
+    // odd frames.
+    if cur_bullet.ty == Bullet::Flash as u8 {
+        // Now the whole window will be filled with either white
+        // or black each frame until the flash is over.  (Flash
+        // deletion after some time is done in CheckBulletCollisions.)
+        if cur_bullet.time_in_seconds <= FLASH_DURATION / 4. {
+            Fill_Rect(User_Rect, FLASH_LIGHT);
+        } else if cur_bullet.time_in_seconds <= FLASH_DURATION / 2. {
+            Fill_Rect(User_Rect, FLASH_DARK);
+        } else if cur_bullet.time_in_seconds <= 3. * FLASH_DURATION / 4. {
+            Fill_Rect(User_Rect, FLASH_LIGHT);
+        } else if cur_bullet.time_in_seconds <= FLASH_DURATION {
+            Fill_Rect(User_Rect, FLASH_DARK);
+        }
+
+        return;
+    }
+
+    let bullet = &*Bulletmap.offset(cur_bullet.ty.try_into().unwrap());
+    let mut phase_of_bullet =
+        (cur_bullet.time_in_seconds * bullet.phase_changes_per_second) as usize;
+
+    phase_of_bullet = phase_of_bullet % usize::try_from(bullet.phases).unwrap();
+
+    // DebugPrintf( 0 , "\nPhaseOfBullet: %d.", PhaseOfBullet );
+
+    //--------------------
+    // Maybe it's the first time this bullet is displayed.  But then, the images
+    // of the rotated bullet in all phases are not yet attached to the bullet.
+    // Then, we'll have to generate these
+    //
+    //if ( cur_bullet.time_in_frames == 1 )
+    if cur_bullet.Surfaces_were_generated == 0 {
+        for i in 0..usize::try_from(bullet.phases).unwrap() {
+            cur_bullet.SurfacePointer[i] = rotozoomSurface(
+                bullet.SurfacePointer[i],
+                cur_bullet.angle.into(),
+                1.0,
+                false.into(),
+            );
+        }
+        info!(
+            "This was the first time for this bullet, so images were generated... angle={}",
+            cur_bullet.angle
+        );
+        cur_bullet.Surfaces_were_generated = true.into();
+    }
+
+    // WARNING!!! PAY ATTENTION HERE!! After the rotozoom was applied to the image, it is NO
+    // LONGER of dimension Block_Rect.w times Block_Rect.h, but of the dimesions of the smallest
+    // rectangle containing the full rotated Block_Rect.h x Block_Rect.w rectangle!!!
+    // This has to be taken into account when calculating the target position for the
+    // blit of these surfaces!!!!
+    let user_center = get_user_center();
+    let mut dst = Rect::new(
+        (f32::from(user_center.x)
+            - (Me.pos.x - cur_bullet.pos.x) * f32::from(Block_Rect.w)
+            - ((&*cur_bullet.SurfacePointer[phase_of_bullet]).w / 2) as f32) as i16,
+        (f32::from(user_center.y)
+            - (Me.pos.y - cur_bullet.pos.y) * f32::from(Block_Rect.w)
+            - ((&*cur_bullet.SurfacePointer[phase_of_bullet]).h / 2) as f32) as i16,
+        0,
+        0,
+    );
+
+    SDL_UpperBlit(
+        cur_bullet.SurfacePointer[phase_of_bullet],
+        null_mut(),
+        ne_screen,
+        &mut dst,
+    );
+
+    info!("end of function reached.");
 }

@@ -477,97 +477,97 @@ for using the influencer as a cursor in the menus.
 
 @Ret: void
 * $Function----------------------------------------------------------*/
-void
-PutBullet (int BulletNummer)
-{
-  Bullet CurBullet = &AllBullets[BulletNummer];
-  SDL_Rect dst;
-  // SDL_Surface *tmp;
-  int PhaseOfBullet;
-  int i;
+/* void */
+/* PutBullet (int BulletNummer) */
+/* { */
+/*   Bullet CurBullet = &AllBullets[BulletNummer]; */
+/*   SDL_Rect dst; */
+/*   // SDL_Surface *tmp; */
+/*   int PhaseOfBullet; */
+/*   int i; */
 
-  DebugPrintf (2, "\nvoid PutBullet(int BulletNummer): real function call confirmed.\n");
+/*   DebugPrintf (2, "\nvoid PutBullet(int BulletNummer): real function call confirmed.\n"); */
 
-  //--------------------
-  // in case our bullet is of the type "FLASH", we only
-  // draw a big white or black rectangle right over the
-  // combat window, white for even frames and black for
-  // odd frames.
-  if (CurBullet->type == FLASH)
-    {
-      // Now the whole window will be filled with either white
-      // or black each frame until the flash is over.  (Flash
-      // deletion after some time is done in CheckBulletCollisions.)
-      if ( CurBullet->time_in_seconds <= FLASH_DURATION/4)
-	Fill_Rect (User_Rect, Flash_Light);
-      else if (CurBullet->time_in_seconds <= FLASH_DURATION/2)
-	Fill_Rect (User_Rect, Flash_Dark);
-      else if (CurBullet->time_in_seconds <= 3*FLASH_DURATION/4)
-	Fill_Rect (User_Rect, Flash_Light);
-      else if (CurBullet->time_in_seconds <= FLASH_DURATION)
-	Fill_Rect (User_Rect, Flash_Dark);
+/*   //-------------------- */
+/*   // in case our bullet is of the type "FLASH", we only */
+/*   // draw a big white or black rectangle right over the */
+/*   // combat window, white for even frames and black for */
+/*   // odd frames. */
+/*   if (CurBullet->type == FLASH) */
+/*     { */
+/*       // Now the whole window will be filled with either white */
+/*       // or black each frame until the flash is over.  (Flash */
+/*       // deletion after some time is done in CheckBulletCollisions.) */
+/*       if ( CurBullet->time_in_seconds <= FLASH_DURATION/4) */
+/* 	Fill_Rect (User_Rect, Flash_Light); */
+/*       else if (CurBullet->time_in_seconds <= FLASH_DURATION/2) */
+/* 	Fill_Rect (User_Rect, Flash_Dark); */
+/*       else if (CurBullet->time_in_seconds <= 3*FLASH_DURATION/4) */
+/* 	Fill_Rect (User_Rect, Flash_Light); */
+/*       else if (CurBullet->time_in_seconds <= FLASH_DURATION) */
+/* 	Fill_Rect (User_Rect, Flash_Dark); */
 
-      return;
-    } // if type == FLASH
+/*       return; */
+/*     } // if type == FLASH */
 
 
 
-  PhaseOfBullet = (CurBullet->time_in_seconds * Bulletmap[ CurBullet->type ].phase_changes_per_second );
+/*   PhaseOfBullet = (CurBullet->time_in_seconds * Bulletmap[ CurBullet->type ].phase_changes_per_second ); */
 
-  PhaseOfBullet = PhaseOfBullet % Bulletmap[CurBullet->type].phases ;
+/*   PhaseOfBullet = PhaseOfBullet % Bulletmap[CurBullet->type].phases ; */
 
-  // DebugPrintf( 0 , "\nPhaseOfBullet: %d.", PhaseOfBullet );
+/*   // DebugPrintf( 0 , "\nPhaseOfBullet: %d.", PhaseOfBullet ); */
 
-#define ONE_ROTATION_ONLY
-#ifdef ONE_ROTATION_ONLY
-  //--------------------
-  // Maybe it's the first time this bullet is displayed.  But then, the images
-  // of the rotated bullet in all phases are not yet attached to the bullet.
-  // Then, we'll have to generate these
-  //
-  //if ( CurBullet->time_in_frames == 1 )
-  if ( !CurBullet->Surfaces_were_generated )
-    {
-      for ( i=0; i<Bulletmap[ CurBullet->type ].phases ; i++ )
-	{
-	  CurBullet->SurfacePointer[i] =
-	    rotozoomSurface( Bulletmap[CurBullet->type].SurfacePointer[ i ] , CurBullet->angle , 1.0 , FALSE );
-	}
-      DebugPrintf( 1 , "\nvoid PutBullet(i): This was the first time for this bullet, so images were generated... angle=%f" , CurBullet->angle);
-      CurBullet->Surfaces_were_generated=TRUE;
-    }
+/* #define ONE_ROTATION_ONLY */
+/* #ifdef ONE_ROTATION_ONLY */
+/*   //-------------------- */
+/*   // Maybe it's the first time this bullet is displayed.  But then, the images */
+/*   // of the rotated bullet in all phases are not yet attached to the bullet. */
+/*   // Then, we'll have to generate these */
+/*   // */
+/*   //if ( CurBullet->time_in_frames == 1 ) */
+/*   if ( !CurBullet->Surfaces_were_generated ) */
+/*     { */
+/*       for ( i=0; i<Bulletmap[ CurBullet->type ].phases ; i++ ) */
+/* 	{ */
+/* 	  CurBullet->SurfacePointer[i] = */
+/* 	    rotozoomSurface( Bulletmap[CurBullet->type].SurfacePointer[ i ] , CurBullet->angle , 1.0 , FALSE ); */
+/* 	} */
+/*       DebugPrintf( 1 , "\nvoid PutBullet(i): This was the first time for this bullet, so images were generated... angle=%f" , CurBullet->angle); */
+/*       CurBullet->Surfaces_were_generated=TRUE; */
+/*     } */
 
-  // WARNING!!! PAY ATTENTION HERE!! After the rotozoom was applied to the image, it is NO
-  // LONGER of dimension Block_Rect.w times Block_Rect.h, but of the dimesions of the smallest
-  // rectangle containing the full rotated Block_Rect.h x Block_Rect.w rectangle!!!
-  // This has to be taken into account when calculating the target position for the
-  // blit of these surfaces!!!!
-  dst.x = UserCenter_x
-    - (Me.pos.x-CurBullet->pos.x)*Block_Rect.w-CurBullet->SurfacePointer[ PhaseOfBullet ]->w/2;
-  dst.y = UserCenter_y
-    - (Me.pos.y-CurBullet->pos.y)*Block_Rect.w-CurBullet->SurfacePointer[ PhaseOfBullet ]->h/2;
+/*   // WARNING!!! PAY ATTENTION HERE!! After the rotozoom was applied to the image, it is NO */
+/*   // LONGER of dimension Block_Rect.w times Block_Rect.h, but of the dimesions of the smallest */
+/*   // rectangle containing the full rotated Block_Rect.h x Block_Rect.w rectangle!!! */
+/*   // This has to be taken into account when calculating the target position for the */
+/*   // blit of these surfaces!!!! */
+/*   dst.x = UserCenter_x */
+/*     - (Me.pos.x-CurBullet->pos.x)*Block_Rect.w-CurBullet->SurfacePointer[ PhaseOfBullet ]->w/2; */
+/*   dst.y = UserCenter_y */
+/*     - (Me.pos.y-CurBullet->pos.y)*Block_Rect.w-CurBullet->SurfacePointer[ PhaseOfBullet ]->h/2; */
 
-  SDL_BlitSurface( CurBullet->SurfacePointer[ PhaseOfBullet ] , NULL, ne_screen , &dst );
-#else
-  tmp = rotozoomSurface( Bulletmap[CurBullet->type].SurfacePointer[ PhaseOfBullet ] , CurBullet->angle , 1.0 , FALSE );
+/*   SDL_BlitSurface( CurBullet->SurfacePointer[ PhaseOfBullet ] , NULL, ne_screen , &dst ); */
+/* #else */
+/*   tmp = rotozoomSurface( Bulletmap[CurBullet->type].SurfacePointer[ PhaseOfBullet ] , CurBullet->angle , 1.0 , FALSE ); */
 
-  // WARNING!!! PAY ATTENTION HERE!! After the rotozoom was applied to the image, it is NO
-  // LONGER of dimension Block_Rect.w times Block_Rect.h, but of the dimesions of the smallest
-  // rectangle containing the full rotated Block_Rect.h x Block_Rect.w rectangle!!!
-  // This has to be taken into account when calculating the target position for the
-  // blit of these surfaces!!!!
-  dst.x = UserCenter_x
-    - (Me.pos.x-CurBullet->pos.x)*Block_Rect.w-CurBullet->SurfacePointer[ PhaseOfBullet ]->w/2;
-  dst.y = UserCenter_y
-    - (Me.pos.y-CurBullet->pos.y)*Block_Rect.w-CurBullet->SurfacePointer[ PhaseOfBullet ]->h/2;
+/*   // WARNING!!! PAY ATTENTION HERE!! After the rotozoom was applied to the image, it is NO */
+/*   // LONGER of dimension Block_Rect.w times Block_Rect.h, but of the dimesions of the smallest */
+/*   // rectangle containing the full rotated Block_Rect.h x Block_Rect.w rectangle!!! */
+/*   // This has to be taken into account when calculating the target position for the */
+/*   // blit of these surfaces!!!! */
+/*   dst.x = UserCenter_x */
+/*     - (Me.pos.x-CurBullet->pos.x)*Block_Rect.w-CurBullet->SurfacePointer[ PhaseOfBullet ]->w/2; */
+/*   dst.y = UserCenter_y */
+/*     - (Me.pos.y-CurBullet->pos.y)*Block_Rect.w-CurBullet->SurfacePointer[ PhaseOfBullet ]->h/2; */
 
-  SDL_BlitSurface( tmp , NULL, ne_screen , &dst );
-  SDL_FreeSurface( tmp );
-#endif
+/*   SDL_BlitSurface( tmp , NULL, ne_screen , &dst ); */
+/*   SDL_FreeSurface( tmp ); */
+/* #endif */
 
-  DebugPrintf ( 1 , "\nvoid PutBullet(int BulletNummer): end of function reched.\n");
+/*   DebugPrintf ( 1 , "\nvoid PutBullet(int BulletNummer): end of function reched.\n"); */
 
-}; // void PutBullet (int Bulletnumber )
+/* }; // void PutBullet (int Bulletnumber ) */
 
 /*@Function============================================================
 @Desc:  PutBlast: This function draws a blast into the combat window.
