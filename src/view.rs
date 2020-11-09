@@ -1,17 +1,25 @@
 use crate::{
-    b_font::{FontHeight, PrintStringFont, PutStringFont},
-    defs::{self, get_user_center, AssembleCombatWindowFlags, Status, MAXBLASTS, MAXBULLETS},
+    b_font::{FontHeight, PrintStringFont, PutStringFont, SetCurrentFont},
+    defs::{
+        self, get_user_center, AssembleCombatWindowFlags, Status, BLINKENERGY, CRY_SOUND_INTERVAL,
+        MAXBLASTS, MAXBULLETS, TRANSFER_SOUND_INTERVAL,
+    },
     global::{
         ne_screen, show_all_droids, AllBlasts, AllBullets, AllEnemys, Black, Block_Rect,
         BuildBlock, CurLevel, DeathCount, Decal_pics, Druidmap, EnemyDigitSurfacePointer,
         EnemySurfacePointer, FirstDigit_Rect, Font0_BFont, Full_User_Rect, GameConfig,
-        MapBlockSurfacePointer, Me, Number_Of_Droid_Types, SecondDigit_Rect, ThirdDigit_Rect,
-        User_Rect,
+        InfluDigitSurfacePointer, InfluencerSurfacePointer, MapBlockSurfacePointer, Me,
+        Number_Of_Droid_Types, SecondDigit_Rect, ThirdDigit_Rect, User_Rect,
     },
+    graphics::ApplyFilter,
     map::{GetMapBrick, IsVisible},
     misc::{Frame_Time, Terminate},
+    sound::{CrySound, TransferSound},
     structs::{Enemy, Finepoint, GrobPoint},
+    text::DisplayText,
 };
+
+const BLINK_LEN: f32 = 1.0;
 
 use cstr::cstr;
 use log::{error, info, trace};
@@ -29,9 +37,6 @@ use std::{
 };
 
 extern "C" {
-    #[no_mangle]
-    pub fn PutInfluence(x: c_int, y: c_int);
-
     #[no_mangle]
     pub fn PutBullet(bullets_number: c_int);
 
@@ -407,4 +412,132 @@ pub unsafe extern "C" fn PutEnemy(enemy_index: c_int, x: c_int, y: c_int) {
     }
 
     info!("ENEMY HAS BEEN PUT --> usual end of function reached.");
+}
+
+/// This function draws the influencer to the screen, either
+/// to the center of the combat window if (-1,-1) was specified, or
+/// to the specified coordinates anywhere on the screen, useful e.g.
+/// for using the influencer as a cursor in the menus.
+#[no_mangle]
+pub unsafe extern "C" fn PutInfluence(x: c_int, y: c_int) {
+    let text_rect = Rect::new(
+        User_Rect.x + (User_Rect.w / 2) as i16 + (Block_Rect.w / 3) as i16,
+        User_Rect.y + (User_Rect.h / 2) as i16 - (Block_Rect.h / 2) as i16,
+        User_Rect.w / 2 - Block_Rect.w / 3,
+        User_Rect.h / 2,
+    );
+
+    info!("real function call confirmed.");
+
+    // Now we draw the hat and shoes of the influencer
+    SDL_UpperBlit(
+        InfluencerSurfacePointer[(Me.phase).floor() as usize],
+        null_mut(),
+        BuildBlock,
+        null_mut(),
+    );
+
+    // Now we draw the first digit of the influencers current number.
+    let mut dst = FirstDigit_Rect.clone();
+    SDL_UpperBlit(
+        InfluDigitSurfacePointer[usize::try_from(
+            (&*Druidmap.offset(Me.ty.try_into().unwrap())).druidname[0] - b'1' as i8 + 1,
+        )
+        .unwrap()],
+        null_mut(),
+        BuildBlock,
+        &mut dst,
+    );
+
+    // Now we draw the second digit of the influencers current number.
+    dst = SecondDigit_Rect.clone();
+    SDL_UpperBlit(
+        InfluDigitSurfacePointer[usize::try_from(
+            (&*Druidmap.offset(Me.ty.try_into().unwrap())).druidname[1] - b'1' as i8 + 1,
+        )
+        .unwrap()],
+        null_mut(),
+        BuildBlock,
+        &mut dst,
+    );
+
+    // Now we draw the third digit of the influencers current number.
+    dst = ThirdDigit_Rect.clone();
+    SDL_UpperBlit(
+        InfluDigitSurfacePointer[usize::try_from(
+            (&*Druidmap.offset(Me.ty.try_into().unwrap())).druidname[2] - b'1' as i8 + 1,
+        )
+        .unwrap()],
+        null_mut(),
+        BuildBlock,
+        &mut dst,
+    );
+
+    if Me.energy * 100. / (&*Druidmap.offset(Me.ty.try_into().unwrap())).maxenergy <= BLINKENERGY
+        && x == -1
+    {
+        // In case of low energy, do the fading effect...
+        let rest = Me.timer % BLINK_LEN; // period of fading is given by BLINK_LEN
+        let filt = if rest < BLINK_LEN / 2. {
+            0.40 + (1.0 - 2.0 * rest / BLINK_LEN) * 0.60 // decrease white->grey
+        } else {
+            0.40 + (2.0 * rest / BLINK_LEN - 1.0) * 0.60 // increase back to white
+        };
+
+        ApplyFilter(BuildBlock, filt, filt, filt);
+
+        // ... and also maybe start a new cry-sound
+
+        if Me.LastCrysoundTime > CRY_SOUND_INTERVAL {
+            Me.LastCrysoundTime = 0.;
+            CrySound();
+        }
+    }
+
+    //--------------------
+    // In case of transfer mode, we produce the transfer mode sound
+    // but of course only in some periodic intervall...
+
+    if Me.status == Status::Transfermode as i32 && x == -1 {
+        ApplyFilter(BuildBlock, 1.0, 0.0, 0.0);
+
+        if Me.LastTransferSoundTime > TRANSFER_SOUND_INTERVAL {
+            Me.LastTransferSoundTime = 0.;
+            TransferSound();
+        }
+    }
+
+    if x == -1 {
+        let user_center = get_user_center();
+        dst.x = user_center.x - (Block_Rect.w / 2) as i16;
+        dst.y = user_center.y - (Block_Rect.h / 2) as i16;
+    } else {
+        dst.x = x.try_into().unwrap();
+        dst.y = y.try_into().unwrap();
+    }
+
+    SDL_UpperBlit(BuildBlock, null_mut(), ne_screen, &mut dst);
+
+    //--------------------
+    // Maybe the influencer has something to say :)
+    // so let him say it..
+    //
+    if x == -1
+        && Me.TextVisibleTime < GameConfig.WantedTextVisibleTime
+        && GameConfig.Droid_Talk != 0
+    {
+        //      PutStringFont ( ne_screen , Font0_BFont ,
+        //		      User_Rect.x+(User_Rect.w/2) + Block_Rect.w/3 ,
+        //		      User_Rect.y+(User_Rect.h/2) - Block_Rect.h/2 ,
+        //		      Me.TextToBeDisplayed );
+        SetCurrentFont(Font0_BFont);
+        DisplayText(
+            Me.TextToBeDisplayed,
+            i32::from(User_Rect.x) + i32::from(User_Rect.w / 2) + i32::from(Block_Rect.w / 3),
+            i32::from(User_Rect.y) + i32::from(User_Rect.h / 2) - i32::from(Block_Rect.h / 2),
+            &text_rect,
+        );
+    }
+
+    info!("void PutInfluence(void): enf of function reached.");
 }

@@ -253,11 +253,11 @@ EndCountdownSound (void)
 @Ret:
 @Int:
 * $Function----------------------------------------------------------*/
-void
-CrySound (void)
-{
-  Play_Sound ( CRY_SOUND );
-}
+/* void */
+/* CrySound (void) */
+/* { */
+/*   Play_Sound ( CRY_SOUND ); */
+/* } */
 
 /*@Function============================================================
 @Desc:
@@ -265,11 +265,11 @@ CrySound (void)
 @Ret:
 @Int:
 * $Function----------------------------------------------------------*/
-void
-TransferSound (void)
-{
-  Play_Sound ( TRANSFER_SOUND );
-}
+/* void */
+/* TransferSound (void) */
+/* { */
+/*   Play_Sound ( TRANSFER_SOUND ); */
+/* } */
 
 /*@Function============================================================
 @Desc:

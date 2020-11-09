@@ -257,109 +257,109 @@ for using the influencer as a cursor in the menus.
 
 @Ret: none
 -----------------------------------------------------------------*/
-void
-PutInfluence ( int x, int y)
-{
-  SDL_Rect dst;
-  SDL_Rect Text_Rect;
-  float rest, filt;
+/* void */
+/* PutInfluence ( int x, int y) */
+/* { */
+/*   SDL_Rect dst; */
+/*   SDL_Rect Text_Rect; */
+/*   float rest, filt; */
 
-  Text_Rect.x=User_Rect.x+(User_Rect.w/2) + Block_Rect.w/3;
-  Text_Rect.y=User_Rect.y+(User_Rect.h/2) - Block_Rect.h/2;
-  Text_Rect.w=User_Rect.w/2 - Block_Rect.w/3;
-  Text_Rect.h=User_Rect.h/2;
+/*   Text_Rect.x=User_Rect.x+(User_Rect.w/2) + Block_Rect.w/3; */
+/*   Text_Rect.y=User_Rect.y+(User_Rect.h/2) - Block_Rect.h/2; */
+/*   Text_Rect.w=User_Rect.w/2 - Block_Rect.w/3; */
+/*   Text_Rect.h=User_Rect.h/2; */
 
-  DebugPrintf (2, "\nvoid PutInfluence(void): real function call confirmed.");
+/*   DebugPrintf (2, "\nvoid PutInfluence(void): real function call confirmed."); */
 
-  // Now we draw the hat and shoes of the influencer
-  SDL_BlitSurface( InfluencerSurfacePointer[ (int) floorf (Me.phase) ], NULL , BuildBlock, NULL);
-
-
-  // Now we draw the first digit of the influencers current number.
-  dst.x = FirstDigit_Rect.x;
-  dst.y = FirstDigit_Rect.y;
-  SDL_BlitSurface (InfluDigitSurfacePointer[ Druidmap[Me.type].druidname[0]-'1'+1 ], NULL, BuildBlock, &dst);
-
-  // Now we draw the second digit of the influencers current number.
-  dst.x = SecondDigit_Rect.x;
-  dst.y = SecondDigit_Rect.y;
-  SDL_BlitSurface( InfluDigitSurfacePointer[ Druidmap[Me.type].druidname[1]-'1'+1 ], NULL, BuildBlock, &dst);
-
-  // Now we draw the third digit of the influencers current number.
-  dst.x = ThirdDigit_Rect.x ;
-  dst.y = ThirdDigit_Rect.y;
-  SDL_BlitSurface( InfluDigitSurfacePointer[ Druidmap[Me.type].druidname[2]-'1'+1 ] , NULL, BuildBlock, &dst);
-
-  if ( ( (Me.energy*100/Druidmap[Me.type].maxenergy) <= BLINKENERGY) && ( x == -1 ) )
-    {
-      // In case of low energy, do the fading effect...
-      rest = fmod(Me.timer, BLINK_LEN);  // period of fading is given by BLINK_LEN
-      if (rest  < BLINK_LEN/2 )
-	filt = 0.40 + (1.0 - 2.0*rest/BLINK_LEN)*0.60;   // decrease white->grey
-      else
-	filt = 0.40 + (2.0*rest/BLINK_LEN - 1.0)*0.60;  // increase back to white
-
-      ApplyFilter (BuildBlock, filt, filt, filt);
-
-      // ... and also maybe start a new cry-sound
-
-      if ( Me.LastCrysoundTime > CRY_SOUND_INTERVAL )
-	{
-	  Me.LastCrysoundTime = 0;
-	  CrySound();
-	}
-    }
-
-  //--------------------
-  // In case of transfer mode, we produce the transfer mode sound
-  // but of course only in some periodic intervall...
-
-  if ( Me.status == TRANSFERMODE  && (x == -1))
-    {
-      ApplyFilter (BuildBlock, 1.0, 0.0, 0.0);
-
-      if ( Me.LastTransferSoundTime > TRANSFER_SOUND_INTERVAL )
-	{
-	  Me.LastTransferSoundTime = 0;
-	  TransferSound();
-	}
-    }
+/*   // Now we draw the hat and shoes of the influencer */
+/*   SDL_BlitSurface( InfluencerSurfacePointer[ (int) floorf (Me.phase) ], NULL , BuildBlock, NULL); */
 
 
-  if ( x == -1 )
-    {
-      dst.x=UserCenter_x - Block_Rect.w/2;
-      dst.y=UserCenter_y - Block_Rect.h/2;
-    }
-  else
-    {
-      dst.x=x ;
-      dst.y=y ;
-    }
+/*   // Now we draw the first digit of the influencers current number. */
+/*   dst.x = FirstDigit_Rect.x; */
+/*   dst.y = FirstDigit_Rect.y; */
+/*   SDL_BlitSurface (InfluDigitSurfacePointer[ Druidmap[Me.type].druidname[0]-'1'+1 ], NULL, BuildBlock, &dst); */
+
+/*   // Now we draw the second digit of the influencers current number. */
+/*   dst.x = SecondDigit_Rect.x; */
+/*   dst.y = SecondDigit_Rect.y; */
+/*   SDL_BlitSurface( InfluDigitSurfacePointer[ Druidmap[Me.type].druidname[1]-'1'+1 ], NULL, BuildBlock, &dst); */
+
+/*   // Now we draw the third digit of the influencers current number. */
+/*   dst.x = ThirdDigit_Rect.x ; */
+/*   dst.y = ThirdDigit_Rect.y; */
+/*   SDL_BlitSurface( InfluDigitSurfacePointer[ Druidmap[Me.type].druidname[2]-'1'+1 ] , NULL, BuildBlock, &dst); */
+
+/*   if ( ( (Me.energy*100/Druidmap[Me.type].maxenergy) <= BLINKENERGY) && ( x == -1 ) ) */
+/*     { */
+/*       // In case of low energy, do the fading effect... */
+/*       rest = fmod(Me.timer, BLINK_LEN);  // period of fading is given by BLINK_LEN */
+/*       if (rest  < BLINK_LEN/2 ) */
+/* 	filt = 0.40 + (1.0 - 2.0*rest/BLINK_LEN)*0.60;   // decrease white->grey */
+/*       else */
+/* 	filt = 0.40 + (2.0*rest/BLINK_LEN - 1.0)*0.60;  // increase back to white */
+
+/*       ApplyFilter (BuildBlock, filt, filt, filt); */
+
+/*       // ... and also maybe start a new cry-sound */
+
+/*       if ( Me.LastCrysoundTime > CRY_SOUND_INTERVAL ) */
+/* 	{ */
+/* 	  Me.LastCrysoundTime = 0; */
+/* 	  CrySound(); */
+/* 	} */
+/*     } */
+
+/*   //-------------------- */
+/*   // In case of transfer mode, we produce the transfer mode sound */
+/*   // but of course only in some periodic intervall... */
+
+/*   if ( Me.status == TRANSFERMODE  && (x == -1)) */
+/*     { */
+/*       ApplyFilter (BuildBlock, 1.0, 0.0, 0.0); */
+
+/*       if ( Me.LastTransferSoundTime > TRANSFER_SOUND_INTERVAL ) */
+/* 	{ */
+/* 	  Me.LastTransferSoundTime = 0; */
+/* 	  TransferSound(); */
+/* 	} */
+/*     } */
 
 
-  SDL_BlitSurface (BuildBlock, NULL, ne_screen, &dst);
+/*   if ( x == -1 ) */
+/*     { */
+/*       dst.x=UserCenter_x - Block_Rect.w/2; */
+/*       dst.y=UserCenter_y - Block_Rect.h/2; */
+/*     } */
+/*   else */
+/*     { */
+/*       dst.x=x ; */
+/*       dst.y=y ; */
+/*     } */
+
+
+/*   SDL_BlitSurface (BuildBlock, NULL, ne_screen, &dst); */
 
 
 
-  //--------------------
-  // Maybe the influencer has something to say :)
-  // so let him say it..
-  //
-  if ( ( x == (-1) ) && ( Me.TextVisibleTime < GameConfig.WantedTextVisibleTime ) && GameConfig.Droid_Talk )
-    {
-      //      PutStringFont ( ne_screen , Font0_BFont ,
-      //		      User_Rect.x+(User_Rect.w/2) + Block_Rect.w/3 ,
-      //		      User_Rect.y+(User_Rect.h/2) - Block_Rect.h/2 ,
-      //		      Me.TextToBeDisplayed );
-      SetCurrentFont( Font0_BFont );
-      DisplayText( Me.TextToBeDisplayed, User_Rect.x+(User_Rect.w/2) + Block_Rect.w/3,
-		   User_Rect.y+(User_Rect.h/2) - Block_Rect.h/2 , &Text_Rect );
-    }
+/*   //-------------------- */
+/*   // Maybe the influencer has something to say :) */
+/*   // so let him say it.. */
+/*   // */
+/*   if ( ( x == (-1) ) && ( Me.TextVisibleTime < GameConfig.WantedTextVisibleTime ) && GameConfig.Droid_Talk ) */
+/*     { */
+/*       //      PutStringFont ( ne_screen , Font0_BFont , */
+/*       //		      User_Rect.x+(User_Rect.w/2) + Block_Rect.w/3 , */
+/*       //		      User_Rect.y+(User_Rect.h/2) - Block_Rect.h/2 , */
+/*       //		      Me.TextToBeDisplayed ); */
+/*       SetCurrentFont( Font0_BFont ); */
+/*       DisplayText( Me.TextToBeDisplayed, User_Rect.x+(User_Rect.w/2) + Block_Rect.w/3, */
+/* 		   User_Rect.y+(User_Rect.h/2) - Block_Rect.h/2 , &Text_Rect ); */
+/*     } */
 
-  DebugPrintf (2, "\nvoid PutInfluence(void): enf of function reached.");
+/*   DebugPrintf (2, "\nvoid PutInfluence(void): enf of function reached."); */
 
-} /* PutInfluence() */
+/* } /1* PutInfluence() *1/ */
 
 
 /*@Function============================================================

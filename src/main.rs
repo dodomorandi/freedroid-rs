@@ -6,6 +6,7 @@ mod highscore;
 mod input;
 mod map;
 mod misc;
+mod sound;
 mod structs;
 mod takeover;
 mod text;

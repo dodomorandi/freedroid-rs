@@ -343,8 +343,8 @@ pub const BYCOLOR: &str = "BYCOLOR";
 // The sounds when the influencers energy is low or when he is in transfer mode
 // occur periodically.  These constants specify which intervals are to be used
 // for these periodic happenings...
-pub const CRY_SOUND_INTERVAL: usize = 2;
-pub const TRANSFER_SOUND_INTERVAL: f64 = 1.1;
+pub const CRY_SOUND_INTERVAL: f32 = 2.;
+pub const TRANSFER_SOUND_INTERVAL: f32 = 1.1;
 
 // **********************************************************************
 
@@ -461,7 +461,7 @@ pub enum Explosion {
     Rejectblast,
 }
 
-pub const BLINKENERGY: usize = 25;
+pub const BLINKENERGY: f32 = 25.;
 
 /* Druidtypen */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
