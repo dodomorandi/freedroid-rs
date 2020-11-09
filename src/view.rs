@@ -89,7 +89,7 @@ pub unsafe extern "C" fn Assemble_Combat_Picture(mask: c_int) {
 
     const UPDATE_FPS_HOW_OFTEN: f32 = 0.75;
 
-    info!("\nvoid Assemble_Combat_Picture(...): Real function call confirmed.");
+    trace!("\nvoid Assemble_Combat_Picture(...): Real function call confirmed.");
 
     SDL_SetClipRect(ne_screen, &User_Rect);
 
@@ -427,7 +427,7 @@ pub unsafe extern "C" fn PutEnemy(enemy_index: c_int, x: c_int, y: c_int) {
         );
     }
 
-    info!("ENEMY HAS BEEN PUT --> usual end of function reached.");
+    trace!("ENEMY HAS BEEN PUT --> usual end of function reached.");
 }
 
 /// This function draws the influencer to the screen, either
@@ -443,7 +443,7 @@ pub unsafe extern "C" fn PutInfluence(x: c_int, y: c_int) {
         User_Rect.h / 2,
     );
 
-    info!("real function call confirmed.");
+    trace!("PutInfluence real function call confirmed.");
 
     // Now we draw the hat and shoes of the influencer
     SDL_UpperBlit(
@@ -555,7 +555,7 @@ pub unsafe extern "C" fn PutInfluence(x: c_int, y: c_int) {
         );
     }
 
-    info!("void PutInfluence(void): enf of function reached.");
+    trace!("PutInfluence: end of function reached.");
 }
 
 /// PutBullet: draws a Bullet into the combat window.  The only
@@ -565,7 +565,7 @@ pub unsafe extern "C" fn PutInfluence(x: c_int, y: c_int) {
 pub unsafe extern "C" fn PutBullet(bullet_number: c_int) {
     let cur_bullet = &mut AllBullets[usize::try_from(bullet_number).unwrap()];
 
-    info!("void PutBullet(int BulletNummer): real function call confirmed.");
+    trace!("PutBullet: real function call confirmed.");
 
     //--------------------
     // in case our bullet is of the type "FLASH", we only
@@ -643,11 +643,13 @@ pub unsafe extern "C" fn PutBullet(bullet_number: c_int) {
         &mut dst,
     );
 
-    info!("end of function reached.");
+    trace!("PutBullet: end of function reached.");
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn PutBlast(blast_number: c_int) {
+    trace!("PutBlast: real function call confirmed.");
+
     let cur_blast = &mut AllBlasts[usize::try_from(blast_number).unwrap()];
 
     // If the blast is already long deat, we need not do anything else here
@@ -675,4 +677,5 @@ pub unsafe extern "C" fn PutBlast(blast_number: c_int) {
         ne_screen,
         &mut dst,
     );
+    trace!("PutBlast: end of function reached.");
 }
