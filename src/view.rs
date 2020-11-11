@@ -1,27 +1,29 @@
 use crate::{
     b_font::{FontHeight, PrintStringFont, PutStringFont, SetCurrentFont},
     defs::{
-        self, get_user_center, AssembleCombatWindowFlags, Bullet, Status, BLINKENERGY,
-        CRY_SOUND_INTERVAL, FLASH_DURATION, MAXBLASTS, MAXBULLETS, TRANSFER_SOUND_INTERVAL,
+        self, get_user_center, AssembleCombatWindowFlags, Bullet, DisplayBannerFlags, Status,
+        BLINKENERGY, CRY_SOUND_INTERVAL, FLASH_DURATION, LEFT_TEXT_LEN, MAXBLASTS, MAXBULLETS,
+        RIGHT_TEXT_LEN, TRANSFER_SOUND_INTERVAL,
     },
     global::{
-        ne_screen, show_all_droids, AllBlasts, AllBullets, AllEnemys, Black, Blastmap, Block_Rect,
-        BuildBlock, Bulletmap, CurLevel, DeathCount, Decal_pics, Druidmap,
-        EnemyDigitSurfacePointer, EnemySurfacePointer, FirstDigit_Rect, Font0_BFont,
-        Full_User_Rect, GameConfig, InfluDigitSurfacePointer, InfluencerSurfacePointer,
-        MapBlockSurfacePointer, Me, Number_Of_Droid_Types, SecondDigit_Rect, ThirdDigit_Rect,
-        User_Rect,
+        banner_pic, ne_screen, show_all_droids, AllBlasts, AllBullets, AllEnemys,
+        BannerIsDestroyed, Banner_Rect, Blastmap, Block_Rect, BuildBlock, Bulletmap, CurLevel,
+        DeathCount, Decal_pics, Druidmap, EnemyDigitSurfacePointer, EnemySurfacePointer,
+        FirstDigit_Rect, Font0_BFont, Full_User_Rect, GameConfig, InfluDigitSurfacePointer,
+        InfluencerSurfacePointer, LeftInfo_Rect, MapBlockSurfacePointer, Me, Number_Of_Droid_Types,
+        Para_BFont, RightInfo_Rect, SecondDigit_Rect, ShowScore, ThirdDigit_Rect, User_Rect,
+        INFLUENCE_MODE_NAMES,
     },
     graphics::ApplyFilter,
     map::{GetMapBrick, IsVisible},
     misc::{Frame_Time, Terminate},
     sound::{CrySound, TransferSound},
-    structs::{Enemy, Finepoint, GrobPoint},
+    structs::{Enemy, Finepoint, GrobPoint, Point},
     text::DisplayText,
 };
 
 use cstr::cstr;
-use log::{error, info, trace};
+use log::{error, info, trace, warn};
 use sdl::{
     sdl::Rect,
     video::ll::{
@@ -30,9 +32,10 @@ use sdl::{
     },
 };
 use std::{
-    cell::Cell,
+    cell::{Cell, RefCell},
     convert::{TryFrom, TryInto},
-    os::raw::{c_double, c_int},
+    ffi::CStr,
+    os::raw::{c_char, c_double, c_int},
     ptr::null_mut,
 };
 
@@ -47,6 +50,15 @@ extern "C" {
 }
 
 const BLINK_LEN: f32 = 1.0;
+
+#[no_mangle]
+pub static Black: SDL_Color = SDL_Color {
+    r: 0,
+    g: 0,
+    b: 0,
+    unused: 0,
+};
+
 const FLASH_LIGHT: SDL_Color = SDL_Color {
     r: 11,
     g: 11,
@@ -678,4 +690,170 @@ pub unsafe extern "C" fn PutBlast(blast_number: c_int) {
         &mut dst,
     );
     trace!("PutBlast: end of function reached.");
+}
+
+/// This function fills the whole combat window with the one color
+/// given as the only parameter to the function.  For this purpose
+/// a fast SDL basic function is used.
+#[no_mangle]
+pub unsafe extern "C" fn SetUserfenster(color: c_int) {
+    SDL_FillRect(ne_screen, &mut User_Rect.clone(), color as u32);
+}
+
+/// This function updates the top status bar.
+///
+/// To save framerate on slow machines however it will only work
+/// if it thinks that work needs to be done.
+/// You can however force update if you say so with a flag.
+///
+/// BANNER_FORCE_UPDATE=1: Forces the redrawing of the title bar
+///
+/// BANNER_DONT_TOUCH_TEXT=2: Prevents DisplayBanner from touching the
+/// text.
+///
+/// BANNER_NO_SDL_UPDATE=4: Prevents any SDL_Update calls.
+#[no_mangle]
+pub unsafe extern "C" fn DisplayBanner(
+    mut left: *const c_char,
+    mut right: *const c_char,
+    flags: c_int,
+) {
+    use std::io::Write;
+
+    let mut dummy: [u8; 80];
+
+    thread_local! {
+        static PREVIOUS_LEFT_BOX: RefCell<[u8; LEFT_TEXT_LEN + 10]>={
+          let mut data = [0u8; LEFT_TEXT_LEN + 10];
+          data[..6].copy_from_slice(b"NOUGHT");
+          RefCell::new(data)
+        };
+        static PREVIOUS_RIGHT_BOX: RefCell<[u8; RIGHT_TEXT_LEN + 10]>= {
+          let mut data = [0u8; RIGHT_TEXT_LEN + 10];
+          data[..6].copy_from_slice(b"NOUGHT");
+          RefCell::new(data)
+        };
+    }
+
+    // --------------------
+    // At first the text is prepared.  This can't hurt.
+    // we will decide whether to display it or not later...
+    //
+
+    if left.is_null() {
+        /* Left-DEFAULT: Mode */
+        left = INFLUENCE_MODE_NAMES[Me.status as usize].as_ptr();
+    }
+
+    if right.is_null()
+    /* Right-DEFAULT: Score */
+    {
+        dummy = [0u8; 80];
+        write!(dummy.as_mut(), "{}", ShowScore).unwrap();
+        right = dummy.as_mut_ptr() as *mut c_char;
+    }
+
+    // Now fill in the text
+    let left = CStr::from_ptr(left);
+    let mut left_len = left.to_bytes().len();
+    if left_len > LEFT_TEXT_LEN {
+        warn!(
+            "String {} too long for Left Infoline!!",
+            left.to_string_lossy()
+        );
+        left_len = LEFT_TEXT_LEN; /* too long, so we cut it! */
+        Terminate(defs::ERR.into());
+    }
+    let right = CStr::from_ptr(right);
+    let mut right_len = right.to_bytes().len();
+    if right_len > RIGHT_TEXT_LEN {
+        warn!(
+            "String {} too long for Right Infoline!!",
+            right.to_string_lossy()
+        );
+        right_len = RIGHT_TEXT_LEN; /* too long, so we cut it! */
+        Terminate(defs::ERR.into());
+    }
+
+    /* Now prepare the left/right text-boxes */
+    let mut left_box = [b' '; LEFT_TEXT_LEN + 10];
+    let mut right_box = [b' '; RIGHT_TEXT_LEN + 10];
+
+    left_box[..left_len].copy_from_slice(&left.to_bytes()[..left_len]);
+    right_box[..right_len].copy_from_slice(&right.to_bytes()[..right_len]);
+
+    left_box[LEFT_TEXT_LEN] = b'\0'; /* that's right, we want padding! */
+    right_box[RIGHT_TEXT_LEN] = b'\0';
+
+    // --------------------
+    // No we see if the screen need an update...
+
+    if BannerIsDestroyed != 0
+        || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
+        || PREVIOUS_LEFT_BOX
+            .with(|previous_left_box| left_box.as_ref() != previous_left_box.borrow().as_ref())
+        || PREVIOUS_RIGHT_BOX
+            .with(|previous_right_box| right_box.as_ref() != previous_right_box.borrow().as_ref())
+    {
+        // Redraw the whole background of the top status bar
+        let mut dst = Rect::new(0, 0, 0, 0);
+        SDL_SetClipRect(ne_screen, null_mut()); // this unsets the clipping rectangle
+        SDL_UpperBlit(banner_pic, null_mut(), ne_screen, &mut dst);
+
+        // Now the text should be ready and its
+        // time to display it...
+        if PREVIOUS_LEFT_BOX
+            .with(|previous_left_box| left_box.as_ref() != previous_left_box.borrow().as_ref())
+            || PREVIOUS_RIGHT_BOX.with(|previous_right_box| {
+                right_box.as_ref() != previous_right_box.borrow().as_ref()
+            })
+            || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
+        {
+            dst.x = LeftInfo_Rect.x;
+            dst.y = LeftInfo_Rect.y - i16::try_from(FontHeight(&*Para_BFont)).unwrap();
+            PrintStringFont(
+                ne_screen,
+                Para_BFont,
+                dst.x.into(),
+                dst.y.into(),
+                left_box.as_mut_ptr() as *mut c_char,
+            );
+            let left_box_len = left_box.iter().position(|&c| c == 0).unwrap();
+            PREVIOUS_LEFT_BOX.with(|previous_left_box| {
+                let mut previous_left_box = previous_left_box.borrow_mut();
+                previous_left_box[..left_box_len].copy_from_slice(&left_box[..left_box_len]);
+                previous_left_box[left_box_len] = b'\0';
+            });
+
+            dst.x = RightInfo_Rect.x;
+            dst.y = RightInfo_Rect.y - i16::try_from(FontHeight(&*Para_BFont)).unwrap();
+            PrintStringFont(
+                ne_screen,
+                Para_BFont,
+                dst.x.into(),
+                dst.y.into(),
+                right_box.as_mut_ptr() as *mut c_char,
+            );
+            let right_box_len = right_box.iter().position(|&c| c == 0).unwrap();
+            PREVIOUS_RIGHT_BOX.with(|previous_right_box| {
+                let mut previous_right_box = previous_right_box.borrow_mut();
+                previous_right_box[..right_box_len].copy_from_slice(&right_box[..right_box_len]);
+                previous_right_box[right_box_len] = b'\0';
+            });
+        }
+
+        // finally update the whole top status box
+        if (flags & i32::from(DisplayBannerFlags::NO_SDL_UPDATE.bits())) == 0 {
+            SDL_UpdateRect(ne_screen, 0, 0, Banner_Rect.w.into(), Banner_Rect.h.into());
+        }
+
+        BannerIsDestroyed = false.into();
+        return;
+    }
+}
+
+/// Translate a map-pos (x,y) to screen-coords (X,Y) using influ-position Me.pos
+#[no_mangle]
+pub extern "C" fn Map2ScreenXY(_map_pos: Finepoint, _screen_pos: *mut Point) {
+    todo!()
 }

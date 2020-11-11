@@ -13,11 +13,13 @@ use crate::{
     takeover::{NUM_CAPS_BLOCKS, NUM_FILL_BLOCKS, NUM_GROUND_BLOCKS, NUM_TO_BLOCKS, TO_COLORS},
 };
 
+use cstr::cstr;
 use sdl::{
     joy::ll::SDL_Joystick,
     mouse::ll::SDL_Cursor,
-    video::ll::{SDL_Color, SDL_RWops, SDL_Rect, SDL_Surface},
+    video::ll::{SDL_RWops, SDL_Rect, SDL_Surface},
 };
+use std::ffi::CStr;
 
 extern "C" {
     #[no_mangle]
@@ -103,8 +105,6 @@ extern "C" {
     pub static mut Brainnames: *mut *mut i8;
     #[no_mangle]
     pub static mut Drivenames: *mut *mut i8;
-    #[no_mangle]
-    pub static mut InfluenceModeNames: *mut *mut i8;
     #[no_mangle]
     pub static mut ThisMessageTime: i32;
 
@@ -200,9 +200,6 @@ extern "C" {
     pub static mut Font2_BFont: *mut BFontInfo;
     #[no_mangle]
     pub static mut SkipAFewFrames: i32;
-
-    #[no_mangle]
-    pub static mut Black: SDL_Color;
 
     #[no_mangle]
     pub static mut AllThemes: ThemeList;
@@ -351,3 +348,23 @@ extern "C" {
     #[no_mangle]
     pub static mut quit_Menu: bool;
 }
+
+pub const INFLUENCE_MODE_NAMES: [&'static CStr; 17] = [
+    cstr!("Mobile"),
+    cstr!("Transfer"),
+    cstr!("Weapon"),
+    cstr!("Captured"),
+    cstr!("Complete"),
+    cstr!("Rejected"),
+    cstr!("Logged In"),
+    cstr!("Debriefing"),
+    cstr!("Terminated"),
+    cstr!("Pause"),
+    cstr!("Cheese"),
+    cstr!("Elevator"),
+    cstr!("Briefing"),
+    cstr!("Menu"),
+    cstr!("Victory"),
+    cstr!("Activate"),
+    cstr!("-- OUT --"),
+];
