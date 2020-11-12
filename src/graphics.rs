@@ -12,4 +12,7 @@ extern "C" {
         fgreen: c_float,
         fblue: c_float,
     ) -> c_int;
+
+    #[no_mangle]
+    pub static mut vid_bpp: c_int;
 }

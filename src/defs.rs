@@ -1,4 +1,7 @@
-use crate::global::User_Rect;
+use crate::{
+    global::User_Rect,
+    input::{cmd_is_active, cmd_is_activeR},
+};
 
 use bitflags::bitflags;
 use sdl::sdl::Rect;
@@ -136,18 +139,55 @@ pub enum Cmds {
 // 	|| Gcw0RSPressedR() || Gcw0StartPressedR() || Gcw0SelectPressedR())
 // #endif // GCW0 keys
 
-// #define UpPressed() (cmd_is_active(CMD_UP))
-// #define DownPressed() (cmd_is_active(CMD_DOWN))
-// #define LeftPressed() (cmd_is_active(CMD_LEFT))
-// #define RightPressed() (cmd_is_active(CMD_RIGHT))
+#[inline]
+pub unsafe fn UpPressed() -> bool {
+    cmd_is_active(Cmds::Up)
+}
 
-// #define FirePressed() (cmd_is_active(CMD_FIRE))
-// #define FirePressedR() (cmd_is_activeR(CMD_FIRE))
+#[inline]
+pub unsafe fn DownPressed() -> bool {
+    cmd_is_active(Cmds::Down)
+}
 
-// #define UpPressedR() (cmd_is_activeR(CMD_UP))
-// #define DownPressedR() (cmd_is_activeR(CMD_DOWN))
-// #define LeftPressedR() (cmd_is_activeR(CMD_LEFT))
-// #define RightPressedR() (cmd_is_activeR(CMD_RIGHT))
+#[inline]
+pub unsafe fn LeftPressed() -> bool {
+    cmd_is_active(Cmds::Left)
+}
+
+#[inline]
+pub unsafe fn RightPressed() -> bool {
+    cmd_is_active(Cmds::Right)
+}
+
+#[inline]
+pub unsafe fn FirePressed() -> bool {
+    cmd_is_active(Cmds::Fire)
+}
+
+#[inline]
+pub unsafe fn FirePressedR() -> bool {
+    cmd_is_activeR(Cmds::Fire)
+}
+
+#[inline]
+pub unsafe fn UpPressedR() -> bool {
+    cmd_is_activeR(Cmds::Up)
+}
+
+#[inline]
+pub unsafe fn DownPressedR() -> bool {
+    cmd_is_activeR(Cmds::Down)
+}
+
+#[inline]
+pub unsafe fn LeftPressedR() -> bool {
+    cmd_is_activeR(Cmds::Left)
+}
+
+#[inline]
+pub unsafe fn RightPressedR() -> bool {
+    cmd_is_activeR(Cmds::Right)
+}
 
 // #define AnyCmdActive() (cmd_is_active(CMD_FIRE) || cmd_is_active(CMD_ACTIVATE) || cmd_is_active(CMD_TAKEOVER) )
 // #define AnyCmdActiveR() (cmd_is_activeR(CMD_FIRE) || cmd_is_activeR(CMD_ACTIVATE) || cmd_is_activeR(CMD_TAKEOVER) )

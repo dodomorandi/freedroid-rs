@@ -456,144 +456,144 @@ linebreak_needed (const char *textpos , const SDL_Rect *clip)
  *       (dont forget to free it !)
  *
  *-----------------------------------------------------------------*/
-char *
-GetString (int MaxLen, int echo)
-{
-  char *input;		/* Pointer auf eingegebenen String */
-  int key;             /* last 'character' entered */
-  int curpos;		/* zaehlt eingeg. Zeichen mit */
-  int finished;
-  int x0, y0, height;
-  SDL_Rect store_rect, tmp_rect;
-  SDL_Surface *store = NULL;
+/* char * */
+/* GetString (int MaxLen, int echo) */
+/* { */
+/*   char *input;		/1* Pointer auf eingegebenen String *1/ */
+/*   int key;             /1* last 'character' entered *1/ */
+/*   int curpos;		/1* zaehlt eingeg. Zeichen mit *1/ */
+/*   int finished; */
+/*   int x0, y0, height; */
+/*   SDL_Rect store_rect, tmp_rect; */
+/*   SDL_Surface *store = NULL; */
 
-  if (echo == 1)		/* echo to stdout */
-    {
-      DebugPrintf (0, "\nGetString(): sorry, echo=1 currently not implemented!\n");
-      return NULL;
-    }
+/*   if (echo == 1)		/1* echo to stdout *1/ */
+/*     { */
+/*       DebugPrintf (0, "\nGetString(): sorry, echo=1 currently not implemented!\n"); */
+/*       return NULL; */
+/*     } */
 
-  x0 = MyCursorX;
-  y0 = MyCursorY;
-  height = FontHeight (GetCurrentFont());
+/*   x0 = MyCursorX; */
+/*   y0 = MyCursorY; */
+/*   height = FontHeight (GetCurrentFont()); */
 
-  store = SDL_CreateRGBSurface(0, Screen_Rect.w, height, vid_bpp, 0, 0, 0, 0);
-  Set_Rect (store_rect, x0, y0, Screen_Rect.w, height);
-  SDL_BlitSurface (ne_screen, &store_rect, store, NULL);
+/*   store = SDL_CreateRGBSurface(0, Screen_Rect.w, height, vid_bpp, 0, 0, 0, 0); */
+/*   Set_Rect (store_rect, x0, y0, Screen_Rect.w, height); */
+/*   SDL_BlitSurface (ne_screen, &store_rect, store, NULL); */
 
-  /* Speicher fuer Eingabe reservieren */
-  input     = MyMalloc (MaxLen + 5);
-#ifdef ARCADEINPUT
-  char emptychar=' '; //for "empty" input line / backspace etc...
-  int blink_time=200; // For adjusting fast <->slow blink; in ms
-  static Uint32 last_frame_time; //  = SDL_GetTicks();
-  Uint32 frame_duration;
+/*   /1* Speicher fuer Eingabe reservieren *1/ */
+/*   input     = MyMalloc (MaxLen + 5); */
+/* #ifdef ARCADEINPUT */
+/*   char emptychar=' '; //for "empty" input line / backspace etc... */
+/*   int blink_time=200; // For adjusting fast <->slow blink; in ms */
+/*   static Uint32 last_frame_time; //  = SDL_GetTicks(); */
+/*   Uint32 frame_duration; */
 
-  int inputchar=17; // initial char = A
-#else // NORMAL INPUT
-  char emptychar='.'; //for "empty" input linue / backspace etc...
-#endif // ARCADEINPUT
+/*   int inputchar=17; // initial char = A */
+/* #else // NORMAL INPUT */
+/*   char emptychar='.'; //for "empty" input linue / backspace etc... */
+/* #endif // ARCADEINPUT */
 
-  memset (input, emptychar, MaxLen);
-  input[MaxLen] = 0;
+/*   memset (input, emptychar, MaxLen); */
+/*   input[MaxLen] = 0; */
 
-  finished = FALSE;
-  curpos = 0;
+/*   finished = FALSE; */
+/*   curpos = 0; */
 
-  while ( !finished  )
-    {
-      Copy_Rect( store_rect, tmp_rect);
-      SDL_BlitSurface (store, NULL, ne_screen, &tmp_rect);
-      PutString (ne_screen, x0, y0, input);
-      SDL_Flip (ne_screen);
+/*   while ( !finished  ) */
+/*     { */
+/*       Copy_Rect( store_rect, tmp_rect); */
+/*       SDL_BlitSurface (store, NULL, ne_screen, &tmp_rect); */
+/*       PutString (ne_screen, x0, y0, input); */
+/*       SDL_Flip (ne_screen); */
 
-#ifdef ARCADEINPUT
-      if ( inputchar < 0 ) inputchar+=(ARCADEINPUTMAX+1); //+1 because we chose (>)1 past the point...
-      if ( inputchar > ARCADEINPUTMAX ) inputchar-=(ARCADEINPUTMAX+1);
-      key=arcadeinputchar[inputchar];
+/* #ifdef ARCADEINPUT */
+/*       if ( inputchar < 0 ) inputchar+=(ARCADEINPUTMAX+1); //+1 because we chose (>)1 past the point... */
+/*       if ( inputchar > ARCADEINPUTMAX ) inputchar-=(ARCADEINPUTMAX+1); */
+/*       key=arcadeinputchar[inputchar]; */
 
-      if ( ( frame_duration = SDL_GetTicks() - last_frame_time ) > blink_time/2 ) { 
-        input[curpos] = (char) key; // We want to show the currently chosen character
-	if ( frame_duration > blink_time ) last_frame_time = SDL_GetTicks();
-	} else input[curpos] = emptychar; // Hmm., how to get character widht? If using '.', or any fill character, we'd need to know
+/*       if ( ( frame_duration = SDL_GetTicks() - last_frame_time ) > blink_time/2 ) { */ 
+/*         input[curpos] = (char) key; // We want to show the currently chosen character */
+/* 	if ( frame_duration > blink_time ) last_frame_time = SDL_GetTicks(); */
+/* 	} else input[curpos] = emptychar; // Hmm., how to get character widht? If using '.', or any fill character, we'd need to know */
 
-      if (KeyIsPressedR(SDLK_RETURN)) // For GCW0, maybe we need a prompt to say [PRESS ENTER WHEN FINISHED], or any other key we may choose...
- 	{
- 	  input[curpos] = 0; // The last char is currently shown but, not entered into the string...
-// 	  input[curpos] = key; // Not sure which one would be expected by most users; the last blinking char is input or not?
- 	  finished = TRUE;
- 	}
-      else if (UpPressedR()) // UP 
-       /* Currently, the key will work ON RELEASE; we might change this to 
-	* ON PRESS and add a counter / delay after which while holding, will 
-	* scroll trough the chars */
- 	{
-        inputchar++;
- 	}
-      else if (DownPressedR())// DOWN 
- 	{
-        inputchar--;
- 	}
-      else if (FirePressedR())// FIRE
-        {
- 	  // ADVANCE CURSOR
-	input[curpos]=(char)key; // Needed in case character has just blinked out...
-	curpos ++;
-	  // key=startkey; // Reselect A or not?
- 	}
-      else if (LeftPressedR())
- 	{
- 	  inputchar-=5;
- 	}
-      else if (RightPressedR())
- 	{
- 	  inputchar+=5;
- 	}
-      else if (cmd_is_activeR(CMD_ACTIVATE)) // CAPITAL <-> small
-        {
-	  if ( inputchar >= 17 && inputchar <= 42 ) { 
-	    inputchar=44+(inputchar-17);
-	  } else if ( inputchar >= 44 && inputchar <= 69 ) {
-	    inputchar=17+(inputchar-44);
-	  }
-	}
- 	// else if ... other functions to consider: SPACE
-      else if (KeyIsPressedR(SDLK_BACKSPACE)) // Or any othe key we choose for the GCW0!
- 	{
- 	  input[curpos] = emptychar;
- 	  if ( curpos > 0 ) curpos --;
-        } // (el)ifs Pressed
-#else // NORMAL INPUT
-      key = getchar_raw ();
+/*       if (KeyIsPressedR(SDLK_RETURN)) // For GCW0, maybe we need a prompt to say [PRESS ENTER WHEN FINISHED], or any other key we may choose... */
+/*  	{ */
+/*  	  input[curpos] = 0; // The last char is currently shown but, not entered into the string... */
+/* // 	  input[curpos] = key; // Not sure which one would be expected by most users; the last blinking char is input or not? */
+/*  	  finished = TRUE; */
+/*  	} */
+/*       else if (UpPressedR()) // UP */ 
+/*        /1* Currently, the key will work ON RELEASE; we might change this to */ 
+/* 	* ON PRESS and add a counter / delay after which while holding, will */ 
+/* 	* scroll trough the chars *1/ */
+/*  	{ */
+/*         inputchar++; */
+/*  	} */
+/*       else if (DownPressedR())// DOWN */ 
+/*  	{ */
+/*         inputchar--; */
+/*  	} */
+/*       else if (FirePressedR())// FIRE */
+/*         { */
+/*  	  // ADVANCE CURSOR */
+/* 	input[curpos]=(char)key; // Needed in case character has just blinked out... */
+/* 	curpos ++; */
+/* 	  // key=startkey; // Reselect A or not? */
+/*  	} */
+/*       else if (LeftPressedR()) */
+/*  	{ */
+/*  	  inputchar-=5; */
+/*  	} */
+/*       else if (RightPressedR()) */
+/*  	{ */
+/*  	  inputchar+=5; */
+/*  	} */
+/*       else if (cmd_is_activeR(CMD_ACTIVATE)) // CAPITAL <-> small */
+/*         { */
+/* 	  if ( inputchar >= 17 && inputchar <= 42 ) { */ 
+/* 	    inputchar=44+(inputchar-17); */
+/* 	  } else if ( inputchar >= 44 && inputchar <= 69 ) { */
+/* 	    inputchar=17+(inputchar-44); */
+/* 	  } */
+/* 	} */
+/*  	// else if ... other functions to consider: SPACE */
+/*       else if (KeyIsPressedR(SDLK_BACKSPACE)) // Or any othe key we choose for the GCW0! */
+/*  	{ */
+/*  	  input[curpos] = emptychar; */
+/*  	  if ( curpos > 0 ) curpos --; */
+/*         } // (el)ifs Pressed */
+/* #else // NORMAL INPUT */
+/*       key = getchar_raw (); */
 
-      if (key == SDLK_RETURN)
-	{
-	  input[curpos] = 0;
-	  finished = TRUE;
-	}
-      else if ( (key < SDLK_DELETE) && isprint (key) && (curpos < MaxLen) )
-	{
-	  /* printable characters are entered in string */
-	  input[curpos] = (char) key;
-	  curpos ++;
-	}
-      else if (key == SDLK_BACKSPACE)
-	{
-	  if ( curpos > 0 ) curpos --;
-	  input[curpos] = '.';
-	}
-#endif // ARCADEINPUT
-    } /* while(!finished) */
-
-
-  DebugPrintf (2, "\n\nchar *GetString(..):  The final string is:\n");
-  DebugPrintf (2,  input );
-  DebugPrintf (2, "\n\n");
+/*       if (key == SDLK_RETURN) */
+/* 	{ */
+/* 	  input[curpos] = 0; */
+/* 	  finished = TRUE; */
+/* 	} */
+/*       else if ( (key < SDLK_DELETE) && isprint (key) && (curpos < MaxLen) ) */
+/* 	{ */
+/* 	  /1* printable characters are entered in string *1/ */
+/* 	  input[curpos] = (char) key; */
+/* 	  curpos ++; */
+/* 	} */
+/*       else if (key == SDLK_BACKSPACE) */
+/* 	{ */
+/* 	  if ( curpos > 0 ) curpos --; */
+/* 	  input[curpos] = '.'; */
+/* 	} */
+/* #endif // ARCADEINPUT */
+/*     } /1* while(!finished) *1/ */
 
 
-  return (input);
+/*   DebugPrintf (2, "\n\nchar *GetString(..):  The final string is:\n"); */
+/*   DebugPrintf (2,  input ); */
+/*   DebugPrintf (2, "\n\n"); */
 
-} /* GetString() */
+
+/*   return (input); */
+
+/* } /1* GetString() *1/ */
 
 //  
 /*  Proposed: void ShowInstructionsForInput () { 

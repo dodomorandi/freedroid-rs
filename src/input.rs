@@ -1,4 +1,4 @@
-use crate::defs::PointerStates;
+use crate::defs::{Cmds, PointerStates};
 #[cfg(target_os = "android")]
 use crate::global::ne_screen;
 
@@ -13,6 +13,15 @@ extern "C" {
 
     #[no_mangle]
     pub static mut input_state: [c_int; PointerStates::Last as usize];
+
+    #[no_mangle]
+    pub fn KeyIsPressedR(key: c_int) -> bool;
+
+    #[no_mangle]
+    pub fn cmd_is_activeR(command: Cmds) -> bool;
+
+    #[no_mangle]
+    pub fn cmd_is_active(command: Cmds) -> bool;
 }
 
 /// Check if any keys have been 'freshly' pressed. If yes, return key-code, otherwise 0.

@@ -258,11 +258,11 @@ PutChar (SDL_Surface * Surface, int x, int y, int c)
 /*   return r; */
 /* } */
 
-void
-PutString (SDL_Surface * Surface, int x, int y, const char *text)
-{
-  PutStringFont (Surface, CurrentFont, x, y, text);
-}
+/* void */
+/* PutString (SDL_Surface * Surface, int x, int y, const char *text) */
+/* { */
+/*   PutStringFont (Surface, CurrentFont, x, y, text); */
+/* } */
 
 /* void */
 /* PutStringFont (SDL_Surface * Surface, BFont_Info * Font, int x, int y, const char *text) */

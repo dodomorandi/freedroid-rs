@@ -8,7 +8,7 @@ use crate::{
         ShowScore, User_Rect,
     },
     graphics::MakeGridOnScreen,
-    text::{printf_SDL, DisplayText},
+    text::{printf_SDL, DisplayText, GetString},
     view::Assemble_Combat_Picture,
 };
 
@@ -25,11 +25,6 @@ use std::{
     path::Path,
     ptr::null_mut,
 };
-
-extern "C" {
-    #[no_mangle]
-    fn GetString(max_len: c_int, echo: c_int) -> *mut c_char;
-}
 
 #[repr(C)]
 pub struct HighscoreEntry {

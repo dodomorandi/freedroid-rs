@@ -103,3 +103,13 @@ pub unsafe extern "C" fn PutCharFont(
 pub extern "C" fn CharWidth(font: &BFontInfo, c: c_int) -> c_int {
     font.chars[usize::try_from(c).unwrap()].w.into()
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn PutString(
+    surface: *mut SDL_Surface,
+    x: c_int,
+    y: c_int,
+    text: *const c_char,
+) {
+    PutStringFont(surface, CurrentFont, x, y, text);
+}
