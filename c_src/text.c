@@ -301,68 +301,68 @@ ScrollText (char *Text, SDL_Rect *rect, int SecondsMinimumDuration )
  *       FALSE if not (used by ScrollText to know if Text has been scrolled
  *             out of clip-rect completely)
  *-----------------------------------------------------------------*/
-int
-DisplayText (const char *Text, int startx, int starty, const SDL_Rect *clip)
-{
-  const char *tmp;	/* Beweg. Zeiger auf aktuelle Position im Ausgabe-Text */
-  SDL_Rect Temp_Clipping_Rect; // adding this to prevent segfault in case of NULL as parameter
-  SDL_Rect store_clip;
-
-  if ( Text == NULL ) {
-    return FALSE;
-  }
-
-  if ( startx != -1 ) MyCursorX = startx;
-  if ( starty != -1 ) MyCursorY = starty;
-
-  SDL_GetClipRect (ne_screen, &store_clip);  /* store previous clip-rect */
-  if (clip)
-    SDL_SetClipRect (ne_screen, clip);
-  else
-    {
-      clip = & Temp_Clipping_Rect;
-      Temp_Clipping_Rect.x=0;
-      Temp_Clipping_Rect.y=0;
-      Temp_Clipping_Rect.w=Screen_Rect.w;
-      Temp_Clipping_Rect.h=Screen_Rect.h;
-    }
-
-  tmp = Text;			/* running text-pointer */
-
-  while ( *tmp && (MyCursorY < clip->y + clip->h) )
-    {
-      if ( *tmp == '\n' )
-	{
-	  MyCursorX = clip->x;
-	  MyCursorY += FontHeight ( GetCurrentFont() ) * TEXT_STRETCH;
-	}
-      else
-	DisplayChar (*tmp);
-
-      tmp++;
-
-      if (clip && linebreak_needed (tmp, clip))
-	{
-	  tmp ++;  // skip the space when doing line-breaks !
-	  MyCursorX = clip->x;
-	  MyCursorY += FontHeight (GetCurrentFont()) * TEXT_STRETCH;
-	}
-
-
-    } // while !FensterVoll()
-
-   SDL_SetClipRect (ne_screen, &store_clip); /* restore previous clip-rect */
-
-  /*
-   * ScrollText() wants to know if we still wrote something inside the
-   * clip-rectangle, of if the Text has been scrolled out
-   */
-   if ( clip && ((MyCursorY < clip->y) || (starty > clip->y + clip->h) ))
-     return FALSE;  /* no text was written inside clip */
-   else
-     return TRUE;
-
-} // DisplayText(...)
+// int
+// DisplayText (const char *Text, int startx, int starty, const SDL_Rect *clip)
+// {
+//   const char *tmp;	/* Beweg. Zeiger auf aktuelle Position im Ausgabe-Text */
+//   SDL_Rect Temp_Clipping_Rect; // adding this to prevent segfault in case of NULL as parameter
+//   SDL_Rect store_clip;
+// 
+//   if ( Text == NULL ) {
+//     return FALSE;
+//   }
+// 
+//   if ( startx != -1 ) MyCursorX = startx;
+//   if ( starty != -1 ) MyCursorY = starty;
+// 
+//   SDL_GetClipRect (ne_screen, &store_clip);  /* store previous clip-rect */
+//   if (clip)
+//     SDL_SetClipRect (ne_screen, clip);
+//   else
+//     {
+//       clip = & Temp_Clipping_Rect;
+//       Temp_Clipping_Rect.x=0;
+//       Temp_Clipping_Rect.y=0;
+//       Temp_Clipping_Rect.w=Screen_Rect.w;
+//       Temp_Clipping_Rect.h=Screen_Rect.h;
+//     }
+// 
+//   tmp = Text;			/* running text-pointer */
+// 
+//   while ( *tmp && (MyCursorY < clip->y + clip->h) )
+//     {
+//       if ( *tmp == '\n' )
+// 	{
+// 	  MyCursorX = clip->x;
+// 	  MyCursorY += FontHeight ( GetCurrentFont() ) * TEXT_STRETCH;
+// 	}
+//       else
+// 	DisplayChar (*tmp);
+// 
+//       tmp++;
+// 
+//       if (clip && linebreak_needed (tmp, clip))
+// 	{
+// 	  tmp ++;  // skip the space when doing line-breaks !
+// 	  MyCursorX = clip->x;
+// 	  MyCursorY += FontHeight (GetCurrentFont()) * TEXT_STRETCH;
+// 	}
+// 
+// 
+//     } // while !FensterVoll()
+// 
+//    SDL_SetClipRect (ne_screen, &store_clip); /* restore previous clip-rect */
+// 
+//   /*
+//    * ScrollText() wants to know if we still wrote something inside the
+//    * clip-rectangle, of if the Text has been scrolled out
+//    */
+//    if ( clip && ((MyCursorY < clip->y) || (starty > clip->y + clip->h) ))
+//      return FALSE;  /* no text was written inside clip */
+//    else
+//      return TRUE;
+// 
+// } // DisplayText(...)
 
 /*-----------------------------------------------------------------
  * @Desc: This function displays a char.  It uses Menu_BFont now

@@ -2,6 +2,7 @@ use crate::{
     b_font::{CharWidth, FontHeight, GetCurrentFont, PutString},
     defs::{
         Cmds, DownPressedR, FirePressedR, LeftPressedR, PointerStates, RightPressedR, UpPressedR,
+        TEXT_STRETCH,
     },
     global::{joy_num_axes, joy_sensitivity, ne_screen, Screen_Rect},
     graphics::vid_bpp,
@@ -28,22 +29,21 @@ use sdl::{
 use std::{
     convert::{TryFrom, TryInto},
     ffi::{CStr, VaList},
-    os::raw::{c_char, c_int},
+    os::raw::{c_char, c_int, c_uchar},
     ptr::null_mut,
 };
 
 extern "C" {
-    pub fn DisplayText(
-        text: *const c_char,
-        startx: c_int,
-        starty: c_int,
-        clip: *const SDL_Rect,
-    ) -> c_int;
     static mut MyCursorX: c_int;
     static mut MyCursorY: c_int;
     static mut TextBuffer: [c_char; 10000];
     fn SDL_PushEvent(event: *mut SDL_Event) -> c_int;
+    fn SDL_GetClipRect(surface: *mut SDL_Surface, rect: *mut SDL_Rect);
+    fn SDL_SetClipRect(surface: *mut SDL_Surface, rect: *const SDL_Rect) -> bool;
     fn vsprintf(str: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
+    fn linebreak_needed(textpos: *const c_char, clip: *const SDL_Rect) -> bool;
+    fn DisplayChar(c: c_uchar);
+
 }
 
 #[cfg(feature = "arcade-input")]
@@ -357,5 +357,81 @@ pub unsafe extern "C" fn printf_SDL(
     } else {
         MyCursorX += textlen;
         MyCursorY = y;
+    }
+}
+
+/// Prints *Text beginning at positions startx/starty,
+/// and respecting the text-borders set by clip_rect
+/// -> this includes clipping but also automatic line-breaks
+/// when end-of-line is reached
+///
+/// if startx/y == -1, write at current position, given by MyCursorX/Y.
+/// if clip_rect==NULL, no clipping is performed
+///
+/// NOTE: the previous clip-rectange is restored before the function returns!
+/// NOTE2: this function _does not_ update the screen
+///
+/// Return TRUE if some characters where written inside the clip rectangle,
+/// FALSE if not (used by ScrollText to know if Text has been scrolled
+/// out of clip-rect completely)
+
+#[no_mangle]
+pub unsafe extern "C" fn DisplayText(
+    text: *const c_char,
+    startx: c_int,
+    starty: c_int,
+    mut clip: *const SDL_Rect,
+) -> c_int {
+    if text.is_null() {
+        return false as c_int;
+    }
+
+    if startx != -1 {
+        MyCursorX = startx;
+    }
+    if starty != -1 {
+        MyCursorY = starty;
+    }
+
+    let mut store_clip = Rect::new(0, 0, 0, 0);
+    let mut temp_clipping_rect;
+    SDL_GetClipRect(ne_screen, &mut store_clip); /* store previous clip-rect */
+    if !clip.is_null() {
+        SDL_SetClipRect(ne_screen, clip);
+    } else {
+        temp_clipping_rect = Rect::new(0, 0, Screen_Rect.w, Screen_Rect.h);
+        clip = &mut temp_clipping_rect;
+    }
+
+    let mut tmp = text; /* running text-pointer */
+
+    let clip = &*clip;
+    while *tmp != 0 && MyCursorY < c_int::from(clip.y) + c_int::from(clip.h) {
+        if *tmp == b'\n' as c_char {
+            MyCursorX = clip.x.into();
+            MyCursorY += (f64::from(FontHeight(&*GetCurrentFont())) * TEXT_STRETCH) as c_int;
+        } else {
+            DisplayChar(*tmp as c_uchar);
+        }
+
+        tmp = tmp.add(1);
+
+        if linebreak_needed(tmp, clip) {
+            tmp = tmp.add(1); // skip the space when doing line-breaks !
+            MyCursorX = clip.x.into();
+            MyCursorY += (f64::from(FontHeight(&*GetCurrentFont())) * TEXT_STRETCH) as c_int;
+        }
+    } // while !FensterVoll()
+
+    SDL_SetClipRect(ne_screen, &store_clip); /* restore previous clip-rect */
+
+    /*
+     * ScrollText() wants to know if we still wrote something inside the
+     * clip-rectangle, of if the Text has been scrolled out
+     */
+    if MyCursorY < clip.y.into() || starty > c_int::from(clip.y) + c_int::from(clip.h) {
+        false as c_int
+    } else {
+        true as c_int
     }
 }
