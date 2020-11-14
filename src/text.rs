@@ -86,9 +86,9 @@ pub unsafe extern "C" fn GetString(max_len: c_int, echo: c_int) -> *mut c_char {
     #[cfg(feature = "arcade-input")]
     let blink_time = 200; // For adjusting fast <->slow blink; in ms
     #[cfg(feature = "arcade-input")]
-    static mut last_frame_time: u32 = 0; //  = SDL_GetTicks();
+    static mut LAST_FRAME_TIME: u32 = 0; //  = SDL_GetTicks();
     #[cfg(feature = "arcade-input")]
-    let mut inputchar = 17; // initial char = A
+    let mut inputchar: c_int = 17; // initial char = A
     #[cfg(feature = "arcade-input")]
     let empty_char = b' ' as c_char; //for "empty" input line / backspace etc...
 
@@ -110,18 +110,18 @@ pub unsafe extern "C" fn GetString(max_len: c_int, echo: c_int) -> *mut c_char {
         #[cfg(feature = "arcade-input")]
         {
             if inputchar < 0 {
-                inputchar += ARCADE_INPUT_CHARS.len();
+                inputchar += ARCADE_INPUT_CHARS.len() as i32;
             }
-            if inputchar >= ARCADE_INPUT_CHARS.len() {
-                inputchar -= ARCADE_INPUT_CHARS.len();
+            if inputchar >= ARCADE_INPUT_CHARS.len() as i32 {
+                inputchar -= ARCADE_INPUT_CHARS.len() as i32;
             }
             let key = ARCADE_INPUT_CHARS[usize::try_from(inputchar).unwrap()];
 
-            let frame_duration = SDL_GetTicks() - last_frame_time;
+            let frame_duration = SDL_GetTicks() - LAST_FRAME_TIME;
             if frame_duration > blink_time / 2 {
                 input[curpos] = key.try_into().unwrap(); // We want to show the currently chosen character
                 if frame_duration > blink_time {
-                    last_frame_time = SDL_GetTicks();
+                    LAST_FRAME_TIME = SDL_GetTicks();
                 } else {
                     input[curpos] = empty_char; // Hmm., how to get character widht? If using '.', or any fill character, we'd need to know
                 }
