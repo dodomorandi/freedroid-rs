@@ -81,7 +81,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "freedroid-rs"
+name = "freedroid"
 version = "0.1.0"
 dependencies = [
  "bitflags",
