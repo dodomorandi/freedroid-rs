@@ -5,22 +5,11 @@ use crate::global::ne_screen;
 use std::os::raw::c_int;
 
 extern "C" {
-    #[no_mangle]
     pub fn SDL_Delay(ms: u32);
-
-    #[no_mangle]
     pub fn update_input() -> c_int;
-
-    #[no_mangle]
     pub static mut input_state: [c_int; PointerStates::Last as usize];
-
-    #[no_mangle]
     pub fn KeyIsPressedR(key: c_int) -> bool;
-
-    #[no_mangle]
     pub fn cmd_is_activeR(command: Cmds) -> bool;
-
-    #[no_mangle]
     pub fn cmd_is_active(command: Cmds) -> bool;
 }
 

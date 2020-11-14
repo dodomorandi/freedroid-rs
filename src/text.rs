@@ -33,27 +33,16 @@ use std::{
 };
 
 extern "C" {
-    #[no_mangle]
     pub fn DisplayText(
         text: *const c_char,
         startx: c_int,
         starty: c_int,
         clip: *const SDL_Rect,
     ) -> c_int;
-
-    #[no_mangle]
     static mut MyCursorX: c_int;
-
-    #[no_mangle]
     static mut MyCursorY: c_int;
-
-    #[no_mangle]
     static mut TextBuffer: [c_char; 10000];
-
-    #[no_mangle]
     fn SDL_PushEvent(event: *mut SDL_Event) -> c_int;
-
-    #[no_mangle]
     fn vsprintf(str: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
 }
 

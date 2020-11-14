@@ -3,7 +3,6 @@ use crate::defs::Sound;
 use std::os::raw::c_int;
 
 extern "C" {
-    #[no_mangle]
     pub fn Play_Sound(tune: c_int);
 }
 

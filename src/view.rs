@@ -40,7 +40,6 @@ use std::{
 };
 
 extern "C" {
-    #[no_mangle]
     pub fn rotozoomSurface(
         src: *mut SDL_Surface,
         angle: c_double,

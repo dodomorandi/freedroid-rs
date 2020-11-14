@@ -8,16 +8,9 @@ use std::{
 };
 
 extern "C" {
-    #[no_mangle]
     pub static mut Highscore_BFont: *mut BFontInfo;
-
-    #[no_mangle]
     pub static mut Para_BFont: *mut BFontInfo;
-
-    #[no_mangle]
     pub static mut CurrentFont: *mut BFontInfo;
-
-    #[no_mangle]
     pub fn PrintStringFont(
         surface: *mut SDL_Surface,
         font: *mut BFontInfo,
