@@ -569,93 +569,93 @@ update_input (void)
  * Return: the (SDLKey) of the next key-pressed event cast to (int)
  *
  *-----------------------------------------------------------------*/
-int
-getchar_raw (void)
-{
-  SDL_Event event;
-  int Returnkey = 0;
-  Uint8 axis = 0;
-
-  //  keyboard_update ();   /* treat all pending keyboard-events */
-
-  while ( !Returnkey )
-    {
-      SDL_WaitEvent (&event);    /* wait for next event */
-
-      switch (event.type)
-	{
-	case SDL_KEYDOWN:
-	  /*
-	   * here we use the fact that, I cite from SDL_keyboard.h:
-	   * "The keyboard syms have been cleverly chosen to map to ASCII"
-	   * ... I hope that this design feature is portable, and durable ;)
-	   */
-	  Returnkey = (int) event.key.keysym.sym;
-	  if ( event.key.keysym.mod & KMOD_SHIFT )
-	    Returnkey = toupper( (int)event.key.keysym.sym );
-	  break;
-
-	case SDL_JOYBUTTONDOWN:
-	  if (event.jbutton.button == 0)
-	    Returnkey = JOY_BUTTON1;
-	  else if (event.jbutton.button == 1)
-	    Returnkey = JOY_BUTTON2;
-	  else if (event.jbutton.button == 2)
-	    Returnkey = JOY_BUTTON3;
-          else if (event.jbutton.button == 3)
-	    Returnkey = JOY_BUTTON4;
-	  break;
-
-        case SDL_JOYAXISMOTION:
-	  axis = event.jaxis.axis;
-          if (axis == 0 || ((joy_num_axes >= 5) && (axis == 3)) ) /* x-axis */
-	    {
-	      if (joy_sensitivity*event.jaxis.value > 10000)   /* about half tilted */
-		{
-		  Returnkey = JOY_RIGHT;
-		}
-	      else if (joy_sensitivity*event.jaxis.value < -10000)
-		{
-		  Returnkey = JOY_LEFT;
-		}
-            }
-          else if ((axis == 1) || ((joy_num_axes >=5) && (axis == 4))) /* y-axis */
-	    {
-	      if (joy_sensitivity*event.jaxis.value > 10000)
-		{
-		  Returnkey = JOY_DOWN;
-		}
-	      else if (joy_sensitivity*event.jaxis.value < -10000)
-		{
-                  Returnkey = JOY_UP;
-		}
-            }
-          break;
-
-	case SDL_MOUSEBUTTONDOWN:
-	  if (event.button.button == SDL_BUTTON_LEFT)
-	    Returnkey = MOUSE_BUTTON1;
-	  else if (event.button.button == SDL_BUTTON_RIGHT)
-	    Returnkey = MOUSE_BUTTON2;
-	  else if (event.button.button == SDL_BUTTON_MIDDLE)
-	    Returnkey = MOUSE_BUTTON3;
-	  else if (event.button.button == SDL_BUTTON_WHEELUP)
-	    Returnkey = MOUSE_WHEELUP;
-	  else if (event.button.button == SDL_BUTTON_WHEELDOWN)
-	    Returnkey = MOUSE_WHEELDOWN;
-	  break;
-
-	default:
-	  SDL_PushEvent (&event);  /* put this event back into the queue */
-	  update_input ();  /* and treat it the usual way */
-	  continue;
-	}
-
-    } /* while(1) */
-
-  return ( Returnkey );
-
-} /* getchar_raw() */
+// int
+// getchar_raw (void)
+// {
+//   SDL_Event event;
+//   int Returnkey = 0;
+//   Uint8 axis = 0;
+// 
+//   //  keyboard_update ();   /* treat all pending keyboard-events */
+// 
+//   while ( !Returnkey )
+//     {
+//       SDL_WaitEvent (&event);    /* wait for next event */
+// 
+//       switch (event.type)
+// 	{
+// 	case SDL_KEYDOWN:
+// 	  /*
+// 	   * here we use the fact that, I cite from SDL_keyboard.h:
+// 	   * "The keyboard syms have been cleverly chosen to map to ASCII"
+// 	   * ... I hope that this design feature is portable, and durable ;)
+// 	   */
+// 	  Returnkey = (int) event.key.keysym.sym;
+// 	  if ( event.key.keysym.mod & KMOD_SHIFT )
+// 	    Returnkey = toupper( (int)event.key.keysym.sym );
+// 	  break;
+// 
+// 	case SDL_JOYBUTTONDOWN:
+// 	  if (event.jbutton.button == 0)
+// 	    Returnkey = JOY_BUTTON1;
+// 	  else if (event.jbutton.button == 1)
+// 	    Returnkey = JOY_BUTTON2;
+// 	  else if (event.jbutton.button == 2)
+// 	    Returnkey = JOY_BUTTON3;
+//           else if (event.jbutton.button == 3)
+// 	    Returnkey = JOY_BUTTON4;
+// 	  break;
+// 
+//         case SDL_JOYAXISMOTION:
+// 	  axis = event.jaxis.axis;
+//           if (axis == 0 || ((joy_num_axes >= 5) && (axis == 3)) ) /* x-axis */
+// 	    {
+// 	      if (joy_sensitivity*event.jaxis.value > 10000)   /* about half tilted */
+// 		{
+// 		  Returnkey = JOY_RIGHT;
+// 		}
+// 	      else if (joy_sensitivity*event.jaxis.value < -10000)
+// 		{
+// 		  Returnkey = JOY_LEFT;
+// 		}
+//             }
+//           else if ((axis == 1) || ((joy_num_axes >=5) && (axis == 4))) /* y-axis */
+// 	    {
+// 	      if (joy_sensitivity*event.jaxis.value > 10000)
+// 		{
+// 		  Returnkey = JOY_DOWN;
+// 		}
+// 	      else if (joy_sensitivity*event.jaxis.value < -10000)
+// 		{
+//                   Returnkey = JOY_UP;
+// 		}
+//             }
+//           break;
+// 
+// 	case SDL_MOUSEBUTTONDOWN:
+// 	  if (event.button.button == SDL_BUTTON_LEFT)
+// 	    Returnkey = MOUSE_BUTTON1;
+// 	  else if (event.button.button == SDL_BUTTON_RIGHT)
+// 	    Returnkey = MOUSE_BUTTON2;
+// 	  else if (event.button.button == SDL_BUTTON_MIDDLE)
+// 	    Returnkey = MOUSE_BUTTON3;
+// 	  else if (event.button.button == SDL_BUTTON_WHEELUP)
+// 	    Returnkey = MOUSE_WHEELUP;
+// 	  else if (event.button.button == SDL_BUTTON_WHEELDOWN)
+// 	    Returnkey = MOUSE_WHEELDOWN;
+// 	  break;
+// 
+// 	default:
+// 	  SDL_PushEvent (&event);  /* put this event back into the queue */
+// 	  update_input ();  /* and treat it the usual way */
+// 	  continue;
+// 	}
+// 
+//     } /* while(1) */
+// 
+//   return ( Returnkey );
+// 
+// } /* getchar_raw() */
 
 // forget the wheel-counters
 void

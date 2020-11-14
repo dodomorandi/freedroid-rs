@@ -1,15 +1,24 @@
 use crate::{
     b_font::{FontHeight, GetCurrentFont, PutString},
-    defs::{Cmds, DownPressedR, FirePressedR, LeftPressedR, RightPressedR, UpPressedR},
-    global::{ne_screen, Screen_Rect},
+    defs::{
+        Cmds, DownPressedR, FirePressedR, LeftPressedR, PointerStates, RightPressedR, UpPressedR,
+    },
+    global::{joy_num_axes, joy_sensitivity, ne_screen, Screen_Rect},
     graphics::vid_bpp,
-    input::{cmd_is_activeR, KeyIsPressedR},
+    input::{cmd_is_activeR, update_input, KeyIsPressedR},
 };
 
 use log::{error, info};
 #[cfg(not(feature = "arcade-input"))]
 use sdl::keysym::SDLK_DELETE;
 use sdl::{
+    event::{
+        ll::{
+            SDLMod, SDL_Event, SDL_WaitEvent, SDL_JOYAXISMOTION, SDL_JOYBUTTONDOWN, SDL_KEYDOWN,
+            SDL_MOUSEBUTTONDOWN,
+        },
+        Mod, MouseState,
+    },
     keysym::{SDLK_BACKSPACE, SDLK_RETURN},
     sdl::{ll::SDL_GetTicks, Rect},
     video::ll::{SDL_CreateRGBSurface, SDL_Flip, SDL_Rect, SDL_Surface, SDL_UpperBlit},
@@ -40,7 +49,7 @@ extern "C" {
     static mut MyCursorY: c_int;
 
     #[no_mangle]
-    pub fn getchar_raw() -> c_int;
+    fn SDL_PushEvent(event: *mut SDL_Event) -> c_int;
 }
 
 #[cfg(feature = "arcade-input")]
@@ -201,4 +210,100 @@ pub unsafe extern "C" fn GetString(max_len: c_int, echo: c_int) -> *mut c_char {
     );
 
     Box::into_raw(input) as *mut c_char
+}
+
+/// Should do roughly what getchar() does, but in raw (SLD) keyboard mode.
+///
+/// Return the (SDLKey) of the next key-pressed event cast to
+#[no_mangle]
+pub unsafe extern "C" fn getchar_raw() -> c_int {
+    let mut event = SDL_Event {
+        data: Default::default(),
+    };
+    let mut return_key = 0 as c_int;
+
+    loop {
+        SDL_WaitEvent(&mut event); /* wait for next event */
+
+        match u32::from(*event._type()) {
+            SDL_KEYDOWN => {
+                /*
+                 * here we use the fact that, I cite from SDL_keyboard.h:
+                 * "The keyboard syms have been cleverly chosen to map to ASCII"
+                 * ... I hope that this design feature is portable, and durable ;)
+                 */
+                let key = &*event.key();
+                return_key = key.keysym.sym as c_int;
+                const SHIFT: SDLMod = Mod::LShift as SDLMod | Mod::RShift as SDLMod;
+                if key.keysym._mod & SHIFT != 0 {
+                    return_key = u8::try_from(key.keysym.sym as u32)
+                        .unwrap()
+                        .to_ascii_uppercase()
+                        .into();
+                }
+            }
+
+            SDL_JOYBUTTONDOWN => {
+                let jbutton = &*event.jbutton();
+                if jbutton.button == 0 {
+                    return_key = PointerStates::JoyButton1 as c_int;
+                } else if jbutton.button == 1 {
+                    return_key = PointerStates::JoyButton2 as c_int;
+                } else if jbutton.button == 2 {
+                    return_key = PointerStates::JoyButton3 as c_int;
+                } else if jbutton.button == 3 {
+                    return_key = PointerStates::JoyButton4 as c_int;
+                }
+            }
+
+            SDL_JOYAXISMOTION => {
+                let jaxis = &*event.jaxis();
+                let axis = jaxis.axis;
+                if axis == 0 || ((joy_num_axes >= 5) && (axis == 3))
+                /* x-axis */
+                {
+                    if joy_sensitivity * i32::from(jaxis.value) > 10000
+                    /* about half tilted */
+                    {
+                        return_key = PointerStates::JoyRight as c_int;
+                    } else if joy_sensitivity * i32::from(jaxis.value) < -10000 {
+                        return_key = PointerStates::JoyLeft as c_int;
+                    }
+                } else if (axis == 1) || ((joy_num_axes >= 5) && (axis == 4))
+                /* y-axis */
+                {
+                    if joy_sensitivity * i32::from(jaxis.value) > 10000 {
+                        return_key = PointerStates::JoyDown as c_int;
+                    } else if joy_sensitivity * i32::from(jaxis.value) < -10000 {
+                        return_key = PointerStates::JoyUp as c_int;
+                    }
+                }
+            }
+
+            SDL_MOUSEBUTTONDOWN => {
+                let button = &*event.button();
+                if button.button == MouseState::Left as u8 {
+                    return_key = PointerStates::MouseButton1 as c_int;
+                } else if button.button == MouseState::Right as u8 {
+                    return_key = PointerStates::MouseButton2 as c_int;
+                } else if button.button == MouseState::Middle as u8 {
+                    return_key = PointerStates::MouseButton3 as c_int;
+                } else if button.button == MouseState::WheelUp as u8 {
+                    return_key = PointerStates::MouseWheelup as c_int;
+                } else if button.button == MouseState::WheelDown as u8 {
+                    return_key = PointerStates::MouseWheeldown as c_int;
+                }
+            }
+
+            _ => {
+                SDL_PushEvent(&mut event); /* put this event back into the queue */
+                update_input(); /* and treat it the usual way */
+                continue;
+            }
+        }
+
+        if return_key != 0 {
+            break return_key;
+        }
+    }
 }
