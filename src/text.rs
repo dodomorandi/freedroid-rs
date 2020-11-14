@@ -1,5 +1,5 @@
 use crate::{
-    b_font::{FontHeight, GetCurrentFont, PutString},
+    b_font::{CharWidth, FontHeight, GetCurrentFont, PutString},
     defs::{
         Cmds, DownPressedR, FirePressedR, LeftPressedR, PointerStates, RightPressedR, UpPressedR,
     },
@@ -21,11 +21,13 @@ use sdl::{
     },
     keysym::{SDLK_BACKSPACE, SDLK_RETURN},
     sdl::{ll::SDL_GetTicks, Rect},
-    video::ll::{SDL_CreateRGBSurface, SDL_Flip, SDL_Rect, SDL_Surface, SDL_UpperBlit},
+    video::ll::{
+        SDL_CreateRGBSurface, SDL_Flip, SDL_Rect, SDL_Surface, SDL_UpdateRect, SDL_UpperBlit,
+    },
 };
 use std::{
     convert::{TryFrom, TryInto},
-    ffi::CStr,
+    ffi::{CStr, VaList},
     os::raw::{c_char, c_int},
     ptr::null_mut,
 };
@@ -40,16 +42,19 @@ extern "C" {
     ) -> c_int;
 
     #[no_mangle]
-    pub fn printf_SDL(screen: *mut SDL_Surface, x: c_int, y: c_int, fmt: *mut c_char, ...);
-
-    #[no_mangle]
     static mut MyCursorX: c_int;
 
     #[no_mangle]
     static mut MyCursorY: c_int;
 
     #[no_mangle]
+    static mut TextBuffer: [c_char; 10000];
+
+    #[no_mangle]
     fn SDL_PushEvent(event: *mut SDL_Event) -> c_int;
+
+    #[no_mangle]
+    fn vsprintf(str: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
 }
 
 #[cfg(feature = "arcade-input")]
@@ -305,5 +310,63 @@ pub unsafe extern "C" fn getchar_raw() -> c_int {
         if return_key != 0 {
             break return_key;
         }
+    }
+}
+
+/// Behaves similarly as gl_printf() of svgalib, using the BFont
+/// print function PrintString().
+///
+///  sets current position of MyCursor[XY],
+///     if last char is '\n': to same x, next line y
+///     to end of string otherwise
+///
+/// Added functionality to PrintString() is:
+///  o) passing -1 as coord uses previous x and next-line y for printing
+///  o) Screen is updated immediatly after print, using SDL_flip()
+#[no_mangle]
+pub unsafe extern "C" fn printf_SDL(
+    screen: *mut SDL_Surface,
+    mut x: c_int,
+    mut y: c_int,
+    fmt: *mut c_char,
+    args: ...
+) {
+    let mut args = args.clone();
+    if x == -1 {
+        x = MyCursorX;
+    } else {
+        MyCursorX = x;
+    }
+
+    if y == -1 {
+        y = MyCursorY;
+    } else {
+        MyCursorY = y;
+    }
+
+    assert!(vsprintf(TextBuffer.as_mut_ptr(), fmt, args.as_va_list()) >= 0);
+    let text_buffer = CStr::from_ptr(TextBuffer.as_mut_ptr()).to_bytes();
+    let textlen: c_int = text_buffer
+        .iter()
+        .map(|&c| CharWidth(&*GetCurrentFont(), c.into()))
+        .sum();
+
+    PutString(screen, x, y, TextBuffer.as_mut_ptr());
+    let h = FontHeight(&*GetCurrentFont()) + 2;
+
+    SDL_UpdateRect(
+        screen,
+        x,
+        y,
+        textlen.try_into().unwrap(),
+        h.try_into().unwrap(),
+    ); // update the relevant line
+
+    if *text_buffer.last().unwrap() == b'\n' {
+        MyCursorX = x;
+        MyCursorY = (f64::from(y) + 1.1 * f64::from(h)) as c_int;
+    } else {
+        MyCursorX += textlen;
+        MyCursorY = y;
     }
 }

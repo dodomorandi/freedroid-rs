@@ -1,3 +1,5 @@
+#![feature(c_variadic)]
+
 mod b_font;
 mod defs;
 mod global;
