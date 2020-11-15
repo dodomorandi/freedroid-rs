@@ -23,7 +23,6 @@ use std::{convert::TryFrom, os::raw::c_int};
 extern "C" {
     pub fn SDL_Delay(ms: u32);
     pub static mut input_state: [c_int; PointerStates::Last as usize];
-    pub fn KeyIsPressedR(key: c_int) -> bool;
     pub fn cmd_is_activeR(command: Cmds) -> bool;
     pub fn cmd_is_active(command: Cmds) -> bool;
     pub fn wait_for_all_keys_released();
@@ -267,4 +266,25 @@ pub unsafe extern "C" fn update_input() -> c_int {
     }
 
     0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn KeyIsPressed(key: c_int) -> bool {
+    update_input();
+
+    (input_state[usize::try_from(key).unwrap()] & PRESSED) == PRESSED
+}
+
+/// Does the same as KeyIsPressed, but automatically releases the key as well..
+#[no_mangle]
+pub unsafe extern "C" fn KeyIsPressedR(key: c_int) -> bool {
+    let ret = KeyIsPressed(key);
+
+    ReleaseKey(key);
+    ret
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ReleaseKey(key: c_int) {
+    input_state[usize::try_from(key).unwrap()] = false.into();
 }

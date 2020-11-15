@@ -685,33 +685,33 @@ WheelDownPressed (void)
     return (FALSE);
 }
 
-bool
-KeyIsPressed (int key)
-{
-  update_input();
-
-  return( (input_state[key] & PRESSED) == PRESSED );
-}
+// bool
+// KeyIsPressed (int key)
+// {
+//   update_input();
+// 
+//   return( (input_state[key] & PRESSED) == PRESSED );
+// }
 
 
 // does the same as KeyIsPressed, but automatically releases the key as well..
-bool
-KeyIsPressedR (int key)
-{
-  bool ret;
+// bool
+// KeyIsPressedR (int key)
+// {
+//   bool ret;
+// 
+//   ret = KeyIsPressed (key);
+// 
+//   ReleaseKey (key);
+//   return (ret);
+// }
 
-  ret = KeyIsPressed (key);
-
-  ReleaseKey (key);
-  return (ret);
-}
-
-void
-ReleaseKey (int key)
-{
-  input_state[key] = FALSE;
-  return;
-}
+// void
+// ReleaseKey (int key)
+// {
+//   input_state[key] = FALSE;
+//   return;
+// }
 
 void
 wait_for_all_keys_released (void)
