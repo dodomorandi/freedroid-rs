@@ -1040,34 +1040,34 @@ Teleport (int LNum, int X, int Y)
 
 @Ret:
 * $Function----------------------------------------------------------*/
-void
-Terminate (int ExitCode)
-{
-  DebugPrintf(0,"\n----------------------------------------------------------------------");
-  DebugPrintf(0,"\nTermination of Freedroid initiated...");
-
-  if (ExitCode == OK)
-    {
-      DebugPrintf (2, "Writing config file\n");
-      SaveGameConfig ();
-      DebugPrintf (2, "Writing highscores to disk\n");
-      SaveHighscores ();
-    }
-
-  // ----- free memory
-  FreeShipMemory();
-  FreeDroidPics();
-  FreeGraphics();
-  FreeSounds();
-  FreeMenuData();
-  FreeGameMem();
-
-  // ----- exit
-  DebugPrintf(0, "Thank you for playing Freedroid.\n\n");
-  SDL_Quit();
-  exit (ExitCode);
-  return;
-}  // void Terminate(int ExitCode)
+// void
+// Terminate (int ExitCode)
+// {
+//   DebugPrintf(0,"\n----------------------------------------------------------------------");
+//   DebugPrintf(0,"\nTermination of Freedroid initiated...");
+// 
+//   if (ExitCode == OK)
+//     {
+//       DebugPrintf (2, "Writing config file\n");
+//       SaveGameConfig ();
+//       DebugPrintf (2, "Writing highscores to disk\n");
+//       SaveHighscores ();
+//     }
+// 
+//   // ----- free memory
+//   FreeShipMemory();
+//   FreeDroidPics();
+//   FreeGraphics();
+//   FreeSounds();
+//   FreeMenuData();
+//   FreeGameMem();
+// 
+//   // ----- exit
+//   DebugPrintf(0, "Thank you for playing Freedroid.\n\n");
+//   SDL_Quit();
+//   exit (ExitCode);
+//   return;
+// }  // void Terminate(int ExitCode)
 
 
 /*@Function============================================================

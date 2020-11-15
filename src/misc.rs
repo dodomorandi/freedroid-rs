@@ -1,21 +1,35 @@
-use crate::global::{
-    ne_screen, progress_filler_pic, FPSover1, ProgressBar_Rect, ProgressMeter_Rect, SkipAFewFrames,
+use crate::{
+    defs,
+    global::{
+        ne_screen, progress_filler_pic, FPSover1, ProgressBar_Rect, ProgressMeter_Rect,
+        SkipAFewFrames,
+    },
+    graphics::FreeGraphics,
+    highscore::SaveHighscores,
+    init::FreeGameMem,
+    map::FreeShipMemory,
+    menu::FreeMenuData,
+    ship::FreeDroidPics,
+    sound::FreeSounds,
 };
 
+use log::info;
 use once_cell::sync::Lazy;
 use sdl::{
-    sdl::Rect,
+    sdl::{ll::SDL_Quit, Rect},
     video::ll::{SDL_UpdateRects, SDL_UpperBlit},
 };
 use std::{
     os::raw::{c_float, c_int},
+    process,
     sync::RwLock,
 };
 
 extern "C" {
-    pub fn Terminate(ExitCode: c_int);
     pub fn MyRandom(upper_bound: c_int) -> c_int;
     pub fn Pause();
+    pub fn SaveGameConfig() -> c_int;
+
 }
 
 static CURRENT_TIME_FACTOR: Lazy<RwLock<f32>> = Lazy::new(|| RwLock::new(1.));
@@ -71,4 +85,31 @@ pub unsafe extern "C" fn Frame_Time() -> c_float {
 #[no_mangle]
 pub unsafe extern "C" fn set_time_factor(time_factor: c_float) {
     *CURRENT_TIME_FACTOR.write().unwrap() = time_factor;
+}
+
+/// This function is used for terminating freedroid.  It will close
+/// the SDL submodules and exit.
+#[no_mangle]
+pub unsafe extern "C" fn Terminate(exit_code: c_int) -> ! {
+    info!("Termination of Freedroid initiated.");
+
+    if exit_code == defs::OK.into() {
+        info!("Writing config file");
+        SaveGameConfig();
+        info!("Writing highscores to disk");
+        SaveHighscores();
+    }
+
+    // ----- free memory
+    FreeShipMemory();
+    FreeDroidPics();
+    FreeGraphics();
+    FreeSounds();
+    FreeMenuData();
+    FreeGameMem();
+
+    // ----- exit
+    info!("Thank you for playing Freedroid.");
+    SDL_Quit();
+    process::exit(exit_code);
 }

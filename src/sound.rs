@@ -16,6 +16,7 @@ extern "C" {
     ) -> c_int;
     static mut Loaded_WAV_Files: [*mut Mix_Chunk; Sound::All as usize];
     static SoundSampleFilenames: [*mut c_char; Sound::All as usize];
+    pub fn FreeSounds();
 }
 
 #[repr(C)]

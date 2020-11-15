@@ -12,4 +12,5 @@ extern "C" {
     pub static mut vid_bpp: c_int;
     pub fn toggle_fullscreen();
     pub fn TakeScreenshot();
+    pub fn FreeGraphics();
 }

@@ -6,4 +6,5 @@ extern "C" {
     pub fn handle_QuitGame(action: MenuAction) -> *const c_char;
     pub fn showMainMenu();
     pub fn Cheatmenu();
+    pub fn FreeMenuData();
 }
