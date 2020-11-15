@@ -35,7 +35,7 @@ pub unsafe extern "C" fn IsVisible(objpos: &Finepoint) -> c_int {
         y: a_y / step_num,
     };
 
-    let mut testpos = objpos.clone();
+    let mut testpos = *objpos;
 
     let step_num = step_num as i32;
     for _ in 1..step_num {
