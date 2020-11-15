@@ -31,7 +31,7 @@ use sdl::{
 use std::{
     ffi::CStr,
     fs::File,
-    os::raw::{c_char, c_float, c_int},
+    os::raw::{c_char, c_float, c_int, c_long},
     path::Path,
     process,
     ptr::null_mut,
@@ -39,9 +39,10 @@ use std::{
 };
 
 extern "C" {
-    pub fn ComputeFPSForThisFrame();
     pub static mut framenr: c_int;
     pub static mut One_Frame_SDL_Ticks: u32;
+    pub static mut Now_SDL_Ticks: u32;
+    pub static mut oneframedelay: c_long;
 }
 
 static CURRENT_TIME_FACTOR: Lazy<RwLock<f32>> = Lazy::new(|| RwLock::new(1.));
@@ -331,4 +332,29 @@ pub unsafe extern "C" fn StartTakingTimeForFPSCalculation() {
     framenr += 1;
 
     One_Frame_SDL_Ticks = SDL_GetTicks();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ComputeFPSForThisFrame() {
+    // In the following paragraph the framerate calculation is done.
+    // There are basically two ways to do this:
+    // The first way is to use SDL_GetTicks(), a function measuring milliseconds
+    // since the initialisation of the SDL.
+    // The second way is to use gettimeofday, a standard ANSI C function I guess,
+    // defined in time.h or so.
+    //
+    // I have arranged for a definition set in defs.h to switch between the two
+    // methods of ramerate calculation.  THIS MIGHT INDEED MAKE SENSE, SINCE THERE
+    // ARE SOME UNEXPLAINED FRAMERATE PHENOMENA WHICH HAVE TO TO WITH KEYBOARD
+    // SPACE KEY, SO PLEASE DO NOT ERASE EITHER METHOD.  PLEASE ASK JP FIRST.
+    //
+
+    if SkipAFewFrames != 0 {
+        return;
+    }
+
+    Now_SDL_Ticks = SDL_GetTicks();
+    oneframedelay = c_long::from(Now_SDL_Ticks) - c_long::from(One_Frame_SDL_Ticks);
+    oneframedelay = if oneframedelay > 0 { oneframedelay } else { 1 }; // avoid division by zero
+    FPSover1 = (1000. / oneframedelay as f64) as f32;
 }

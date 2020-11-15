@@ -801,31 +801,31 @@ find_file (const char *fname, char *subdir, int use_theme, int critical)
 
 @Ret:
 * $Function----------------------------------------------------------*/
-void
-ComputeFPSForThisFrame(void)
-{
-
-  // In the following paragraph the framerate calculation is done.
-  // There are basically two ways to do this:
-  // The first way is to use SDL_GetTicks(), a function measuring milliseconds
-  // since the initialisation of the SDL.
-  // The second way is to use gettimeofday, a standard ANSI C function I guess,
-  // defined in time.h or so.
-  //
-  // I have arranged for a definition set in defs.h to switch between the two
-  // methods of ramerate calculation.  THIS MIGHT INDEED MAKE SENSE, SINCE THERE
-  // ARE SOME UNEXPLAINED FRAMERATE PHENOMENA WHICH HAVE TO TO WITH KEYBOARD
-  // SPACE KEY, SO PLEASE DO NOT ERASE EITHER METHOD.  PLEASE ASK JP FIRST.
-  //
-
-  if (SkipAFewFrames) return;
-
-  Now_SDL_Ticks = SDL_GetTicks();
-  oneframedelay = Now_SDL_Ticks - One_Frame_SDL_Ticks;
-  oneframedelay = (oneframedelay > 0)? oneframedelay : 1;   // avoid division by zero
-  FPSover1 = 1000.0 / oneframedelay;
-
-} // void ComputeFPSForThisFrame(void)
+// void
+// ComputeFPSForThisFrame(void)
+// {
+// 
+//   // In the following paragraph the framerate calculation is done.
+//   // There are basically two ways to do this:
+//   // The first way is to use SDL_GetTicks(), a function measuring milliseconds
+//   // since the initialisation of the SDL.
+//   // The second way is to use gettimeofday, a standard ANSI C function I guess,
+//   // defined in time.h or so.
+//   //
+//   // I have arranged for a definition set in defs.h to switch between the two
+//   // methods of ramerate calculation.  THIS MIGHT INDEED MAKE SENSE, SINCE THERE
+//   // ARE SOME UNEXPLAINED FRAMERATE PHENOMENA WHICH HAVE TO TO WITH KEYBOARD
+//   // SPACE KEY, SO PLEASE DO NOT ERASE EITHER METHOD.  PLEASE ASK JP FIRST.
+//   //
+// 
+//   if (SkipAFewFrames) return;
+// 
+//   Now_SDL_Ticks = SDL_GetTicks();
+//   oneframedelay = Now_SDL_Ticks - One_Frame_SDL_Ticks;
+//   oneframedelay = (oneframedelay > 0)? oneframedelay : 1;   // avoid division by zero
+//   FPSover1 = 1000.0 / oneframedelay;
+// 
+// } // void ComputeFPSForThisFrame(void)
 
 /*@Function============================================================
   @Desc:
