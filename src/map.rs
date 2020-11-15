@@ -1,16 +1,15 @@
 use crate::{
     defs::{Direction, UnknownVariant},
-    global::Me,
+    global::{curShip, Me},
     structs::{Finepoint, Level},
 };
 
 use std::{
     convert::TryFrom,
-    os::raw::{c_float, c_int, c_uchar},
+    os::raw::{c_float, c_int, c_uchar, c_void},
 };
 
 extern "C" {
-    pub fn FreeShipMemory();
     pub fn AnimateRefresh();
     pub fn IsPassable(x: c_float, y: c_float, check_pos: c_int) -> c_int;
 }
@@ -60,4 +59,36 @@ pub unsafe extern "C" fn GetMapBrick(deck: &Level, x: c_float, y: c_float) -> c_
     } else {
         *deck.map[usize::try_from(yy).unwrap()].offset(isize::try_from(xx).unwrap()) as c_uchar
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn FreeShipMemory() {
+    curShip
+        .AllLevels
+        .iter_mut()
+        .take(usize::try_from(curShip.num_levels).unwrap())
+        .map(|&mut level| level as *mut Level)
+        .for_each(|level| {
+            FreeLevelMemory(level);
+            libc::free(level as *mut c_void);
+        });
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn FreeLevelMemory(level: *mut Level) {
+    if level.is_null() {
+        return;
+    }
+
+    let level = &mut *level;
+    libc::free(level.Levelname as *mut c_void);
+    libc::free(level.Background_Song_Name as *mut c_void);
+    libc::free(level.Level_Enter_Comment as *mut c_void);
+
+    level
+        .map
+        .iter_mut()
+        .take(level.ylen as usize)
+        .map(|&mut map| map as *mut c_void)
+        .for_each(|map| libc::free(map));
 }
