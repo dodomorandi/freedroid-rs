@@ -123,25 +123,25 @@ extern int vid_bpp;
 // } // void AddStandingAndAimingText( int Enum )
 
 
-void
-AddStandingAndAimingText ( int Enum )
-{
-  Enemy ThisRobot=&AllEnemys[ Enum ];
-
-  if ( !GameConfig.Droid_Talk ) return;
-
-  ThisRobot->TextVisibleTime=0;
-
-  if ( ( fabsf (Me.speed.x) < 1 ) && ( fabsf (Me.speed.y) < 1 ) )
-    {
-      ThisRobot->TextToBeDisplayed="Yeah, stay like that, haha.";
-    }
-  else
-    {
-      ThisRobot->TextToBeDisplayed="Stand still while I aim at you.";
-    }
-
-} // void AddStandingAndAimingText( int Enum )
+// void
+// AddStandingAndAimingText ( int Enum )
+// {
+//   Enemy ThisRobot=&AllEnemys[ Enum ];
+// 
+//   if ( !GameConfig.Droid_Talk ) return;
+// 
+//   ThisRobot->TextVisibleTime=0;
+// 
+//   if ( ( fabsf (Me.speed.x) < 1 ) && ( fabsf (Me.speed.y) < 1 ) )
+//     {
+//       ThisRobot->TextToBeDisplayed="Yeah, stay like that, haha.";
+//     }
+//   else
+//     {
+//       ThisRobot->TextToBeDisplayed="Stand still while I aim at you.";
+//     }
+// 
+// } // void AddStandingAndAimingText( int Enum )
 
 
 void

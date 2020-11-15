@@ -4,7 +4,7 @@ use crate::{
         self, Cmds, DownPressedR, FirePressedR, LeftPressedR, PointerStates, RightPressedR,
         UpPressedR, TEXT_STRETCH,
     },
-    global::{joy_num_axes, joy_sensitivity, ne_screen, AllEnemys, GameConfig, Screen_Rect},
+    global::{joy_num_axes, joy_sensitivity, ne_screen, AllEnemys, GameConfig, Me, Screen_Rect},
     graphics::vid_bpp,
     input::{cmd_is_activeR, update_input, KeyIsPressedR},
     misc::{MyRandom, Terminate},
@@ -531,5 +531,22 @@ pub unsafe extern "C" fn EnemyInfluCollisionText(enemy: c_int) {
                 cstr!("Hey, I know the big MS boss! You better go.").as_ptr() as *mut c_char;
         }
         _ => unreachable!(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn AddStandingAndAimingText(enemy: c_int) {
+    let robot = &mut AllEnemys[usize::try_from(enemy).unwrap()];
+
+    if GameConfig.Droid_Talk == 0 {
+        return;
+    }
+
+    robot.TextVisibleTime = 0.;
+
+    if Me.speed.x.abs() < 1. && Me.speed.y.abs() < 1. {
+        robot.TextToBeDisplayed = cstr!("Yeah, stay like that, haha.").as_ptr() as *mut c_char;
+    } else {
+        robot.TextToBeDisplayed = cstr!("Stand still while I aim at you.").as_ptr() as *mut c_char;
     }
 }
