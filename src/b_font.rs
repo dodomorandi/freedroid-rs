@@ -19,7 +19,6 @@ extern "C" {
         fmt: *mut c_char,
         ...
     );
-    pub fn PutChar(surface: *mut SDL_Surface, x: c_int, y: c_int, c: c_int) -> c_int;
 }
 
 #[derive(Clone)]
@@ -106,4 +105,10 @@ pub unsafe extern "C" fn PutString(
     text: *const c_char,
 ) {
     PutStringFont(surface, CurrentFont, x, y, text);
+}
+
+/// Puts a single char on the surface
+#[no_mangle]
+pub unsafe extern "C" fn PutChar(surface: *mut SDL_Surface, x: c_int, y: c_int, c: c_int) -> c_int {
+    PutCharFont(&mut *surface, &mut *CurrentFont, x, y, c)
 }

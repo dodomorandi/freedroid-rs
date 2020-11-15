@@ -233,11 +233,11 @@ SetFontHeight (BFont_Info * Font, int height)
 /* } */
 
 /* Puts a single char on the surface */
-int
-PutChar (SDL_Surface * Surface, int x, int y, int c)
-{
-  return PutCharFont (Surface, CurrentFont, x, y, c);
-}
+/// int
+/// PutChar (SDL_Surface * Surface, int x, int y, int c)
+/// {
+///   return PutCharFont (Surface, CurrentFont, x, y, c);
+/// }
 
 /* Puts a single char on the surface with the specified font */
 /* int */
