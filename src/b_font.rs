@@ -19,6 +19,7 @@ extern "C" {
         fmt: *mut c_char,
         ...
     );
+    pub fn PutChar(surface: *mut SDL_Surface, x: c_int, y: c_int, c: c_int) -> c_int;
 }
 
 #[derive(Clone)]

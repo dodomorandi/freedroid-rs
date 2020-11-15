@@ -370,24 +370,24 @@ ScrollText (char *Text, SDL_Rect *rect, int SecondsMinimumDuration )
  *
  *
  -----------------------------------------------------------------*/
-void
-DisplayChar (unsigned char c)
-{
-
-  if ( !isprint(c) ) // don't accept non-printable characters
-    {
-      printf ("Illegal char passed to DisplayChar(): %d \n", c);
-      Terminate(ERR);
-    }
-
-  PutChar (ne_screen, MyCursorX, MyCursorY, c);
-
-  // After the char has been displayed, we must move the cursor to its
-  // new position.  That depends of course on the char displayed.
-  //
-  MyCursorX += CharWidth ( GetCurrentFont() , c);
-
-} // void DisplayChar(...)
+// void
+// DisplayChar (unsigned char c)
+// {
+// 
+//   if ( !isprint(c) ) // don't accept non-printable characters
+//     {
+//       printf ("Illegal char passed to DisplayChar(): %d \n", c);
+//       Terminate(ERR);
+//     }
+// 
+//   PutChar (ne_screen, MyCursorX, MyCursorY, c);
+// 
+//   // After the char has been displayed, we must move the cursor to its
+//   // new position.  That depends of course on the char displayed.
+//   //
+//   MyCursorX += CharWidth ( GetCurrentFont() , c);
+// 
+// } // void DisplayChar(...)
 
 
 /*@Function============================================================

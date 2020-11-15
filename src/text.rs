@@ -1,12 +1,13 @@
 use crate::{
-    b_font::{CharWidth, FontHeight, GetCurrentFont, PutString},
+    b_font::{CharWidth, FontHeight, GetCurrentFont, PutChar, PutString},
     defs::{
-        Cmds, DownPressedR, FirePressedR, LeftPressedR, PointerStates, RightPressedR, UpPressedR,
-        TEXT_STRETCH,
+        self, Cmds, DownPressedR, FirePressedR, LeftPressedR, PointerStates, RightPressedR,
+        UpPressedR, TEXT_STRETCH,
     },
     global::{joy_num_axes, joy_sensitivity, ne_screen, Screen_Rect},
     graphics::vid_bpp,
     input::{cmd_is_activeR, update_input, KeyIsPressedR},
+    misc::Terminate,
 };
 
 use log::{error, info};
@@ -42,8 +43,6 @@ extern "C" {
     fn SDL_SetClipRect(surface: *mut SDL_Surface, rect: *const SDL_Rect) -> bool;
     fn vsprintf(str: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
     fn linebreak_needed(textpos: *const c_char, clip: *const SDL_Rect) -> bool;
-    fn DisplayChar(c: c_uchar);
-
 }
 
 #[cfg(feature = "arcade-input")]
@@ -374,7 +373,6 @@ pub unsafe extern "C" fn printf_SDL(
 /// Return TRUE if some characters where written inside the clip rectangle,
 /// FALSE if not (used by ScrollText to know if Text has been scrolled
 /// out of clip-rect completely)
-
 #[no_mangle]
 pub unsafe extern "C" fn DisplayText(
     text: *const c_char,
@@ -434,4 +432,22 @@ pub unsafe extern "C" fn DisplayText(
     } else {
         true as c_int
     }
+}
+
+/// This function displays a char. It uses Menu_BFont now
+/// to do this.  MyCursorX is  updated to new position.
+#[no_mangle]
+pub unsafe extern "C" fn DisplayChar(c: c_uchar) {
+    // don't accept non-printable characters
+    if !(c.is_ascii_graphic() || c.is_ascii_whitespace()) {
+        println!("Illegal char passed to DisplayChar(): {}", c);
+        Terminate(defs::ERR.into());
+    }
+
+    PutChar(ne_screen, MyCursorX, MyCursorY, c.into());
+
+    // After the char has been displayed, we must move the cursor to its
+    // new position.  That depends of course on the char displayed.
+    //
+    MyCursorX += CharWidth(&*GetCurrentFont(), c.into());
 }
