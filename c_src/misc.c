@@ -261,54 +261,54 @@ LoadGameConfig (void)
  * SaveGameConfig: do just that
  *
  *----------------------------------------------------------------------*/
-int
-SaveGameConfig (void)
-{
-  char fname[255];
-  FILE *fp;
-  int i;
-
-  if ( ConfigDir[0] == '\0')
-    return (ERR);
-
-  sprintf (fname, "%s/config", ConfigDir);
-  if( (fp = fopen (fname, "w")) == NULL)
-    {
-      DebugPrintf (0, "WARNING: failed to create config-file: %s\n", fname);
-      return (ERR);
-    }
-
-  // Now write the actual data, line by line
-  fprintf (fp, "%s = %s\n", VERSION_STRING, VERSION);
-  fprintf (fp, "%s = %d\n", DRAW_FRAMERATE, GameConfig.Draw_Framerate);
-  fprintf (fp, "%s = %d\n", DRAW_ENERGY, GameConfig.Draw_Energy);
-  fprintf (fp, "%s = %d\n", DRAW_POSITION, GameConfig.Draw_Position);
-  fprintf (fp, "%s = %d\n", DRAW_DEATHCOUNT, GameConfig.Draw_DeathCount);
-  fprintf (fp, "%s = %d\n", DROID_TALK, GameConfig.Droid_Talk);
-  fprintf (fp, "%s = %f\n", WANTED_TEXT_VISIBLE_TIME, GameConfig.WantedTextVisibleTime);
-  fprintf (fp, "%s = %f\n", CURRENT_BG_MUSIC_VOLUME, GameConfig.Current_BG_Music_Volume);
-  fprintf (fp, "%s = %f\n", CURRENT_SOUND_FX_VOLUME, GameConfig.Current_Sound_FX_Volume);
-  fprintf (fp, "%s = %f\n", CURRENT_GAMMA_CORRECTION, GameConfig.Current_Gamma_Correction);
-  fprintf (fp, "%s = %s\n", THEME_NAME, GameConfig.Theme_Name);
-  fprintf (fp, "%s = %d\n", FULL_USER_RECT, GameConfig.FullUserRect);
-  fprintf (fp, "%s = %d\n", USE_FULLSCREEN, GameConfig.UseFullscreen);
-  fprintf (fp, "%s = %d\n", TAKEOVER_ACTIVATES, GameConfig.TakeoverActivates);
-  fprintf (fp, "%s = %d\n", FIRE_HOLD_TAKEOVER, GameConfig.FireHoldTakeover);
-  fprintf (fp, "%s = %d\n", SHOW_DECALS, GameConfig.ShowDecals);
-  fprintf (fp, "%s = %d\n", ALL_MAP_VISIBLE, GameConfig.AllMapVisible);
-  fprintf (fp, "%s = %f\n", VID_SCALE_FACTOR, GameConfig.scale);
-  fprintf (fp, "%s = %d\n", HOG_CPU, GameConfig.HogCPU);
-  fprintf (fp, "%s = %f\n", EMPTY_LEVEL_SPEEDUP, GameConfig.emptyLevelSpeedup);
-
-  // now write the keyboard->cmd mappings
-  for (i=0; i < CMD_LAST; i++)
-    fprintf (fp, "%s \t= %d_%d_%d\n",
-	     cmd_strings[i], key_cmds[i][0], key_cmds[i][1], key_cmds[i][2]);
-
-  fclose (fp);
-  return (OK);
-
-} // SaveGameConfig()
+// int
+// SaveGameConfig (void)
+// {
+//   char fname[255];
+//   FILE *fp;
+//   int i;
+// 
+//   if ( ConfigDir[0] == '\0')
+//     return (ERR);
+// 
+//   sprintf (fname, "%s/config", ConfigDir);
+//   if( (fp = fopen (fname, "w")) == NULL)
+//     {
+//       DebugPrintf (0, "WARNING: failed to create config-file: %s\n", fname);
+//       return (ERR);
+//     }
+// 
+//   // Now write the actual data, line by line
+//   fprintf (fp, "%s = %s\n", VERSION_STRING, VERSION);
+//   fprintf (fp, "%s = %d\n", DRAW_FRAMERATE, GameConfig.Draw_Framerate);
+//   fprintf (fp, "%s = %d\n", DRAW_ENERGY, GameConfig.Draw_Energy);
+//   fprintf (fp, "%s = %d\n", DRAW_POSITION, GameConfig.Draw_Position);
+//   fprintf (fp, "%s = %d\n", DRAW_DEATHCOUNT, GameConfig.Draw_DeathCount);
+//   fprintf (fp, "%s = %d\n", DROID_TALK, GameConfig.Droid_Talk);
+//   fprintf (fp, "%s = %f\n", WANTED_TEXT_VISIBLE_TIME, GameConfig.WantedTextVisibleTime);
+//   fprintf (fp, "%s = %f\n", CURRENT_BG_MUSIC_VOLUME, GameConfig.Current_BG_Music_Volume);
+//   fprintf (fp, "%s = %f\n", CURRENT_SOUND_FX_VOLUME, GameConfig.Current_Sound_FX_Volume);
+//   fprintf (fp, "%s = %f\n", CURRENT_GAMMA_CORRECTION, GameConfig.Current_Gamma_Correction);
+//   fprintf (fp, "%s = %s\n", THEME_NAME, GameConfig.Theme_Name);
+//   fprintf (fp, "%s = %d\n", FULL_USER_RECT, GameConfig.FullUserRect);
+//   fprintf (fp, "%s = %d\n", USE_FULLSCREEN, GameConfig.UseFullscreen);
+//   fprintf (fp, "%s = %d\n", TAKEOVER_ACTIVATES, GameConfig.TakeoverActivates);
+//   fprintf (fp, "%s = %d\n", FIRE_HOLD_TAKEOVER, GameConfig.FireHoldTakeover);
+//   fprintf (fp, "%s = %d\n", SHOW_DECALS, GameConfig.ShowDecals);
+//   fprintf (fp, "%s = %d\n", ALL_MAP_VISIBLE, GameConfig.AllMapVisible);
+//   fprintf (fp, "%s = %f\n", VID_SCALE_FACTOR, GameConfig.scale);
+//   fprintf (fp, "%s = %d\n", HOG_CPU, GameConfig.HogCPU);
+//   fprintf (fp, "%s = %f\n", EMPTY_LEVEL_SPEEDUP, GameConfig.emptyLevelSpeedup);
+// 
+//   // now write the keyboard->cmd mappings
+//   for (i=0; i < CMD_LAST; i++)
+//     fprintf (fp, "%s \t= %d_%d_%d\n",
+// 	     cmd_strings[i], key_cmds[i][0], key_cmds[i][1], key_cmds[i][2]);
+// 
+//   fclose (fp);
+//   return (OK);
+// 
+// } // SaveGameConfig()
 
 
 /*----------------------------------------------------------------------

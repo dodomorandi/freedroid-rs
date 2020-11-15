@@ -4,14 +4,14 @@ use crate::{
     defs::{self, AssembleCombatWindowFlags, Cmds, FirePressedR, Status},
     enemy::AnimateEnemys,
     global::{
-        ne_screen, progress_filler_pic, FPSover1, Me, ProgressBar_Rect, ProgressMeter_Rect,
-        SkipAFewFrames,
+        ne_screen, progress_filler_pic, ConfigDir, FPSover1, GameConfig, Me, ProgressBar_Rect,
+        ProgressMeter_Rect, SkipAFewFrames,
     },
     graphics::FreeGraphics,
     highscore::SaveHighscores,
     influence::AnimateInfluence,
     init::FreeGameMem,
-    input::{cmd_is_active, cmd_is_activeR, KeyIsPressedR, SDL_Delay},
+    input::{cmd_is_active, cmd_is_activeR, cmd_strings, key_cmds, KeyIsPressedR, SDL_Delay},
     map::{AnimateRefresh, FreeShipMemory},
     menu::FreeMenuData,
     ship::FreeDroidPics,
@@ -19,21 +19,23 @@ use crate::{
     view::{Assemble_Combat_Picture, DisplayBanner},
 };
 
-use log::info;
+use log::{info, warn};
 use once_cell::sync::Lazy;
 use sdl::{
     sdl::{ll::SDL_Quit, Rect},
     video::ll::{SDL_UpdateRects, SDL_UpperBlit},
 };
 use std::{
-    os::raw::{c_float, c_int},
+    ffi::CStr,
+    fs::File,
+    os::raw::{c_char, c_float, c_int},
+    path::Path,
     process,
     ptr::null_mut,
     sync::RwLock,
 };
 
 extern "C" {
-    pub fn SaveGameConfig() -> c_int;
     pub fn StartTakingTimeForFPSCalculation();
     pub fn ComputeFPSForThisFrame();
 }
@@ -184,4 +186,132 @@ pub unsafe extern "C" fn Pause() {
             break;
         }
     }
+}
+
+const VERSION_STRING: &str = "Freedroid Version";
+const DRAW_FRAMERATE: &str = "Draw_Framerate";
+const DRAW_ENERGY: &str = "Draw_Energy";
+const DRAW_POSITION: &str = "Draw_Position";
+const DRAW_DEATHCOUNT: &str = "Draw_DeathCount";
+const DROID_TALK: &str = "Droid_Talk";
+const WANTED_TEXT_VISIBLE_TIME: &str = "WantedTextVisibleTime";
+const CURRENT_BG_MUSIC_VOLUME: &str = "Current_BG_Music_Volume";
+const CURRENT_SOUND_FX_VOLUME: &str = "Current_Sound_FX_Volume";
+const CURRENT_GAMMA_CORRECTION: &str = "Current_Gamma_Correction";
+const THEME_NAME: &str = "Theme_Name";
+const FULL_USER_RECT: &str = "FullUserRect";
+const USE_FULLSCREEN: &str = "UseFullscreen";
+const TAKEOVER_ACTIVATES: &str = "TakeoverActivates";
+const FIRE_HOLD_TAKEOVER: &str = "FireHoldTakeover";
+const SHOW_DECALS: &str = "ShowDecals";
+const ALL_MAP_VISIBLE: &str = "AllMapVisible";
+const VID_SCALE_FACTOR: &str = "Vid_ScaleFactor";
+const HOG_CPU: &str = "Hog_Cpu";
+const EMPTY_LEVEL_SPEEDUP: &str = "EmptyLevelSpeedup";
+
+#[no_mangle]
+pub unsafe extern "C" fn SaveGameConfig() -> c_int {
+    use std::io::Write;
+    if ConfigDir[0] == b'\0' as c_char {
+        return defs::ERR.into();
+    }
+
+    let config_path =
+        Path::new(&CStr::from_ptr(ConfigDir.as_ptr()).to_str().unwrap()).join("config");
+    let mut config = match File::create(&config_path) {
+        Ok(config) => config,
+        Err(_) => {
+            warn!(
+                "WARNING: failed to create config-file: {}",
+                config_path.display()
+            );
+            return defs::ERR.into();
+        }
+    };
+
+    // Now write the actual data, line by line
+    writeln!(config, "{} = {}", VERSION_STRING, env!("CARGO_PKG_VERSION")).unwrap();
+    writeln!(config, "{} = {}", DRAW_FRAMERATE, GameConfig.Draw_Framerate).unwrap();
+    writeln!(config, "{} = {}", DRAW_ENERGY, GameConfig.Draw_Energy).unwrap();
+    writeln!(config, "{} = {}", DRAW_POSITION, GameConfig.Draw_Position).unwrap();
+    writeln!(
+        config,
+        "{} = {}",
+        DRAW_DEATHCOUNT, GameConfig.Draw_DeathCount
+    )
+    .unwrap();
+    writeln!(config, "{} = {}", DROID_TALK, GameConfig.Droid_Talk).unwrap();
+    writeln!(
+        config,
+        "{} = {}",
+        WANTED_TEXT_VISIBLE_TIME, GameConfig.WantedTextVisibleTime,
+    )
+    .unwrap();
+    writeln!(
+        config,
+        "{} = {}",
+        CURRENT_BG_MUSIC_VOLUME, GameConfig.Current_BG_Music_Volume,
+    )
+    .unwrap();
+    writeln!(
+        config,
+        "{} = {}",
+        CURRENT_SOUND_FX_VOLUME, GameConfig.Current_Sound_FX_Volume,
+    )
+    .unwrap();
+    writeln!(
+        config,
+        "{} = {}",
+        CURRENT_GAMMA_CORRECTION, GameConfig.Current_Gamma_Correction,
+    )
+    .unwrap();
+    writeln!(
+        config,
+        "{} = {}",
+        THEME_NAME,
+        CStr::from_ptr(GameConfig.Theme_Name.as_ptr())
+            .to_str()
+            .unwrap()
+    )
+    .unwrap();
+    writeln!(config, "{} = {}", FULL_USER_RECT, GameConfig.FullUserRect).unwrap();
+    writeln!(config, "{} = {}", USE_FULLSCREEN, GameConfig.UseFullscreen).unwrap();
+    writeln!(
+        config,
+        "{} = {}",
+        TAKEOVER_ACTIVATES, GameConfig.TakeoverActivates,
+    )
+    .unwrap();
+    writeln!(
+        config,
+        "{} = {}",
+        FIRE_HOLD_TAKEOVER, GameConfig.FireHoldTakeover,
+    )
+    .unwrap();
+    writeln!(config, "{} = {}", SHOW_DECALS, GameConfig.ShowDecals).unwrap();
+    writeln!(config, "{} = {}", ALL_MAP_VISIBLE, GameConfig.AllMapVisible).unwrap();
+    writeln!(config, "{} = {}", VID_SCALE_FACTOR, GameConfig.scale).unwrap();
+    writeln!(config, "{} = {}", HOG_CPU, GameConfig.HogCPU).unwrap();
+    writeln!(
+        config,
+        "{} = {}",
+        EMPTY_LEVEL_SPEEDUP, GameConfig.emptyLevelSpeedup,
+    )
+    .unwrap();
+
+    // now write the keyboard->cmd mappings
+    for i in 0..Cmds::Last as usize {
+        writeln!(
+            config,
+            "{} \t= {}_{}_{}",
+            CStr::from_ptr(cmd_strings[i]).to_str().unwrap(),
+            key_cmds[i][0],
+            key_cmds[i][1],
+            key_cmds[i][2],
+        )
+        .unwrap();
+    }
+
+    config.flush().unwrap();
+    defs::OK.into()
 }

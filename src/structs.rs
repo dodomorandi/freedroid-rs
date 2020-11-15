@@ -54,7 +54,7 @@ pub struct Config {
     pub AllMapVisible: i32,    // complete map is visible?
     pub scale: f32,            // scale the whole graphics by this at load-time
     pub HogCPU: i32,           // use 100% CPU or leave it some air to breathe?
-    emptyLevelSpeedup: f32,    // time speedup factor to use on empty levels
+    pub emptyLevelSpeedup: f32, // time speedup factor to use on empty levels
 }
 
 #[repr(C)]
