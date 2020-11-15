@@ -11,6 +11,10 @@ extern "C" {
     pub fn KeyIsPressedR(key: c_int) -> bool;
     pub fn cmd_is_activeR(command: Cmds) -> bool;
     pub fn cmd_is_active(command: Cmds) -> bool;
+    pub fn wait_for_all_keys_released();
+    pub static mut key_cmds: [[c_int; 3]; Cmds::Last as usize];
+    pub fn WheelUpPressed() -> bool;
+    pub fn WheelDownPressed() -> bool;
 }
 
 /// Check if any keys have been 'freshly' pressed. If yes, return key-code, otherwise 0.

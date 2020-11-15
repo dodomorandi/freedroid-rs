@@ -1,17 +1,20 @@
 use crate::{
     b_font::{CharWidth, FontHeight, GetCurrentFont, PutChar, PutString},
     defs::{
-        self, Cmds, DownPressedR, FirePressedR, LeftPressedR, PointerStates, RightPressedR,
-        UpPressedR, TEXT_STRETCH,
+        self, Cmds, DownPressed, DownPressedR, FirePressedR, LeftPressedR, PointerStates,
+        RightPressedR, UpPressed, UpPressedR, SHOW_WAIT, TEXT_STRETCH,
     },
     global::{joy_num_axes, joy_sensitivity, ne_screen, AllEnemys, GameConfig, Me, Screen_Rect},
     graphics::vid_bpp,
-    input::{cmd_is_activeR, update_input, KeyIsPressedR},
+    input::{
+        any_key_just_pressed, cmd_is_activeR, key_cmds, update_input, wait_for_all_keys_released,
+        KeyIsPressedR, SDL_Delay, WheelDownPressed, WheelUpPressed,
+    },
     misc::{MyRandom, Terminate},
 };
 
 use cstr::cstr;
-use log::{error, info};
+use log::{error, info, trace};
 #[cfg(not(feature = "arcade-input"))]
 use sdl::keysym::SDLK_DELETE;
 use sdl::{
@@ -25,7 +28,8 @@ use sdl::{
     keysym::{SDLK_BACKSPACE, SDLK_RETURN},
     sdl::{ll::SDL_GetTicks, Rect},
     video::ll::{
-        SDL_CreateRGBSurface, SDL_Flip, SDL_Rect, SDL_Surface, SDL_UpdateRect, SDL_UpperBlit,
+        SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_Flip, SDL_FreeSurface, SDL_Rect, SDL_Surface,
+        SDL_UpdateRect, SDL_UpperBlit,
     },
 };
 use std::{
@@ -36,9 +40,6 @@ use std::{
 };
 
 extern "C" {
-    static mut MyCursorX: c_int;
-    static mut MyCursorY: c_int;
-    static mut TextBuffer: [c_char; 10000];
     fn SDL_PushEvent(event: *mut SDL_Event) -> c_int;
     fn SDL_GetClipRect(surface: *mut SDL_Surface, rect: *mut SDL_Rect);
     fn SDL_SetClipRect(surface: *mut SDL_Surface, rect: *const SDL_Rect) -> bool;
@@ -52,6 +53,13 @@ const ARCADE_INPUT_CHARS: [c_int; 70] = [
     100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118,
     119, 120, 121, 122,
 ];
+
+#[no_mangle]
+static mut MyCursorX: c_int = 0;
+#[no_mangle]
+static mut MyCursorY: c_int = 0;
+#[no_mangle]
+static mut TextBuffer: [c_char; 10000] = [0; 10000];
 
 /// Reads a string of "MaxLen" from User-input, and echos it
 /// either to stdout or using graphics-text, depending on the
@@ -611,6 +619,97 @@ pub unsafe extern "C" fn putchar_SDL(
     let ret = PutChar(surface, x, y, c);
 
     SDL_Flip(surface);
+
+    ret
+}
+
+/// Scrolls a given text down inside the given rect
+///
+/// returns 0 if end of text was scolled out, 1 if user pressed fire
+#[no_mangle]
+pub unsafe extern "C" fn ScrollText(
+    text: *mut c_char,
+    rect: &mut SDL_Rect,
+    _seconds_minimum_duration: c_int,
+) -> c_int {
+    let mut insert_line: f32 = rect.y.into();
+    let mut speed = 30; // in pixel / sec
+    const MAX_SPEED: c_int = 150;
+    let mut just_started = true;
+
+    let background = SDL_DisplayFormat(ne_screen);
+
+    wait_for_all_keys_released();
+    let ret;
+    loop {
+        let mut prev_tick = SDL_GetTicks();
+        SDL_UpperBlit(background, null_mut(), ne_screen, null_mut());
+        if DisplayText(text, rect.x.into(), insert_line as c_int, rect) == 0 {
+            ret = 0; /* Text has been scrolled outside Rect */
+            break;
+        }
+        SDL_Flip(ne_screen);
+
+        if GameConfig.HogCPU != 0 {
+            SDL_Delay(1);
+        }
+
+        if just_started {
+            just_started = false;
+            let now = SDL_GetTicks();
+            let mut key;
+            loop {
+                key = any_key_just_pressed();
+                if key == 0 && (SDL_GetTicks() - now < SHOW_WAIT as u32) {
+                    SDL_Delay(1); // wait before starting auto-scroll
+                } else {
+                    break;
+                }
+            }
+
+            if (key == key_cmds[Cmds::Fire as usize][0])
+                || (key == key_cmds[Cmds::Fire as usize][1])
+                || (key == key_cmds[Cmds::Fire as usize][2])
+            {
+                trace!("in just_started: Fire registered");
+                ret = 1;
+                break;
+            }
+            prev_tick = SDL_GetTicks();
+        }
+
+        if FirePressedR() {
+            trace!("outside just_started: Fire registered");
+            ret = 1;
+            break;
+        }
+
+        if UpPressed() || WheelUpPressed() {
+            speed -= 5;
+            if speed < -MAX_SPEED {
+                speed = -MAX_SPEED;
+            }
+        }
+        if DownPressed() || WheelDownPressed() {
+            speed += 5;
+            if speed > MAX_SPEED {
+                speed = MAX_SPEED;
+            }
+        }
+
+        insert_line -= (f64::from(SDL_GetTicks() - prev_tick) * f64::from(speed) / 1000.0) as f32;
+
+        if insert_line > f32::from(rect.y) + f32::from(rect.h) {
+            insert_line = f32::from(rect.y) + f32::from(rect.h);
+            if speed < 0 {
+                speed = 0;
+            }
+        }
+    }
+
+    SDL_UpperBlit(background, null_mut(), ne_screen, null_mut());
+    SDL_Flip(ne_screen);
+    SDL_FreeSurface(background);
 
     ret
 }
