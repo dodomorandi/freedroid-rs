@@ -10,6 +10,7 @@ use crate::{
     misc::{MyRandom, Terminate},
 };
 
+use cstr::cstr;
 use log::{error, info};
 #[cfg(not(feature = "arcade-input"))]
 use sdl::keysym::SDLK_DELETE;
@@ -489,22 +490,23 @@ pub unsafe extern "C" fn EnemyHitByBulletText(enemy: c_int) {
     match MyRandom(4) {
         0 => {
             robot.TextToBeDisplayed =
-                b"Unhandled exception fault.  Press ok to reboot.".as_ptr() as *mut c_char;
+                cstr!("Unhandled exception fault.  Press ok to reboot.").as_ptr() as *mut c_char;
         }
         1 => {
             robot.TextToBeDisplayed =
-                b"System fault. Please buy a newer version.".as_ptr() as *mut c_char;
+                cstr!("System fault. Please buy a newer version.").as_ptr() as *mut c_char;
         }
         2 => {
-            robot.TextToBeDisplayed = b"System error. Might be a virus.".as_ptr() as *mut c_char;
+            robot.TextToBeDisplayed =
+                cstr!("System error. Might be a virus.").as_ptr() as *mut c_char;
         }
         3 => {
             robot.TextToBeDisplayed =
-                b"System error. Pleae buy an upgrade from MS.".as_ptr() as *mut c_char;
+                cstr!("System error. Pleae buy an upgrade from MS.").as_ptr() as *mut c_char;
         }
         4 => {
             robot.TextToBeDisplayed =
-                b"System error. Press any key to reboot.".as_ptr() as *mut c_char;
+                cstr!("System error. Press any key to reboot.").as_ptr() as *mut c_char;
         }
         _ => unreachable!(),
     }
@@ -522,11 +524,11 @@ pub unsafe extern "C" fn EnemyInfluCollisionText(enemy: c_int) {
     match MyRandom(1) {
         0 => {
             robot.TextToBeDisplayed =
-                b"Hey, I'm from MS! Walk outa my way!".as_ptr() as *mut c_char;
+                cstr!("Hey, I'm from MS! Walk outa my way!").as_ptr() as *mut c_char;
         }
         1 => {
             robot.TextToBeDisplayed =
-                "Hey, I know the big MS boss! You better go.".as_ptr() as *mut c_char;
+                cstr!("Hey, I know the big MS boss! You better go.").as_ptr() as *mut c_char;
         }
         _ => unreachable!(),
     }
