@@ -26,7 +26,6 @@ use std::{
 };
 
 extern "C" {
-    pub fn MyRandom(upper_bound: c_int) -> c_int;
     pub fn Pause();
     pub fn SaveGameConfig() -> c_int;
 
@@ -112,4 +111,20 @@ pub unsafe extern "C" fn Terminate(exit_code: c_int) -> ! {
     info!("Thank you for playing Freedroid.");
     SDL_Quit();
     process::exit(exit_code);
+}
+
+/// This function is used to generate a random integer in the range
+/// from [0 to upper_bound] (inclusive), distributed uniformly.
+#[no_mangle]
+pub unsafe extern "C" fn MyRandom(upper_bound: c_int) -> c_int {
+    // random float in [0,upper_bound+1)
+    let tmp = (f64::from(upper_bound) + 1.0)
+        * (f64::from(libc::rand()) / (f64::from(libc::RAND_MAX) + 1.0));
+    let dice_val = tmp as c_int;
+
+    if dice_val < 0 || dice_val > upper_bound {
+        panic!("dice_val = {} not in [0, {}]", dice_val, upper_bound);
+    }
+
+    dice_val
 }

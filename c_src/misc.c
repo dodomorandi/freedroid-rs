@@ -933,24 +933,24 @@ from [0 to UpperBound] (inclusive), distributed uniformly.
 
 @Ret:  the generated integer
 * $Function----------------------------------------------------------*/
-int
-MyRandom (int UpperBound)
-{
-  double tmp;
-  int dice_val;    /* the result in [0, UpperBound] */
-
-  tmp = 1.0 * (UpperBound+1.0) * (rand() / (RAND_MAX+1.0)); /* random float in [0,UpperBound+1) */
-
-  // now round down to get uniformly distributed ints in the 'bins' [0, UpperBound]
-
-  dice_val = (int)(tmp);
-
-  if ( dice_val < 0 || dice_val > UpperBound ) {
-    DebugPrintf ( 0, "ERROR, dice_val = %d not in [0, %d]\n", dice_val, UpperBound );
-    exit(-1);
-  }
-  return (dice_val);
-} /* MyRandom () */
+// int
+// MyRandom (int UpperBound)
+// {
+//   double tmp;
+//   int dice_val;    /* the result in [0, UpperBound] */
+// 
+//   tmp = 1.0 * (UpperBound+1.0) * (rand() / (RAND_MAX+1.0)); /* random float in [0,UpperBound+1) */
+// 
+//   // now round down to get uniformly distributed ints in the 'bins' [0, UpperBound]
+// 
+//   dice_val = (int)(tmp);
+// 
+//   if ( dice_val < 0 || dice_val > UpperBound ) {
+//     DebugPrintf ( 0, "ERROR, dice_val = %d not in [0, %d]\n", dice_val, UpperBound );
+//     exit(-1);
+//   }
+//   return (dice_val);
+// } /* MyRandom () */
 
 
 /*@Function============================================================
