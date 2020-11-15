@@ -379,188 +379,188 @@ ReactToSpecialKeys(void)
 //----------------------------------------------------------------------
 // main input-reading routine
 //----------------------------------------------------------------------
-int
-update_input (void)
-{
-  Uint8 axis;
-
-  // switch mouse-cursor visibility as a function of time of last activity
-  if (SDL_GetTicks () - last_mouse_event > CURSOR_KEEP_VISIBLE)
-    show_cursor = FALSE;
-  else
-    show_cursor = TRUE;
-
-  while( SDL_PollEvent( &event ) )
-    {
-      switch( event.type )
-	{
-	case SDL_QUIT:
-	  printf("\n\nUser requested termination...\n\nTerminating...");
-	  Terminate(0);
-	  break;
-	  /* Look for a keypress */
-
-	case SDL_KEYDOWN:
-	  current_modifiers = event.key.keysym.mod;
-	  input_state[event.key.keysym.sym] = PRESSED;
-#ifdef GCW0
-	  if ( input_axis.x || input_axis.y ) axis_is_active = TRUE; // 4 GCW-0 ; breaks cursor keys after axis has been active...
-#endif
-	  break;
-	case SDL_KEYUP:
-	  current_modifiers = event.key.keysym.mod;
-	  input_state[event.key.keysym.sym] = RELEASED;
-#ifdef GCW0
-	  axis_is_active = FALSE;
-#endif
-	  break;
-
-	case SDL_JOYAXISMOTION:
-	  axis = event.jaxis.axis;
-	  if (axis == 0 || ((joy_num_axes >= 5) && (axis == 3)) ) /* x-axis */
-	    {
-	      input_axis.x = event.jaxis.value;
-
-	      // this is a bit tricky, because we want to allow direction keys
-	      // to be soft-released. When mapping the joystick->keyboard, we
-	      // therefore have to make sure that this mapping only occurs when
-	      // and actual _change_ of the joystick-direction ('digital') occurs
-	      // so that it behaves like "set"/"release"
-	      if (joy_sensitivity*event.jaxis.value > 10000)   /* about half tilted */
-		{
-		  input_state[JOY_RIGHT] = PRESSED;
-		  input_state[JOY_LEFT] = FALSE;
-		}
-	      else if (joy_sensitivity*event.jaxis.value < -10000)
-		{
-		  input_state[JOY_LEFT] = PRESSED;
-		  input_state[JOY_RIGHT] = FALSE;
-		}
-	      else
-		{
-		  input_state[JOY_LEFT] = FALSE;
-		  input_state[JOY_RIGHT] = FALSE;
-		}
-	    }
-	  else if ((axis == 1) || ((joy_num_axes >=5) && (axis == 4))) /* y-axis */
-	    {
-	      input_axis.y = event.jaxis.value;
-
-	      if (joy_sensitivity*event.jaxis.value > 10000)
-		{
-		  input_state[JOY_DOWN] = PRESSED;
-		  input_state[JOY_UP] =  FALSE;
-		}
-	      else if (joy_sensitivity*event.jaxis.value < -10000)
-		{
-		  input_state[JOY_UP] = PRESSED;
-		  input_state[JOY_DOWN]= FALSE;
-		}
-	      else
-		{
-		  input_state[JOY_UP] = FALSE;
-		  input_state[JOY_DOWN] = FALSE;
-		}
-	    }
-
-	  break;
-
-	case SDL_JOYBUTTONDOWN:
-	  // first button
-	  if (event.jbutton.button == 0)
-	    input_state[JOY_BUTTON1] = PRESSED;
-
-	  // second button
-	  else if (event.jbutton.button == 1)
-	    input_state[JOY_BUTTON2] = PRESSED;
-
-	  // and third button
-	  else if (event.jbutton.button == 2)
-	    input_state[JOY_BUTTON3] = PRESSED;
-
-	  // and fourth button
-          else if (event.jbutton.button == 3)
-	    input_state[JOY_BUTTON4] = PRESSED;
-
-	  axis_is_active = TRUE;
-	  break;
-
-	case SDL_JOYBUTTONUP:
-	  // first button
-	  if (event.jbutton.button == 0)
-	    input_state[JOY_BUTTON1] = FALSE;
-
-	  // second button
-	  else if (event.jbutton.button == 1)
-	    input_state[JOY_BUTTON2] = FALSE;
-
-	  // and third button
-	  else if (event.jbutton.button == 2)
-	    input_state[JOY_BUTTON3] = FALSE;
-
-	  // and fourth button
-          else if (event.jbutton.button == 3)
-	    input_state[JOY_BUTTON4] = PRESSED;
-
-	  axis_is_active = FALSE;
-	  break;
-
-	case SDL_MOUSEMOTION:
-	  input_axis.x = event.button.x - UserCenter_x + 16;
-	  input_axis.y = event.button.y - UserCenter_y + 16;
-
-	  last_mouse_event = SDL_GetTicks ();
-
-	  break;
-
-	  /* Mouse control */
-	case SDL_MOUSEBUTTONDOWN:
-	  if (event.button.button == SDL_BUTTON_LEFT)
-	    {
-	      input_state[MOUSE_BUTTON1] = PRESSED;
-	      axis_is_active = TRUE;
-	    }
-
-	  if (event.button.button == SDL_BUTTON_RIGHT)
-	    input_state[MOUSE_BUTTON2] = PRESSED;
-
-	  if (event.button.button == SDL_BUTTON_MIDDLE)
-	    input_state[MOUSE_BUTTON3] = PRESSED;
-
-	  // wheel events are immediately released, so we rather
-	  // count the number of not yet read-out events
-	  if (event.button.button == SDL_BUTTON_WHEELUP)
-	      WheelUpEvents ++;
-
-	  if (event.button.button == SDL_BUTTON_WHEELDOWN)
-	      WheelDownEvents ++;
-
-	  last_mouse_event = SDL_GetTicks();
-	  break;
-
-        case SDL_MOUSEBUTTONUP:
-	  if (event.button.button == SDL_BUTTON_LEFT)
-	    {
-	      input_state[MOUSE_BUTTON1] = FALSE;
-	      axis_is_active = FALSE;
-	    }
-
-	  if (event.button.button == SDL_BUTTON_RIGHT)
-	    input_state[MOUSE_BUTTON2] = FALSE;
-
-	  if (event.button.button == SDL_BUTTON_MIDDLE)
-	    input_state[MOUSE_BUTTON3] = FALSE;
-
-	  break;
-
- 	default:
- 	  break;
- 	}
-
-    }
-
-  return 0;
-}
+// int
+// update_input (void)
+// {
+//   Uint8 axis;
+// 
+//   // switch mouse-cursor visibility as a function of time of last activity
+//   if (SDL_GetTicks () - last_mouse_event > CURSOR_KEEP_VISIBLE)
+//     show_cursor = FALSE;
+//   else
+//     show_cursor = TRUE;
+// 
+//   while( SDL_PollEvent( &event ) )
+//     {
+//       switch( event.type )
+// 	{
+// 	case SDL_QUIT:
+// 	  printf("\n\nUser requested termination...\n\nTerminating...");
+// 	  Terminate(0);
+// 	  break;
+// 	  /* Look for a keypress */
+// 
+// 	case SDL_KEYDOWN:
+// 	  current_modifiers = event.key.keysym.mod;
+// 	  input_state[event.key.keysym.sym] = PRESSED;
+// #ifdef GCW0
+// 	  if ( input_axis.x || input_axis.y ) axis_is_active = TRUE; // 4 GCW-0 ; breaks cursor keys after axis has been active...
+// #endif
+// 	  break;
+// 	case SDL_KEYUP:
+// 	  current_modifiers = event.key.keysym.mod;
+// 	  input_state[event.key.keysym.sym] = RELEASED;
+// #ifdef GCW0
+// 	  axis_is_active = FALSE;
+// #endif
+// 	  break;
+// 
+// 	case SDL_JOYAXISMOTION:
+// 	  axis = event.jaxis.axis;
+// 	  if (axis == 0 || ((joy_num_axes >= 5) && (axis == 3)) ) /* x-axis */
+// 	    {
+// 	      input_axis.x = event.jaxis.value;
+// 
+// 	      // this is a bit tricky, because we want to allow direction keys
+// 	      // to be soft-released. When mapping the joystick->keyboard, we
+// 	      // therefore have to make sure that this mapping only occurs when
+// 	      // and actual _change_ of the joystick-direction ('digital') occurs
+// 	      // so that it behaves like "set"/"release"
+// 	      if (joy_sensitivity*event.jaxis.value > 10000)   /* about half tilted */
+// 		{
+// 		  input_state[JOY_RIGHT] = PRESSED;
+// 		  input_state[JOY_LEFT] = FALSE;
+// 		}
+// 	      else if (joy_sensitivity*event.jaxis.value < -10000)
+// 		{
+// 		  input_state[JOY_LEFT] = PRESSED;
+// 		  input_state[JOY_RIGHT] = FALSE;
+// 		}
+// 	      else
+// 		{
+// 		  input_state[JOY_LEFT] = FALSE;
+// 		  input_state[JOY_RIGHT] = FALSE;
+// 		}
+// 	    }
+// 	  else if ((axis == 1) || ((joy_num_axes >=5) && (axis == 4))) /* y-axis */
+// 	    {
+// 	      input_axis.y = event.jaxis.value;
+// 
+// 	      if (joy_sensitivity*event.jaxis.value > 10000)
+// 		{
+// 		  input_state[JOY_DOWN] = PRESSED;
+// 		  input_state[JOY_UP] =  FALSE;
+// 		}
+// 	      else if (joy_sensitivity*event.jaxis.value < -10000)
+// 		{
+// 		  input_state[JOY_UP] = PRESSED;
+// 		  input_state[JOY_DOWN]= FALSE;
+// 		}
+// 	      else
+// 		{
+// 		  input_state[JOY_UP] = FALSE;
+// 		  input_state[JOY_DOWN] = FALSE;
+// 		}
+// 	    }
+// 
+// 	  break;
+// 
+// 	case SDL_JOYBUTTONDOWN:
+// 	  // first button
+// 	  if (event.jbutton.button == 0)
+// 	    input_state[JOY_BUTTON1] = PRESSED;
+// 
+// 	  // second button
+// 	  else if (event.jbutton.button == 1)
+// 	    input_state[JOY_BUTTON2] = PRESSED;
+// 
+// 	  // and third button
+// 	  else if (event.jbutton.button == 2)
+// 	    input_state[JOY_BUTTON3] = PRESSED;
+// 
+// 	  // and fourth button
+//           else if (event.jbutton.button == 3)
+// 	    input_state[JOY_BUTTON4] = PRESSED;
+// 
+// 	  axis_is_active = TRUE;
+// 	  break;
+// 
+// 	case SDL_JOYBUTTONUP:
+// 	  // first button
+// 	  if (event.jbutton.button == 0)
+// 	    input_state[JOY_BUTTON1] = FALSE;
+// 
+// 	  // second button
+// 	  else if (event.jbutton.button == 1)
+// 	    input_state[JOY_BUTTON2] = FALSE;
+// 
+// 	  // and third button
+// 	  else if (event.jbutton.button == 2)
+// 	    input_state[JOY_BUTTON3] = FALSE;
+// 
+// 	  // and fourth button
+//           else if (event.jbutton.button == 3)
+// 	    input_state[JOY_BUTTON4] = PRESSED;
+// 
+// 	  axis_is_active = FALSE;
+// 	  break;
+// 
+// 	case SDL_MOUSEMOTION:
+// 	  input_axis.x = event.button.x - UserCenter_x + 16;
+// 	  input_axis.y = event.button.y - UserCenter_y + 16;
+// 
+// 	  last_mouse_event = SDL_GetTicks ();
+// 
+// 	  break;
+// 
+// 	  /* Mouse control */
+// 	case SDL_MOUSEBUTTONDOWN:
+// 	  if (event.button.button == SDL_BUTTON_LEFT)
+// 	    {
+// 	      input_state[MOUSE_BUTTON1] = PRESSED;
+// 	      axis_is_active = TRUE;
+// 	    }
+// 
+// 	  if (event.button.button == SDL_BUTTON_RIGHT)
+// 	    input_state[MOUSE_BUTTON2] = PRESSED;
+// 
+// 	  if (event.button.button == SDL_BUTTON_MIDDLE)
+// 	    input_state[MOUSE_BUTTON3] = PRESSED;
+// 
+// 	  // wheel events are immediately released, so we rather
+// 	  // count the number of not yet read-out events
+// 	  if (event.button.button == SDL_BUTTON_WHEELUP)
+// 	      WheelUpEvents ++;
+// 
+// 	  if (event.button.button == SDL_BUTTON_WHEELDOWN)
+// 	      WheelDownEvents ++;
+// 
+// 	  last_mouse_event = SDL_GetTicks();
+// 	  break;
+// 
+//         case SDL_MOUSEBUTTONUP:
+// 	  if (event.button.button == SDL_BUTTON_LEFT)
+// 	    {
+// 	      input_state[MOUSE_BUTTON1] = FALSE;
+// 	      axis_is_active = FALSE;
+// 	    }
+// 
+// 	  if (event.button.button == SDL_BUTTON_RIGHT)
+// 	    input_state[MOUSE_BUTTON2] = FALSE;
+// 
+// 	  if (event.button.button == SDL_BUTTON_MIDDLE)
+// 	    input_state[MOUSE_BUTTON3] = FALSE;
+// 
+// 	  break;
+// 
+//  	default:
+//  	  break;
+//  	}
+// 
+//     }
+// 
+//   return 0;
+// }
 
 /*-----------------------------------------------------------------
  * Desc: should do roughly what getchar() does, but in raw
