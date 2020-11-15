@@ -509,3 +509,25 @@ pub unsafe extern "C" fn EnemyHitByBulletText(enemy: c_int) {
         _ => unreachable!(),
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn EnemyInfluCollisionText(enemy: c_int) {
+    let robot = &mut AllEnemys[usize::try_from(enemy).unwrap()];
+
+    if GameConfig.Droid_Talk == 0 {
+        return;
+    }
+
+    robot.TextVisibleTime = 0.;
+    match MyRandom(1) {
+        0 => {
+            robot.TextToBeDisplayed =
+                b"Hey, I'm from MS! Walk outa my way!".as_ptr() as *mut c_char;
+        }
+        1 => {
+            robot.TextToBeDisplayed =
+                "Hey, I know the big MS boss! You better go.".as_ptr() as *mut c_char;
+        }
+        _ => unreachable!(),
+    }
+}

@@ -99,28 +99,28 @@ extern int vid_bpp;
 // 
 // }; // void EnemyHitByBullet( int Enum );
 
-void
-EnemyInfluCollisionText ( int Enum )
-{
-  Enemy ThisRobot=&AllEnemys[ Enum ];
-
-  if ( !GameConfig.Droid_Talk ) return;
-
-  ThisRobot->TextVisibleTime=0;
-
-  switch (MyRandom(1))
-    {
-    case 0:
-      ThisRobot->TextToBeDisplayed="Hey, I'm from MS! Walk outa my way!";
-      break;
-    case 1:
-      ThisRobot->TextToBeDisplayed="Hey, I know the big MS boss! You better go.";
-      break;
-    }
-
-  return;
-
-} // void AddStandingAndAimingText( int Enum )
+// void
+// EnemyInfluCollisionText ( int Enum )
+// {
+//   Enemy ThisRobot=&AllEnemys[ Enum ];
+// 
+//   if ( !GameConfig.Droid_Talk ) return;
+// 
+//   ThisRobot->TextVisibleTime=0;
+// 
+//   switch (MyRandom(1))
+//     {
+//     case 0:
+//       ThisRobot->TextToBeDisplayed="Hey, I'm from MS! Walk outa my way!";
+//       break;
+//     case 1:
+//       ThisRobot->TextToBeDisplayed="Hey, I know the big MS boss! You better go.";
+//       break;
+//     }
+// 
+//   return;
+// 
+// } // void AddStandingAndAimingText( int Enum )
 
 
 void
