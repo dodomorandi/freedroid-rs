@@ -7,6 +7,7 @@ mod graphics;
 mod highscore;
 mod input;
 mod map;
+mod menu;
 mod misc;
 mod sound;
 mod structs;

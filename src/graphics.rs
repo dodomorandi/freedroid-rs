@@ -10,4 +10,6 @@ extern "C" {
         fblue: c_float,
     ) -> c_int;
     pub static mut vid_bpp: c_int;
+    pub fn toggle_fullscreen();
+    pub fn TakeScreenshot();
 }

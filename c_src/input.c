@@ -348,33 +348,33 @@ void Init_Joy (void)
 }
 
 // FIXME: remove that obsolete stuff...
-void
-ReactToSpecialKeys(void)
-{
-
-  if ( cmd_is_activeR(CMD_QUIT) ) {
-    handle_QuitGame( ACTION_CLICK );
-  }
-
-  if ( cmd_is_activeR(CMD_PAUSE) )
-    Pause ();
-
-  if ( cmd_is_active (CMD_SCREENSHOT) )
-    TakeScreenshot();
-
-  if ( cmd_is_activeR ( CMD_FULLSCREEN ) ) {
-    toggle_fullscreen();
-  }
-
-  if ( cmd_is_activeR ( CMD_MENU ) ) {
-    showMainMenu ();
-  }
-
-  // this stuff remains hardcoded to keys
-  if ( KeyIsPressedR('c') && AltPressed() && CtrlPressed() && ShiftPressed() )
-    Cheatmenu ();
-
-} // void ReactToSpecialKeys(void)
+// void
+// ReactToSpecialKeys(void)
+// {
+// 
+//   if ( cmd_is_activeR(CMD_QUIT) ) {
+//     handle_QuitGame( ACTION_CLICK );
+//   }
+// 
+//   if ( cmd_is_activeR(CMD_PAUSE) )
+//     Pause ();
+// 
+//   if ( cmd_is_active (CMD_SCREENSHOT) )
+//     TakeScreenshot();
+// 
+//   if ( cmd_is_activeR ( CMD_FULLSCREEN ) ) {
+//     toggle_fullscreen();
+//   }
+// 
+//   if ( cmd_is_activeR ( CMD_MENU ) ) {
+//     showMainMenu ();
+//   }
+// 
+//   // this stuff remains hardcoded to keys
+//   if ( KeyIsPressedR('c') && AltPressed() && CtrlPressed() && ShiftPressed() )
+//     Cheatmenu ();
+// 
+// } // void ReactToSpecialKeys(void)
 
 //----------------------------------------------------------------------
 // main input-reading routine
@@ -733,35 +733,35 @@ ReactToSpecialKeys(void)
 /*   return key; */
 /* } */
 
-bool
-ModIsPressed (SDLMod mod)
-{
-  bool ret;
-  update_input();
-  ret = ( (current_modifiers & mod) != 0) ;
-  return (ret);
-}
-
-bool
-NoDirectionPressed (void)
-{
-  if ( (axis_is_active && (input_axis.x || input_axis.y)) ||
-      DownPressed () || UpPressed() || LeftPressed() || RightPressed() )
-    return ( FALSE );
-  else
-    return ( TRUE );
-} // int NoDirectionPressed(void)
-
-
-//----------------------------------------------------------------------
-// check if a particular key has been pressed
-
-int
-JoyAxisMotion ( void )
-{
-  update_input();
-  return ( input_state[JOY_UP] || input_state[JOY_DOWN] || input_state[JOY_LEFT] || input_state[JOY_RIGHT] );
-}
+// bool
+// ModIsPressed (SDLMod mod)
+// {
+//   bool ret;
+//   update_input();
+//   ret = ( (current_modifiers & mod) != 0) ;
+//   return (ret);
+// }
+// 
+// bool
+// NoDirectionPressed (void)
+// {
+//   if ( (axis_is_active && (input_axis.x || input_axis.y)) ||
+//       DownPressed () || UpPressed() || LeftPressed() || RightPressed() )
+//     return ( FALSE );
+//   else
+//     return ( TRUE );
+// } // int NoDirectionPressed(void)
+// 
+// 
+// //----------------------------------------------------------------------
+// // check if a particular key has been pressed
+// 
+// int
+// JoyAxisMotion ( void )
+// {
+//   update_input();
+//   return ( input_state[JOY_UP] || input_state[JOY_DOWN] || input_state[JOY_LEFT] || input_state[JOY_RIGHT] );
+// }
 
 /* // check if any keys have been 'freshly' pressed */
 /* // if yes, return key-code, otherwise 0 */

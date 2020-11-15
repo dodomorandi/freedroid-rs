@@ -1,10 +1,10 @@
 use crate::{
     global::User_Rect,
-    input::{cmd_is_active, cmd_is_activeR},
+    input::{cmd_is_active, cmd_is_activeR, ModIsPressed},
 };
 
 use bitflags::bitflags;
-use sdl::sdl::Rect;
+use sdl::{event::Mod, sdl::Rect};
 
 pub const MAX_THEMES: usize = 100;
 
@@ -97,9 +97,20 @@ pub enum Cmds {
 // #define ReturnPressed() (KeyIsPressed(SDLK_RETURN))
 // #define ReturnPressedR() (KeyIsPressedR(SDLK_RETURN))
 
-// #define ShiftPressed() ModIsPressed(KMOD_SHIFT)
-// #define AltPressed() ModIsPressed(KMOD_ALT)
-// #define CtrlPressed() ModIsPressed(KMOD_CTRL)
+#[inline]
+pub unsafe fn ShiftPressed() -> bool {
+    ModIsPressed(Mod::LShift as u32 | Mod::RShift as u32)
+}
+
+#[inline]
+pub unsafe fn AltPressed() -> bool {
+    ModIsPressed(Mod::LAlt as u32 | Mod::RAlt as u32)
+}
+
+#[inline]
+pub unsafe fn CtrlPressed() -> bool {
+    ModIsPressed(Mod::LCtrl as u32 | Mod::RCtrl as u32)
+}
 
 // #define MouseLeftPressed() KeyIsPressed(MOUSE_BUTTON1)
 // #define MouseLeftPressedR() KeyIsPressedR(MOUSE_BUTTON1)

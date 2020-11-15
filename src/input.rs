@@ -1,9 +1,14 @@
 #[cfg(target_os = "android")]
 use crate::global::ne_screen;
 use crate::{
-    defs::{get_user_center, Cmds, PointerStates},
+    defs::{
+        get_user_center, AltPressed, Cmds, CtrlPressed, DownPressed, LeftPressed, MenuAction,
+        PointerStates, RightPressed, ShiftPressed, UpPressed,
+    },
     global::{axis_is_active, input_axis, joy_num_axes, joy_sensitivity, last_mouse_event},
-    misc::Terminate,
+    graphics::{toggle_fullscreen, TakeScreenshot},
+    menu::{handle_QuitGame, showMainMenu, Cheatmenu},
+    misc::{Pause, Terminate},
 };
 
 use log::info;
@@ -354,4 +359,57 @@ pub unsafe extern "C" fn any_key_is_pressedR() -> bool {
 pub unsafe extern "C" fn ResetMouseWheel() {
     WheelUpEvents = 0;
     WheelDownEvents = 0;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ModIsPressed(sdl_mod: SDLMod) -> bool {
+    update_input();
+    (current_modifiers & sdl_mod) != 0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn NoDirectionPressed() -> bool {
+    !((axis_is_active != 0 && (input_axis.x != 0 || input_axis.y != 0))
+        || DownPressed()
+        || UpPressed()
+        || LeftPressed()
+        || RightPressed())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn JoyAxisMotion() -> c_int {
+    update_input();
+    (input_state[PointerStates::JoyUp as usize] != 0
+        || input_state[PointerStates::JoyDown as usize] != 0
+        || input_state[PointerStates::JoyLeft as usize] != 0
+        || input_state[PointerStates::JoyRight as usize] != 0)
+        .into()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ReactToSpecialKeys() {
+    if cmd_is_activeR(Cmds::Quit) {
+        handle_QuitGame(MenuAction::Click);
+    }
+
+    if cmd_is_activeR(Cmds::Pause) {
+        Pause();
+    }
+
+    if cmd_is_active(Cmds::Screenshot) {
+        TakeScreenshot();
+    }
+
+    if cmd_is_activeR(Cmds::Fullscreen) {
+        toggle_fullscreen();
+    }
+
+    if cmd_is_activeR(Cmds::Menu) {
+        showMainMenu();
+    }
+
+    // this stuff remains hardcoded to keys
+    if KeyIsPressedR(b'c'.into()) && AltPressed() && CtrlPressed() && ShiftPressed() {
+        Cheatmenu();
+    }
 }
