@@ -1155,30 +1155,30 @@ init_progress (char *text)
 /*----------------------------------------------------------------------
  *  update the progress bar
  *----------------------------------------------------------------------*/
-void
-update_progress (int percent)
-{
-  SDL_Rect dst, src;
-
-  Copy_Rect (ProgressBar_Rect, dst);
-
-  dst.h = (Uint16) (1.0*ProgressBar_Rect.h * percent / 100.0);
-
-  dst.x += ProgressMeter_Rect.x;
-  dst.y += ProgressMeter_Rect.y + ProgressBar_Rect.h - dst.h;
-
-  src.x = src.y = 0;
-  src.h = dst.h;
-  src.y += ProgressBar_Rect.h - dst.h;
-
-  //  Fill_Rect (dst, progress_color);
-  SDL_BlitSurface (progress_filler_pic, &src, ne_screen, &dst);
-
-  SDL_UpdateRects (ne_screen, 1, &dst);
-
-  return;
-
-} // update_progress()
+// void
+// update_progress (int percent)
+// {
+//   SDL_Rect dst, src;
+// 
+//   Copy_Rect (ProgressBar_Rect, dst);
+// 
+//   dst.h = (Uint16) (1.0*ProgressBar_Rect.h * percent / 100.0);
+// 
+//   dst.x += ProgressMeter_Rect.x;
+//   dst.y += ProgressMeter_Rect.y + ProgressBar_Rect.h - dst.h;
+// 
+//   src.x = src.y = 0;
+//   src.h = dst.h;
+//   src.y += ProgressBar_Rect.h - dst.h;
+// 
+//   //  Fill_Rect (dst, progress_color);
+//   SDL_BlitSurface (progress_filler_pic, &src, ne_screen, &dst);
+// 
+//   SDL_UpdateRects (ne_screen, 1, &dst);
+// 
+//   return;
+// 
+// } // update_progress()
 
 // update the factor affecting the current speed of 'time flow'
 void
