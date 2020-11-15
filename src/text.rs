@@ -586,3 +586,31 @@ pub unsafe extern "C" fn AddInfluBurntText() {
         _ => unreachable!(),
     }
 }
+
+/// Similar to putchar(), using SDL via the BFont-fct PutChar().
+///
+/// sets MyCursor[XY], and allows passing (-1,-1) as coords to indicate
+/// using the current cursor position.
+#[no_mangle]
+pub unsafe extern "C" fn putchar_SDL(
+    surface: *mut SDL_Surface,
+    mut x: c_int,
+    mut y: c_int,
+    c: c_int,
+) -> c_int {
+    if x == -1 {
+        x = MyCursorX;
+    }
+    if y == -1 {
+        y = MyCursorY;
+    }
+
+    MyCursorX = x + CharWidth(&*GetCurrentFont(), c);
+    MyCursorY = y;
+
+    let ret = PutChar(surface, x, y, c);
+
+    SDL_Flip(surface);
+
+    ret
+}

@@ -613,22 +613,22 @@ ScrollText (char *Text, SDL_Rect *rect, int SecondsMinimumDuration )
  *  using the current cursor position.
  *
  *-----------------------------------------------------------------*/
-int
-putchar_SDL (SDL_Surface *Surface, int x, int y, int c)
-{
-  int ret;
-  if (x == -1) x = MyCursorX;
-  if (y == -1) y = MyCursorY;
-
-  MyCursorX = x + CharWidth (GetCurrentFont(), c);
-  MyCursorY = y;
-
-  ret = PutChar (Surface, x, y, c);
-
-  SDL_Flip (Surface);
-
-  return (ret);
-}
+// int
+// putchar_SDL (SDL_Surface *Surface, int x, int y, int c)
+// {
+//   int ret;
+//   if (x == -1) x = MyCursorX;
+//   if (y == -1) y = MyCursorY;
+// 
+//   MyCursorX = x + CharWidth (GetCurrentFont(), c);
+//   MyCursorY = y;
+// 
+//   ret = PutChar (Surface, x, y, c);
+// 
+//   SDL_Flip (Surface);
+// 
+//   return (ret);
+// }
 
 
 /*-----------------------------------------------------------------
