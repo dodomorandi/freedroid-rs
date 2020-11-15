@@ -451,22 +451,22 @@ PrintString (SDL_Surface * Surface, int x, int y, char *fmt, ...)
   va_end (args);
 }
 
-void
-PrintStringFont (SDL_Surface * Surface, BFont_Info * Font, int x, int y,
-		 char *fmt, ...)
-{
-  va_list args;
-  char *temp;
-  va_start (args, fmt);
-
-  if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
-    {
-      vsprintf (temp, fmt, args);
-      PutStringFont (Surface, Font, x, y, temp);
-      free (temp);
-    }
-  va_end (args);
-}
+// void
+// PrintStringFont (SDL_Surface * Surface, BFont_Info * Font, int x, int y,
+// 		 char *fmt, ...)
+// {
+//   va_list args;
+//   char *temp;
+//   va_start (args, fmt);
+// 
+//   if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
+//     {
+//       vsprintf (temp, fmt, args);
+//       PutStringFont (Surface, Font, x, y, temp);
+//       free (temp);
+//     }
+//   va_end (args);
+// }
 
 void
 CenteredPrintString (SDL_Surface * Surface, int y, char *fmt, ...)

@@ -4,6 +4,7 @@ use sdl::{
 };
 use std::{
     convert::{TryFrom, TryInto},
+    ffi::VaList,
     os::raw::{c_char, c_int},
 };
 
@@ -11,14 +12,7 @@ extern "C" {
     pub static mut Highscore_BFont: *mut BFontInfo;
     pub static mut Para_BFont: *mut BFontInfo;
     pub static mut CurrentFont: *mut BFontInfo;
-    pub fn PrintStringFont(
-        surface: *mut SDL_Surface,
-        font: *mut BFontInfo,
-        x: c_int,
-        y: c_int,
-        fmt: *mut c_char,
-        ...
-    );
+    fn vsprintf(str: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
 }
 
 #[derive(Clone)]
@@ -111,4 +105,20 @@ pub unsafe extern "C" fn PutString(
 #[no_mangle]
 pub unsafe extern "C" fn PutChar(surface: *mut SDL_Surface, x: c_int, y: c_int, c: c_int) -> c_int {
     PutCharFont(&mut *surface, &mut *CurrentFont, x, y, c)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PrintStringFont(
+    surface: *mut SDL_Surface,
+    font: *mut BFontInfo,
+    x: c_int,
+    y: c_int,
+    fmt: *mut c_char,
+    args: ...
+) {
+    let mut args = args.clone();
+
+    let mut temp = [0; 1001];
+    vsprintf(temp.as_mut_ptr(), fmt, args.as_va_list());
+    PutStringFont(surface, font, x, y, temp.as_mut_ptr());
 }
