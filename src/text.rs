@@ -4,11 +4,12 @@ use crate::{
         self, Cmds, DownPressed, DownPressedR, FirePressedR, LeftPressedR, PointerStates,
         RightPressedR, UpPressed, UpPressedR, SHOW_WAIT, TEXT_STRETCH,
     },
-    global::{joy_num_axes, joy_sensitivity, ne_screen, AllEnemys, GameConfig, Me, Screen_Rect},
+    global::{ne_screen, AllEnemys, GameConfig, Me, Screen_Rect},
     graphics::vid_bpp,
     input::{
-        any_key_just_pressed, cmd_is_activeR, key_cmds, update_input, wait_for_all_keys_released,
-        KeyIsPressedR, SDL_Delay, WheelDownPressed, WheelUpPressed,
+        any_key_just_pressed, cmd_is_activeR, joy_num_axes, joy_sensitivity, key_cmds,
+        update_input, wait_for_all_keys_released, KeyIsPressedR, SDL_Delay, WheelDownPressed,
+        WheelUpPressed,
     },
     misc::{MyRandom, Terminate},
 };

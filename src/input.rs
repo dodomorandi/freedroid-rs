@@ -5,18 +5,23 @@ use crate::{
         self, get_user_center, AltPressed, Cmds, CtrlPressed, DownPressed, LeftPressed, MenuAction,
         PointerStates, RightPressed, ShiftPressed, UpPressed,
     },
-    global::{axis_is_active, input_axis, joy, joy_num_axes, joy_sensitivity, last_mouse_event},
     graphics::{toggle_fullscreen, TakeScreenshot},
     menu::{handle_QuitGame, showMainMenu, Cheatmenu},
     misc::{Pause, Terminate},
+    structs::Point,
 };
 
 use cstr::cstr;
 use log::info;
+#[cfg(feature = "gcw0")]
+use sdl::event::ll::{SDLK_BACKSPACE, SDLK_LALT, SDLK_LCTRL, SDLK_TAB};
+#[cfg(not(feature = "gcw0"))]
+use sdl::event::ll::{SDLK_F12, SDLK_PAUSE, SDLK_RSHIFT};
 use sdl::{
     event::{
         ll::{
-            SDLMod, SDL_Event, SDL_PollEvent, SDL_ENABLE, SDL_JOYAXISMOTION, SDL_JOYBUTTONDOWN,
+            SDLMod, SDL_Event, SDL_PollEvent, SDLK_DOWN, SDLK_ESCAPE, SDLK_LEFT, SDLK_RETURN,
+            SDLK_RIGHT, SDLK_SPACE, SDLK_UP, SDL_ENABLE, SDL_JOYAXISMOTION, SDL_JOYBUTTONDOWN,
             SDL_JOYBUTTONUP, SDL_KEYDOWN, SDL_KEYUP, SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONUP,
             SDL_MOUSEMOTION, SDL_QUIT,
         },
@@ -25,8 +30,8 @@ use sdl::{
     joy::{
         get_joystick_name,
         ll::{
-            SDL_JoystickEventState, SDL_JoystickNumAxes, SDL_JoystickNumButtons, SDL_JoystickOpen,
-            SDL_NumJoysticks,
+            SDL_Joystick, SDL_JoystickEventState, SDL_JoystickNumAxes, SDL_JoystickNumButtons,
+            SDL_JoystickOpen, SDL_NumJoysticks,
         },
     },
     ll::{SDL_GetTicks, SDL_InitSubSystem, SDL_INIT_JOYSTICK},
@@ -39,14 +44,118 @@ use std::{
 
 extern "C" {
     pub fn SDL_Delay(ms: u32);
-    pub static mut input_state: [c_int; PointerStates::Last as usize];
-    pub static mut key_cmds: [[c_int; 3]; Cmds::Last as usize];
-    pub static mut show_cursor: bool;
-    pub static mut event: SDL_Event;
-    pub static mut current_modifiers: SDLMod;
-    pub static mut WheelUpEvents: c_int;
-    pub static mut WheelDownEvents: c_int;
 }
+
+#[no_mangle]
+pub static mut show_cursor: bool = false;
+#[no_mangle]
+pub static mut WheelUpEvents: c_int = 0;
+#[no_mangle]
+pub static mut WheelDownEvents: c_int = 0;
+#[no_mangle]
+pub static mut last_mouse_event: u32 = 0;
+#[no_mangle]
+pub static mut current_modifiers: SDLMod = 0;
+#[no_mangle]
+pub static mut input_state: [c_int; PointerStates::Last as usize] =
+    [0; PointerStates::Last as usize];
+#[no_mangle]
+pub static mut event: SDL_Event = SDL_Event { data: [0; 24] };
+#[no_mangle]
+pub static mut joy_sensitivity: c_int = 0;
+#[no_mangle]
+pub static mut input_axis: Point = Point { x: 0, y: 0 }; /* joystick (and mouse) axis values */
+#[no_mangle]
+pub static mut joy: *mut SDL_Joystick = null_mut();
+#[no_mangle]
+pub static mut joy_num_axes: i32 = 0; /* number of joystick axes */
+#[no_mangle]
+pub static mut axis_is_active: i32 = 0; /* is firing to use axis-values or not */
+
+#[cfg(feature = "gcw0")]
+#[no_mangle]
+pub static mut key_cmds: [[c_int; 3]; Cmds::Last as usize] = [
+    [SDLK_UP as c_int, PointerStates::JoyUp as c_int, 0], // CMD_UP
+    [SDLK_DOWN as c_int, PointerStates::JoyDown as c_int, 0], // CMD_DOWN
+    [SDLK_LEFT as c_int, PointerStates::JoyLeft as c_int, 0], // CMD_LEFT
+    [SDLK_RIGHT as c_int, PointerStates::JoyRight as c_int, 0], // CMD_RIGHT
+    [SDLK_SPACE as c_int, SDLK_LCTRL as c_int, 0],        // CMD_FIRE
+    [SDLK_LALT as c_int, PointerStates::JoyButton2 as c_int, 0], // CMD_ACTIVATE
+    [SDLK_BACKSPACE as c_int, SDLK_TAB as c_int, 0],      // CMD_TAKEOVER
+    [0, 0, 0],                                            // CMD_QUIT,
+    [SDLK_RETURN as c_int, 0, 0],                         // CMD_PAUSE,
+    [0, 0, 0],                                            // CMD_SCREENSHOT
+    [0, 0, 0],                                            // CMD_FULLSCREEN,
+    [SDLK_ESCAPE as c_int, PointerStates::JoyButton4 as c_int, 0], // CMD_MENU,
+    [
+        SDLK_ESCAPE as c_int,
+        PointerStates::JoyButton2 as c_int,
+        PointerStates::MouseButton2 as c_int,
+    ], // CMD_BACK
+];
+
+#[cfg(not(feature = "gcw0"))]
+#[no_mangle]
+pub static mut key_cmds: [[c_int; 3]; Cmds::Last as usize] = [
+    [
+        SDLK_UP as c_int,
+        PointerStates::JoyUp as c_int,
+        b'w' as c_int,
+    ], // CMD_UP
+    [
+        SDLK_DOWN as c_int,
+        PointerStates::JoyDown as c_int,
+        b's' as c_int,
+    ], // CMD_DOWN
+    [
+        SDLK_LEFT as c_int,
+        PointerStates::JoyLeft as c_int,
+        b'a' as c_int,
+    ], // CMD_LEFT
+    [
+        SDLK_RIGHT as c_int,
+        PointerStates::JoyRight as c_int,
+        b'd' as c_int,
+    ], // CMD_RIGHT
+    [
+        SDLK_SPACE as c_int,
+        PointerStates::JoyButton1 as c_int,
+        PointerStates::MouseButton1 as c_int,
+    ], // CMD_FIRE
+    [SDLK_RETURN as c_int, SDLK_RSHIFT as c_int, b'e' as c_int], // CMD_ACTIVATE
+    [
+        SDLK_SPACE as c_int,
+        PointerStates::JoyButton2 as c_int,
+        PointerStates::MouseButton2 as c_int,
+    ], // CMD_TAKEOVER
+    [b'q' as c_int, 0, 0],                                       // CMD_QUIT,
+    [SDLK_PAUSE as c_int, b'p' as c_int, 0],                     // CMD_PAUSE,
+    [SDLK_F12 as c_int, 0, 0],                                   // CMD_SCREENSHOT
+    [b'f' as c_int, 0, 0],                                       // CMD_FULLSCREEN,
+    [SDLK_ESCAPE as c_int, PointerStates::JoyButton4 as c_int, 0], // CMD_MENU,
+    [
+        SDLK_ESCAPE as c_int,
+        PointerStates::JoyButton2 as c_int,
+        PointerStates::MouseButton2 as c_int,
+    ], // CMD_BACK
+];
+
+#[no_mangle]
+pub static mut cmd_strings: [*const c_char; Cmds::Last as usize] = [
+    cstr!("UP").as_ptr(),
+    cstr!("DOWN").as_ptr(),
+    cstr!("LEFT").as_ptr(),
+    cstr!("RIGHT").as_ptr(),
+    cstr!("FIRE").as_ptr(),
+    cstr!("ACTIVATE").as_ptr(),
+    cstr!("TAKEOVER").as_ptr(),
+    cstr!("QUIT").as_ptr(),
+    cstr!("PAUSE").as_ptr(),
+    cstr!("SCREENSHOT").as_ptr(),
+    cstr!("FULLSCREEN").as_ptr(),
+    cstr!("MENU").as_ptr(),
+    cstr!("BACK").as_ptr(),
+];
 
 pub const CURSOR_KEEP_VISIBLE: u32 = 3000; // ticks to keep mouse-cursor visible without mouse-input
 
@@ -122,8 +231,8 @@ pub unsafe extern "C" fn update_input() -> c_int {
                 current_modifiers = key.keysym._mod;
                 input_state[usize::try_from(key.keysym.sym).unwrap()] = PRESSED;
                 #[cfg(feature = "gcw0")]
-                if (input_axis.x || input_axis.y) {
-                    axis_is_active = TRUE; // 4 GCW-0 ; breaks cursor keys after axis has been active...
+                if input_axis.x != 0 || input_axis.y != 0 {
+                    axis_is_active = true.into(); // 4 GCW-0 ; breaks cursor keys after axis has been active...
                 }
             }
             SDL_KEYUP => {
@@ -132,7 +241,7 @@ pub unsafe extern "C" fn update_input() -> c_int {
                 input_state[usize::try_from(key.keysym.sym).unwrap()] = RELEASED;
                 #[cfg(feature = "gcw0")]
                 {
-                    axis_is_active = FALSE;
+                    axis_is_active = false.into();
                 }
             }
 

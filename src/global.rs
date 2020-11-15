@@ -15,7 +15,6 @@ use crate::{
 
 use cstr::cstr;
 use sdl::{
-    joy::ll::SDL_Joystick,
     mouse::ll::SDL_Cursor,
     video::ll::{SDL_RWops, SDL_Rect, SDL_Surface},
 };
@@ -140,12 +139,6 @@ extern "C" {
     pub static mut progress_filler_pic: *mut SDL_Surface;
     pub static mut level_rect: [SDL_Rect; MAX_LEVELS]; /* rect's of levels in side-view */
     pub static mut liftrow_rect: [SDL_Rect; MAX_LIFT_ROWS]; /* the lift-row rect's in side-view*/
-    pub static mut joy: *mut SDL_Joystick;
-    pub static mut joy_num_axes: i32; /* number of joystick axes */
-    pub static mut joy_sensitivity: i32;
-    pub static mut input_axis: Point; /* joystick (and mouse) axis values */
-    pub static mut axis_is_active: i32; /* is firing to use axis-values or not */
-    pub static mut last_mouse_event: u32; // SDL-ticks of last mouse event
     pub static mut Highscores: *mut *mut HighscoreEntry;
     pub static mut num_highscores: i32; /* total number of entries in our list (fixed) */
     pub static mut to_blocks: *mut SDL_Surface; /* the global surface containing all game-blocks */
