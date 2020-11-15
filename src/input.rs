@@ -23,8 +23,6 @@ use std::{convert::TryFrom, os::raw::c_int};
 extern "C" {
     pub fn SDL_Delay(ms: u32);
     pub static mut input_state: [c_int; PointerStates::Last as usize];
-    pub fn cmd_is_activeR(command: Cmds) -> bool;
-    pub fn cmd_is_active(command: Cmds) -> bool;
     pub fn wait_for_all_keys_released();
     pub static mut key_cmds: [[c_int; 3]; Cmds::Last as usize];
     pub static mut show_cursor: bool;
@@ -307,4 +305,24 @@ pub unsafe extern "C" fn WheelDownPressed() -> bool {
     } else {
         false
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn cmd_is_active(cmd: Cmds) -> bool {
+    let cmd = cmd as usize;
+    KeyIsPressed(key_cmds[cmd][0])
+        || KeyIsPressed(key_cmds[cmd][1])
+        || KeyIsPressed(key_cmds[cmd][2])
+}
+
+/// the same but release the keys: use only for menus!
+#[no_mangle]
+pub unsafe extern "C" fn cmd_is_activeR(cmd: Cmds) -> bool {
+    let cmd = cmd as usize;
+
+    let c1 = KeyIsPressedR(key_cmds[cmd][0]);
+    let c2 = KeyIsPressedR(key_cmds[cmd][1]);
+    let c3 = KeyIsPressedR(key_cmds[cmd][2]);
+
+    c1 || c2 || c3
 }

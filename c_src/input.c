@@ -809,42 +809,42 @@ any_key_is_pressedR (void)
 
 }  // any_key_is_pressed()
 
-bool
-cmd_is_active (enum _cmds cmd)
-{
-  if (cmd >= CMD_LAST)
-    {
-      DebugPrintf (0, "ERROR: Illegal command '%d'\n", cmd);
-      Terminate (ERR);
-    }
-
-  if ( KeyIsPressed( key_cmds[cmd][0] ) ||
-       KeyIsPressed( key_cmds[cmd][1] ) ||
-       KeyIsPressed( key_cmds[cmd][2] ))
-    return (TRUE);
-  else
-    return (FALSE);
-
-} // cmd_is_active()
-
-// --------------------------------------------------
-// the same but release the keys: use only for menus!
-// --------------------------------------------------
-bool
-cmd_is_activeR (enum _cmds cmd)
-{
-  if (cmd >= CMD_LAST)
-    {
-      DebugPrintf (0, "ERROR: Illegal command '%d'\n", cmd);
-      Terminate (ERR);
-    }
-
-  bool c1 = KeyIsPressedR( key_cmds[cmd][0] );
-  bool c2 = KeyIsPressedR( key_cmds[cmd][1] );
-  bool c3 = KeyIsPressedR( key_cmds[cmd][2] );
-
-  return ( (c1 || c2 || c3) );
-
-} // cmd_is_active()
+// bool
+// cmd_is_active (enum _cmds cmd)
+// {
+//   if (cmd >= CMD_LAST)
+//     {
+//       DebugPrintf (0, "ERROR: Illegal command '%d'\n", cmd);
+//       Terminate (ERR);
+//     }
+// 
+//   if ( KeyIsPressed( key_cmds[cmd][0] ) ||
+//        KeyIsPressed( key_cmds[cmd][1] ) ||
+//        KeyIsPressed( key_cmds[cmd][2] ))
+//     return (TRUE);
+//   else
+//     return (FALSE);
+// 
+// } // cmd_is_active()
+// 
+// // --------------------------------------------------
+// // the same but release the keys: use only for menus!
+// // --------------------------------------------------
+// bool
+// cmd_is_activeR (enum _cmds cmd)
+// {
+//   if (cmd >= CMD_LAST)
+//     {
+//       DebugPrintf (0, "ERROR: Illegal command '%d'\n", cmd);
+//       Terminate (ERR);
+//     }
+// 
+//   bool c1 = KeyIsPressedR( key_cmds[cmd][0] );
+//   bool c2 = KeyIsPressedR( key_cmds[cmd][1] );
+//   bool c3 = KeyIsPressedR( key_cmds[cmd][2] );
+// 
+//   return ( (c1 || c2 || c3) );
+// 
+// } // cmd_is_active()
 
 #undef _intput_c
