@@ -69,8 +69,6 @@ pub extern "C" fn any_key_just_pressed() -> c_int {
 }
 
 const FRESH_BIT: c_int = 0x01 << 8;
-const OLD_BIT: c_int = 0x01 << 9;
-const LONG_PRESSED: c_int = true as c_int | OLD_BIT;
 const PRESSED: c_int = true as c_int | FRESH_BIT;
 const RELEASED: c_int = false as c_int | FRESH_BIT;
 
