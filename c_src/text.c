@@ -404,42 +404,42 @@ ScrollText (char *Text, SDL_Rect *rect, int SecondsMinimumDuration )
   @Ret:
   @Int:
 * $Function----------------------------------------------------------*/
-bool
-linebreak_needed (const char *textpos , const SDL_Rect *clip)
-{
-  int w;
-  int NeededSpace;
-  const char *pointer;
-
-  // sanity check
-  if (textpos == NULL)
-    {
-      DebugPrintf (0, "ERROR: linebreak_needed() called with NULL pointer! \n");
-      Terminate(ERR);
-    }
-
-  // only relevant if we're at the beginning of a word
-  if ( *textpos != ' ')
-    return (FALSE);
-
-  // In case of a space, see if the next word will still fit on the line
-  // and do a carriage return/line feed if not
-  NeededSpace = 0;
-  pointer = textpos + 1;
-
-  while ( (*pointer != ' ') && (*pointer != '\0') && (*pointer != '\n') )
-    {
-      w = CharWidth( GetCurrentFont(), *pointer );
-      NeededSpace += w;
-      if ( MyCursorX+NeededSpace > clip->x + clip->w - w )
-	return (TRUE);
-
-      pointer ++;
-    } // while
-
-  return (FALSE);
-
-} // bool linebreak_needed
+// bool
+// linebreak_needed (const char *textpos , const SDL_Rect *clip)
+// {
+//   int w;
+//   int NeededSpace;
+//   const char *pointer;
+// 
+//   // sanity check
+//   if (textpos == NULL)
+//     {
+//       DebugPrintf (0, "ERROR: linebreak_needed() called with NULL pointer! \n");
+//       Terminate(ERR);
+//     }
+// 
+//   // only relevant if we're at the beginning of a word
+//   if ( *textpos != ' ')
+//     return (FALSE);
+// 
+//   // In case of a space, see if the next word will still fit on the line
+//   // and do a carriage return/line feed if not
+//   NeededSpace = 0;
+//   pointer = textpos + 1;
+// 
+//   while ( (*pointer != ' ') && (*pointer != '\0') && (*pointer != '\n') )
+//     {
+//       w = CharWidth( GetCurrentFont(), *pointer );
+//       NeededSpace += w;
+//       if ( MyCursorX+NeededSpace > clip->x + clip->w - w )
+// 	return (TRUE);
+// 
+//       pointer ++;
+//     } // while
+// 
+//   return (FALSE);
+// 
+// } // bool linebreak_needed
 
 /*-----------------------------------------------------------------
  * @Desc: reads a string of "MaxLen" from User-input, and echos it

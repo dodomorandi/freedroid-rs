@@ -42,7 +42,6 @@ extern "C" {
     fn SDL_GetClipRect(surface: *mut SDL_Surface, rect: *mut SDL_Rect);
     fn SDL_SetClipRect(surface: *mut SDL_Surface, rect: *const SDL_Rect) -> bool;
     fn vsprintf(str: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
-    fn linebreak_needed(textpos: *const c_char, clip: *const SDL_Rect) -> bool;
 }
 
 #[cfg(feature = "arcade-input")]
@@ -450,4 +449,43 @@ pub unsafe extern "C" fn DisplayChar(c: c_uchar) {
     // new position.  That depends of course on the char displayed.
     //
     MyCursorX += CharWidth(&*GetCurrentFont(), c.into());
+}
+
+///  This function checks if the next word still fits in this line
+///  of text or if we need a linebreak:
+///  returns TRUE if linebreak is needed, FALSE otherwise
+///
+///  NOTE: this function only does something if *textpos is pointing on a space,
+///  i.e. a word-beginning, otherwise it just returns TRUE
+///
+///  rp: added argument clip, which contains the text-window we're writing in
+///  (formerly known as "TextBorder")
+pub unsafe extern "C" fn linebreak_needed(textpos: *const c_char, clip: &SDL_Rect) -> bool {
+    if textpos.is_null() {
+        error!("linebreak_needed() called with NULL pointer! \n");
+        Terminate(defs::ERR.into());
+    }
+    let textpos = CStr::from_ptr(textpos).to_bytes();
+
+    // only relevant if we're at the beginning of a word
+    let textpos = match textpos.split_first() {
+        Some((&c, _)) if c != b' ' => return false,
+        Some((_, rest)) => rest,
+        None => textpos,
+    };
+
+    let mut needed_space = 0;
+    let iter = textpos
+        .iter()
+        .copied()
+        .take_while(|&c| c != b' ' && c != b'\n');
+    for c in iter {
+        let w = CharWidth(&*GetCurrentFont(), c.into());
+        needed_space += w;
+        if MyCursorX + needed_space > c_int::from(clip.x) + c_int::from(clip.w) - w {
+            return true;
+        }
+    }
+
+    false
 }
