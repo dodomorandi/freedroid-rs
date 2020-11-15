@@ -144,45 +144,45 @@ extern int vid_bpp;
 // } // void AddStandingAndAimingText( int Enum )
 
 
-void
-AddInfluBurntText( void )
-{
-  int FinalTextNr;
-
-  if ( !GameConfig.Droid_Talk ) return;
-
-  Me.TextVisibleTime=0;
-
-  FinalTextNr=MyRandom ( 6 );
-  switch ( FinalTextNr )
-    {
-    case 0:
-      Me.TextToBeDisplayed="Aaarrgh, aah, that burnt me!";
-      break;
-    case 1:
-      Me.TextToBeDisplayed="Hell, that blast was hot!";
-      break;
-    case 2:
-      Me.TextToBeDisplayed="Ghaart, I hate to stain my chassis like that.";
-      break;
-    case 3:
-      Me.TextToBeDisplayed="Oh no!  I think I've burnt a cable!";
-      break;
-    case 4:
-      Me.TextToBeDisplayed="Oh no, my poor transfer connectors smolder!";
-      break;
-    case 5:
-      Me.TextToBeDisplayed="I hope that didn't melt any circuits!";
-      break;
-    case 6:
-      Me.TextToBeDisplayed="So that gives some more black scars on me ol' dented chassis!";
-      break;
-    default:
-      printf("\nError in AddInfluBurntText! That shouldn't be happening.");
-      Terminate(ERR);
-      break;
-    }
-} // void AddInfluBurntText
+// void
+// AddInfluBurntText( void )
+// {
+//   int FinalTextNr;
+// 
+//   if ( !GameConfig.Droid_Talk ) return;
+// 
+//   Me.TextVisibleTime=0;
+// 
+//   FinalTextNr=MyRandom ( 6 );
+//   switch ( FinalTextNr )
+//     {
+//     case 0:
+//       Me.TextToBeDisplayed="Aaarrgh, aah, that burnt me!";
+//       break;
+//     case 1:
+//       Me.TextToBeDisplayed="Hell, that blast was hot!";
+//       break;
+//     case 2:
+//       Me.TextToBeDisplayed="Ghaart, I hate to stain my chassis like that.";
+//       break;
+//     case 3:
+//       Me.TextToBeDisplayed="Oh no!  I think I've burnt a cable!";
+//       break;
+//     case 4:
+//       Me.TextToBeDisplayed="Oh no, my poor transfer connectors smolder!";
+//       break;
+//     case 5:
+//       Me.TextToBeDisplayed="I hope that didn't melt any circuits!";
+//       break;
+//     case 6:
+//       Me.TextToBeDisplayed="So that gives some more black scars on me ol' dented chassis!";
+//       break;
+//     default:
+//       printf("\nError in AddInfluBurntText! That shouldn't be happening.");
+//       Terminate(ERR);
+//       break;
+//     }
+// } // void AddInfluBurntText
 
 /*-----------------------------------------------------------------
  *  scrolls a given text down inside the given rect

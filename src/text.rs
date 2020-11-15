@@ -550,3 +550,39 @@ pub unsafe extern "C" fn AddStandingAndAimingText(enemy: c_int) {
         robot.TextToBeDisplayed = cstr!("Stand still while I aim at you.").as_ptr() as *mut c_char;
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn AddInfluBurntText() {
+    if GameConfig.Droid_Talk == 0 {
+        return;
+    }
+
+    Me.TextVisibleTime = 0.;
+
+    match MyRandom(6) {
+        0 => Me.TextToBeDisplayed = cstr!("Aaarrgh, aah, that burnt me!").as_ptr() as *mut c_char,
+        1 => Me.TextToBeDisplayed = cstr!("Hell, that blast was hot!").as_ptr() as *mut c_char,
+        2 => {
+            Me.TextToBeDisplayed =
+                cstr!("Ghaart, I hate to stain my chassis like that.").as_ptr() as *mut c_char
+        }
+        3 => {
+            Me.TextToBeDisplayed =
+                cstr!("Oh no!  I think I've burnt a cable!").as_ptr() as *mut c_char
+        }
+        4 => {
+            Me.TextToBeDisplayed =
+                cstr!("Oh no, my poor transfer connectors smolder!").as_ptr() as *mut c_char
+        }
+        5 => {
+            Me.TextToBeDisplayed =
+                cstr!("I hope that didn't melt any circuits!").as_ptr() as *mut c_char
+        }
+        6 => {
+            Me.TextToBeDisplayed =
+                cstr!("So that gives some more black scars on me ol' dented chassis!").as_ptr()
+                    as *mut c_char
+        }
+        _ => unreachable!(),
+    }
+}
