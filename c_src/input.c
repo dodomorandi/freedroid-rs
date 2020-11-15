@@ -658,12 +658,12 @@ ReactToSpecialKeys(void)
 // } /* getchar_raw() */
 
 // forget the wheel-counters
-void
-ResetMouseWheel (void)
-{
-  WheelUpEvents = WheelDownEvents = 0;
-  return;
-}
+// void
+// ResetMouseWheel (void)
+// {
+//   WheelUpEvents = WheelDownEvents = 0;
+//   return;
+// }
 
 // bool
 // WheelUpPressed (void)
@@ -713,15 +713,15 @@ ResetMouseWheel (void)
 //   return;
 // }
 
-void
-wait_for_all_keys_released (void)
-{
-  while ( any_key_is_pressedR() ) {
-    SDL_Delay(1);
-  }
-  ResetMouseWheel();
-  return;
-}
+// void
+// wait_for_all_keys_released (void)
+// {
+//   while ( any_key_is_pressedR() ) {
+//     SDL_Delay(1);
+//   }
+//   ResetMouseWheel();
+//   return;
+// }
 
 /* int */
 /* wait_for_key_pressed ( void ) */
@@ -788,26 +788,26 @@ JoyAxisMotion ( void )
 /* }  // any_key_just_pressed() */
 
 // check if any keys are in a current 'pressed' state, and soft-release them
-bool
-any_key_is_pressedR (void)
-{
-#ifdef ANDROID
-  SDL_Flip(ne_screen);	// make sure we keep updating screen to read out Android inputs
-#endif
-  update_input();
-
-  int key;
-  for ( key=0; key < INPUT_LAST; key ++)
-    {
-      if ( (input_state[key] & PRESSED) ) {
-        input_state[key] = 0;
-        return TRUE;
-      }
-    }
-
-  return FALSE;
-
-}  // any_key_is_pressed()
+// bool
+// any_key_is_pressedR (void)
+// {
+// #ifdef ANDROID
+//   SDL_Flip(ne_screen);	// make sure we keep updating screen to read out Android inputs
+// #endif
+//   update_input();
+// 
+//   int key;
+//   for ( key=0; key < INPUT_LAST; key ++)
+//     {
+//       if ( (input_state[key] & PRESSED) ) {
+//         input_state[key] = 0;
+//         return TRUE;
+//       }
+//     }
+// 
+//   return FALSE;
+// 
+// }  // any_key_is_pressed()
 
 // bool
 // cmd_is_active (enum _cmds cmd)

@@ -23,7 +23,6 @@ use std::{convert::TryFrom, os::raw::c_int};
 extern "C" {
     pub fn SDL_Delay(ms: u32);
     pub static mut input_state: [c_int; PointerStates::Last as usize];
-    pub fn wait_for_all_keys_released();
     pub static mut key_cmds: [[c_int; 3]; Cmds::Last as usize];
     pub static mut show_cursor: bool;
     pub static mut event: SDL_Event;
@@ -325,4 +324,36 @@ pub unsafe extern "C" fn cmd_is_activeR(cmd: Cmds) -> bool {
     let c3 = KeyIsPressedR(key_cmds[cmd][2]);
 
     c1 || c2 || c3
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wait_for_all_keys_released() {
+    while any_key_is_pressedR() {
+        SDL_Delay(1);
+    }
+    ResetMouseWheel();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn any_key_is_pressedR() -> bool {
+    #[cfg(target_os = "android")]
+    SDL_Flip(ne_screen); // make sure we keep updating screen to read out Android inputs
+
+    #[cfg(not(target_os = "android"))]
+    update_input();
+
+    for state in &mut input_state {
+        if (*state & PRESSED) != 0 {
+            *state = 0;
+            return true;
+        }
+    }
+    false
+}
+
+// forget the wheel-counters
+#[no_mangle]
+pub unsafe extern "C" fn ResetMouseWheel() {
+    WheelUpEvents = 0;
+    WheelDownEvents = 0;
 }
