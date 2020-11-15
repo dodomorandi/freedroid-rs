@@ -1,16 +1,20 @@
 use crate::{
-    defs,
+    defs::{self, AssembleCombatWindowFlags, Cmds, FirePressedR, Status},
+    enemy::AnimateEnemys,
     global::{
-        ne_screen, progress_filler_pic, FPSover1, ProgressBar_Rect, ProgressMeter_Rect,
+        ne_screen, progress_filler_pic, FPSover1, Me, ProgressBar_Rect, ProgressMeter_Rect,
         SkipAFewFrames,
     },
     graphics::FreeGraphics,
     highscore::SaveHighscores,
+    influence::AnimateInfluence,
     init::FreeGameMem,
-    map::FreeShipMemory,
+    input::{cmd_is_active, cmd_is_activeR, KeyIsPressedR, SDL_Delay},
+    map::{AnimateRefresh, FreeShipMemory},
     menu::FreeMenuData,
     ship::FreeDroidPics,
     sound::FreeSounds,
+    view::{Assemble_Combat_Picture, DisplayBanner},
 };
 
 use log::info;
@@ -22,13 +26,14 @@ use sdl::{
 use std::{
     os::raw::{c_float, c_int},
     process,
+    ptr::null_mut,
     sync::RwLock,
 };
 
 extern "C" {
-    pub fn Pause();
     pub fn SaveGameConfig() -> c_int;
-
+    pub fn StartTakingTimeForFPSCalculation();
+    pub fn ComputeFPSForThisFrame();
 }
 
 static CURRENT_TIME_FACTOR: Lazy<RwLock<f32>> = Lazy::new(|| RwLock::new(1.));
@@ -127,4 +132,54 @@ pub unsafe extern "C" fn MyRandom(upper_bound: c_int) -> c_int {
     }
 
     dice_val
+}
+
+/// realise Pause-Mode: the game process is halted,
+/// while the graphics and animations are not.  This mode
+/// can further be toggled from PAUSE to CHEESE, which is
+/// a feature from the original program that should probably
+/// allow for better screenshots.
+#[no_mangle]
+pub unsafe extern "C" fn Pause() {
+    Me.status = Status::Pause as i32;
+    Assemble_Combat_Picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+
+    let mut cheese = false;
+    loop {
+        StartTakingTimeForFPSCalculation();
+
+        if !cheese {
+            AnimateInfluence();
+            AnimateRefresh();
+            AnimateEnemys();
+        }
+
+        DisplayBanner(null_mut(), null_mut(), 0);
+        Assemble_Combat_Picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+
+        SDL_Delay(1);
+
+        ComputeFPSForThisFrame();
+
+        #[cfg(feature = "gcw0")]
+        let cond = Gcw0LSPressedR() || Gcw0RSPressedR();
+        #[cfg(not(feature = "gcw0"))]
+        let cond = KeyIsPressedR(b'c'.into());
+
+        if cond {
+            if Me.status != Status::Cheese as i32 {
+                Me.status = Status::Cheese as i32;
+            } else {
+                Me.status = Status::Pause as i32;
+            }
+            cheese = !cheese;
+        }
+
+        if FirePressedR() || cmd_is_activeR(Cmds::Pause) {
+            while cmd_is_active(Cmds::Pause) {
+                SDL_Delay(1);
+            }
+            break;
+        }
+    }
 }

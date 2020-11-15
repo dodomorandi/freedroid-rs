@@ -725,51 +725,51 @@ find_file (const char *fname, char *subdir, int use_theme, int critical)
 
 @Ret:
 * $Function----------------------------------------------------------*/
-void
-Pause (void)
-{
-  int Pause = TRUE;
-  int Cheese = FALSE;
-
-  Me.status = PAUSE;
-  Assemble_Combat_Picture ( DO_SCREEN_UPDATE );
-
-  while ( Pause )
-    {
-      StartTakingTimeForFPSCalculation();
-
-      if (!Cheese)
-	{
-	  AnimateInfluence ();
-	  AnimateRefresh ();
-	  AnimateEnemys ();
-	}
-
-      DisplayBanner (NULL, NULL, 0);
-      Assemble_Combat_Picture ( DO_SCREEN_UPDATE );
-
-      SDL_Delay (1);
-
-      ComputeFPSForThisFrame();
-#ifdef GCW0
-      if (Gcw0LSPressedR() || Gcw0RSPressedR())
-#else
-      if (KeyIsPressedR ('c'))
-#endif
-	{
-	  if (Me.status != CHEESE) Me.status = CHEESE;
-	  else Me.status = PAUSE;
-	  Cheese = !Cheese;
-	} /* if (CPressed) */
-
-      if ( FirePressedR() || cmd_is_activeR(CMD_PAUSE) ) {
-        while (cmd_is_active(CMD_PAUSE)) SDL_Delay(1);
-	Pause = FALSE;
-      }
-    } /* while (Pause) */
-
-  return;
-} // Pause ()
+// void
+// Pause (void)
+// {
+//   int Pause = TRUE;
+//   int Cheese = FALSE;
+// 
+//   Me.status = PAUSE;
+//   Assemble_Combat_Picture ( DO_SCREEN_UPDATE );
+// 
+//   while ( Pause )
+//     {
+//       StartTakingTimeForFPSCalculation();
+// 
+//       if (!Cheese)
+// 	{
+// 	  AnimateInfluence ();
+// 	  AnimateRefresh ();
+// 	  AnimateEnemys ();
+// 	}
+// 
+//       DisplayBanner (NULL, NULL, 0);
+//       Assemble_Combat_Picture ( DO_SCREEN_UPDATE );
+// 
+//       SDL_Delay (1);
+// 
+//       ComputeFPSForThisFrame();
+// #ifdef GCW0
+//       if (Gcw0LSPressedR() || Gcw0RSPressedR())
+// #else
+//       if (KeyIsPressedR ('c'))
+// #endif
+// 	{
+// 	  if (Me.status != CHEESE) Me.status = CHEESE;
+// 	  else Me.status = PAUSE;
+// 	  Cheese = !Cheese;
+// 	} /* if (CPressed) */
+// 
+//       if ( FirePressedR() || cmd_is_activeR(CMD_PAUSE) ) {
+//         while (cmd_is_active(CMD_PAUSE)) SDL_Delay(1);
+// 	Pause = FALSE;
+//       }
+//     } /* while (Pause) */
+// 
+//   return;
+// } // Pause ()
 
 
 /*@Function============================================================
