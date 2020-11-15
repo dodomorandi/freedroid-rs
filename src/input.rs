@@ -11,6 +11,7 @@ use crate::{
     misc::{Pause, Terminate},
 };
 
+use cstr::cstr;
 use log::info;
 use sdl::{
     event::{
@@ -32,8 +33,8 @@ use sdl::{
 };
 use std::{
     convert::{identity, TryFrom},
-    os::raw::c_int,
-    ptr::null_mut,
+    os::raw::{c_char, c_int},
+    ptr::{null, null_mut},
 };
 
 extern "C" {
@@ -48,6 +49,10 @@ extern "C" {
 }
 
 pub const CURSOR_KEEP_VISIBLE: u32 = 3000; // ticks to keep mouse-cursor visible without mouse-input
+
+#[no_mangle]
+pub static mut keystr: [*const c_char; PointerStates::Last as usize] =
+    [null(); PointerStates::Last as usize];
 
 /// Check if any keys have been 'freshly' pressed. If yes, return key-code, otherwise 0.
 #[no_mangle]
@@ -456,4 +461,197 @@ pub unsafe extern "C" fn Init_Joy() {
     } else {
         joy = null_mut(); /* signals that no yoystick is present */
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn init_keystr() {
+    use sdl::keysym::*;
+
+    keystr[0] = cstr!("NONE").as_ptr(); // Empty bind will otherwise crash on some platforms - also, we choose "NONE" as a placeholder...
+    #[cfg(feature = "gcw0")]
+    {
+        // The GCW0 may change to joystick input altogether in the future - which will make these ifdefs unnecessary, I hope...
+        keystr[SDLK_BACKSPACE as usize] = cstr!("RSldr").as_ptr();
+        keystr[SDLK_TAB as usize] = cstr!("LSldr").as_ptr();
+        keystr[SDLK_RETURN as usize] = cstr!("Start").as_ptr();
+        keystr[SDLK_SPACE as usize] = cstr!("Y").as_ptr();
+        keystr[SDLK_ESCAPE as usize] = cstr!("Select").as_ptr();
+    }
+
+    #[cfg(not(feature = "gcw0"))]
+    {
+        keystr[SDLK_BACKSPACE as usize] = cstr!("BS").as_ptr();
+        keystr[SDLK_TAB as usize] = cstr!("Tab").as_ptr();
+        keystr[SDLK_RETURN as usize] = cstr!("Return").as_ptr();
+        keystr[SDLK_SPACE as usize] = cstr!("Space").as_ptr();
+        keystr[SDLK_ESCAPE as usize] = cstr!("Esc").as_ptr();
+    }
+
+    keystr[SDLK_CLEAR as usize] = cstr!("Clear").as_ptr();
+    keystr[SDLK_PAUSE as usize] = cstr!("Pause").as_ptr();
+    keystr[SDLK_EXCLAIM as usize] = cstr!("!").as_ptr();
+    keystr[SDLK_QUOTEDBL as usize] = cstr!("\"").as_ptr();
+    keystr[SDLK_HASH as usize] = cstr!("#").as_ptr();
+    keystr[SDLK_DOLLAR as usize] = cstr!("$").as_ptr();
+    keystr[SDLK_AMPERSAND as usize] = cstr!("&").as_ptr();
+    keystr[SDLK_QUOTE as usize] = cstr!("'").as_ptr();
+    keystr[SDLK_LEFTPAREN as usize] = cstr!("(").as_ptr();
+    keystr[SDLK_RIGHTPAREN as usize] = cstr!(")").as_ptr();
+    keystr[SDLK_ASTERISK as usize] = cstr!("*").as_ptr();
+    keystr[SDLK_PLUS as usize] = cstr!("+").as_ptr();
+    keystr[SDLK_COMMA as usize] = cstr!(",").as_ptr();
+    keystr[SDLK_MINUS as usize] = cstr!("-").as_ptr();
+    keystr[SDLK_PERIOD as usize] = cstr!(".").as_ptr();
+    keystr[SDLK_SLASH as usize] = cstr!("/").as_ptr();
+    keystr[SDLK_0 as usize] = cstr!("0").as_ptr();
+    keystr[SDLK_1 as usize] = cstr!("1").as_ptr();
+    keystr[SDLK_2 as usize] = cstr!("2").as_ptr();
+    keystr[SDLK_3 as usize] = cstr!("3").as_ptr();
+    keystr[SDLK_4 as usize] = cstr!("4").as_ptr();
+    keystr[SDLK_5 as usize] = cstr!("5").as_ptr();
+    keystr[SDLK_6 as usize] = cstr!("6").as_ptr();
+    keystr[SDLK_7 as usize] = cstr!("7").as_ptr();
+    keystr[SDLK_8 as usize] = cstr!("8").as_ptr();
+    keystr[SDLK_9 as usize] = cstr!("9").as_ptr();
+    keystr[SDLK_COLON as usize] = cstr!(":").as_ptr();
+    keystr[SDLK_SEMICOLON as usize] = cstr!(";").as_ptr();
+    keystr[SDLK_LESS as usize] = cstr!("<").as_ptr();
+    keystr[SDLK_EQUALS as usize] = cstr!("=").as_ptr();
+    keystr[SDLK_GREATER as usize] = cstr!(">").as_ptr();
+    keystr[SDLK_QUESTION as usize] = cstr!("?").as_ptr();
+    keystr[SDLK_AT as usize] = cstr!("@").as_ptr();
+    keystr[SDLK_LEFTBRACKET as usize] = cstr!("[").as_ptr();
+    keystr[SDLK_BACKSLASH as usize] = cstr!("\\").as_ptr();
+    keystr[SDLK_RIGHTBRACKET as usize] = cstr!(" as usize]").as_ptr();
+    keystr[SDLK_CARET as usize] = cstr!("^").as_ptr();
+    keystr[SDLK_UNDERSCORE as usize] = cstr!("_").as_ptr();
+    keystr[SDLK_BACKQUOTE as usize] = cstr!("`").as_ptr();
+    keystr[SDLK_a as usize] = cstr!("a").as_ptr();
+    keystr[SDLK_b as usize] = cstr!("b").as_ptr();
+    keystr[SDLK_c as usize] = cstr!("c").as_ptr();
+    keystr[SDLK_d as usize] = cstr!("d").as_ptr();
+    keystr[SDLK_e as usize] = cstr!("e").as_ptr();
+    keystr[SDLK_f as usize] = cstr!("f").as_ptr();
+    keystr[SDLK_g as usize] = cstr!("g").as_ptr();
+    keystr[SDLK_h as usize] = cstr!("h").as_ptr();
+    keystr[SDLK_i as usize] = cstr!("i").as_ptr();
+    keystr[SDLK_j as usize] = cstr!("j").as_ptr();
+    keystr[SDLK_k as usize] = cstr!("k").as_ptr();
+    keystr[SDLK_l as usize] = cstr!("l").as_ptr();
+    keystr[SDLK_m as usize] = cstr!("m").as_ptr();
+    keystr[SDLK_n as usize] = cstr!("n").as_ptr();
+    keystr[SDLK_o as usize] = cstr!("o").as_ptr();
+    keystr[SDLK_p as usize] = cstr!("p").as_ptr();
+    keystr[SDLK_q as usize] = cstr!("q").as_ptr();
+    keystr[SDLK_r as usize] = cstr!("r").as_ptr();
+    keystr[SDLK_s as usize] = cstr!("s").as_ptr();
+    keystr[SDLK_t as usize] = cstr!("t").as_ptr();
+    keystr[SDLK_u as usize] = cstr!("u").as_ptr();
+    keystr[SDLK_v as usize] = cstr!("v").as_ptr();
+    keystr[SDLK_w as usize] = cstr!("w").as_ptr();
+    keystr[SDLK_x as usize] = cstr!("x").as_ptr();
+    keystr[SDLK_y as usize] = cstr!("y").as_ptr();
+    keystr[SDLK_z as usize] = cstr!("z").as_ptr();
+    keystr[SDLK_DELETE as usize] = cstr!("Del").as_ptr();
+
+    /* Numeric keypad */
+    keystr[SDLK_KP0 as usize] = cstr!("Num[0 as usize]").as_ptr();
+    keystr[SDLK_KP1 as usize] = cstr!("Num[1 as usize]").as_ptr();
+    keystr[SDLK_KP2 as usize] = cstr!("Num[2 as usize]").as_ptr();
+    keystr[SDLK_KP3 as usize] = cstr!("Num[3 as usize]").as_ptr();
+    keystr[SDLK_KP4 as usize] = cstr!("Num[4 as usize]").as_ptr();
+    keystr[SDLK_KP5 as usize] = cstr!("Num[5 as usize]").as_ptr();
+    keystr[SDLK_KP6 as usize] = cstr!("Num[6 as usize]").as_ptr();
+    keystr[SDLK_KP7 as usize] = cstr!("Num[7 as usize]").as_ptr();
+    keystr[SDLK_KP8 as usize] = cstr!("Num[8 as usize]").as_ptr();
+    keystr[SDLK_KP9 as usize] = cstr!("Num[9 as usize]").as_ptr();
+    keystr[SDLK_KP_PERIOD as usize] = cstr!("Num[. as usize]").as_ptr();
+    keystr[SDLK_KP_DIVIDE as usize] = cstr!("Num[/ as usize]").as_ptr();
+    keystr[SDLK_KP_MULTIPLY as usize] = cstr!("Num[* as usize]").as_ptr();
+    keystr[SDLK_KP_MINUS as usize] = cstr!("Num[- as usize]").as_ptr();
+    keystr[SDLK_KP_PLUS as usize] = cstr!("Num[+ as usize]").as_ptr();
+    keystr[SDLK_KP_ENTER as usize] = cstr!("Num[Enter as usize]").as_ptr();
+    keystr[SDLK_KP_EQUALS as usize] = cstr!("Num[= as usize]").as_ptr();
+
+    /* Arrows + Home/End pad */
+    keystr[SDLK_UP as usize] = cstr!("Up").as_ptr();
+    keystr[SDLK_DOWN as usize] = cstr!("Down").as_ptr();
+    keystr[SDLK_RIGHT as usize] = cstr!("Right").as_ptr();
+    keystr[SDLK_LEFT as usize] = cstr!("Left").as_ptr();
+    keystr[SDLK_INSERT as usize] = cstr!("Insert").as_ptr();
+    keystr[SDLK_HOME as usize] = cstr!("Home").as_ptr();
+    keystr[SDLK_END as usize] = cstr!("End").as_ptr();
+    keystr[SDLK_PAGEUP as usize] = cstr!("PageUp").as_ptr();
+    keystr[SDLK_PAGEDOWN as usize] = cstr!("PageDown").as_ptr();
+
+    /* Function keys */
+    keystr[SDLK_F1 as usize] = cstr!("F1").as_ptr();
+    keystr[SDLK_F2 as usize] = cstr!("F2").as_ptr();
+    keystr[SDLK_F3 as usize] = cstr!("F3").as_ptr();
+    keystr[SDLK_F4 as usize] = cstr!("F4").as_ptr();
+    keystr[SDLK_F5 as usize] = cstr!("F5").as_ptr();
+    keystr[SDLK_F6 as usize] = cstr!("F6").as_ptr();
+    keystr[SDLK_F7 as usize] = cstr!("F7").as_ptr();
+    keystr[SDLK_F8 as usize] = cstr!("F8").as_ptr();
+    keystr[SDLK_F9 as usize] = cstr!("F9").as_ptr();
+    keystr[SDLK_F10 as usize] = cstr!("F10").as_ptr();
+    keystr[SDLK_F11 as usize] = cstr!("F11").as_ptr();
+    keystr[SDLK_F12 as usize] = cstr!("F12").as_ptr();
+    keystr[SDLK_F13 as usize] = cstr!("F13").as_ptr();
+    keystr[SDLK_F14 as usize] = cstr!("F14").as_ptr();
+    keystr[SDLK_F15 as usize] = cstr!("F15").as_ptr();
+
+    /* Key state modifier keys */
+    keystr[SDLK_NUMLOCK as usize] = cstr!("NumLock").as_ptr();
+    keystr[SDLK_CAPSLOCK as usize] = cstr!("CapsLock").as_ptr();
+    keystr[SDLK_SCROLLOCK as usize] = cstr!("ScrlLock").as_ptr();
+    #[cfg(feature = "gcw0")]
+    {
+        keystr[SDLK_LSHIFT as usize] = cstr!("X").as_ptr();
+        keystr[SDLK_LCTRL as usize] = cstr!("A").as_ptr();
+        keystr[SDLK_LALT as usize] = cstr!("B").as_ptr();
+    }
+
+    #[cfg(not(feature = "gcw0"))]
+    {
+        keystr[SDLK_LSHIFT as usize] = cstr!("LShift").as_ptr();
+        keystr[SDLK_LCTRL as usize] = cstr!("LCtrl").as_ptr();
+        keystr[SDLK_LALT as usize] = cstr!("LAlt").as_ptr();
+    }
+
+    keystr[SDLK_RSHIFT as usize] = cstr!("RShift").as_ptr();
+    keystr[SDLK_RCTRL as usize] = cstr!("RCtrl").as_ptr();
+    keystr[SDLK_RALT as usize] = cstr!("RAlt").as_ptr();
+    keystr[SDLK_RMETA as usize] = cstr!("RMeta").as_ptr();
+    keystr[SDLK_LMETA as usize] = cstr!("LMeta").as_ptr();
+    keystr[SDLK_LSUPER as usize] = cstr!("LSuper").as_ptr();
+    keystr[SDLK_RSUPER as usize] = cstr!("RSuper").as_ptr();
+    keystr[SDLK_MODE as usize] = cstr!("Mode").as_ptr();
+    keystr[SDLK_COMPOSE as usize] = cstr!("Compose").as_ptr();
+
+    /* Miscellaneous function keys */
+    keystr[SDLK_HELP as usize] = cstr!("Help").as_ptr();
+    keystr[SDLK_PRINT as usize] = cstr!("Print").as_ptr();
+    keystr[SDLK_SYSREQ as usize] = cstr!("SysReq").as_ptr();
+    keystr[SDLK_BREAK as usize] = cstr!("Break").as_ptr();
+    keystr[SDLK_MENU as usize] = cstr!("Menu").as_ptr();
+    keystr[SDLK_POWER as usize] = cstr!("Power").as_ptr();
+    keystr[SDLK_EURO as usize] = cstr!("Euro").as_ptr();
+    keystr[SDLK_UNDO as usize] = cstr!("Undo").as_ptr();
+
+    /* Mouse und Joy buttons */
+    keystr[PointerStates::MouseButton1 as usize] = cstr!("Mouse1").as_ptr();
+    keystr[PointerStates::MouseButton2 as usize] = cstr!("Mouse2").as_ptr();
+    keystr[PointerStates::MouseButton3 as usize] = cstr!("Mouse3").as_ptr();
+    keystr[PointerStates::MouseWheelup as usize] = cstr!("WheelUp").as_ptr();
+    keystr[PointerStates::MouseWheeldown as usize] = cstr!("WheelDown").as_ptr();
+
+    keystr[PointerStates::JoyUp as usize] = cstr!("JoyUp").as_ptr();
+    keystr[PointerStates::JoyDown as usize] = cstr!("JoyDown").as_ptr();
+    keystr[PointerStates::JoyLeft as usize] = cstr!("JoyLeft").as_ptr();
+    keystr[PointerStates::JoyRight as usize] = cstr!("JoyRight").as_ptr();
+    keystr[PointerStates::JoyButton1 as usize] = cstr!("Joy-A").as_ptr();
+    keystr[PointerStates::JoyButton2 as usize] = cstr!("Joy-B").as_ptr();
+    keystr[PointerStates::JoyButton3 as usize] = cstr!("Joy-X").as_ptr();
+    keystr[PointerStates::JoyButton4 as usize] = cstr!("Joy-Y").as_ptr();
 }

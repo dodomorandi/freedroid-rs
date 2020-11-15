@@ -92,7 +92,7 @@ int key_cmds[CMD_LAST][3] =  // array of mappings {key1,key2,key3 -> cmd}
 #endif
   };
 
-char *keystr[INPUT_LAST];
+// char *keystr[INPUT_LAST];
 
 char *cmd_strings[CMD_LAST] =
   {
@@ -123,195 +123,195 @@ char *cmd_strings[CMD_LAST] =
 #define clear_fresh(x) do { (x) &= ~FRESH_BIT; } while(0)
 
 
-void
-init_keystr (void)
-{
-  keystr[0]             = "NONE"; // Empty bind will otherwise crash on some platforms - also, we choose "NONE" as a placeholder...
-#ifdef GCW0 // The GCW0 may change to joystick input altogether in the future - which will make these ifdefs unnecessary, I hope...
-  keystr[SDLK_BACKSPACE] = "RSldr";
-  keystr[SDLK_TAB]	= "LSldr";
-  keystr[SDLK_RETURN]	= "Start";
-  keystr[SDLK_SPACE]	= "Y";
-  keystr[SDLK_ESCAPE]	= "Select";
-#else
-  keystr[SDLK_BACKSPACE] = "BS";
-  keystr[SDLK_TAB]	= "Tab";
-  keystr[SDLK_RETURN]	= "Return";
-  keystr[SDLK_SPACE]	= "Space";
-  keystr[SDLK_ESCAPE]	= "Esc";
-#endif
-  keystr[SDLK_CLEAR]	= "Clear";
-  keystr[SDLK_PAUSE]	= "Pause";
-  keystr[SDLK_EXCLAIM]	= "!";
-  keystr[SDLK_QUOTEDBL]	= "\"";
-  keystr[SDLK_HASH]	= "#";
-  keystr[SDLK_DOLLAR]	= "$";
-  keystr[SDLK_AMPERSAND]= "&";
-  keystr[SDLK_QUOTE]	= "'";
-  keystr[SDLK_LEFTPAREN]= "(";
-  keystr[SDLK_RIGHTPAREN]=")";
-  keystr[SDLK_ASTERISK]	= "*";
-  keystr[SDLK_PLUS]	= "+";
-  keystr[SDLK_COMMA]	= ",";
-  keystr[SDLK_MINUS]	= "-";
-  keystr[SDLK_PERIOD]	= ".";
-  keystr[SDLK_SLASH]	= "/";
-  keystr[SDLK_0]	= "0";
-  keystr[SDLK_1]	= "1";
-  keystr[SDLK_2]	= "2";
-  keystr[SDLK_3]	= "3";
-  keystr[SDLK_4]	= "4";
-  keystr[SDLK_5]	= "5";
-  keystr[SDLK_6]	= "6";
-  keystr[SDLK_7]	= "7";
-  keystr[SDLK_8]	= "8";
-  keystr[SDLK_9]	= "9";
-  keystr[SDLK_COLON]	= ":";
-  keystr[SDLK_SEMICOLON]= ";";
-  keystr[SDLK_LESS]	= "<";
-  keystr[SDLK_EQUALS]	= "=";
-  keystr[SDLK_GREATER]	= ">";
-  keystr[SDLK_QUESTION]	= "?";
-  keystr[SDLK_AT]	= "@";
-  keystr[SDLK_LEFTBRACKET]	= "[";
-  keystr[SDLK_BACKSLASH]	= "\\";
-  keystr[SDLK_RIGHTBRACKET]	= "]";
-  keystr[SDLK_CARET]	= "^";
-  keystr[SDLK_UNDERSCORE]	= "_";
-  keystr[SDLK_BACKQUOTE]	= "`";
-  keystr[SDLK_a]	= "a";
-  keystr[SDLK_b]	= "b";
-  keystr[SDLK_c]	= "c";
-  keystr[SDLK_d]	= "d";
-  keystr[SDLK_e]	= "e";
-  keystr[SDLK_f]	= "f";
-  keystr[SDLK_g]	= "g";
-  keystr[SDLK_h]	= "h";
-  keystr[SDLK_i]	= "i";
-  keystr[SDLK_j]	= "j";
-  keystr[SDLK_k]	= "k";
-  keystr[SDLK_l]	= "l";
-  keystr[SDLK_m]	= "m";
-  keystr[SDLK_n]	= "n";
-  keystr[SDLK_o]	= "o";
-  keystr[SDLK_p]	= "p";
-  keystr[SDLK_q]	= "q";
-  keystr[SDLK_r]	= "r";
-  keystr[SDLK_s]	= "s";
-  keystr[SDLK_t]	= "t";
-  keystr[SDLK_u]	= "u";
-  keystr[SDLK_v]	= "v";
-  keystr[SDLK_w]	= "w";
-  keystr[SDLK_x]	= "x";
-  keystr[SDLK_y]	= "y";
-  keystr[SDLK_z]	= "z";
-  keystr[SDLK_DELETE]	= "Del";
+// void
+// init_keystr (void)
+// {
+//   keystr[0]             = "NONE"; // Empty bind will otherwise crash on some platforms - also, we choose "NONE" as a placeholder...
+// #ifdef GCW0 // The GCW0 may change to joystick input altogether in the future - which will make these ifdefs unnecessary, I hope...
+//   keystr[SDLK_BACKSPACE] = "RSldr";
+//   keystr[SDLK_TAB]	= "LSldr";
+//   keystr[SDLK_RETURN]	= "Start";
+//   keystr[SDLK_SPACE]	= "Y";
+//   keystr[SDLK_ESCAPE]	= "Select";
+// #else
+//   keystr[SDLK_BACKSPACE] = "BS";
+//   keystr[SDLK_TAB]	= "Tab";
+//   keystr[SDLK_RETURN]	= "Return";
+//   keystr[SDLK_SPACE]	= "Space";
+//   keystr[SDLK_ESCAPE]	= "Esc";
+// #endif
+//   keystr[SDLK_CLEAR]	= "Clear";
+//   keystr[SDLK_PAUSE]	= "Pause";
+//   keystr[SDLK_EXCLAIM]	= "!";
+//   keystr[SDLK_QUOTEDBL]	= "\"";
+//   keystr[SDLK_HASH]	= "#";
+//   keystr[SDLK_DOLLAR]	= "$";
+//   keystr[SDLK_AMPERSAND]= "&";
+//   keystr[SDLK_QUOTE]	= "'";
+//   keystr[SDLK_LEFTPAREN]= "(";
+//   keystr[SDLK_RIGHTPAREN]=")";
+//   keystr[SDLK_ASTERISK]	= "*";
+//   keystr[SDLK_PLUS]	= "+";
+//   keystr[SDLK_COMMA]	= ",";
+//   keystr[SDLK_MINUS]	= "-";
+//   keystr[SDLK_PERIOD]	= ".";
+//   keystr[SDLK_SLASH]	= "/";
+//   keystr[SDLK_0]	= "0";
+//   keystr[SDLK_1]	= "1";
+//   keystr[SDLK_2]	= "2";
+//   keystr[SDLK_3]	= "3";
+//   keystr[SDLK_4]	= "4";
+//   keystr[SDLK_5]	= "5";
+//   keystr[SDLK_6]	= "6";
+//   keystr[SDLK_7]	= "7";
+//   keystr[SDLK_8]	= "8";
+//   keystr[SDLK_9]	= "9";
+//   keystr[SDLK_COLON]	= ":";
+//   keystr[SDLK_SEMICOLON]= ";";
+//   keystr[SDLK_LESS]	= "<";
+//   keystr[SDLK_EQUALS]	= "=";
+//   keystr[SDLK_GREATER]	= ">";
+//   keystr[SDLK_QUESTION]	= "?";
+//   keystr[SDLK_AT]	= "@";
+//   keystr[SDLK_LEFTBRACKET]	= "[";
+//   keystr[SDLK_BACKSLASH]	= "\\";
+//   keystr[SDLK_RIGHTBRACKET]	= "]";
+//   keystr[SDLK_CARET]	= "^";
+//   keystr[SDLK_UNDERSCORE]	= "_";
+//   keystr[SDLK_BACKQUOTE]	= "`";
+//   keystr[SDLK_a]	= "a";
+//   keystr[SDLK_b]	= "b";
+//   keystr[SDLK_c]	= "c";
+//   keystr[SDLK_d]	= "d";
+//   keystr[SDLK_e]	= "e";
+//   keystr[SDLK_f]	= "f";
+//   keystr[SDLK_g]	= "g";
+//   keystr[SDLK_h]	= "h";
+//   keystr[SDLK_i]	= "i";
+//   keystr[SDLK_j]	= "j";
+//   keystr[SDLK_k]	= "k";
+//   keystr[SDLK_l]	= "l";
+//   keystr[SDLK_m]	= "m";
+//   keystr[SDLK_n]	= "n";
+//   keystr[SDLK_o]	= "o";
+//   keystr[SDLK_p]	= "p";
+//   keystr[SDLK_q]	= "q";
+//   keystr[SDLK_r]	= "r";
+//   keystr[SDLK_s]	= "s";
+//   keystr[SDLK_t]	= "t";
+//   keystr[SDLK_u]	= "u";
+//   keystr[SDLK_v]	= "v";
+//   keystr[SDLK_w]	= "w";
+//   keystr[SDLK_x]	= "x";
+//   keystr[SDLK_y]	= "y";
+//   keystr[SDLK_z]	= "z";
+//   keystr[SDLK_DELETE]	= "Del";
+// 
+// 
+//   /* Numeric keypad */
+//   keystr[SDLK_KP0]	= "Num[0]";
+//   keystr[SDLK_KP1]	= "Num[1]";
+//   keystr[SDLK_KP2]	= "Num[2]";
+//   keystr[SDLK_KP3]	= "Num[3]";
+//   keystr[SDLK_KP4]	= "Num[4]";
+//   keystr[SDLK_KP5]	= "Num[5]";
+//   keystr[SDLK_KP6]	= "Num[6]";
+//   keystr[SDLK_KP7]	= "Num[7]";
+//   keystr[SDLK_KP8]	= "Num[8]";
+//   keystr[SDLK_KP9]	= "Num[9]";
+//   keystr[SDLK_KP_PERIOD]= "Num[.]";
+//   keystr[SDLK_KP_DIVIDE]= "Num[/]";
+//   keystr[SDLK_KP_MULTIPLY]= "Num[*]";
+//   keystr[SDLK_KP_MINUS]	= "Num[-]";
+//   keystr[SDLK_KP_PLUS]	= "Num[+]";
+//   keystr[SDLK_KP_ENTER]	= "Num[Enter]";
+//   keystr[SDLK_KP_EQUALS]= "Num[=]";
+// 
+//   /* Arrows + Home/End pad */
+//   keystr[SDLK_UP]	= "Up";
+//   keystr[SDLK_DOWN]	= "Down";
+//   keystr[SDLK_RIGHT]	= "Right";
+//   keystr[SDLK_LEFT]	= "Left";
+//   keystr[SDLK_INSERT]	= "Insert";
+//   keystr[SDLK_HOME]	= "Home";
+//   keystr[SDLK_END]	= "End";
+//   keystr[SDLK_PAGEUP]	= "PageUp";
+//   keystr[SDLK_PAGEDOWN]	= "PageDown";
+// 
+//   /* Function keys */
+//   keystr[SDLK_F1]	= "F1";
+//   keystr[SDLK_F2]	= "F2";
+//   keystr[SDLK_F3]	= "F3";
+//   keystr[SDLK_F4]	= "F4";
+//   keystr[SDLK_F5]	= "F5";
+//   keystr[SDLK_F6]	= "F6";
+//   keystr[SDLK_F7]	= "F7";
+//   keystr[SDLK_F8]	= "F8";
+//   keystr[SDLK_F9]	= "F9";
+//   keystr[SDLK_F10]	= "F10";
+//   keystr[SDLK_F11]	= "F11";
+//   keystr[SDLK_F12]	= "F12";
+//   keystr[SDLK_F13]	= "F13";
+//   keystr[SDLK_F14]	= "F14";
+//   keystr[SDLK_F15]	= "F15";
+// 
+//   /* Key state modifier keys */
+//   keystr[SDLK_NUMLOCK]	= "NumLock";
+//   keystr[SDLK_CAPSLOCK]	= "CapsLock";
+//   keystr[SDLK_SCROLLOCK]= "ScrlLock";
+// #ifdef GCW0
+//   keystr[SDLK_LSHIFT]	= "X";
+//   keystr[SDLK_LCTRL]	= "A";
+//   keystr[SDLK_LALT]	= "B";
+// #else
+//   keystr[SDLK_LSHIFT]	= "LShift";
+//   keystr[SDLK_LCTRL]	= "LCtrl";
+//   keystr[SDLK_LALT]	= "LAlt";
+// #endif
+//   keystr[SDLK_RSHIFT]	= "RShift";
+//   keystr[SDLK_RCTRL]	= "RCtrl";
+//   keystr[SDLK_RALT]	= "RAlt";
+//   keystr[SDLK_RMETA]	= "RMeta";
+//   keystr[SDLK_LMETA]	= "LMeta";
+//   keystr[SDLK_LSUPER]	= "LSuper";
+//   keystr[SDLK_RSUPER]	= "RSuper";
+//   keystr[SDLK_MODE]	= "Mode";
+//   keystr[SDLK_COMPOSE]	= "Compose";
+// 
+//   /* Miscellaneous function keys */
+//   keystr[SDLK_HELP]	= "Help";
+//   keystr[SDLK_PRINT]	= "Print";
+//   keystr[SDLK_SYSREQ]	= "SysReq";
+//   keystr[SDLK_BREAK]	= "Break";
+//   keystr[SDLK_MENU]	= "Menu";
+//   keystr[SDLK_POWER]	= "Power";
+//   keystr[SDLK_EURO]	= "Euro";
+//   keystr[SDLK_UNDO]	= "Undo";
+// 
+//   /* Mouse und Joy buttons */
+//   keystr[MOUSE_BUTTON1]	= "Mouse1";
+//   keystr[MOUSE_BUTTON2] = "Mouse2";
+//   keystr[MOUSE_BUTTON3] = "Mouse3";
+//   keystr[MOUSE_WHEELUP] = "WheelUp";
+//   keystr[MOUSE_WHEELDOWN]="WheelDown";
+// 
+//   keystr[JOY_UP]	= "JoyUp";
+//   keystr[JOY_DOWN]	= "JoyDown";
+//   keystr[JOY_LEFT]	= "JoyLeft";
+//   keystr[JOY_RIGHT]	= "JoyRight";
+//   keystr[JOY_BUTTON1] 	= "Joy-A";
+//   keystr[JOY_BUTTON2] 	= "Joy-B";
+//   keystr[JOY_BUTTON3] 	= "Joy-X";
+//   keystr[JOY_BUTTON4] 	= "Joy-Y";
+// 
+//   return;
+// } // init_keystr()
 
 
-  /* Numeric keypad */
-  keystr[SDLK_KP0]	= "Num[0]";
-  keystr[SDLK_KP1]	= "Num[1]";
-  keystr[SDLK_KP2]	= "Num[2]";
-  keystr[SDLK_KP3]	= "Num[3]";
-  keystr[SDLK_KP4]	= "Num[4]";
-  keystr[SDLK_KP5]	= "Num[5]";
-  keystr[SDLK_KP6]	= "Num[6]";
-  keystr[SDLK_KP7]	= "Num[7]";
-  keystr[SDLK_KP8]	= "Num[8]";
-  keystr[SDLK_KP9]	= "Num[9]";
-  keystr[SDLK_KP_PERIOD]= "Num[.]";
-  keystr[SDLK_KP_DIVIDE]= "Num[/]";
-  keystr[SDLK_KP_MULTIPLY]= "Num[*]";
-  keystr[SDLK_KP_MINUS]	= "Num[-]";
-  keystr[SDLK_KP_PLUS]	= "Num[+]";
-  keystr[SDLK_KP_ENTER]	= "Num[Enter]";
-  keystr[SDLK_KP_EQUALS]= "Num[=]";
-
-  /* Arrows + Home/End pad */
-  keystr[SDLK_UP]	= "Up";
-  keystr[SDLK_DOWN]	= "Down";
-  keystr[SDLK_RIGHT]	= "Right";
-  keystr[SDLK_LEFT]	= "Left";
-  keystr[SDLK_INSERT]	= "Insert";
-  keystr[SDLK_HOME]	= "Home";
-  keystr[SDLK_END]	= "End";
-  keystr[SDLK_PAGEUP]	= "PageUp";
-  keystr[SDLK_PAGEDOWN]	= "PageDown";
-
-  /* Function keys */
-  keystr[SDLK_F1]	= "F1";
-  keystr[SDLK_F2]	= "F2";
-  keystr[SDLK_F3]	= "F3";
-  keystr[SDLK_F4]	= "F4";
-  keystr[SDLK_F5]	= "F5";
-  keystr[SDLK_F6]	= "F6";
-  keystr[SDLK_F7]	= "F7";
-  keystr[SDLK_F8]	= "F8";
-  keystr[SDLK_F9]	= "F9";
-  keystr[SDLK_F10]	= "F10";
-  keystr[SDLK_F11]	= "F11";
-  keystr[SDLK_F12]	= "F12";
-  keystr[SDLK_F13]	= "F13";
-  keystr[SDLK_F14]	= "F14";
-  keystr[SDLK_F15]	= "F15";
-
-  /* Key state modifier keys */
-  keystr[SDLK_NUMLOCK]	= "NumLock";
-  keystr[SDLK_CAPSLOCK]	= "CapsLock";
-  keystr[SDLK_SCROLLOCK]= "ScrlLock";
-#ifdef GCW0
-  keystr[SDLK_LSHIFT]	= "X";
-  keystr[SDLK_LCTRL]	= "A";
-  keystr[SDLK_LALT]	= "B";
-#else
-  keystr[SDLK_LSHIFT]	= "LShift";
-  keystr[SDLK_LCTRL]	= "LCtrl";
-  keystr[SDLK_LALT]	= "LAlt";
-#endif
-  keystr[SDLK_RSHIFT]	= "RShift";
-  keystr[SDLK_RCTRL]	= "RCtrl";
-  keystr[SDLK_RALT]	= "RAlt";
-  keystr[SDLK_RMETA]	= "RMeta";
-  keystr[SDLK_LMETA]	= "LMeta";
-  keystr[SDLK_LSUPER]	= "LSuper";
-  keystr[SDLK_RSUPER]	= "RSuper";
-  keystr[SDLK_MODE]	= "Mode";
-  keystr[SDLK_COMPOSE]	= "Compose";
-
-  /* Miscellaneous function keys */
-  keystr[SDLK_HELP]	= "Help";
-  keystr[SDLK_PRINT]	= "Print";
-  keystr[SDLK_SYSREQ]	= "SysReq";
-  keystr[SDLK_BREAK]	= "Break";
-  keystr[SDLK_MENU]	= "Menu";
-  keystr[SDLK_POWER]	= "Power";
-  keystr[SDLK_EURO]	= "Euro";
-  keystr[SDLK_UNDO]	= "Undo";
-
-  /* Mouse und Joy buttons */
-  keystr[MOUSE_BUTTON1]	= "Mouse1";
-  keystr[MOUSE_BUTTON2] = "Mouse2";
-  keystr[MOUSE_BUTTON3] = "Mouse3";
-  keystr[MOUSE_WHEELUP] = "WheelUp";
-  keystr[MOUSE_WHEELDOWN]="WheelDown";
-
-  keystr[JOY_UP]	= "JoyUp";
-  keystr[JOY_DOWN]	= "JoyDown";
-  keystr[JOY_LEFT]	= "JoyLeft";
-  keystr[JOY_RIGHT]	= "JoyRight";
-  keystr[JOY_BUTTON1] 	= "Joy-A";
-  keystr[JOY_BUTTON2] 	= "Joy-B";
-  keystr[JOY_BUTTON3] 	= "Joy-X";
-  keystr[JOY_BUTTON4] 	= "Joy-Y";
-
-  return;
-} // init_keystr()
-
-
-int sgn (int x)
-{
-  return (x ? ((x)/abs(x)) : 0);
-}
+// int sgn (int x)
+// {
+//   return (x ? ((x)/abs(x)) : 0);
+// }
 
 // void Init_Joy (void)
 // {
