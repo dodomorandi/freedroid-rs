@@ -54,9 +54,10 @@ const ARCADE_INPUT_CHARS: [c_int; 70] = [
 
 /// Reads a string of "MaxLen" from User-input, and echos it
 /// either to stdout or using graphics-text, depending on the
-/// parameter "echo":	echo=0    no echo
-///                 	echo=1    print using printf
-///  			echo=2    print using graphics-text
+/// parameter "echo":
+/// * echo=0    no echo
+/// * echo=1    print using printf
+/// * echo=2    print using graphics-text
 ///
 /// values of echo > 2 are ignored and treated like echo=0
 #[no_mangle]
@@ -100,7 +101,7 @@ pub unsafe extern "C" fn GetString(max_len: c_int, echo: c_int) -> *mut c_char {
     let mut curpos = 0;
 
     while !finished {
-        let mut tmp_rect = store_rect.clone();
+        let mut tmp_rect = store_rect;
         SDL_UpperBlit(store, null_mut(), ne_screen, &mut tmp_rect);
         PutString(ne_screen, x0, y0, input.as_mut_ptr());
         SDL_Flip(ne_screen);
@@ -124,52 +125,41 @@ pub unsafe extern "C" fn GetString(max_len: c_int, echo: c_int) -> *mut c_char {
                     input[curpos] = empty_char; // Hmm., how to get character widht? If using '.', or any fill character, we'd need to know
                 }
 
-                if KeyIsPressedR(SDLK_RETURN.try_into().unwrap())
-                // For GCW0, maybe we need a prompt to say [PRESS ENTER WHEN FINISHED], or any other key we may choose...
-                {
+                if KeyIsPressedR(SDLK_RETURN.try_into().unwrap()) {
+                    // For GCW0, maybe we need a prompt to say [PRESS ENTER WHEN FINISHED], or any other key we may choose...
                     input[curpos] = 0; // The last char is currently shown but, not entered into the string...
                                        // 	  input[curpos] = key; // Not sure which one would be expected by most users; the last blinking char is input or not?
                     finished = true;
-                } else if UpPressedR()
-                // UP
-                /* Currently, the key will work ON RELEASE; we might change this to
-                	* ON PRESS and add a counter / delay after which while holding, will
-                	* scroll trough the chars */
-                {
+                } else if UpPressedR() {
+                    /* Currently, the key will work ON RELEASE; we might change this to
+                     * ON PRESS and add a counter / delay after which while holding, will
+                     * scroll trough the chars */
                     inputchar += 1;
-                } else if DownPressedR()
-                // DOWN
-                {
+                } else if DownPressedR() {
                     inputchar -= 1;
-                } else if FirePressedR()
-                // FIRE
-                {
+                } else if FirePressedR() {
                     // ADVANCE CURSOR
                     input[curpos] = key.try_into().unwrap(); // Needed in case character has just blinked out...
                     curpos += 1;
-                // key=startkey; // Reselect A or not?
                 } else if LeftPressedR() {
                     inputchar -= 5;
                 } else if RightPressedR() {
                     inputchar += 5;
-                } else if cmd_is_activeR(Cmds::Activate)
-                // CAPITAL <-> small
-                {
-                    if inputchar >= 17 && inputchar <= 42 {
+                } else if cmd_is_activeR(Cmds::Activate) {
+                    // CAPITAL <-> small
+                    if (17..=42).contains(&inputchar) {
                         inputchar = 44 + (inputchar - 17);
-                    } else if inputchar >= 44 && inputchar <= 69 {
+                    } else if (44..=69).contains(&inputchar) {
                         inputchar = 17 + (inputchar - 44);
                     }
-                }
-                // else if ... other functions to consider: SPACE
-                else if KeyIsPressedR(SDLK_BACKSPACE.try_into().unwrap())
-                // Or any othe key we choose for the GCW0!
-                {
+                } else if KeyIsPressedR(SDLK_BACKSPACE.try_into().unwrap()) {
+                    // else if ... other functions to consider: SPACE
+                    // Or any othe key we choose for the GCW0!
                     input[curpos] = empty_char;
                     if curpos > 0 {
                         curpos -= 1
                     };
-                } // (el)ifs Pressed
+                }
             }
         }
 
@@ -212,7 +202,7 @@ pub unsafe extern "C" fn getchar_raw() -> c_int {
     let mut event = SDL_Event {
         data: Default::default(),
     };
-    let mut return_key = 0 as c_int;
+    let mut return_key = 0;
 
     loop {
         SDL_WaitEvent(&mut event); /* wait for next event */
@@ -404,7 +394,7 @@ pub unsafe extern "C" fn DisplayText(
 
     let clip = &*clip;
     while let Some((&first, rest)) = text.split_first() {
-        if !(MyCursorY < c_int::from(clip.y) + c_int::from(clip.h)) {
+        if MyCursorY >= c_int::from(clip.y) + c_int::from(clip.h) {
             break;
         }
 
