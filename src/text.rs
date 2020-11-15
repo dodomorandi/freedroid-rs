@@ -4,10 +4,10 @@ use crate::{
         self, Cmds, DownPressedR, FirePressedR, LeftPressedR, PointerStates, RightPressedR,
         UpPressedR, TEXT_STRETCH,
     },
-    global::{joy_num_axes, joy_sensitivity, ne_screen, Screen_Rect},
+    global::{joy_num_axes, joy_sensitivity, ne_screen, AllEnemys, GameConfig, Screen_Rect},
     graphics::vid_bpp,
     input::{cmd_is_activeR, update_input, KeyIsPressedR},
-    misc::Terminate,
+    misc::{MyRandom, Terminate},
 };
 
 use log::{error, info};
@@ -485,4 +485,37 @@ pub unsafe fn is_linebreak_needed(textpos: &[u8], clip: &Rect) -> bool {
     }
 
     false
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn EnemyHitByBulletText(enemy: c_int) {
+    let robot = &mut AllEnemys[usize::try_from(enemy).unwrap()];
+
+    if GameConfig.Droid_Talk == 0 {
+        return;
+    }
+
+    robot.TextVisibleTime = 0.;
+    match MyRandom(4) {
+        0 => {
+            robot.TextToBeDisplayed =
+                b"Unhandled exception fault.  Press ok to reboot.".as_ptr() as *mut c_char;
+        }
+        1 => {
+            robot.TextToBeDisplayed =
+                b"System fault. Please buy a newer version.".as_ptr() as *mut c_char;
+        }
+        2 => {
+            robot.TextToBeDisplayed = b"System error. Might be a virus.".as_ptr() as *mut c_char;
+        }
+        3 => {
+            robot.TextToBeDisplayed =
+                b"System error. Pleae buy an upgrade from MS.".as_ptr() as *mut c_char;
+        }
+        4 => {
+            robot.TextToBeDisplayed =
+                b"System error. Press any key to reboot.".as_ptr() as *mut c_char;
+        }
+        _ => unreachable!(),
+    }
 }

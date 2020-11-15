@@ -67,37 +67,37 @@ int MyCursorY;
 char TextBuffer[10000];
 extern int vid_bpp;
 
-void
-EnemyHitByBulletText( int Enum )
-{
-  Enemy ThisRobot=&AllEnemys[ Enum ];
-
-  if ( !GameConfig.Droid_Talk ) return;
-
-  ThisRobot->TextVisibleTime=0;
-
-  switch (MyRandom(4))
-    {
-    case 0:
-      ThisRobot->TextToBeDisplayed="Unhandled exception fault.  Press ok to reboot.";
-      break;
-    case 1:
-      ThisRobot->TextToBeDisplayed="System fault. Please buy a newer version.";
-      break;
-    case 2:
-      ThisRobot->TextToBeDisplayed="System error. Might be a virus.";
-      break;
-    case 3:
-      ThisRobot->TextToBeDisplayed="System error. Pleae buy an upgrade from MS.";
-      break;
-    case 4:
-      ThisRobot->TextToBeDisplayed="System error. Press any key to reboot.";
-      break;
-    }
-
-  return;
-
-}; // void EnemyHitByBullet( int Enum );
+// void
+// EnemyHitByBulletText( int Enum )
+// {
+//   Enemy ThisRobot=&AllEnemys[ Enum ];
+// 
+//   if ( !GameConfig.Droid_Talk ) return;
+// 
+//   ThisRobot->TextVisibleTime=0;
+// 
+//   switch (MyRandom(4))
+//     {
+//     case 0:
+//       ThisRobot->TextToBeDisplayed="Unhandled exception fault.  Press ok to reboot.";
+//       break;
+//     case 1:
+//       ThisRobot->TextToBeDisplayed="System fault. Please buy a newer version.";
+//       break;
+//     case 2:
+//       ThisRobot->TextToBeDisplayed="System error. Might be a virus.";
+//       break;
+//     case 3:
+//       ThisRobot->TextToBeDisplayed="System error. Pleae buy an upgrade from MS.";
+//       break;
+//     case 4:
+//       ThisRobot->TextToBeDisplayed="System error. Press any key to reboot.";
+//       break;
+//     }
+// 
+//   return;
+// 
+// }; // void EnemyHitByBullet( int Enum );
 
 void
 EnemyInfluCollisionText ( int Enum )
