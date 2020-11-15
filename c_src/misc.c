@@ -52,7 +52,7 @@ long onehundredframedelay = 0;
 Uint32 Now_SDL_Ticks;
 Uint32 One_Frame_SDL_Ticks;
 int framenr = 0;
-static float currentTimeFactor = 1.0;
+// static float currentTimeFactor = 1.0;
 
 SDL_Color progress_color = {200, 20, 20};
 
@@ -851,21 +851,21 @@ ComputeFPSForThisFrame(void)
 @Ret:
 @Int:
 * $Function----------------------------------------------------------*/
-float
-Frame_Time (void)
-{
-  static float previous_time = 0.1;
-
-  if ( SkipAFewFrames )
-    return previous_time;
-
-  if ( FPSover1 > 0 ) {
-    previous_time = (1.0 / FPSover1);
-  }
-
-  return (previous_time * currentTimeFactor);
-
-} // float Frame_Time(void)
+// float
+// Frame_Time (void)
+// {
+//   static float previous_time = 0.1;
+// 
+//   if ( SkipAFewFrames )
+//     return previous_time;
+// 
+//   if ( FPSover1 > 0 ) {
+//     previous_time = (1.0 / FPSover1);
+//   }
+// 
+//   return (previous_time * currentTimeFactor);
+// 
+// } // float Frame_Time(void)
 
 
 /*@Function============================================================
@@ -1181,11 +1181,11 @@ init_progress (char *text)
 // } // update_progress()
 
 // update the factor affecting the current speed of 'time flow'
-void
-set_time_factor ( float timeFactor )
-{
-  currentTimeFactor = timeFactor;
-  return;
-}
+// void
+// set_time_factor ( float timeFactor )
+// {
+//   currentTimeFactor = timeFactor;
+//   return;
+// }
 
 #undef _misc_c
