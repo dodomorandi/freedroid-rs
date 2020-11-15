@@ -1736,52 +1736,52 @@ IsPassable (float x, float y, int Checkpos)
 @Ret: TRUE/FALSE
 @Int:
 * $Function----------------------------------------------------------*/
-int
-IsVisible (Finepoint objpos)
-{
-  float a_x;		/* Vector Influencer->objectpos */
-  float a_y;
-  finepoint step;			/* effective step */
-  int step_num;			/* number of neccessary steps */
-  float a_len;			/* Lenght of a */
-  int i;
-  finepoint testpos;
-  float influ_x = Me.pos.x;
-  float influ_y = Me.pos.y;
-
-  DebugPrintf (2, "\nint IsVisible(Point objpos): Funktion echt aufgerufen.");
-
-  a_x = influ_x - objpos->x;
-  a_y = influ_y - objpos->y;
-
-  a_len = sqrt (  a_x * a_x + a_y * a_y );
-  step_num = a_len * 4.0;
-
-  if (step_num == 0)
-    step_num = 1;
-
-  step.x = a_x / step_num;
-  step.y = a_y / step_num;
-
-  testpos.x = objpos->x;
-  testpos.y = objpos->y;
-
-  for (i = 1; i < step_num; i++)
-    {
-
-      testpos.x += step.x;
-      testpos.y += step.y;
-
-      if (IsPassable (testpos.x, testpos.y, LIGHT) != CENTER)
-	{
-	  DebugPrintf (2, "\nint IsVisible(Point objpos): Funktionsende erreicht.");
-	  return FALSE;
-	}
-    }
-  DebugPrintf (2, "\nint IsVisible(Point objpos): Funktionsende erreicht.");
-
-  return TRUE;
-}				// int IsVisible(Point objpos)
+// int
+// IsVisible (Finepoint objpos)
+// {
+//   float a_x;		/* Vector Influencer->objectpos */
+//   float a_y;
+//   finepoint step;			/* effective step */
+//   int step_num;			/* number of neccessary steps */
+//   float a_len;			/* Lenght of a */
+//   int i;
+//   finepoint testpos;
+//   float influ_x = Me.pos.x;
+//   float influ_y = Me.pos.y;
+// 
+//   DebugPrintf (2, "\nint IsVisible(Point objpos): Funktion echt aufgerufen.");
+// 
+//   a_x = influ_x - objpos->x;
+//   a_y = influ_y - objpos->y;
+// 
+//   a_len = sqrt (  a_x * a_x + a_y * a_y );
+//   step_num = a_len * 4.0;
+// 
+//   if (step_num == 0)
+//     step_num = 1;
+// 
+//   step.x = a_x / step_num;
+//   step.y = a_y / step_num;
+// 
+//   testpos.x = objpos->x;
+//   testpos.y = objpos->y;
+// 
+//   for (i = 1; i < step_num; i++)
+//     {
+// 
+//       testpos.x += step.x;
+//       testpos.y += step.y;
+// 
+//       if (IsPassable (testpos.x, testpos.y, LIGHT) != CENTER)
+// 	{
+// 	  DebugPrintf (2, "\nint IsVisible(Point objpos): Funktionsende erreicht.");
+// 	  return FALSE;
+// 	}
+//     }
+//   DebugPrintf (2, "\nint IsVisible(Point objpos): Funktionsende erreicht.");
+// 
+//   return TRUE;
+// }				// int IsVisible(Point objpos)
 
 void
 FreeLevelMemory ( level* lvl )
