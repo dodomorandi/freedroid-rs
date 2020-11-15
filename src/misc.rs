@@ -22,7 +22,10 @@ use crate::{
 use log::{info, warn};
 use once_cell::sync::Lazy;
 use sdl::{
-    sdl::{ll::SDL_Quit, Rect},
+    sdl::{
+        ll::{SDL_GetTicks, SDL_Quit},
+        Rect,
+    },
     video::ll::{SDL_UpdateRects, SDL_UpperBlit},
 };
 use std::{
@@ -36,8 +39,9 @@ use std::{
 };
 
 extern "C" {
-    pub fn StartTakingTimeForFPSCalculation();
     pub fn ComputeFPSForThisFrame();
+    pub static mut framenr: c_int;
+    pub static mut One_Frame_SDL_Ticks: u32;
 }
 
 static CURRENT_TIME_FACTOR: Lazy<RwLock<f32>> = Lazy::new(|| RwLock::new(1.));
@@ -314,4 +318,17 @@ pub unsafe extern "C" fn SaveGameConfig() -> c_int {
 
     config.flush().unwrap();
     defs::OK.into()
+}
+
+/// This function starts the time-taking process.  Later the results
+/// of this function will be used to calculate the current framerate
+#[no_mangle]
+pub unsafe extern "C" fn StartTakingTimeForFPSCalculation() {
+    /* This ensures, that 0 is never an encountered framenr,
+     * therefore count to 100 here
+     * Take the time now for calculating the frame rate
+     * (DO NOT MOVE THIS COMMAND PLEASE!) */
+    framenr += 1;
+
+    One_Frame_SDL_Ticks = SDL_GetTicks();
 }

@@ -777,18 +777,18 @@ find_file (const char *fname, char *subdir, int use_theme, int critical)
        of this function will be used to calculate the current framerate
 @Ret:
 * $Function----------------------------------------------------------*/
-void
-StartTakingTimeForFPSCalculation(void)
-{
-  /* This ensures, that 0 is never an encountered framenr,
-   * therefore count to 100 here
-   * Take the time now for calculating the frame rate
-   * (DO NOT MOVE THIS COMMAND PLEASE!) */
-  framenr++;
-
-  One_Frame_SDL_Ticks = SDL_GetTicks();
-
-} // void StartTakingTimeForFPSCalculation(void)
+// void
+// StartTakingTimeForFPSCalculation(void)
+// {
+//   /* This ensures, that 0 is never an encountered framenr,
+//    * therefore count to 100 here
+//    * Take the time now for calculating the frame rate
+//    * (DO NOT MOVE THIS COMMAND PLEASE!) */
+//   framenr++;
+// 
+//   One_Frame_SDL_Ticks = SDL_GetTicks();
+// 
+// } // void StartTakingTimeForFPSCalculation(void)
 
 
 /*@Function============================================================
