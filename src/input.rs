@@ -27,8 +27,6 @@ extern "C" {
     pub fn cmd_is_active(command: Cmds) -> bool;
     pub fn wait_for_all_keys_released();
     pub static mut key_cmds: [[c_int; 3]; Cmds::Last as usize];
-    pub fn WheelUpPressed() -> bool;
-    pub fn WheelDownPressed() -> bool;
     pub static mut show_cursor: bool;
     pub static mut event: SDL_Event;
     pub static mut current_modifiers: SDLMod;
@@ -287,4 +285,26 @@ pub unsafe extern "C" fn KeyIsPressedR(key: c_int) -> bool {
 #[no_mangle]
 pub unsafe extern "C" fn ReleaseKey(key: c_int) {
     input_state[usize::try_from(key).unwrap()] = false.into();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn WheelUpPressed() -> bool {
+    update_input();
+    if WheelUpEvents != 0 {
+        WheelUpEvents -= 1;
+        true
+    } else {
+        false
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn WheelDownPressed() -> bool {
+    update_input();
+    if WheelDownEvents != 0 {
+        WheelDownEvents -= 1;
+        true
+    } else {
+        false
+    }
 }

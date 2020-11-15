@@ -665,25 +665,25 @@ ResetMouseWheel (void)
   return;
 }
 
-bool
-WheelUpPressed (void)
-{
-  update_input();
-  if (WheelUpEvents)
-    return (WheelUpEvents--);
-  else
-    return (FALSE);
-}
-
-bool
-WheelDownPressed (void)
-{
-  update_input();
-  if (WheelDownEvents)
-    return (WheelDownEvents--);
-  else
-    return (FALSE);
-}
+// bool
+// WheelUpPressed (void)
+// {
+//   update_input();
+//   if (WheelUpEvents)
+//     return (WheelUpEvents--);
+//   else
+//     return (FALSE);
+// }
+// 
+// bool
+// WheelDownPressed (void)
+// {
+//   update_input();
+//   if (WheelDownEvents)
+//     return (WheelDownEvents--);
+//   else
+//     return (FALSE);
+// }
 
 // bool
 // KeyIsPressed (int key)
