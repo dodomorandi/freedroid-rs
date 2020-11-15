@@ -2,10 +2,10 @@
 use crate::global::ne_screen;
 use crate::{
     defs::{
-        get_user_center, AltPressed, Cmds, CtrlPressed, DownPressed, LeftPressed, MenuAction,
+        self, get_user_center, AltPressed, Cmds, CtrlPressed, DownPressed, LeftPressed, MenuAction,
         PointerStates, RightPressed, ShiftPressed, UpPressed,
     },
-    global::{axis_is_active, input_axis, joy_num_axes, joy_sensitivity, last_mouse_event},
+    global::{axis_is_active, input_axis, joy, joy_num_axes, joy_sensitivity, last_mouse_event},
     graphics::{toggle_fullscreen, TakeScreenshot},
     menu::{handle_QuitGame, showMainMenu, Cheatmenu},
     misc::{Pause, Terminate},
@@ -15,15 +15,26 @@ use log::info;
 use sdl::{
     event::{
         ll::{
-            SDLMod, SDL_Event, SDL_PollEvent, SDL_JOYAXISMOTION, SDL_JOYBUTTONDOWN,
+            SDLMod, SDL_Event, SDL_PollEvent, SDL_ENABLE, SDL_JOYAXISMOTION, SDL_JOYBUTTONDOWN,
             SDL_JOYBUTTONUP, SDL_KEYDOWN, SDL_KEYUP, SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONUP,
             SDL_MOUSEMOTION, SDL_QUIT,
         },
         MouseState,
     },
-    ll::SDL_GetTicks,
+    joy::{
+        get_joystick_name,
+        ll::{
+            SDL_JoystickEventState, SDL_JoystickNumAxes, SDL_JoystickNumButtons, SDL_JoystickOpen,
+            SDL_NumJoysticks,
+        },
+    },
+    ll::{SDL_GetTicks, SDL_InitSubSystem, SDL_INIT_JOYSTICK},
 };
-use std::{convert::TryFrom, os::raw::c_int};
+use std::{
+    convert::{identity, TryFrom},
+    os::raw::c_int,
+    ptr::null_mut,
+};
 
 extern "C" {
     pub fn SDL_Delay(ms: u32);
@@ -411,5 +422,38 @@ pub unsafe extern "C" fn ReactToSpecialKeys() {
     // this stuff remains hardcoded to keys
     if KeyIsPressedR(b'c'.into()) && AltPressed() && CtrlPressed() && ShiftPressed() {
         Cheatmenu();
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Init_Joy() {
+    if SDL_InitSubSystem(SDL_INIT_JOYSTICK) == -1 {
+        eprintln!("Couldn't initialize SDL-Joystick: {}", sdl::get_error(),);
+        Terminate(defs::ERR.into());
+    } else {
+        info!("SDL Joystick initialisation successful.");
+    }
+
+    let num_joy = SDL_NumJoysticks();
+    info!("{} Joysticks found!\n", num_joy);
+
+    if num_joy > 0 {
+        joy = SDL_JoystickOpen(0);
+    }
+
+    if !joy.is_null() {
+        info!(
+            "Identifier: {}",
+            get_joystick_name(0).unwrap_or_else(identity)
+        );
+
+        joy_num_axes = SDL_JoystickNumAxes(joy);
+        info!("Number of Axes: {}", joy_num_axes);
+        info!("Number of Buttons: {}", SDL_JoystickNumButtons(joy));
+
+        /* aktivate Joystick event handling */
+        SDL_JoystickEventState(SDL_ENABLE);
+    } else {
+        joy = null_mut(); /* signals that no yoystick is present */
     }
 }

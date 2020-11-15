@@ -313,39 +313,39 @@ int sgn (int x)
   return (x ? ((x)/abs(x)) : 0);
 }
 
-void Init_Joy (void)
-{
-  int num_joy;
-
-  if (SDL_InitSubSystem (SDL_INIT_JOYSTICK) == -1)
-    {
-      fprintf(stderr, "Couldn't initialize SDL-Joystick: %s\n", SDL_GetError());
-      Terminate(ERR);
-    } else
-      DebugPrintf(1, "\nSDL Joystick initialisation successful.\n");
-
-
-  DebugPrintf (1, " %d Joysticks found!\n", num_joy = SDL_NumJoysticks ());
-
-  if (num_joy > 0)
-    joy = SDL_JoystickOpen (0);
-
-  if (joy)
-    {
-      DebugPrintf (1, "Identifier: %s\n", SDL_JoystickName (0));
-      DebugPrintf (1, "Number of Axes: %d\n", joy_num_axes = SDL_JoystickNumAxes(joy));
-      DebugPrintf (1, "Number of Buttons: %d\n", SDL_JoystickNumButtons(joy));
-
-      /* aktivate Joystick event handling */
-      SDL_JoystickEventState (SDL_ENABLE);
-
-    }
-  else
-    joy = NULL;  /* signals that no yoystick is present */
-
-
-  return;
-}
+// void Init_Joy (void)
+// {
+//   int num_joy;
+// 
+//   if (SDL_InitSubSystem (SDL_INIT_JOYSTICK) == -1)
+//     {
+//       fprintf(stderr, "Couldn't initialize SDL-Joystick: %s\n", SDL_GetError());
+//       Terminate(ERR);
+//     } else
+//       DebugPrintf(1, "\nSDL Joystick initialisation successful.\n");
+// 
+// 
+//   DebugPrintf (1, " %d Joysticks found!\n", num_joy = SDL_NumJoysticks ());
+// 
+//   if (num_joy > 0)
+//     joy = SDL_JoystickOpen (0);
+// 
+//   if (joy)
+//     {
+//       DebugPrintf (1, "Identifier: %s\n", SDL_JoystickName (0));
+//       DebugPrintf (1, "Number of Axes: %d\n", joy_num_axes = SDL_JoystickNumAxes(joy));
+//       DebugPrintf (1, "Number of Buttons: %d\n", SDL_JoystickNumButtons(joy));
+// 
+//       /* aktivate Joystick event handling */
+//       SDL_JoystickEventState (SDL_ENABLE);
+// 
+//     }
+//   else
+//     joy = NULL;  /* signals that no yoystick is present */
+// 
+// 
+//   return;
+// }
 
 // FIXME: remove that obsolete stuff...
 // void
