@@ -400,25 +400,28 @@ pub unsafe extern "C" fn DisplayText(
         clip = &mut temp_clipping_rect;
     }
 
-    let mut tmp = text; /* running text-pointer */
+    let mut text = CStr::from_ptr(text).to_bytes();
 
     let clip = &*clip;
-    while *tmp != 0 && MyCursorY < c_int::from(clip.y) + c_int::from(clip.h) {
-        if *tmp == b'\n' as c_char {
+    while let Some((&first, rest)) = text.split_first() {
+        if !(MyCursorY < c_int::from(clip.y) + c_int::from(clip.h)) {
+            break;
+        }
+
+        if first == b'\n' {
             MyCursorX = clip.x.into();
             MyCursorY += (f64::from(FontHeight(&*GetCurrentFont())) * TEXT_STRETCH) as c_int;
         } else {
-            DisplayChar(*tmp as c_uchar);
+            DisplayChar(first as c_uchar);
         }
 
-        tmp = tmp.add(1);
-
-        if linebreak_needed(tmp, clip) {
-            tmp = tmp.add(1); // skip the space when doing line-breaks !
+        text = rest;
+        if is_linebreak_needed(text, clip) {
+            text = &text[1..];
             MyCursorX = clip.x.into();
             MyCursorY += (f64::from(FontHeight(&*GetCurrentFont())) * TEXT_STRETCH) as c_int;
         }
-    } // while !FensterVoll()
+    }
 
     SDL_SetClipRect(ne_screen, &store_clip); /* restore previous clip-rect */
 
@@ -460,13 +463,7 @@ pub unsafe extern "C" fn DisplayChar(c: c_uchar) {
 ///
 ///  rp: added argument clip, which contains the text-window we're writing in
 ///  (formerly known as "TextBorder")
-pub unsafe extern "C" fn linebreak_needed(textpos: *const c_char, clip: &SDL_Rect) -> bool {
-    if textpos.is_null() {
-        error!("linebreak_needed() called with NULL pointer! \n");
-        Terminate(defs::ERR.into());
-    }
-    let textpos = CStr::from_ptr(textpos).to_bytes();
-
+pub unsafe fn is_linebreak_needed(textpos: &[u8], clip: &Rect) -> bool {
     // only relevant if we're at the beginning of a word
     let textpos = match textpos.split_first() {
         Some((&c, _)) if c != b' ' => return false,

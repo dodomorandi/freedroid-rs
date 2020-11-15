@@ -340,7 +340,6 @@ EXTERN void AddStandingAndAimingText ( int Enum );
 EXTERN int DisplayText (const char *text, int startx, int starty, const SDL_Rect *clip);
 EXTERN void DisplayChar (unsigned char c);
 EXTERN int ScrollText (char *Text, SDL_Rect *rect , int SecondsMinimumDuration );
-EXTERN bool linebreak_needed (const char *textpos , const SDL_Rect *clip);
 EXTERN char *GetString (int MaxLen, int echo);
 EXTERN void printf_SDL (SDL_Surface *screen, int x, int y, char *fmt, ...);
 EXTERN int putchar_SDL (SDL_Surface *Surface, int x, int y, int c);
