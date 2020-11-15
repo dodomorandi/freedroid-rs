@@ -1,13 +1,15 @@
 use crate::{
-    defs::Direction,
+    defs::{Direction, UnknownVariant},
     global::Me,
     structs::{Finepoint, Level},
 };
 
-use std::os::raw::{c_float, c_int, c_uchar};
+use std::{
+    convert::TryFrom,
+    os::raw::{c_float, c_int, c_uchar},
+};
 
 extern "C" {
-    pub fn GetMapBrick(deck: *mut Level, x: c_float, y: c_float) -> c_uchar;
     pub fn FreeShipMemory();
     pub fn AnimateRefresh();
     pub fn IsPassable(x: c_float, y: c_float, check_pos: c_int) -> c_int;
@@ -46,4 +48,16 @@ pub unsafe extern "C" fn IsVisible(objpos: &Finepoint) -> c_int {
     }
 
     true.into()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn GetMapBrick(deck: &Level, x: c_float, y: c_float) -> c_uchar {
+    let xx = x.round() as c_int;
+    let yy = y.round() as c_int;
+
+    if yy >= deck.ylen || yy < 0 || xx >= deck.xlen || xx < 0 {
+        UnknownVariant::Void as c_uchar
+    } else {
+        *deck.map[usize::try_from(yy).unwrap()].offset(isize::try_from(xx).unwrap()) as c_uchar
+    }
 }

@@ -60,19 +60,19 @@ void GetThisLevelsDroids( char* SectionPointer );
 @Ret:
 @Int:
 * $Function----------------------------------------------------------*/
-unsigned char
-GetMapBrick (Level deck, float x, float y)
-{
-  int xx, yy;
-
-  xx = (int) rintf(x);
-  yy = (int) rintf(y);
-
-  if ( (yy >= deck->ylen)|| (yy < 0) || (xx >= deck->xlen) || (xx<0) )
-    return VOID;
-  else
-    return (deck->map[yy][xx]);
-} /* GetMapBrick() */
+// unsigned char
+// GetMapBrick (Level deck, float x, float y)
+// {
+//   int xx, yy;
+// 
+//   xx = (int) rintf(x);
+//   yy = (int) rintf(y);
+// 
+//   if ( (yy >= deck->ylen)|| (yy < 0) || (xx >= deck->xlen) || (xx<0) )
+//     return VOID;
+//   else
+//     return (deck->map[yy][xx]);
+// } /* GetMapBrick() */
 
 /*@Function============================================================
 @Desc: int GetCurrentLift: finds Lift-number to your position

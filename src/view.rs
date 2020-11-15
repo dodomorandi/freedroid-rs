@@ -155,7 +155,7 @@ pub unsafe extern "C" fn Assemble_Combat_Picture(mask: c_int) {
                 }
             }
 
-            map_brick = GetMapBrick(CurLevel, col.into(), line.into());
+            map_brick = GetMapBrick(&*CurLevel, col.into(), line.into());
             let user_center = get_user_center();
             target_rectangle.x = user_center.x
                 + ((-Me.pos.x + 1.0 * f32::from(col) - 0.5) * f32::from(Block_Rect.w)).round()
