@@ -1,3 +1,5 @@
+#[cfg(feature = "gcw0")]
+use crate::defs::{gcw0_ls_pressed_r, gcw0_rs_pressed_r};
 use crate::{
     defs::{self, AssembleCombatWindowFlags, Cmds, FirePressedR, Status},
     enemy::AnimateEnemys,
@@ -162,7 +164,7 @@ pub unsafe extern "C" fn Pause() {
         ComputeFPSForThisFrame();
 
         #[cfg(feature = "gcw0")]
-        let cond = Gcw0LSPressedR() || Gcw0RSPressedR();
+        let cond = gcw0_ls_pressed_r() || gcw0_rs_pressed_r();
         #[cfg(not(feature = "gcw0"))]
         let cond = KeyIsPressedR(b'c'.into());
 

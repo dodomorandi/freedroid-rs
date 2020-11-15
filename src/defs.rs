@@ -1,10 +1,16 @@
+#[cfg(feature = "gcw0")]
+use crate::input::{KeyIsPressed, KeyIsPressedR};
 use crate::{
     global::User_Rect,
     input::{cmd_is_active, cmd_is_activeR, ModIsPressed},
 };
 
 use bitflags::bitflags;
+#[cfg(feature = "gcw0")]
+use sdl::keysym::{SDLK_BACKSPACE, SDLK_TAB};
 use sdl::{event::Mod, sdl::Rect};
+#[cfg(feature = "gcw0")]
+use std::os::raw::c_int;
 
 pub const MAX_THEMES: usize = 100;
 
@@ -127,8 +133,19 @@ pub unsafe fn CtrlPressed() -> bool {
 // #define Gcw0BPressed() (KeyIsPressed(SDLK_LALT))
 // #define Gcw0XPressed() (KeyIsPressed(SDLK_LSHIFT))
 // #define Gcw0YPressed() (KeyIsPressed(SDLK_SPACE))
-// #define Gcw0RSPressed() (KeyIsPressed(SDLK_BACKSPACE))
-// #define Gcw0LSPressed() (KeyIsPressed(SDLK_TAB))
+
+#[cfg(feature = "gcw0")]
+#[inline]
+pub unsafe fn gcw0_rs_pressed() -> bool {
+    KeyIsPressed(SDLK_BACKSPACE as c_int)
+}
+
+#[cfg(feature = "gcw0")]
+#[inline]
+pub unsafe fn gcw0_ls_pressed() -> bool {
+    KeyIsPressed(SDLK_TAB as c_int)
+}
+
 // #define Gcw0StartPressed() (KeyIsPressed(SDLK_RETURN))
 // #define Gcw0SelectPressed() (KeyIsPressed(SDLK_ESCAPE))
 
@@ -140,8 +157,19 @@ pub unsafe fn CtrlPressed() -> bool {
 // #define Gcw0BPressedR() (KeyIsPressedR(SDLK_LALT))
 // #define Gcw0XPressedR() (KeyIsPressedR(SDLK_LSHIFT))
 // #define Gcw0YPressedR() (KeyIsPressedR(SDLK_SPACE))
-// #define Gcw0RSPressedR() (KeyIsPressedR(SDLK_BACKSPACE))
-// #define Gcw0LSPressedR() (KeyIsPressedR(SDLK_TAB))
+
+#[cfg(feature = "gcw0")]
+#[inline]
+pub unsafe fn gcw0_rs_pressed_r() -> bool {
+    KeyIsPressed(SDLK_BACKSPACE as c_int)
+}
+
+#[cfg(feature = "gcw0")]
+#[inline]
+pub unsafe fn gcw0_ls_pressed_r() -> bool {
+    KeyIsPressed(SDLK_TAB as c_int)
+}
+
 // #define Gcw0StartPressedR() (KeyIsPressedR(SDLK_RETURN))
 // #define Gcw0SelectPressedR() (KeyIsPressedR(SDLK_ESCAPE))
 
