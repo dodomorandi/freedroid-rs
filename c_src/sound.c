@@ -366,29 +366,29 @@ Switch_Background_Music_To ( const char* filename_raw )
 @Ret:
 @Int:
 * $Function----------------------------------------------------------*/
-void
-Play_Sound (int Tune)
-{
-#ifndef HAVE_LIBSDL_MIXER
-  return;
-#else
-  int Newest_Sound_Channel=0;
-
-  if ( !sound_on ) return;
-
-  Newest_Sound_Channel = Mix_PlayChannel (-1, Loaded_WAV_Files[Tune], 0);
-  if ( Newest_Sound_Channel == -1 )
-    {
-      DebugPrintf (0, "WARNING: Could not play sound-sample: %s Error: %s\n\
-This usually just means that too many samples where played at the same time\n",
-		   SoundSampleFilenames[ Tune ] , Mix_GetError() );
-    } // if ( ... = -1
-  else
-    DebugPrintf( 2 , "\nSuccessfully playing file %s.", SoundSampleFilenames[ Tune ]);
-
-#endif // HAVE_LIBSDL_MIXER
-
-}  // void Play_Sound(int Tune)
+// void
+// Play_Sound (int Tune)
+// {
+// #ifndef HAVE_LIBSDL_MIXER
+//   return;
+// #else
+//   int Newest_Sound_Channel=0;
+// 
+//   if ( !sound_on ) return;
+// 
+//   Newest_Sound_Channel = Mix_PlayChannel (-1, Loaded_WAV_Files[Tune], 0);
+//   if ( Newest_Sound_Channel == -1 )
+//     {
+//       DebugPrintf (0, "WARNING: Could not play sound-sample: %s Error: %s\n\
+// This usually just means that too many samples where played at the same time\n",
+// 		   SoundSampleFilenames[ Tune ] , Mix_GetError() );
+//     } // if ( ... = -1
+//   else
+//     DebugPrintf( 2 , "\nSuccessfully playing file %s.", SoundSampleFilenames[ Tune ]);
+// 
+// #endif // HAVE_LIBSDL_MIXER
+// 
+// }  // void Play_Sound(int Tune)
 
 /*@Function============================================================
 @Desc:
