@@ -190,46 +190,46 @@ ActSpecialField (float x, float y)
 @Ret: void
 @Int:
 * $Function----------------------------------------------------------*/
-void
-AnimateRefresh (void)
-{
-  static float InnerWaitCounter = 0;
-  //static int InnerPhase = 0;	/* Zaehler fuer innere Phase */
-  int i, j;
-  int x, y;
-
-  DebugPrintf (2, "\nvoid AnimateRefresh(void):  real function call confirmed.");
-
-  InnerWaitCounter += Frame_Time () * 10;
-
-  // if( (((int)rintf(InnerWaitCounter)) % INNER_REFRESH_COUNTER) == 0) {
-  // InnerPhase ++;
-  // InnerPhase %= INNER_PHASES;
-  //InnerPhase = (((int) rintf (InnerWaitCounter)) % INNER_PHASES);
-
-
-  for (i = 0; i < MAX_REFRESHES_ON_LEVEL; i++)
-    {
-      x = CurLevel->refreshes[i].x;
-      y = CurLevel->refreshes[i].y;
-      if (x == -1 || y == -1)
-	break;
-
-      CurLevel->map[y][x] = (((int) rintf (InnerWaitCounter)) % 4) + REFRESH1;
-
-      /* Inneres Refresh animieren */
-      for (j = 0; j < 4; j++)
-	{
-	  ;  /* nix hier noch... */ // FIXME
-	}			/* for */
-
-    }				/* for */
-
-  DebugPrintf (2, "\nvoid AnimateRefresh(void):  end of function reached.");
-
-  return;
-
-}				/* AnimateRefresh */
+// void
+// AnimateRefresh (void)
+// {
+//   static float InnerWaitCounter = 0;
+//   //static int InnerPhase = 0;	/* Zaehler fuer innere Phase */
+//   int i, j;
+//   int x, y;
+// 
+//   DebugPrintf (2, "\nvoid AnimateRefresh(void):  real function call confirmed.");
+// 
+//   InnerWaitCounter += Frame_Time () * 10;
+// 
+//   // if( (((int)rintf(InnerWaitCounter)) % INNER_REFRESH_COUNTER) == 0) {
+//   // InnerPhase ++;
+//   // InnerPhase %= INNER_PHASES;
+//   //InnerPhase = (((int) rintf (InnerWaitCounter)) % INNER_PHASES);
+// 
+// 
+//   for (i = 0; i < MAX_REFRESHES_ON_LEVEL; i++)
+//     {
+//       x = CurLevel->refreshes[i].x;
+//       y = CurLevel->refreshes[i].y;
+//       if (x == -1 || y == -1)
+// 	break;
+// 
+//       CurLevel->map[y][x] = (((int) rintf (InnerWaitCounter)) % 4) + REFRESH1;
+// 
+//       /* Inneres Refresh animieren */
+//       for (j = 0; j < 4; j++)
+// 	{
+// 	  ;  /* nix hier noch... */ // FIXME
+// 	}			/* for */
+// 
+//     }				/* for */
+// 
+//   DebugPrintf (2, "\nvoid AnimateRefresh(void):  end of function reached.");
+// 
+//   return;
+// 
+// }				/* AnimateRefresh */
 
 /*@Function============================================================
 @Desc: 	LoadShip(): loads the data for a whole ship

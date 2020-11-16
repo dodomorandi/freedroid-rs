@@ -1,16 +1,17 @@
 use crate::{
-    defs::{Direction, UnknownVariant},
-    global::{curShip, Me},
+    defs::{Direction, UnknownVariant, MAX_REFRESHES_ON_LEVEL},
+    global::{curShip, CurLevel, Me},
+    misc::Frame_Time,
     structs::{Finepoint, Level},
 };
 
+use log::trace;
 use std::{
     convert::TryFrom,
-    os::raw::{c_float, c_int, c_uchar, c_void},
+    os::raw::{c_char, c_float, c_int, c_uchar, c_void},
 };
 
 extern "C" {
-    pub fn AnimateRefresh();
     pub fn IsPassable(x: c_float, y: c_float, check_pos: c_int) -> c_int;
 }
 
@@ -91,4 +92,30 @@ pub unsafe extern "C" fn FreeLevelMemory(level: *mut Level) {
         .take(level.ylen as usize)
         .map(|&mut map| map as *mut c_void)
         .for_each(|map| libc::free(map));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn AnimateRefresh() {
+    static mut INNER_WAIT_COUNTER: f32 = 0.;
+
+    trace!("AnimateRefresh():  real function call confirmed.");
+
+    INNER_WAIT_COUNTER += Frame_Time() * 10.;
+
+    let cur_level = &*CurLevel;
+    cur_level
+        .refreshes
+        .iter()
+        .take(MAX_REFRESHES_ON_LEVEL)
+        .take_while(|refresh| refresh.x != -1 && refresh.y != -1)
+        .for_each(|refresh| {
+            let x = isize::try_from(refresh.x).unwrap();
+            let y = usize::try_from(refresh.y).unwrap();
+
+            *cur_level.map[y].offset(x) = (((INNER_WAIT_COUNTER.round() as c_int) % 4)
+                + UnknownVariant::Refresh1 as c_int)
+                as c_char;
+        });
+
+    trace!("AnimateRefresh():  end of function reached.");
 }
