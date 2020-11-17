@@ -9,8 +9,10 @@ use bitflags::bitflags;
 #[cfg(feature = "gcw0")]
 use sdl::keysym::{SDLK_BACKSPACE, SDLK_TAB};
 use sdl::{event::Mod, sdl::Rect};
+use static_assertions::const_assert;
 #[cfg(feature = "gcw0")]
 use std::os::raw::c_int;
+use std::{convert::TryFrom, mem};
 
 pub const MAX_THEMES: usize = 100;
 
@@ -470,6 +472,35 @@ pub enum Direction {
     Light, /* special: checking passability for light, not for a checkpos */
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct InvalidDirection;
+
+const_assert!(Direction::Oben as u8 == 0);
+const_assert!(Direction::Light as u8 == 9);
+
+macro_rules! direction_try_from {
+    () => {};
+
+    ($ty:ty $(, $( $rest:ty ),* )? $(,)* ) => {
+        impl TryFrom<$ty> for Direction {
+            type Error = InvalidDirection;
+
+            fn try_from(value: $ty) -> Result<Self, Self::Error> {
+                if value >= 0 && value <= 9 {
+                    Ok(unsafe { mem::transmute(value as i32) })
+                } else {
+                    Err(InvalidDirection)
+                }
+            }
+        }
+
+        $(
+            direction_try_from!($($rest),*);
+        )?
+    };
+}
+direction_try_from!(i8, u8, i16, u16, i32, u32);
+
 /* Maximal number of ... */
 
 pub const NUM_MAP_BLOCKS: usize = 51; // total number of map-blocks
@@ -601,9 +632,9 @@ pub const DECKCOMPLETEBONUS: usize = 500;
 /* Konstanten die die Kartenwerte anschaulich machen */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(C)]
-pub enum UnknownVariant {
-    Floor = 0,
-    EckLu = 1,
+pub enum MapTile {
+    Floor,
+    EckLu,
     TU,
     EckRu,
     TL,
@@ -612,7 +643,7 @@ pub enum UnknownVariant {
     EckLo,
     TO,
     EckRo,
-    HWall = 10,
+    HWall,
     VWall,
     Invisible,
     Block1,
@@ -620,31 +651,48 @@ pub enum UnknownVariant {
     Block3,
     Block4,
     Block5,
-    HZutuere = 18,
+    HZutuere,
     HHalbtuere1,
     HHalbtuere2,
     HHalbtuere3,
     HGanztuere,
-    KonsoleL = 23,
+    KonsoleL,
     KonsoleR,
     KonsoleO,
     KonsoleU,
-    VZutuere = 27,
+    VZutuere,
     VHalbtuere1,
     VHalbtuere2,
     VHalbtuere3,
     VGanztuere,
-    Lift = 32,
-    Void = 33,
-    Refresh1 = 34,
+    Lift,
+    Void,
+    Refresh1,
     Refresh2,
     Refresh3,
     Refresh4,
-    AlertGreen = 38,
+    AlertGreen,
     AlertYellow,
     AlertAmber,
     AlertRed,
-    Unused2 = 42,
+    Unused2,
     FineGrid,
     NumMapTiles,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct InvalidFrameType;
+
+impl TryFrom<u8> for MapTile {
+    type Error = InvalidFrameType;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        const_assert!(MapTile::Floor as u8 == 0);
+        const_assert!(MapTile::NumMapTiles as u8 == 44);
+        if value < 44 {
+            Ok(unsafe { mem::transmute(value as i32) })
+        } else {
+            Err(InvalidFrameType)
+        }
+    }
 }

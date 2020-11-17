@@ -1403,331 +1403,331 @@ Directions + (-1) : FALSE
 Directions mean Push Druid if it is one, else is's not passable
 @Int:
 * $Function----------------------------------------------------------*/
-int
-IsPassable (float x, float y, int Checkpos)
-{
-  float fx, fy;
-  unsigned char MapBrick;
-  int ret = -1;
-
-  MapBrick = GetMapBrick (CurLevel, x, y);
-
-  fx = (x-0.5) - floor(x-0.5);
-  fy = (y-0.5) - floor(y-0.5);
-
-  switch (MapBrick)
-    {
-    case FLOOR:
-    case LIFT:
-    case VOID:
-    case BLOCK4:
-    case BLOCK5:
-    case REFRESH1:
-    case REFRESH2:
-    case REFRESH3:
-    case REFRESH4:
-    case FINE_GRID:
-      ret = CENTER;		/* these are passable */
-      break;
-
-    case ALERT_GREEN:
-    case ALERT_YELLOW:
-    case ALERT_AMBER:
-    case ALERT_RED:
-      if (Checkpos == LIGHT)
-	ret = CENTER;
-      else
-	ret = -1;
-      break;
-
-    case KONSOLE_L:
-      if (Checkpos == LIGHT)
-	{
-	  ret = CENTER;
-	  break;
-	}
-      //NORMALISATION      if (fx > (Block_Rect.w - KONSOLEPASS_X))
-      if (fx > (1.0 - KONSOLEPASS_X))
-	ret = CENTER;
-      else
-	ret = -1;
-      break;
-
-    case KONSOLE_R:
-      if (Checkpos == LIGHT)
-	{
-	  ret = CENTER;
-	  break;
-	}
-      if (fx < KONSOLEPASS_X)
-	ret = CENTER;
-      else
-	ret = -1;
-      break;
-
-    case KONSOLE_O:
-      if (Checkpos == LIGHT)
-	{
-	  ret = CENTER;
-	  break;
-	}
-      //NORMALISATION if (fy > (Block_Rect.h - KONSOLEPASS_Y))
-      if (fy > (1 - KONSOLEPASS_Y))
-	ret = CENTER;
-      else
-	ret = -1;
-      break;
-
-    case KONSOLE_U:
-      if (Checkpos == LIGHT)
-	{
-	  ret = CENTER;
-	  break;
-	}
-      if (fy < KONSOLEPASS_Y)
-	ret = CENTER;
-      else
-	ret = -1;
-      break;
-
-    case H_WALL:
-      //NORMALISATION if ((fy < WALLPASS) || (fy > Block_Rect.h - WALLPASS))
-      if ((fy < WALLPASS) || (fy > 1 - WALLPASS))
-	ret = CENTER;
-      else
-	ret = -1;
-      break;
-
-    case V_WALL:
-      //NORMALISATION if ((fx < WALLPASS) || (fx > Block_Rect.w - WALLPASS))
-      if ((fx < WALLPASS) || (fx > 1 - WALLPASS))
-	ret = CENTER;
-      else
-	ret = -1;
-      break;
-
-    case ECK_RO:
-      //NORMALISATION if ((fx > Block_Rect.w - WALLPASS) || (fy < WALLPASS) ||
-      if ((fx > 1 - WALLPASS) || (fy < WALLPASS) ||
-	  //NORMALISATION ((fx < WALLPASS) && (fy > Block_Rect.h - WALLPASS)))
-	  ((fx < WALLPASS) && (fy > 1 - WALLPASS)))
-	ret = CENTER;
-      else
-	ret = -1;
-      break;
-
-    case ECK_RU:
-      //NORMALISATION if ((fx > Block_Rect.w - WALLPASS) || (fy > Block_Rect.h - WALLPASS) ||
-      if ((fx > 1 - WALLPASS) || (fy > 1 - WALLPASS) ||
-	  ((fx < WALLPASS) && (fy < WALLPASS)))
-	ret = CENTER;
-      else
-	ret = -1;
-      break;
-
-    case ECK_LU:
-      //NORMALISATION if ((fx < WALLPASS) || (fy > Block_Rect.h - WALLPASS) ||
-      if ((fx < WALLPASS) || (fy > 1 - WALLPASS) ||
-	  //NORMALISATION ((fx > Block_Rect.w - WALLPASS) && (fy < WALLPASS)))
-	  ((fx > 1 - WALLPASS) && (fy < WALLPASS)))
-	ret = CENTER;
-      else
-	ret = -1;
-      break;
-
-    case ECK_LO:
-      if ((fx < WALLPASS) || (fy < WALLPASS) ||
-	  //NORMALISATION ((fx > Block_Rect.w - WALLPASS) && (fy > Block_Rect.h - WALLPASS)))
-	  ((fx > 1 - WALLPASS) && (fy > 1 - WALLPASS)))
-	ret = CENTER;
-      else
-	ret = -1;
-      break;
-
-    case T_O:
-      if ((fy < WALLPASS) ||
-	  //NORMALISATION ((fy > Block_Rect.h - WALLPASS) &&
-	  ((fy > 1 - WALLPASS) &&
-	   //NORMALISATION ((fx < WALLPASS) || (fx > Block_Rect.w - WALLPASS))))
-	   ((fx < WALLPASS) || (fx > 1 - WALLPASS))))
-	ret = CENTER;
-      else
-	ret = -1;
-      break;
-
-    case T_R:
-      //NORMALISATION if ((fx > Block_Rect.w - WALLPASS) ||
-      if ((fx > 1 - WALLPASS) ||
-	  ((fx < WALLPASS) &&
-	   //NORMALISATION ((fy < WALLPASS) || (fy > Block_Rect.h - WALLPASS))))
-	   ((fy < WALLPASS) || (fy > 1 - WALLPASS))))
-	ret = CENTER;
-      else
-	ret = -1;
-      break;
-
-    case T_U:
-      //NORMALISATION if ((fy > Block_Rect.h - WALLPASS) ||
-      if ((fy > 1 - WALLPASS) ||
-	  ((fy < WALLPASS) &&
-	   //NORMALISATION ((fx < WALLPASS) || (fx > Block_Rect.w - WALLPASS))))
-	   ((fx < WALLPASS) || (fx > 1 - WALLPASS))))
-	ret = CENTER;
-      else
-	ret = -1;
-      break;
-
-    case T_L:
-      if ((fx < WALLPASS) ||
-	  //NORMALISATION ((fx > Block_Rect.w - WALLPASS) &&
-	  ((fx > 1 - WALLPASS) &&
-	   //NORMALISATION ((fy < WALLPASS) || (fy > Block_Rect.h - WALLPASS))))
-	   ((fy < WALLPASS) || (fy > 1 - WALLPASS))))
-	ret = CENTER;
-      else
-	ret = -1;
-      break;
-
-    case H_GANZTUERE:
-    case H_HALBTUERE3:
-    case H_HALBTUERE2:
-      if (Checkpos == LIGHT)
-	{
-	  ret = CENTER;
-	  break;
-	}
-    case H_HALBTUERE1:
-    case H_ZUTUERE:
-      if (Checkpos == LIGHT)
-	{
-	  ret = -1;
-	  break;
-	}
-
-      /* pruefen, ob Rand der Tuer angefahren */
-      //NORMALISATION if (((fx < H_RANDBREITE) || (fx > (Block_Rect.w - H_RANDBREITE)))
-      if (((fx < H_RANDBREITE) || (fx > (1 - H_RANDBREITE)))
-	  //NORMALISATION && ((fy >= H_RANDSPACE) && (fy <= (Block_Rect.h - H_RANDSPACE))))
-	  && ((fy >= H_RANDSPACE) && (fy <= (1 - H_RANDSPACE))))
-	{
-	  /* DRUIDS: Nur bei Fahrt durch Tuer wegstossen */
-	  if ((Checkpos != CENTER) && (Checkpos != LIGHT)
-	      && (Me.speed.y != 0))
-	    {
-	      switch (Checkpos)
-		{
-		case RECHTSOBEN:
-		case RECHTSUNTEN:
-		case RECHTS:
-		  //NORMALISATION if (fx > Block_Rect.w - H_RANDBREITE)
-		  if (fx > 1 - H_RANDBREITE)
-		    ret = LINKS;
-		  else
-		    ret = -1;
-		  break;
-		case LINKSOBEN:
-		case LINKSUNTEN:
-		case LINKS:
-		  if (fx < H_RANDBREITE)
-		    ret = RECHTS;
-		  else
-		    ret = -1;
-		  break;
-		default:
-		  ret = -1;
-		  break;
-		}		/* switch Checkpos */
-	    }			/* if DRUID && Me.speed.y != 0 */
-	  else
-	    ret = -1;
-	}			/* if Rand angefahren */
-      else
-	{			/* mitten in der Tuer */
-	  if ((MapBrick == H_GANZTUERE) || (MapBrick == H_HALBTUERE3))
-	    ret = CENTER;	/* Tuer offen */
-	  //NORMALISATION else if ((fy < TUERBREITE) || (fy > Block_Rect.h - TUERBREITE))
-	  else if ((fy < TUERBREITE) || (fy > 1 - TUERBREITE))
-	    ret = CENTER;	/* Tuer zu, aber noch nicht ganz drin */
-	  else
-	    ret = -1;		/* an geschlossener tuer */
-	}			/* else Mitten in der Tuer */
-
-      break;
-    case V_GANZTUERE:
-    case V_HALBTUERE3:
-    case V_HALBTUERE2:
-      if (Checkpos == LIGHT)
-	{
-	  ret = CENTER;
-	  break;
-	}
-    case V_HALBTUERE1:
-    case V_ZUTUERE:
-      if (Checkpos == LIGHT)
-	{
-	  ret = -1;
-	  break;
-	}
-
-      /* pruefen , ob Rand der Tuer angefahren */
-      //NORMALISATION if ((fy < V_RANDBREITE || fy > (Block_Rect.h - V_RANDBREITE)) &&
-      if ((fy < V_RANDBREITE || fy > (1 - V_RANDBREITE)) &&
-	  //NORMALISATION (fx >= V_RANDSPACE && fx <= (Block_Rect.w - V_RANDSPACE)))
-	  (fx >= V_RANDSPACE && fx <= ( 1 - V_RANDSPACE)))
-	{
-
-	  /* DRUIDS: bei Fahrt durch Tuer wegstossen */
-	  if ((Checkpos != CENTER) && (Checkpos != LIGHT)
-	      && (Me.speed.x != 0))
-	    {
-	      switch (Checkpos)
-		{
-		case RECHTSOBEN:
-		case LINKSOBEN:
-		case OBEN:
-		  if (fy < V_RANDBREITE)
-		    ret = UNTEN;
-		  else
-		    ret = -1;
-		  break;
-		case RECHTSUNTEN:
-		case LINKSUNTEN:
-		case UNTEN:
-		  //NORMALISATION if (fy > Block_Rect.h - V_RANDBREITE)
-		  if (fy > 1 - V_RANDBREITE)
-		    ret = OBEN;
-		  else
-		    ret = -1;
-		  break;
-		default:
-		  ret = -1;
-		  break;
-		}		/* switch Checkpos */
-	    }			/* if DRUID && Me.speed.x != 0 */
-	  else
-	    ret = -1;
-	}			/* if Rand angefahren */
-      else
-	{			/* mitten in die tuer */
-	  if ((MapBrick == V_GANZTUERE) || (MapBrick == V_HALBTUERE3))
-	    ret = CENTER;	/* Tuer offen */
-	  //NORMALISATION else if ((fx < TUERBREITE) || (fx > Block_Rect.w - TUERBREITE))
-	  else if ((fx < TUERBREITE) || (fx > 1 - TUERBREITE))
-	    ret = CENTER;	/* tuer zu, aber noch nicht ganz dort */
-	  else
-	    ret = -1;		/* an geschlossener Tuer */
-	}			/* else Mitten in der Tuer */
-
-      break;
-
-    default:
-      ret = -1;
-      break;
-    }				/* switch MapBrick */
-
-  return ret;
-
-}				/* IsPassable */
+// int
+// IsPassable (float x, float y, int Checkpos)
+// {
+//   float fx, fy;
+//   unsigned char MapBrick;
+//   int ret = -1;
+// 
+//   MapBrick = GetMapBrick (CurLevel, x, y);
+// 
+//   fx = (x-0.5) - floor(x-0.5);
+//   fy = (y-0.5) - floor(y-0.5);
+// 
+//   switch (MapBrick)
+//     {
+//     case FLOOR:
+//     case LIFT:
+//     case VOID:
+//     case BLOCK4:
+//     case BLOCK5:
+//     case REFRESH1:
+//     case REFRESH2:
+//     case REFRESH3:
+//     case REFRESH4:
+//     case FINE_GRID:
+//       ret = CENTER;		/* these are passable */
+//       break;
+// 
+//     case ALERT_GREEN:
+//     case ALERT_YELLOW:
+//     case ALERT_AMBER:
+//     case ALERT_RED:
+//       if (Checkpos == LIGHT)
+// 	ret = CENTER;
+//       else
+// 	ret = -1;
+//       break;
+// 
+//     case KONSOLE_L:
+//       if (Checkpos == LIGHT)
+// 	{
+// 	  ret = CENTER;
+// 	  break;
+// 	}
+//       //NORMALISATION      if (fx > (Block_Rect.w - KONSOLEPASS_X))
+//       if (fx > (1.0 - KONSOLEPASS_X))
+// 	ret = CENTER;
+//       else
+// 	ret = -1;
+//       break;
+// 
+//     case KONSOLE_R:
+//       if (Checkpos == LIGHT)
+// 	{
+// 	  ret = CENTER;
+// 	  break;
+// 	}
+//       if (fx < KONSOLEPASS_X)
+// 	ret = CENTER;
+//       else
+// 	ret = -1;
+//       break;
+// 
+//     case KONSOLE_O:
+//       if (Checkpos == LIGHT)
+// 	{
+// 	  ret = CENTER;
+// 	  break;
+// 	}
+//       //NORMALISATION if (fy > (Block_Rect.h - KONSOLEPASS_Y))
+//       if (fy > (1 - KONSOLEPASS_Y))
+// 	ret = CENTER;
+//       else
+// 	ret = -1;
+//       break;
+// 
+//     case KONSOLE_U:
+//       if (Checkpos == LIGHT)
+// 	{
+// 	  ret = CENTER;
+// 	  break;
+// 	}
+//       if (fy < KONSOLEPASS_Y)
+// 	ret = CENTER;
+//       else
+// 	ret = -1;
+//       break;
+// 
+//     case H_WALL:
+//       //NORMALISATION if ((fy < WALLPASS) || (fy > Block_Rect.h - WALLPASS))
+//       if ((fy < WALLPASS) || (fy > 1 - WALLPASS))
+// 	ret = CENTER;
+//       else
+// 	ret = -1;
+//       break;
+// 
+//     case V_WALL:
+//       //NORMALISATION if ((fx < WALLPASS) || (fx > Block_Rect.w - WALLPASS))
+//       if ((fx < WALLPASS) || (fx > 1 - WALLPASS))
+// 	ret = CENTER;
+//       else
+// 	ret = -1;
+//       break;
+// 
+//     case ECK_RO:
+//       //NORMALISATION if ((fx > Block_Rect.w - WALLPASS) || (fy < WALLPASS) ||
+//       if ((fx > 1 - WALLPASS) || (fy < WALLPASS) ||
+// 	  //NORMALISATION ((fx < WALLPASS) && (fy > Block_Rect.h - WALLPASS)))
+// 	  ((fx < WALLPASS) && (fy > 1 - WALLPASS)))
+// 	ret = CENTER;
+//       else
+// 	ret = -1;
+//       break;
+// 
+//     case ECK_RU:
+//       //NORMALISATION if ((fx > Block_Rect.w - WALLPASS) || (fy > Block_Rect.h - WALLPASS) ||
+//       if ((fx > 1 - WALLPASS) || (fy > 1 - WALLPASS) ||
+// 	  ((fx < WALLPASS) && (fy < WALLPASS)))
+// 	ret = CENTER;
+//       else
+// 	ret = -1;
+//       break;
+// 
+//     case ECK_LU:
+//       //NORMALISATION if ((fx < WALLPASS) || (fy > Block_Rect.h - WALLPASS) ||
+//       if ((fx < WALLPASS) || (fy > 1 - WALLPASS) ||
+// 	  //NORMALISATION ((fx > Block_Rect.w - WALLPASS) && (fy < WALLPASS)))
+// 	  ((fx > 1 - WALLPASS) && (fy < WALLPASS)))
+// 	ret = CENTER;
+//       else
+// 	ret = -1;
+//       break;
+// 
+//     case ECK_LO:
+//       if ((fx < WALLPASS) || (fy < WALLPASS) ||
+// 	  //NORMALISATION ((fx > Block_Rect.w - WALLPASS) && (fy > Block_Rect.h - WALLPASS)))
+// 	  ((fx > 1 - WALLPASS) && (fy > 1 - WALLPASS)))
+// 	ret = CENTER;
+//       else
+// 	ret = -1;
+//       break;
+// 
+//     case T_O:
+//       if ((fy < WALLPASS) ||
+// 	  //NORMALISATION ((fy > Block_Rect.h - WALLPASS) &&
+// 	  ((fy > 1 - WALLPASS) &&
+// 	   //NORMALISATION ((fx < WALLPASS) || (fx > Block_Rect.w - WALLPASS))))
+// 	   ((fx < WALLPASS) || (fx > 1 - WALLPASS))))
+// 	ret = CENTER;
+//       else
+// 	ret = -1;
+//       break;
+// 
+//     case T_R:
+//       //NORMALISATION if ((fx > Block_Rect.w - WALLPASS) ||
+//       if ((fx > 1 - WALLPASS) ||
+// 	  ((fx < WALLPASS) &&
+// 	   //NORMALISATION ((fy < WALLPASS) || (fy > Block_Rect.h - WALLPASS))))
+// 	   ((fy < WALLPASS) || (fy > 1 - WALLPASS))))
+// 	ret = CENTER;
+//       else
+// 	ret = -1;
+//       break;
+// 
+//     case T_U:
+//       //NORMALISATION if ((fy > Block_Rect.h - WALLPASS) ||
+//       if ((fy > 1 - WALLPASS) ||
+// 	  ((fy < WALLPASS) &&
+// 	   //NORMALISATION ((fx < WALLPASS) || (fx > Block_Rect.w - WALLPASS))))
+// 	   ((fx < WALLPASS) || (fx > 1 - WALLPASS))))
+// 	ret = CENTER;
+//       else
+// 	ret = -1;
+//       break;
+// 
+//     case T_L:
+//       if ((fx < WALLPASS) ||
+// 	  //NORMALISATION ((fx > Block_Rect.w - WALLPASS) &&
+// 	  ((fx > 1 - WALLPASS) &&
+// 	   //NORMALISATION ((fy < WALLPASS) || (fy > Block_Rect.h - WALLPASS))))
+// 	   ((fy < WALLPASS) || (fy > 1 - WALLPASS))))
+// 	ret = CENTER;
+//       else
+// 	ret = -1;
+//       break;
+// 
+//     case H_GANZTUERE:
+//     case H_HALBTUERE3:
+//     case H_HALBTUERE2:
+//       if (Checkpos == LIGHT)
+// 	{
+// 	  ret = CENTER;
+// 	  break;
+// 	}
+//     case H_HALBTUERE1:
+//     case H_ZUTUERE:
+//       if (Checkpos == LIGHT)
+// 	{
+// 	  ret = -1;
+// 	  break;
+// 	}
+// 
+//       /* pruefen, ob Rand der Tuer angefahren */
+//       //NORMALISATION if (((fx < H_RANDBREITE) || (fx > (Block_Rect.w - H_RANDBREITE)))
+//       if (((fx < H_RANDBREITE) || (fx > (1 - H_RANDBREITE)))
+// 	  //NORMALISATION && ((fy >= H_RANDSPACE) && (fy <= (Block_Rect.h - H_RANDSPACE))))
+// 	  && ((fy >= H_RANDSPACE) && (fy <= (1 - H_RANDSPACE))))
+// 	{
+// 	  /* DRUIDS: Nur bei Fahrt durch Tuer wegstossen */
+// 	  if ((Checkpos != CENTER) && (Checkpos != LIGHT)
+// 	      && (Me.speed.y != 0))
+// 	    {
+// 	      switch (Checkpos)
+// 		{
+// 		case RECHTSOBEN:
+// 		case RECHTSUNTEN:
+// 		case RECHTS:
+// 		  //NORMALISATION if (fx > Block_Rect.w - H_RANDBREITE)
+// 		  if (fx > 1 - H_RANDBREITE)
+// 		    ret = LINKS;
+// 		  else
+// 		    ret = -1;
+// 		  break;
+// 		case LINKSOBEN:
+// 		case LINKSUNTEN:
+// 		case LINKS:
+// 		  if (fx < H_RANDBREITE)
+// 		    ret = RECHTS;
+// 		  else
+// 		    ret = -1;
+// 		  break;
+// 		default:
+// 		  ret = -1;
+// 		  break;
+// 		}		/* switch Checkpos */
+// 	    }			/* if DRUID && Me.speed.y != 0 */
+// 	  else
+// 	    ret = -1;
+// 	}			/* if Rand angefahren */
+//       else
+// 	{			/* mitten in der Tuer */
+// 	  if ((MapBrick == H_GANZTUERE) || (MapBrick == H_HALBTUERE3))
+// 	    ret = CENTER;	/* Tuer offen */
+// 	  //NORMALISATION else if ((fy < TUERBREITE) || (fy > Block_Rect.h - TUERBREITE))
+// 	  else if ((fy < TUERBREITE) || (fy > 1 - TUERBREITE))
+// 	    ret = CENTER;	/* Tuer zu, aber noch nicht ganz drin */
+// 	  else
+// 	    ret = -1;		/* an geschlossener tuer */
+// 	}			/* else Mitten in der Tuer */
+// 
+//       break;
+//     case V_GANZTUERE:
+//     case V_HALBTUERE3:
+//     case V_HALBTUERE2:
+//       if (Checkpos == LIGHT)
+// 	{
+// 	  ret = CENTER;
+// 	  break;
+// 	}
+//     case V_HALBTUERE1:
+//     case V_ZUTUERE:
+//       if (Checkpos == LIGHT)
+// 	{
+// 	  ret = -1;
+// 	  break;
+// 	}
+// 
+//       /* pruefen , ob Rand der Tuer angefahren */
+//       //NORMALISATION if ((fy < V_RANDBREITE || fy > (Block_Rect.h - V_RANDBREITE)) &&
+//       if ((fy < V_RANDBREITE || fy > (1 - V_RANDBREITE)) &&
+// 	  //NORMALISATION (fx >= V_RANDSPACE && fx <= (Block_Rect.w - V_RANDSPACE)))
+// 	  (fx >= V_RANDSPACE && fx <= ( 1 - V_RANDSPACE)))
+// 	{
+// 
+// 	  /* DRUIDS: bei Fahrt durch Tuer wegstossen */
+// 	  if ((Checkpos != CENTER) && (Checkpos != LIGHT)
+// 	      && (Me.speed.x != 0))
+// 	    {
+// 	      switch (Checkpos)
+// 		{
+// 		case RECHTSOBEN:
+// 		case LINKSOBEN:
+// 		case OBEN:
+// 		  if (fy < V_RANDBREITE)
+// 		    ret = UNTEN;
+// 		  else
+// 		    ret = -1;
+// 		  break;
+// 		case RECHTSUNTEN:
+// 		case LINKSUNTEN:
+// 		case UNTEN:
+// 		  //NORMALISATION if (fy > Block_Rect.h - V_RANDBREITE)
+// 		  if (fy > 1 - V_RANDBREITE)
+// 		    ret = OBEN;
+// 		  else
+// 		    ret = -1;
+// 		  break;
+// 		default:
+// 		  ret = -1;
+// 		  break;
+// 		}		/* switch Checkpos */
+// 	    }			/* if DRUID && Me.speed.x != 0 */
+// 	  else
+// 	    ret = -1;
+// 	}			/* if Rand angefahren */
+//       else
+// 	{			/* mitten in die tuer */
+// 	  if ((MapBrick == V_GANZTUERE) || (MapBrick == V_HALBTUERE3))
+// 	    ret = CENTER;	/* Tuer offen */
+// 	  //NORMALISATION else if ((fx < TUERBREITE) || (fx > Block_Rect.w - TUERBREITE))
+// 	  else if ((fx < TUERBREITE) || (fx > 1 - TUERBREITE))
+// 	    ret = CENTER;	/* tuer zu, aber noch nicht ganz dort */
+// 	  else
+// 	    ret = -1;		/* an geschlossener Tuer */
+// 	}			/* else Mitten in der Tuer */
+// 
+//       break;
+// 
+//     default:
+//       ret = -1;
+//       break;
+//     }				/* switch MapBrick */
+// 
+//   return ret;
+// 
+// }				/* IsPassable */
 
 
 /*@Function============================================================
