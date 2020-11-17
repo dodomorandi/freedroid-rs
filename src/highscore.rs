@@ -212,7 +212,7 @@ fn update_highscores() {
         let user_center_y: i16 = User_Rect.y + (User_Rect.h / 2) as i16;
 
         Assemble_Combat_Picture(0);
-        MakeGridOnScreen(&mut User_Rect as *mut _);
+        MakeGridOnScreen(Some(&User_Rect));
         let mut dst = SDL_Rect::new(
             user_center_x - (Portrait_Rect.w / 2) as i16,
             user_center_y - (Portrait_Rect.h / 2) as i16,

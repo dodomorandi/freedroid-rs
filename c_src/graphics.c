@@ -368,29 +368,29 @@ TakeScreenshot(void)
 @Ret: none
 ----------------------------------------------------------------------
 */
-void
-MakeGridOnScreen( SDL_Rect* Grid_Rectangle )
-{
-  int x,y;
-
-  if ( Grid_Rectangle == NULL ) Grid_Rectangle = & User_Rect ;
-
-  DebugPrintf (2, "\nvoid MakeGridOnScreen(...): real function call confirmed.");
-  SDL_LockSurface( ne_screen );
-  for ( y = Grid_Rectangle->y ; y < (Grid_Rectangle->h + Grid_Rectangle->y) ; y++)
-    {
-      for ( x = Grid_Rectangle->x ; x < (Grid_Rectangle->x + Grid_Rectangle->w) ; x++ )
-	{
-	  if ((x+y)%2 == 0)
-	    {
-	      putpixel( ne_screen, x, y, 0 );
-	    }
-	}
-    }
-
-  SDL_UnlockSurface( ne_screen );
-  DebugPrintf (2, "\nvoid MakeGridOnScreen(...): end of function reached.");
-} // void MakeGridOnSchreen(void)
+// void
+// MakeGridOnScreen( SDL_Rect* Grid_Rectangle )
+// {
+//   int x,y;
+// 
+//   if ( Grid_Rectangle == NULL ) Grid_Rectangle = & User_Rect ;
+// 
+//   DebugPrintf (2, "\nvoid MakeGridOnScreen(...): real function call confirmed.");
+//   SDL_LockSurface( ne_screen );
+//   for ( y = Grid_Rectangle->y ; y < (Grid_Rectangle->h + Grid_Rectangle->y) ; y++)
+//     {
+//       for ( x = Grid_Rectangle->x ; x < (Grid_Rectangle->x + Grid_Rectangle->w) ; x++ )
+// 	{
+// 	  if ((x+y)%2 == 0)
+// 	    {
+// 	      putpixel( ne_screen, x, y, 0 );
+// 	    }
+// 	}
+//     }
+// 
+//   SDL_UnlockSurface( ne_screen );
+//   DebugPrintf (2, "\nvoid MakeGridOnScreen(...): end of function reached.");
+// } // void MakeGridOnSchreen(void)
 
 
 /*----------------------------------------------------------------------
