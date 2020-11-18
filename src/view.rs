@@ -262,10 +262,9 @@ pub unsafe extern "C" fn Assemble_Combat_Picture(mask: c_int) {
         for enemy in &mut AllEnemys {
             if (enemy.status == Status::Terminated as i32)
                 && (enemy.levelnum == (*CurLevel).levelnum)
+                && IsVisible(&mut enemy.pos) != 0
             {
-                if IsVisible(&mut enemy.pos) != 0 {
-                    PutAshes(enemy.pos.x, enemy.pos.y);
-                }
+                PutAshes(enemy.pos.x, enemy.pos.y);
             }
         }
 
@@ -345,7 +344,7 @@ pub unsafe extern "C" fn PutEnemy(enemy_index: c_int, x: c_int, y: c_int) {
     let droid: &mut Enemy = &mut AllEnemys[usize::try_from(enemy_index).unwrap()];
     let ty = droid.ty;
     let phase = droid.phase;
-    let name = &mut (&mut *Druidmap.offset(ty.try_into().unwrap())).druidname;
+    let name = &mut (*Druidmap.offset(ty.try_into().unwrap())).druidname;
 
     if (droid.status == Status::Terminated as i32)
         || (droid.status == Status::Out as i32)
@@ -468,7 +467,7 @@ pub unsafe extern "C" fn PutInfluence(x: c_int, y: c_int) {
     let mut dst = FirstDigit_Rect.clone();
     SDL_UpperBlit(
         InfluDigitSurfacePointer[usize::try_from(
-            (&*Druidmap.offset(Me.ty.try_into().unwrap())).druidname[0] - b'1' as i8 + 1,
+            (*Druidmap.offset(Me.ty.try_into().unwrap())).druidname[0] - b'1' as i8 + 1,
         )
         .unwrap()],
         null_mut(),
@@ -480,7 +479,7 @@ pub unsafe extern "C" fn PutInfluence(x: c_int, y: c_int) {
     dst = SecondDigit_Rect.clone();
     SDL_UpperBlit(
         InfluDigitSurfacePointer[usize::try_from(
-            (&*Druidmap.offset(Me.ty.try_into().unwrap())).druidname[1] - b'1' as i8 + 1,
+            (*Druidmap.offset(Me.ty.try_into().unwrap())).druidname[1] - b'1' as i8 + 1,
         )
         .unwrap()],
         null_mut(),
@@ -492,7 +491,7 @@ pub unsafe extern "C" fn PutInfluence(x: c_int, y: c_int) {
     dst = ThirdDigit_Rect.clone();
     SDL_UpperBlit(
         InfluDigitSurfacePointer[usize::try_from(
-            (&*Druidmap.offset(Me.ty.try_into().unwrap())).druidname[2] - b'1' as i8 + 1,
+            (*Druidmap.offset(Me.ty.try_into().unwrap())).druidname[2] - b'1' as i8 + 1,
         )
         .unwrap()],
         null_mut(),
@@ -500,7 +499,7 @@ pub unsafe extern "C" fn PutInfluence(x: c_int, y: c_int) {
         &mut dst,
     );
 
-    if Me.energy * 100. / (&*Druidmap.offset(Me.ty.try_into().unwrap())).maxenergy <= BLINKENERGY
+    if Me.energy * 100. / (*Druidmap.offset(Me.ty.try_into().unwrap())).maxenergy <= BLINKENERGY
         && x == -1
     {
         // In case of low energy, do the fading effect...
@@ -511,7 +510,7 @@ pub unsafe extern "C" fn PutInfluence(x: c_int, y: c_int) {
             0.40 + (2.0 * rest / BLINK_LEN - 1.0) * 0.60 // increase back to white
         };
 
-        ApplyFilter(BuildBlock, filt, filt, filt);
+        ApplyFilter(&mut *BuildBlock, filt, filt, filt);
 
         // ... and also maybe start a new cry-sound
 
@@ -526,7 +525,7 @@ pub unsafe extern "C" fn PutInfluence(x: c_int, y: c_int) {
     // but of course only in some periodic intervall...
 
     if Me.status == Status::Transfermode as i32 && x == -1 {
-        ApplyFilter(BuildBlock, 1.0, 0.0, 0.0);
+        ApplyFilter(&mut *BuildBlock, 1.0, 0.0, 0.0);
 
         if Me.LastTransferSoundTime > TRANSFER_SOUND_INTERVAL {
             Me.LastTransferSoundTime = 0.;
@@ -639,10 +638,10 @@ pub unsafe extern "C" fn PutBullet(bullet_number: c_int) {
     let mut dst = Rect::new(
         (f32::from(user_center.x)
             - (Me.pos.x - cur_bullet.pos.x) * f32::from(Block_Rect.w)
-            - ((&*cur_bullet.SurfacePointer[phase_of_bullet]).w / 2) as f32) as i16,
+            - ((*cur_bullet.SurfacePointer[phase_of_bullet]).w / 2) as f32) as i16,
         (f32::from(user_center.y)
             - (Me.pos.y - cur_bullet.pos.y) * f32::from(Block_Rect.w)
-            - ((&*cur_bullet.SurfacePointer[phase_of_bullet]).h / 2) as f32) as i16,
+            - ((*cur_bullet.SurfacePointer[phase_of_bullet]).h / 2) as f32) as i16,
         0,
         0,
     );
@@ -754,23 +753,21 @@ pub unsafe extern "C" fn DisplayBanner(
 
     // Now fill in the text
     let left = CStr::from_ptr(left);
-    let mut left_len = left.to_bytes().len();
+    let left_len = left.to_bytes().len();
     if left_len > LEFT_TEXT_LEN {
         warn!(
             "String {} too long for Left Infoline!!",
             left.to_string_lossy()
         );
-        left_len = LEFT_TEXT_LEN; /* too long, so we cut it! */
         Terminate(defs::ERR.into());
     }
     let right = CStr::from_ptr(right);
-    let mut right_len = right.to_bytes().len();
+    let right_len = right.to_bytes().len();
     if right_len > RIGHT_TEXT_LEN {
         warn!(
             "String {} too long for Right Infoline!!",
             right.to_string_lossy()
         );
-        right_len = RIGHT_TEXT_LEN; /* too long, so we cut it! */
         Terminate(defs::ERR.into());
     }
 

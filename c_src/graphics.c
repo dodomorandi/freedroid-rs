@@ -148,45 +148,45 @@ static const char *arrow_xpm[] = {
 /* ----------------------------------------------------------------------
  * This function applies a color filter to a given surface
  * ---------------------------------------------------------------------- */
-int
-ApplyFilter (SDL_Surface *surf, float fred, float fgreen, float fblue)
-{
-  int x , y ; // for processing through the surface...
-  Uint8 red, green, blue, alpha;
-
-  //--------------------
-  // First we check for null surfaces given...
-  //
-  if ( surf == NULL )
-    {
-      DebugPrintf (0 , "\nERROR: ApplyFilter called with NULL pointer\n" );
-      return (ERR);
-    }
-
-  //--------------------
-  // Now we start to process through the whole surface and examine each
-  // pixel.
-  //
-  for ( y = 0 ; y < surf -> h ; y ++ )
-    {
-      for ( x = 0 ; x < surf -> w ; x ++ )
-	{
-	  GetRGBA (surf, x, y, &red, &green, &blue, &alpha);
-
-	  if (alpha == SDL_ALPHA_TRANSPARENT)
-	    continue;
-
-	  red *= fred;
-	  green *= fgreen;
-	  blue *= fblue;
-
-	  putpixel (surf, x, y, SDL_MapRGBA (surf->format, red, green, blue, alpha) ) ;
-	}
-    }
-
-  return (OK);
-
-} // Apply_Filter
+// int
+// ApplyFilter (SDL_Surface *surf, float fred, float fgreen, float fblue)
+// {
+//   int x , y ; // for processing through the surface...
+//   Uint8 red, green, blue, alpha;
+// 
+//   //--------------------
+//   // First we check for null surfaces given...
+//   //
+//   if ( surf == NULL )
+//     {
+//       DebugPrintf (0 , "\nERROR: ApplyFilter called with NULL pointer\n" );
+//       return (ERR);
+//     }
+// 
+//   //--------------------
+//   // Now we start to process through the whole surface and examine each
+//   // pixel.
+//   //
+//   for ( y = 0 ; y < surf -> h ; y ++ )
+//     {
+//       for ( x = 0 ; x < surf -> w ; x ++ )
+// 	{
+// 	  GetRGBA (surf, x, y, &red, &green, &blue, &alpha);
+// 
+// 	  if (alpha == SDL_ALPHA_TRANSPARENT)
+// 	    continue;
+// 
+// 	  red *= fred;
+// 	  green *= fgreen;
+// 	  blue *= fblue;
+// 
+// 	  putpixel (surf, x, y, SDL_MapRGBA (surf->format, red, green, blue, alpha) ) ;
+// 	}
+//     }
+// 
+//   return (OK);
+// 
+// } // Apply_Filter
 
 /* ----------------------------------------------------------------------
  * This function gives the green component of a pixel, using a value of
