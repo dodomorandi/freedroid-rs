@@ -1,15 +1,24 @@
 use crate::{
     defs,
-    global::{ne_screen, User_Rect},
+    global::{ne_screen, GameConfig, Screen_Rect, User_Rect},
+    misc::Terminate,
 };
 
-use log::trace;
-use sdl::video::ll::{SDL_LockSurface, SDL_MapRGBA, SDL_Rect, SDL_Surface, SDL_UnlockSurface};
+use log::{error, trace, warn};
+use sdl::{
+    sdl::get_error,
+    video::{
+        ll::{
+            SDL_LockSurface, SDL_MapRGBA, SDL_Rect, SDL_SetVideoMode, SDL_Surface,
+            SDL_UnlockSurface,
+        },
+        VideoFlag,
+    },
+};
 use std::os::raw::{c_float, c_int};
 
 extern "C" {
     pub static mut vid_bpp: c_int;
-    pub fn toggle_fullscreen();
     pub fn TakeScreenshot();
     pub fn FreeGraphics();
     pub fn putpixel(surface: *mut SDL_Surface, x: c_int, y: c_int, pixel: u32);
@@ -80,4 +89,31 @@ pub unsafe extern "C" fn ApplyFilter(
         });
 
     defs::OK.into()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn toggle_fullscreen() {
+    let mut vid_flags = (*ne_screen).flags;
+
+    if GameConfig.UseFullscreen != 0 {
+        vid_flags &= !(VideoFlag::Fullscreen as u32);
+    } else {
+        vid_flags |= VideoFlag::Fullscreen as u32;
+    }
+
+    ne_screen = SDL_SetVideoMode(Screen_Rect.w.into(), Screen_Rect.h.into(), 0, vid_flags);
+    if ne_screen.is_null() {
+        error!(
+            "unable to toggle windowed/fullscreen {} x {} video mode.",
+            Screen_Rect.w, Screen_Rect.h,
+        );
+        error!("SDL-Error: {}", get_error());
+        Terminate(defs::ERR.into());
+    }
+
+    if (*ne_screen).flags != vid_flags {
+        warn!("Failed to toggle windowed/fullscreen mode!");
+    } else {
+        GameConfig.UseFullscreen = !GameConfig.UseFullscreen;
+    }
 }
