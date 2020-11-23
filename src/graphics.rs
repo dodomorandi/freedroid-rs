@@ -1,6 +1,14 @@
 use crate::{
-    defs::{self, Cmds, DisplayBannerFlags, Sound},
-    global::{ne_screen, GameConfig, Screen_Rect, User_Rect},
+    defs::{self, Cmds, DisplayBannerFlags, Droid, Sound, FREE_ONLY},
+    global::{
+        arrow_cursor, arrow_down, arrow_left, arrow_right, arrow_up, banner_pic, console_bg_pic1,
+        console_bg_pic2, console_pic, crosshair_cursor, ne_screen, packed_portraits, pic999,
+        progress_filler_pic, progress_meter_pic, ship_off_pic, ship_on_pic, takeover_bg_pic,
+        to_blocks, BuildBlock, Decal_pics, EnemyDigitSurfacePointer, EnemySurfacePointer,
+        Font0_BFont, Font1_BFont, Font2_BFont, GameConfig, Highscore_BFont,
+        InfluDigitSurfacePointer, InfluencerSurfacePointer, Menu_BFont, OrigMapBlockSurfacePointer,
+        Para_BFont, Screen_Rect, User_Rect,
+    },
     input::{cmd_is_active, SDL_Delay},
     misc::{Activate_Conservative_Frame_Computation, Terminate},
     sound::Play_Sound,
@@ -10,23 +18,24 @@ use crate::{
 use cstr::cstr;
 use log::{error, trace, warn};
 use sdl::{
+    mouse::ll::SDL_FreeCursor,
     sdl::get_error,
     video::{
         ll::{
-            SDL_Flip, SDL_LockSurface, SDL_MapRGBA, SDL_RWFromFile, SDL_Rect, SDL_SaveBMP_RW,
-            SDL_SetVideoMode, SDL_Surface, SDL_UnlockSurface,
+            SDL_Flip, SDL_FreeSurface, SDL_LockSurface, SDL_MapRGBA, SDL_RWFromFile, SDL_RWops,
+            SDL_Rect, SDL_SaveBMP_RW, SDL_SetVideoMode, SDL_Surface, SDL_UnlockSurface,
         },
         VideoFlag,
     },
 };
 use std::{
-    os::raw::{c_char, c_float, c_int},
+    os::raw::{c_char, c_float, c_int, c_void},
     ptr::null_mut,
 };
 
 extern "C" {
     pub static mut vid_bpp: c_int;
-    pub fn FreeGraphics();
+    pub static mut portrait_raw_mem: [*mut c_char; Droid::NumDroids as usize];
     pub fn putpixel(surface: *mut SDL_Surface, x: c_int, y: c_int, pixel: u32);
     pub fn GetRGBA(
         surface: &SDL_Surface,
@@ -37,7 +46,13 @@ extern "C" {
         b: &mut u8,
         a: &mut u8,
     );
-
+    pub fn Load_Block(
+        fpath: *mut c_char,
+        line: c_int,
+        col: c_int,
+        block: *mut SDL_Rect,
+        flags: c_int,
+    ) -> *mut SDL_Surface;
 }
 
 /// This function draws a "grid" on the screen, that means every
@@ -168,4 +183,84 @@ pub unsafe extern "C" fn TakeScreenshot() {
         null_mut(),
         DisplayBannerFlags::FORCE_UPDATE.bits().into(),
     );
+}
+
+#[inline]
+unsafe fn free_surface_array(surfaces: &[*mut SDL_Surface]) {
+    surfaces
+        .iter()
+        .for_each(|&surface| SDL_FreeSurface(surface));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn FreeGraphics() {
+    // free RWops structures
+    packed_portraits
+        .iter()
+        .filter(|packed_portrait| !packed_portrait.is_null())
+        .for_each(|&packed_portrait| {
+            let close: unsafe extern "C" fn(context: *mut SDL_RWops) -> c_int =
+                std::mem::transmute((*packed_portrait).close);
+            close(packed_portrait);
+        });
+
+    portrait_raw_mem
+        .iter()
+        .for_each(|&mem| libc::free(mem as *mut c_void));
+
+    SDL_FreeSurface(ne_screen);
+
+    free_surface_array(&EnemySurfacePointer);
+    free_surface_array(&InfluencerSurfacePointer);
+    free_surface_array(&InfluDigitSurfacePointer);
+    free_surface_array(&EnemyDigitSurfacePointer);
+    free_surface_array(&Decal_pics);
+
+    OrigMapBlockSurfacePointer
+        .iter()
+        .flat_map(|arr| arr.iter())
+        .for_each(|&surface| SDL_FreeSurface(surface));
+
+    SDL_FreeSurface(BuildBlock);
+    SDL_FreeSurface(banner_pic);
+    SDL_FreeSurface(pic999);
+    // SDL_RWops *packed_portraits[NUM_DROIDS];
+    SDL_FreeSurface(takeover_bg_pic);
+    SDL_FreeSurface(console_pic);
+    SDL_FreeSurface(console_bg_pic1);
+    SDL_FreeSurface(console_bg_pic2);
+
+    SDL_FreeSurface(arrow_up);
+    SDL_FreeSurface(arrow_down);
+    SDL_FreeSurface(arrow_right);
+    SDL_FreeSurface(arrow_left);
+
+    SDL_FreeSurface(ship_off_pic);
+    SDL_FreeSurface(ship_on_pic);
+    SDL_FreeSurface(progress_meter_pic);
+    SDL_FreeSurface(progress_filler_pic);
+    SDL_FreeSurface(to_blocks);
+
+    // free fonts
+    [
+        Menu_BFont,
+        Para_BFont,
+        Highscore_BFont,
+        Font0_BFont,
+        Font1_BFont,
+        Font2_BFont,
+    ]
+    .iter()
+    .filter(|font| !font.is_null())
+    .for_each(|&font| {
+        SDL_FreeSurface((*font).surface);
+        libc::free(font as *mut c_void);
+    });
+
+    // free Load_Block()-internal buffer
+    Load_Block(null_mut(), 0, 0, null_mut(), FREE_ONLY as i32);
+
+    // free cursors
+    SDL_FreeCursor(crosshair_cursor);
+    SDL_FreeCursor(arrow_cursor);
 }

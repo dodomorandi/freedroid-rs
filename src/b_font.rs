@@ -19,13 +19,13 @@ extern "C" {
 #[repr(C)]
 pub struct BFontInfo {
     /// font height
-    h: c_int,
+    pub h: c_int,
 
     /// font surface
-    surface: *mut SDL_Surface,
+    pub surface: *mut SDL_Surface,
 
     /// characters width
-    chars: [SDL_Rect; 256],
+    pub chars: [SDL_Rect; 256],
 }
 
 #[no_mangle]
