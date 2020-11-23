@@ -1,25 +1,31 @@
 use crate::{
-    defs,
+    defs::{self, Cmds, DisplayBannerFlags, Sound},
     global::{ne_screen, GameConfig, Screen_Rect, User_Rect},
-    misc::Terminate,
+    input::{cmd_is_active, SDL_Delay},
+    misc::{Activate_Conservative_Frame_Computation, Terminate},
+    sound::Play_Sound,
+    view::DisplayBanner,
 };
 
+use cstr::cstr;
 use log::{error, trace, warn};
 use sdl::{
     sdl::get_error,
     video::{
         ll::{
-            SDL_LockSurface, SDL_MapRGBA, SDL_Rect, SDL_SetVideoMode, SDL_Surface,
-            SDL_UnlockSurface,
+            SDL_Flip, SDL_LockSurface, SDL_MapRGBA, SDL_RWFromFile, SDL_Rect, SDL_SaveBMP_RW,
+            SDL_SetVideoMode, SDL_Surface, SDL_UnlockSurface,
         },
         VideoFlag,
     },
 };
-use std::os::raw::{c_float, c_int};
+use std::{
+    os::raw::{c_char, c_float, c_int},
+    ptr::null_mut,
+};
 
 extern "C" {
     pub static mut vid_bpp: c_int;
-    pub fn TakeScreenshot();
     pub fn FreeGraphics();
     pub fn putpixel(surface: *mut SDL_Surface, x: c_int, y: c_int, pixel: u32);
     pub fn GetRGBA(
@@ -116,4 +122,50 @@ pub unsafe extern "C" fn toggle_fullscreen() {
     } else {
         GameConfig.UseFullscreen = !GameConfig.UseFullscreen;
     }
+}
+
+/// This function saves a screenshot to disk.
+///
+/// The screenshots are names "Screenshot_XX.bmp" where XX is a
+/// running number.
+///
+/// NOTE:  This function does NOT check for existing screenshots,
+///        but will silently overwrite them.  No problem in most
+///        cases I think.
+#[no_mangle]
+pub unsafe extern "C" fn TakeScreenshot() {
+    static mut NUMBER_OF_SCREENSHOT: u32 = 0;
+
+    Activate_Conservative_Frame_Computation();
+
+    let screenshot_filename = format!("Screenshot_{}.bmp\0", NUMBER_OF_SCREENSHOT);
+    SDL_SaveBMP_RW(
+        ne_screen,
+        SDL_RWFromFile(
+            screenshot_filename.as_ptr() as *const c_char,
+            cstr!("wb").as_ptr(),
+        ),
+        1,
+    );
+    NUMBER_OF_SCREENSHOT = NUMBER_OF_SCREENSHOT.wrapping_add(1);
+    DisplayBanner(
+        cstr!("Screenshot").as_ptr(),
+        null_mut(),
+        (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
+            .bits()
+            .into(),
+    );
+    MakeGridOnScreen(None);
+    SDL_Flip(ne_screen);
+    Play_Sound(Sound::Screenshot as i32);
+
+    while cmd_is_active(Cmds::Screenshot) {
+        SDL_Delay(1);
+    }
+
+    DisplayBanner(
+        null_mut(),
+        null_mut(),
+        DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+    );
 }

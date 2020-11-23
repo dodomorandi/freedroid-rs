@@ -43,6 +43,7 @@ extern "C" {
     pub static mut One_Frame_SDL_Ticks: u32;
     pub static mut Now_SDL_Ticks: u32;
     pub static mut oneframedelay: c_long;
+    pub fn Activate_Conservative_Frame_Computation();
 }
 
 static CURRENT_TIME_FACTOR: Lazy<RwLock<f32>> = Lazy::new(|| RwLock::new(1.));
