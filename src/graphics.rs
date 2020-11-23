@@ -29,6 +29,7 @@ use sdl::{
     },
 };
 use std::{
+    convert::TryFrom,
     os::raw::{c_char, c_float, c_int, c_void},
     ptr::null_mut,
 };
@@ -36,7 +37,6 @@ use std::{
 extern "C" {
     pub static mut vid_bpp: c_int;
     pub static mut portrait_raw_mem: [*mut c_char; Droid::NumDroids as usize];
-    pub fn putpixel(surface: *mut SDL_Surface, x: c_int, y: c_int, pixel: u32);
     pub fn GetRGBA(
         surface: &SDL_Surface,
         x: c_int,
@@ -263,4 +263,41 @@ pub unsafe extern "C" fn FreeGraphics() {
     // free cursors
     SDL_FreeCursor(crosshair_cursor);
     SDL_FreeCursor(arrow_cursor);
+}
+
+/// Set the pixel at (x, y) to the given value
+/// NOTE: The surface must be locked before calling this!
+#[no_mangle]
+pub unsafe extern "C" fn putpixel(surface: *const SDL_Surface, x: c_int, y: c_int, pixel: u32) {
+    if surface.is_null() || x < 0 || y < 0 {
+        return;
+    }
+
+    let surface = &*surface;
+    if (x >= surface.w) || (y < 0) || (y >= surface.h) {
+        return;
+    }
+
+    let bpp = (*surface.format).BytesPerPixel.into();
+    let data = (surface.pixels as *mut u8).offset((y * i32::from(surface.pitch)) as isize);
+
+    match bpp {
+        1 => *data.offset(x as isize) = pixel as u8,
+        2 => *(data as *mut u16).offset(x as isize) = pixel as u16,
+        3 => {
+            let offset = isize::try_from(x).unwrap() * 3;
+            let p = std::slice::from_raw_parts_mut(data.offset(offset), 3);
+            if cfg!(target_endian = "big") {
+                p[0] = ((pixel >> 16) & 0xff) as u8;
+                p[1] = ((pixel >> 8) & 0xff) as u8;
+                p[2] = (pixel & 0xff) as u8;
+            } else {
+                p[0] = (pixel & 0xff) as u8;
+                p[1] = ((pixel >> 8) & 0xff) as u8;
+                p[2] = ((pixel >> 16) & 0xff) as u8;
+            }
+        }
+        4 => *(data as *mut u32).offset(x as isize) = pixel,
+        _ => unreachable!(),
+    }
 }
