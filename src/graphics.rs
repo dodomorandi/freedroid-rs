@@ -22,8 +22,8 @@ use sdl::{
     sdl::get_error,
     video::{
         ll::{
-            SDL_Flip, SDL_FreeSurface, SDL_LockSurface, SDL_MapRGBA, SDL_RWFromFile, SDL_RWops,
-            SDL_Rect, SDL_SaveBMP_RW, SDL_SetVideoMode, SDL_Surface, SDL_UnlockSurface,
+            SDL_Flip, SDL_FreeSurface, SDL_GetRGBA, SDL_LockSurface, SDL_MapRGBA, SDL_RWFromFile,
+            SDL_RWops, SDL_Rect, SDL_SaveBMP_RW, SDL_SetVideoMode, SDL_Surface, SDL_UnlockSurface,
         },
         VideoFlag,
     },
@@ -37,15 +37,6 @@ use std::{
 extern "C" {
     pub static mut vid_bpp: c_int;
     pub static mut portrait_raw_mem: [*mut c_char; Droid::NumDroids as usize];
-    pub fn GetRGBA(
-        surface: &SDL_Surface,
-        x: c_int,
-        y: c_int,
-        r: &mut u8,
-        g: &mut u8,
-        b: &mut u8,
-        a: &mut u8,
-    );
     pub fn Load_Block(
         fpath: *mut c_char,
         line: c_int,
@@ -300,4 +291,24 @@ pub unsafe extern "C" fn putpixel(surface: *const SDL_Surface, x: c_int, y: c_in
         4 => *(data as *mut u32).offset(x as isize) = pixel,
         _ => unreachable!(),
     }
+}
+
+/// This function gives the green component of a pixel, using a value of
+/// 255 for the most green pixel and 0 for the least green pixel.
+#[no_mangle]
+pub unsafe extern "C" fn GetRGBA(
+    surface: &SDL_Surface,
+    x: c_int,
+    y: c_int,
+    red: &mut u8,
+    green: &mut u8,
+    blue: &mut u8,
+    alpha: &mut u8,
+) {
+    let fmt = surface.format;
+    let pixel = *((surface.pixels as *const u32)
+        .add(usize::try_from(x).unwrap())
+        .add(usize::try_from(y).unwrap() * usize::try_from(surface.w).unwrap()));
+
+    SDL_GetRGBA(pixel, fmt, red, green, blue, alpha);
 }

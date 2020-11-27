@@ -192,22 +192,22 @@ static const char *arrow_xpm[] = {
  * This function gives the green component of a pixel, using a value of
  * 255 for the most green pixel and 0 for the least green pixel.
  * ---------------------------------------------------------------------- */
-void
-GetRGBA ( SDL_Surface* surface, int x, int y, Uint8 *r, Uint8 *g, Uint8 *b, Uint8 *a)
-{
-  SDL_PixelFormat *fmt;
-  Uint32 pixel;
-
-  //--------------------
-  // First we extract the pixel itself and the
-  // format information we need.
-  //
-  fmt = surface -> format ;
-  pixel = * ( ( ( Uint32* ) surface -> pixels ) + x + y * surface->w )  ;
-
-  SDL_GetRGBA (pixel, fmt, r, g, b, a);
-
-}; // int GetRGBA
+// void
+// GetRGBA ( SDL_Surface* surface, int x, int y, Uint8 *r, Uint8 *g, Uint8 *b, Uint8 *a)
+// {
+//   SDL_PixelFormat *fmt;
+//   Uint32 pixel;
+// 
+//   //--------------------
+//   // First we extract the pixel itself and the
+//   // format information we need.
+//   //
+//   fmt = surface -> format ;
+//   pixel = * ( ( ( Uint32* ) surface -> pixels ) + x + y * surface->w )  ;
+// 
+//   SDL_GetRGBA (pixel, fmt, r, g, b, a);
+// 
+// }; // int GetRGBA
 
 
 /*----------------------------------------------------------------------
