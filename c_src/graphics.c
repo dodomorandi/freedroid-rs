@@ -1380,25 +1380,25 @@ ScaleGraphics (float scale)
 /*----------------------------------------------------------------------
  * scales pic by scale: frees old pic and replaces it by new one!
  *----------------------------------------------------------------------*/
-void
-ScalePic (SDL_Surface **pic, float scale)
-{
-  SDL_Surface *tmp;
-
-  if (scale == 1.0)
-    return;
-
-  tmp = *pic;
-  *pic = zoomSurface (tmp, scale, scale, 0);
-  if ( (*pic) == NULL ) {
-    DebugPrintf (0, "ERROR: zoomSurface() failed for scale = %g.\n", scale);
-    Terminate (ERR);
-  }
-  SDL_FreeSurface (tmp);
-
-  return;
-
-} // ScalePic ()
+// void
+// ScalePic (SDL_Surface **pic, float scale)
+// {
+//   SDL_Surface *tmp;
+// 
+//   if (scale == 1.0)
+//     return;
+// 
+//   tmp = *pic;
+//   *pic = zoomSurface (tmp, scale, scale, 0);
+//   if ( (*pic) == NULL ) {
+//     DebugPrintf (0, "ERROR: zoomSurface() failed for scale = %g.\n", scale);
+//     Terminate (ERR);
+//   }
+//   SDL_FreeSurface (tmp);
+// 
+//   return;
+// 
+// } // ScalePic ()
 
 /*----------------------------------------------------------------------
  * scale all "static" rectangles, which are theme-independent

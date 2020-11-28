@@ -41,7 +41,7 @@ use sdl::{
 };
 use std::{
     convert::{TryFrom, TryInto},
-    os::raw::{c_char, c_float, c_int, c_void},
+    os::raw::{c_char, c_double, c_float, c_int, c_void},
     ptr::null_mut,
 };
 
@@ -49,7 +49,12 @@ extern "C" {
     pub static mut vid_bpp: c_int;
     pub static mut portrait_raw_mem: [*mut c_char; Droid::NumDroids as usize];
     pub fn IMG_Load(file: *const c_char) -> *mut SDL_Surface;
-
+    pub fn zoomSurface(
+        src: *mut SDL_Surface,
+        zoomx: c_double,
+        zoomy: c_double,
+        smooth: c_int,
+    ) -> *mut SDL_Surface;
 }
 
 /// This function draws a "grid" on the screen, that means every
@@ -483,4 +488,20 @@ pub unsafe extern "C" fn ScaleStatRects(scale: c_float) {
     scale!(TO_LeaderLed);
     scale!(TO_GroundRect);
     scale!(TO_ColumnRect);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ScalePic(pic: &mut *mut SDL_Surface, scale: c_float) {
+    if (scale - 1.0).abs() <= f32::EPSILON {
+        return;
+    }
+    let scale = scale.into();
+
+    let tmp = *pic;
+    *pic = zoomSurface(tmp, scale, scale, 0);
+    if pic.is_null() {
+        error!("zoomSurface() failed for scale = {}.", scale);
+        Terminate(defs::ERR.into());
+    }
+    SDL_FreeSurface(tmp);
 }
