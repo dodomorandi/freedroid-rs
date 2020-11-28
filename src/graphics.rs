@@ -1,25 +1,29 @@
 use crate::{
     defs::{
-        self, scale_point, scale_rect, Cmds, DisplayBannerFlags, Droid, Sound, FREE_ONLY, INIT_ONLY,
+        self, free_if_unused, scale_point, scale_rect, Cmds, DisplayBannerFlags, Droid, Sound,
+        FREE_ONLY, INIT_ONLY,
     },
     global::{
         arrow_cursor, arrow_down, arrow_left, arrow_right, arrow_up, banner_pic, console_bg_pic1,
         console_bg_pic2, console_pic, crosshair_cursor, ne_screen, packed_portraits, pic999,
         progress_filler_pic, progress_meter_pic, ship_off_pic, ship_on_pic, takeover_bg_pic,
-        to_blocks, Banner_Rect, Block_Rect, BuildBlock, CapsuleBlocks, Classic_User_Rect,
-        ConsMenuItem_Rect, Cons_Droid_Rect, Cons_Header_Rect, Cons_Menu_Rect, Cons_Menu_Rects,
-        Cons_Text_Rect, CurCapsuleStart, Decal_pics, Digit_Rect, DruidStart,
-        EnemyDigitSurfacePointer, EnemySurfacePointer, FillBlocks, Font0_BFont, Font1_BFont,
-        Font2_BFont, Full_User_Rect, GameConfig, Highscore_BFont, InfluDigitSurfacePointer,
-        InfluencerSurfacePointer, LeftCapsulesStart, LeftInfo_Rect, Menu_BFont, Menu_Rect,
-        OptionsMenu_Rect, OrigMapBlockSurfacePointer, Para_BFont, PlaygroundStart, Portrait_Rect,
-        RightInfo_Rect, Screen_Rect, TO_CapsuleRect, TO_ColumnRect, TO_ColumnStart, TO_ElementRect,
-        TO_FillBlock, TO_GroundRect, TO_LeaderBlockStart, TO_LeaderLed, TO_LeftGroundStart,
-        TO_RightGroundStart, ToColumnBlock, ToGameBlocks, ToGroundBlocks, ToLeaderBlock, User_Rect,
+        to_blocks, Banner_Rect, Blastmap, Block_Rect, BuildBlock, Bulletmap, CapsuleBlocks,
+        Classic_User_Rect, ConsMenuItem_Rect, Cons_Droid_Rect, Cons_Header_Rect, Cons_Menu_Rect,
+        Cons_Menu_Rects, Cons_Text_Rect, CurCapsuleStart, Decal_pics, Digit_Rect, DruidStart,
+        EnemyDigitSurfacePointer, EnemySurfacePointer, FillBlocks, FirstDigit_Rect, Font0_BFont,
+        Font1_BFont, Font2_BFont, Full_User_Rect, GameConfig, Highscore_BFont,
+        InfluDigitSurfacePointer, InfluencerSurfacePointer, LeftCapsulesStart, LeftInfo_Rect,
+        MapBlockSurfacePointer, Menu_BFont, Menu_Rect, Number_Of_Bullet_Types, OptionsMenu_Rect,
+        OrigMapBlockSurfacePointer, Para_BFont, PlaygroundStart, Portrait_Rect, RightInfo_Rect,
+        Screen_Rect, SecondDigit_Rect, TO_CapsuleRect, TO_ColumnRect, TO_ColumnStart,
+        TO_ElementRect, TO_FillBlock, TO_GroundRect, TO_LeaderBlockStart, TO_LeaderLed,
+        TO_LeftGroundStart, TO_RightGroundStart, ThirdDigit_Rect, ToColumnBlock, ToGameBlocks,
+        ToGroundBlocks, ToLeaderBlock, User_Rect,
     },
     input::{cmd_is_active, SDL_Delay},
     misc::{Activate_Conservative_Frame_Computation, Terminate},
     sound::Play_Sound,
+    text::printf_SDL,
     view::DisplayBanner,
 };
 
@@ -504,4 +508,134 @@ pub unsafe extern "C" fn ScalePic(pic: &mut *mut SDL_Surface, scale: c_float) {
         Terminate(defs::ERR.into());
     }
     SDL_FreeSurface(tmp);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ScaleGraphics(scale: c_float) {
+    static INIT: std::sync::Once = std::sync::Once::new();
+
+    /* For some reason we need to SetAlpha every time on OS X */
+    /* Digits are only used in _internal_ blits ==> clear per-surf alpha */
+    for &surface in &InfluDigitSurfacePointer {
+        SDL_SetAlpha(surface, 0, 0);
+    }
+    for &surface in &EnemyDigitSurfacePointer {
+        SDL_SetAlpha(surface, 0, 0);
+    }
+    if (scale - 1.).abs() <= f32::EPSILON {
+        return;
+    }
+
+    // these are reset in a theme-change by the theme-config-file
+    // therefore we need to rescale them each time again
+    scale_rect(&mut FirstDigit_Rect, scale);
+    scale_rect(&mut SecondDigit_Rect, scale);
+    scale_rect(&mut ThirdDigit_Rect, scale);
+
+    // note: only rescale these rects the first time!!
+    let mut init = false;
+    INIT.call_once(|| {
+        init = true;
+        ScaleStatRects(scale);
+    });
+
+    //---------- rescale Map blocks
+    OrigMapBlockSurfacePointer
+        .iter_mut()
+        .flat_map(|surfaces| surfaces.iter_mut())
+        .zip(
+            MapBlockSurfacePointer
+                .iter_mut()
+                .flat_map(|surfaces| surfaces.iter_mut()),
+        )
+        .for_each(|(orig_surface, map_surface)| {
+            ScalePic(orig_surface, scale);
+            *map_surface = *orig_surface;
+        });
+
+    //---------- rescale Droid-model  blocks
+    /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
+    for surface in &mut InfluencerSurfacePointer {
+        ScalePic(surface, scale);
+        SDL_SetAlpha(*surface, 0, 0);
+    }
+    for surface in &mut EnemySurfacePointer {
+        ScalePic(surface, scale);
+        SDL_SetAlpha(*surface, 0, 0);
+    }
+
+    //---------- rescale Bullet blocks
+    let bulletmap =
+        std::slice::from_raw_parts_mut(Bulletmap, usize::try_from(Number_Of_Bullet_Types).unwrap());
+    bulletmap
+        .iter_mut()
+        .flat_map(|bullet| bullet.SurfacePointer.iter_mut())
+        .for_each(|surface| ScalePic(surface, scale));
+
+    //---------- rescale Blast blocks
+    Blastmap
+        .iter_mut()
+        .flat_map(|blast| blast.SurfacePointer.iter_mut())
+        .for_each(|surface| ScalePic(surface, scale));
+
+    //---------- rescale Digit blocks
+    for surface in &mut InfluDigitSurfacePointer {
+        ScalePic(surface, scale);
+        SDL_SetAlpha(*surface, 0, 0);
+    }
+    for surface in &mut EnemyDigitSurfacePointer {
+        ScalePic(surface, scale);
+        SDL_SetAlpha(*surface, 0, 0);
+    }
+
+    //---------- rescale Takeover pics
+    ScalePic(&mut to_blocks, scale);
+    //  printf_SDL (ne_screen, -1, -1, ".");
+
+    ScalePic(&mut ship_on_pic, scale);
+    ScalePic(&mut ship_off_pic, scale);
+
+    // the following are not theme-specific and are therefore only loaded once!
+    if init {
+        //  create a new tmp block-build storage
+        free_if_unused(BuildBlock);
+        let tmp = SDL_CreateRGBSurface(
+            0,
+            Block_Rect.w.into(),
+            Block_Rect.h.into(),
+            vid_bpp,
+            0,
+            0,
+            0,
+            0,
+        );
+        BuildBlock = SDL_DisplayFormatAlpha(tmp);
+        SDL_FreeSurface(tmp);
+
+        // takeover pics
+        ScalePic(&mut takeover_bg_pic, scale);
+
+        //---------- Console pictures
+        ScalePic(&mut console_pic, scale);
+        ScalePic(&mut console_bg_pic1, scale);
+        ScalePic(&mut console_bg_pic2, scale);
+        ScalePic(&mut arrow_up, scale);
+        ScalePic(&mut arrow_down, scale);
+        ScalePic(&mut arrow_right, scale);
+        ScalePic(&mut arrow_left, scale);
+        //---------- Banner
+        ScalePic(&mut banner_pic, scale);
+
+        ScalePic(&mut pic999, scale);
+
+        // get the Ashes pics
+        if !Decal_pics[0].is_null() {
+            ScalePic(&mut Decal_pics[0], scale);
+        }
+        if !Decal_pics[1].is_null() {
+            ScalePic(&mut Decal_pics[1], scale);
+        }
+    }
+
+    printf_SDL(ne_screen, -1, -1, cstr!(" ok\n").as_ptr() as *mut c_char);
 }

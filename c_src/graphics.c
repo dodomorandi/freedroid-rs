@@ -1258,124 +1258,124 @@ white_noise (SDL_Surface *bitmap, SDL_Rect *rect, int timeout)
 /*----------------------------------------------------------------------
  * ScaleGraphics ()
  *----------------------------------------------------------------------*/
-void
-ScaleGraphics (float scale)
-{
-  static bool first_call = TRUE;
-  SDL_Surface *tmp;
-  int line, col;
-
-/* For some reason we need to SetAlpha every time on OS X */
-  for (col = 0; col < 10; col++)
-    {
-      /* Digits are only used in _internal_ blits ==> clear per-surf alpha */
-      SDL_SetAlpha (InfluDigitSurfacePointer[col], 0, 0);
-      SDL_SetAlpha (EnemyDigitSurfacePointer[col], 0, 0);
-    }
-  if (scale == 1.0)
-    return;
-
-  // these are reset in a theme-change by the theme-config-file
-  // therefore we need to rescale them each time again
-  ScaleRect (FirstDigit_Rect, scale);
-  ScaleRect (SecondDigit_Rect, scale);
-  ScaleRect (ThirdDigit_Rect, scale);
-
-
-  // note: only rescale these rects the first time!!
-  if (first_call)
-    ScaleStatRects (scale);
-
-  //  printf_SDL (ne_screen, User_Rect.x + 50, -1, "Rescaling graphics ...");
-
-  //---------- rescale Map blocks
-  for (line = 0; line < NUM_COLORS; line ++)
-    for (col = 0; col < NUM_MAP_BLOCKS; col ++)
-      {
-	ScalePic( &OrigMapBlockSurfacePointer[line][col], scale);
-	MapBlockSurfacePointer[line][col] = OrigMapBlockSurfacePointer[line][col];
-      }
-  //  printf_SDL (ne_screen, -1, -1, ".");
-  //---------- rescale Droid-model  blocks
-  for (col = 0; col < DROID_PHASES; col ++)
-    {
-      ScalePic (&InfluencerSurfacePointer[col], scale);
-      ScalePic (&EnemySurfacePointer[col], scale);
-      /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
-      SDL_SetAlpha (InfluencerSurfacePointer[col], 0, 0);
-      SDL_SetAlpha (EnemySurfacePointer[col], 0, 0);
-    }
-
-  //  printf_SDL (ne_screen, -1, -1, ".");
-  //---------- rescale Bullet blocks
-  for (line = 0; line < Number_Of_Bullet_Types; line ++)
-    for (col = 0; col < Bulletmap[line].phases; col ++)
-      ScalePic( &Bulletmap[line].SurfacePointer[col], scale);
-
-  //  printf_SDL (ne_screen, -1, -1, ".");
-
-  //---------- rescale Blast blocks
-  for (line = 0; line <  ALLBLASTTYPES; line ++)
-    for (col = 0; col < Blastmap[line].phases; col ++)
-      ScalePic (&Blastmap[line].SurfacePointer[col], scale);
-
-  //  printf_SDL (ne_screen, -1, -1, ".");
-  //---------- rescale Digit blocks
-  for (col = 0; col < 10; col++)
-    {
-      ScalePic (&InfluDigitSurfacePointer[col], scale);
-      ScalePic (&EnemyDigitSurfacePointer[col], scale);
-      /* Digits are only used in _internal_ blits ==> clear per-surf alpha */
-      SDL_SetAlpha (InfluDigitSurfacePointer[col], 0, 0);
-      SDL_SetAlpha (EnemyDigitSurfacePointer[col], 0, 0);
-    }
-  //  printf_SDL (ne_screen, -1, -1, ".");
-
-  //---------- rescale Takeover pics
-  ScalePic (&to_blocks, scale);
-  //  printf_SDL (ne_screen, -1, -1, ".");
-
-  ScalePic (&ship_on_pic, scale);
-  ScalePic (&ship_off_pic, scale);
-
-  // the following are not theme-specific and are therefore only loaded once!
-  if (first_call)
-    {
-      //  create a new tmp block-build storage
-      FreeIfUsed (BuildBlock);
-      tmp = SDL_CreateRGBSurface( 0 , Block_Rect.w, Block_Rect.h, vid_bpp, 0, 0, 0, 0);
-      BuildBlock = SDL_DisplayFormatAlpha (tmp);
-      SDL_FreeSurface (tmp);
-
-      // takeover pics
-      ScalePic (&takeover_bg_pic, scale);
-
-      //---------- Console pictures
-      ScalePic (&console_pic, scale);
-      ScalePic (&console_bg_pic1, scale);
-      ScalePic (&console_bg_pic2, scale);
-      ScalePic (&arrow_up, scale);
-      ScalePic (&arrow_down, scale);
-      ScalePic (&arrow_right, scale);
-      ScalePic (&arrow_left, scale);
-      //---------- Banner
-      ScalePic (&banner_pic, scale);
-
-      ScalePic (&pic999, scale);
-
-      // get the Ashes pics
-      if (Decal_pics[0]) ScalePic (&Decal_pics[0], scale);
-      if (Decal_pics[1]) ScalePic (&Decal_pics[1], scale);
-
-    } // if first_call
-
-  printf_SDL (ne_screen, -1, -1, " ok\n");
-
-  first_call = FALSE;
-
-  return;
-
-} // ScaleGraphics()
+// void
+// ScaleGraphics (float scale)
+// {
+//   static bool first_call = TRUE;
+//   SDL_Surface *tmp;
+//   int line, col;
+// 
+// /* For some reason we need to SetAlpha every time on OS X */
+//   for (col = 0; col < 10; col++)
+//     {
+//       /* Digits are only used in _internal_ blits ==> clear per-surf alpha */
+//       SDL_SetAlpha (InfluDigitSurfacePointer[col], 0, 0);
+//       SDL_SetAlpha (EnemyDigitSurfacePointer[col], 0, 0);
+//     }
+//   if (scale == 1.0)
+//     return;
+// 
+//   // these are reset in a theme-change by the theme-config-file
+//   // therefore we need to rescale them each time again
+//   ScaleRect (FirstDigit_Rect, scale);
+//   ScaleRect (SecondDigit_Rect, scale);
+//   ScaleRect (ThirdDigit_Rect, scale);
+// 
+// 
+//   // note: only rescale these rects the first time!!
+//   if (first_call)
+//     ScaleStatRects (scale);
+// 
+//   //  printf_SDL (ne_screen, User_Rect.x + 50, -1, "Rescaling graphics ...");
+// 
+//   //---------- rescale Map blocks
+//   for (line = 0; line < NUM_COLORS; line ++)
+//     for (col = 0; col < NUM_MAP_BLOCKS; col ++)
+//       {
+// 	ScalePic( &OrigMapBlockSurfacePointer[line][col], scale);
+// 	MapBlockSurfacePointer[line][col] = OrigMapBlockSurfacePointer[line][col];
+//       }
+//   //  printf_SDL (ne_screen, -1, -1, ".");
+//   //---------- rescale Droid-model  blocks
+//   for (col = 0; col < DROID_PHASES; col ++)
+//     {
+//       ScalePic (&InfluencerSurfacePointer[col], scale);
+//       ScalePic (&EnemySurfacePointer[col], scale);
+//       /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
+//       SDL_SetAlpha (InfluencerSurfacePointer[col], 0, 0);
+//       SDL_SetAlpha (EnemySurfacePointer[col], 0, 0);
+//     }
+// 
+//   //  printf_SDL (ne_screen, -1, -1, ".");
+//   //---------- rescale Bullet blocks
+//   for (line = 0; line < Number_Of_Bullet_Types; line ++)
+//     for (col = 0; col < Bulletmap[line].phases; col ++)
+//       ScalePic( &Bulletmap[line].SurfacePointer[col], scale);
+// 
+//   //  printf_SDL (ne_screen, -1, -1, ".");
+// 
+//   //---------- rescale Blast blocks
+//   for (line = 0; line <  ALLBLASTTYPES; line ++)
+//     for (col = 0; col < Blastmap[line].phases; col ++)
+//       ScalePic (&Blastmap[line].SurfacePointer[col], scale);
+// 
+//   //  printf_SDL (ne_screen, -1, -1, ".");
+//   //---------- rescale Digit blocks
+//   for (col = 0; col < 10; col++)
+//     {
+//       ScalePic (&InfluDigitSurfacePointer[col], scale);
+//       ScalePic (&EnemyDigitSurfacePointer[col], scale);
+//       /* Digits are only used in _internal_ blits ==> clear per-surf alpha */
+//       SDL_SetAlpha (InfluDigitSurfacePointer[col], 0, 0);
+//       SDL_SetAlpha (EnemyDigitSurfacePointer[col], 0, 0);
+//     }
+//   //  printf_SDL (ne_screen, -1, -1, ".");
+// 
+//   //---------- rescale Takeover pics
+//   ScalePic (&to_blocks, scale);
+//   //  printf_SDL (ne_screen, -1, -1, ".");
+// 
+//   ScalePic (&ship_on_pic, scale);
+//   ScalePic (&ship_off_pic, scale);
+// 
+//   // the following are not theme-specific and are therefore only loaded once!
+//   if (first_call)
+//     {
+//       //  create a new tmp block-build storage
+//       FreeIfUsed (BuildBlock);
+//       tmp = SDL_CreateRGBSurface( 0 , Block_Rect.w, Block_Rect.h, vid_bpp, 0, 0, 0, 0);
+//       BuildBlock = SDL_DisplayFormatAlpha (tmp);
+//       SDL_FreeSurface (tmp);
+// 
+//       // takeover pics
+//       ScalePic (&takeover_bg_pic, scale);
+// 
+//       //---------- Console pictures
+//       ScalePic (&console_pic, scale);
+//       ScalePic (&console_bg_pic1, scale);
+//       ScalePic (&console_bg_pic2, scale);
+//       ScalePic (&arrow_up, scale);
+//       ScalePic (&arrow_down, scale);
+//       ScalePic (&arrow_right, scale);
+//       ScalePic (&arrow_left, scale);
+//       //---------- Banner
+//       ScalePic (&banner_pic, scale);
+// 
+//       ScalePic (&pic999, scale);
+// 
+//       // get the Ashes pics
+//       if (Decal_pics[0]) ScalePic (&Decal_pics[0], scale);
+//       if (Decal_pics[1]) ScalePic (&Decal_pics[1], scale);
+// 
+//     } // if first_call
+// 
+//   printf_SDL (ne_screen, -1, -1, " ok\n");
+// 
+//   first_call = FALSE;
+// 
+//   return;
+// 
+// } // ScaleGraphics()
 
 /*----------------------------------------------------------------------
  * scales pic by scale: frees old pic and replaces it by new one!
