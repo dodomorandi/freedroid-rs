@@ -19,7 +19,7 @@ use crate::{
     view::{Assemble_Combat_Picture, DisplayBanner},
 };
 
-use log::{info, warn};
+use log::{error, info, warn};
 use once_cell::sync::Lazy;
 use sdl::{
     sdl::{
@@ -29,6 +29,7 @@ use sdl::{
     video::ll::{SDL_UpdateRects, SDL_UpperBlit},
 };
 use std::{
+    convert::TryInto,
     ffi::CStr,
     fs::File,
     os::raw::{c_char, c_float, c_int, c_long, c_void},
@@ -43,7 +44,6 @@ extern "C" {
     pub static mut One_Frame_SDL_Ticks: u32;
     pub static mut Now_SDL_Ticks: u32;
     pub static mut oneframedelay: c_long;
-    pub fn MyMalloc(size: c_long) -> *mut c_void;
     pub fn find_file(
         fname: *const c_char,
         subdir: *mut c_char,
@@ -374,4 +374,23 @@ pub unsafe extern "C" fn Activate_Conservative_Frame_Computation() {
     // hurt to have the top status bar redrawn after that,
     // so we set this variable...
     BannerIsDestroyed = true.into();
+}
+
+/// This function usese calloc, so memory is automatically 0-initialized!
+/// The function also checks for success and terminates in case of
+/// "out of memory", so we dont need to do this always in the code.
+#[no_mangle]
+pub unsafe extern "C" fn MyMalloc(mut size: c_long) -> *mut c_void {
+    // make Gnu-compatible even if on a broken system:
+    if size == 0 {
+        size = 1;
+    }
+
+    let ptr = libc::calloc(1, size.try_into().unwrap());
+    if ptr.is_null() {
+        error!("MyMalloc({}) did not succeed!", size);
+        Terminate(defs::ERR.into());
+    }
+
+    ptr
 }

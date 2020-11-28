@@ -1076,23 +1076,23 @@ Teleport (int LNum, int X, int Y)
        "out of memory", so we dont need to do this always in the code.
 @Ret:
 * $Function----------------------------------------------------------*/
-void *
-MyMalloc (long Mamount)
-{
-  void *Mptr = NULL;
-
-  // make Gnu-compatible even if on a broken system:
-  if (Mamount == 0)
-    Mamount = 1;
-
-  if ((Mptr = calloc (1, (size_t) Mamount)) == NULL)
-    {
-      DebugPrintf (0, " MyMalloc(%ld) did not succeed!\n", Mamount);
-      Terminate(ERR);
-    }
-
-  return Mptr;
-}				// void* MyMalloc(long Mamount)
+// void *
+// MyMalloc (long Mamount)
+// {
+//   void *Mptr = NULL;
+// 
+//   // make Gnu-compatible even if on a broken system:
+//   if (Mamount == 0)
+//     Mamount = 1;
+// 
+//   if ((Mptr = calloc (1, (size_t) Mamount)) == NULL)
+//     {
+//       DebugPrintf (0, " MyMalloc(%ld) did not succeed!\n", Mamount);
+//       Terminate(ERR);
+//     }
+// 
+//   return Mptr;
+// }				// void* MyMalloc(long Mamount)
 
 /*----------------------------------------------------------------------
  * FS_filelength().. (taken from quake2)
