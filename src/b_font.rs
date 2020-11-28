@@ -13,6 +13,7 @@ extern "C" {
     pub static mut Para_BFont: *mut BFontInfo;
     pub static mut CurrentFont: *mut BFontInfo;
     fn vsprintf(str: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
+    pub fn PutPixel(surface: *mut SDL_Surface, x: c_int, y: c_int, pixel: u32);
 }
 
 #[derive(Clone)]

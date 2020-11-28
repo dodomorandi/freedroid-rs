@@ -1159,101 +1159,101 @@ Duplicate_Font ( const BFont_Info * in_font )
 //
 // timeout is in ms
 //------------------------------------------------------------
-#define NOISE_COLORS 6
-#define NOISE_TILES 8
-
-void
-white_noise (SDL_Surface *bitmap, SDL_Rect *rect, int timeout)
-{
-  int i;
-  int x, y;
-  int signal_strengh = 60;
-  Uint32 grey[NOISE_COLORS];
-  Uint8 color;
-  SDL_Surface *tmp, *tmp2;
-  SDL_Surface *noise_tiles[NOISE_TILES];
-  SDL_Rect clip_rect;
-  char used_tiles[NOISE_TILES/2+1];
-  int next_tile;
-  int now;
-
-  for (i=0; i< NOISE_COLORS; i++)
-    {
-      color = (Uint8)(((double)(i+1.0)/NOISE_COLORS)*255.0);
-      grey[i] = SDL_MapRGB(ne_screen->format, color, color, color);
-    }
-
-  // produce the tiles
-  tmp = SDL_CreateRGBSurface(0, rect->w, rect->h, vid_bpp, 0, 0, 0, 0);
-  tmp2 = SDL_DisplayFormat (tmp);
-  SDL_FreeSurface (tmp);
-  SDL_BlitSurface (bitmap, rect, tmp2, NULL);
-  //  printf_SDL (ne_screen, rect->x + 10, rect->y + rect->h/2, "Preparing noise-tiles ");
-  for (i=0; i< NOISE_TILES; i++)
-    {
-      noise_tiles[i] = SDL_DisplayFormat(tmp2);
-
-      for (x = 0; x < rect->w; x++)
-	for (y = 0; y < rect->h; y++)
-	  if (rand()%100 > signal_strengh)
-	    PutPixel (noise_tiles[i], x, y, grey[rand()%NOISE_COLORS]);
-
-      //      printf_SDL (ne_screen, -1, -1, " %d", i+1);
-      //      SDL_BlitSurface (noise_tiles[i], NULL, ne_screen, rect);
-      //      SDL_UpdateRect (ne_screen, rect->x, rect->y, rect->w, rect->h);
-    }
-  SDL_FreeSurface (tmp2);
-
-  memset(used_tiles,-1, sizeof(used_tiles));
-  // let's go
-  Play_Sound (WHITE_NOISE);
-
-  now = SDL_GetTicks();
-
-  wait_for_all_keys_released();
-  while (1)
-    {
-      // pick an old enough tile
-      do
-	{
-	  next_tile = rand()%NOISE_TILES;
-	  for (i = 0; i < sizeof(used_tiles); i++)
-	    {
-	      if (next_tile == used_tiles[i])
-		{
-		  next_tile = -1;
-		  break;
-		}
-	    }
-	} while (next_tile == -1);
-      memmove(used_tiles,used_tiles+1,sizeof(used_tiles)-1);
-      used_tiles[sizeof(used_tiles)-1] = next_tile;
-
-      // make sure we can blit the full rect without clipping! (would change *rect!)
-      SDL_GetClipRect (ne_screen, &clip_rect);
-      SDL_SetClipRect (ne_screen, NULL);
-      // set it
-      SDL_BlitSurface (noise_tiles[next_tile], NULL, ne_screen, rect);
-      SDL_UpdateRect (ne_screen, rect->x, rect->y, rect->w, rect->h);
-      SDL_Delay(25);
-
-      if ( (timeout && (SDL_GetTicks()-now > timeout)))
-	break;
-
-      if ( any_key_just_pressed() ) {
-        break;
-      }
-
-    } // while (! finished)
-
-  //restore previous clip-rectange
-  SDL_SetClipRect (ne_screen, &clip_rect);
-
-  for (i=0; i<NOISE_TILES; i++)
-    SDL_FreeSurface (noise_tiles[i]);
-
-  return;
-}
+// #define NOISE_COLORS 6
+// #define NOISE_TILES 8
+// 
+// void
+// white_noise (SDL_Surface *bitmap, SDL_Rect *rect, int timeout)
+// {
+//   int i;
+//   int x, y;
+//   int signal_strengh = 60;
+//   Uint32 grey[NOISE_COLORS];
+//   Uint8 color;
+//   SDL_Surface *tmp, *tmp2;
+//   SDL_Surface *noise_tiles[NOISE_TILES];
+//   SDL_Rect clip_rect;
+//   char used_tiles[NOISE_TILES/2+1];
+//   int next_tile;
+//   int now;
+// 
+//   for (i=0; i< NOISE_COLORS; i++)
+//     {
+//       color = (Uint8)(((double)(i+1.0)/NOISE_COLORS)*255.0);
+//       grey[i] = SDL_MapRGB(ne_screen->format, color, color, color);
+//     }
+// 
+//   // produce the tiles
+//   tmp = SDL_CreateRGBSurface(0, rect->w, rect->h, vid_bpp, 0, 0, 0, 0);
+//   tmp2 = SDL_DisplayFormat (tmp);
+//   SDL_FreeSurface (tmp);
+//   SDL_BlitSurface (bitmap, rect, tmp2, NULL);
+//   //  printf_SDL (ne_screen, rect->x + 10, rect->y + rect->h/2, "Preparing noise-tiles ");
+//   for (i=0; i< NOISE_TILES; i++)
+//     {
+//       noise_tiles[i] = SDL_DisplayFormat(tmp2);
+// 
+//       for (x = 0; x < rect->w; x++)
+// 	for (y = 0; y < rect->h; y++)
+// 	  if (rand()%100 > signal_strengh)
+// 	    PutPixel (noise_tiles[i], x, y, grey[rand()%NOISE_COLORS]);
+// 
+//       //      printf_SDL (ne_screen, -1, -1, " %d", i+1);
+//       //      SDL_BlitSurface (noise_tiles[i], NULL, ne_screen, rect);
+//       //      SDL_UpdateRect (ne_screen, rect->x, rect->y, rect->w, rect->h);
+//     }
+//   SDL_FreeSurface (tmp2);
+// 
+//   memset(used_tiles,-1, sizeof(used_tiles));
+//   // let's go
+//   Play_Sound (WHITE_NOISE);
+// 
+//   now = SDL_GetTicks();
+// 
+//   wait_for_all_keys_released();
+//   while (1)
+//     {
+//       // pick an old enough tile
+//       do
+// 	{
+// 	  next_tile = rand()%NOISE_TILES;
+// 	  for (i = 0; i < sizeof(used_tiles); i++)
+// 	    {
+// 	      if (next_tile == used_tiles[i])
+// 		{
+// 		  next_tile = -1;
+// 		  break;
+// 		}
+// 	    }
+// 	} while (next_tile == -1);
+//       memmove(used_tiles,used_tiles+1,sizeof(used_tiles)-1);
+//       used_tiles[sizeof(used_tiles)-1] = next_tile;
+// 
+//       // make sure we can blit the full rect without clipping! (would change *rect!)
+//       SDL_GetClipRect (ne_screen, &clip_rect);
+//       SDL_SetClipRect (ne_screen, NULL);
+//       // set it
+//       SDL_BlitSurface (noise_tiles[next_tile], NULL, ne_screen, rect);
+//       SDL_UpdateRect (ne_screen, rect->x, rect->y, rect->w, rect->h);
+//       SDL_Delay(25);
+// 
+//       if ( (timeout && (SDL_GetTicks()-now > timeout)))
+// 	break;
+// 
+//       if ( any_key_just_pressed() ) {
+//         break;
+//       }
+// 
+//     } // while (! finished)
+// 
+//   //restore previous clip-rectange
+//   SDL_SetClipRect (ne_screen, &clip_rect);
+// 
+//   for (i=0; i<NOISE_TILES; i++)
+//     SDL_FreeSurface (noise_tiles[i]);
+// 
+//   return;
+// }
 
 /*----------------------------------------------------------------------
  * ScaleGraphics ()

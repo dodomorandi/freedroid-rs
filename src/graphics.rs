@@ -1,4 +1,5 @@
 use crate::{
+    b_font::PutPixel,
     defs::{
         self, free_if_unused, scale_point, scale_rect, Cmds, DisplayBannerFlags, Droid, Sound,
         FREE_ONLY, INIT_ONLY,
@@ -20,25 +21,26 @@ use crate::{
         TO_LeftGroundStart, TO_RightGroundStart, ThirdDigit_Rect, ToColumnBlock, ToGameBlocks,
         ToGroundBlocks, ToLeaderBlock, User_Rect,
     },
-    input::{cmd_is_active, SDL_Delay},
+    input::{any_key_just_pressed, cmd_is_active, wait_for_all_keys_released, SDL_Delay},
     misc::{Activate_Conservative_Frame_Computation, Terminate},
     sound::Play_Sound,
     text::printf_SDL,
     view::DisplayBanner,
 };
 
+use array_init::array_init;
 use cstr::cstr;
 use log::{error, trace, warn};
 use sdl::{
     mouse::ll::SDL_FreeCursor,
-    sdl::{get_error, Rect},
+    sdl::{get_error, ll::SDL_GetTicks, Rect},
     video::SurfaceFlag,
     video::{
         ll::{
             SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_Flip,
-            SDL_FreeSurface, SDL_GetRGBA, SDL_LockSurface, SDL_MapRGBA, SDL_RWFromFile, SDL_RWops,
-            SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetVideoMode, SDL_Surface,
-            SDL_UnlockSurface, SDL_UpperBlit,
+            SDL_FreeSurface, SDL_GetRGBA, SDL_LockSurface, SDL_MapRGB, SDL_MapRGBA, SDL_RWFromFile,
+            SDL_RWops, SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetClipRect, SDL_SetVideoMode,
+            SDL_Surface, SDL_UnlockSurface, SDL_UpdateRect, SDL_UpperBlit,
         },
         VideoFlag,
     },
@@ -59,6 +61,7 @@ extern "C" {
         zoomy: c_double,
         smooth: c_int,
     ) -> *mut SDL_Surface;
+    pub fn SDL_GetClipRect(surface: *mut SDL_Surface, rect: *mut SDL_Rect);
 }
 
 /// This function draws a "grid" on the screen, that means every
@@ -638,4 +641,108 @@ pub unsafe extern "C" fn ScaleGraphics(scale: c_float) {
     }
 
     printf_SDL(ne_screen, -1, -1, cstr!(" ok\n").as_ptr() as *mut c_char);
+}
+
+/// display "white noise" effect in Rect.
+/// algorith basically stolen from
+/// Greg Knauss's "xteevee" hack in xscreensavers.
+///
+/// timeout is in ms
+#[no_mangle]
+pub unsafe extern "C" fn white_noise(bitmap: *mut SDL_Surface, rect: &mut Rect, timeout: c_int) {
+    use rand::{
+        seq::{IteratorRandom, SliceRandom},
+        Rng,
+    };
+    const NOISE_COLORS: usize = 6;
+    const NOISE_TILES: usize = 8;
+
+    let signal_strengh = 60;
+
+    let grey: [u32; NOISE_COLORS] = array_init(|index| {
+        let color = (((index as f64 + 1.0) / (NOISE_COLORS as f64)) * 255.0) as u8;
+        SDL_MapRGB((*ne_screen).format, color, color, color)
+    });
+
+    // produce the tiles
+    let tmp = SDL_CreateRGBSurface(0, rect.w.into(), rect.h.into(), vid_bpp, 0, 0, 0, 0);
+    let tmp2 = SDL_DisplayFormat(tmp);
+    SDL_FreeSurface(tmp);
+    SDL_UpperBlit(bitmap, rect, tmp2, null_mut());
+
+    let mut rng = rand::thread_rng();
+    let noise_tiles: [*mut SDL_Surface; NOISE_TILES] = array_init(|_| {
+        let tile = SDL_DisplayFormat(tmp2);
+        (0..rect.x)
+            .flat_map(|x| (0..rect.h).map(move |y| (x, y)))
+            .for_each(|(x, y)| {
+                if rng.gen_range(0, 100) > signal_strengh {
+                    PutPixel(tile, x.into(), y.into(), *grey.choose(&mut rng).unwrap());
+                }
+            });
+        tile
+    });
+    SDL_FreeSurface(tmp2);
+
+    let mut used_tiles = [-1 as c_char; NOISE_TILES / 2 + 1];
+    // let's go
+    Play_Sound(Sound::WhiteNoise as c_int);
+
+    let now = SDL_GetTicks();
+
+    wait_for_all_keys_released();
+    let mut clip_rect = Rect::new(0, 0, 0, 0);
+    loop {
+        // pick an old enough tile
+        let mut next_tile;
+        loop {
+            next_tile = (0..NOISE_TILES as i8).choose(&mut rng).unwrap();
+            for &used_tile in &used_tiles {
+                if next_tile == used_tile {
+                    next_tile = -1;
+                    break;
+                }
+            }
+
+            if next_tile != -1 {
+                break;
+            }
+        }
+        used_tiles.copy_within(1.., 0);
+        *used_tiles.last_mut().unwrap() = next_tile;
+
+        // make sure we can blit the full rect without clipping! (would change *rect!)
+        SDL_GetClipRect(ne_screen, &mut clip_rect);
+        SDL_SetClipRect(ne_screen, null_mut());
+        // set it
+        SDL_UpperBlit(
+            noise_tiles[usize::try_from(next_tile).unwrap()],
+            null_mut(),
+            ne_screen,
+            rect,
+        );
+        SDL_UpdateRect(
+            ne_screen,
+            rect.x.into(),
+            rect.y.into(),
+            rect.w.into(),
+            rect.h.into(),
+        );
+        SDL_Delay(25);
+
+        if timeout != 0 && SDL_GetTicks() - now > timeout.try_into().unwrap() {
+            break;
+        }
+
+        if any_key_just_pressed() != 0 {
+            break;
+        }
+    }
+
+    //restore previous clip-rectange
+    SDL_SetClipRect(ne_screen, &clip_rect);
+
+    for &tile in &noise_tiles {
+        SDL_FreeSurface(tile);
+    }
 }
