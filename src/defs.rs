@@ -3,6 +3,7 @@ use crate::input::{KeyIsPressed, KeyIsPressedR};
 use crate::{
     global::User_Rect,
     input::{cmd_is_active, cmd_is_activeR, ModIsPressed},
+    structs::Point,
 };
 
 use bitflags::bitflags;
@@ -37,11 +38,20 @@ pub unsafe fn get_user_center() -> Rect {
     }
 }
 
-// #define ScaleRect(rect,scale) do {\
-// (rect).x *= scale; (rect).y *= scale; (rect).w *= scale; (rect).h *= scale; } while(0)
+#[inline]
+pub fn scale_rect(rect: &mut Rect, scale: f32) {
+    rect.x = (f32::from(rect.x) * scale) as i16;
+    rect.y = (f32::from(rect.y) * scale) as i16;
+    rect.w = (f32::from(rect.w) * scale) as u16;
+    rect.h = (f32::from(rect.h) * scale) as u16;
+}
 
-// #define ScalePoint(point,scale) do {\
-// (point).x *= scale; (point).y *= scale; } while(0)
+#[inline]
+pub fn scale_point(point: &mut Point, scale: f32) {
+    let scale: f64 = scale.into();
+    point.x = (f64::from(point.x) * scale) as i32;
+    point.y = (f64::from(point.y) * scale) as i32;
+}
 
 // #define Set_Rect(rect, xx, yy, ww, hh) do {\
 // (rect).x = (xx); (rect).y = (yy); (rect).w = (ww); (rect).h = (hh); } while(0)

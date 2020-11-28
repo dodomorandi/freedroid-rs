@@ -1,13 +1,21 @@
 use crate::{
-    defs::{self, Cmds, DisplayBannerFlags, Droid, Sound, FREE_ONLY, INIT_ONLY},
+    defs::{
+        self, scale_point, scale_rect, Cmds, DisplayBannerFlags, Droid, Sound, FREE_ONLY, INIT_ONLY,
+    },
     global::{
         arrow_cursor, arrow_down, arrow_left, arrow_right, arrow_up, banner_pic, console_bg_pic1,
         console_bg_pic2, console_pic, crosshair_cursor, ne_screen, packed_portraits, pic999,
         progress_filler_pic, progress_meter_pic, ship_off_pic, ship_on_pic, takeover_bg_pic,
-        to_blocks, BuildBlock, Decal_pics, EnemyDigitSurfacePointer, EnemySurfacePointer,
-        Font0_BFont, Font1_BFont, Font2_BFont, GameConfig, Highscore_BFont,
-        InfluDigitSurfacePointer, InfluencerSurfacePointer, Menu_BFont, OrigMapBlockSurfacePointer,
-        Para_BFont, Screen_Rect, User_Rect,
+        to_blocks, Banner_Rect, Block_Rect, BuildBlock, CapsuleBlocks, Classic_User_Rect,
+        ConsMenuItem_Rect, Cons_Droid_Rect, Cons_Header_Rect, Cons_Menu_Rect, Cons_Menu_Rects,
+        Cons_Text_Rect, CurCapsuleStart, Decal_pics, Digit_Rect, DruidStart,
+        EnemyDigitSurfacePointer, EnemySurfacePointer, FillBlocks, Font0_BFont, Font1_BFont,
+        Font2_BFont, Full_User_Rect, GameConfig, Highscore_BFont, InfluDigitSurfacePointer,
+        InfluencerSurfacePointer, LeftCapsulesStart, LeftInfo_Rect, Menu_BFont, Menu_Rect,
+        OptionsMenu_Rect, OrigMapBlockSurfacePointer, Para_BFont, PlaygroundStart, Portrait_Rect,
+        RightInfo_Rect, Screen_Rect, TO_CapsuleRect, TO_ColumnRect, TO_ColumnStart, TO_ElementRect,
+        TO_FillBlock, TO_GroundRect, TO_LeaderBlockStart, TO_LeaderLed, TO_LeftGroundStart,
+        TO_RightGroundStart, ToColumnBlock, ToGameBlocks, ToGroundBlocks, ToLeaderBlock, User_Rect,
     },
     input::{cmd_is_active, SDL_Delay},
     misc::{Activate_Conservative_Frame_Computation, Terminate},
@@ -393,4 +401,86 @@ pub unsafe extern "C" fn Load_Block(
     }
 
     ret
+}
+
+/// scale all "static" rectangles, which are theme-independent
+#[no_mangle]
+pub unsafe extern "C" fn ScaleStatRects(scale: c_float) {
+    macro_rules! scale {
+        ($rect:ident) => {
+            scale_rect(&mut $rect, scale);
+        };
+    }
+
+    macro_rules! scale_point {
+        ($rect:ident) => {
+            scale_point(&mut $rect, scale);
+        };
+    }
+
+    scale!(Block_Rect);
+    scale!(User_Rect);
+    scale!(Classic_User_Rect);
+    scale!(Full_User_Rect);
+    scale!(Banner_Rect);
+    scale!(Portrait_Rect);
+    scale!(Cons_Droid_Rect);
+    scale!(Menu_Rect);
+    scale!(OptionsMenu_Rect);
+    scale!(Digit_Rect);
+    scale!(Cons_Header_Rect);
+    scale!(Cons_Menu_Rect);
+    scale!(Cons_Text_Rect);
+
+    for block in &mut Cons_Menu_Rects {
+        scale_rect(block, scale);
+    }
+
+    scale!(ConsMenuItem_Rect);
+
+    scale!(LeftInfo_Rect);
+    scale!(RightInfo_Rect);
+
+    for block in &mut FillBlocks {
+        scale_rect(block, scale);
+    }
+
+    for block in &mut CapsuleBlocks {
+        scale_rect(block, scale);
+    }
+
+    for block in &mut ToGameBlocks {
+        scale_rect(block, scale);
+    }
+
+    for block in &mut ToGroundBlocks {
+        scale_rect(block, scale);
+    }
+
+    scale!(ToColumnBlock);
+    scale!(ToLeaderBlock);
+
+    for point in &mut LeftCapsulesStart {
+        scale_point(point, scale);
+    }
+    for point in &mut CurCapsuleStart {
+        scale_point(point, scale);
+    }
+    for point in &mut PlaygroundStart {
+        scale_point(point, scale);
+    }
+    for point in &mut DruidStart {
+        scale_point(point, scale);
+    }
+    scale_point!(TO_LeftGroundStart);
+    scale_point!(TO_ColumnStart);
+    scale_point!(TO_RightGroundStart);
+    scale_point!(TO_LeaderBlockStart);
+
+    scale!(TO_FillBlock);
+    scale!(TO_ElementRect);
+    scale!(TO_CapsuleRect);
+    scale!(TO_LeaderLed);
+    scale!(TO_GroundRect);
+    scale!(TO_ColumnRect);
 }
