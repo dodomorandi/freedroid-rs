@@ -886,17 +886,17 @@ find_file (const char *fname, char *subdir, int use_theme, int critical)
 @Ret:
 @Int:
 * $Function----------------------------------------------------------*/
-void
-Activate_Conservative_Frame_Computation(void)
-{
-  SkipAFewFrames=TRUE;
-
-  // Now we are in some form of pause.  It can't
-  // hurt to have the top status bar redrawn after that,
-  // so we set this variable...
-  BannerIsDestroyed=TRUE;
-
-} // void Activate_Conservative_Frame_Computation(void)
+// void
+// Activate_Conservative_Frame_Computation(void)
+// {
+//   SkipAFewFrames=TRUE;
+// 
+//   // Now we are in some form of pause.  It can't
+//   // hurt to have the top status bar redrawn after that,
+//   // so we set this variable...
+//   BannerIsDestroyed=TRUE;
+// 
+// } // void Activate_Conservative_Frame_Computation(void)
 
 
 /*@Function============================================================

@@ -4,8 +4,8 @@ use crate::{
     defs::{self, AssembleCombatWindowFlags, Cmds, FirePressedR, Status},
     enemy::AnimateEnemys,
     global::{
-        ne_screen, progress_filler_pic, ConfigDir, FPSover1, GameConfig, Me, ProgressBar_Rect,
-        ProgressMeter_Rect, SkipAFewFrames,
+        ne_screen, progress_filler_pic, BannerIsDestroyed, ConfigDir, FPSover1, GameConfig, Me,
+        ProgressBar_Rect, ProgressMeter_Rect, SkipAFewFrames,
     },
     graphics::FreeGraphics,
     highscore::SaveHighscores,
@@ -43,7 +43,6 @@ extern "C" {
     pub static mut One_Frame_SDL_Ticks: u32;
     pub static mut Now_SDL_Ticks: u32;
     pub static mut oneframedelay: c_long;
-    pub fn Activate_Conservative_Frame_Computation();
 }
 
 static CURRENT_TIME_FACTOR: Lazy<RwLock<f32>> = Lazy::new(|| RwLock::new(1.));
@@ -358,4 +357,14 @@ pub unsafe extern "C" fn ComputeFPSForThisFrame() {
     oneframedelay = c_long::from(Now_SDL_Ticks) - c_long::from(One_Frame_SDL_Ticks);
     oneframedelay = if oneframedelay > 0 { oneframedelay } else { 1 }; // avoid division by zero
     FPSover1 = (1000. / oneframedelay as f64) as f32;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Activate_Conservative_Frame_Computation() {
+    SkipAFewFrames = true.into();
+
+    // Now we are in some form of pause.  It can't
+    // hurt to have the top status bar redrawn after that,
+    // so we set this variable...
+    BannerIsDestroyed = true.into();
 }
