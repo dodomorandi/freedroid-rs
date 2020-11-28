@@ -1,5 +1,5 @@
 use crate::{
-    defs::{self, Cmds, DisplayBannerFlags, Droid, Sound, FREE_ONLY},
+    defs::{self, Cmds, DisplayBannerFlags, Droid, Sound, FREE_ONLY, INIT_ONLY},
     global::{
         arrow_cursor, arrow_down, arrow_left, arrow_right, arrow_up, banner_pic, console_bg_pic1,
         console_bg_pic2, console_pic, crosshair_cursor, ne_screen, packed_portraits, pic999,
@@ -19,17 +19,20 @@ use cstr::cstr;
 use log::{error, trace, warn};
 use sdl::{
     mouse::ll::SDL_FreeCursor,
-    sdl::get_error,
+    sdl::{get_error, Rect},
+    video::SurfaceFlag,
     video::{
         ll::{
-            SDL_Flip, SDL_FreeSurface, SDL_GetRGBA, SDL_LockSurface, SDL_MapRGBA, SDL_RWFromFile,
-            SDL_RWops, SDL_Rect, SDL_SaveBMP_RW, SDL_SetVideoMode, SDL_Surface, SDL_UnlockSurface,
+            SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_Flip,
+            SDL_FreeSurface, SDL_GetRGBA, SDL_LockSurface, SDL_MapRGBA, SDL_RWFromFile, SDL_RWops,
+            SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetVideoMode, SDL_Surface,
+            SDL_UnlockSurface, SDL_UpperBlit,
         },
         VideoFlag,
     },
 };
 use std::{
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     os::raw::{c_char, c_float, c_int, c_void},
     ptr::null_mut,
 };
@@ -37,13 +40,8 @@ use std::{
 extern "C" {
     pub static mut vid_bpp: c_int;
     pub static mut portrait_raw_mem: [*mut c_char; Droid::NumDroids as usize];
-    pub fn Load_Block(
-        fpath: *mut c_char,
-        line: c_int,
-        col: c_int,
-        block: *mut SDL_Rect,
-        flags: c_int,
-    ) -> *mut SDL_Surface;
+    pub fn IMG_Load(file: *const c_char) -> *mut SDL_Surface;
+
 }
 
 /// This function draws a "grid" on the screen, that means every
@@ -311,4 +309,88 @@ pub unsafe extern "C" fn GetRGBA(
         .add(usize::try_from(y).unwrap() * usize::try_from(surface.w).unwrap()));
 
     SDL_GetRGBA(pixel, fmt, red, green, blue, alpha);
+}
+
+/// General block-reading routine: get block from pic-file
+///
+/// fpath: full pathname of picture-file; if NULL: use previous SDL-surf
+/// line, col: block-position in pic-file to read block from
+/// block: dimension of blocks to consider: if NULL: copy whole pic
+/// NOTE: only w and h of block are used!!
+///
+/// NOTE: to avoid memory-leaks, use (flags | INIT_ONLY) if you only
+///       call this function to set up a new pic-file to be read.
+///       This will avoid copying & mallocing a new pic, NULL will be returned
+#[no_mangle]
+pub unsafe extern "C" fn Load_Block(
+    fpath: *mut c_char,
+    line: c_int,
+    col: c_int,
+    block: *mut SDL_Rect,
+    flags: c_int,
+) -> *mut SDL_Surface {
+    static mut PIC: *mut SDL_Surface = null_mut();
+
+    if fpath.is_null() && PIC.is_null() {
+        /* we need some info.. */
+        return null_mut();
+    }
+
+    if !PIC.is_null() && flags == FREE_ONLY as c_int {
+        SDL_FreeSurface(PIC);
+        return null_mut();
+    }
+
+    if !fpath.is_null() {
+        // initialize: read & malloc new PIC, dont' return a copy!!
+
+        if !PIC.is_null() {
+            // previous PIC?
+            SDL_FreeSurface(PIC);
+        }
+        PIC = IMG_Load(fpath);
+    }
+
+    if (flags & INIT_ONLY as c_int) != 0 {
+        return null_mut(); // that's it guys, only initialzing...
+    }
+
+    assert!(!PIC.is_null());
+    let pic = &mut *PIC;
+    let dim = if block.is_null() {
+        Rect::new(0, 0, pic.w.try_into().unwrap(), pic.h.try_into().unwrap())
+    } else {
+        let block = &*block;
+        Rect::new(0, 0, block.w, block.h)
+    };
+
+    let usealpha = (*pic.format).Amask != 0;
+
+    if usealpha {
+        SDL_SetAlpha(pic, 0, 0); /* clear per-surf alpha for internal blit */
+    }
+    let tmp = SDL_CreateRGBSurface(0, dim.w.into(), dim.h.into(), vid_bpp, 0, 0, 0, 0);
+    let ret = if usealpha {
+        SDL_DisplayFormatAlpha(tmp)
+    } else {
+        SDL_DisplayFormat(tmp)
+    };
+    SDL_FreeSurface(tmp);
+
+    let mut src = Rect::new(
+        i16::try_from(col).unwrap() * i16::try_from(dim.w + 2).unwrap(),
+        i16::try_from(line).unwrap() * i16::try_from(dim.h + 2).unwrap(),
+        dim.w,
+        dim.h,
+    );
+    SDL_UpperBlit(pic, &mut src, ret, null_mut());
+    if usealpha {
+        SDL_SetAlpha(
+            ret,
+            SurfaceFlag::SrcAlpha as u32 | SurfaceFlag::RLEAccel as u32,
+            255,
+        );
+    }
+
+    ret
 }
