@@ -1,5 +1,5 @@
 use crate::{
-    b_font::PutPixel,
+    b_font::{BFontInfo, PutPixel},
     defs::{
         self, free_if_unused, scale_point, scale_rect, Cmds, DisplayBannerFlags, Droid, Sound,
         FREE_ONLY, INIT_ONLY,
@@ -22,7 +22,7 @@ use crate::{
         ToGroundBlocks, ToLeaderBlock, User_Rect,
     },
     input::{any_key_just_pressed, cmd_is_active, wait_for_all_keys_released, SDL_Delay},
-    misc::{Activate_Conservative_Frame_Computation, Terminate},
+    misc::{Activate_Conservative_Frame_Computation, MyMalloc, Terminate},
     sound::Play_Sound,
     text::printf_SDL,
     view::DisplayBanner,
@@ -37,10 +37,10 @@ use sdl::{
     video::SurfaceFlag,
     video::{
         ll::{
-            SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_Flip,
-            SDL_FreeSurface, SDL_GetRGBA, SDL_LockSurface, SDL_MapRGB, SDL_MapRGBA, SDL_RWFromFile,
-            SDL_RWops, SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetClipRect, SDL_SetVideoMode,
-            SDL_Surface, SDL_UnlockSurface, SDL_UpdateRect, SDL_UpperBlit,
+            SDL_ConvertSurface, SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha,
+            SDL_Flip, SDL_FreeSurface, SDL_GetRGBA, SDL_LockSurface, SDL_MapRGB, SDL_MapRGBA,
+            SDL_RWFromFile, SDL_RWops, SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetClipRect,
+            SDL_SetVideoMode, SDL_Surface, SDL_UnlockSurface, SDL_UpdateRect, SDL_UpperBlit,
         },
         VideoFlag,
     },
@@ -745,4 +745,22 @@ pub unsafe extern "C" fn white_noise(bitmap: *mut SDL_Surface, rect: &mut Rect, 
     for &tile in &noise_tiles {
         SDL_FreeSurface(tile);
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Duplicate_Font(in_font: &BFontInfo) -> *mut BFontInfo {
+    let out_font = MyMalloc(std::mem::size_of::<BFontInfo>().try_into().unwrap()) as *mut BFontInfo;
+
+    std::ptr::copy_nonoverlapping(in_font, out_font, 1);
+    (*out_font).surface = SDL_ConvertSurface(
+        in_font.surface,
+        (*in_font.surface).format,
+        (*in_font.surface).flags,
+    );
+    if (*out_font).surface.is_null() {
+        error!("Duplicate_Font: failed to copy SDL_Surface using SDL_ConvertSurface()");
+        Terminate(defs::ERR.into());
+    }
+
+    out_font
 }

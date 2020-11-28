@@ -1137,20 +1137,20 @@ Load_Fonts (void)
   return (OK);
 } // Load_Fonts ()
 
-BFont_Info *
-Duplicate_Font ( const BFont_Info * in_font )
-{
-  BFont_Info *out_font = MyMalloc ( sizeof(out_font[0]) );
-
-  memcpy ( out_font, in_font, sizeof(out_font[0]) );
-  out_font->Surface = SDL_ConvertSurface ( in_font->Surface, in_font->Surface->format, in_font->Surface->flags);
-  if ( out_font->Surface == NULL ) {
-    DebugPrintf ( 0, "Duplicate_Font: failed to copy SDL_Surface using SDL_ConvertSurface()\n");
-    Terminate ( ERR );
-  }
-
-  return out_font;
-}
+// BFont_Info *
+// Duplicate_Font ( const BFont_Info * in_font )
+// {
+//   BFont_Info *out_font = MyMalloc ( sizeof(out_font[0]) );
+// 
+//   memcpy ( out_font, in_font, sizeof(out_font[0]) );
+//   out_font->Surface = SDL_ConvertSurface ( in_font->Surface, in_font->Surface->format, in_font->Surface->flags);
+//   if ( out_font->Surface == NULL ) {
+//     DebugPrintf ( 0, "Duplicate_Font: failed to copy SDL_Surface using SDL_ConvertSurface()\n");
+//     Terminate ( ERR );
+//   }
+// 
+//   return out_font;
+// }
 
 //------------------------------------------------------------
 // display "white noise" effect in Rect.
