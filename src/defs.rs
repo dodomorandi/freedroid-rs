@@ -300,6 +300,23 @@ pub enum Criticality {
     Critical,   // Error-message and Terminate
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct InvalidCriticality;
+
+impl TryFrom<i32> for Criticality {
+    type Error = InvalidCriticality;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        use Criticality::*;
+        match value {
+            0 => Ok(Ignore),
+            1 => Ok(WarnOnly),
+            2 => Ok(Critical),
+            _ => Err(InvalidCriticality),
+        }
+    }
+}
+
 // The flags for DisplayBanner are:
 bitflags! {
     pub struct DisplayBannerFlags: u8 {

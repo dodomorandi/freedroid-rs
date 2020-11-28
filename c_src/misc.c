@@ -636,85 +636,85 @@ ReadValueFromString (char* data, char* label, char* FormatString, void* dst)
  * or to keep using it after a new call to find_file!
  *
  *-----------------------------------------------------------------*/
-char *
-find_file (const char *fname, char *subdir, int use_theme, int critical)
-{
-  static char File_Path[1024] = "";   /* hope this will be enough */
-  int len = sizeof(File_Path);
-
-  char Theme_Dir[1024] = "";
-  const char *datadir = NULL;
-
-  FILE *fp;  // this is the file we want to find?
-  int i;
-  bool found = FALSE;
-
-  if ( (critical != IGNORE) && (critical != WARNONLY) && (critical != CRITICAL) )
-    {
-      DebugPrintf (0, "WARNING: unknown critical-value passed to find_file(): %d. Assume CRITICAL\n", critical);
-      critical = CRITICAL;
-    }
-
-  if (!fname)
-    {
-      DebugPrintf (0, "\nError: find_file() called with empty filename!\n");
-      return (NULL);
-    }
-  if (!subdir)
-    subdir = "";
-
-  for (i=0; i < 2; i++)
-    {
-      if (i==0)
-        datadir = LOCAL_DATADIR;
-      if (i==1)
-        datadir = FD_DATADIR;
-
-      if (use_theme == USE_THEME)
-        snprintf ( Theme_Dir, sizeof(Theme_Dir), "%s_theme/", GameConfig.Theme_Name );
-
-      snprintf ( File_Path, len, "%s/%s/%s%s"   , datadir, subdir, Theme_Dir, fname );
-      File_Path[len-1] = 0;  /* make sure */
-
-      if ( (fp = fopen (File_Path, "r")) != NULL)  /* found it? */
-	{
-	  fclose (fp);
-	  found = TRUE;
-	  DebugPrintf (1, "find_file() found %s in %s\n", fname, File_Path);
-	  break;
-	}
-      else
-        DebugPrintf (1, "find_file() did NOT find %s in %s\n", fname, File_Path);
-
-    } /* for i */
-
-  if (!found)
-    { // how critical is this file for the game:
-      switch (critical)
-	{
-	case WARNONLY:
-	  DebugPrintf (0, "WARNING: file %s not found ", fname);
-	  if (use_theme == USE_THEME)
-	    DebugPrintf (0, " in theme-dir: graphics/%s_theme/ \n", GameConfig.Theme_Name);
-	  else DebugPrintf (0, "\n");
-	  return (NULL);
-	case IGNORE:
-	  return (NULL);
-	case CRITICAL:
-	  DebugPrintf (0, "ERROR: file %s not found ", fname);
-	  if (use_theme == USE_THEME)
-	    DebugPrintf (0, " in theme-dir: graphics/%s_theme/ \n", GameConfig.Theme_Name);
-	  DebugPrintf (0, "...cannot run without it!\n");
-	  Terminate (ERR);
-	default:
-	  DebugPrintf (0, "ERROR in find_file(): Code should never reach this line!! Harakiri\n");
-	  Terminate (ERR);
-	}
-    }
-
-  return (File_Path);
-
-} /* find_file */
+// char *
+// find_file (const char *fname, char *subdir, int use_theme, int critical)
+// {
+//   static char File_Path[1024] = "";   /* hope this will be enough */
+//   int len = sizeof(File_Path);
+// 
+//   char Theme_Dir[1024] = "";
+//   const char *datadir = NULL;
+// 
+//   FILE *fp;  // this is the file we want to find?
+//   int i;
+//   bool found = FALSE;
+// 
+//   if ( (critical != IGNORE) && (critical != WARNONLY) && (critical != CRITICAL) )
+//     {
+//       DebugPrintf (0, "WARNING: unknown critical-value passed to find_file(): %d. Assume CRITICAL\n", critical);
+//       critical = CRITICAL;
+//     }
+// 
+//   if (!fname)
+//     {
+//       DebugPrintf (0, "\nError: find_file() called with empty filename!\n");
+//       return (NULL);
+//     }
+//   if (!subdir)
+//     subdir = "";
+// 
+//   for (i=0; i < 2; i++)
+//     {
+//       if (i==0)
+//         datadir = LOCAL_DATADIR;
+//       if (i==1)
+//         datadir = FD_DATADIR;
+// 
+//       if (use_theme == USE_THEME)
+//         snprintf ( Theme_Dir, sizeof(Theme_Dir), "%s_theme/", GameConfig.Theme_Name );
+// 
+//       snprintf ( File_Path, len, "%s/%s/%s%s"   , datadir, subdir, Theme_Dir, fname );
+//       File_Path[len-1] = 0;  /* make sure */
+// 
+//       if ( (fp = fopen (File_Path, "r")) != NULL)  /* found it? */
+// 	{
+// 	  fclose (fp);
+// 	  found = TRUE;
+// 	  DebugPrintf (1, "find_file() found %s in %s\n", fname, File_Path);
+// 	  break;
+// 	}
+//       else
+//         DebugPrintf (1, "find_file() did NOT find %s in %s\n", fname, File_Path);
+// 
+//     } /* for i */
+// 
+//   if (!found)
+//     { // how critical is this file for the game:
+//       switch (critical)
+// 	{
+// 	case WARNONLY:
+// 	  DebugPrintf (0, "WARNING: file %s not found ", fname);
+// 	  if (use_theme == USE_THEME)
+// 	    DebugPrintf (0, " in theme-dir: graphics/%s_theme/ \n", GameConfig.Theme_Name);
+// 	  else DebugPrintf (0, "\n");
+// 	  return (NULL);
+// 	case IGNORE:
+// 	  return (NULL);
+// 	case CRITICAL:
+// 	  DebugPrintf (0, "ERROR: file %s not found ", fname);
+// 	  if (use_theme == USE_THEME)
+// 	    DebugPrintf (0, " in theme-dir: graphics/%s_theme/ \n", GameConfig.Theme_Name);
+// 	  DebugPrintf (0, "...cannot run without it!\n");
+// 	  Terminate (ERR);
+// 	default:
+// 	  DebugPrintf (0, "ERROR in find_file(): Code should never reach this line!! Harakiri\n");
+// 	  Terminate (ERR);
+// 	}
+//     }
+// 
+//   return (File_Path);
+// 
+// } /* find_file */
 
 /*@Function============================================================
 @Desc: realise Pause-Mode: the game process is halted,

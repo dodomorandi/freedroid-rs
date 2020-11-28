@@ -1,7 +1,10 @@
 #[cfg(feature = "gcw0")]
 use crate::defs::{gcw0_ls_pressed_r, gcw0_rs_pressed_r};
 use crate::{
-    defs::{self, AssembleCombatWindowFlags, Cmds, FirePressedR, Status},
+    defs::{
+        self, AssembleCombatWindowFlags, Cmds, Criticality, FirePressedR, Status, Themed,
+        FD_DATADIR, LOCAL_DATADIR,
+    },
     enemy::AnimateEnemys,
     global::{
         ne_screen, progress_filler_pic, BannerIsDestroyed, ConfigDir, FPSover1, GameConfig, Me,
@@ -19,6 +22,7 @@ use crate::{
     view::{Assemble_Combat_Picture, DisplayBanner},
 };
 
+use cstr::cstr;
 use log::{error, info, warn};
 use once_cell::sync::Lazy;
 use sdl::{
@@ -29,6 +33,7 @@ use sdl::{
     video::ll::{SDL_UpdateRects, SDL_UpperBlit},
 };
 use std::{
+    borrow::Cow,
     convert::TryInto,
     ffi::CStr,
     fs::File,
@@ -44,12 +49,6 @@ extern "C" {
     pub static mut One_Frame_SDL_Ticks: u32;
     pub static mut Now_SDL_Ticks: u32;
     pub static mut oneframedelay: c_long;
-    pub fn find_file(
-        fname: *const c_char,
-        subdir: *mut c_char,
-        use_theme: c_int,
-        critical: c_int,
-    ) -> *mut c_char;
 }
 
 static CURRENT_TIME_FACTOR: Lazy<RwLock<f32>> = Lazy::new(|| RwLock::new(1.));
@@ -393,4 +392,124 @@ pub unsafe extern "C" fn MyMalloc(mut size: c_long) -> *mut c_void {
     }
 
     ptr
+}
+
+/// Find a given filename in subdir relative to FD_DATADIR,
+///
+/// if you pass NULL as "subdir", it will be ignored
+///
+/// use current-theme subdir if "use_theme" == USE_THEME, otherwise NO_THEME
+///
+/// behavior on file-not-found depends on parameter "critical"
+///  IGNORE: just return NULL
+///  WARNONLY: warn and return NULL
+///  CRITICAL: Error-message and Terminate
+///
+/// returns pointer to _static_ string array File_Path, which
+/// contains the full pathname of the file.
+///
+/// !! do never try to free the returned string !!
+/// or to keep using it after a new call to find_file!
+#[no_mangle]
+pub unsafe extern "C" fn find_file(
+    fname: *const c_char,
+    mut subdir: *mut c_char,
+    use_theme: c_int,
+    mut critical: c_int,
+) -> *mut c_char {
+    use std::io::Write;
+
+    static mut FILE_PATH: [u8; 1024] = [0u8; 1024]; /* hope this will be enough */
+
+    if critical != Criticality::Ignore as c_int
+        && critical != Criticality::WarnOnly as c_int
+        && critical != Criticality::Critical as c_int
+    {
+        warn!(
+            "WARNING: unknown critical-value passed to find_file(): {}. Assume CRITICAL",
+            critical
+        );
+        critical = Criticality::Critical as c_int;
+    }
+
+    if fname.is_null() {
+        error!("find_file() called with empty filename!");
+        return null_mut();
+    }
+    if subdir.is_null() {
+        subdir = cstr!("").as_ptr() as *mut c_char;
+    }
+
+    let inner = |datadir| {
+        let theme_dir = if use_theme == Themed::UseTheme as c_int {
+            Cow::Owned(format!(
+                "{}_theme/",
+                CStr::from_ptr(GameConfig.Theme_Name.as_ptr()).to_string_lossy(),
+            ))
+        } else {
+            Cow::Borrowed("")
+        };
+
+        write!(
+            &mut FILE_PATH[..],
+            "{}/{}/{}/{}\0",
+            datadir,
+            CStr::from_ptr(subdir).to_string_lossy(),
+            theme_dir,
+            CStr::from_ptr(fname).to_string_lossy(),
+        )
+        .unwrap();
+
+        CStr::from_ptr(FILE_PATH.as_ptr() as *const c_char)
+            .to_str()
+            .map(|file_path| Path::new(file_path).exists())
+            .unwrap_or(false)
+    };
+
+    let mut found = inner(LOCAL_DATADIR);
+    if !found {
+        found = inner(FD_DATADIR);
+    }
+
+    if !found {
+        let critical = match critical.try_into() {
+            Ok(critical) => critical,
+            Err(_) => {
+                error!("ERROR in find_file(): Code should never reach this line!! Harakiri",);
+                Terminate(defs::ERR.into());
+            }
+        };
+        // how critical is this file for the game:
+        match critical {
+            Criticality::WarnOnly => {
+                let fname = CStr::from_ptr(fname).to_string_lossy();
+                if use_theme == Themed::UseTheme as c_int {
+                    warn!(
+                        "file {} not found in theme-dir: graphics/{}_theme/",
+                        fname,
+                        CStr::from_ptr(GameConfig.Theme_Name.as_ptr()).to_string_lossy(),
+                    );
+                } else {
+                    warn!("file {} not found ", fname);
+                }
+                return null_mut();
+            }
+            Criticality::Ignore => return null_mut(),
+            Criticality::Critical => {
+                let fname = CStr::from_ptr(fname).to_string_lossy();
+                if use_theme == Themed::UseTheme as c_int {
+                    error!(
+                        "file {} not found in theme-dir: graphics/{}_theme/, cannot run without it!",
+                        fname,
+                        CStr::from_ptr(GameConfig.Theme_Name.as_ptr()).to_string_lossy(),
+                    );
+                } else {
+                    error!("file {} not found, cannot run without it!", fname);
+                }
+                Terminate(defs::ERR.into());
+            }
+        }
+    }
+
+    FILE_PATH.as_mut_ptr() as *mut c_char
 }
