@@ -5,7 +5,7 @@ use sdl::{
 use std::{
     convert::{TryFrom, TryInto},
     ffi::VaList,
-    os::raw::{c_char, c_int},
+    os::raw::{c_char, c_float, c_int},
 };
 
 extern "C" {
@@ -14,6 +14,7 @@ extern "C" {
     pub static mut CurrentFont: *mut BFontInfo;
     fn vsprintf(str: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
     pub fn PutPixel(surface: *mut SDL_Surface, x: c_int, y: c_int, pixel: u32);
+    pub fn LoadFont(filename: *mut c_char, scale: c_float) -> *mut BFontInfo;
 }
 
 #[derive(Clone)]

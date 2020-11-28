@@ -7,6 +7,7 @@ use crate::{
 };
 
 use bitflags::bitflags;
+use cstr::cstr;
 #[cfg(feature = "gcw0")]
 use sdl::keysym::{SDLK_BACKSPACE, SDLK_TAB};
 use sdl::{
@@ -17,7 +18,7 @@ use sdl::{
 use static_assertions::const_assert;
 #[cfg(feature = "gcw0")]
 use std::os::raw::c_int;
-use std::{convert::TryFrom, mem};
+use std::{convert::TryFrom, ffi::CStr, mem};
 
 pub const MAX_THEMES: usize = 100;
 
@@ -347,6 +348,7 @@ pub const LOCAL_DATADIR: &str = ".."; // local fallback
                                       // #endif
 
 pub const GRAPHICS_DIR: &str = "graphics/";
+pub const GRAPHICS_DIR_C: &CStr = cstr!("graphics/");
 pub const SOUND_DIR: &str = "sound/";
 pub const MAP_DIR: &str = "map/";
 
@@ -377,8 +379,13 @@ pub const PARA_FONT_FILE: &str = "parafont.png";
 pub const FONT0_FILE: &str = "font05.png";
 pub const FONT1_FILE: &str = "font05_green.png";
 pub const FONT2_FILE: &str = "font05_red.png";
-// const ICON_FILE: &str =		"paraicon.bmp";
 pub const ICON_FILE: &str = "paraicon_48x48.png";
+
+pub const PARA_FONT_FILE_C: &CStr = cstr!("parafont.png");
+pub const FONT0_FILE_C: &CStr = cstr!("font05.png");
+pub const FONT1_FILE_C: &CStr = cstr!("font05_green.png");
+pub const FONT2_FILE_C: &CStr = cstr!("font05_red.png");
+pub const ICON_FILE_C: &CStr = cstr!("paraicon_48x48.png");
 
 // **********************************************************************
 

@@ -1095,47 +1095,47 @@ getpixel(SDL_Surface *surface, int x, int y)
 /*----------------------------------------------------------------------
  *
  *----------------------------------------------------------------------*/
-int
-Load_Fonts (void)
-{
-  char *fpath;
-
-  fpath = find_file (PARA_FONT_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
-  if ( ( Para_BFont = LoadFont (fpath, GameConfig.scale) ) == NULL )
-    {
-      DebugPrintf (0, "ERROR: font file named %s was not found.\n", PARA_FONT_FILE );
-      Terminate(ERR);
-    }
-
-  fpath = find_file (FONT0_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
-  if ( ( Font0_BFont = LoadFont (fpath, GameConfig.scale) ) == NULL )
-    {
-      DebugPrintf (0, "ERROR: font file named %s was not found.\n", FONT0_FILE);
-      Terminate(ERR);
-    }
-
-  fpath = find_file (FONT1_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
-  if ( ( Font1_BFont = LoadFont (fpath, GameConfig.scale) ) == NULL )
-    {
-      DebugPrintf (0, "ERROR: font file named %s was not found.\n", FONT1_FILE);
-      Terminate(ERR);
-    }
-
-  fpath = find_file (FONT2_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
-  if ( ( Font2_BFont = LoadFont (fpath, GameConfig.scale) ) == NULL )
-    {
-      DebugPrintf (0, "ERROR: font file named %s was not found.\n", FONT2_FILE);
-      Terminate(ERR);
-    }
-
-
-  Menu_BFont      = Duplicate_Font ( Para_BFont );
-  Highscore_BFont = Duplicate_Font ( Para_BFont );
-
-  fonts_loaded = TRUE;
-
-  return (OK);
-} // Load_Fonts ()
+// int
+// Load_Fonts (void)
+// {
+//   char *fpath;
+// 
+//   fpath = find_file (PARA_FONT_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
+//   if ( ( Para_BFont = LoadFont (fpath, GameConfig.scale) ) == NULL )
+//     {
+//       DebugPrintf (0, "ERROR: font file named %s was not found.\n", PARA_FONT_FILE );
+//       Terminate(ERR);
+//     }
+// 
+//   fpath = find_file (FONT0_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
+//   if ( ( Font0_BFont = LoadFont (fpath, GameConfig.scale) ) == NULL )
+//     {
+//       DebugPrintf (0, "ERROR: font file named %s was not found.\n", FONT0_FILE);
+//       Terminate(ERR);
+//     }
+// 
+//   fpath = find_file (FONT1_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
+//   if ( ( Font1_BFont = LoadFont (fpath, GameConfig.scale) ) == NULL )
+//     {
+//       DebugPrintf (0, "ERROR: font file named %s was not found.\n", FONT1_FILE);
+//       Terminate(ERR);
+//     }
+// 
+//   fpath = find_file (FONT2_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
+//   if ( ( Font2_BFont = LoadFont (fpath, GameConfig.scale) ) == NULL )
+//     {
+//       DebugPrintf (0, "ERROR: font file named %s was not found.\n", FONT2_FILE);
+//       Terminate(ERR);
+//     }
+// 
+// 
+//   Menu_BFont      = Duplicate_Font ( Para_BFont );
+//   Highscore_BFont = Duplicate_Font ( Para_BFont );
+// 
+//   fonts_loaded = TRUE;
+// 
+//   return (OK);
+// } // Load_Fonts ()
 
 // BFont_Info *
 // Duplicate_Font ( const BFont_Info * in_font )

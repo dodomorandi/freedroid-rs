@@ -1,8 +1,9 @@
 use crate::{
-    b_font::{BFontInfo, PutPixel},
+    b_font::{BFontInfo, LoadFont, PutPixel},
     defs::{
-        self, free_if_unused, scale_point, scale_rect, Cmds, DisplayBannerFlags, Droid, Sound,
-        FREE_ONLY, INIT_ONLY,
+        self, free_if_unused, scale_point, scale_rect, Cmds, Criticality, DisplayBannerFlags,
+        Droid, Sound, Themed, FONT0_FILE, FONT0_FILE_C, FONT1_FILE, FONT1_FILE_C, FONT2_FILE,
+        FONT2_FILE_C, FREE_ONLY, GRAPHICS_DIR_C, INIT_ONLY, PARA_FONT_FILE, PARA_FONT_FILE_C,
     },
     global::{
         arrow_cursor, arrow_down, arrow_left, arrow_right, arrow_up, banner_pic, console_bg_pic1,
@@ -22,7 +23,7 @@ use crate::{
         ToGroundBlocks, ToLeaderBlock, User_Rect,
     },
     input::{any_key_just_pressed, cmd_is_active, wait_for_all_keys_released, SDL_Delay},
-    misc::{Activate_Conservative_Frame_Computation, MyMalloc, Terminate},
+    misc::{find_file, Activate_Conservative_Frame_Computation, MyMalloc, Terminate},
     sound::Play_Sound,
     text::printf_SDL,
     view::DisplayBanner,
@@ -62,6 +63,7 @@ extern "C" {
         smooth: c_int,
     ) -> *mut SDL_Surface;
     pub fn SDL_GetClipRect(surface: *mut SDL_Surface, rect: *mut SDL_Rect);
+    pub static mut fonts_loaded: c_int;
 }
 
 /// This function draws a "grid" on the screen, that means every
@@ -763,4 +765,62 @@ pub unsafe extern "C" fn Duplicate_Font(in_font: &BFontInfo) -> *mut BFontInfo {
     }
 
     out_font
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Load_Fonts() -> c_int {
+    let mut fpath = find_file(
+        PARA_FONT_FILE_C.as_ptr(),
+        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        Themed::NoTheme as c_int,
+        Criticality::Critical as c_int,
+    );
+    Para_BFont = LoadFont(fpath, GameConfig.scale);
+    if Para_BFont.is_null() {
+        error!("font file named {} was not found.", PARA_FONT_FILE);
+        Terminate(defs::ERR.into());
+    }
+
+    fpath = find_file(
+        FONT0_FILE_C.as_ptr(),
+        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        Themed::NoTheme as c_int,
+        Criticality::Critical as c_int,
+    );
+    Font0_BFont = LoadFont(fpath, GameConfig.scale);
+    if Font0_BFont.is_null() {
+        error!("font file named {} was not found.\n", FONT0_FILE);
+        Terminate(defs::ERR.into());
+    }
+
+    fpath = find_file(
+        FONT1_FILE_C.as_ptr(),
+        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        Themed::NoTheme as c_int,
+        Criticality::Critical as c_int,
+    );
+    Font1_BFont = LoadFont(fpath, GameConfig.scale);
+    if Font1_BFont.is_null() {
+        error!("font file named {} was not found.", FONT1_FILE);
+        Terminate(defs::ERR.into());
+    }
+
+    fpath = find_file(
+        FONT2_FILE_C.as_ptr(),
+        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        Themed::NoTheme as c_int,
+        Criticality::Critical as c_int,
+    );
+    Font2_BFont = LoadFont(fpath, GameConfig.scale);
+    if Font2_BFont.is_null() {
+        error!("font file named {} was not found.", FONT2_FILE);
+        Terminate(defs::ERR.into());
+    }
+
+    Menu_BFont = Duplicate_Font(&*Para_BFont);
+    Highscore_BFont = Duplicate_Font(&*Para_BFont);
+
+    fonts_loaded = true.into();
+
+    defs::OK.into()
 }

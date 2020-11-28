@@ -44,7 +44,12 @@ extern "C" {
     pub static mut Now_SDL_Ticks: u32;
     pub static mut oneframedelay: c_long;
     pub fn MyMalloc(size: c_long) -> *mut c_void;
-
+    pub fn find_file(
+        fname: *const c_char,
+        subdir: *mut c_char,
+        use_theme: c_int,
+        critical: c_int,
+    ) -> *mut c_char;
 }
 
 static CURRENT_TIME_FACTOR: Lazy<RwLock<f32>> = Lazy::new(|| RwLock::new(1.));
