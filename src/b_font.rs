@@ -1,4 +1,7 @@
-use crate::graphics::putpixel;
+use crate::{
+    graphics::{putpixel, IMG_Load, ScalePic},
+    misc::MyMalloc,
+};
 
 use sdl::{
     sdl::Rect,
@@ -7,7 +10,9 @@ use sdl::{
 use std::{
     convert::{TryFrom, TryInto},
     ffi::VaList,
-    os::raw::{c_char, c_float, c_int},
+    mem,
+    os::raw::{c_char, c_float, c_int, c_void},
+    ptr::null_mut,
 };
 
 extern "C" {
@@ -15,7 +20,7 @@ extern "C" {
     pub static mut Para_BFont: *mut BFontInfo;
     pub static mut CurrentFont: *mut BFontInfo;
     fn vsprintf(str: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
-    pub fn LoadFont(filename: *mut c_char, scale: c_float) -> *mut BFontInfo;
+    pub fn InitFont(font: *mut BFontInfo);
 }
 
 #[derive(Clone)]
@@ -129,4 +134,37 @@ pub unsafe extern "C" fn PrintStringFont(
 #[no_mangle]
 pub unsafe extern "C" fn PutPixel(surface: &SDL_Surface, x: c_int, y: c_int, pixel: u32) {
     putpixel(surface, x, y, pixel)
+}
+
+/// Load the font and stores it in the BFont_Info structure
+#[no_mangle]
+pub unsafe extern "C" fn LoadFont(filename: *mut c_char, scale: c_float) -> *mut BFontInfo {
+    if filename.is_null() {
+        return null_mut();
+    }
+
+    let font = MyMalloc(mem::size_of::<BFontInfo>().try_into().unwrap()) as *mut BFontInfo;
+    if font.is_null() {
+        return null_mut();
+    }
+
+    let mut surface = IMG_Load(filename);
+    ScalePic(&mut surface, scale);
+
+    if surface.is_null() {
+        libc::free(font as *mut c_void);
+        return null_mut();
+    }
+
+    (*font).surface = surface;
+    (*font)
+        .chars
+        .iter_mut()
+        .for_each(|rect| *rect = Rect::new(0, 0, 0, 0));
+    /* Init the font */
+    InitFont(font);
+    /* Set the font as the current font */
+    SetCurrentFont(font);
+
+    font
 }

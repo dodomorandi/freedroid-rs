@@ -70,47 +70,47 @@ InitFont (BFont_Info * Font)
 
 
 /* Load the font and stores it in the BFont_Info structure */
-BFont_Info *
-LoadFont (char *filename, float scale)
-{
-  SDL_Surface *surface = NULL;
-  int x;
-  BFont_Info *Font = NULL;
-
-  if (filename != NULL)
-    {
-      Font = (BFont_Info *) MyMalloc (sizeof (BFont_Info));
-      if (Font != NULL)
-	{
-	  surface = (SDL_Surface *) IMG_Load (filename);
-	  ScalePic (&surface, scale);
-
-	  if (surface != NULL)
-	    {
-	      Font->Surface = surface;
-	      for (x = 0; x < 256; x++)
-		{
-		  Font->Chars[x].x = 0;
-		  Font->Chars[x].y = 0;
-		  Font->Chars[x].h = 0;
-		  Font->Chars[x].w = 0;
-		}
-	      /* Init the font */
-	      InitFont (Font);
-	      /* Set the font as the current font */
-	      SetCurrentFont (Font);
-	    }
-	  else
-	    {
-	      /* free memory allocated for the BFont_Info structure */
-	      free (Font);
-	      Font = NULL;
-	    }
-	}
-    }
-
-  return Font;
-}
+// BFont_Info *
+// LoadFont (char *filename, float scale)
+// {
+//   SDL_Surface *surface = NULL;
+//   int x;
+//   BFont_Info *Font = NULL;
+// 
+//   if (filename != NULL)
+//     {
+//       Font = (BFont_Info *) MyMalloc (sizeof (BFont_Info));
+//       if (Font != NULL)
+// 	{
+// 	  surface = (SDL_Surface *) IMG_Load (filename);
+// 	  ScalePic (&surface, scale);
+// 
+// 	  if (surface != NULL)
+// 	    {
+// 	      Font->Surface = surface;
+// 	      for (x = 0; x < 256; x++)
+// 		{
+// 		  Font->Chars[x].x = 0;
+// 		  Font->Chars[x].y = 0;
+// 		  Font->Chars[x].h = 0;
+// 		  Font->Chars[x].w = 0;
+// 		}
+// 	      /* Init the font */
+// 	      InitFont (Font);
+// 	      /* Set the font as the current font */
+// 	      SetCurrentFont (Font);
+// 	    }
+// 	  else
+// 	    {
+// 	      /* free memory allocated for the BFont_Info structure */
+// 	      free (Font);
+// 	      Font = NULL;
+// 	    }
+// 	}
+//     }
+// 
+//   return Font;
+// }
 
 
 void
