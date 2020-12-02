@@ -679,7 +679,7 @@ pub unsafe extern "C" fn white_noise(bitmap: *mut SDL_Surface, rect: &mut Rect, 
             .flat_map(|x| (0..rect.h).map(move |y| (x, y)))
             .for_each(|(x, y)| {
                 if rng.gen_range(0, 100) > signal_strengh {
-                    PutPixel(tile, x.into(), y.into(), *grey.choose(&mut rng).unwrap());
+                    PutPixel(&*tile, x.into(), y.into(), *grey.choose(&mut rng).unwrap());
                 }
             });
         tile

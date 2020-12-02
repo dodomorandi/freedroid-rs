@@ -1,3 +1,5 @@
+use crate::graphics::putpixel;
+
 use sdl::{
     sdl::Rect,
     video::ll::{SDL_Rect, SDL_Surface, SDL_UpperBlit},
@@ -13,7 +15,6 @@ extern "C" {
     pub static mut Para_BFont: *mut BFontInfo;
     pub static mut CurrentFont: *mut BFontInfo;
     fn vsprintf(str: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
-    pub fn PutPixel(surface: *mut SDL_Surface, x: c_int, y: c_int, pixel: u32);
     pub fn LoadFont(filename: *mut c_char, scale: c_float) -> *mut BFontInfo;
 }
 
@@ -123,4 +124,9 @@ pub unsafe extern "C" fn PrintStringFont(
     let mut temp = [0; 1001];
     vsprintf(temp.as_mut_ptr(), fmt, args.as_va_list());
     PutStringFont(surface, font, x, y, temp.as_mut_ptr());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PutPixel(surface: &SDL_Surface, x: c_int, y: c_int, pixel: u32) {
+    putpixel(surface, x, y, pixel)
 }
