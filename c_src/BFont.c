@@ -17,56 +17,56 @@ Uint32 GetPixel (SDL_Surface * Surface, Sint32 X, Sint32 Y);
 void PutPixel (SDL_Surface * surface, int x, int y, Uint32 pixel);
 
 
-void
-InitFont (BFont_Info * Font)
-{
-  int x = 0, i = 0;
-  Uint32 sentry;
-
-  i = '!';
-
-  sentry = GetPixel (Font->Surface, 0, 0);
-  /* sentry = SDL_MapRGB(Font->Surface->format, 255, 0, 255); */
-
-  if (Font->Surface == NULL)
-    {
-      fprintf (stderr, "BFont: The font has not been loaded!\n");
-      exit (1);
-    }
-  if (SDL_MUSTLOCK (Font->Surface))
-    SDL_LockSurface (Font->Surface);
-  x = 0;
-  while (x < (Font->Surface->w - 1))
-    {
-      if (GetPixel (Font->Surface, x, 0) != sentry)
-	{
-	  Font->Chars[i].x = x;
-	  Font->Chars[i].y = 1;
-	  Font->Chars[i].h = Font->Surface->h;
-	  for (;
-	       GetPixel (Font->Surface, x, 0) != sentry
-	       && x < (Font->Surface->w); ++x);
-	  Font->Chars[i].w = (x - Font->Chars[i].x);
-	  i++;
-	}
-      else
-	{
-	  x++;
-	}
-    }
-  Font->Chars[' '].x = 0;
-  Font->Chars[' '].y = 0;
-  Font->Chars[' '].h = Font->Surface->h;
-  Font->Chars[' '].w = Font->Chars['!'].w;
-
-  if (SDL_MUSTLOCK (Font->Surface))
-    SDL_UnlockSurface (Font->Surface);
-
-  Font->h = Font->Surface->h;
-
-  SDL_SetColorKey (Font->Surface, SDL_SRCCOLORKEY,
-		   GetPixel (Font->Surface, 0, Font->Surface->h - 1));
-}
+// void
+// InitFont (BFont_Info * Font)
+// {
+//   int x = 0, i = 0;
+//   Uint32 sentry;
+// 
+//   i = '!';
+// 
+//   sentry = GetPixel (Font->Surface, 0, 0);
+//   /* sentry = SDL_MapRGB(Font->Surface->format, 255, 0, 255); */
+// 
+//   if (Font->Surface == NULL)
+//     {
+//       fprintf (stderr, "BFont: The font has not been loaded!\n");
+//       exit (1);
+//     }
+//   if (SDL_MUSTLOCK (Font->Surface))
+//     SDL_LockSurface (Font->Surface);
+//   x = 0;
+//   while (x < (Font->Surface->w - 1))
+//     {
+//       if (GetPixel (Font->Surface, x, 0) != sentry)
+// 	{
+// 	  Font->Chars[i].x = x;
+// 	  Font->Chars[i].y = 1;
+// 	  Font->Chars[i].h = Font->Surface->h;
+// 	  for (;
+// 	       GetPixel (Font->Surface, x, 0) != sentry
+// 	       && x < (Font->Surface->w); ++x);
+// 	  Font->Chars[i].w = (x - Font->Chars[i].x);
+// 	  i++;
+// 	}
+//       else
+// 	{
+// 	  x++;
+// 	}
+//     }
+//   Font->Chars[' '].x = 0;
+//   Font->Chars[' '].y = 0;
+//   Font->Chars[' '].h = Font->Surface->h;
+//   Font->Chars[' '].w = Font->Chars['!'].w;
+// 
+//   if (SDL_MUSTLOCK (Font->Surface))
+//     SDL_UnlockSurface (Font->Surface);
+// 
+//   Font->h = Font->Surface->h;
+// 
+//   SDL_SetColorKey (Font->Surface, SDL_SRCCOLORKEY,
+// 		   GetPixel (Font->Surface, 0, Font->Surface->h - 1));
+// }
 
 
 /* Load the font and stores it in the BFont_Info structure */

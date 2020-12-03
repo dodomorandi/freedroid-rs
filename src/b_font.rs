@@ -1,11 +1,18 @@
 use crate::{
     graphics::{putpixel, IMG_Load, ScalePic},
     misc::MyMalloc,
+    sdl_must_lock,
 };
 
 use sdl::{
     sdl::Rect,
-    video::ll::{SDL_Rect, SDL_Surface, SDL_UpperBlit},
+    video::{
+        ll::{
+            SDL_LockSurface, SDL_Rect, SDL_SetColorKey, SDL_Surface, SDL_UnlockSurface,
+            SDL_UpperBlit,
+        },
+        SurfaceFlag,
+    },
 };
 use std::{
     convert::{TryFrom, TryInto},
@@ -20,7 +27,8 @@ extern "C" {
     pub static mut Para_BFont: *mut BFontInfo;
     pub static mut CurrentFont: *mut BFontInfo;
     fn vsprintf(str: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
-    pub fn InitFont(font: *mut BFontInfo);
+    pub fn GetPixel(surface: *mut SDL_Surface, x: i32, y: i32) -> u32;
+
 }
 
 #[derive(Clone)]
@@ -162,9 +170,55 @@ pub unsafe extern "C" fn LoadFont(filename: *mut c_char, scale: c_float) -> *mut
         .iter_mut()
         .for_each(|rect| *rect = Rect::new(0, 0, 0, 0));
     /* Init the font */
-    InitFont(font);
+    InitFont(&mut *font);
     /* Set the font as the current font */
     SetCurrentFont(font);
 
     font
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn InitFont(font: &mut BFontInfo) {
+    let mut i: usize = b'!'.into();
+    let sentry = GetPixel(font.surface, 0, 0);
+
+    if font.surface.is_null() {
+        panic!("BFont: The font has not been loaded!");
+    }
+
+    let surface = &mut *font.surface;
+    if sdl_must_lock(surface) {
+        SDL_LockSurface(surface);
+    }
+    let mut x = 0;
+    while x < (surface.w - 1) {
+        if GetPixel(surface, x, 0) != sentry {
+            font.chars[i].x = x.try_into().unwrap();
+            font.chars[i].y = 1;
+            font.chars[i].h = surface.h.try_into().unwrap();
+            while GetPixel(surface, x, 0) != sentry && x < (surface.w) {
+                x += 1;
+            }
+            font.chars[i].w = (x - i32::from(font.chars[i].x)).try_into().unwrap();
+            i += 1;
+        } else {
+            x += 1;
+        }
+    }
+    font.chars[b' ' as usize].x = 0;
+    font.chars[b' ' as usize].y = 0;
+    font.chars[b' ' as usize].h = surface.h.try_into().unwrap();
+    font.chars[b' ' as usize].w = font.chars[b'!' as usize].w;
+
+    if sdl_must_lock(surface) {
+        SDL_UnlockSurface(surface);
+    }
+
+    font.h = surface.h;
+
+    SDL_SetColorKey(
+        surface,
+        SurfaceFlag::SrcColorKey as u32,
+        GetPixel(surface, 0, surface.h - 1),
+    );
 }

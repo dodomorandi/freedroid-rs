@@ -19,6 +19,7 @@ mod takeover;
 mod text;
 mod view;
 
+use sdl::video::ll::SDL_Surface;
 use std::{
     env,
     ffi::CString,
@@ -40,4 +41,11 @@ fn main() {
     if retval != 0 {
         process::exit(retval);
     }
+}
+
+#[inline]
+fn sdl_must_lock(surface: &SDL_Surface) -> bool {
+    use sdl::video::SurfaceFlag::*;
+    surface.offset != 0
+        && (surface.flags & (HWSurface as u32 | AsyncBlit as u32 | RLEAccel as u32)) != 0
 }
