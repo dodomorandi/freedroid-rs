@@ -4,11 +4,12 @@ use crate::{
     sdl_must_lock,
 };
 
+use log::warn;
 use sdl::{
     sdl::Rect,
     video::{
         ll::{
-            SDL_LockSurface, SDL_Rect, SDL_SetColorKey, SDL_Surface, SDL_UnlockSurface,
+            SDL_LockSurface, SDL_MapRGB, SDL_Rect, SDL_SetColorKey, SDL_Surface, SDL_UnlockSurface,
             SDL_UpperBlit,
         },
         SurfaceFlag,
@@ -27,8 +28,6 @@ extern "C" {
     pub static mut Para_BFont: *mut BFontInfo;
     pub static mut CurrentFont: *mut BFontInfo;
     fn vsprintf(str: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
-    pub fn GetPixel(surface: *mut SDL_Surface, x: i32, y: i32) -> u32;
-
 }
 
 #[derive(Clone)]
@@ -180,7 +179,8 @@ pub unsafe extern "C" fn LoadFont(filename: *mut c_char, scale: c_float) -> *mut
 #[no_mangle]
 pub unsafe extern "C" fn InitFont(font: &mut BFontInfo) {
     let mut i: usize = b'!'.into();
-    let sentry = GetPixel(font.surface, 0, 0);
+    assert!(!font.surface.is_null());
+    let sentry = GetPixel(&mut *font.surface, 0, 0);
 
     if font.surface.is_null() {
         panic!("BFont: The font has not been loaded!");
@@ -221,4 +221,49 @@ pub unsafe extern "C" fn InitFont(font: &mut BFontInfo) {
         SurfaceFlag::SrcColorKey as u32,
         GetPixel(surface, 0, surface.h - 1),
     );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn GetPixel(surface: &mut SDL_Surface, x: i32, y: i32) -> u32 {
+    if x < 0 {
+        warn!("x too small in GetPixel!");
+    }
+    if x >= surface.w {
+        warn!("x too big in GetPixel!");
+    }
+
+    let bpp = (*surface.format).BytesPerPixel;
+
+    // Get the pixel
+    match bpp {
+        1 => (*(surface.pixels.offset(
+            isize::try_from(y).unwrap() * isize::try_from(surface.pitch).unwrap()
+                + isize::try_from(x).unwrap(),
+        ) as *const u8))
+            .into(),
+        2 => (*((surface.pixels as *const u16).offset(
+            isize::try_from(y).unwrap() * isize::try_from(surface.pitch).unwrap() / 2
+                + isize::try_from(x).unwrap(),
+        )))
+        .into(),
+        3 => {
+            // Format/endian independent
+            let bits = surface.pixels.offset(
+                isize::try_from(y).unwrap() * isize::try_from(surface.pitch).unwrap()
+                    + isize::try_from(x).unwrap() * isize::try_from(bpp).unwrap(),
+            ) as *mut u8;
+            let format = &*surface.format;
+            let red = *((bits).offset(isize::from(format.Rshift) / 8));
+            let green = *((bits).offset(isize::from(format.Gshift) / 8));
+            let blue = *((bits).offset(isize::from(format.Bshift) / 8));
+            SDL_MapRGB(surface.format, red, green, blue)
+        }
+        4 => {
+            *((surface.pixels as *const u32).offset(
+                isize::try_from(y).unwrap() * isize::try_from(surface.pitch).unwrap() / 4
+                    + isize::try_from(x).unwrap(),
+            ))
+        }
+        _ => u32::MAX,
+    }
 }

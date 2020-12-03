@@ -644,44 +644,44 @@ JustifiedPrintStringFont (SDL_Surface * Surface, BFont_Info * Font, int y,
 //     }
 // }
 
-Uint32
-GetPixel (SDL_Surface * Surface, Sint32 X, Sint32 Y)
-{
-
-  Uint8 *bits;
-  Uint32 Bpp;
-
-  if (X < 0)
-    DebugPrintf (2, "x too small in GetPixel!");
-  if (X >= Surface->w)
-    DebugPrintf (2, "x too big in GetPixel!");
-
-  Bpp = Surface->format->BytesPerPixel;
-
-  bits = ((Uint8 *) Surface->pixels) + Y * Surface->pitch + X * Bpp;
-
-  // Get the pixel
-  switch (Bpp)
-    {
-    case 1:
-      return *((Uint8 *) Surface->pixels + Y * Surface->pitch + X);
-      break;
-    case 2:
-      return *((Uint16 *) Surface->pixels + Y * Surface->pitch / 2 + X);
-      break;
-    case 3:
-      {				// Format/endian independent
-	Uint8 r, g, b;
-	r = *((bits) + Surface->format->Rshift / 8);
-	g = *((bits) + Surface->format->Gshift / 8);
-	b = *((bits) + Surface->format->Bshift / 8);
-	return SDL_MapRGB (Surface->format, r, g, b);
-      }
-      break;
-    case 4:
-      return *((Uint32 *) Surface->pixels + Y * Surface->pitch / 4 + X);
-      break;
-    }
-
-  return -1;
-}
+// Uint32
+// GetPixel (SDL_Surface * Surface, Sint32 X, Sint32 Y)
+// {
+// 
+//   Uint8 *bits;
+//   Uint32 Bpp;
+// 
+//   if (X < 0)
+//     DebugPrintf (2, "x too small in GetPixel!");
+//   if (X >= Surface->w)
+//     DebugPrintf (2, "x too big in GetPixel!");
+// 
+//   Bpp = Surface->format->BytesPerPixel;
+// 
+//   bits = ((Uint8 *) Surface->pixels) + Y * Surface->pitch + X * Bpp;
+// 
+//   // Get the pixel
+//   switch (Bpp)
+//     {
+//     case 1:
+//       return *((Uint8 *) Surface->pixels + Y * Surface->pitch + X);
+//       break;
+//     case 2:
+//       return *((Uint16 *) Surface->pixels + Y * Surface->pitch / 2 + X);
+//       break;
+//     case 3:
+//       {				// Format/endian independent
+// 	Uint8 r, g, b;
+// 	r = *((bits) + Surface->format->Rshift / 8);
+// 	g = *((bits) + Surface->format->Gshift / 8);
+// 	b = *((bits) + Surface->format->Bshift / 8);
+// 	return SDL_MapRGB (Surface->format, r, g, b);
+//       }
+//       break;
+//     case 4:
+//       return *((Uint32 *) Surface->pixels + Y * Surface->pitch / 4 + X);
+//       break;
+//     }
+// 
+//   return -1;
+// }
