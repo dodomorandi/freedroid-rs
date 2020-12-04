@@ -696,7 +696,7 @@ pub unsafe extern "C" fn white_noise(bitmap: *mut SDL_Surface, rect: &mut Rect, 
     });
     SDL_FreeSurface(tmp2);
 
-    let mut used_tiles = [-1 as c_char; NOISE_TILES / 2 + 1];
+    let mut used_tiles: [c_char; NOISE_TILES / 2 + 1] = [-1; NOISE_TILES / 2 + 1];
     // let's go
     Play_Sound(Sound::WhiteNoise as c_int);
 
