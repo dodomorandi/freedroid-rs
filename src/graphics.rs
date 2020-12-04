@@ -824,3 +824,32 @@ pub unsafe extern "C" fn Load_Fonts() -> c_int {
 
     defs::OK.into()
 }
+
+/// Return the pixel value at (x, y)
+/// NOTE: The surface must be locked before calling this!
+#[no_mangle]
+pub unsafe extern "C" fn getpixel(surface: &SDL_Surface, x: c_int, y: c_int) -> u32 {
+    let bpp = (*surface.format).BytesPerPixel;
+    /* Here p is the address to the pixel we want to retrieve */
+    let p = surface.pixels.offset(
+        isize::try_from(y).unwrap() * isize::try_from(surface.pitch).unwrap()
+            + isize::try_from(x).unwrap() * isize::try_from(bpp).unwrap(),
+    );
+
+    match bpp {
+        1 => (*(p as *const u8)).into(),
+        2 => (*(p as *const u16)).into(),
+        3 => {
+            let p = std::slice::from_raw_parts(p as *const u8, 3);
+            if cfg!(target_endian = "big") {
+                u32::from(p[0]) << 16 | u32::from(p[1]) << 8 | u32::from(p[2])
+            } else {
+                u32::from(p[0]) | u32::from(p[1]) << 8 | u32::from(p[2]) << 16
+            }
+        }
+        4 => *(p as *const u32),
+        _ => {
+            unreachable!()
+        }
+    }
+}
