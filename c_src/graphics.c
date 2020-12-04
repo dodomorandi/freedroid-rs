@@ -890,106 +890,106 @@ load_raw_pic (const char *fpath, char **raw_mem )
 // } // Load_Block()
 
 
-/*-----------------------------------------------------------------
- * Initialise the Video display and graphics engine
- *
- *
- *-----------------------------------------------------------------*/
-void
-Init_Video (void)
-{
-  char vid_driver[81];
-  Uint32 vid_flags;  		/* flags for SDL video mode */
-  char *fpath;
-  char *YN[2] = {"no", "yes"};
-
-  /* Initialize the SDL library */
-  // if ( SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) == -1 )
-
-  if ( SDL_Init (SDL_INIT_VIDEO) == -1 )
-    {
-      fprintf(stderr, "Couldn't initialize SDL: %s\n",SDL_GetError());
-      Terminate(ERR);
-    } else
-      DebugPrintf(1, "\nSDL Video initialisation successful.\n");
-
-  // Now SDL_TIMER is initialized here:
-
-  if ( SDL_InitSubSystem ( SDL_INIT_TIMER ) == -1 )
-    {
-      fprintf(stderr, "Couldn't initialize SDL: %s\n",SDL_GetError());
-      Terminate(ERR);
-    } else
-      DebugPrintf(1, "\nSDL Timer initialisation successful.\n");
-
-  /* clean up on exit */
-  atexit (SDL_Quit);
-
-
-  vid_info = SDL_GetVideoInfo (); /* just curious */
-  SDL_VideoDriverName (vid_driver, 80);
-#ifdef ANDROID
-  vid_bpp = 16; // Hardcoded Android default
-#else
-  vid_bpp = vid_info->vfmt->BitsPerPixel;
-#endif
-
-  DebugPrintf (0, "Video info summary from SDL:\n");
-  DebugPrintf (0, "----------------------------------------------------------------------\n");
-  DebugPrintf (0, "Is it possible to create hardware surfaces: %s\n" , YN[vid_info->hw_available]);
-  DebugPrintf (0, "Is there a window manager available: %s\n", YN[vid_info->wm_available]);
-  DebugPrintf (0, "Are hardware to hardware blits accelerated: %s\n", YN[vid_info->blit_hw]);
-  DebugPrintf (0, "Are hardware to hardware colorkey blits accelerated: %s\n", YN[vid_info->blit_hw_CC]);
-  DebugPrintf (0, "Are hardware to hardware alpha blits accelerated: %s\n", YN[vid_info->blit_hw_A]);
-  DebugPrintf (0, "Are software to hardware blits accelerated: %s\n", YN[vid_info->blit_sw]);
-  DebugPrintf (0, "Are software to hardware colorkey blits accelerated: %s\n", YN[vid_info->blit_sw_CC]);
-  DebugPrintf (0, "Are software to hardware alpha blits accelerated: %s\n", YN[vid_info->blit_sw_A]);
-  DebugPrintf (0, "Are color fills accelerated: %s\n", YN[vid_info->blit_fill]);
-  DebugPrintf (0, "Total amount of video memory in Kilobytes: %d\n", vid_info->video_mem);
-  DebugPrintf (0, "Pixel format of the video device: bpp = %d, bytes/pixel = %d\n",
-	       vid_bpp, vid_info->vfmt->BytesPerPixel);
-  DebugPrintf (0, "Video Driver Name: %s\n", vid_driver);
-  DebugPrintf (0, "----------------------------------------------------------------------\n");
-
-
-  //  flags = SDL_HWSURFACE | SDL_DOUBLEBUF;
-  vid_flags = 0;
-  if (GameConfig.UseFullscreen) vid_flags |= SDL_FULLSCREEN;
-
-  if (vid_info->wm_available)  /* if there's a window-manager */
-    {
-      SDL_WM_SetCaption ("Freedroid", "");
-      fpath = find_file (ICON_FILE, GRAPHICS_DIR, NO_THEME, WARNONLY);
-      if ( fpath == NULL ) {
-        DebugPrintf ( 0, "Could not find icon file '%s'\n", ICON_FILE );
-      } else {
-        SDL_Surface *img = IMG_Load (fpath);
-        if ( img == NULL ) {
-          DebugPrintf ( 0, "IMG_Load failed for icon file '%s'\n", fpath );
-        } else {
-          SDL_WM_SetIcon( img, NULL);
-          SDL_FreeSurface ( img );
-        }
-      }
-    }
-
-  if( !(ne_screen = SDL_SetVideoMode ( Screen_Rect.w, Screen_Rect.h , 0 , vid_flags)) )
-    {
-      DebugPrintf (0, "ERORR: Couldn't set %d x %d video mode. SDL: %s\n",
-		   Screen_Rect.w, Screen_Rect.h, SDL_GetError());
-      exit(-1);
-    }
-
-  vid_info = SDL_GetVideoInfo (); /* info about current video mode */
-
-  DebugPrintf(1, "Got video mode: ");
-
-  SDL_SetGamma( 1 , 1 , 1 );
-  GameConfig.Current_Gamma_Correction=1;
-
-  return;
-
-} /* InitVideo () */
+// /*-----------------------------------------------------------------
+//  * Initialise the Video display and graphics engine
+//  *
+//  *
+//  *-----------------------------------------------------------------*/
+// void
+// Init_Video (void)
+// {
+//   char vid_driver[81];
+//   Uint32 vid_flags;  		/* flags for SDL video mode */
+//   char *fpath;
+//   char *YN[2] = {"no", "yes"};
+// 
+//   /* Initialize the SDL library */
+//   // if ( SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) == -1 )
+// 
+//   if ( SDL_Init (SDL_INIT_VIDEO) == -1 )
+//     {
+//       fprintf(stderr, "Couldn't initialize SDL: %s\n",SDL_GetError());
+//       Terminate(ERR);
+//     } else
+//       DebugPrintf(1, "\nSDL Video initialisation successful.\n");
+// 
+//   // Now SDL_TIMER is initialized here:
+// 
+//   if ( SDL_InitSubSystem ( SDL_INIT_TIMER ) == -1 )
+//     {
+//       fprintf(stderr, "Couldn't initialize SDL: %s\n",SDL_GetError());
+//       Terminate(ERR);
+//     } else
+//       DebugPrintf(1, "\nSDL Timer initialisation successful.\n");
+// 
+//   /* clean up on exit */
+//   atexit (SDL_Quit);
+// 
+// 
+//   vid_info = SDL_GetVideoInfo (); /* just curious */
+//   SDL_VideoDriverName (vid_driver, 80);
+// #ifdef ANDROID
+//   vid_bpp = 16; // Hardcoded Android default
+// #else
+//   vid_bpp = vid_info->vfmt->BitsPerPixel;
+// #endif
+// 
+//   DebugPrintf (0, "Video info summary from SDL:\n");
+//   DebugPrintf (0, "----------------------------------------------------------------------\n");
+//   DebugPrintf (0, "Is it possible to create hardware surfaces: %s\n" , YN[vid_info->hw_available]);
+//   DebugPrintf (0, "Is there a window manager available: %s\n", YN[vid_info->wm_available]);
+//   DebugPrintf (0, "Are hardware to hardware blits accelerated: %s\n", YN[vid_info->blit_hw]);
+//   DebugPrintf (0, "Are hardware to hardware colorkey blits accelerated: %s\n", YN[vid_info->blit_hw_CC]);
+//   DebugPrintf (0, "Are hardware to hardware alpha blits accelerated: %s\n", YN[vid_info->blit_hw_A]);
+//   DebugPrintf (0, "Are software to hardware blits accelerated: %s\n", YN[vid_info->blit_sw]);
+//   DebugPrintf (0, "Are software to hardware colorkey blits accelerated: %s\n", YN[vid_info->blit_sw_CC]);
+//   DebugPrintf (0, "Are software to hardware alpha blits accelerated: %s\n", YN[vid_info->blit_sw_A]);
+//   DebugPrintf (0, "Are color fills accelerated: %s\n", YN[vid_info->blit_fill]);
+//   DebugPrintf (0, "Total amount of video memory in Kilobytes: %d\n", vid_info->video_mem);
+//   DebugPrintf (0, "Pixel format of the video device: bpp = %d, bytes/pixel = %d\n",
+// 	       vid_bpp, vid_info->vfmt->BytesPerPixel);
+//   DebugPrintf (0, "Video Driver Name: %s\n", vid_driver);
+//   DebugPrintf (0, "----------------------------------------------------------------------\n");
+// 
+// 
+//   //  flags = SDL_HWSURFACE | SDL_DOUBLEBUF;
+//   vid_flags = 0;
+//   if (GameConfig.UseFullscreen) vid_flags |= SDL_FULLSCREEN;
+// 
+//   if (vid_info->wm_available)  /* if there's a window-manager */
+//     {
+//       SDL_WM_SetCaption ("Freedroid", "");
+//       fpath = find_file (ICON_FILE, GRAPHICS_DIR, NO_THEME, WARNONLY);
+//       if ( fpath == NULL ) {
+//         DebugPrintf ( 0, "Could not find icon file '%s'\n", ICON_FILE );
+//       } else {
+//         SDL_Surface *img = IMG_Load (fpath);
+//         if ( img == NULL ) {
+//           DebugPrintf ( 0, "IMG_Load failed for icon file '%s'\n", fpath );
+//         } else {
+//           SDL_WM_SetIcon( img, NULL);
+//           SDL_FreeSurface ( img );
+//         }
+//       }
+//     }
+// 
+//   if( !(ne_screen = SDL_SetVideoMode ( Screen_Rect.w, Screen_Rect.h , 0 , vid_flags)) )
+//     {
+//       DebugPrintf (0, "ERORR: Couldn't set %d x %d video mode. SDL: %s\n",
+// 		   Screen_Rect.w, Screen_Rect.h, SDL_GetError());
+//       exit(-1);
+//     }
+// 
+//   vid_info = SDL_GetVideoInfo (); /* info about current video mode */
+// 
+//   DebugPrintf(1, "Got video mode: ");
+// 
+//   SDL_SetGamma( 1 , 1 , 1 );
+//   GameConfig.Current_Gamma_Correction=1;
+// 
+//   return;
+// 
+// } /* InitVideo () */
 
 /*@Function============================================================
 @Desc:

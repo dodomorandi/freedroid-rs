@@ -3,7 +3,8 @@ use crate::{
     defs::{
         self, free_if_unused, scale_point, scale_rect, Cmds, Criticality, DisplayBannerFlags,
         Droid, Sound, Themed, FONT0_FILE, FONT0_FILE_C, FONT1_FILE, FONT1_FILE_C, FONT2_FILE,
-        FONT2_FILE_C, FREE_ONLY, GRAPHICS_DIR_C, INIT_ONLY, PARA_FONT_FILE, PARA_FONT_FILE_C,
+        FONT2_FILE_C, FREE_ONLY, GRAPHICS_DIR_C, ICON_FILE, ICON_FILE_C, INIT_ONLY, PARA_FONT_FILE,
+        PARA_FONT_FILE_C,
     },
     global::{
         arrow_cursor, arrow_down, arrow_left, arrow_right, arrow_up, banner_pic, console_bg_pic1,
@@ -31,29 +32,36 @@ use crate::{
 
 use array_init::array_init;
 use cstr::cstr;
-use log::{error, trace, warn};
+use log::{error, info, trace, warn};
 use sdl::{
     mouse::ll::SDL_FreeCursor,
-    sdl::{get_error, ll::SDL_GetTicks, Rect},
+    sdl::{
+        get_error,
+        ll::{SDL_GetTicks, SDL_Init, SDL_InitSubSystem, SDL_Quit, SDL_INIT_TIMER, SDL_INIT_VIDEO},
+        Rect,
+    },
     video::SurfaceFlag,
     video::{
         ll::{
             SDL_ConvertSurface, SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha,
-            SDL_FillRect, SDL_Flip, SDL_FreeSurface, SDL_GetRGBA, SDL_LockSurface, SDL_MapRGB,
-            SDL_MapRGBA, SDL_RWFromFile, SDL_RWops, SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha,
-            SDL_SetClipRect, SDL_SetVideoMode, SDL_Surface, SDL_UnlockSurface, SDL_UpdateRect,
-            SDL_UpperBlit,
+            SDL_FillRect, SDL_Flip, SDL_FreeSurface, SDL_GetRGBA, SDL_GetVideoInfo,
+            SDL_LockSurface, SDL_MapRGB, SDL_MapRGBA, SDL_RWFromFile, SDL_RWops, SDL_Rect,
+            SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetClipRect, SDL_SetGamma, SDL_SetVideoMode,
+            SDL_Surface, SDL_UnlockSurface, SDL_UpdateRect, SDL_UpperBlit, SDL_VideoInfo,
         },
-        VideoFlag,
+        VideoFlag, VideoInfoFlag,
     },
+    wm::ll::{SDL_WM_SetCaption, SDL_WM_SetIcon},
 };
 use std::{
     convert::{TryFrom, TryInto},
+    ffi::CStr,
     os::raw::{c_char, c_double, c_float, c_int, c_void},
     ptr::null_mut,
 };
 
 extern "C" {
+    pub static mut vid_info: *const SDL_VideoInfo;
     pub static mut vid_bpp: c_int;
     pub static mut portrait_raw_mem: [*mut c_char; Droid::NumDroids as usize];
     pub fn IMG_Load(file: *const c_char) -> *mut SDL_Surface;
@@ -64,6 +72,7 @@ extern "C" {
         smooth: c_int,
     ) -> *mut SDL_Surface;
     pub fn SDL_GetClipRect(surface: *mut SDL_Surface, rect: *mut SDL_Rect);
+    pub fn SDL_VideoDriverName(namebuf: *mut c_char, maxlen: c_int) -> *mut c_char;
     pub static mut fonts_loaded: c_int;
 }
 
@@ -867,4 +876,153 @@ pub unsafe extern "C" fn ClearGraphMem() {
     // Now we fill the screen with black color...
     SDL_FillRect(ne_screen, null_mut(), 0);
     SDL_Flip(ne_screen);
+}
+
+/// Initialise the Video display and graphics engine
+#[no_mangle]
+pub unsafe extern "C" fn Init_Video() {
+    const YN: [&str; 2] = ["no", "yes"];
+
+    /* Initialize the SDL library */
+    // if ( SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) == -1 )
+
+    if SDL_Init(SDL_INIT_VIDEO) == -1 {
+        eprintln!("Couldn't initialize SDL: {}", get_error());
+        Terminate(defs::ERR.into());
+    } else {
+        info!("SDL Video initialisation successful.");
+    }
+
+    // Now SDL_TIMER is initialized here:
+
+    if SDL_InitSubSystem(SDL_INIT_TIMER) == -1 {
+        eprintln!("Couldn't initialize SDL: {}", get_error());
+        Terminate(defs::ERR.into());
+    } else {
+        info!("SDL Timer initialisation successful.");
+    }
+
+    /* clean up on exit */
+    libc::atexit(std::mem::transmute(SDL_Quit as unsafe extern "C" fn()));
+
+    vid_info = SDL_GetVideoInfo(); /* just curious */
+    let mut vid_driver: [c_char; 81] = [0; 81];
+    SDL_VideoDriverName(vid_driver.as_mut_ptr(), 80);
+
+    let vid_info_ref = *vid_info;
+    if cfg!(os_target = "android") {
+        vid_bpp = 16; // Hardcoded Android default
+    } else {
+        vid_bpp = (*vid_info_ref.vfmt).BitsPerPixel.into();
+    }
+
+    macro_rules! flag {
+        ($flag:ident) => {
+            (vid_info_ref.flags & VideoInfoFlag::$flag as u32) != 0
+        };
+    }
+    macro_rules! flag_yn {
+        ($flag:ident) => {
+            YN[usize::from(flag!($flag))]
+        };
+    }
+
+    info!("Video info summary from SDL:");
+    info!("----------------------------------------------------------------------");
+    info!(
+        "Is it possible to create hardware surfaces: {}",
+        flag_yn!(HWAvailable)
+    );
+    info!(
+        "Is there a window manager available: {}",
+        flag_yn!(WMAvailable)
+    );
+    info!(
+        "Are hardware to hardware blits accelerated: {}",
+        flag_yn!(BlitHW)
+    );
+    info!(
+        "Are hardware to hardware colorkey blits accelerated: {}",
+        flag_yn!(BlitHWColorkey)
+    );
+    info!(
+        "Are hardware to hardware alpha blits accelerated: {}",
+        flag_yn!(BlitHWAlpha)
+    );
+    info!(
+        "Are software to hardware blits accelerated: {}",
+        flag_yn!(BlitSW)
+    );
+    info!(
+        "Are software to hardware colorkey blits accelerated: {}",
+        flag_yn!(BlitSWColorkey)
+    );
+    info!(
+        "Are software to hardware alpha blits accelerated: {}",
+        flag_yn!(BlitSWAlpha)
+    );
+    info!("Are color fills accelerated: {}", flag_yn!(BlitFill));
+    info!(
+        "Total amount of video memory in Kilobytes: {}",
+        vid_info_ref.video_mem
+    );
+    info!(
+        "Pixel format of the video device: bpp = {}, bytes/pixel = {}",
+        vid_bpp,
+        (*vid_info_ref.vfmt).BytesPerPixel
+    );
+    info!(
+        "Video Driver Name: {}",
+        CStr::from_ptr(vid_driver.as_ptr()).to_string_lossy()
+    );
+    info!("----------------------------------------------------------------------");
+
+    let vid_flags = if GameConfig.UseFullscreen != 0 {
+        VideoFlag::Fullscreen as u32
+    } else {
+        0
+    };
+
+    if flag!(WMAvailable) {
+        /* if there's a window-manager */
+        SDL_WM_SetCaption(cstr!("Freedroid").as_ptr(), cstr!("").as_ptr());
+        let fpath = find_file(
+            ICON_FILE_C.as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::WarnOnly as c_int,
+        );
+        if fpath.is_null() {
+            warn!("Could not find icon file '{}'", ICON_FILE);
+        } else {
+            let img = IMG_Load(fpath);
+            if img.is_null() {
+                warn!(
+                    "IMG_Load failed for icon file '{}'\n",
+                    CStr::from_ptr(fpath).to_string_lossy()
+                );
+            } else {
+                SDL_WM_SetIcon(img, null_mut());
+                SDL_FreeSurface(img);
+            }
+        }
+    }
+
+    ne_screen = SDL_SetVideoMode(Screen_Rect.w.into(), Screen_Rect.h.into(), 0, vid_flags);
+    if ne_screen.is_null() {
+        error!(
+            "Couldn't set {} x {} video mode. SDL: {}",
+            Screen_Rect.w,
+            Screen_Rect.h,
+            get_error(),
+        );
+        std::process::exit(-1);
+    }
+
+    vid_info = SDL_GetVideoInfo(); /* info about current video mode */
+
+    info!("Got video mode: ");
+
+    SDL_SetGamma(1., 1., 1.);
+    GameConfig.Current_Gamma_Correction = 1.;
 }
