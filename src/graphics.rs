@@ -9,11 +9,11 @@ use crate::{
         arrow_cursor, arrow_down, arrow_left, arrow_right, arrow_up, banner_pic, console_bg_pic1,
         console_bg_pic2, console_pic, crosshair_cursor, ne_screen, packed_portraits, pic999,
         progress_filler_pic, progress_meter_pic, ship_off_pic, ship_on_pic, takeover_bg_pic,
-        to_blocks, Banner_Rect, Blastmap, Block_Rect, BuildBlock, Bulletmap, CapsuleBlocks,
-        Classic_User_Rect, ConsMenuItem_Rect, Cons_Droid_Rect, Cons_Header_Rect, Cons_Menu_Rect,
-        Cons_Menu_Rects, Cons_Text_Rect, CurCapsuleStart, Decal_pics, Digit_Rect, DruidStart,
-        EnemyDigitSurfacePointer, EnemySurfacePointer, FillBlocks, FirstDigit_Rect, Font0_BFont,
-        Font1_BFont, Font2_BFont, Full_User_Rect, GameConfig, Highscore_BFont,
+        to_blocks, BannerIsDestroyed, Banner_Rect, Blastmap, Block_Rect, BuildBlock, Bulletmap,
+        CapsuleBlocks, Classic_User_Rect, ConsMenuItem_Rect, Cons_Droid_Rect, Cons_Header_Rect,
+        Cons_Menu_Rect, Cons_Menu_Rects, Cons_Text_Rect, CurCapsuleStart, Decal_pics, Digit_Rect,
+        DruidStart, EnemyDigitSurfacePointer, EnemySurfacePointer, FillBlocks, FirstDigit_Rect,
+        Font0_BFont, Font1_BFont, Font2_BFont, Full_User_Rect, GameConfig, Highscore_BFont,
         InfluDigitSurfacePointer, InfluencerSurfacePointer, LeftCapsulesStart, LeftInfo_Rect,
         MapBlockSurfacePointer, Menu_BFont, Menu_Rect, Number_Of_Bullet_Types, OptionsMenu_Rect,
         OrigMapBlockSurfacePointer, Para_BFont, PlaygroundStart, Portrait_Rect, RightInfo_Rect,
@@ -39,9 +39,10 @@ use sdl::{
     video::{
         ll::{
             SDL_ConvertSurface, SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha,
-            SDL_Flip, SDL_FreeSurface, SDL_GetRGBA, SDL_LockSurface, SDL_MapRGB, SDL_MapRGBA,
-            SDL_RWFromFile, SDL_RWops, SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetClipRect,
-            SDL_SetVideoMode, SDL_Surface, SDL_UnlockSurface, SDL_UpdateRect, SDL_UpperBlit,
+            SDL_FillRect, SDL_Flip, SDL_FreeSurface, SDL_GetRGBA, SDL_LockSurface, SDL_MapRGB,
+            SDL_MapRGBA, SDL_RWFromFile, SDL_RWops, SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha,
+            SDL_SetClipRect, SDL_SetVideoMode, SDL_Surface, SDL_UnlockSurface, SDL_UpdateRect,
+            SDL_UpperBlit,
         },
         VideoFlag,
     },
@@ -852,4 +853,18 @@ pub unsafe extern "C" fn getpixel(surface: &SDL_Surface, x: c_int, y: c_int) -> 
             unreachable!()
         }
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ClearGraphMem() {
+    // One this function is done, the rahmen at the
+    // top of the screen surely is destroyed.  We inform the
+    // DisplayBanner function of the matter...
+    BannerIsDestroyed = true.into();
+
+    SDL_SetClipRect(ne_screen, null_mut());
+
+    // Now we fill the screen with black color...
+    SDL_FillRect(ne_screen, null_mut(), 0);
+    SDL_Flip(ne_screen);
 }

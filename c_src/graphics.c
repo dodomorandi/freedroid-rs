@@ -997,23 +997,23 @@ Init_Video (void)
 @Ret:
 @Int:
 * $Function----------------------------------------------------------*/
-void
-ClearGraphMem ( void )
-{
-  // One this function is done, the rahmen at the
-  // top of the screen surely is destroyed.  We inform the
-  // DisplayBanner function of the matter...
-  BannerIsDestroyed=TRUE;
-
-  //
-  SDL_SetClipRect( ne_screen, NULL );
-
-  // Now we fill the screen with black color...
-  SDL_FillRect( ne_screen , NULL , 0 );
-  SDL_Flip (ne_screen);
-
-  return;
-} // ClearGraphMem( void )
+// void
+// ClearGraphMem ( void )
+// {
+//   // One this function is done, the rahmen at the
+//   // top of the screen surely is destroyed.  We inform the
+//   // DisplayBanner function of the matter...
+//   BannerIsDestroyed=TRUE;
+// 
+//   //
+//   SDL_SetClipRect( ne_screen, NULL );
+// 
+//   // Now we fill the screen with black color...
+//   SDL_FillRect( ne_screen , NULL , 0 );
+//   SDL_Flip (ne_screen);
+// 
+//   return;
+// } // ClearGraphMem( void )
 
 
 /*----------------------------------------------------------------------
