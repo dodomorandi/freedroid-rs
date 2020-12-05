@@ -73,6 +73,7 @@ extern "C" {
     ) -> *mut SDL_Surface;
     pub fn SDL_GetClipRect(surface: *mut SDL_Surface, rect: *mut SDL_Rect);
     pub fn SDL_VideoDriverName(namebuf: *mut c_char, maxlen: c_int) -> *mut c_char;
+    pub fn SDL_RWFromMem(mem: *mut c_void, size: c_int) -> *mut SDL_RWops;
     pub static mut fonts_loaded: c_int;
 }
 
@@ -1025,4 +1026,59 @@ pub unsafe extern "C" fn Init_Video() {
 
     SDL_SetGamma(1., 1., 1.);
     GameConfig.Current_Gamma_Correction = 1.;
+}
+
+/// load a pic into memory and return the SDL_RWops pointer to it
+#[no_mangle]
+pub unsafe extern "C" fn load_raw_pic(
+    fpath: *const c_char,
+    raw_mem: *mut *mut c_char,
+) -> *mut SDL_RWops {
+    use std::{fs::File, io::Read, path::Path};
+
+    if raw_mem.is_null() || !(*raw_mem).is_null() {
+        error!("Invalid input 'raw_mem': must be pointing to NULL pointer");
+        Terminate(defs::ERR.into());
+    }
+
+    // sanity check
+    if fpath.is_null() {
+        error!("load_raw_pic() called with NULL argument!");
+        Terminate(defs::ERR.into());
+    }
+
+    let fpath = match CStr::from_ptr(fpath).to_str() {
+        Ok(fpath) => fpath,
+        Err(err) => {
+            error!("unable to convert path with invalid UTF-8 data: {}", err);
+            Terminate(defs::ERR.into());
+        }
+    };
+    let fpath = Path::new(&fpath);
+    let mut file = match File::open(fpath) {
+        Ok(file) => file,
+        Err(_) => {
+            error!("could not open file {}. Giving up", fpath.display());
+            Terminate(defs::ERR.into());
+        }
+    };
+
+    let metadata = match file.metadata() {
+        Ok(metadata) => metadata,
+        Err(err) => {
+            error!("unable to get file metadata: {}", err);
+            Terminate(defs::ERR.into());
+        }
+    };
+
+    let len = metadata.len().try_into().unwrap();
+    *raw_mem = MyMalloc(len) as *mut i8;
+    let buf = std::slice::from_raw_parts_mut(*raw_mem as *mut u8, len.try_into().unwrap());
+    if file.read_exact(buf).is_err() {
+        error!("cannot reading file {}. Giving up...", fpath.display());
+        Terminate(defs::ERR.into());
+    }
+    drop(file);
+
+    SDL_RWFromMem((*raw_mem) as *mut c_void, len.try_into().unwrap())
 }

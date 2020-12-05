@@ -775,44 +775,44 @@ InitPictures (void)
 /*----------------------------------------------------------------------
  * load a pic into memory and return the SDL_RWops pointer to it
  *----------------------------------------------------------------------*/
-SDL_RWops *
-load_raw_pic (const char *fpath, char **raw_mem )
-{
-    FILE *fp;
-    off_t size;
-
-    if ( raw_mem == NULL || (*raw_mem) != NULL ) {
-      DebugPrintf ( 0, "Invalid input 'raw_mem': must be pointing to NULL pointer\n");
-      Terminate ( ERR );
-    }
-
-    // sanity check
-    if (!fpath)
-      {
-	DebugPrintf (0, "ERROR: load_raw_pic() called with NULL argument!\n");
-	Terminate (ERR);
-      }
-
-    fp = fopen (fpath, "rb");
-    if (!fp)
-      {
-	DebugPrintf (0, "ERROR: could not open file %s. Giving up\n", fpath);
-	Terminate (ERR);
-      }
-
-    size = FS_filelength (fp);
-    (*raw_mem) = MyMalloc (size);
-    if (fread ( (*raw_mem), 1, size, fp) != size)
-      {
-	DebugPrintf (0, "ERROR reading file %s. Giving up...\n", fpath);
-	Terminate (ERR);
-      }
-    fclose (fp);
-
-
-    return (SDL_RWFromMem( (*raw_mem), size) );
-
-}
+// SDL_RWops *
+// load_raw_pic (const char *fpath, char **raw_mem )
+// {
+//     FILE *fp;
+//     off_t size;
+// 
+//     if ( raw_mem == NULL || (*raw_mem) != NULL ) {
+//       DebugPrintf ( 0, "Invalid input 'raw_mem': must be pointing to NULL pointer\n");
+//       Terminate ( ERR );
+//     }
+// 
+//     // sanity check
+//     if (!fpath)
+//       {
+// 	DebugPrintf (0, "ERROR: load_raw_pic() called with NULL argument!\n");
+// 	Terminate (ERR);
+//       }
+// 
+//     fp = fopen (fpath, "rb");
+//     if (!fp)
+//       {
+// 	DebugPrintf (0, "ERROR: could not open file %s. Giving up\n", fpath);
+// 	Terminate (ERR);
+//       }
+// 
+//     size = FS_filelength (fp);
+//     (*raw_mem) = MyMalloc (size);
+//     if (fread ( (*raw_mem), 1, size, fp) != size)
+//       {
+// 	DebugPrintf (0, "ERROR reading file %s. Giving up...\n", fpath);
+// 	Terminate (ERR);
+//       }
+//     fclose (fp);
+// 
+// 
+//     return (SDL_RWFromMem( (*raw_mem), size) );
+// 
+// }
 
 
 /*------------------------------------------------------------
