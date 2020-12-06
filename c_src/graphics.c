@@ -431,40 +431,40 @@ DisplayImage(char *datafile)
  * in the first call we assume the Block_Rect to be the original game-size
  * and store this value for future rescalings
  ----------------------------------------------------------------------*/
-void
-SetCombatScaleTo(float scale)
-{
-  int i, j;
-  static SDL_Rect origBlock;
-  static bool firstcall = TRUE;
-  SDL_Surface *tmp;
-
-  if (firstcall) Copy_Rect (Block_Rect, origBlock);   // keep that as a backup
-  firstcall = FALSE;
-
-  for ( j=0 ; j < NUM_COLORS ; j++ )
-    for ( i = 0 ; i < NUM_MAP_BLOCKS ; i++ )
-      {
-	// if there's already a rescaled version, free it
-	if (MapBlockSurfacePointer[j][i] != OrigMapBlockSurfacePointer[j][i])
-	  SDL_FreeSurface (MapBlockSurfacePointer[j][i]);
-	// then zoom..
-	tmp = zoomSurface(OrigMapBlockSurfacePointer[j][i], scale, scale, 0);
-        if ( tmp == NULL ) {
-          DebugPrintf (0, "ERROR: zoomSurface() failed for scale = %g.\n", scale);
-          Terminate (ERR);
-        }
-	// and optimize
-	MapBlockSurfacePointer[j][i]=SDL_DisplayFormat (tmp);
-	SDL_FreeSurface(tmp); // free the old surface
-      }
-
-  Copy_Rect (origBlock, Block_Rect);   // always scale with respect to original size!
-  ScaleRect(Block_Rect, scale);
-
-  return;
-
-} // void SetCombatScaleTo(float new_scale);
+// void
+// SetCombatScaleTo(float scale)
+// {
+//   int i, j;
+//   static SDL_Rect origBlock;
+//   static bool firstcall = TRUE;
+//   SDL_Surface *tmp;
+// 
+//   if (firstcall) Copy_Rect (Block_Rect, origBlock);   // keep that as a backup
+//   firstcall = FALSE;
+// 
+//   for ( j=0 ; j < NUM_COLORS ; j++ )
+//     for ( i = 0 ; i < NUM_MAP_BLOCKS ; i++ )
+//       {
+// 	// if there's already a rescaled version, free it
+// 	if (MapBlockSurfacePointer[j][i] != OrigMapBlockSurfacePointer[j][i])
+// 	  SDL_FreeSurface (MapBlockSurfacePointer[j][i]);
+// 	// then zoom..
+// 	tmp = zoomSurface(OrigMapBlockSurfacePointer[j][i], scale, scale, 0);
+//         if ( tmp == NULL ) {
+//           DebugPrintf (0, "ERROR: zoomSurface() failed for scale = %g.\n", scale);
+//           Terminate (ERR);
+//         }
+// 	// and optimize
+// 	MapBlockSurfacePointer[j][i]=SDL_DisplayFormat (tmp);
+// 	SDL_FreeSurface(tmp); // free the old surface
+//       }
+// 
+//   Copy_Rect (origBlock, Block_Rect);   // always scale with respect to original size!
+//   ScaleRect(Block_Rect, scale);
+// 
+//   return;
+// 
+// } // void SetCombatScaleTo(float new_scale);
 
 /*
 ----------------------------------------------------------------------

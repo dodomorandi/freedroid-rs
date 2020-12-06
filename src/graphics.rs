@@ -1763,3 +1763,38 @@ pub unsafe extern "C" fn LoadThemeConfigurationFile() {
 
     libc::free(data_ptr as *mut c_void);
 }
+
+/// This function resizes all blocks and structures involved in assembling
+/// the combat picture to a new scale.  The new scale is relative to the
+/// standard scale with means scale=1 is 64x64 tile size.
+///
+/// in the first call we assume the Block_Rect to be the original game-size
+/// and store this value for future rescalings
+#[no_mangle]
+pub unsafe extern "C" fn SetCombatScaleTo(scale: c_float) {
+    use once_cell::sync::Lazy;
+    static ORIG_BLOCK: Lazy<Rect> = Lazy::new(|| unsafe { Block_Rect });
+
+    MapBlockSurfacePointer
+        .iter_mut()
+        .zip(OrigMapBlockSurfacePointer.iter())
+        .flat_map(|(map_block, orig_map_block)| map_block.iter_mut().zip(orig_map_block.iter()))
+        .for_each(|(surface, &orig_surface)| {
+            // if there's already a rescaled version, free it
+            if *surface != orig_surface {
+                SDL_FreeSurface(*surface);
+            }
+            // then zoom..
+            let tmp = zoomSurface(orig_surface, scale.into(), scale.into(), 0);
+            if tmp.is_null() {
+                error!("zoomSurface() failed for scale = {}.", scale);
+                Terminate(defs::ERR.into());
+            }
+            // and optimize
+            *surface = SDL_DisplayFormat(tmp);
+            SDL_FreeSurface(tmp); // free the old surface
+        });
+
+    Block_Rect = *ORIG_BLOCK;
+    scale_rect(&mut Block_Rect, scale);
+}
