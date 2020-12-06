@@ -401,27 +401,27 @@ DrawLineBetweenTiles( float x1 , float y1 , float x2 , float y2 , int Color )
  * and that.
  *
  ----------------------------------------------------------------------*/
-void
-DisplayImage(char *datafile)
-{
-  SDL_Surface *image;
-
-  image = IMG_Load(datafile);
-  if ( image == NULL ) {
-    DebugPrintf(0, "ERROR: Couldn't load image %s: %s\n", datafile, IMG_GetError());
-    Terminate(ERR);
-  }
-
-  if (GameConfig.scale != 1.0)
-    ScalePic (&image, GameConfig.scale);
-
-  SDL_BlitSurface(image, NULL, ne_screen, NULL);
-
-  SDL_FreeSurface(image);
-
-  return;
-
-} // DisplayImage()
+// void
+// DisplayImage(char *datafile)
+// {
+//   SDL_Surface *image;
+// 
+//   image = IMG_Load(datafile);
+//   if ( image == NULL ) {
+//     DebugPrintf(0, "ERROR: Couldn't load image %s: %s\n", datafile, IMG_GetError());
+//     Terminate(ERR);
+//   }
+// 
+//   if (GameConfig.scale != 1.0)
+//     ScalePic (&image, GameConfig.scale);
+// 
+//   SDL_BlitSurface(image, NULL, ne_screen, NULL);
+// 
+//   SDL_FreeSurface(image);
+// 
+//   return;
+// 
+// } // DisplayImage()
 
 /*----------------------------------------------------------------------
  * This function resizes all blocks and structures involved in assembling

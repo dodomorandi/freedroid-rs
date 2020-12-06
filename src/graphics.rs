@@ -1798,3 +1798,29 @@ pub unsafe extern "C" fn SetCombatScaleTo(scale: c_float) {
     Block_Rect = *ORIG_BLOCK;
     scale_rect(&mut Block_Rect, scale);
 }
+
+/// This function load an image and displays it directly to the ne_screen
+/// but without updating it.
+/// This might be very handy, especially in the Title() function to
+/// display the title image and perhaps also for displaying the ship
+/// and that.
+#[no_mangle]
+pub unsafe extern "C" fn DisplayImage(datafile: *mut c_char) {
+    let mut image = IMG_Load(datafile);
+    if image.is_null() {
+        error!(
+            "couldn't load image {}: {}",
+            CStr::from_ptr(datafile).to_string_lossy(),
+            get_error()
+        );
+        Terminate(defs::ERR.into());
+    }
+
+    if (GameConfig.scale - 1.).abs() > c_float::EPSILON {
+        ScalePic(&mut image, GameConfig.scale);
+    }
+
+    SDL_UpperBlit(image, null_mut(), ne_screen, null_mut());
+
+    SDL_FreeSurface(image);
+}
