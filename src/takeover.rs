@@ -1,8 +1,16 @@
+use cstr::cstr;
+use std::{ffi::CStr, os::raw::c_int};
+
+extern "C" {
+    pub fn set_takeover_rects() -> c_int;
+}
+
 /* Background-color of takeover-game */
 pub const TO_BG_COLOR: usize = 63;
 
 /* File containing the Takeover-blocks */
 pub const TO_BLOCK_FILE: &str = "to_elem.png";
+pub const TO_BLOCK_FILE_C: &CStr = cstr!("to_elem.png");
 
 /* --------------- individual block dimensions --------------- */
 pub const NUM_PHASES: usize =		5       /* number of color-phases for current "flow" */;

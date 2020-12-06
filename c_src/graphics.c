@@ -55,94 +55,94 @@ SDL_Surface *Load_Block (char *fpath, int line, int col, SDL_Rect * block, int f
 SDL_RWops *load_raw_pic (const char *fpath, char **raw_mem );
 BFont_Info *Duplicate_Font ( const BFont_Info * in_font );
 
-/* XPM */
-static const char *crosshair_xpm[] = {
-  /* width height num_colors chars_per_pixel */
-  "    32    32        3            1",
-  /* colors */
-  "X c #000000",
-  ". c #ffffff",
-  "  c None",
-  /* pixels */
-  "                                ",
-  "                                ",
-  "               XXXX             ",
-  "               X..X             ",
-  "               X..X             ",
-  "               X..X             ",
-  "               X..X             ",
-  "               X..X             ",
-  "               X..X             ",
-  "               X..X             ",
-  "               X..X             ",
-  "               XXXX             ",
-  "                                ",
-  "   XXXXXXXXXXX      XXXXXXXXXX  ",
-  "   X.........X      X........X  ",
-  "   X.........X      X........X  ",
-  "   XXXXXXXXXXX      XXXXXXXXXX  ",
-  "                                ",
-  "               XXXX             ",
-  "               X..X             ",
-  "               X..X             ",
-  "               X..X             ",
-  "               X..X             ",
-  "               X..X             ",
-  "               X..X             ",
-  "               X..X             ",
-  "               X..X             ",
-  "               X..X             ",
-  "               X..X             ",
-  "               XXXX             ",
-  "                                ",
-  "                                ",
-  "0,0"
-};
-
-
-/* XPM */
-static const char *arrow_xpm[] = {
-  /* width height num_colors chars_per_pixel */
-  "    32    32        3            1",
-  /* colors */
-  "X c #000000",
-  ". c #ffffff",
-  "  c None",
-  /* pixels */
-  "X                               ",
-  "XX                              ",
-  "X.X                             ",
-  "X..X                            ",
-  "X...X                           ",
-  "X....X                          ",
-  "X.....X                         ",
-  "X......X                        ",
-  "X.......X                       ",
-  "X........X                      ",
-  "X.....XXXXX                     ",
-  "X..X..X                         ",
-  "X.X X..X                        ",
-  "XX  X..X                        ",
-  "X    X..X                       ",
-  "     X..X                       ",
-  "      X..X                      ",
-  "      X..X                      ",
-  "       XX                       ",
-  "                                ",
-  "                                ",
-  "                                ",
-  "                                ",
-  "                                ",
-  "                                ",
-  "                                ",
-  "                                ",
-  "                                ",
-  "                                ",
-  "                                ",
-  "                                ",
-  "                                ",
-  "0,0"
-};
+// /* XPM */
+// static const char *crosshair_xpm[] = {
+//   /* width height num_colors chars_per_pixel */
+//   "    32    32        3            1",
+//   /* colors */
+//   "X c #000000",
+//   ". c #ffffff",
+//   "  c None",
+//   /* pixels */
+//   "                                ",
+//   "                                ",
+//   "               XXXX             ",
+//   "               X..X             ",
+//   "               X..X             ",
+//   "               X..X             ",
+//   "               X..X             ",
+//   "               X..X             ",
+//   "               X..X             ",
+//   "               X..X             ",
+//   "               X..X             ",
+//   "               XXXX             ",
+//   "                                ",
+//   "   XXXXXXXXXXX      XXXXXXXXXX  ",
+//   "   X.........X      X........X  ",
+//   "   X.........X      X........X  ",
+//   "   XXXXXXXXXXX      XXXXXXXXXX  ",
+//   "                                ",
+//   "               XXXX             ",
+//   "               X..X             ",
+//   "               X..X             ",
+//   "               X..X             ",
+//   "               X..X             ",
+//   "               X..X             ",
+//   "               X..X             ",
+//   "               X..X             ",
+//   "               X..X             ",
+//   "               X..X             ",
+//   "               X..X             ",
+//   "               XXXX             ",
+//   "                                ",
+//   "                                ",
+//   "0,0"
+// };
+// 
+// 
+// /* XPM */
+// static const char *arrow_xpm[] = {
+//   /* width height num_colors chars_per_pixel */
+//   "    32    32        3            1",
+//   /* colors */
+//   "X c #000000",
+//   ". c #ffffff",
+//   "  c None",
+//   /* pixels */
+//   "X                               ",
+//   "XX                              ",
+//   "X.X                             ",
+//   "X..X                            ",
+//   "X...X                           ",
+//   "X....X                          ",
+//   "X.....X                         ",
+//   "X......X                        ",
+//   "X.......X                       ",
+//   "X........X                      ",
+//   "X.....XXXXX                     ",
+//   "X..X..X                         ",
+//   "X.X X..X                        ",
+//   "XX  X..X                        ",
+//   "X    X..X                       ",
+//   "     X..X                       ",
+//   "      X..X                      ",
+//   "      X..X                      ",
+//   "       XX                       ",
+//   "                                ",
+//   "                                ",
+//   "                                ",
+//   "                                ",
+//   "                                ",
+//   "                                ",
+//   "                                ",
+//   "                                ",
+//   "                                ",
+//   "                                ",
+//   "                                ",
+//   "                                ",
+//   "                                ",
+//   "0,0"
+// };
 
 
 /* ----------------------------------------------------------------------
@@ -216,39 +216,39 @@ Even there they say they have stolen if from the mailing list.
 Anyway it should create a new mouse cursor from an XPM.
 The XPM is defined above and not read in from disk or something.
 ----------------------------------------------------------------------*/
-static SDL_Cursor *init_system_cursor(const char *image[])
-{
-  int i, row, col;
-  Uint8 data[4*32];
-  Uint8 mask[4*32];
-  int hot_x, hot_y;
-
-  i = -1;
-  for ( row=0; row<32; ++row ) {
-    for ( col=0; col<32; ++col ) {
-      if ( col % 8 ) {
-        data[i] <<= 1;
-        mask[i] <<= 1;
-      } else {
-        ++i;
-        data[i] = mask[i] = 0;
-      }
-      switch (image[4+row][col]) {
-        case 'X':
-          data[i] |= 0x01;
-          mask[i] |= 0x01;
-          break;
-        case '.':
-          mask[i] |= 0x01;
-          break;
-        case ' ':
-          break;
-      }
-    }
-  }
-  sscanf(image[4+row], "%d,%d", &hot_x, &hot_y);
-  return SDL_CreateCursor(data, mask, 32, 32, hot_x, hot_y);
-};
+// static SDL_Cursor *init_system_cursor(const char *image[])
+// {
+//   int i, row, col;
+//   Uint8 data[4*32];
+//   Uint8 mask[4*32];
+//   int hot_x, hot_y;
+// 
+//   i = -1;
+//   for ( row=0; row<32; ++row ) {
+//     for ( col=0; col<32; ++col ) {
+//       if ( col % 8 ) {
+//         data[i] <<= 1;
+//         mask[i] <<= 1;
+//       } else {
+//         ++i;
+//         data[i] = mask[i] = 0;
+//       }
+//       switch (image[4+row][col]) {
+//         case 'X':
+//           data[i] |= 0x01;
+//           mask[i] |= 0x01;
+//           break;
+//         case '.':
+//           mask[i] |= 0x01;
+//           break;
+//         case ' ':
+//           break;
+//       }
+//     }
+//   }
+//   sscanf(image[4+row], "%d,%d", &hot_x, &hot_y);
+//   return SDL_CreateCursor(data, mask, 32, 32, hot_x, hot_y);
+// };
 
 /*
 ----------------------------------------------------------------------
@@ -572,204 +572,204 @@ not resolve.... Sorry, if that interrupts a major game of yours.....\n\
  * @Ret: TRUE/FALSE
  *
  *-----------------------------------------------------------------*/
-int
-InitPictures (void)
-{
-  static bool first_call= TRUE;
-  char *fpath;
-  int line, col, i;
-  BFont_Info *oldfont;
-  SDL_Surface *tmp;
-  char fname[500];
-
-  // Loading all these pictures might take a while...
-  // and we do not want do deal with huge frametimes, which
-  // could box the influencer out of the ship....
-  Activate_Conservative_Frame_Computation();
-
-  oldfont = GetCurrentFont ();
-
-  if (!fonts_loaded)
-    Load_Fonts ();
-
-  SetCurrentFont (Font0_BFont);
-
-  init_progress ("Loading pictures");
-
-  LoadThemeConfigurationFile();
-
-  update_progress (15);
-
-  //---------- get Map blocks
-  fpath = find_file (MAP_BLOCK_FILE, GRAPHICS_DIR, USE_THEME, CRITICAL);
-  Load_Block (fpath, 0, 0, NULL, INIT_ONLY);	/* init function */
-  for (line = 0; line < NUM_COLORS; line ++)
-    for (col = 0; col < NUM_MAP_BLOCKS; col ++)
-      {
-	FreeIfUsed (OrigMapBlockSurfacePointer[line][col]);
-	OrigMapBlockSurfacePointer[line][col] = Load_Block (NULL, line, col, &OrigBlock_Rect,0);
-	MapBlockSurfacePointer[line][col] = OrigMapBlockSurfacePointer[line][col];
-      }
-  update_progress (20);
-  //---------- get Droid-model  blocks
-  fpath = find_file (DROID_BLOCK_FILE, GRAPHICS_DIR, USE_THEME, CRITICAL);
-  Load_Block (fpath, 0, 0, NULL, INIT_ONLY);
-  for (col = 0; col < DROID_PHASES; col ++)
-    {
-      FreeIfUsed (InfluencerSurfacePointer[col]);
-      FreeIfUsed (EnemySurfacePointer[col]);
-      InfluencerSurfacePointer[col] = Load_Block (NULL, 0, col, &OrigBlock_Rect, 0);
-      EnemySurfacePointer[col] = Load_Block (NULL, 1, col, &OrigBlock_Rect, 0);
-      /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
-      SDL_SetAlpha (InfluencerSurfacePointer[col], 0, 0);
-      SDL_SetAlpha (EnemySurfacePointer[col], 0, 0);
-    }
-
-  //  SDL_SetAlpha( Me.pic, SDL_SRCALPHA, SDL_ALPHA_OPAQUE);
-
-  update_progress (30);
-  //---------- get Bullet blocks
-  fpath = find_file (BULLET_BLOCK_FILE, GRAPHICS_DIR, USE_THEME, CRITICAL);
-  Load_Block (fpath, 0, 0, NULL, INIT_ONLY);
-  for (line = 0; line < Number_Of_Bullet_Types; line ++)
-    for (col = 0; col < Bulletmap[line].phases; col ++)
-      {
-	FreeIfUsed (Bulletmap[line].SurfacePointer[col]);
-	Bulletmap[line].SurfacePointer[col] = Load_Block (NULL, line, col, &OrigBlock_Rect, 0);
-      }
-
-  update_progress (35);
-
-  //---------- get Blast blocks
-  fpath = find_file (BLAST_BLOCK_FILE, GRAPHICS_DIR, USE_THEME, CRITICAL);
-  Load_Block (fpath, 0, 0, NULL, INIT_ONLY);
-  for (line = 0; line <  ALLBLASTTYPES; line ++)
-    for (col = 0; col < Blastmap[line].phases; col ++)
-      {
-	FreeIfUsed (Blastmap[line].SurfacePointer[col]);
-	Blastmap[line].SurfacePointer[col] = Load_Block (NULL, line, col, &OrigBlock_Rect, 0);
-      }
-
-  update_progress (45);
-
-  //---------- get Digit blocks
-  fpath = find_file (DIGIT_BLOCK_FILE, GRAPHICS_DIR, USE_THEME, CRITICAL);
-  Load_Block (fpath, 0, 0, NULL, INIT_ONLY);
-  for (col = 0; col < 10; col++)
-    {
-      FreeIfUsed (InfluDigitSurfacePointer[col]);
-      InfluDigitSurfacePointer[col] = Load_Block (NULL, 0, col, &OrigDigit_Rect, 0);
-      FreeIfUsed (EnemyDigitSurfacePointer[col]);
-      EnemyDigitSurfacePointer[col] = Load_Block (NULL, 0, col + 10, &OrigDigit_Rect, 0);
-    }
-  update_progress(50);
-
-  //---------- get Takeover pics
-  FreeIfUsed(to_blocks);   /* this happens when we do theme-switching */
-  fpath = find_file (TO_BLOCK_FILE, GRAPHICS_DIR, USE_THEME, CRITICAL);
-  to_blocks = Load_Block (fpath, 0, 0, NULL, 0);
-
-  update_progress (60);
-
-  FreeIfUsed(ship_on_pic);
-  ship_on_pic = IMG_Load (find_file (SHIP_ON_PIC_FILE, GRAPHICS_DIR, USE_THEME, CRITICAL));
-  FreeIfUsed(ship_off_pic);
-  ship_off_pic= IMG_Load (find_file (SHIP_OFF_PIC_FILE, GRAPHICS_DIR, USE_THEME, CRITICAL));
-
-  // the following are not theme-specific and are therefore only loaded once!
-  if (first_call)
-    {
-      //  create the tmp block-build storage
-      tmp = SDL_CreateRGBSurface( 0 , Block_Rect.w, Block_Rect.h, vid_bpp, 0, 0, 0, 0);
-      BuildBlock = SDL_DisplayFormatAlpha (tmp);
-      SDL_FreeSurface (tmp);
-
-      // takeover background pics
-      fpath = find_file (TAKEOVER_BG_PIC_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
-      takeover_bg_pic = Load_Block (fpath, 0, 0, NULL, 0);
-      set_takeover_rects (); // setup takeover rectangles
-
-      // cursor shapes
-      arrow_cursor = init_system_cursor (arrow_xpm);
-      crosshair_cursor = init_system_cursor (crosshair_xpm);
-      //---------- get Console pictures
-      fpath = find_file (CONSOLE_PIC_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
-      console_pic = Load_Block (fpath, 0, 0, NULL, 0);
-      fpath = find_file (CONSOLE_BG_PIC1_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
-      console_bg_pic1 = Load_Block (fpath, 0, 0, NULL, 0);
-      fpath = find_file (CONSOLE_BG_PIC2_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
-      console_bg_pic2 = Load_Block (fpath, 0, 0, NULL, 0);
-
-      update_progress (80);
-
-      arrow_up = IMG_Load (find_file ("arrow_up.png", GRAPHICS_DIR, NO_THEME, CRITICAL) );
-      arrow_down = IMG_Load (find_file ("arrow_down.png", GRAPHICS_DIR, NO_THEME, CRITICAL) );
-      arrow_right = IMG_Load (find_file ("arrow_right.png", GRAPHICS_DIR, NO_THEME, CRITICAL) );
-      arrow_left = IMG_Load (find_file ("arrow_left.png", GRAPHICS_DIR, NO_THEME, CRITICAL) );
-      //---------- get Banner
-      fpath = find_file (BANNER_BLOCK_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
-      banner_pic = Load_Block (fpath, 0, 0, NULL, 0);
-
-      update_progress (90);
-      //---------- get Droid images ----------
-      for (i=0; i<NUM_DROIDS; i++)
-	{
-	  // first check if we find a file with rotation-frames: first try .jpg
-	  strcpy( fname, Druidmap[i].druidname );
-	  strcat( fname , ".jpg" );
-	  fpath = find_file (fname, GRAPHICS_DIR, NO_THEME, IGNORE);
-	  // then try with .png
-	  if (!fpath)
-	    {
-	      strcpy( fname, Druidmap[i].druidname );
-	      strcat( fname , ".png" );
-	      fpath = find_file (fname, GRAPHICS_DIR, NO_THEME, CRITICAL);
-	    }
-
-	  packed_portraits[i] = load_raw_pic (fpath, &portrait_raw_mem[i] );
-	}
-
-      update_progress (95);
-      // we need the 999.png in any case for transparency!
-      strcpy( fname, Druidmap[DRUID999].druidname );
-      strcat( fname , ".png" );
-      fpath = find_file (fname, GRAPHICS_DIR, NO_THEME, CRITICAL);
-      pic999 = Load_Block (fpath, 0, 0, NULL, 0);
-
-      // get the Ashes pics
-      strcpy (fname, "Ashes.png");
-      fpath = find_file (fname, GRAPHICS_DIR, NO_THEME, WARNONLY);
-      if (!fpath)
-	{
-	  DebugPrintf (0, "WARNING: deactivated display of droid-decals\n");
-	  GameConfig.ShowDecals = FALSE;
-      }
-      else
-	{
-	  Load_Block (fpath, 0, 0, NULL, INIT_ONLY);
-	  Decal_pics[0] = Load_Block (NULL, 0, 0, &OrigBlock_Rect, 0);
-	  Decal_pics[1] = Load_Block (NULL, 0, 1, &OrigBlock_Rect, 0);
-	}
-
-    } // if first_call
-
-  update_progress (96);
-  // if scale != 1 then we need to rescale everything now
-  ScaleGraphics (GameConfig.scale);
-
-  update_progress (98);
-
-  // make sure bullet-surfaces get re-generated!
-  for ( i = 0 ; i < MAXBULLETS ; i++ )
-    AllBullets[i].Surfaces_were_generated = FALSE ;
-
-  SetCurrentFont (oldfont);
-
-  first_call = FALSE;
-
-  return (TRUE);
-
-}  // InitPictures
+// int
+// InitPictures (void)
+// {
+//   static bool first_call= TRUE;
+//   char *fpath;
+//   int line, col, i;
+//   BFont_Info *oldfont;
+//   SDL_Surface *tmp;
+//   char fname[500];
+// 
+//   // Loading all these pictures might take a while...
+//   // and we do not want do deal with huge frametimes, which
+//   // could box the influencer out of the ship....
+//   Activate_Conservative_Frame_Computation();
+// 
+//   oldfont = GetCurrentFont ();
+// 
+//   if (!fonts_loaded)
+//     Load_Fonts ();
+// 
+//   SetCurrentFont (Font0_BFont);
+// 
+//   init_progress ("Loading pictures");
+// 
+//   LoadThemeConfigurationFile();
+// 
+//   update_progress (15);
+// 
+//   //---------- get Map blocks
+//   fpath = find_file (MAP_BLOCK_FILE, GRAPHICS_DIR, USE_THEME, CRITICAL);
+//   Load_Block (fpath, 0, 0, NULL, INIT_ONLY);	/* init function */
+//   for (line = 0; line < NUM_COLORS; line ++)
+//     for (col = 0; col < NUM_MAP_BLOCKS; col ++)
+//       {
+// 	FreeIfUsed (OrigMapBlockSurfacePointer[line][col]);
+// 	OrigMapBlockSurfacePointer[line][col] = Load_Block (NULL, line, col, &OrigBlock_Rect,0);
+// 	MapBlockSurfacePointer[line][col] = OrigMapBlockSurfacePointer[line][col];
+//       }
+//   update_progress (20);
+//   //---------- get Droid-model  blocks
+//   fpath = find_file (DROID_BLOCK_FILE, GRAPHICS_DIR, USE_THEME, CRITICAL);
+//   Load_Block (fpath, 0, 0, NULL, INIT_ONLY);
+//   for (col = 0; col < DROID_PHASES; col ++)
+//     {
+//       FreeIfUsed (InfluencerSurfacePointer[col]);
+//       FreeIfUsed (EnemySurfacePointer[col]);
+//       InfluencerSurfacePointer[col] = Load_Block (NULL, 0, col, &OrigBlock_Rect, 0);
+//       EnemySurfacePointer[col] = Load_Block (NULL, 1, col, &OrigBlock_Rect, 0);
+//       /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
+//       SDL_SetAlpha (InfluencerSurfacePointer[col], 0, 0);
+//       SDL_SetAlpha (EnemySurfacePointer[col], 0, 0);
+//     }
+// 
+//   //  SDL_SetAlpha( Me.pic, SDL_SRCALPHA, SDL_ALPHA_OPAQUE);
+// 
+//   update_progress (30);
+//   //---------- get Bullet blocks
+//   fpath = find_file (BULLET_BLOCK_FILE, GRAPHICS_DIR, USE_THEME, CRITICAL);
+//   Load_Block (fpath, 0, 0, NULL, INIT_ONLY);
+//   for (line = 0; line < Number_Of_Bullet_Types; line ++)
+//     for (col = 0; col < Bulletmap[line].phases; col ++)
+//       {
+// 	FreeIfUsed (Bulletmap[line].SurfacePointer[col]);
+// 	Bulletmap[line].SurfacePointer[col] = Load_Block (NULL, line, col, &OrigBlock_Rect, 0);
+//       }
+// 
+//   update_progress (35);
+// 
+//   //---------- get Blast blocks
+//   fpath = find_file (BLAST_BLOCK_FILE, GRAPHICS_DIR, USE_THEME, CRITICAL);
+//   Load_Block (fpath, 0, 0, NULL, INIT_ONLY);
+//   for (line = 0; line <  ALLBLASTTYPES; line ++)
+//     for (col = 0; col < Blastmap[line].phases; col ++)
+//       {
+// 	FreeIfUsed (Blastmap[line].SurfacePointer[col]);
+// 	Blastmap[line].SurfacePointer[col] = Load_Block (NULL, line, col, &OrigBlock_Rect, 0);
+//       }
+// 
+//   update_progress (45);
+// 
+//   //---------- get Digit blocks
+//   fpath = find_file (DIGIT_BLOCK_FILE, GRAPHICS_DIR, USE_THEME, CRITICAL);
+//   Load_Block (fpath, 0, 0, NULL, INIT_ONLY);
+//   for (col = 0; col < 10; col++)
+//     {
+//       FreeIfUsed (InfluDigitSurfacePointer[col]);
+//       InfluDigitSurfacePointer[col] = Load_Block (NULL, 0, col, &OrigDigit_Rect, 0);
+//       FreeIfUsed (EnemyDigitSurfacePointer[col]);
+//       EnemyDigitSurfacePointer[col] = Load_Block (NULL, 0, col + 10, &OrigDigit_Rect, 0);
+//     }
+//   update_progress(50);
+// 
+//   //---------- get Takeover pics
+//   FreeIfUsed(to_blocks);   /* this happens when we do theme-switching */
+//   fpath = find_file (TO_BLOCK_FILE, GRAPHICS_DIR, USE_THEME, CRITICAL);
+//   to_blocks = Load_Block (fpath, 0, 0, NULL, 0);
+// 
+//   update_progress (60);
+// 
+//   FreeIfUsed(ship_on_pic);
+//   ship_on_pic = IMG_Load (find_file (SHIP_ON_PIC_FILE, GRAPHICS_DIR, USE_THEME, CRITICAL));
+//   FreeIfUsed(ship_off_pic);
+//   ship_off_pic= IMG_Load (find_file (SHIP_OFF_PIC_FILE, GRAPHICS_DIR, USE_THEME, CRITICAL));
+// 
+//   // the following are not theme-specific and are therefore only loaded once!
+//   if (first_call)
+//     {
+//       //  create the tmp block-build storage
+//       tmp = SDL_CreateRGBSurface( 0 , Block_Rect.w, Block_Rect.h, vid_bpp, 0, 0, 0, 0);
+//       BuildBlock = SDL_DisplayFormatAlpha (tmp);
+//       SDL_FreeSurface (tmp);
+// 
+//       // takeover background pics
+//       fpath = find_file (TAKEOVER_BG_PIC_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
+//       takeover_bg_pic = Load_Block (fpath, 0, 0, NULL, 0);
+//       set_takeover_rects (); // setup takeover rectangles
+// 
+//       // cursor shapes
+//       arrow_cursor = init_system_cursor (arrow_xpm);
+//       crosshair_cursor = init_system_cursor (crosshair_xpm);
+//       //---------- get Console pictures
+//       fpath = find_file (CONSOLE_PIC_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
+//       console_pic = Load_Block (fpath, 0, 0, NULL, 0);
+//       fpath = find_file (CONSOLE_BG_PIC1_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
+//       console_bg_pic1 = Load_Block (fpath, 0, 0, NULL, 0);
+//       fpath = find_file (CONSOLE_BG_PIC2_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
+//       console_bg_pic2 = Load_Block (fpath, 0, 0, NULL, 0);
+// 
+//       update_progress (80);
+// 
+//       arrow_up = IMG_Load (find_file ("arrow_up.png", GRAPHICS_DIR, NO_THEME, CRITICAL) );
+//       arrow_down = IMG_Load (find_file ("arrow_down.png", GRAPHICS_DIR, NO_THEME, CRITICAL) );
+//       arrow_right = IMG_Load (find_file ("arrow_right.png", GRAPHICS_DIR, NO_THEME, CRITICAL) );
+//       arrow_left = IMG_Load (find_file ("arrow_left.png", GRAPHICS_DIR, NO_THEME, CRITICAL) );
+//       //---------- get Banner
+//       fpath = find_file (BANNER_BLOCK_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
+//       banner_pic = Load_Block (fpath, 0, 0, NULL, 0);
+// 
+//       update_progress (90);
+//       //---------- get Droid images ----------
+//       for (i=0; i<NUM_DROIDS; i++)
+// 	{
+// 	  // first check if we find a file with rotation-frames: first try .jpg
+// 	  strcpy( fname, Druidmap[i].druidname );
+// 	  strcat( fname , ".jpg" );
+// 	  fpath = find_file (fname, GRAPHICS_DIR, NO_THEME, IGNORE);
+// 	  // then try with .png
+// 	  if (!fpath)
+// 	    {
+// 	      strcpy( fname, Druidmap[i].druidname );
+// 	      strcat( fname , ".png" );
+// 	      fpath = find_file (fname, GRAPHICS_DIR, NO_THEME, CRITICAL);
+// 	    }
+// 
+// 	  packed_portraits[i] = load_raw_pic (fpath, &portrait_raw_mem[i] );
+// 	}
+// 
+//       update_progress (95);
+//       // we need the 999.png in any case for transparency!
+//       strcpy( fname, Druidmap[DRUID999].druidname );
+//       strcat( fname , ".png" );
+//       fpath = find_file (fname, GRAPHICS_DIR, NO_THEME, CRITICAL);
+//       pic999 = Load_Block (fpath, 0, 0, NULL, 0);
+// 
+//       // get the Ashes pics
+//       strcpy (fname, "Ashes.png");
+//       fpath = find_file (fname, GRAPHICS_DIR, NO_THEME, WARNONLY);
+//       if (!fpath)
+// 	{
+// 	  DebugPrintf (0, "WARNING: deactivated display of droid-decals\n");
+// 	  GameConfig.ShowDecals = FALSE;
+//       }
+//       else
+// 	{
+// 	  Load_Block (fpath, 0, 0, NULL, INIT_ONLY);
+// 	  Decal_pics[0] = Load_Block (NULL, 0, 0, &OrigBlock_Rect, 0);
+// 	  Decal_pics[1] = Load_Block (NULL, 0, 1, &OrigBlock_Rect, 0);
+// 	}
+// 
+//     } // if first_call
+// 
+//   update_progress (96);
+//   // if scale != 1 then we need to rescale everything now
+//   ScaleGraphics (GameConfig.scale);
+// 
+//   update_progress (98);
+// 
+//   // make sure bullet-surfaces get re-generated!
+//   for ( i = 0 ; i < MAXBULLETS ; i++ )
+//     AllBullets[i].Surfaces_were_generated = FALSE ;
+// 
+//   SetCurrentFont (oldfont);
+// 
+//   first_call = FALSE;
+// 
+//   return (TRUE);
+// 
+// }  // InitPictures
 
 
 /*----------------------------------------------------------------------

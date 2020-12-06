@@ -1,31 +1,39 @@
 use crate::{
-    b_font::{BFontInfo, LoadFont, PutPixel},
+    b_font::{BFontInfo, GetCurrentFont, LoadFont, PutPixel, SetCurrentFont},
     defs::{
         self, free_if_unused, scale_point, scale_rect, Cmds, Criticality, DisplayBannerFlags,
-        Droid, Sound, Themed, FONT0_FILE, FONT0_FILE_C, FONT1_FILE, FONT1_FILE_C, FONT2_FILE,
-        FONT2_FILE_C, FREE_ONLY, GRAPHICS_DIR_C, ICON_FILE, ICON_FILE_C, INIT_ONLY, PARA_FONT_FILE,
-        PARA_FONT_FILE_C,
+        Droid, Sound, Themed, BANNER_BLOCK_FILE_C, BLAST_BLOCK_FILE_C, BULLET_BLOCK_FILE_C,
+        CONSOLE_BG_PIC1_FILE_C, CONSOLE_BG_PIC2_FILE_C, CONSOLE_PIC_FILE_C, DIGIT_BLOCK_FILE_C,
+        DROID_BLOCK_FILE_C, FONT0_FILE, FONT0_FILE_C, FONT1_FILE, FONT1_FILE_C, FONT2_FILE,
+        FONT2_FILE_C, FREE_ONLY, GRAPHICS_DIR_C, ICON_FILE, ICON_FILE_C, INIT_ONLY,
+        MAP_BLOCK_FILE_C, MAXBULLETS, PARA_FONT_FILE, PARA_FONT_FILE_C, SHIP_OFF_PIC_FILE_C,
+        SHIP_ON_PIC_FILE_C, TAKEOVER_BG_PIC_FILE_C,
     },
     global::{
         arrow_cursor, arrow_down, arrow_left, arrow_right, arrow_up, banner_pic, console_bg_pic1,
         console_bg_pic2, console_pic, crosshair_cursor, ne_screen, packed_portraits, pic999,
         progress_filler_pic, progress_meter_pic, ship_off_pic, ship_on_pic, takeover_bg_pic,
-        to_blocks, BannerIsDestroyed, Banner_Rect, Blastmap, Block_Rect, BuildBlock, Bulletmap,
-        CapsuleBlocks, Classic_User_Rect, ConsMenuItem_Rect, Cons_Droid_Rect, Cons_Header_Rect,
-        Cons_Menu_Rect, Cons_Menu_Rects, Cons_Text_Rect, CurCapsuleStart, Decal_pics, Digit_Rect,
-        DruidStart, EnemyDigitSurfacePointer, EnemySurfacePointer, FillBlocks, FirstDigit_Rect,
-        Font0_BFont, Font1_BFont, Font2_BFont, Full_User_Rect, GameConfig, Highscore_BFont,
-        InfluDigitSurfacePointer, InfluencerSurfacePointer, LeftCapsulesStart, LeftInfo_Rect,
-        MapBlockSurfacePointer, Menu_BFont, Menu_Rect, Number_Of_Bullet_Types, OptionsMenu_Rect,
-        OrigMapBlockSurfacePointer, Para_BFont, PlaygroundStart, Portrait_Rect, RightInfo_Rect,
-        Screen_Rect, SecondDigit_Rect, TO_CapsuleRect, TO_ColumnRect, TO_ColumnStart,
-        TO_ElementRect, TO_FillBlock, TO_GroundRect, TO_LeaderBlockStart, TO_LeaderLed,
-        TO_LeftGroundStart, TO_RightGroundStart, ThirdDigit_Rect, ToColumnBlock, ToGameBlocks,
-        ToGroundBlocks, ToLeaderBlock, User_Rect,
+        to_blocks, AllBullets, BannerIsDestroyed, Banner_Rect, Blastmap, Block_Rect, BuildBlock,
+        Bulletmap, CapsuleBlocks, Classic_User_Rect, ConsMenuItem_Rect, Cons_Droid_Rect,
+        Cons_Header_Rect, Cons_Menu_Rect, Cons_Menu_Rects, Cons_Text_Rect, CurCapsuleStart,
+        Decal_pics, Digit_Rect, DruidStart, Druidmap, EnemyDigitSurfacePointer,
+        EnemySurfacePointer, FillBlocks, FirstDigit_Rect, Font0_BFont, Font1_BFont, Font2_BFont,
+        Full_User_Rect, GameConfig, Highscore_BFont, InfluDigitSurfacePointer,
+        InfluencerSurfacePointer, LeftCapsulesStart, LeftInfo_Rect, MapBlockSurfacePointer,
+        Menu_BFont, Menu_Rect, Number_Of_Bullet_Types, OptionsMenu_Rect, OrigBlock_Rect,
+        OrigDigit_Rect, OrigMapBlockSurfacePointer, Para_BFont, PlaygroundStart, Portrait_Rect,
+        RightInfo_Rect, Screen_Rect, SecondDigit_Rect, TO_CapsuleRect, TO_ColumnRect,
+        TO_ColumnStart, TO_ElementRect, TO_FillBlock, TO_GroundRect, TO_LeaderBlockStart,
+        TO_LeaderLed, TO_LeftGroundStart, TO_RightGroundStart, ThirdDigit_Rect, ToColumnBlock,
+        ToGameBlocks, ToGroundBlocks, ToLeaderBlock, User_Rect,
     },
     input::{any_key_just_pressed, cmd_is_active, wait_for_all_keys_released, SDL_Delay},
-    misc::{find_file, Activate_Conservative_Frame_Computation, MyMalloc, Terminate},
+    misc::{
+        find_file, init_progress, update_progress, Activate_Conservative_Frame_Computation,
+        MyMalloc, Terminate,
+    },
     sound::Play_Sound,
+    takeover::{set_takeover_rects, TO_BLOCK_FILE_C},
     text::printf_SDL,
     view::DisplayBanner,
 };
@@ -34,7 +42,7 @@ use array_init::array_init;
 use cstr::cstr;
 use log::{error, info, trace, warn};
 use sdl::{
-    mouse::ll::SDL_FreeCursor,
+    mouse::ll::{SDL_CreateCursor, SDL_Cursor, SDL_FreeCursor},
     sdl::{
         get_error,
         ll::{SDL_GetTicks, SDL_Init, SDL_InitSubSystem, SDL_Quit, SDL_INIT_TIMER, SDL_INIT_VIDEO},
@@ -75,6 +83,7 @@ extern "C" {
     pub fn SDL_VideoDriverName(namebuf: *mut c_char, maxlen: c_int) -> *mut c_char;
     pub fn SDL_RWFromMem(mem: *mut c_void, size: c_int) -> *mut SDL_RWops;
     pub static mut fonts_loaded: c_int;
+    pub fn LoadThemeConfigurationFile();
 }
 
 /// This function draws a "grid" on the screen, that means every
@@ -1081,4 +1090,533 @@ pub unsafe extern "C" fn load_raw_pic(
     drop(file);
 
     SDL_RWFromMem((*raw_mem) as *mut c_void, len.try_into().unwrap())
+}
+
+/// Get the pics for: druids, bullets, blasts
+///
+/// reads all blocks and puts the right pointers into
+/// the various structs
+///
+/// Returns true/false
+#[no_mangle]
+pub unsafe extern "C" fn InitPictures() -> c_int {
+    use std::sync::Once;
+
+    static DO_ONCE: Once = Once::new();
+    let mut fname: [c_char; 500] = [0; 500];
+
+    // Loading all these pictures might take a while...
+    // and we do not want do deal with huge frametimes, which
+    // could box the influencer out of the ship....
+    Activate_Conservative_Frame_Computation();
+
+    let oldfont = GetCurrentFont();
+
+    if fonts_loaded == 0 {
+        Load_Fonts();
+    }
+
+    SetCurrentFont(Font0_BFont);
+
+    init_progress(cstr!("Loading pictures").as_ptr() as *mut c_char);
+
+    LoadThemeConfigurationFile();
+
+    update_progress(15);
+
+    //---------- get Map blocks
+    let fpath = find_file(
+        MAP_BLOCK_FILE_C.as_ptr(),
+        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        Themed::UseTheme as c_int,
+        Criticality::Critical as c_int,
+    );
+    Load_Block(fpath, 0, 0, null_mut(), INIT_ONLY as i32); /* init function */
+    OrigMapBlockSurfacePointer
+        .iter_mut()
+        .enumerate()
+        .zip(MapBlockSurfacePointer.iter_mut())
+        .flat_map(|((color_index, orig_color_map), color_map)| {
+            orig_color_map
+                .iter_mut()
+                .enumerate()
+                .map(move |(block_index, orig_surface)| (color_index, block_index, orig_surface))
+                .zip(color_map.iter_mut())
+        })
+        .for_each(|((color_index, block_index, orig_surface), surface)| {
+            free_if_unused(*orig_surface);
+            *orig_surface = Load_Block(
+                null_mut(),
+                color_index.try_into().unwrap(),
+                block_index.try_into().unwrap(),
+                &mut OrigBlock_Rect,
+                0,
+            );
+            *surface = *orig_surface;
+        });
+
+    update_progress(20);
+    //---------- get Droid-model  blocks
+    let fpath = find_file(
+        DROID_BLOCK_FILE_C.as_ptr() as *mut c_char,
+        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        Themed::UseTheme as c_int,
+        Criticality::Critical as c_int,
+    );
+    Load_Block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+    InfluencerSurfacePointer
+        .iter_mut()
+        .enumerate()
+        .for_each(|(index, influencer_surface)| {
+            free_if_unused(*influencer_surface);
+            *influencer_surface = Load_Block(
+                null_mut(),
+                0,
+                index.try_into().unwrap(),
+                &mut OrigBlock_Rect,
+                0,
+            );
+
+            /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
+            SDL_SetAlpha(*influencer_surface, 0, 0);
+        });
+
+    EnemySurfacePointer
+        .iter_mut()
+        .enumerate()
+        .for_each(|(index, enemy_surface)| {
+            free_if_unused(*enemy_surface);
+            *enemy_surface = Load_Block(
+                null_mut(),
+                1,
+                index.try_into().unwrap(),
+                &mut OrigBlock_Rect,
+                0,
+            );
+
+            /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
+            SDL_SetAlpha(*enemy_surface, 0, 0);
+        });
+
+    update_progress(30);
+    //---------- get Bullet blocks
+    let fpath = find_file(
+        BULLET_BLOCK_FILE_C.as_ptr() as *mut c_char,
+        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        Themed::UseTheme as c_int,
+        Criticality::Critical as c_int,
+    );
+    Load_Block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+    std::slice::from_raw_parts_mut(Bulletmap, Number_Of_Bullet_Types.try_into().unwrap())
+        .iter_mut()
+        .enumerate()
+        .flat_map(|(bullet_type_index, bullet)| {
+            bullet
+                .SurfacePointer
+                .iter_mut()
+                .enumerate()
+                .map(move |(phase_index, surface)| (bullet_type_index, phase_index, surface))
+        })
+        .for_each(|(bullet_type_index, phase_index, surface)| {
+            free_if_unused(*surface);
+            *surface = Load_Block(
+                null_mut(),
+                bullet_type_index.try_into().unwrap(),
+                phase_index.try_into().unwrap(),
+                &mut OrigBlock_Rect,
+                0,
+            );
+        });
+
+    update_progress(35);
+
+    //---------- get Blast blocks
+    let fpath = find_file(
+        BLAST_BLOCK_FILE_C.as_ptr() as *mut c_char,
+        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        Themed::UseTheme as c_int,
+        Criticality::Critical as c_int,
+    );
+    Load_Block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+    Blastmap
+        .iter_mut()
+        .enumerate()
+        .flat_map(|(blast_type_index, blast)| {
+            blast
+                .SurfacePointer
+                .iter_mut()
+                .enumerate()
+                .map(move |(surface_index, surface)| (blast_type_index, surface_index, surface))
+        })
+        .for_each(|(blast_type_index, surface_index, surface)| {
+            free_if_unused(*surface);
+            *surface = Load_Block(
+                null_mut(),
+                blast_type_index.try_into().unwrap(),
+                surface_index.try_into().unwrap(),
+                &mut OrigBlock_Rect,
+                0,
+            );
+        });
+
+    update_progress(45);
+
+    //---------- get Digit blocks
+    let fpath = find_file(
+        DIGIT_BLOCK_FILE_C.as_ptr() as *mut c_char,
+        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        Themed::UseTheme as c_int,
+        Criticality::Critical as c_int,
+    );
+    Load_Block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+    InfluDigitSurfacePointer
+        .iter_mut()
+        .enumerate()
+        .for_each(|(index, surface)| {
+            free_if_unused(*surface);
+            *surface = Load_Block(
+                null_mut(),
+                0,
+                index.try_into().unwrap(),
+                &mut OrigDigit_Rect,
+                0,
+            );
+        });
+    EnemyDigitSurfacePointer
+        .iter_mut()
+        .enumerate()
+        .for_each(|(index, surface)| {
+            free_if_unused(*surface);
+            *surface = Load_Block(
+                null_mut(),
+                0,
+                (index + 10).try_into().unwrap(),
+                &mut OrigDigit_Rect,
+                0,
+            );
+        });
+
+    update_progress(50);
+
+    //---------- get Takeover pics
+    free_if_unused(to_blocks); /* this happens when we do theme-switching */
+    let fpath = find_file(
+        TO_BLOCK_FILE_C.as_ptr() as *mut c_char,
+        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        Themed::UseTheme as c_int,
+        Criticality::Critical as c_int,
+    );
+    to_blocks = Load_Block(fpath, 0, 0, null_mut(), 0);
+
+    update_progress(60);
+
+    free_if_unused(ship_on_pic);
+    ship_on_pic = IMG_Load(find_file(
+        SHIP_ON_PIC_FILE_C.as_ptr() as *mut c_char,
+        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        Themed::UseTheme as c_int,
+        Criticality::Critical as c_int,
+    ));
+    free_if_unused(ship_off_pic);
+    ship_off_pic = IMG_Load(find_file(
+        SHIP_OFF_PIC_FILE_C.as_ptr() as *mut c_char,
+        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        Themed::UseTheme as c_int,
+        Criticality::Critical as c_int,
+    ));
+
+    // the following are not theme-specific and are therefore only loaded once!
+    DO_ONCE.call_once(|| {
+        //  create the tmp block-build storage
+        let tmp = SDL_CreateRGBSurface(
+            0,
+            Block_Rect.w.into(),
+            Block_Rect.h.into(),
+            vid_bpp,
+            0,
+            0,
+            0,
+            0,
+        );
+        BuildBlock = SDL_DisplayFormatAlpha(tmp);
+        SDL_FreeSurface(tmp);
+
+        // takeover background pics
+        let fpath = find_file(
+            TAKEOVER_BG_PIC_FILE_C.as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::Critical as c_int,
+        );
+        takeover_bg_pic = Load_Block(fpath, 0, 0, null_mut(), 0);
+        set_takeover_rects(); // setup takeover rectangles
+
+        // cursor shapes
+        arrow_cursor = init_system_cursor(&ARROW_XPM);
+        crosshair_cursor = init_system_cursor(&CROSSHAIR_XPM);
+        //---------- get Console pictures
+        let fpath = find_file(
+            CONSOLE_PIC_FILE_C.as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::Critical as c_int,
+        );
+        console_pic = Load_Block(fpath, 0, 0, null_mut(), 0);
+        let fpath = find_file(
+            CONSOLE_BG_PIC1_FILE_C.as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::Critical as c_int,
+        );
+        console_bg_pic1 = Load_Block(fpath, 0, 0, null_mut(), 0);
+        let fpath = find_file(
+            CONSOLE_BG_PIC2_FILE_C.as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::Critical as c_int,
+        );
+        console_bg_pic2 = Load_Block(fpath, 0, 0, null_mut(), 0);
+
+        update_progress(80);
+
+        arrow_up = IMG_Load(find_file(
+            cstr!("arrow_up.png").as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::Critical as c_int,
+        ));
+        arrow_down = IMG_Load(find_file(
+            cstr!("arrow_down.png").as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::Critical as c_int,
+        ));
+        arrow_right = IMG_Load(find_file(
+            cstr!("arrow_right.png").as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::Critical as c_int,
+        ));
+        arrow_left = IMG_Load(find_file(
+            cstr!("arrow_left.png").as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::Critical as c_int,
+        ));
+        //---------- get Banner
+        let fpath = find_file(
+            BANNER_BLOCK_FILE_C.as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::Critical as c_int,
+        );
+        banner_pic = Load_Block(fpath, 0, 0, null_mut(), 0);
+
+        update_progress(90);
+        //---------- get Droid images ----------
+        let droids = std::slice::from_raw_parts(Druidmap, Droid::NumDroids as usize);
+        droids
+            .iter()
+            .zip(packed_portraits.iter_mut())
+            .zip(portrait_raw_mem.iter_mut())
+            .for_each(|((droid, packed_portrait), raw_portrait)| {
+                // first check if we find a file with rotation-frames: first try .jpg
+                libc::strcpy(fname.as_mut_ptr(), droid.druidname.as_ptr());
+                libc::strcat(fname.as_mut_ptr(), cstr!(".jpg").as_ptr());
+                let mut fpath = find_file(
+                    fname.as_mut_ptr(),
+                    GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                    Themed::NoTheme as c_int,
+                    Criticality::Ignore as c_int,
+                );
+                // then try with .png
+                if fpath.is_null() {
+                    libc::strcpy(fname.as_mut_ptr(), droid.druidname.as_ptr());
+                    libc::strcat(fname.as_mut_ptr(), cstr!(".png").as_ptr());
+                    fpath = find_file(
+                        fname.as_mut_ptr(),
+                        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                        Themed::NoTheme as c_int,
+                        Criticality::Critical as c_int,
+                    );
+                }
+
+                *packed_portrait = load_raw_pic(fpath, raw_portrait);
+            });
+
+        update_progress(95);
+        // we need the 999.png in any case for transparency!
+        libc::strcpy(
+            fname.as_mut_ptr(),
+            droids[Droid::Droid999 as usize].druidname.as_ptr(),
+        );
+        libc::strcat(fname.as_mut_ptr(), cstr!(".png").as_ptr());
+        let fpath = find_file(
+            fname.as_mut_ptr(),
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::Critical as c_int,
+        );
+        pic999 = Load_Block(fpath, 0, 0, null_mut(), 0);
+
+        // get the Ashes pics
+        libc::strcpy(fname.as_mut_ptr(), cstr!("Ashes.png").as_ptr());
+        let fpath = find_file(
+            fname.as_mut_ptr(),
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::WarnOnly as c_int,
+        );
+        if fpath.is_null() {
+            warn!("deactivated display of droid-decals");
+            GameConfig.ShowDecals = false.into();
+        } else {
+            Load_Block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+            Decal_pics[0] = Load_Block(null_mut(), 0, 0, &mut OrigBlock_Rect, 0);
+            Decal_pics[1] = Load_Block(null_mut(), 0, 1, &mut OrigBlock_Rect, 0);
+        }
+    });
+
+    update_progress(96);
+    // if scale != 1 then we need to rescale everything now
+    ScaleGraphics(GameConfig.scale);
+
+    update_progress(98);
+
+    // make sure bullet-surfaces get re-generated!
+    AllBullets
+        .iter_mut()
+        .take(MAXBULLETS)
+        .for_each(|bullet| bullet.Surfaces_were_generated = false.into());
+
+    SetCurrentFont(oldfont);
+
+    true.into()
+}
+
+const CROSSHAIR_XPM: [&[u8]; 37] = [
+    /* width height num_colors chars_per_pixel */
+    &*b"    32    32        3            1",
+    /* colors */
+    b"X c #000000",
+    b". c #ffffff",
+    b"  c None",
+    /* pixels */
+    b"                                ",
+    b"                                ",
+    b"               XXXX             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               XXXX             ",
+    b"                                ",
+    b"   XXXXXXXXXXX      XXXXXXXXXX  ",
+    b"   X.........X      X........X  ",
+    b"   X.........X      X........X  ",
+    b"   XXXXXXXXXXX      XXXXXXXXXX  ",
+    b"                                ",
+    b"               XXXX             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               XXXX             ",
+    b"                                ",
+    b"                                ",
+    b"0,0",
+];
+
+const ARROW_XPM: [&[u8]; 37] = [
+    /* width height num_colors chars_per_pixel */
+    &*b"    32    32        3            1",
+    /* colors */
+    b"X c #000000",
+    b". c #ffffff",
+    b"  c None",
+    /* pixels */
+    b"X                               ",
+    b"XX                              ",
+    b"X.X                             ",
+    b"X..X                            ",
+    b"X...X                           ",
+    b"X....X                          ",
+    b"X.....X                         ",
+    b"X......X                        ",
+    b"X.......X                       ",
+    b"X........X                      ",
+    b"X.....XXXXX                     ",
+    b"X..X..X                         ",
+    b"X.X X..X                        ",
+    b"XX  X..X                        ",
+    b"X    X..X                       ",
+    b"     X..X                       ",
+    b"      X..X                      ",
+    b"      X..X                      ",
+    b"       XX                       ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"0,0",
+];
+
+/// This function was taken directly from the example in the SDL docu.
+/// Even there they say they have stolen if from the mailing list.
+/// Anyway it should create a new mouse cursor from an XPM.
+/// The XPM is defined above and not read in from disk or something.
+fn init_system_cursor(image: &[&[u8]]) -> *mut SDL_Cursor {
+    let mut data = [0u8; 4 * 32];
+    let mut mask = [0u8; 4 * 32];
+
+    let mut i: isize = -1;
+    for row in 0..32 {
+        for col in 0..32 {
+            if col % 8 != 0 {
+                data[i as usize] <<= 1;
+                mask[i as usize] <<= 1;
+            } else {
+                i += 1;
+                data[i as usize] = 0;
+                mask[i as usize] = 0;
+            }
+
+            match image[4 + row][col] {
+                b'X' => {
+                    data[i as usize] |= 0x01;
+                    mask[i as usize] |= 0x01;
+                }
+                b'.' => {
+                    mask[i as usize] |= 0x01;
+                }
+                b' ' => {}
+                _ => panic!("invalid XPM charater"),
+            }
+        }
+    }
+
+    let last_line = std::str::from_utf8(&image[4 + 32]).unwrap();
+    let mut hots = last_line.splitn(2, ',').map(|x| x.parse().unwrap());
+    let hot_x = hots.next().unwrap();
+    let hot_y = hots.next().unwrap();
+    unsafe { SDL_CreateCursor(data.as_mut_ptr(), mask.as_mut_ptr(), 32, 32, hot_x, hot_y) }
 }

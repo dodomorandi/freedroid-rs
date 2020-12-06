@@ -370,38 +370,55 @@ pub const SOUND_DIR: &str = "sound/";
 pub const MAP_DIR: &str = "map/";
 
 pub const MAP_BLOCK_FILE: &str = "map_blocks.png";
+pub const MAP_BLOCK_FILE_C: &CStr = cstr!("map_blocks.png");
 pub const DROID_BLOCK_FILE: &str = "droids.png";
+pub const DROID_BLOCK_FILE_C: &CStr = cstr!("droids.png");
 pub const BULLET_BLOCK_FILE: &str = "bullet.png";
+pub const BULLET_BLOCK_FILE_C: &CStr = cstr!("bullet.png");
 pub const BLAST_BLOCK_FILE: &str = "blast.png";
+pub const BLAST_BLOCK_FILE_C: &CStr = cstr!("blast.png");
 pub const DIGIT_BLOCK_FILE: &str = "digits.png";
+pub const DIGIT_BLOCK_FILE_C: &CStr = cstr!("digits.png");
 
 pub const BANNER_BLOCK_FILE: &str = "banner.png";
+pub const BANNER_BLOCK_FILE_C: &CStr = cstr!("banner.png");
 pub const TITLE_PIC_FILE: &str = "title.jpg";
+pub const TITLE_PIC_FILE_C: &CStr = cstr!("title.jpg");
 pub const CONSOLE_PIC_FILE: &str = "console_fg.png";
+pub const CONSOLE_PIC_FILE_C: &CStr = cstr!("console_fg.png");
 pub const CONSOLE_BG_PIC1_FILE: &str = "console_bg1.jpg";
+pub const CONSOLE_BG_PIC1_FILE_C: &CStr = cstr!("console_bg1.jpg");
 pub const CONSOLE_BG_PIC2_FILE: &str = "console_bg2.jpg";
+pub const CONSOLE_BG_PIC2_FILE_C: &CStr = cstr!("console_bg2.jpg");
 pub const TAKEOVER_BG_PIC_FILE: &str = "takeover_bg.jpg";
+pub const TAKEOVER_BG_PIC_FILE_C: &CStr = cstr!("takeover_bg.jpg");
 pub const CREDITS_PIC_FILE: &str = "credits.jpg";
+pub const CREDITS_PIC_FILE_C: &CStr = cstr!("credits.jpg");
 
 pub const SHIP_ON_PIC_FILE: &str = "ship_on.png";
+pub const SHIP_ON_PIC_FILE_C: &CStr = cstr!("ship_on.png");
 pub const SHIP_OFF_PIC_FILE: &str = "ship_off.png";
+pub const SHIP_OFF_PIC_FILE_C: &CStr = cstr!("ship_off.png");
 
 pub const PROGRESS_METER_FILE: &str = "progress_meter.png";
+pub const PROGRESS_METER_FILE_C: &CStr = cstr!("progress_meter.png");
 pub const PROGRESS_FILLER_FILE: &str = "progress_filler.png";
+pub const PROGRESS_FILLER_FILE_C: &CStr = cstr!("progress_filler.png");
 
 pub const STANDARD_MISSION: &str = "Paradroid.mission";
+pub const STANDARD_MISSION_C: &CStr = cstr!("Paradroid.mission");
 pub const NEW_MISSION: &str = "CleanPrivateGoodsStorageCellar.mission";
+pub const NEW_MISSION_C: &CStr = cstr!("CleanPrivateGoodsStorageCellar.mission");
 
 pub const PARA_FONT_FILE: &str = "parafont.png";
-pub const FONT0_FILE: &str = "font05.png";
-pub const FONT1_FILE: &str = "font05_green.png";
-pub const FONT2_FILE: &str = "font05_red.png";
-pub const ICON_FILE: &str = "paraicon_48x48.png";
-
 pub const PARA_FONT_FILE_C: &CStr = cstr!("parafont.png");
+pub const FONT0_FILE: &str = "font05.png";
 pub const FONT0_FILE_C: &CStr = cstr!("font05.png");
+pub const FONT1_FILE: &str = "font05_green.png";
 pub const FONT1_FILE_C: &CStr = cstr!("font05_green.png");
+pub const FONT2_FILE: &str = "font05_red.png";
 pub const FONT2_FILE_C: &CStr = cstr!("font05_red.png");
+pub const ICON_FILE: &str = "paraicon_48x48.png";
 pub const ICON_FILE_C: &CStr = cstr!("paraicon_48x48.png");
 
 // **********************************************************************
