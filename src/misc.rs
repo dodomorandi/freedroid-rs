@@ -50,6 +50,16 @@ extern "C" {
     pub static mut Now_SDL_Ticks: u32;
     pub static mut oneframedelay: c_long;
     pub fn init_progress(txt: *mut c_char);
+    pub fn ReadAndMallocAndTerminateFile(
+        filename: *mut c_char,
+        file_end_string: *mut c_char,
+    ) -> *mut c_char;
+    pub fn ReadValueFromString(
+        data: *mut c_char,
+        label: *mut c_char,
+        format_string: *mut c_char,
+        dst: *mut c_void,
+    );
 }
 
 static CURRENT_TIME_FACTOR: Lazy<RwLock<f32>> = Lazy::new(|| RwLock::new(1.));

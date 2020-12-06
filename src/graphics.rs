@@ -30,7 +30,7 @@ use crate::{
     input::{any_key_just_pressed, cmd_is_active, wait_for_all_keys_released, SDL_Delay},
     misc::{
         find_file, init_progress, update_progress, Activate_Conservative_Frame_Computation,
-        MyMalloc, Terminate,
+        MyMalloc, ReadAndMallocAndTerminateFile, ReadValueFromString, Terminate,
     },
     sound::Play_Sound,
     takeover::{set_takeover_rects, TO_BLOCK_FILE_C},
@@ -64,7 +64,7 @@ use sdl::{
 use std::{
     convert::{TryFrom, TryInto},
     ffi::CStr,
-    os::raw::{c_char, c_double, c_float, c_int, c_void},
+    os::raw::{c_char, c_double, c_float, c_int, c_short, c_void},
     ptr::null_mut,
 };
 
@@ -83,7 +83,6 @@ extern "C" {
     pub fn SDL_VideoDriverName(namebuf: *mut c_char, maxlen: c_int) -> *mut c_char;
     pub fn SDL_RWFromMem(mem: *mut c_void, size: c_int) -> *mut SDL_RWops;
     pub static mut fonts_loaded: c_int;
-    pub fn LoadThemeConfigurationFile();
 }
 
 /// This function draws a "grid" on the screen, that means every
@@ -1619,4 +1618,148 @@ fn init_system_cursor(image: &[&[u8]]) -> *mut SDL_Cursor {
     let hot_x = hots.next().unwrap();
     let hot_y = hots.next().unwrap();
     unsafe { SDL_CreateCursor(data.as_mut_ptr(), mask.as_mut_ptr(), 32, 32, hot_x, hot_y) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn LoadThemeConfigurationFile() {
+    use bstr::ByteSlice;
+
+    const END_OF_THEME_DATA_STRING: &CStr = cstr!("**** End of theme data section ****");
+
+    let fpath = find_file(
+        cstr!("config.theme").as_ptr() as *mut c_char,
+        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        Themed::UseTheme as c_int,
+        Criticality::Critical as c_int,
+    );
+
+    let data_ptr =
+        ReadAndMallocAndTerminateFile(fpath, END_OF_THEME_DATA_STRING.as_ptr() as *mut c_char);
+    let data = CStr::from_ptr(data_ptr).to_bytes();
+
+    //--------------------
+    // Now the file is read in entirely and
+    // we can start to analyze its content,
+    //
+    const BLAST_ONE_NUMBER_OF_PHASES_STRING: &CStr = cstr!("How many phases in Blast one :");
+    const BLAST_TWO_NUMBER_OF_PHASES_STRING: &CStr = cstr!("How many phases in Blast two :");
+
+    ReadValueFromString(
+        data.as_ptr() as *mut c_char,
+        BLAST_ONE_NUMBER_OF_PHASES_STRING.as_ptr() as *mut c_char,
+        cstr!("%d").as_ptr() as *mut c_char,
+        &mut Blastmap[0].phases as *mut c_int as *mut c_void,
+    );
+
+    ReadValueFromString(
+        data.as_ptr() as *mut c_char,
+        BLAST_TWO_NUMBER_OF_PHASES_STRING.as_ptr() as *mut c_char,
+        cstr!("%d").as_ptr() as *mut c_char,
+        &mut Blastmap[1].phases as *mut c_int as *mut c_void,
+    );
+
+    // Next we read in the number of phases that are to be used for each bullet type
+    let mut reader = &data[..];
+    while let Some(read_start) = reader.find(b"For Bullettype Nr.=") {
+        let read = &reader[read_start..];
+        let mut bullet_index: c_int = 0;
+        ReadValueFromString(
+            read.as_ptr() as *mut c_char,
+            cstr!("For Bullettype Nr.=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut bullet_index as *mut c_int as *mut c_void,
+        );
+        if bullet_index >= Number_Of_Bullet_Types {
+            error!(
+                "----------------------------------------------------------------------\n\
+                 Freedroid has encountered a problem:\n\
+                 In function 'char* LoadThemeConfigurationFile ( ... ):\n\
+                 \n\
+                 There was a specification for the number of phases in a bullet type\n\
+                 that does not at all exist in the ruleset.\n\
+                 \n\
+                 This might indicate that either the ruleset file is corrupt or the \n\
+                 theme.config configuration file is corrupt or (less likely) that there\n\
+                 is a severe bug in the reading function.\n\
+                 \n\
+                 Please check that your theme and ruleset files are properly set up.\n\
+                 \n\
+                 Please also don't forget, that you might have to run 'make install'\n\
+                 again after you've made modifications to the data files in the source tree.\n\
+                 \n\
+                 Freedroid will terminate now to draw attention to the data problem it could\n\
+                 not resolve.... Sorry, if that interrupts a major game of yours.....\n\
+                 ----------------------------------------------------------------------\n"
+            );
+            Terminate(defs::ERR.into());
+        }
+        ReadValueFromString(
+            read.as_ptr() as *mut c_char,
+            cstr!("we will use number of phases=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut (*Bulletmap.offset(bullet_index.try_into().unwrap())).phases as *mut c_int
+                as *mut c_void,
+        );
+        ReadValueFromString(
+            read.as_ptr() as *mut c_char,
+            cstr!("and number of phase changes per second=").as_ptr() as *mut c_char,
+            cstr!("%f").as_ptr() as *mut c_char,
+            &mut (*Bulletmap.offset(bullet_index.try_into().unwrap())).phase_changes_per_second
+                as *mut c_float as *mut c_void,
+        );
+        reader = &reader[read_start + 1..];
+    }
+
+    // --------------------
+    // Also decidable from the theme is where in the robot to
+    // display the digits.  This must also be read from the configuration
+    // file of the theme
+    //
+    const DIGIT_ONE_POSITION_X_STRING: &CStr = cstr!("First digit x :");
+    const DIGIT_ONE_POSITION_Y_STRING: &CStr = cstr!("First digit y :");
+    const DIGIT_TWO_POSITION_X_STRING: &CStr = cstr!("Second digit x :");
+    const DIGIT_TWO_POSITION_Y_STRING: &CStr = cstr!("Second digit y :");
+    const DIGIT_THREE_POSITION_X_STRING: &CStr = cstr!("Third digit x :");
+    const DIGIT_THREE_POSITION_Y_STRING: &CStr = cstr!("Third digit y :");
+
+    ReadValueFromString(
+        data.as_ptr() as *mut c_char,
+        DIGIT_ONE_POSITION_X_STRING.as_ptr() as *mut c_char,
+        cstr!("%hd").as_ptr() as *mut c_char,
+        &mut FirstDigit_Rect.x as *mut c_short as *mut c_void,
+    );
+    ReadValueFromString(
+        data.as_ptr() as *mut c_char,
+        DIGIT_ONE_POSITION_Y_STRING.as_ptr() as *mut c_char,
+        cstr!("%hd").as_ptr() as *mut c_char,
+        &mut FirstDigit_Rect.y as *mut c_short as *mut c_void,
+    );
+
+    ReadValueFromString(
+        data.as_ptr() as *mut c_char,
+        DIGIT_TWO_POSITION_X_STRING.as_ptr() as *mut c_char,
+        cstr!("%hd").as_ptr() as *mut c_char,
+        &mut SecondDigit_Rect.x as *mut c_short as *mut c_void,
+    );
+    ReadValueFromString(
+        data.as_ptr() as *mut c_char,
+        DIGIT_TWO_POSITION_Y_STRING.as_ptr() as *mut c_char,
+        cstr!("%hd").as_ptr() as *mut c_char,
+        &mut SecondDigit_Rect.y as *mut c_short as *mut c_void,
+    );
+
+    ReadValueFromString(
+        data.as_ptr() as *mut c_char,
+        DIGIT_THREE_POSITION_X_STRING.as_ptr() as *mut c_char,
+        cstr!("%hd").as_ptr() as *mut c_char,
+        &mut ThirdDigit_Rect.x as *mut i16 as *mut c_void,
+    );
+    ReadValueFromString(
+        data.as_ptr() as *mut c_char,
+        DIGIT_THREE_POSITION_Y_STRING.as_ptr() as *mut c_char,
+        cstr!("%hd").as_ptr() as *mut c_char,
+        &mut ThirdDigit_Rect.y as *mut c_short as *mut c_void,
+    );
+
+    libc::free(data_ptr as *mut c_void);
 }

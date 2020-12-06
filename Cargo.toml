@@ -12,6 +12,7 @@ gcw0 = []
 [dependencies]
 array-init = "1.0.0"
 bitflags = "1.2.1"
+bstr = "0.2.14"
 chrono = "0.4.19"
 cstr = "0.2.5"
 env_logger = "0.8.1"

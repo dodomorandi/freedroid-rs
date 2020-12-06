@@ -470,97 +470,97 @@ SetCombatScaleTo(float scale)
 ----------------------------------------------------------------------
 ----------------------------------------------------------------------
 */
-void
-LoadThemeConfigurationFile(void)
-{
-  char *Data;
-  char *ReadPointer;
-  char *fpath;
-  int BulletIndex;
-
-#define END_OF_THEME_DATA_STRING "**** End of theme data section ****"
-#define END_OF_THEME_BLAST_DATA_STRING "*** End of themes blast data section ***"
-#define END_OF_THEME_BULLET_DATA_STRING "*** End of themes bullet data section ***"
-#define END_OF_THEME_DIGIT_DATA_STRING "*** End of themes digit data section ***"
-
-  fpath = find_file ("config.theme", GRAPHICS_DIR, USE_THEME, CRITICAL);
-
-  Data = ReadAndMallocAndTerminateFile( fpath , END_OF_THEME_DATA_STRING ) ;
-
-  //--------------------
-  // Now the file is read in entirely and
-  // we can start to analyze its content,
-  //
-#define BLAST_ONE_NUMBER_OF_PHASES_STRING "How many phases in Blast one :"
-#define BLAST_TWO_NUMBER_OF_PHASES_STRING "How many phases in Blast two :"
-
-  ReadValueFromString (Data, BLAST_ONE_NUMBER_OF_PHASES_STRING, "%d", &Blastmap[0].phases);
-
-  ReadValueFromString (Data, BLAST_TWO_NUMBER_OF_PHASES_STRING, "%d", &Blastmap[1].phases);
-
-  //--------------------
-  // Next we read in the number of phases that are to be used for each bullet type
-  ReadPointer = Data ;
-  while ( ( ReadPointer = strstr ( ReadPointer , "For Bullettype Nr.=" ) ) != NULL )
-    {
-      ReadValueFromString (ReadPointer, "For Bullettype Nr.=", "%d", &BulletIndex);
-      if ( BulletIndex >= Number_Of_Bullet_Types )
-	{
-	  DebugPrintf (0, "\n\n\
-----------------------------------------------------------------------\n\
-Freedroid has encountered a problem:\n\
-In function 'char* LoadThemeConfigurationFile ( ... ):\n\
-\n\
-There was a specification for the number of phases in a bullet type\n\
-that does not at all exist in the ruleset.\n\
-\n\
-This might indicate that either the ruleset file is corrupt or the \n\
-theme.config configuration file is corrupt or (less likely) that there\n\
-is a severe bug in the reading function.\n\
-\n\
-Please check that your theme and ruleset files are properly set up.\n\
-\n\
-Please also don't forget, that you might have to run 'make install'\n\
-again after you've made modifications to the data files in the source tree.\n\
-\n\
-Freedroid will terminate now to draw attention to the data problem it could\n\
-not resolve.... Sorry, if that interrupts a major game of yours.....\n\
-----------------------------------------------------------------------\n\
-\n" );
-	  Terminate(ERR);
-	}
-      ReadValueFromString (ReadPointer, "we will use number of phases=", "%d", &Bulletmap[BulletIndex].phases);
-      ReadValueFromString (ReadPointer, "and number of phase changes per second=", "%f",
-			   &Bulletmap[BulletIndex].phase_changes_per_second);
-      ReadPointer++;
-    }
-
-  // --------------------
-  // Also decidable from the theme is where in the robot to
-  // display the digits.  This must also be read from the configuration
-  // file of the theme
-  //
-#define DIGIT_ONE_POSITION_X_STRING "First digit x :"
-#define DIGIT_ONE_POSITION_Y_STRING "First digit y :"
-#define DIGIT_TWO_POSITION_X_STRING "Second digit x :"
-#define DIGIT_TWO_POSITION_Y_STRING "Second digit y :"
-#define DIGIT_THREE_POSITION_X_STRING "Third digit x :"
-#define DIGIT_THREE_POSITION_Y_STRING "Third digit y :"
-
-  ReadValueFromString (Data, DIGIT_ONE_POSITION_X_STRING, "%hd", &FirstDigit_Rect.x);
-  ReadValueFromString (Data, DIGIT_ONE_POSITION_Y_STRING, "%hd", &FirstDigit_Rect.y);
-
-  ReadValueFromString (Data, DIGIT_TWO_POSITION_X_STRING, "%hd", &SecondDigit_Rect.x);
-  ReadValueFromString (Data, DIGIT_TWO_POSITION_Y_STRING, "%hd", &SecondDigit_Rect.y);
-
-  ReadValueFromString (Data, DIGIT_THREE_POSITION_X_STRING, "%hd", &ThirdDigit_Rect.x);
-  ReadValueFromString (Data, DIGIT_THREE_POSITION_Y_STRING, "%hd", &ThirdDigit_Rect.y);
-
-  free (Data);
-
-  return;
-
-}; // void LoadThemeConfigurationFile ( void )
+// void
+// LoadThemeConfigurationFile(void)
+// {
+//   char *Data;
+//   char *ReadPointer;
+//   char *fpath;
+//   int BulletIndex;
+// 
+// #define END_OF_THEME_DATA_STRING "**** End of theme data section ****"
+// #define END_OF_THEME_BLAST_DATA_STRING "*** End of themes blast data section ***"
+// #define END_OF_THEME_BULLET_DATA_STRING "*** End of themes bullet data section ***"
+// #define END_OF_THEME_DIGIT_DATA_STRING "*** End of themes digit data section ***"
+// 
+//   fpath = find_file ("config.theme", GRAPHICS_DIR, USE_THEME, CRITICAL);
+// 
+//   Data = ReadAndMallocAndTerminateFile( fpath , END_OF_THEME_DATA_STRING ) ;
+// 
+//   //--------------------
+//   // Now the file is read in entirely and
+//   // we can start to analyze its content,
+//   //
+// #define BLAST_ONE_NUMBER_OF_PHASES_STRING "How many phases in Blast one :"
+// #define BLAST_TWO_NUMBER_OF_PHASES_STRING "How many phases in Blast two :"
+// 
+//   ReadValueFromString (Data, BLAST_ONE_NUMBER_OF_PHASES_STRING, "%d", &Blastmap[0].phases);
+// 
+//   ReadValueFromString (Data, BLAST_TWO_NUMBER_OF_PHASES_STRING, "%d", &Blastmap[1].phases);
+// 
+//   //--------------------
+//   // Next we read in the number of phases that are to be used for each bullet type
+//   ReadPointer = Data ;
+//   while ( ( ReadPointer = strstr ( ReadPointer , "For Bullettype Nr.=" ) ) != NULL )
+//     {
+//       ReadValueFromString (ReadPointer, "For Bullettype Nr.=", "%d", &BulletIndex);
+//       if ( BulletIndex >= Number_Of_Bullet_Types )
+// 	{
+// 	  DebugPrintf (0, "\n\n\
+// ----------------------------------------------------------------------\n\
+// Freedroid has encountered a problem:\n\
+// In function 'char* LoadThemeConfigurationFile ( ... ):\n\
+// \n\
+// There was a specification for the number of phases in a bullet type\n\
+// that does not at all exist in the ruleset.\n\
+// \n\
+// This might indicate that either the ruleset file is corrupt or the \n\
+// theme.config configuration file is corrupt or (less likely) that there\n\
+// is a severe bug in the reading function.\n\
+// \n\
+// Please check that your theme and ruleset files are properly set up.\n\
+// \n\
+// Please also don't forget, that you might have to run 'make install'\n\
+// again after you've made modifications to the data files in the source tree.\n\
+// \n\
+// Freedroid will terminate now to draw attention to the data problem it could\n\
+// not resolve.... Sorry, if that interrupts a major game of yours.....\n\
+// ----------------------------------------------------------------------\n\
+// \n" );
+// 	  Terminate(ERR);
+// 	}
+//       ReadValueFromString (ReadPointer, "we will use number of phases=", "%d", &Bulletmap[BulletIndex].phases);
+//       ReadValueFromString (ReadPointer, "and number of phase changes per second=", "%f",
+// 			   &Bulletmap[BulletIndex].phase_changes_per_second);
+//       ReadPointer++;
+//     }
+// 
+//   // --------------------
+//   // Also decidable from the theme is where in the robot to
+//   // display the digits.  This must also be read from the configuration
+//   // file of the theme
+//   //
+// #define DIGIT_ONE_POSITION_X_STRING "First digit x :"
+// #define DIGIT_ONE_POSITION_Y_STRING "First digit y :"
+// #define DIGIT_TWO_POSITION_X_STRING "Second digit x :"
+// #define DIGIT_TWO_POSITION_Y_STRING "Second digit y :"
+// #define DIGIT_THREE_POSITION_X_STRING "Third digit x :"
+// #define DIGIT_THREE_POSITION_Y_STRING "Third digit y :"
+// 
+//   ReadValueFromString (Data, DIGIT_ONE_POSITION_X_STRING, "%hd", &FirstDigit_Rect.x);
+//   ReadValueFromString (Data, DIGIT_ONE_POSITION_Y_STRING, "%hd", &FirstDigit_Rect.y);
+// 
+//   ReadValueFromString (Data, DIGIT_TWO_POSITION_X_STRING, "%hd", &SecondDigit_Rect.x);
+//   ReadValueFromString (Data, DIGIT_TWO_POSITION_Y_STRING, "%hd", &SecondDigit_Rect.y);
+// 
+//   ReadValueFromString (Data, DIGIT_THREE_POSITION_X_STRING, "%hd", &ThirdDigit_Rect.x);
+//   ReadValueFromString (Data, DIGIT_THREE_POSITION_Y_STRING, "%hd", &ThirdDigit_Rect.y);
+// 
+//   free (Data);
+// 
+//   return;
+// 
+// }; // void LoadThemeConfigurationFile ( void )
 
 
 /*-----------------------------------------------------------------
