@@ -7,10 +7,9 @@ use crate::{
     },
     enemy::AnimateEnemys,
     global::{
-        ne_screen, progress_filler_pic, BannerIsDestroyed, ConfigDir, FPSover1, GameConfig, Me,
-        ProgressBar_Rect, ProgressMeter_Rect, SkipAFewFrames,
+        ConfigDir, FPSover1, GameConfig, Me, ProgressBar_Rect, ProgressMeter_Rect, SkipAFewFrames,
     },
-    graphics::FreeGraphics,
+    graphics::{ne_screen, progress_filler_pic, BannerIsDestroyed, FreeGraphics},
     highscore::SaveHighscores,
     influence::AnimateInfluence,
     init::FreeGameMem,

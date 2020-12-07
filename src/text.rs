@@ -1,15 +1,13 @@
 use crate::{
     b_font::{CharWidth, FontHeight, GetCurrentFont, PutChar, PutString},
     defs::{
-        self, Cmds, DownPressed, DownPressedR, FirePressedR, LeftPressedR, PointerStates,
-        RightPressedR, UpPressed, UpPressedR, SHOW_WAIT, TEXT_STRETCH,
+        self, Cmds, DownPressed, FirePressedR, PointerStates, UpPressed, SHOW_WAIT, TEXT_STRETCH,
     },
-    global::{ne_screen, AllEnemys, GameConfig, Me, Screen_Rect},
-    graphics::vid_bpp,
+    global::{AllEnemys, GameConfig, Me, Screen_Rect},
+    graphics::{ne_screen, vid_bpp},
     input::{
-        any_key_just_pressed, cmd_is_activeR, joy_num_axes, joy_sensitivity, key_cmds,
-        update_input, wait_for_all_keys_released, KeyIsPressedR, SDL_Delay, WheelDownPressed,
-        WheelUpPressed,
+        any_key_just_pressed, joy_num_axes, joy_sensitivity, key_cmds, update_input,
+        wait_for_all_keys_released, SDL_Delay, WheelDownPressed, WheelUpPressed,
     },
     misc::{MyRandom, Terminate},
 };

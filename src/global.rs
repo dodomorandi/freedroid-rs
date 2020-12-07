@@ -1,23 +1,19 @@
 use crate::{
     b_font::BFontInfo,
     defs::{
-        AlertNames, Droid, ALLBLASTTYPES, ALLSHIPS, DIGITNUMBER, ENEMYPHASES, MAXBLASTS,
-        MAXBULLETS, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_LIFT_ROWS, NUM_COLORS, NUM_DECAL_PICS,
-        NUM_MAP_BLOCKS,
+        AlertNames, ALLBLASTTYPES, ALLSHIPS, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, MAX_LEVELS,
+        MAX_LIFT_ROWS,
     },
     highscore::HighscoreEntry,
     structs::{
         Blast, BlastSpec, Bullet, BulletSpec, Config, DruidSpec, Enemy, Influence, Level, Point,
-        Ship, ThemeList,
+        Ship,
     },
     takeover::{NUM_CAPS_BLOCKS, NUM_FILL_BLOCKS, NUM_GROUND_BLOCKS, NUM_TO_BLOCKS, TO_COLORS},
 };
 
 use cstr::cstr;
-use sdl::{
-    mouse::ll::SDL_Cursor,
-    video::ll::{SDL_RWops, SDL_Rect, SDL_Surface},
-};
+use sdl::video::ll::{SDL_Rect, SDL_Surface};
 use std::ffi::CStr;
 
 extern "C" {
@@ -103,40 +99,6 @@ extern "C" {
     pub static mut Font1_BFont: *mut BFontInfo;
     pub static mut Font2_BFont: *mut BFontInfo;
     pub static mut SkipAFewFrames: i32;
-    pub static mut AllThemes: ThemeList;
-    pub static mut classic_theme_index: i32;
-    pub static mut crosshair_cursor: *mut SDL_Cursor;
-    pub static mut arrow_cursor: *mut SDL_Cursor;
-    pub static mut Number_Of_Bullet_Types: i32;
-    pub static mut ne_screen: *mut SDL_Surface; /* the graphics display */
-    pub static mut EnemySurfacePointer: [*mut SDL_Surface; ENEMYPHASES]; // A pointer to the surfaces containing the pictures of the
-                                                                         // enemys in different phases of rotation
-    pub static mut InfluencerSurfacePointer: [*mut SDL_Surface; ENEMYPHASES]; // A pointer to the surfaces containing the pictures of the
-                                                                              // influencer in different phases of rotation
-    pub static mut InfluDigitSurfacePointer: [*mut SDL_Surface; DIGITNUMBER]; // A pointer to the surfaces containing the pictures of the
-                                                                              // influencer in different phases of rotation
-    pub static mut EnemyDigitSurfacePointer: [*mut SDL_Surface; DIGITNUMBER]; // A pointer to the surfaces containing the pictures of the
-                                                                              // influencer in different phases of rotation
-    pub static mut MapBlockSurfacePointer: [[*mut SDL_Surface; NUM_MAP_BLOCKS]; NUM_COLORS]; // A pointer to the surfaces containing the map-pics, which may be rescaled with respect to
-    pub static mut OrigMapBlockSurfacePointer: [[*mut SDL_Surface; NUM_MAP_BLOCKS]; NUM_COLORS]; // A pointer to the surfaces containing the original map-pics as read from disk
-    pub static mut BuildBlock: *mut SDL_Surface; // a block for temporary pic-construction
-    pub static mut BannerIsDestroyed: i32;
-    pub static mut banner_pic: *mut SDL_Surface; /* the banner pic */
-    pub static mut pic999: *mut SDL_Surface;
-    pub static mut packed_portraits: [*mut SDL_RWops; Droid::NumDroids as usize];
-    pub static mut Decal_pics: [*mut SDL_Surface; NUM_DECAL_PICS];
-    pub static mut takeover_bg_pic: *mut SDL_Surface;
-    pub static mut console_pic: *mut SDL_Surface;
-    pub static mut console_bg_pic1: *mut SDL_Surface;
-    pub static mut console_bg_pic2: *mut SDL_Surface;
-    pub static mut arrow_up: *mut SDL_Surface;
-    pub static mut arrow_down: *mut SDL_Surface;
-    pub static mut arrow_right: *mut SDL_Surface;
-    pub static mut arrow_left: *mut SDL_Surface;
-    pub static mut ship_off_pic: *mut SDL_Surface; /* Side-view of ship: lights off */
-    pub static mut ship_on_pic: *mut SDL_Surface; /* Side-view of ship: lights on */
-    pub static mut progress_meter_pic: *mut SDL_Surface;
-    pub static mut progress_filler_pic: *mut SDL_Surface;
     pub static mut level_rect: [SDL_Rect; MAX_LEVELS]; /* rect's of levels in side-view */
     pub static mut liftrow_rect: [SDL_Rect; MAX_LIFT_ROWS]; /* the lift-row rect's in side-view*/
     pub static mut Highscores: *mut *mut HighscoreEntry;

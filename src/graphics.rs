@@ -4,28 +4,23 @@ use crate::{
         self, free_if_unused, get_user_center, scale_point, scale_rect, Cmds, Criticality,
         DisplayBannerFlags, Droid, Sound, Themed, BANNER_BLOCK_FILE_C, BLAST_BLOCK_FILE_C,
         BULLET_BLOCK_FILE_C, CONSOLE_BG_PIC1_FILE_C, CONSOLE_BG_PIC2_FILE_C, CONSOLE_PIC_FILE_C,
-        DIGIT_BLOCK_FILE_C, DROID_BLOCK_FILE_C, FONT0_FILE, FONT0_FILE_C, FONT1_FILE, FONT1_FILE_C,
-        FONT2_FILE, FONT2_FILE_C, FREE_ONLY, GRAPHICS_DIR_C, ICON_FILE, ICON_FILE_C, INIT_ONLY,
-        MAP_BLOCK_FILE_C, MAXBULLETS, PARA_FONT_FILE, PARA_FONT_FILE_C, SHIP_OFF_PIC_FILE_C,
+        DIGITNUMBER, DIGIT_BLOCK_FILE_C, DROID_BLOCK_FILE_C, ENEMYPHASES, FONT0_FILE, FONT0_FILE_C,
+        FONT1_FILE, FONT1_FILE_C, FONT2_FILE, FONT2_FILE_C, FREE_ONLY, GRAPHICS_DIR_C, ICON_FILE,
+        ICON_FILE_C, INIT_ONLY, MAP_BLOCK_FILE_C, MAXBULLETS, MAX_THEMES, NUM_COLORS,
+        NUM_DECAL_PICS, NUM_MAP_BLOCKS, PARA_FONT_FILE, PARA_FONT_FILE_C, SHIP_OFF_PIC_FILE_C,
         SHIP_ON_PIC_FILE_C, TAKEOVER_BG_PIC_FILE_C,
     },
     global::{
-        arrow_cursor, arrow_down, arrow_left, arrow_right, arrow_up, banner_pic, console_bg_pic1,
-        console_bg_pic2, console_pic, crosshair_cursor, ne_screen, packed_portraits, pic999,
-        progress_filler_pic, progress_meter_pic, ship_off_pic, ship_on_pic, takeover_bg_pic,
-        to_blocks, AllBullets, BannerIsDestroyed, Banner_Rect, Blastmap, Block_Rect, BuildBlock,
-        Bulletmap, CapsuleBlocks, Classic_User_Rect, ConsMenuItem_Rect, Cons_Droid_Rect,
-        Cons_Header_Rect, Cons_Menu_Rect, Cons_Menu_Rects, Cons_Text_Rect, CurCapsuleStart,
-        Decal_pics, Digit_Rect, DruidStart, Druidmap, EnemyDigitSurfacePointer,
-        EnemySurfacePointer, FillBlocks, FirstDigit_Rect, Font0_BFont, Font1_BFont, Font2_BFont,
-        Full_User_Rect, GameConfig, Highscore_BFont, InfluDigitSurfacePointer,
-        InfluencerSurfacePointer, LeftCapsulesStart, LeftInfo_Rect, MapBlockSurfacePointer, Me,
-        Menu_BFont, Menu_Rect, Number_Of_Bullet_Types, OptionsMenu_Rect, OrigBlock_Rect,
-        OrigDigit_Rect, OrigMapBlockSurfacePointer, Para_BFont, PlaygroundStart, Portrait_Rect,
-        RightInfo_Rect, Screen_Rect, SecondDigit_Rect, TO_CapsuleRect, TO_ColumnRect,
-        TO_ColumnStart, TO_ElementRect, TO_FillBlock, TO_GroundRect, TO_LeaderBlockStart,
-        TO_LeaderLed, TO_LeftGroundStart, TO_RightGroundStart, ThirdDigit_Rect, ToColumnBlock,
-        ToGameBlocks, ToGroundBlocks, ToLeaderBlock, User_Rect,
+        to_blocks, AllBullets, Banner_Rect, Blastmap, Block_Rect, Bulletmap, CapsuleBlocks,
+        Classic_User_Rect, ConsMenuItem_Rect, Cons_Droid_Rect, Cons_Header_Rect, Cons_Menu_Rect,
+        Cons_Menu_Rects, Cons_Text_Rect, CurCapsuleStart, Digit_Rect, DruidStart, Druidmap,
+        FillBlocks, FirstDigit_Rect, Font0_BFont, Font1_BFont, Font2_BFont, Full_User_Rect,
+        GameConfig, Highscore_BFont, LeftCapsulesStart, LeftInfo_Rect, Me, Menu_BFont, Menu_Rect,
+        OptionsMenu_Rect, OrigBlock_Rect, OrigDigit_Rect, Para_BFont, PlaygroundStart,
+        Portrait_Rect, RightInfo_Rect, Screen_Rect, SecondDigit_Rect, TO_CapsuleRect,
+        TO_ColumnRect, TO_ColumnStart, TO_ElementRect, TO_FillBlock, TO_GroundRect,
+        TO_LeaderBlockStart, TO_LeaderLed, TO_LeftGroundStart, TO_RightGroundStart,
+        ThirdDigit_Rect, ToColumnBlock, ToGameBlocks, ToGroundBlocks, ToLeaderBlock, User_Rect,
     },
     input::{any_key_just_pressed, cmd_is_active, wait_for_all_keys_released, SDL_Delay},
     misc::{
@@ -33,6 +28,7 @@ use crate::{
         MyMalloc, ReadAndMallocAndTerminateFile, ReadValueFromString, Terminate,
     },
     sound::Play_Sound,
+    structs::ThemeList,
     takeover::{set_takeover_rects, TO_BLOCK_FILE_C},
     text::printf_SDL,
     view::DisplayBanner,
@@ -68,10 +64,124 @@ use std::{
     ptr::null_mut,
 };
 
+#[no_mangle]
+pub static mut vid_info: *const SDL_VideoInfo = null_mut();
+
+#[no_mangle]
+pub static mut vid_bpp: c_int = 0;
+
+#[no_mangle]
+pub static mut portrait_raw_mem: [*mut c_char; Droid::NumDroids as usize] =
+    [null_mut(); Droid::NumDroids as usize];
+
+#[no_mangle]
+pub static mut fonts_loaded: c_int = 0;
+
+#[no_mangle]
+pub static mut MapBlockSurfacePointer: [[*mut SDL_Surface; NUM_MAP_BLOCKS]; NUM_COLORS] =
+    [[null_mut(); NUM_MAP_BLOCKS]; NUM_COLORS]; // A pointer to the surfaces containing the map-pics, which may be rescaled with respect to
+
+#[no_mangle]
+pub static mut OrigMapBlockSurfacePointer: [[*mut SDL_Surface; NUM_MAP_BLOCKS]; NUM_COLORS] =
+    [[null_mut(); NUM_MAP_BLOCKS]; NUM_COLORS]; // A pointer to the surfaces containing the original map-pics as read from disk
+
+#[no_mangle]
+pub static mut BuildBlock: *mut SDL_Surface = null_mut(); // a block for temporary pic-construction
+
+#[no_mangle]
+pub static mut BannerIsDestroyed: i32 = 0;
+
+#[no_mangle]
+pub static mut banner_pic: *mut SDL_Surface = null_mut(); /* the banner pic */
+
+#[no_mangle]
+pub static mut pic999: *mut SDL_Surface = null_mut();
+
+#[no_mangle]
+pub static mut packed_portraits: [*mut SDL_RWops; Droid::NumDroids as usize] =
+    [null_mut(); Droid::NumDroids as usize];
+
+#[no_mangle]
+pub static mut Decal_pics: [*mut SDL_Surface; NUM_DECAL_PICS] = [null_mut(); NUM_DECAL_PICS];
+
+#[no_mangle]
+pub static mut takeover_bg_pic: *mut SDL_Surface = null_mut();
+
+#[no_mangle]
+pub static mut console_pic: *mut SDL_Surface = null_mut();
+
+#[no_mangle]
+pub static mut console_bg_pic1: *mut SDL_Surface = null_mut();
+
+#[no_mangle]
+pub static mut console_bg_pic2: *mut SDL_Surface = null_mut();
+
+#[no_mangle]
+pub static mut arrow_up: *mut SDL_Surface = null_mut();
+
+#[no_mangle]
+pub static mut arrow_down: *mut SDL_Surface = null_mut();
+
+#[no_mangle]
+pub static mut arrow_right: *mut SDL_Surface = null_mut();
+
+#[no_mangle]
+pub static mut arrow_left: *mut SDL_Surface = null_mut();
+
+#[no_mangle]
+pub static mut ship_off_pic: *mut SDL_Surface = null_mut(); /* Side-view of ship: lights off */
+
+#[no_mangle]
+pub static mut ship_on_pic: *mut SDL_Surface = null_mut(); /* Side-view of ship: lights on */
+
+#[no_mangle]
+pub static mut progress_meter_pic: *mut SDL_Surface = null_mut();
+
+#[no_mangle]
+pub static mut progress_filler_pic: *mut SDL_Surface = null_mut();
+
+#[no_mangle]
+pub static mut ne_screen: *mut SDL_Surface = null_mut(); /* the graphics display */
+
+#[no_mangle]
+pub static mut EnemySurfacePointer: [*mut SDL_Surface; ENEMYPHASES] = [null_mut(); ENEMYPHASES]; // A pointer to the surfaces containing the pictures of the
+                                                                                                 // enemys in different phases of rotation
+
+#[no_mangle]
+pub static mut InfluencerSurfacePointer: [*mut SDL_Surface; ENEMYPHASES] =
+    [null_mut(); ENEMYPHASES]; // A pointer to the surfaces containing the pictures of the
+                               // influencer in different phases of rotation
+
+#[no_mangle]
+pub static mut InfluDigitSurfacePointer: [*mut SDL_Surface; DIGITNUMBER] =
+    [null_mut(); DIGITNUMBER]; // A pointer to the surfaces containing the pictures of the
+                               // influencer in different phases of rotation
+
+#[no_mangle]
+pub static mut EnemyDigitSurfacePointer: [*mut SDL_Surface; DIGITNUMBER] =
+    [null_mut(); DIGITNUMBER]; // A pointer to the surfaces containing the pictures of the
+                               // influencer in different phases of rotation
+
+#[no_mangle]
+pub static mut crosshair_cursor: *mut SDL_Cursor = null_mut();
+
+#[no_mangle]
+pub static mut arrow_cursor: *mut SDL_Cursor = null_mut();
+
+#[no_mangle]
+pub static mut Number_Of_Bullet_Types: i32 = 0;
+
+#[no_mangle]
+pub static mut AllThemes: ThemeList = ThemeList {
+    num_themes: 0,
+    cur_tnum: 0,
+    theme_name: [null_mut(); MAX_THEMES],
+};
+
+#[no_mangle]
+pub static mut classic_theme_index: i32 = 0;
+
 extern "C" {
-    pub static mut vid_info: *const SDL_VideoInfo;
-    pub static mut vid_bpp: c_int;
-    pub static mut portrait_raw_mem: [*mut c_char; Droid::NumDroids as usize];
     pub fn IMG_Load(file: *const c_char) -> *mut SDL_Surface;
     pub fn zoomSurface(
         src: *mut SDL_Surface,
@@ -82,7 +192,6 @@ extern "C" {
     pub fn SDL_GetClipRect(surface: *mut SDL_Surface, rect: *mut SDL_Rect);
     pub fn SDL_VideoDriverName(namebuf: *mut c_char, maxlen: c_int) -> *mut c_char;
     pub fn SDL_RWFromMem(mem: *mut c_void, size: c_int) -> *mut SDL_RWops;
-    pub static mut fonts_loaded: c_int;
 }
 
 /// This function draws a "grid" on the screen, that means every

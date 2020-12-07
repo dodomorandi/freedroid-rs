@@ -4,10 +4,9 @@ use crate::{
     b_font::{FontHeight, GetCurrentFont, Highscore_BFont, Para_BFont, SetCurrentFont},
     defs::{self, Status, DATE_LEN, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN},
     global::{
-        ne_screen, num_highscores, pic999, ConfigDir, Highscores, Me, Portrait_Rect, RealScore,
-        ShowScore, User_Rect,
+        num_highscores, ConfigDir, Highscores, Me, Portrait_Rect, RealScore, ShowScore, User_Rect,
     },
-    graphics::MakeGridOnScreen,
+    graphics::{ne_screen, pic999, MakeGridOnScreen},
     text::{printf_SDL, DisplayText, GetString},
     view::Assemble_Combat_Picture,
 };
