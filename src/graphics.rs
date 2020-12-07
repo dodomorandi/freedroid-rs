@@ -1,11 +1,11 @@
 use crate::{
     b_font::{BFontInfo, GetCurrentFont, LoadFont, PutPixel, SetCurrentFont},
     defs::{
-        self, free_if_unused, scale_point, scale_rect, Cmds, Criticality, DisplayBannerFlags,
-        Droid, Sound, Themed, BANNER_BLOCK_FILE_C, BLAST_BLOCK_FILE_C, BULLET_BLOCK_FILE_C,
-        CONSOLE_BG_PIC1_FILE_C, CONSOLE_BG_PIC2_FILE_C, CONSOLE_PIC_FILE_C, DIGIT_BLOCK_FILE_C,
-        DROID_BLOCK_FILE_C, FONT0_FILE, FONT0_FILE_C, FONT1_FILE, FONT1_FILE_C, FONT2_FILE,
-        FONT2_FILE_C, FREE_ONLY, GRAPHICS_DIR_C, ICON_FILE, ICON_FILE_C, INIT_ONLY,
+        self, free_if_unused, get_user_center, scale_point, scale_rect, Cmds, Criticality,
+        DisplayBannerFlags, Droid, Sound, Themed, BANNER_BLOCK_FILE_C, BLAST_BLOCK_FILE_C,
+        BULLET_BLOCK_FILE_C, CONSOLE_BG_PIC1_FILE_C, CONSOLE_BG_PIC2_FILE_C, CONSOLE_PIC_FILE_C,
+        DIGIT_BLOCK_FILE_C, DROID_BLOCK_FILE_C, FONT0_FILE, FONT0_FILE_C, FONT1_FILE, FONT1_FILE_C,
+        FONT2_FILE, FONT2_FILE_C, FREE_ONLY, GRAPHICS_DIR_C, ICON_FILE, ICON_FILE_C, INIT_ONLY,
         MAP_BLOCK_FILE_C, MAXBULLETS, PARA_FONT_FILE, PARA_FONT_FILE_C, SHIP_OFF_PIC_FILE_C,
         SHIP_ON_PIC_FILE_C, TAKEOVER_BG_PIC_FILE_C,
     },
@@ -19,7 +19,7 @@ use crate::{
         Decal_pics, Digit_Rect, DruidStart, Druidmap, EnemyDigitSurfacePointer,
         EnemySurfacePointer, FillBlocks, FirstDigit_Rect, Font0_BFont, Font1_BFont, Font2_BFont,
         Full_User_Rect, GameConfig, Highscore_BFont, InfluDigitSurfacePointer,
-        InfluencerSurfacePointer, LeftCapsulesStart, LeftInfo_Rect, MapBlockSurfacePointer,
+        InfluencerSurfacePointer, LeftCapsulesStart, LeftInfo_Rect, MapBlockSurfacePointer, Me,
         Menu_BFont, Menu_Rect, Number_Of_Bullet_Types, OptionsMenu_Rect, OrigBlock_Rect,
         OrigDigit_Rect, OrigMapBlockSurfacePointer, Para_BFont, PlaygroundStart, Portrait_Rect,
         RightInfo_Rect, Screen_Rect, SecondDigit_Rect, TO_CapsuleRect, TO_ColumnRect,
@@ -1823,4 +1823,103 @@ pub unsafe extern "C" fn DisplayImage(datafile: *mut c_char) {
     SDL_UpperBlit(image, null_mut(), ne_screen, null_mut());
 
     SDL_FreeSurface(image);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn DrawLineBetweenTiles(
+    mut x1: c_float,
+    mut y1: c_float,
+    mut x2: c_float,
+    mut y2: c_float,
+    color: c_int,
+) {
+    if (x1 - x2).abs() <= f32::EPSILON && (y1 - y2).abs() <= f32::EPSILON {
+        return;
+    }
+
+    if (x1 - x2).abs() <= f32::EPSILON
+    // infinite slope!! special case, that must be caught!
+    {
+        if y1 > y2
+        // in this case, just interchange 1 and 2
+        {
+            std::mem::swap(&mut y1, &mut y2);
+        }
+
+        let mut i = 0.;
+        let max = (y2 - y1) * f32::from(Block_Rect.w);
+        while i < max {
+            let pixx = f32::from(User_Rect.x) + f32::from(User_Rect.w / 2)
+                - f32::from(Block_Rect.w) * (Me.pos.x - x1);
+            let user_center = get_user_center();
+            let pixy = f32::from(user_center.y) - f32::from(Block_Rect.h) * (Me.pos.y - y1) + i;
+            if pixx <= User_Rect.x.into()
+                || pixx >= f32::from(User_Rect.x) + f32::from(User_Rect.w) - 1.
+                || pixy <= f32::from(User_Rect.y)
+                || pixy >= f32::from(User_Rect.y) + f32::from(User_Rect.h) - 1.
+            {
+                i += 1.;
+                continue;
+            }
+            putpixel(
+                ne_screen,
+                pixx as c_int,
+                pixy as c_int,
+                color.try_into().unwrap(),
+            );
+            putpixel(
+                ne_screen,
+                pixx as c_int - 1,
+                pixy as c_int,
+                color.try_into().unwrap(),
+            );
+
+            i += 1.;
+        }
+        return;
+    }
+
+    if x1 > x2
+    // in this case, just interchange 1 and 2
+    {
+        std::mem::swap(&mut x1, &mut x2);
+        std::mem::swap(&mut y1, &mut y2);
+    }
+
+    //--------------------
+    // Now we start the drawing process
+    //
+    // SDL_LockSurface( ne_screen );
+
+    let slope = (y2 - y1) / (x2 - x1);
+    let mut i = 0.;
+    let max = (x2 - x1) * f32::from(Block_Rect.w);
+    while i < max {
+        let pixx = f32::from(User_Rect.x) + f32::from(User_Rect.w / 2)
+            - f32::from(Block_Rect.w) * (Me.pos.x - x1)
+            + i;
+        let user_center = get_user_center();
+        let pixy = f32::from(user_center.y) - f32::from(Block_Rect.h) * (Me.pos.y - y1) + i * slope;
+        if pixx <= f32::from(User_Rect.x)
+            || pixx >= f32::from(User_Rect.x) + f32::from(User_Rect.w) - 1.
+            || pixy <= f32::from(User_Rect.y)
+            || pixy >= f32::from(User_Rect.y) + f32::from(User_Rect.h) - 1.
+        {
+            i += 1.;
+            continue;
+        }
+        putpixel(
+            ne_screen,
+            pixx as c_int,
+            pixy as c_int,
+            color.try_into().unwrap(),
+        );
+        putpixel(
+            ne_screen,
+            pixx as c_int,
+            pixy as c_int - 1,
+            color.try_into().unwrap(),
+        );
+        i += 1.;
+    }
 }
