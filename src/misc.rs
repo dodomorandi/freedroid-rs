@@ -39,7 +39,7 @@ use sdl::{
 };
 use std::{
     borrow::Cow,
-    convert::TryInto,
+    convert::{TryFrom, TryInto},
     ffi::CStr,
     fs::File,
     os::raw::{c_char, c_float, c_int, c_long, c_void},
@@ -54,10 +54,6 @@ extern "C" {
     pub static mut One_Frame_SDL_Ticks: u32;
     pub static mut Now_SDL_Ticks: u32;
     pub static mut oneframedelay: c_long;
-    pub fn ReadAndMallocAndTerminateFile(
-        filename: *mut c_char,
-        file_end_string: *mut c_char,
-    ) -> *mut c_char;
     pub fn ReadValueFromString(
         data: *mut c_char,
         label: *mut c_char,
@@ -574,4 +570,139 @@ pub unsafe extern "C" fn init_progress(mut text: *mut c_char) {
     printf_SDL(ne_screen, dst.x.into(), dst.y.into(), text);
 
     SDL_Flip(ne_screen);
+}
+
+/// This function read in a file with the specified name, allocated
+/// memory for it of course, looks for the file end string and then
+/// terminates the whole read in file with a 0 character, so that it
+/// can easily be treated like a common string.
+#[no_mangle]
+pub unsafe extern "C" fn ReadAndMallocAndTerminateFile(
+    filename: *mut c_char,
+    file_end_string: *mut c_char,
+) -> *mut c_char {
+    use bstr::ByteSlice;
+    use std::io::Read;
+
+    let filename = CStr::from_ptr(filename).to_str().unwrap();
+    let file_end_string = CStr::from_ptr(file_end_string);
+    info!(
+        "ReadAndMallocAndTerminateFile: The filename is: {}",
+        filename
+    );
+
+    // Read the whole theme data to memory
+    let mut file = match File::open(filename) {
+        Ok(file) => {
+            info!("ReadAndMallocAndTerminateFile: Opening file succeeded...");
+            file
+        }
+        Err(_) => {
+            error!(
+                "\n\
+        ----------------------------------------------------------------------\n\
+        Freedroid has encountered a problem:\n\
+        In function 'char* ReadAndMallocAndTerminateFile ( char* filename ):\n\
+        \n\
+        Freedroid was unable to open a given text file, that should be there and\n\
+        should be accessible.\n\
+        \n\
+        This might be due to a wrong file name in a mission file, a wrong filename\n\
+        in the source or a serious bug in the source.\n\
+        \n\
+        The file that couldn't be located was: {}\n\
+        \n\
+        Please check that your external text files are properly set up.\n\
+        \n\
+        Please also don't forget, that you might have to run 'make install'\n\
+        again after you've made modifications to the data files in the source tree.\n\
+        \n\
+        Freedroid will terminate now to draw attention to the data problem it could\n\
+        not resolve.... Sorry, if that interrupts a major game of yours.....\n\
+        ----------------------------------------------------------------------\n\
+        ",
+                filename
+            );
+            Terminate(defs::ERR.into());
+        }
+    };
+    let file_len = match file
+        .metadata()
+        .ok()
+        .and_then(|metadata| usize::try_from(metadata.len()).ok())
+    {
+        Some(file_len) => {
+            info!("ReadAndMallocAndTerminateFile: fstating file succeeded...");
+            file_len
+        }
+        None => {
+            error!("ReadAndMallocAndTerminateFile: Error fstat-ing File....");
+            Terminate(defs::ERR.into());
+        }
+    };
+
+    let data = MyMalloc((file_len + 64 * 2 + 10000).try_into().unwrap()) as *mut c_char;
+    if data.is_null() {
+        error!("ReadAndMallocAndTerminateFile: Out of Memory?");
+        Terminate(defs::ERR.into());
+    }
+
+    let all_data = std::slice::from_raw_parts_mut(data as *mut u8, file_len + 64 * 2 + 10000);
+    {
+        let data = &mut all_data[..file_len];
+        match file.read_exact(data) {
+            Ok(()) => info!("ReadAndMallocAndTerminateFile: Reading file succeeded..."),
+            Err(_) => {
+                error!("ReadAndMallocAndTerminateFile: Reading file failed...");
+                Terminate(defs::ERR.into());
+            }
+        }
+    }
+    all_data[file_len..].iter_mut().for_each(|c| *c = 0);
+
+    drop(file);
+
+    info!("ReadAndMallocAndTerminateFile: Adding a 0 at the end of read data....");
+
+    match all_data.find(file_end_string.to_bytes()) {
+        None => {
+            error!(
+                "\n\
+                ----------------------------------------------------------------------\n\
+                Freedroid has encountered a problem:\n\
+                In function 'char* ReadAndMallocAndTerminateFile ( char* filename ):\n\
+                \n\
+                Freedroid was unable to find the string, that should terminate the given\n\
+                file within this file.\n\
+                \n\
+                This might be due to a corrupt text file on disk that does not confirm to\n\
+                the file standards of this version of freedroid or (less likely) to a serious\n\
+                bug in the reading function.\n\
+                \n\
+                The file that is concerned is: {}\n\
+                The string, that could not be located was: {}\n\
+                \n\
+                Please check that your external text files are properly set up.\n\
+                \n\
+                Please also don't forget, that you might have to run 'make install'\n\
+                again after you've made modifications to the data files in the source tree.\n\
+                \n\
+                Freedroid will terminate now to draw attention to the data problem it could\n\
+                not resolve.... Sorry, if that interrupts a major game of yours.....\n\
+                ----------------------------------------------------------------------\n\
+                \n",
+                filename,
+                file_end_string.to_string_lossy()
+            );
+            Terminate(defs::ERR.into());
+        }
+        Some(pos) => all_data[pos] = 0,
+    }
+
+    info!(
+        "ReadAndMallocAndTerminateFile: The content of the read file: \n{}",
+        CStr::from_ptr(data).to_string_lossy()
+    );
+
+    data
 }

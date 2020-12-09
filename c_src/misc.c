@@ -423,122 +423,122 @@ terminates the whole read in file with a 0 character, so that it
 can easily be treated like a common string.
 ----------------------------------------------------------------------
 */
-char*
-ReadAndMallocAndTerminateFile( char* filename , char* File_End_String )
-{
-  struct stat stbuf;
-  FILE *DataFile;
-  char *Data;
-  char *ReadPointer;
-  // char *fpath;
-
-  DebugPrintf ( 1 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : The filename is: %s" , filename );
-
-  // Read the whole theme data to memory
-  if ((DataFile = fopen ( filename , "r")) == NULL)
-    {
-      DebugPrintf (0, "\n\
-\n\
-----------------------------------------------------------------------\n\
-Freedroid has encountered a problem:\n\
-In function 'char* ReadAndMallocAndTerminateFile ( char* filename ):\n\
-\n\
-Freedroid was unable to open a given text file, that should be there and\n\
-should be accessible.\n\
-\n\
-This might be due to a wrong file name in a mission file, a wrong filename\n\
-in the source or a serious bug in the source.\n\
-\n\
-The file that couldn't be located was: %s\n\
-\n\
-Please check that your external text files are properly set up.\n\
-\n\
-Please also don't forget, that you might have to run 'make install'\n\
-again after you've made modifications to the data files in the source tree.\n\
-\n\
-Freedroid will terminate now to draw attention to the data problem it could\n\
-not resolve.... Sorry, if that interrupts a major game of yours.....\n\
-----------------------------------------------------------------------\n\
-\n" , filename );
-      Terminate(ERR);
-    }
-  else
-    {
-      DebugPrintf ( 1 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : Opening file succeeded...");
-    }
-
-  if (fstat (fileno (DataFile), &stbuf) == EOF)
-    {
-      DebugPrintf ( 0 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : Error fstat-ing File....");
-      Terminate(ERR);
-    }
-  else
-    {
-      DebugPrintf ( 1 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : fstating file succeeded...");
-    }
-
-  if ((Data = (char *) MyMalloc (stbuf.st_size + 64*2 + 10000 )) == NULL)
-    {
-      DebugPrintf ( 0 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : Out of Memory? ");
-      Terminate(ERR);
-    }
-
-  fread ( Data, (size_t) 64, (size_t) (stbuf.st_size / 64 +1 ), DataFile);
-
-  DebugPrintf ( 1 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : Reading file succeeded...");
-
-  if (fclose ( DataFile ) == EOF)
-    {
-      DebugPrintf( 0 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : Error while trying to close lift file....Terminating....\n\n");
-      Terminate(ERR);
-    }
-  else
-    {
-      DebugPrintf( 1 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : file closed successfully...");
-    }
-
-  DebugPrintf ( 1 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : Adding a 0 at the end of read data....");
-
-  if ( (ReadPointer = strstr( Data , File_End_String ) ) == NULL )
-    {
-      DebugPrintf (0, "\n\
-\n\
-----------------------------------------------------------------------\n\
-Freedroid has encountered a problem:\n\
-In function 'char* ReadAndMallocAndTerminateFile ( char* filename ):\n\
-\n\
-Freedroid was unable to find the string, that should terminate the given\n\
-file within this file.\n\
-\n\
-This might be due to a corrupt text file on disk that does not confirm to\n\
-the file standards of this version of freedroid or (less likely) to a serious\n\
-bug in the reading function.\n\
-\n\
-The file that is concerned is: %s\n\
-The string, that could not be located was: %s\n\
-\n\
-Please check that your external text files are properly set up.\n\
-\n\
-Please also don't forget, that you might have to run 'make install'\n\
-again after you've made modifications to the data files in the source tree.\n\
-\n\
-Freedroid will terminate now to draw attention to the data problem it could\n\
-not resolve.... Sorry, if that interrupts a major game of yours.....\n\
-----------------------------------------------------------------------\n\
-\n" , filename , File_End_String );
-      Terminate(ERR);
-    }
-  else
-    {
-      // ReadPointer+=strlen( File_End_String ) + 1; // no need to destroy the end pointer :-)
-      ReadPointer[0]=0; // we want to handle the file like a string, even if it is not zero
-                       // terminated by nature.  We just have to add the zero termination.
-    }
-
-  DebugPrintf( 1 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : The content of the read file: \n%s" , Data );
-
-  return ( Data );
-}; // char* ReadAndMallocAndTerminateFile( char* filename)
+// char*
+// ReadAndMallocAndTerminateFile( char* filename , char* File_End_String )
+// {
+//   struct stat stbuf;
+//   FILE *DataFile;
+//   char *Data;
+//   char *ReadPointer;
+//   // char *fpath;
+// 
+//   DebugPrintf ( 1 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : The filename is: %s" , filename );
+// 
+//   // Read the whole theme data to memory
+//   if ((DataFile = fopen ( filename , "r")) == NULL)
+//     {
+//       DebugPrintf (0, "\n\
+// \n\
+// ----------------------------------------------------------------------\n\
+// Freedroid has encountered a problem:\n\
+// In function 'char* ReadAndMallocAndTerminateFile ( char* filename ):\n\
+// \n\
+// Freedroid was unable to open a given text file, that should be there and\n\
+// should be accessible.\n\
+// \n\
+// This might be due to a wrong file name in a mission file, a wrong filename\n\
+// in the source or a serious bug in the source.\n\
+// \n\
+// The file that couldn't be located was: %s\n\
+// \n\
+// Please check that your external text files are properly set up.\n\
+// \n\
+// Please also don't forget, that you might have to run 'make install'\n\
+// again after you've made modifications to the data files in the source tree.\n\
+// \n\
+// Freedroid will terminate now to draw attention to the data problem it could\n\
+// not resolve.... Sorry, if that interrupts a major game of yours.....\n\
+// ----------------------------------------------------------------------\n\
+// \n" , filename );
+//       Terminate(ERR);
+//     }
+//   else
+//     {
+//       DebugPrintf ( 1 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : Opening file succeeded...");
+//     }
+// 
+//   if (fstat (fileno (DataFile), &stbuf) == EOF)
+//     {
+//       DebugPrintf ( 0 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : Error fstat-ing File....");
+//       Terminate(ERR);
+//     }
+//   else
+//     {
+//       DebugPrintf ( 1 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : fstating file succeeded...");
+//     }
+// 
+//   if ((Data = (char *) MyMalloc (stbuf.st_size + 64*2 + 10000 )) == NULL)
+//     {
+//       DebugPrintf ( 0 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : Out of Memory? ");
+//       Terminate(ERR);
+//     }
+// 
+//   fread ( Data, (size_t) 64, (size_t) (stbuf.st_size / 64 +1 ), DataFile);
+// 
+//   DebugPrintf ( 1 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : Reading file succeeded...");
+// 
+//   if (fclose ( DataFile ) == EOF)
+//     {
+//       DebugPrintf( 0 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : Error while trying to close lift file....Terminating....\n\n");
+//       Terminate(ERR);
+//     }
+//   else
+//     {
+//       DebugPrintf( 1 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : file closed successfully...");
+//     }
+// 
+//   DebugPrintf ( 1 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : Adding a 0 at the end of read data....");
+// 
+//   if ( (ReadPointer = strstr( Data , File_End_String ) ) == NULL )
+//     {
+//       DebugPrintf (0, "\n\
+// \n\
+// ----------------------------------------------------------------------\n\
+// Freedroid has encountered a problem:\n\
+// In function 'char* ReadAndMallocAndTerminateFile ( char* filename ):\n\
+// \n\
+// Freedroid was unable to find the string, that should terminate the given\n\
+// file within this file.\n\
+// \n\
+// This might be due to a corrupt text file on disk that does not confirm to\n\
+// the file standards of this version of freedroid or (less likely) to a serious\n\
+// bug in the reading function.\n\
+// \n\
+// The file that is concerned is: %s\n\
+// The string, that could not be located was: %s\n\
+// \n\
+// Please check that your external text files are properly set up.\n\
+// \n\
+// Please also don't forget, that you might have to run 'make install'\n\
+// again after you've made modifications to the data files in the source tree.\n\
+// \n\
+// Freedroid will terminate now to draw attention to the data problem it could\n\
+// not resolve.... Sorry, if that interrupts a major game of yours.....\n\
+// ----------------------------------------------------------------------\n\
+// \n" , filename , File_End_String );
+//       Terminate(ERR);
+//     }
+//   else
+//     {
+//       // ReadPointer+=strlen( File_End_String ) + 1; // no need to destroy the end pointer :-)
+//       ReadPointer[0]=0; // we want to handle the file like a string, even if it is not zero
+//                        // terminated by nature.  We just have to add the zero termination.
+//     }
+// 
+//   DebugPrintf( 1 , "\nchar* ReadAndMallocAndTerminateFile ( char* filename ) : The content of the read file: \n%s" , Data );
+// 
+//   return ( Data );
+// }; // char* ReadAndMallocAndTerminateFile( char* filename)
 
 /*
 ----------------------------------------------------------------------
