@@ -1115,41 +1115,41 @@ FS_filelength (FILE *f)
 /*----------------------------------------------------------------------
  * show_progress: display empty progress meter with given text
  *----------------------------------------------------------------------*/
-void
-init_progress (char *text)
-{
-  char *fpath;
-  SDL_Rect dst;
-
-  if (text == NULL)
-    text = "Progress...";
-
-  if (!progress_meter_pic)
-    {
-      fpath = find_file (PROGRESS_METER_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
-      progress_meter_pic = Load_Block (fpath, 0, 0, NULL, 0);
-      ScalePic (&progress_meter_pic, GameConfig.scale);
-      fpath = find_file (PROGRESS_FILLER_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
-      progress_filler_pic = Load_Block (fpath, 0, 0, NULL, 0);
-      ScalePic (&progress_filler_pic, GameConfig.scale);
-
-      ScaleRect (ProgressMeter_Rect, GameConfig.scale);
-      ScaleRect (ProgressBar_Rect, GameConfig.scale);
-      ScaleRect (ProgressText_Rect, GameConfig.scale);
-    }
-
-  SDL_SetClipRect( ne_screen , NULL );  // this unsets the clipping rectangle
-  SDL_BlitSurface( progress_meter_pic, NULL, ne_screen , &ProgressMeter_Rect );
-
-  Copy_Rect (ProgressText_Rect, dst);
-  dst.x += ProgressMeter_Rect.x;
-  dst.y += ProgressMeter_Rect.y;
-
-  printf_SDL (ne_screen, dst.x, dst.y, text);
-
-  SDL_Flip (ne_screen);
-
-} // init_progress()
+// void
+// init_progress (char *text)
+// {
+//   char *fpath;
+//   SDL_Rect dst;
+// 
+//   if (text == NULL)
+//     text = "Progress...";
+// 
+//   if (!progress_meter_pic)
+//     {
+//       fpath = find_file (PROGRESS_METER_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
+//       progress_meter_pic = Load_Block (fpath, 0, 0, NULL, 0);
+//       ScalePic (&progress_meter_pic, GameConfig.scale);
+//       fpath = find_file (PROGRESS_FILLER_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL);
+//       progress_filler_pic = Load_Block (fpath, 0, 0, NULL, 0);
+//       ScalePic (&progress_filler_pic, GameConfig.scale);
+// 
+//       ScaleRect (ProgressMeter_Rect, GameConfig.scale);
+//       ScaleRect (ProgressBar_Rect, GameConfig.scale);
+//       ScaleRect (ProgressText_Rect, GameConfig.scale);
+//     }
+// 
+//   SDL_SetClipRect( ne_screen , NULL );  // this unsets the clipping rectangle
+//   SDL_BlitSurface( progress_meter_pic, NULL, ne_screen , &ProgressMeter_Rect );
+// 
+//   Copy_Rect (ProgressText_Rect, dst);
+//   dst.x += ProgressMeter_Rect.x;
+//   dst.y += ProgressMeter_Rect.y;
+// 
+//   printf_SDL (ne_screen, dst.x, dst.y, text);
+// 
+//   SDL_Flip (ne_screen);
+// 
+// } // init_progress()
 
 
 /*----------------------------------------------------------------------

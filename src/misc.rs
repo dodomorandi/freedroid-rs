@@ -2,14 +2,19 @@
 use crate::defs::{gcw0_ls_pressed_r, gcw0_rs_pressed_r};
 use crate::{
     defs::{
-        self, AssembleCombatWindowFlags, Cmds, Criticality, FirePressedR, Status, Themed,
-        FD_DATADIR, LOCAL_DATADIR,
+        self, scale_rect, AssembleCombatWindowFlags, Cmds, Criticality, FirePressedR, Status,
+        Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, PROGRESS_FILLER_FILE_C,
+        PROGRESS_METER_FILE_C,
     },
     enemy::AnimateEnemys,
     global::{
-        ConfigDir, FPSover1, GameConfig, Me, ProgressBar_Rect, ProgressMeter_Rect, SkipAFewFrames,
+        ConfigDir, FPSover1, GameConfig, Me, ProgressBar_Rect, ProgressMeter_Rect,
+        ProgressText_Rect, SkipAFewFrames,
     },
-    graphics::{ne_screen, progress_filler_pic, BannerIsDestroyed, FreeGraphics},
+    graphics::{
+        ne_screen, progress_filler_pic, progress_meter_pic, BannerIsDestroyed, FreeGraphics,
+        Load_Block, ScalePic,
+    },
     highscore::SaveHighscores,
     influence::AnimateInfluence,
     init::FreeGameMem,
@@ -18,6 +23,7 @@ use crate::{
     menu::FreeMenuData,
     ship::FreeDroidPics,
     sound::FreeSounds,
+    text::printf_SDL,
     view::{Assemble_Combat_Picture, DisplayBanner},
 };
 
@@ -29,7 +35,7 @@ use sdl::{
         ll::{SDL_GetTicks, SDL_Quit},
         Rect,
     },
-    video::ll::{SDL_UpdateRects, SDL_UpperBlit},
+    video::ll::{SDL_Flip, SDL_SetClipRect, SDL_UpdateRects, SDL_UpperBlit},
 };
 use std::{
     borrow::Cow,
@@ -48,7 +54,6 @@ extern "C" {
     pub static mut One_Frame_SDL_Ticks: u32;
     pub static mut Now_SDL_Ticks: u32;
     pub static mut oneframedelay: c_long;
-    pub fn init_progress(txt: *mut c_char);
     pub fn ReadAndMallocAndTerminateFile(
         filename: *mut c_char,
         file_end_string: *mut c_char,
@@ -522,4 +527,51 @@ pub unsafe extern "C" fn find_file(
     }
 
     FILE_PATH.as_mut_ptr() as *mut c_char
+}
+
+/// show_progress: display empty progress meter with given text
+#[no_mangle]
+pub unsafe extern "C" fn init_progress(mut text: *mut c_char) {
+    if text.is_null() {
+        text = cstr!("Progress...").as_ptr() as *mut c_char;
+    }
+
+    if progress_meter_pic.is_null() {
+        let mut fpath = find_file(
+            PROGRESS_METER_FILE_C.as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::Critical as c_int,
+        );
+        progress_meter_pic = Load_Block(fpath, 0, 0, null_mut(), 0);
+        ScalePic(&mut progress_meter_pic, GameConfig.scale);
+        fpath = find_file(
+            PROGRESS_FILLER_FILE_C.as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::Critical as c_int,
+        );
+        progress_filler_pic = Load_Block(fpath, 0, 0, null_mut(), 0);
+        ScalePic(&mut progress_filler_pic, GameConfig.scale);
+
+        scale_rect(&mut ProgressMeter_Rect, GameConfig.scale);
+        scale_rect(&mut ProgressBar_Rect, GameConfig.scale);
+        scale_rect(&mut ProgressText_Rect, GameConfig.scale);
+    }
+
+    SDL_SetClipRect(ne_screen, null_mut()); // this unsets the clipping rectangle
+    SDL_UpperBlit(
+        progress_meter_pic,
+        null_mut(),
+        ne_screen,
+        &mut ProgressMeter_Rect,
+    );
+
+    let mut dst = ProgressText_Rect;
+    dst.x += ProgressMeter_Rect.x;
+    dst.y += ProgressMeter_Rect.y;
+
+    printf_SDL(ne_screen, dst.x.into(), dst.y.into(), text);
+
+    SDL_Flip(ne_screen);
 }
