@@ -54,12 +54,10 @@ extern "C" {
     pub static mut One_Frame_SDL_Ticks: u32;
     pub static mut Now_SDL_Ticks: u32;
     pub static mut oneframedelay: c_long;
-    pub fn ReadValueFromString(
-        data: *mut c_char,
-        label: *mut c_char,
-        format_string: *mut c_char,
-        dst: *mut c_void,
-    );
+    pub fn LocateStringInData(
+        SearchBeginPointer: *mut c_char,
+        SearchTextPointer: *mut c_char,
+    ) -> *mut c_char;
 }
 
 static CURRENT_TIME_FACTOR: Lazy<RwLock<f32>> = Lazy::new(|| RwLock::new(1.));
@@ -705,4 +703,32 @@ pub unsafe extern "C" fn ReadAndMallocAndTerminateFile(
     );
 
     data
+}
+
+/// find label in data and read stuff after label into dst using the FormatString
+///
+/// NOTE!!: be sure dst is large enough for data read by FormatString, or
+/// sscanf will crash!!
+#[no_mangle]
+pub unsafe extern "C" fn ReadValueFromString(
+    data: *mut c_char,
+    label: *mut c_char,
+    format_string: *mut c_char,
+    dst: *mut c_void,
+) {
+    // Now we locate the label in data and position pointer right after the label
+    // ..will Terminate itself if not found...
+    let pos = LocateStringInData(data, label).add(CStr::from_ptr(label).to_bytes().len());
+
+    if libc::sscanf(pos, format_string, dst) == libc::EOF {
+        error!(
+            "ReadValueFromString(): could not read value {} of label {} with format {}",
+            CStr::from_ptr(pos).to_string_lossy(),
+            CStr::from_ptr(format_string).to_string_lossy(),
+            CStr::from_ptr(label).to_string_lossy(),
+        );
+        Terminate(defs::ERR.into());
+    } else {
+        info!("ReadValueFromString: value read in successfully.");
+    }
 }

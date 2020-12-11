@@ -596,26 +596,26 @@ not resolve.... Sorry, if that interrupts a major game of yours.....\n\
  * sscanf will crash!!
  *
  *----------------------------------------------------------------------*/
-void
-ReadValueFromString (char* data, char* label, char* FormatString, void* dst)
-{
-  char *pos;
-
-  // Now we locate the label in data and position pointer right after the label
-  pos = LocateStringInData (data, label); // ..will Terminate itself if not found...
-  pos += strlen (label);
-
-  if ( sscanf (pos, FormatString, dst) == EOF )
-    {
-      DebugPrintf (0, "\n ERROR: ReadValueFromString(): could not read value %s of label %s with format %s\n",
-		   pos, FormatString, label );
-      Terminate(ERR);
-    }
-  else
-    DebugPrintf( 2 , "\nvoid ReadValueFromString ( .... ) : value read in successfully.");
-
-  return;
-}
+// void
+// ReadValueFromString (char* data, char* label, char* FormatString, void* dst)
+// {
+//   char *pos;
+// 
+//   // Now we locate the label in data and position pointer right after the label
+//   pos = LocateStringInData (data, label); // ..will Terminate itself if not found...
+//   pos += strlen (label);
+// 
+//   if ( sscanf (pos, FormatString, dst) == EOF )
+//     {
+//       DebugPrintf (0, "\n ERROR: ReadValueFromString(): could not read value %s of label %s with format %s\n",
+// 		   pos, FormatString, label );
+//       Terminate(ERR);
+//     }
+//   else
+//     DebugPrintf( 2 , "\nvoid ReadValueFromString ( .... ) : value read in successfully.");
+// 
+//   return;
+// }
 
 /*-----------------------------------------------------------------
  * find a given filename in subdir relative to FD_DATADIR,
