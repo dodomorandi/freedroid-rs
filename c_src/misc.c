@@ -550,43 +550,43 @@ The return value is a pointer to the first instance where the substring
 we are searching is found in the main text.
 ----------------------------------------------------------------------
 */
-char*
-LocateStringInData ( char* SearchBeginPointer, char* SearchTextPointer )
-{
-  char* temp;
-
-  if ( ( temp = strstr ( SearchBeginPointer , SearchTextPointer ) ) == NULL)
-    {
-      DebugPrintf (0, "\n\
-\n\
-----------------------------------------------------------------------\n\
-Freedroid has encountered a problem:\n\
-In function 'char* LocateStringInData ( char* SearchBeginPointer, char* SearchTextPointer ):\n\
-A string that was supposed to be in some data, most likely from an external\n\
-data file could not be found, which indicates a corrupted data file or \n\
-a serious bug in the reading functions.\n\
-\n\
-The string that couldn't be located was: %s\n\
-\n\
-Please check that your external text files are properly set up.\n\
-\n\
-Please also don't forget, that you might have to run 'make install'\n\
-again after you've made modifications to the data files in the source tree.\n\
-\n\
-Freedroid will terminate now to draw attention to the data problem it could\n\
-not resolve.... Sorry, if that interrupts a major game of yours.....\n\
-----------------------------------------------------------------------\n\
-\n" , SearchTextPointer );
-      Terminate(ERR);
-    }
-  else
-    {
-      DebugPrintf( 2 , "\nchar* LocateStringInDate ( char* SearchBeginText , char* SearchTextPointer ) : String %s successfully located within data. " , SearchTextPointer );
-    }
-
-  return ( temp );
-
-};
+// char*
+// LocateStringInData ( char* SearchBeginPointer, char* SearchTextPointer )
+// {
+//   char* temp;
+// 
+//   if ( ( temp = strstr ( SearchBeginPointer , SearchTextPointer ) ) == NULL)
+//     {
+//       DebugPrintf (0, "\n\
+// \n\
+// ----------------------------------------------------------------------\n\
+// Freedroid has encountered a problem:\n\
+// In function 'char* LocateStringInData ( char* SearchBeginPointer, char* SearchTextPointer ):\n\
+// A string that was supposed to be in some data, most likely from an external\n\
+// data file could not be found, which indicates a corrupted data file or \n\
+// a serious bug in the reading functions.\n\
+// \n\
+// The string that couldn't be located was: %s\n\
+// \n\
+// Please check that your external text files are properly set up.\n\
+// \n\
+// Please also don't forget, that you might have to run 'make install'\n\
+// again after you've made modifications to the data files in the source tree.\n\
+// \n\
+// Freedroid will terminate now to draw attention to the data problem it could\n\
+// not resolve.... Sorry, if that interrupts a major game of yours.....\n\
+// ----------------------------------------------------------------------\n\
+// \n" , SearchTextPointer );
+//       Terminate(ERR);
+//     }
+//   else
+//     {
+//       DebugPrintf( 2 , "\nchar* LocateStringInDate ( char* SearchBeginText , char* SearchTextPointer ) : String %s successfully located within data. " , SearchTextPointer );
+//     }
+// 
+//   return ( temp );
+// 
+// };
 
 
 /*----------------------------------------------------------------------

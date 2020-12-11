@@ -54,10 +54,6 @@ extern "C" {
     pub static mut One_Frame_SDL_Ticks: u32;
     pub static mut Now_SDL_Ticks: u32;
     pub static mut oneframedelay: c_long;
-    pub fn LocateStringInData(
-        SearchBeginPointer: *mut c_char,
-        SearchTextPointer: *mut c_char,
-    ) -> *mut c_char;
 }
 
 static CURRENT_TIME_FACTOR: Lazy<RwLock<f32>> = Lazy::new(|| RwLock::new(1.));
@@ -731,4 +727,53 @@ pub unsafe extern "C" fn ReadValueFromString(
     } else {
         info!("ReadValueFromString: value read in successfully.");
     }
+}
+
+/// This function tries to locate a string in some given data string.
+/// The data string is assumed to be null terminated.  Otherwise SEGFAULTS
+/// might happen.
+///
+/// The return value is a pointer to the first instance where the substring
+/// we are searching is found in the main text.
+#[no_mangle]
+pub unsafe extern "C" fn LocateStringInData(
+    search_begin_pointer: *mut c_char,
+    search_text_pointer: *mut c_char,
+) -> *mut c_char {
+    let temp = libc::strstr(search_begin_pointer, search_text_pointer);
+    let search_text = CStr::from_ptr(search_text_pointer).to_string_lossy();
+
+    if temp.is_null() {
+        error!(
+            "\n\
+             \n\
+             ----------------------------------------------------------------------\n\
+             Freedroid has encountered a problem:\n\
+             In function 'char* LocateStringInData ( char* SearchBeginPointer, char* \
+             SearchTextPointer ):\n\
+             A string that was supposed to be in some data, most likely from an external\n\
+             data file could not be found, which indicates a corrupted data file or \n\
+             a serious bug in the reading functions.\n\
+             \n\
+             The string that couldn't be located was: {}\n\
+             \n\
+             Please check that your external text files are properly set up.\n\
+             \n\
+             Please also don't forget, that you might have to run 'make install'\n\
+             again after you've made modifications to the data files in the source tree.\n\
+             \n\
+             Freedroid will terminate now to draw attention to the data problem it could\n\
+             not resolve.... Sorry, if that interrupts a major game of yours.....\n\
+             ----------------------------------------------------------------------\n\
+             \n",
+            search_text
+        );
+        Terminate(defs::ERR.into());
+    } else {
+        info!(
+            "LocateStringInDate: String {} successfully located within data. ",
+            search_text
+        );
+    }
+    temp
 }
