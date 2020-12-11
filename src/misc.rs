@@ -777,3 +777,18 @@ pub unsafe extern "C" fn LocateStringInData(
     }
     temp
 }
+
+/// FS_filelength().. (taken from quake2)
+///
+/// contrary to stat() this fct is nice and portable,
+#[no_mangle]
+pub unsafe extern "C" fn FS_filelength(file: *mut libc::FILE) -> c_int {
+    use libc::{fseek, ftell, SEEK_END, SEEK_SET};
+    let pos = ftell(file);
+    assert_ne!(fseek(file, 0, SEEK_END), -1);
+    let end = ftell(file);
+    assert_ne!(end, -1);
+    assert_ne!(fseek(file, pos, SEEK_SET), -1);
+
+    end.try_into().unwrap()
+}

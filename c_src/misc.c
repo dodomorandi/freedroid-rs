@@ -1098,19 +1098,19 @@ Teleport (int LNum, int X, int Y)
  * FS_filelength().. (taken from quake2)
  * 		contrary to stat() this fct is nice and portable,
  *----------------------------------------------------------------------*/
-int
-FS_filelength (FILE *f)
-{
-  int		pos;
-  int		end;
-
-  pos = ftell (f);
-  fseek (f, 0, SEEK_END);
-  end = ftell (f);
-  fseek (f, pos, SEEK_SET);
-
-  return end;
-}
+// int
+// FS_filelength (FILE *f)
+// {
+//   int		pos;
+//   int		end;
+// 
+//   pos = ftell (f);
+//   fseek (f, 0, SEEK_END);
+//   end = ftell (f);
+//   fseek (f, pos, SEEK_SET);
+// 
+//   return end;
+// }
 
 /*----------------------------------------------------------------------
  * show_progress: display empty progress meter with given text
