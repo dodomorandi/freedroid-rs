@@ -959,17 +959,17 @@ from [0 to UpperBound] (inclusive), distributed uniformly.
 
 @Ret:  none
 * $Function----------------------------------------------------------*/
-void
-Armageddon (void)
-{
-  int i;
-
-  for (i = 0; i < NumEnemys; i++)
-    {
-      AllEnemys[i].energy = 0;
-      AllEnemys[i].status = OUT;
-    }
-} // void Armageddon(void)
+// void
+// Armageddon (void)
+// {
+//   int i;
+// 
+//   for (i = 0; i < NumEnemys; i++)
+//     {
+//       AllEnemys[i].energy = 0;
+//       AllEnemys[i].status = OUT;
+//     }
+// } // void Armageddon(void)
 
 /*@Function============================================================
 @Desc: This function teleports the influencer to a new position on the

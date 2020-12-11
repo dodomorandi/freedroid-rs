@@ -9,8 +9,8 @@ use crate::{
     },
     enemy::{AnimateEnemys, ShuffleEnemys},
     global::{
-        curShip, AllBlasts, ConfigDir, CurLevel, FPSover1, GameConfig, Me, ProgressBar_Rect,
-        ProgressMeter_Rect, ProgressText_Rect, SkipAFewFrames,
+        curShip, AllBlasts, AllEnemys, ConfigDir, CurLevel, FPSover1, GameConfig, Me, NumEnemys,
+        ProgressBar_Rect, ProgressMeter_Rect, ProgressText_Rect, SkipAFewFrames,
     },
     graphics::{
         ne_screen, progress_filler_pic, progress_meter_pic, BannerIsDestroyed, FreeGraphics,
@@ -843,4 +843,17 @@ pub unsafe extern "C" fn Teleport(level_num: c_int, x: c_int, y: c_int) {
     }
 
     LeaveLiftSound();
+}
+
+/// This function is kills all enemy robots on the whole ship.
+/// It querys the user once for safety.
+#[no_mangle]
+pub unsafe extern "C" fn Armageddon() {
+    AllEnemys
+        .iter_mut()
+        .take(NumEnemys.try_into().unwrap())
+        .for_each(|enemy| {
+            enemy.energy = 0.;
+            enemy.status = Status::Out as c_int;
+        });
 }
