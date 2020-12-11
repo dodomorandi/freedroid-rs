@@ -1,15 +1,16 @@
 #[cfg(feature = "gcw0")]
 use crate::defs::{gcw0_ls_pressed_r, gcw0_rs_pressed_r};
 use crate::{
+    bullet::DeleteBullet,
     defs::{
         self, scale_rect, AssembleCombatWindowFlags, Cmds, Criticality, FirePressedR, Status,
-        Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, PROGRESS_FILLER_FILE_C,
+        Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE_C,
         PROGRESS_METER_FILE_C,
     },
-    enemy::AnimateEnemys,
+    enemy::{AnimateEnemys, ShuffleEnemys},
     global::{
-        ConfigDir, FPSover1, GameConfig, Me, ProgressBar_Rect, ProgressMeter_Rect,
-        ProgressText_Rect, SkipAFewFrames,
+        curShip, AllBlasts, ConfigDir, CurLevel, FPSover1, GameConfig, Me, ProgressBar_Rect,
+        ProgressMeter_Rect, ProgressText_Rect, SkipAFewFrames,
     },
     graphics::{
         ne_screen, progress_filler_pic, progress_meter_pic, BannerIsDestroyed, FreeGraphics,
@@ -22,12 +23,13 @@ use crate::{
     map::{AnimateRefresh, FreeShipMemory},
     menu::FreeMenuData,
     ship::FreeDroidPics,
-    sound::FreeSounds,
+    sound::{FreeSounds, LeaveLiftSound},
     text::printf_SDL,
     view::{Assemble_Combat_Picture, DisplayBanner},
 };
 
 use cstr::cstr;
+use defs::MAXBULLETS;
 use log::{error, info, warn};
 use once_cell::sync::Lazy;
 use sdl::{
@@ -791,4 +793,54 @@ pub unsafe extern "C" fn FS_filelength(file: *mut libc::FILE) -> c_int {
     assert_ne!(fseek(file, pos, SEEK_SET), -1);
 
     end.try_into().unwrap()
+}
+
+/// This function teleports the influencer to a new position on the
+/// ship.  THIS CAN BE A POSITION ON A DIFFERENT LEVEL.
+#[no_mangle]
+pub unsafe extern "C" fn Teleport(level_num: c_int, x: c_int, y: c_int) {
+    let cur_level = level_num;
+    let mut array_num = 0;
+
+    if cur_level != (*CurLevel).levelnum {
+        //--------------------
+        // In case a real level change has happend,
+        // we need to do a lot of work:
+
+        loop {
+            let tmp = curShip.AllLevels[array_num];
+            if tmp.is_null() {
+                break;
+            }
+
+            if (*tmp).levelnum == cur_level {
+                break;
+            } else {
+                array_num += 1;
+            }
+        }
+
+        CurLevel = curShip.AllLevels[array_num];
+
+        ShuffleEnemys();
+
+        Me.pos.x = x as f32;
+        Me.pos.y = y as f32;
+
+        // turn off all blasts and bullets from the old level
+        AllBlasts
+            .iter_mut()
+            .take(MAXBLASTS)
+            .for_each(|blast| blast.ty = Status::Out as i32);
+        (0..MAXBULLETS).for_each(|bullet| DeleteBullet(bullet.try_into().unwrap()));
+    } else {
+        //--------------------
+        // If no real level change has occured, everything
+        // is simple and we just need to set the new coordinates, haha
+        //
+        Me.pos.x = x as f32;
+        Me.pos.y = y as f32;
+    }
+
+    LeaveLiftSound();
 }

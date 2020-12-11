@@ -977,61 +977,61 @@ Armageddon (void)
 
 @Ret:  none
 * $Function----------------------------------------------------------*/
-void
-Teleport (int LNum, int X, int Y)
-{
-  int curLevel = LNum;
-  int array_num = 0;
-  Level tmp;
-  int i;
-
-  if (curLevel != CurLevel->levelnum)
-    {
-
-      //--------------------
-      // In case a real level change has happend,
-      // we need to do a lot of work:
-
-      while ((tmp = curShip.AllLevels[array_num]) != NULL)
-	{
-	  if (tmp->levelnum == curLevel)
-	    break;
-	  else
-	    array_num++;
-	}
-
-      CurLevel = curShip.AllLevels[array_num];
-
-      ShuffleEnemys ();
-
-      Me.pos.x = X;
-      Me.pos.y = Y;
-
-      // turn off all blasts and bullets from the old level
-      for (i = 0; i < MAXBLASTS; i++)
-	AllBlasts[i].type = OUT;
-      for (i = 0; i < MAXBULLETS; i++)
-	{
-	  DeleteBullet ( i ); // Don't ever delete bullets any other way!!! SEGFAULTS might result!!!
-	    //AllBullets[i].type = OUT;
-	    //AllBullets[i].mine = FALSE;
-	}
-    }
-  else
-    {
-      //--------------------
-      // If no real level change has occured, everything
-      // is simple and we just need to set the new coordinates, haha
-      //
-      Me.pos.x = X;
-      Me.pos.y = Y;
-    }
-
-  LeaveLiftSound ();
-
-  // UnfadeLevel ();
-
-} /* Teleport() */
+// void
+// Teleport (int LNum, int X, int Y)
+// {
+//   int curLevel = LNum;
+//   int array_num = 0;
+//   Level tmp;
+//   int i;
+// 
+//   if (curLevel != CurLevel->levelnum)
+//     {
+// 
+//       //--------------------
+//       // In case a real level change has happend,
+//       // we need to do a lot of work:
+// 
+//       while ((tmp = curShip.AllLevels[array_num]) != NULL)
+// 	{
+// 	  if (tmp->levelnum == curLevel)
+// 	    break;
+// 	  else
+// 	    array_num++;
+// 	}
+// 
+//       CurLevel = curShip.AllLevels[array_num];
+// 
+//       ShuffleEnemys ();
+// 
+//       Me.pos.x = X;
+//       Me.pos.y = Y;
+// 
+//       // turn off all blasts and bullets from the old level
+//       for (i = 0; i < MAXBLASTS; i++)
+// 	AllBlasts[i].type = OUT;
+//       for (i = 0; i < MAXBULLETS; i++)
+// 	{
+// 	  DeleteBullet ( i ); // Don't ever delete bullets any other way!!! SEGFAULTS might result!!!
+// 	    //AllBullets[i].type = OUT;
+// 	    //AllBullets[i].mine = FALSE;
+// 	}
+//     }
+//   else
+//     {
+//       //--------------------
+//       // If no real level change has occured, everything
+//       // is simple and we just need to set the new coordinates, haha
+//       //
+//       Me.pos.x = X;
+//       Me.pos.y = Y;
+//     }
+// 
+//   LeaveLiftSound ();
+// 
+//   // UnfadeLevel ();
+// 
+// } /* Teleport() */
 
 
 /*@Function============================================================

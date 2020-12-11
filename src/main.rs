@@ -1,6 +1,7 @@
 #![feature(c_variadic)]
 
 mod b_font;
+mod bullet;
 mod defs;
 mod enemy;
 mod global;
