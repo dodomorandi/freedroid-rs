@@ -399,21 +399,21 @@ This function counts the number of occurences of a string in a given
 other string.
 ----------------------------------------------------------------------
 */
-int
-CountStringOccurences ( char* SearchString , char* TargetString )
-{
-  int Counter=0;
-  char* CountPointer;
-
-  CountPointer = SearchString;
-
-  while ( ( CountPointer = strstr ( CountPointer, TargetString ) ) != NULL)
-    {
-      CountPointer += strlen ( TargetString );
-      Counter++;
-    }
-  return ( Counter );
-}; // CountStringOccurences ( char* SearchString , char* TargetString )
+// int
+// CountStringOccurences ( char* SearchString , char* TargetString )
+// {
+//   int Counter=0;
+//   char* CountPointer;
+// 
+//   CountPointer = SearchString;
+// 
+//   while ( ( CountPointer = strstr ( CountPointer, TargetString ) ) != NULL)
+//     {
+//       CountPointer += strlen ( TargetString );
+//       Counter++;
+//     }
+//   return ( Counter );
+// }; // CountStringOccurences ( char* SearchString , char* TargetString )
 
 /*
 ----------------------------------------------------------------------

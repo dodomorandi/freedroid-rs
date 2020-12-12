@@ -906,3 +906,24 @@ pub unsafe extern "C" fn DebugPrintf(db_level: c_int, fmt: *mut c_char, args: ..
         }
     }
 }
+
+/// This function counts the number of occurences of a string in a given
+/// other string.
+#[no_mangle]
+pub unsafe extern "C" fn CountStringOccurences(
+    search_string: *mut c_char,
+    target_string: *mut c_char,
+) -> c_int {
+    let mut counter = 0;
+    let mut count_pointer = search_string;
+
+    loop {
+        count_pointer = libc::strstr(count_pointer, target_string);
+        if count_pointer.is_null() {
+            break;
+        }
+        count_pointer = count_pointer.add(libc::strlen(target_string));
+        counter += 1;
+    }
+    counter
+}
