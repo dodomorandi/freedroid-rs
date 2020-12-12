@@ -10,6 +10,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "android_log-sys"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85965b6739a430150bdd138e2374a98af0c3ee0d030b3bb7fc3bddff58d0102e"
+
+[[package]]
 name = "array-init"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -81,6 +87,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "const-cstr-fork"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5bc62b762029d3c1232c72db00227df9ece151ec3739a758dc2f2064108b6f7c"
+dependencies = [
+ "libc 0.2.80",
+]
+
+[[package]]
 name = "cstr"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -107,6 +122,7 @@ dependencies = [
 name = "freedroid"
 version = "0.1.0"
 dependencies = [
+ "android_log-sys",
  "array-init",
  "bitflags",
  "bstr",
@@ -115,6 +131,7 @@ dependencies = [
  "cstr",
  "env_logger",
  "libc 0.2.80",
+ "libc-extra",
  "log",
  "once_cell",
  "pkg-config",
@@ -172,6 +189,17 @@ name = "libc"
 version = "0.2.80"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4d58d1b70b004888f764dfbf6a26a3b0342a1632d33968e4a179d8011c760614"
+
+[[package]]
+name = "libc-extra"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f15eab187f39c82f033c3fc408187b862659e0f248376a55d304c00c3cb1c52b"
+dependencies = [
+ "cfg-if",
+ "const-cstr-fork",
+ "libc 0.2.80",
+]
 
 [[package]]
 name = "log"

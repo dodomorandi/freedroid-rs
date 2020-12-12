@@ -906,26 +906,26 @@ we are searching is found in the main text.
 
 @Ret: none
 * $Function----------------------------------------------------------*/
-void
-DebugPrintf (int db_level, char *fmt, ...)
-{
-  va_list args;
-  static char buffer[5000+1];
-  va_start (args, fmt);
-
-  if (db_level <= debug_level)
-    {
-      vsnprintf (buffer, 5000, fmt, args);
-#ifndef ANDROID
-      fprintf (stderr, "%s", buffer);
-      fflush (stderr);
-#else
-      __android_log_print ( ANDROID_LOG_INFO, "FreeDroid", "%s", buffer );
-#endif
-    }
-
-  va_end (args);
-}
+// void
+// DebugPrintf (int db_level, char *fmt, ...)
+// {
+//   va_list args;
+//   static char buffer[5000+1];
+//   va_start (args, fmt);
+// 
+//   if (db_level <= debug_level)
+//     {
+//       vsnprintf (buffer, 5000, fmt, args);
+// #ifndef ANDROID
+//       fprintf (stderr, "%s", buffer);
+//       fflush (stderr);
+// #else
+//       __android_log_print ( ANDROID_LOG_INFO, "FreeDroid", "%s", buffer );
+// #endif
+//     }
+// 
+//   va_end (args);
+// }
 
 /*@Function============================================================
 @Desc: This function is used to generate a random integer in the range

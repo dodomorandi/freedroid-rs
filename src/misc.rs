@@ -9,8 +9,8 @@ use crate::{
     },
     enemy::{AnimateEnemys, ShuffleEnemys},
     global::{
-        curShip, AllBlasts, AllEnemys, ConfigDir, CurLevel, FPSover1, GameConfig, Me, NumEnemys,
-        ProgressBar_Rect, ProgressMeter_Rect, ProgressText_Rect, SkipAFewFrames,
+        curShip, debug_level, AllBlasts, AllEnemys, ConfigDir, CurLevel, FPSover1, GameConfig, Me,
+        NumEnemys, ProgressBar_Rect, ProgressMeter_Rect, ProgressText_Rect, SkipAFewFrames,
     },
     graphics::{
         ne_screen, progress_filler_pic, progress_meter_pic, BannerIsDestroyed, FreeGraphics,
@@ -30,6 +30,7 @@ use crate::{
 
 use cstr::cstr;
 use defs::MAXBULLETS;
+use libc_extra::unix::stdio::stderr;
 use log::{error, info, warn};
 use once_cell::sync::Lazy;
 use sdl::{
@@ -42,7 +43,7 @@ use sdl::{
 use std::{
     borrow::Cow,
     convert::{TryFrom, TryInto},
-    ffi::CStr,
+    ffi::{CStr, VaList, VaListImpl},
     fs::File,
     os::raw::{c_char, c_float, c_int, c_long, c_void},
     path::Path,
@@ -56,6 +57,7 @@ extern "C" {
     pub static mut One_Frame_SDL_Ticks: u32;
     pub static mut Now_SDL_Ticks: u32;
     pub static mut oneframedelay: c_long;
+    pub fn vsnprintf(s: *mut c_char, size: usize, format: *const c_char, ap: VaList) -> c_int;
 }
 
 static CURRENT_TIME_FACTOR: Lazy<RwLock<f32>> = Lazy::new(|| RwLock::new(1.));
@@ -856,4 +858,51 @@ pub unsafe extern "C" fn Armageddon() {
             enemy.energy = 0.;
             enemy.status = Status::Out as c_int;
         });
+}
+
+/// This function is used for debugging purposes.  It writes the
+/// given string either into a file, on the screen, or simply does
+/// nothing according to currently set debug level.
+#[no_mangle]
+pub unsafe extern "C" fn DebugPrintf(db_level: c_int, fmt: *mut c_char, args: ...) {
+    static mut BUFFER: [c_char; 5000 + 1] = [0; 5000 + 1];
+    let mut args: VaListImpl = args.clone();
+
+    if db_level <= debug_level {
+        vsnprintf(BUFFER.as_mut_ptr(), 5000, fmt, args.as_va_list());
+
+        #[cfg(not(target_os = "android"))]
+        {
+            libc::fprintf(
+                stderr as *mut libc::FILE,
+                cstr!("%s").as_ptr() as *mut c_char,
+                BUFFER.as_mut_ptr(),
+            );
+            libc::fflush(stderr as *mut libc::FILE);
+        };
+
+        #[cfg(target_os = "android")]
+        {
+            #[repr(C)]
+            #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+            enum AndroidLogPriority {
+                Unknown = 0,
+                Default,
+                Verbose,
+                Debug,
+                Info,
+                Warn,
+                Error,
+                Fatal,
+                Silent,
+            };
+
+            android_log_sys::__android_log_print(
+                AndroidLogPriority::Info,
+                "FreeDroid",
+                cstr!("%s").as_ptr() as *mut c_char,
+                BUFFER.as_mut_ptr(),
+            );
+        }
+    }
 }
