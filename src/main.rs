@@ -1,4 +1,5 @@
 #![feature(c_variadic)]
+#![feature(slice_strip)]
 
 mod b_font;
 mod bullet;

@@ -78,59 +78,59 @@ int sign (float x)
 // terminates game with error-msg if string is not found...
 // returns ERR if not found or could not be read, OK if found&read
 // ----------------------------------------------------------------------
-int
-read_variable (char *data, char *var_name, char *fmt, void *var)
-{
-  char *found = NULL;
-  int ret;
-
-  if ( (found = strstr(data, var_name)) == NULL)
-    {
-      DebugPrintf (1, "WARNING: variable %s was not found!\n", var_name);
-      return (ERR);
-    }
-
-  found += strlen (var_name);
-
-  // skip whitespace,tab, =, :
-  found += strspn(found, " \t=:");
-
-  ret = sscanf (found, fmt, var);
-  if ( (ret == 0) && (ret == EOF) )
-    {
-      DebugPrintf (0, "WARNING: Variable %s was not readable using the format '%s'\n",
-		   var_name, fmt);
-      return (ERR);
-    }
-
-  return (OK);
-
-} // read_variable
+// int
+// read_variable (char *data, char *var_name, char *fmt, void *var)
+// {
+//   char *found = NULL;
+//   int ret;
+// 
+//   if ( (found = strstr(data, var_name)) == NULL)
+//     {
+//       DebugPrintf (1, "WARNING: variable %s was not found!\n", var_name);
+//       return (ERR);
+//     }
+// 
+//   found += strlen (var_name);
+// 
+//   // skip whitespace,tab, =, :
+//   found += strspn(found, " \t=:");
+// 
+//   ret = sscanf (found, fmt, var);
+//   if ( (ret == 0) && (ret == EOF) )
+//     {
+//       DebugPrintf (0, "WARNING: Variable %s was not readable using the format '%s'\n",
+// 		   var_name, fmt);
+//       return (ERR);
+//     }
+// 
+//   return (OK);
+// 
+// } // read_variable
 
 
 // ----------------------------------------------------------------------
 // Game-config maker-strings for config-file:
 
-#define VERSION_STRING               "Freedroid Version"
-#define DRAW_FRAMERATE               "Draw_Framerate"
-#define DRAW_ENERGY                  "Draw_Energy"
-#define DRAW_POSITION                "Draw_Position"
-#define DRAW_DEATHCOUNT              "Draw_DeathCount"
-#define DROID_TALK                   "Droid_Talk"
-#define WANTED_TEXT_VISIBLE_TIME     "WantedTextVisibleTime"
-#define CURRENT_BG_MUSIC_VOLUME      "Current_BG_Music_Volume"
-#define CURRENT_SOUND_FX_VOLUME      "Current_Sound_FX_Volume"
-#define CURRENT_GAMMA_CORRECTION     "Current_Gamma_Correction"
-#define THEME_NAME                   "Theme_Name"
-#define FULL_USER_RECT               "FullUserRect"
-#define USE_FULLSCREEN               "UseFullscreen"
-#define TAKEOVER_ACTIVATES           "TakeoverActivates"
-#define FIRE_HOLD_TAKEOVER           "FireHoldTakeover"
-#define SHOW_DECALS                  "ShowDecals"
-#define ALL_MAP_VISIBLE              "AllMapVisible"
-#define VID_SCALE_FACTOR             "Vid_ScaleFactor"
-#define HOG_CPU			     "Hog_Cpu"
-#define EMPTY_LEVEL_SPEEDUP          "EmptyLevelSpeedup"
+// #define VERSION_STRING               "Freedroid Version"
+// #define DRAW_FRAMERATE               "Draw_Framerate"
+// #define DRAW_ENERGY                  "Draw_Energy"
+// #define DRAW_POSITION                "Draw_Position"
+// #define DRAW_DEATHCOUNT              "Draw_DeathCount"
+// #define DROID_TALK                   "Droid_Talk"
+// #define WANTED_TEXT_VISIBLE_TIME     "WantedTextVisibleTime"
+// #define CURRENT_BG_MUSIC_VOLUME      "Current_BG_Music_Volume"
+// #define CURRENT_SOUND_FX_VOLUME      "Current_Sound_FX_Volume"
+// #define CURRENT_GAMMA_CORRECTION     "Current_Gamma_Correction"
+// #define THEME_NAME                   "Theme_Name"
+// #define FULL_USER_RECT               "FullUserRect"
+// #define USE_FULLSCREEN               "UseFullscreen"
+// #define TAKEOVER_ACTIVATES           "TakeoverActivates"
+// #define FIRE_HOLD_TAKEOVER           "FireHoldTakeover"
+// #define SHOW_DECALS                  "ShowDecals"
+// #define ALL_MAP_VISIBLE              "AllMapVisible"
+// #define VID_SCALE_FACTOR             "Vid_ScaleFactor"
+// #define HOG_CPU			     "Hog_Cpu"
+// #define EMPTY_LEVEL_SPEEDUP          "EmptyLevelSpeedup"
 
 /*----------------------------------------------------------------------
  * LoadGameConfig(): load saved options from config-file
@@ -139,123 +139,123 @@ read_variable (char *data, char *var_name, char *fmt, void *var)
  * as here we read the $HOME-dir and create the config-subdir if neccessary
  *
  *----------------------------------------------------------------------*/
-int
-LoadGameConfig (void)
-{
-  char fname[255];
-  FILE *fp;
-  char *data;
-  off_t size, read_size;
-  struct stat statbuf;
-  char version_string[100];
-  char lbuf[1000]; // line-buffer for reading keyboard-config
-  int i;
-
-  // first we need the user's homedir for loading/saving stuff
-  if ( (homedir = getenv("HOME")) == NULL )
-    {
-      DebugPrintf ( 0 , "WARNING: Environment does not contain HOME variable...using local dir\n");
-      homedir = ".";
-    }
-  else
-    DebugPrintf (0, "found environment HOME = '%s'\n", homedir );
-
-  sprintf (ConfigDir, "%s/.freedroidClassic", homedir);
-
-  if (stat(ConfigDir, &statbuf) == -1) {
-    DebugPrintf (0, "Couldn't stat Config-dir %s, I'll try to create it...", ConfigDir);
-#if __WIN32__
-    _mkdir (ConfigDir);
-    DebugPrintf (0, "Found config-dir '%s'\n", ConfigDir );
-    return (OK);
-#else
-    mode_t mode = 0777; //S_IREAD|S_IWRITE|S_IEXEC
-    if (mkdir (ConfigDir, mode) == -1)
-      {
-	DebugPrintf (0, "WARNING: Failed to create config-dir: %s. Giving up...\n", ConfigDir);
-	return (ERR);
-      }
-    else
-      {
-	DebugPrintf (0, "Successfully created config-dir '%s'\n", ConfigDir );
-	return (OK);
-      }
-#endif
-  }
-
-  sprintf (fname, "%s/config", ConfigDir);
-
-  if( (fp = fopen (fname, "r")) == NULL)
-    {
-      DebugPrintf (0, "WARNING: failed to open config-file: %s\n", fname);
-      return (ERR);
-    }
-  else
-    DebugPrintf (0, "Successfully opened config-file '%s' for reading\n", fname);
-
-  size = FS_filelength (fp);
-
-  // Now read the raw data
-  data = MyMalloc (size+10);
-  read_size = fread ( data, 1, size, fp);
-  data [read_size] = '\0';  // properly terminate as string!
-
-  DebugPrintf (2, "Wanted to read %d bytes, got %d bytes\n", size, read_size);
-
-  // windoze doesn't seem to be its numbers right, so let's just close our eyes here..
-#ifndef __WIN32__
-  if ( read_size != size )
-    {
-      DebugPrintf (0, "WARNING: error in reading config-file %s\n Giving up...", fname);
-      fclose (fp);
-      free (data);
-      return (ERR);
-    }
-#endif
-
-  fclose (fp);
-
-  if ( read_variable (data, VERSION_STRING, "%s", version_string) == ERR)
-    {
-      DebugPrintf (0, "Version string could not be read in config-file...\n");
-      free (data);
-      return (ERR);
-    }
-
-  read_variable (data, DRAW_FRAMERATE,           "%d", &GameConfig.Draw_Framerate);
-  read_variable (data, DRAW_ENERGY,              "%d", &GameConfig.Draw_Energy);
-  read_variable (data, DRAW_POSITION,            "%d", &GameConfig.Draw_Position);
-  read_variable (data, DRAW_DEATHCOUNT,          "%d", &GameConfig.Draw_DeathCount);
-  read_variable (data, DROID_TALK,               "%d", &GameConfig.Droid_Talk);
-  read_variable (data, WANTED_TEXT_VISIBLE_TIME, "%f", &GameConfig.WantedTextVisibleTime);
-  read_variable (data, CURRENT_BG_MUSIC_VOLUME,  "%f", &GameConfig.Current_BG_Music_Volume);
-  read_variable (data, CURRENT_SOUND_FX_VOLUME,  "%f", &GameConfig.Current_Sound_FX_Volume);
-  read_variable (data, CURRENT_GAMMA_CORRECTION, "%f", &GameConfig.Current_Gamma_Correction);
-  read_variable (data, THEME_NAME,               "%s", &GameConfig.Theme_Name);
-  read_variable (data, FULL_USER_RECT,           "%d", &GameConfig.FullUserRect);
-  read_variable (data, USE_FULLSCREEN,           "%d", &GameConfig.UseFullscreen);
-  read_variable (data, TAKEOVER_ACTIVATES,       "%d", &GameConfig.TakeoverActivates);
-  read_variable (data, FIRE_HOLD_TAKEOVER,       "%d", &GameConfig.FireHoldTakeover);
-  read_variable (data, SHOW_DECALS,              "%d", &GameConfig.ShowDecals);
-  read_variable (data, ALL_MAP_VISIBLE,          "%d", &GameConfig.AllMapVisible);
-  read_variable (data, VID_SCALE_FACTOR,         "%f", &GameConfig.scale);
-  read_variable (data, HOG_CPU,			 "%d", &GameConfig.HogCPU);
-  read_variable (data, EMPTY_LEVEL_SPEEDUP,	 "%f", &GameConfig.emptyLevelSpeedup);
-
-  // read in keyboard-config
-  for (i=0; i < CMD_LAST; i++)
-    {
-      int status = read_variable (data, cmd_strings[i], "%s", &lbuf);
-      if ( status == OK ) {
-        sscanf (lbuf, "%d_%d_%d", &(key_cmds[i][0]), &(key_cmds[i][1]), &(key_cmds[i][2]) );
-      }
-    }
-
-  free (data);
-
-  return (OK);
-
-} // LoadGameConfig
+// int
+// LoadGameConfig (void)
+// {
+//   char fname[255];
+//   FILE *fp;
+//   char *data;
+//   off_t size, read_size;
+//   struct stat statbuf;
+//   char version_string[100];
+//   char lbuf[1000]; // line-buffer for reading keyboard-config
+//   int i;
+// 
+//   // first we need the user's homedir for loading/saving stuff
+//   if ( (homedir = getenv("HOME")) == NULL )
+//     {
+//       DebugPrintf ( 0 , "WARNING: Environment does not contain HOME variable...using local dir\n");
+//       homedir = ".";
+//     }
+//   else
+//     DebugPrintf (0, "found environment HOME = '%s'\n", homedir );
+// 
+//   sprintf (ConfigDir, "%s/.freedroidClassic", homedir);
+// 
+//   if (stat(ConfigDir, &statbuf) == -1) {
+//     DebugPrintf (0, "Couldn't stat Config-dir %s, I'll try to create it...", ConfigDir);
+// #if __WIN32__
+//     _mkdir (ConfigDir);
+//     DebugPrintf (0, "Found config-dir '%s'\n", ConfigDir );
+//     return (OK);
+// #else
+//     mode_t mode = 0777; //S_IREAD|S_IWRITE|S_IEXEC
+//     if (mkdir (ConfigDir, mode) == -1)
+//       {
+// 	DebugPrintf (0, "WARNING: Failed to create config-dir: %s. Giving up...\n", ConfigDir);
+// 	return (ERR);
+//       }
+//     else
+//       {
+// 	DebugPrintf (0, "Successfully created config-dir '%s'\n", ConfigDir );
+// 	return (OK);
+//       }
+// #endif
+//   }
+// 
+//   sprintf (fname, "%s/config", ConfigDir);
+// 
+//   if( (fp = fopen (fname, "r")) == NULL)
+//     {
+//       DebugPrintf (0, "WARNING: failed to open config-file: %s\n", fname);
+//       return (ERR);
+//     }
+//   else
+//     DebugPrintf (0, "Successfully opened config-file '%s' for reading\n", fname);
+// 
+//   size = FS_filelength (fp);
+// 
+//   // Now read the raw data
+//   data = MyMalloc (size+10);
+//   read_size = fread ( data, 1, size, fp);
+//   data [read_size] = '\0';  // properly terminate as string!
+// 
+//   DebugPrintf (2, "Wanted to read %d bytes, got %d bytes\n", size, read_size);
+// 
+//   // windoze doesn't seem to be its numbers right, so let's just close our eyes here..
+// #ifndef __WIN32__
+//   if ( read_size != size )
+//     {
+//       DebugPrintf (0, "WARNING: error in reading config-file %s\n Giving up...", fname);
+//       fclose (fp);
+//       free (data);
+//       return (ERR);
+//     }
+// #endif
+// 
+//   fclose (fp);
+// 
+//   if ( read_variable (data, VERSION_STRING, "%s", version_string) == ERR)
+//     {
+//       DebugPrintf (0, "Version string could not be read in config-file...\n");
+//       free (data);
+//       return (ERR);
+//     }
+// 
+//   read_variable (data, DRAW_FRAMERATE,           "%d", &GameConfig.Draw_Framerate);
+//   read_variable (data, DRAW_ENERGY,              "%d", &GameConfig.Draw_Energy);
+//   read_variable (data, DRAW_POSITION,            "%d", &GameConfig.Draw_Position);
+//   read_variable (data, DRAW_DEATHCOUNT,          "%d", &GameConfig.Draw_DeathCount);
+//   read_variable (data, DROID_TALK,               "%d", &GameConfig.Droid_Talk);
+//   read_variable (data, WANTED_TEXT_VISIBLE_TIME, "%f", &GameConfig.WantedTextVisibleTime);
+//   read_variable (data, CURRENT_BG_MUSIC_VOLUME,  "%f", &GameConfig.Current_BG_Music_Volume);
+//   read_variable (data, CURRENT_SOUND_FX_VOLUME,  "%f", &GameConfig.Current_Sound_FX_Volume);
+//   read_variable (data, CURRENT_GAMMA_CORRECTION, "%f", &GameConfig.Current_Gamma_Correction);
+//   read_variable (data, THEME_NAME,               "%s", &GameConfig.Theme_Name);
+//   read_variable (data, FULL_USER_RECT,           "%d", &GameConfig.FullUserRect);
+//   read_variable (data, USE_FULLSCREEN,           "%d", &GameConfig.UseFullscreen);
+//   read_variable (data, TAKEOVER_ACTIVATES,       "%d", &GameConfig.TakeoverActivates);
+//   read_variable (data, FIRE_HOLD_TAKEOVER,       "%d", &GameConfig.FireHoldTakeover);
+//   read_variable (data, SHOW_DECALS,              "%d", &GameConfig.ShowDecals);
+//   read_variable (data, ALL_MAP_VISIBLE,          "%d", &GameConfig.AllMapVisible);
+//   read_variable (data, VID_SCALE_FACTOR,         "%f", &GameConfig.scale);
+//   read_variable (data, HOG_CPU,			 "%d", &GameConfig.HogCPU);
+//   read_variable (data, EMPTY_LEVEL_SPEEDUP,	 "%f", &GameConfig.emptyLevelSpeedup);
+// 
+//   // read in keyboard-config
+//   for (i=0; i < CMD_LAST; i++)
+//     {
+//       int status = read_variable (data, cmd_strings[i], "%s", &lbuf);
+//       if ( status == OK ) {
+//         sscanf (lbuf, "%d_%d_%d", &(key_cmds[i][0]), &(key_cmds[i][1]), &(key_cmds[i][2]) );
+//       }
+//     }
+// 
+//   free (data);
+// 
+//   return (OK);
+// 
+// } // LoadGameConfig
 
 /*----------------------------------------------------------------------
  * SaveGameConfig: do just that

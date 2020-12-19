@@ -43,8 +43,9 @@ use sdl::{
 use std::{
     borrow::Cow,
     convert::{TryFrom, TryInto},
+    env,
     ffi::{CStr, VaList, VaListImpl},
-    fs::File,
+    fs::{self, File},
     os::raw::{c_char, c_float, c_int, c_long, c_void},
     path::Path,
     process,
@@ -1014,4 +1015,157 @@ pub unsafe extern "C" fn ReadAndMallocStringFromData(
         );
         return_string
     }
+}
+
+/// LoadGameConfig(): load saved options from config-file
+///
+/// this should be the first of all load/save functions called
+/// as here we read the $HOME-dir and create the config-subdir if neccessary
+#[no_mangle]
+pub unsafe extern "C" fn LoadGameConfig() -> c_int {
+    // ----------------------------------------------------------------------
+    // Game-config maker-strings for config-file:
+
+    const VERSION_STRING: &str = "Freedroid Version";
+    const DRAW_FRAMERATE: &str = "Draw_Framerate";
+    const DRAW_ENERGY: &str = "Draw_Energy";
+    const DRAW_POSITION: &str = "Draw_Position";
+    const DRAW_DEATHCOUNT: &str = "Draw_DeathCount";
+    const DROID_TALK: &str = "Droid_Talk";
+    const WANTED_TEXT_VISIBLE_TIME: &str = "WantedTextVisibleTime";
+    const CURRENT_BG_MUSIC_VOLUME: &str = "Current_BG_Music_Volume";
+    const CURRENT_SOUND_FX_VOLUME: &str = "Current_Sound_FX_Volume";
+    const CURRENT_GAMMA_CORRECTION: &str = "Current_Gamma_Correction";
+    const THEME_NAME: &str = "Theme_Name";
+    const FULL_USER_RECT: &str = "FullUserRect";
+    const USE_FULLSCREEN: &str = "UseFullscreen";
+    const TAKEOVER_ACTIVATES: &str = "TakeoverActivates";
+    const FIRE_HOLD_TAKEOVER: &str = "FireHoldTakeover";
+    const SHOW_DECALS: &str = "ShowDecals";
+    const ALL_MAP_VISIBLE: &str = "AllMapVisible";
+    const VID_SCALE_FACTOR: &str = "Vid_ScaleFactor";
+    const HOG_CPU: &str = "Hog_Cpu";
+    const EMPTY_LEVEL_SPEEDUP: &str = "EmptyLevelSpeedup";
+
+    // first we need the user's homedir for loading/saving stuff
+    let homedir = match env::var("HOME") {
+        Err(_) => {
+            warn!("Environment does not contain HOME variable...using local dir");
+            Cow::Borrowed(Path::new("."))
+        }
+        Ok(homedir) => {
+            info!("found environment HOME = '{}'", homedir);
+            Cow::Owned(homedir.into())
+        }
+    };
+
+    let config_dir = homedir.join(".freedroidClassic");
+
+    if !config_dir.exists() {
+        warn!(
+            "Couldn't stat Config-dir {}, I'll try to create it...",
+            config_dir.display()
+        );
+        match fs::create_dir(&config_dir) {
+            Ok(()) => {
+                info!("Successfully created config-dir '{}'", config_dir.display());
+                return defs::OK.into();
+            }
+            Err(_) => {
+                error!(
+                    "Failed to create config-dir: {}. Giving up...",
+                    config_dir.display()
+                );
+                return defs::ERR.into();
+            }
+        }
+    }
+
+    let config_path = config_dir.join("config");
+    let data = match fs::read(&config_path) {
+        Ok(data) => {
+            info!("Successfully read config-file '{}'", config_path.display());
+            data
+        }
+        Err(_) => {
+            error!("failed to open config-file: {}", config_path.display());
+            return defs::ERR.into();
+        }
+    };
+
+    if read_variable(&data, VERSION_STRING).is_none() {
+        error!("Version string could not be read in config-file...");
+        return defs::ERR.into();
+    }
+
+    macro_rules! parse_variable {
+        (@@inner = $name:expr; $($var:tt)+) => {
+            {
+                let value = read_variable(&data, $name)
+                    .and_then(|slice| std::str::from_utf8(slice).ok())
+                    .and_then(|value| value.parse().ok());
+                if let Some(value) = value {
+                    $($var)+ = value;
+                }
+            }
+        };
+        (@@inner $tt:tt $($rest:tt)+) => {
+                parse_variable!(@@inner $($rest)+ $tt);
+        };
+        ($($tt:tt)+) => {
+            parse_variable!(@@inner $($tt)+);
+        };
+    }
+
+    parse_variable! { GameConfig.Draw_Framerate = DRAW_FRAMERATE; };
+    parse_variable! { GameConfig.Draw_Energy = DRAW_ENERGY; };
+    parse_variable! { GameConfig.Draw_Position = DRAW_POSITION; };
+    parse_variable! { GameConfig.Draw_DeathCount = DRAW_DEATHCOUNT; };
+    parse_variable! { GameConfig.Droid_Talk = DROID_TALK; };
+    parse_variable! { GameConfig.WantedTextVisibleTime = WANTED_TEXT_VISIBLE_TIME; };
+    parse_variable! { GameConfig.Current_BG_Music_Volume = CURRENT_BG_MUSIC_VOLUME; };
+    parse_variable! { GameConfig.Current_Sound_FX_Volume = CURRENT_SOUND_FX_VOLUME; };
+    parse_variable! { GameConfig.Current_Gamma_Correction = CURRENT_GAMMA_CORRECTION; };
+    {
+        let value = read_variable(&data, THEME_NAME);
+        if let Some(value) = value {
+            GameConfig.Theme_Name[..value.len()].copy_from_slice(std::slice::from_raw_parts(
+                value.as_ptr() as *const c_char,
+                value.len(),
+            ));
+            GameConfig.Theme_Name[value.len()] = 0;
+        }
+    }
+    parse_variable! { GameConfig.FullUserRect = FULL_USER_RECT; };
+    parse_variable! { GameConfig.UseFullscreen = USE_FULLSCREEN; };
+    parse_variable! { GameConfig.TakeoverActivates = TAKEOVER_ACTIVATES; };
+    parse_variable! { GameConfig.FireHoldTakeover = FIRE_HOLD_TAKEOVER; };
+    parse_variable! { GameConfig.ShowDecals = SHOW_DECALS; };
+    parse_variable! { GameConfig.AllMapVisible = ALL_MAP_VISIBLE; };
+    parse_variable! { GameConfig.scale = VID_SCALE_FACTOR; };
+    parse_variable! { GameConfig.HogCPU = HOG_CPU; };
+    parse_variable! { GameConfig.emptyLevelSpeedup = EMPTY_LEVEL_SPEEDUP; };
+
+    // read in keyboard-config
+    for (index, &cmd_string) in cmd_strings.iter().enumerate() {
+        let value = read_variable(&data, CStr::from_ptr(cmd_string).to_str().unwrap());
+        if let Some(value) = value {
+            let value = std::str::from_utf8(value).unwrap();
+            key_cmds[index]
+                .iter_mut()
+                .zip(value.splitn(3, '_').map(|x| x.parse().unwrap()))
+                .for_each(|(key_cmd, value)| *key_cmd = value);
+        }
+    }
+
+    defs::OK.into()
+}
+
+fn read_variable<'a>(data: &'a [u8], var_name: &str) -> Option<&'a [u8]> {
+    use bstr::ByteSlice;
+    data.lines()
+        .filter_map(|line| line.trim_start().strip_prefix(var_name.as_bytes()))
+        .filter_map(|line| line.trim_start().strip_prefix(b"="))
+        .map(|line| line.trim())
+        .next()
 }
