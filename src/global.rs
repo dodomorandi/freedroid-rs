@@ -14,7 +14,7 @@ use crate::{
 
 use cstr::cstr;
 use sdl::video::ll::{SDL_Rect, SDL_Surface};
-use std::ffi::CStr;
+use std::{ffi::CStr, ptr::null_mut};
 
 extern "C" {
     pub static mut ConfigDir: [i8; 255];
@@ -84,21 +84,6 @@ extern "C" {
     /* (currently only 0 or !=0 is implemented) */
     pub static mut show_all_droids: i32; /* display enemys regardless of IsVisible() */
     pub static mut stop_influencer: i32; /* for bullet debugging: stop where u are */
-    pub static mut Time_For_Each_Phase_Of_Door_Movement: f32;
-    pub static mut Blast_Damage_Per_Second: f32;
-    pub static mut Blast_Radius: f32;
-    pub static mut Droid_Radius: f32;
-    pub static mut LevelDoorsNotMovedTime: f32;
-    pub static mut collision_lose_energy_calibrator: f32;
-    pub static mut GameConfig: Config;
-    pub static mut CurrentCombatScaleFactor: f32;
-    pub static mut Menu_BFont: *mut BFontInfo;
-    pub static mut Para_BFont: *mut BFontInfo;
-    pub static mut Highscore_BFont: *mut BFontInfo;
-    pub static mut Font0_BFont: *mut BFontInfo;
-    pub static mut Font1_BFont: *mut BFontInfo;
-    pub static mut Font2_BFont: *mut BFontInfo;
-    pub static mut SkipAFewFrames: i32;
     pub static mut level_rect: [SDL_Rect; MAX_LEVELS]; /* rect's of levels in side-view */
     pub static mut liftrow_rect: [SDL_Rect; MAX_LIFT_ROWS]; /* the lift-row rect's in side-view*/
     pub static mut Highscores: *mut *mut HighscoreEntry;
@@ -148,3 +133,68 @@ pub const INFLUENCE_MODE_NAMES: [&'static CStr; 17] = [
     cstr!("Activate"),
     cstr!("-- OUT --"),
 ];
+
+#[no_mangle]
+pub static mut GameConfig: Config = Config {
+    WantedTextVisibleTime: 0.,
+    Draw_Framerate: 0,
+    Draw_Energy: 0,
+    Draw_Position: 0,
+    Draw_DeathCount: 0,
+    Droid_Talk: 0,
+    Current_BG_Music_Volume: 0.,
+    Current_Sound_FX_Volume: 0.,
+    Current_Gamma_Correction: 0.,
+    Theme_Name: [0; 100],
+    FullUserRect: 0,
+    UseFullscreen: 0,
+    TakeoverActivates: 0,
+    FireHoldTakeover: 0,
+    ShowDecals: 0,
+    AllMapVisible: 0,
+    scale: 0.,
+    HogCPU: 0,
+    emptyLevelSpeedup: 0.,
+};
+
+#[no_mangle]
+pub static mut Menu_BFont: *mut BFontInfo = null_mut();
+
+#[no_mangle]
+pub static mut Para_BFont: *mut BFontInfo = null_mut();
+
+#[no_mangle]
+pub static mut Highscore_BFont: *mut BFontInfo = null_mut();
+
+#[no_mangle]
+pub static mut Font0_BFont: *mut BFontInfo = null_mut();
+
+#[no_mangle]
+pub static mut Font1_BFont: *mut BFontInfo = null_mut();
+
+#[no_mangle]
+pub static mut Font2_BFont: *mut BFontInfo = null_mut();
+
+#[no_mangle]
+pub static mut SkipAFewFrames: i32 = 0;
+
+#[no_mangle]
+pub static mut LevelDoorsNotMovedTime: f32 = 0.;
+
+#[no_mangle]
+pub static mut Droid_Radius: f32 = 0.;
+
+#[no_mangle]
+pub static mut Time_For_Each_Phase_Of_Door_Movement: f32 = 0.;
+
+#[no_mangle]
+pub static mut Blast_Radius: f32 = 0.;
+
+#[no_mangle]
+pub static mut Blast_Damage_Per_Second: f32 = 0.;
+
+#[no_mangle]
+pub static mut CurrentCombatScaleFactor: f32 = 0.;
+
+#[no_mangle]
+pub static mut collision_lose_energy_calibrator: f32 = 0.;

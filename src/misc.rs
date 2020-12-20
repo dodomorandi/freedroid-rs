@@ -54,12 +54,26 @@ use std::{
 };
 
 extern "C" {
-    pub static mut framenr: c_int;
-    pub static mut One_Frame_SDL_Ticks: u32;
-    pub static mut Now_SDL_Ticks: u32;
-    pub static mut oneframedelay: c_long;
     pub fn vsnprintf(s: *mut c_char, size: usize, format: *const c_char, ap: VaList) -> c_int;
 }
+
+#[no_mangle]
+static mut oneframedelay: c_long = 0;
+
+#[no_mangle]
+static mut tenframedelay: c_long = 0;
+
+#[no_mangle]
+static mut onehundredframedelay: c_long = 0;
+
+#[no_mangle]
+static mut Now_SDL_Ticks: u32 = 0;
+
+#[no_mangle]
+static mut One_Frame_SDL_Ticks: u32 = 0;
+
+#[no_mangle]
+static mut framenr: c_int = 0;
 
 static CURRENT_TIME_FACTOR: Lazy<RwLock<f32>> = Lazy::new(|| RwLock::new(1.));
 
@@ -1168,4 +1182,16 @@ fn read_variable<'a>(data: &'a [u8], var_name: &str) -> Option<&'a [u8]> {
         .filter_map(|line| line.trim_start().strip_prefix(b"="))
         .map(|line| line.trim())
         .next()
+}
+
+/// just a plain old sign-function
+#[no_mangle]
+pub extern "C" fn sign(x: c_float) -> c_int {
+    if x == 0.0 {
+        0
+    } else if x > 0.0 {
+        1
+    } else {
+        -1
+    }
 }
