@@ -1,6 +1,10 @@
-use crate::{defs::Sound, global::sound_on};
+use crate::{
+    defs::{Sound, NUM_COLORS},
+    global::sound_on,
+};
 
 use log::{info, warn};
+use sdl::audio::ll::SDL_CloseAudio;
 use std::{
     convert::TryFrom,
     ffi::CStr,
@@ -8,15 +12,22 @@ use std::{
 };
 
 extern "C" {
+    pub type Mix_Music;
     fn Mix_PlayChannelTimed(
         channel: c_int,
         chunk: *mut Mix_Chunk,
         loops: c_int,
         ticks: c_int,
     ) -> c_int;
+    fn Mix_FreeChunk(chunk: *mut Mix_Chunk);
+    fn Mix_FreeMusic(music: *mut Mix_Music);
+    fn Mix_CloseAudio();
+
     static mut Loaded_WAV_Files: [*mut Mix_Chunk; Sound::All as usize];
     static SoundSampleFilenames: [*mut c_char; Sound::All as usize];
-    pub fn FreeSounds();
+    static mut MusicSongs: [*mut Mix_Music; NUM_COLORS];
+    static mut Tmp_MOD_File: *mut Mix_Music;
+
     pub fn LeaveLiftSound();
 }
 
@@ -64,4 +75,24 @@ pub unsafe extern "C" fn Play_Sound(tune: c_int) {
             CStr::from_ptr(SoundSampleFilenames[tune]).to_string_lossy()
         );
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn FreeSounds() {
+    Loaded_WAV_Files
+        .iter()
+        .filter(|file| !file.is_null())
+        .for_each(|&file| Mix_FreeChunk(file));
+
+    MusicSongs
+        .iter()
+        .filter(|song| !song.is_null())
+        .for_each(|&song| Mix_FreeMusic(song));
+
+    if !Tmp_MOD_File.is_null() {
+        Mix_FreeMusic(Tmp_MOD_File);
+    }
+
+    Mix_CloseAudio();
+    SDL_CloseAudio();
 }

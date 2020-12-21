@@ -1,6 +1,7 @@
 #![feature(c_variadic)]
 #![feature(slice_strip)]
 #![feature(const_maybe_uninit_assume_init)]
+#![feature(extern_types)]
 
 mod b_font;
 mod bullet;
