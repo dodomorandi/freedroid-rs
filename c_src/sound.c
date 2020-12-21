@@ -393,178 +393,178 @@ Switch_Background_Music_To ( const char* filename_raw )
 /*@Function============================================================
 @Desc:
 
-@Ret:
-@Int:
-* $Function----------------------------------------------------------*/
-void
-GotHitSound (void)
-{
-  if (!sound_on) return;
-
-  Play_Sound (GOT_HIT_SOUND);
-}				// void GotHitSound(void)
-
-
-/*@Function============================================================
-@Desc:
-
-@Ret:
-@Int:
-* $Function----------------------------------------------------------*/
-void
-GotIntoBlastSound (void)
-{
-  if (!sound_on) return;
-
-  Play_Sound (GOT_INTO_BLAST_SOUND);
-  return;
-}				// void GotIntoBlastSound(void)
-
-/*@Function============================================================
-@Desc:
-
-@Ret:
-@Int:
-* $Function----------------------------------------------------------*/
-void
-RefreshSound (void)
-{
-  if (!sound_on) return;
-
-  Play_Sound (REFRESH_SOUND);
-  return;
-}				// void RefreshSound(void)
-
-
-/*@Function============================================================
-@Desc:
-
-@Ret:
-@Int:
-* $Function----------------------------------------------------------*/
-void
-MoveLiftSound (void)
-{
-  if (!sound_on) return;
-
-  Play_Sound (MOVE_ELEVATOR_SOUND);
-}				// void MoveLiftSound(void)
-
-/*@Function============================================================
-@Desc:
-
-@Ret:
-@Int:
-* $Function----------------------------------------------------------*/
-void
-MenuItemSelectedSound (void)
-{
-  if (!sound_on) return;
-
-  Play_Sound (MENU_ITEM_SELECTED_SOUND);
-}				// void MoveLiftSound(void)
-
-/*@Function============================================================
-@Desc:
-
-@Ret:
-@Int:
-* $Function----------------------------------------------------------*/
-void
-MoveMenuPositionSound (void)
-{
-  if (!sound_on) return;
-
-  Play_Sound (MOVE_MENU_POSITION_SOUND);
-}				// void MoveLiftSound(void)
-
-
-/*@Function============================================================
-@Desc:
-
-@Ret:
-@Int:
-* $Function----------------------------------------------------------*/
-void
-ThouArtDefeatedSound (void)
-{
-  if (!sound_on) return;
-  Play_Sound (THOU_ART_DEFEATED_SOUND);
-}				// void MoveLiftSound(void)
-
-
-/*@Function============================================================
-@Desc:
-
-@Ret:
-@Int:
-* $Function----------------------------------------------------------*/
-void
-EnterLiftSound (void)
-{
-  if (!sound_on) return;
-
-  Play_Sound (ENTER_ELEVATOR_SOUND);
-  return;
-}				// void EnterLiftSound(void)
-
-
-/*@Function============================================================
-@Desc:
-
-@Ret:
-@Int:
-* $Function----------------------------------------------------------*/
-void
-LeaveLiftSound (void)
-{
-  if (!sound_on) return;
-
-  Play_Sound (LEAVE_ELEVATOR_SOUND);
-
-  return;
-}				// void LeaveLiftSound(void)
-
-
-/*@Function============================================================
-@Desc:
-
-@Ret:
-@Int:
-* $Function----------------------------------------------------------*/
-void
-Fire_Bullet_Sound (int BulletType)
-{
-  if (!sound_on) return;
-
-  switch (BulletType)
-    {
-      case PULSE:
-	Play_Sound ( FIRE_BULLET_PULSE_SOUND );
-	break;
-
-      case SINGLE_PULSE:
-	Play_Sound ( FIRE_BULLET_SINGLE_PULSE_SOUND );
-	break;
-
-      case MILITARY:
-	Play_Sound ( FIRE_BULLET_MILITARY_SOUND );
-	break;
-
-      case FLASH:
-	Play_Sound ( FIRE_BULLET_FLASH_SOUND );
-	break;
-
-      case EXTERMINATOR:
-	Play_Sound ( FIRE_BULLET_EXTERMINATOR_SOUND );
-	break;
-
-      case LASER_RIFLE:
-	Play_Sound ( FIRE_BULLET_LASER_RIFLE_SOUND );
-	break;
-
-    }
-}				// void FireBulletSound(void)
+// @Ret:
+// @Int:
+// * $Function----------------------------------------------------------*/
+// void
+// GotHitSound (void)
+// {
+//   if (!sound_on) return;
+// 
+//   Play_Sound (GOT_HIT_SOUND);
+// }				// void GotHitSound(void)
+// 
+// 
+// /*@Function============================================================
+// @Desc:
+// 
+// @Ret:
+// @Int:
+// * $Function----------------------------------------------------------*/
+// void
+// GotIntoBlastSound (void)
+// {
+//   if (!sound_on) return;
+// 
+//   Play_Sound (GOT_INTO_BLAST_SOUND);
+//   return;
+// }				// void GotIntoBlastSound(void)
+// 
+// /*@Function============================================================
+// @Desc:
+// 
+// @Ret:
+// @Int:
+// * $Function----------------------------------------------------------*/
+// void
+// RefreshSound (void)
+// {
+//   if (!sound_on) return;
+// 
+//   Play_Sound (REFRESH_SOUND);
+//   return;
+// }				// void RefreshSound(void)
+// 
+// 
+// /*@Function============================================================
+// @Desc:
+// 
+// @Ret:
+// @Int:
+// * $Function----------------------------------------------------------*/
+// void
+// MoveLiftSound (void)
+// {
+//   if (!sound_on) return;
+// 
+//   Play_Sound (MOVE_ELEVATOR_SOUND);
+// }				// void MoveLiftSound(void)
+// 
+// /*@Function============================================================
+// @Desc:
+// 
+// @Ret:
+// @Int:
+// * $Function----------------------------------------------------------*/
+// void
+// MenuItemSelectedSound (void)
+// {
+//   if (!sound_on) return;
+// 
+//   Play_Sound (MENU_ITEM_SELECTED_SOUND);
+// }				// void MoveLiftSound(void)
+// 
+// /*@Function============================================================
+// @Desc:
+// 
+// @Ret:
+// @Int:
+// * $Function----------------------------------------------------------*/
+// void
+// MoveMenuPositionSound (void)
+// {
+//   if (!sound_on) return;
+// 
+//   Play_Sound (MOVE_MENU_POSITION_SOUND);
+// }				// void MoveLiftSound(void)
+// 
+// 
+// /*@Function============================================================
+// @Desc:
+// 
+// @Ret:
+// @Int:
+// * $Function----------------------------------------------------------*/
+// void
+// ThouArtDefeatedSound (void)
+// {
+//   if (!sound_on) return;
+//   Play_Sound (THOU_ART_DEFEATED_SOUND);
+// }				// void MoveLiftSound(void)
+// 
+// 
+// /*@Function============================================================
+// @Desc:
+// 
+// @Ret:
+// @Int:
+// * $Function----------------------------------------------------------*/
+// void
+// EnterLiftSound (void)
+// {
+//   if (!sound_on) return;
+// 
+//   Play_Sound (ENTER_ELEVATOR_SOUND);
+//   return;
+// }				// void EnterLiftSound(void)
+// 
+// 
+// /*@Function============================================================
+// @Desc:
+// 
+// @Ret:
+// @Int:
+// * $Function----------------------------------------------------------*/
+// void
+// LeaveLiftSound (void)
+// {
+//   if (!sound_on) return;
+// 
+//   Play_Sound (LEAVE_ELEVATOR_SOUND);
+// 
+//   return;
+// }				// void LeaveLiftSound(void)
+// 
+// 
+// /*@Function============================================================
+// @Desc:
+// 
+// @Ret:
+// @Int:
+// * $Function----------------------------------------------------------*/
+// void
+// Fire_Bullet_Sound (int BulletType)
+// {
+//   if (!sound_on) return;
+// 
+//   switch (BulletType)
+//     {
+//       case PULSE:
+// 	Play_Sound ( FIRE_BULLET_PULSE_SOUND );
+// 	break;
+// 
+//       case SINGLE_PULSE:
+// 	Play_Sound ( FIRE_BULLET_SINGLE_PULSE_SOUND );
+// 	break;
+// 
+//       case MILITARY:
+// 	Play_Sound ( FIRE_BULLET_MILITARY_SOUND );
+// 	break;
+// 
+//       case FLASH:
+// 	Play_Sound ( FIRE_BULLET_FLASH_SOUND );
+// 	break;
+// 
+//       case EXTERMINATOR:
+// 	Play_Sound ( FIRE_BULLET_EXTERMINATOR_SOUND );
+// 	break;
+// 
+//       case LASER_RIFLE:
+// 	Play_Sound ( FIRE_BULLET_LASER_RIFLE_SOUND );
+// 	break;
+// 
+//     }
+// }				// void FireBulletSound(void)
 
 
 // /*@Function============================================================

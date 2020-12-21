@@ -1,5 +1,5 @@
 use crate::{
-    defs::{Sound, NUM_COLORS},
+    defs::{Bullet, Sound, NUM_COLORS},
     global::sound_on,
 };
 
@@ -27,8 +27,6 @@ extern "C" {
     static SoundSampleFilenames: [*mut c_char; Sound::All as usize];
     static mut MusicSongs: [*mut Mix_Music; NUM_COLORS];
     static mut Tmp_MOD_File: *mut Mix_Music;
-
-    pub fn LeaveLiftSound();
 }
 
 #[repr(C)]
@@ -167,4 +165,111 @@ pub unsafe extern "C" fn DruidBlastSound() {
     }
 
     Play_Sound(Sound::Blast as i32);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn GotHitSound() {
+    if sound_on == 0 {
+        return;
+    }
+
+    Play_Sound(Sound::GotHit as i32);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn GotIntoBlastSound() {
+    if sound_on == 0 {
+        return;
+    }
+
+    Play_Sound(Sound::GotIntoBlast as i32);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn RefreshSound() {
+    if sound_on == 0 {
+        return;
+    }
+
+    Play_Sound(Sound::Refresh as i32);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn MoveLiftSound() {
+    if sound_on == 0 {
+        return;
+    }
+
+    Play_Sound(Sound::MoveElevator as i32);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn MenuItemSelectedSound() {
+    if sound_on == 0 {
+        return;
+    }
+
+    Play_Sound(Sound::MenuItemSelected as i32);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn MoveMenuPositionSound() {
+    if sound_on == 0 {
+        return;
+    }
+
+    Play_Sound(Sound::MoveMenuPosition as i32);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ThouArtDefeatedSound() {
+    if sound_on == 0 {
+        return;
+    }
+    Play_Sound(Sound::ThouArtDefeated as i32);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn EnterLiftSound() {
+    if sound_on == 0 {
+        return;
+    }
+
+    Play_Sound(Sound::EnterElevator as i32);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn LeaveLiftSound() {
+    if sound_on == 0 {
+        return;
+    }
+
+    Play_Sound(Sound::LeaveElevator as i32);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Fire_Bullet_Sound(bullet_type: c_int) {
+    if sound_on == 0 {
+        return;
+    }
+
+    use Bullet::*;
+    let bullet_type = match bullet_type {
+        0 => Pulse,
+        1 => SinglePulse,
+        2 => Military,
+        3 => Flash,
+        4 => Exterminator,
+        5 => LaserRifle,
+        _ => panic!("invalid bullet type {}", bullet_type),
+    };
+
+    match bullet_type {
+        Pulse => Play_Sound(Sound::FireBulletPulse as i32),
+        SinglePulse => Play_Sound(Sound::FireBulletSinglePulse as i32),
+        Military => Play_Sound(Sound::FireBulletMilitary as i32),
+        Flash => Play_Sound(Sound::FireBulletFlash as i32),
+        Exterminator => Play_Sound(Sound::FireBulletExterminator as i32),
+        LaserRifle => Play_Sound(Sound::FireBulletLaserRifle as i32),
+    }
 }
