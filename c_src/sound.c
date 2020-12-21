@@ -567,108 +567,108 @@ Fire_Bullet_Sound (int BulletType)
 }				// void FireBulletSound(void)
 
 
-/*@Function============================================================
-@Desc:
-
-@Ret:
-@Int:
-* $Function----------------------------------------------------------*/
-void
-Takeover_Set_Capsule_Sound (void)
-{
-  if (!sound_on) return;
-
-  Play_Sound (TAKEOVER_SET_CAPSULE_SOUND);
-}				// void FireBulletSound(void)
-
-/*@Function============================================================
-@Desc:
-
-@Ret:
-@Int:
-* $Function----------------------------------------------------------*/
-void
-Takeover_Game_Won_Sound (void)
-{
-  if (!sound_on) return;
-
-  Play_Sound ( TAKEOVER_GAME_WON_SOUND );
-}				// void FireBulletSound(void)
-
-/*@Function============================================================
-@Desc:
-
-@Ret:
-@Int:
-* $Function----------------------------------------------------------*/
-void
-Takeover_Game_Deadlock_Sound (void)
-{
-  if (!sound_on) return;
-
-  Play_Sound ( TAKEOVER_GAME_DEADLOCK_SOUND );
-}				// void FireBulletSound(void)
-
-/*@Function============================================================
-@Desc:
-
-@Ret:
-@Int:
-* $Function----------------------------------------------------------*/
-void
-Takeover_Game_Lost_Sound (void)
-{
-  if (!sound_on) return;
-
-  Play_Sound ( TAKEOVER_GAME_LOST_SOUND );
-}				// void FireBulletSound(void)
-
-void
-CollisionGotDamagedSound ( void )
-{
-  if ( !sound_on ) return;
-
-  Play_Sound ( COLLISION_GOT_DAMAGED_SOUND );
-}
-
-void
-CollisionDamagedEnemySound ( void )
-{
-  if ( !sound_on ) return;
-
-  Play_Sound ( COLLISION_DAMAGED_ENEMY_SOUND );
-}
-
-/*@Function============================================================
-@Desc:
-
-@Ret:
-@Int:
-* $Function----------------------------------------------------------*/
-void
-BounceSound (void)
-{
-  if (!sound_on) return;
-
-  // Play_Sound (COMBAT_BACKGROUND_MUSIC_SOUND );
-  Play_Sound ( COLLISIONSOUND );
-
-}				// void BounceSound(void)
-
-/*@Function============================================================
-@Desc:
-
-@Ret:
-@Int:
-* $Function----------------------------------------------------------*/
-void
-DruidBlastSound (void)
-{
-  if (!sound_on) return;
-
-  Play_Sound (BLASTSOUND);
-
-}				// void BounceSound(void)
+// /*@Function============================================================
+// @Desc:
+// 
+// @Ret:
+// @Int:
+// * $Function----------------------------------------------------------*/
+// void
+// Takeover_Set_Capsule_Sound (void)
+// {
+//   if (!sound_on) return;
+// 
+//   Play_Sound (TAKEOVER_SET_CAPSULE_SOUND);
+// }				// void FireBulletSound(void)
+// 
+// /*@Function============================================================
+// @Desc:
+// 
+// @Ret:
+// @Int:
+// * $Function----------------------------------------------------------*/
+// void
+// Takeover_Game_Won_Sound (void)
+// {
+//   if (!sound_on) return;
+// 
+//   Play_Sound ( TAKEOVER_GAME_WON_SOUND );
+// }				// void FireBulletSound(void)
+// 
+// /*@Function============================================================
+// @Desc:
+// 
+// @Ret:
+// @Int:
+// * $Function----------------------------------------------------------*/
+// void
+// Takeover_Game_Deadlock_Sound (void)
+// {
+//   if (!sound_on) return;
+// 
+//   Play_Sound ( TAKEOVER_GAME_DEADLOCK_SOUND );
+// }				// void FireBulletSound(void)
+// 
+// /*@Function============================================================
+// @Desc:
+// 
+// @Ret:
+// @Int:
+// * $Function----------------------------------------------------------*/
+// void
+// Takeover_Game_Lost_Sound (void)
+// {
+//   if (!sound_on) return;
+// 
+//   Play_Sound ( TAKEOVER_GAME_LOST_SOUND );
+// }				// void FireBulletSound(void)
+// 
+// void
+// CollisionGotDamagedSound ( void )
+// {
+//   if ( !sound_on ) return;
+// 
+//   Play_Sound ( COLLISION_GOT_DAMAGED_SOUND );
+// }
+// 
+// void
+// CollisionDamagedEnemySound ( void )
+// {
+//   if ( !sound_on ) return;
+// 
+//   Play_Sound ( COLLISION_DAMAGED_ENEMY_SOUND );
+// }
+// 
+// /*@Function============================================================
+// @Desc:
+// 
+// @Ret:
+// @Int:
+// * $Function----------------------------------------------------------*/
+// void
+// BounceSound (void)
+// {
+//   if (!sound_on) return;
+// 
+//   // Play_Sound (COMBAT_BACKGROUND_MUSIC_SOUND );
+//   Play_Sound ( COLLISIONSOUND );
+// 
+// }				// void BounceSound(void)
+// 
+// /*@Function============================================================
+// @Desc:
+// 
+// @Ret:
+// @Int:
+// * $Function----------------------------------------------------------*/
+// void
+// DruidBlastSound (void)
+// {
+//   if (!sound_on) return;
+// 
+//   Play_Sound (BLASTSOUND);
+// 
+// }				// void BounceSound(void)
 
 //void
 //FreeSounds ( void )

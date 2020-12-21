@@ -96,3 +96,75 @@ pub unsafe extern "C" fn FreeSounds() {
     Mix_CloseAudio();
     SDL_CloseAudio();
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn Takeover_Set_Capsule_Sound() {
+    if sound_on == 0 {
+        return;
+    }
+
+    Play_Sound(Sound::TakeoverSetCapsule as i32);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Takeover_Game_Won_Sound() {
+    if sound_on == 0 {
+        return;
+    }
+
+    Play_Sound(Sound::TakeoverGameWon as i32);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Takeover_Game_Deadlock_Sound() {
+    if sound_on == 0 {
+        return;
+    }
+
+    Play_Sound(Sound::TakeoverGameDeadlock as i32);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Takeover_Game_Lost_Sound() {
+    if sound_on == 0 {
+        return;
+    }
+
+    Play_Sound(Sound::TakeoverGameLost as i32);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn CollisionGotDamagedSound() {
+    if sound_on == 0 {
+        return;
+    }
+
+    Play_Sound(Sound::CollisionGotDamaged as i32);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn CollisionDamagedEnemySound() {
+    if sound_on == 0 {
+        return;
+    }
+
+    Play_Sound(Sound::CollisionDamagedEnemy as i32);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn BounceSound() {
+    if sound_on == 0 {
+        return;
+    }
+
+    Play_Sound(Sound::Collision as i32);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn DruidBlastSound() {
+    if sound_on == 0 {
+        return;
+    }
+
+    Play_Sound(Sound::Blast as i32);
+}
