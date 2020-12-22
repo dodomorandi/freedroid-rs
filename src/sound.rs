@@ -9,7 +9,7 @@ use sdl::{audio::ll::SDL_CloseAudio, sdl::get_error};
 use std::{
     convert::TryFrom,
     ffi::CStr,
-    os::raw::{c_char, c_int},
+    os::raw::{c_char, c_float, c_int},
 };
 
 extern "C" {
@@ -28,6 +28,7 @@ extern "C" {
     fn Mix_PlayMusic(music: *mut Mix_Music, loops: c_int) -> c_int;
     fn Mix_VolumeMusic(volume: c_int) -> c_int;
     fn Mix_LoadMUS(file: *const c_char) -> *mut Mix_Music;
+    fn Mix_VolumeChunk(chunk: *mut Mix_Chunk, volume: c_int) -> c_int;
 
     static mut Loaded_WAV_Files: [*mut Mix_Chunk; Sound::All as usize];
     static SoundSampleFilenames: [*mut c_char; Sound::All as usize];
@@ -352,4 +353,27 @@ pub unsafe extern "C" fn CountdownSound() {
 #[no_mangle]
 pub unsafe extern "C" fn EndCountdownSound() {
     Play_Sound(Sound::Endcountdown as i32);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Set_Sound_FX_Volume(new_volume: c_float) {
+    if sound_on == 0 {
+        return;
+    }
+
+    // Set the volume IN the loaded files, if SDL is used...
+    // This is done here for the Files 1,2,3 and 4, since these
+    // are background music files.
+    Loaded_WAV_Files.iter().skip(1).for_each(|&file| {
+        Mix_VolumeChunk(file, (new_volume * f32::from(MIX_MAX_VOLUME)) as c_int);
+    });
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Set_BG_Music_Volume(new_volume: c_float) {
+    if sound_on == 0 {
+        return;
+    }
+
+    Mix_VolumeMusic((new_volume * f32::from(MIX_MAX_VOLUME)) as c_int);
 }

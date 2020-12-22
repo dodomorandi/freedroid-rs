@@ -199,40 +199,40 @@ Continuing with sound disabled\n");
 #endif // HAVE_SDL_MIXER
 } // void InitAudio(void)
 
-void
-Set_BG_Music_Volume(float NewVolume)
-{
+// void
+// Set_BG_Music_Volume(float NewVolume)
+// {
+// 
+// #ifndef HAVE_LIBSDL_MIXER
+//   return;
+// #else
+//   if ( !sound_on ) return;
+// 
+//   Mix_VolumeMusic( (int) rintf( NewVolume * MIX_MAX_VOLUME ) );
+// 
+// #endif // HAVE_LIBSDL_MIXER
+// } // void Set_BG_Music_Volume(float NewVolume)
 
-#ifndef HAVE_LIBSDL_MIXER
-  return;
-#else
-  if ( !sound_on ) return;
-
-  Mix_VolumeMusic( (int) rintf( NewVolume * MIX_MAX_VOLUME ) );
-
-#endif // HAVE_LIBSDL_MIXER
-} // void Set_BG_Music_Volume(float NewVolume)
-
-void
-Set_Sound_FX_Volume(float NewVolume)
-{
-  int i;
-#ifndef HAVE_LIBSDL_MIXER
-  return;
-#else
-  if ( !sound_on ) return;
-
-  // Set the volume IN the loaded files, if SDL is used...
-  // This is done here for the Files 1,2,3 and 4, since these
-  // are background music files.
-  for ( i=1 ; i<ALL_SOUNDS ; i++ )
-    {
-      Mix_VolumeChunk( Loaded_WAV_Files[i], (int) rintf(NewVolume* MIX_MAX_VOLUME) );
-    }
-
-#endif // HAVE_LIBSDL_MIXER
-
-} // void Set_BG_Music_Volume(float NewVolume)
+// void
+// Set_Sound_FX_Volume(float NewVolume)
+// {
+//   int i;
+// #ifndef HAVE_LIBSDL_MIXER
+//   return;
+// #else
+//   if ( !sound_on ) return;
+// 
+//   // Set the volume IN the loaded files, if SDL is used...
+//   // This is done here for the Files 1,2,3 and 4, since these
+//   // are background music files.
+//   for ( i=1 ; i<ALL_SOUNDS ; i++ )
+//     {
+//       Mix_VolumeChunk( Loaded_WAV_Files[i], (int) rintf(NewVolume* MIX_MAX_VOLUME) );
+//     }
+// 
+// #endif // HAVE_LIBSDL_MIXER
+// 
+// } // void Set_BG_Music_Volume(float NewVolume)
 
 
 // void
