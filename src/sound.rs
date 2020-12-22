@@ -343,3 +343,13 @@ pub unsafe extern "C" fn Switch_Background_Music_To(filename_raw: *const c_char)
 
     Mix_VolumeMusic((GameConfig.Current_BG_Music_Volume * f32::from(MIX_MAX_VOLUME)) as c_int);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn CountdownSound() {
+    Play_Sound(Sound::Countdown as i32);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn EndCountdownSound() {
+    Play_Sound(Sound::Endcountdown as i32);
+}

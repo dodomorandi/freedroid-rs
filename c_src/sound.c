@@ -235,17 +235,17 @@ Set_Sound_FX_Volume(float NewVolume)
 } // void Set_BG_Music_Volume(float NewVolume)
 
 
-void
-CountdownSound (void)
-{
-  Play_Sound (COUNTDOWN_SOUND);
-}
-
-void
-EndCountdownSound (void)
-{
-  Play_Sound (ENDCOUNTDOWN_SOUND);
-}
+// void
+// CountdownSound (void)
+// {
+//   Play_Sound (COUNTDOWN_SOUND);
+// }
+// 
+// void
+// EndCountdownSound (void)
+// {
+//   Play_Sound (ENDCOUNTDOWN_SOUND);
+// }
 
 /*@Function============================================================
 @Desc:
