@@ -104,100 +104,100 @@ Mix_Music *MusicSongs[NUM_COLORS];
 Mix_Music *Tmp_MOD_File;
 #endif
 
-void
-Init_Audio(void)
-{
-#ifndef HAVE_LIBSDL_MIXER
-  return;
-#else
-  char *fpath;
-  int i;
-  int audio_rate = MIX_DEFAULT_FREQUENCY; //  22050;
-  Uint16 audio_format = MIX_DEFAULT_FORMAT;
-  int audio_channels = 2;	// = stereo
-  //  int audio_buffers = 4096;
-  int audio_buffers = 100; // higher = less risk of sound skips, but more lag
-
-  DebugPrintf(1, "\nInitializing SDL Audio Systems....\n");
-
-  if ( !sound_on ) return;
-
-
-  // Now SDL_AUDIO is initialized here:
-
-  if ( SDL_InitSubSystem ( SDL_INIT_AUDIO ) == -1 )
-    {
-      DebugPrintf (0, "WARNING: SDL Sound subsystem could not be initialized.\n\
-Continuing with sound disabled\n");
-      sound_on = FALSE;
-      return;
-    }
-  else
-    DebugPrintf(1, "SDL Audio initialisation successful.\n");
-
-  // Now that we have initialized the audio SubSystem, we must open
-  // an audio channel.  This will be done here (see code from Mixer-Tutorial):
-
-  if ( Mix_OpenAudio(audio_rate, audio_format, audio_channels, audio_buffers) )
-    {
-      DebugPrintf (0, "WARNING: SDL audio channel could not be opened. \n");
-      DebugPrintf (0, "SDL Mixer Error: %s\nContinuing with sound disabled\n", Mix_GetError());
-      sound_on = FALSE;
-      return;
-    }
-  else
-    DebugPrintf (1, "\nSuccessfully opened SDL audio channel." );
-
-  if (Mix_AllocateChannels(20) != 20)
-    DebugPrintf (0, "\nWARNING: could not get all 20 mixer-channels I asked for...\n");
-
-  // Now that the audio channel is opend, its time to load all the
-  // WAV files into memory, something we NEVER did while using the yiff,
-  // because the yiff did all the loading, analyzing and playing...
-
-  Loaded_WAV_Files[0]=NULL;
-  for (i = 1; i < ALL_SOUNDS; i++)
-    {
-      fpath = find_file (SoundSampleFilenames[ i ], SOUND_DIR, NO_THEME, WARNONLY);
-      if (fpath) Loaded_WAV_Files[ i ] = Mix_LoadWAV(fpath);
-      if ( Loaded_WAV_Files[i] == NULL )
-	{
-	  DebugPrintf (0, "Could not load Sound-sample: %s\n", SoundSampleFilenames[ i ]);
-	  DebugPrintf (0, "WARNING: Continuing with sound disabled. Error = %d\n", Mix_GetError());
-	  sound_on = FALSE;
-	  return;
-	} // if ( !Loaded_WAV...
-      else
-	DebugPrintf (1, "\nSuccessfully loaded file %s.", SoundSampleFilenames[i]);
-    } // for (i=1; ...
-
-  for (i = 0; i < NUM_COLORS; i++)
-    {
-      fpath = find_file ( MusicFiles [ i ], SOUND_DIR, NO_THEME, WARNONLY);
-      if (fpath) MusicSongs [ i ] = Mix_LoadMUS( fpath );
-      if ( MusicSongs[ i ] == NULL )
-	{
-	  DebugPrintf ( 0, "\nError loading sound-file: %s\n", MusicFiles[ i ]);
-	  DebugPrintf (0, "SDL Mixer Error: %s\n Continuing with sound disabled\n", Mix_GetError());
-	  sound_on = FALSE;
-	  return;
-	} // if ( !Loaded_WAV...
-      else
-	DebugPrintf ( 1 , "\nSuccessfully loaded file %s.", MusicFiles[ i ]);
-    } // for
-
-
-  //--------------------
-  // Now that the music files have been loaded successfully, it's time to set
-  // the music and sound volumes accoridingly, i.e. as specifies by the users
-  // configuration.
-  //
-  Set_Sound_FX_Volume( GameConfig.Current_Sound_FX_Volume );
-
-  // DebugPrintf (1, "done.");
-  // fflush(stdout);
-#endif // HAVE_SDL_MIXER
-} // void InitAudio(void)
+// void
+// Init_Audio(void)
+// {
+// #ifndef HAVE_LIBSDL_MIXER
+//   return;
+// #else
+//   char *fpath;
+//   int i;
+//   int audio_rate = MIX_DEFAULT_FREQUENCY; //  22050;
+//   Uint16 audio_format = MIX_DEFAULT_FORMAT;
+//   int audio_channels = 2;	// = stereo
+//   //  int audio_buffers = 4096;
+//   int audio_buffers = 100; // higher = less risk of sound skips, but more lag
+// 
+//   DebugPrintf(1, "\nInitializing SDL Audio Systems....\n");
+// 
+//   if ( !sound_on ) return;
+// 
+// 
+//   // Now SDL_AUDIO is initialized here:
+// 
+//   if ( SDL_InitSubSystem ( SDL_INIT_AUDIO ) == -1 )
+//     {
+//       DebugPrintf (0, "WARNING: SDL Sound subsystem could not be initialized.\n\
+// Continuing with sound disabled\n");
+//       sound_on = FALSE;
+//       return;
+//     }
+//   else
+//     DebugPrintf(1, "SDL Audio initialisation successful.\n");
+// 
+//   // Now that we have initialized the audio SubSystem, we must open
+//   // an audio channel.  This will be done here (see code from Mixer-Tutorial):
+// 
+//   if ( Mix_OpenAudio(audio_rate, audio_format, audio_channels, audio_buffers) )
+//     {
+//       DebugPrintf (0, "WARNING: SDL audio channel could not be opened. \n");
+//       DebugPrintf (0, "SDL Mixer Error: %s\nContinuing with sound disabled\n", Mix_GetError());
+//       sound_on = FALSE;
+//       return;
+//     }
+//   else
+//     DebugPrintf (1, "\nSuccessfully opened SDL audio channel." );
+// 
+//   if (Mix_AllocateChannels(20) != 20)
+//     DebugPrintf (0, "\nWARNING: could not get all 20 mixer-channels I asked for...\n");
+// 
+//   // Now that the audio channel is opend, its time to load all the
+//   // WAV files into memory, something we NEVER did while using the yiff,
+//   // because the yiff did all the loading, analyzing and playing...
+// 
+//   Loaded_WAV_Files[0]=NULL;
+//   for (i = 1; i < ALL_SOUNDS; i++)
+//     {
+//       fpath = find_file (SoundSampleFilenames[ i ], SOUND_DIR, NO_THEME, WARNONLY);
+//       if (fpath) Loaded_WAV_Files[ i ] = Mix_LoadWAV(fpath);
+//       if ( Loaded_WAV_Files[i] == NULL )
+// 	{
+// 	  DebugPrintf (0, "Could not load Sound-sample: %s\n", SoundSampleFilenames[ i ]);
+// 	  DebugPrintf (0, "WARNING: Continuing with sound disabled. Error = %d\n", Mix_GetError());
+// 	  sound_on = FALSE;
+// 	  return;
+// 	} // if ( !Loaded_WAV...
+//       else
+// 	DebugPrintf (1, "\nSuccessfully loaded file %s.", SoundSampleFilenames[i]);
+//     } // for (i=1; ...
+// 
+//   for (i = 0; i < NUM_COLORS; i++)
+//     {
+//       fpath = find_file ( MusicFiles [ i ], SOUND_DIR, NO_THEME, WARNONLY);
+//       if (fpath) MusicSongs [ i ] = Mix_LoadMUS( fpath );
+//       if ( MusicSongs[ i ] == NULL )
+// 	{
+// 	  DebugPrintf ( 0, "\nError loading sound-file: %s\n", MusicFiles[ i ]);
+// 	  DebugPrintf (0, "SDL Mixer Error: %s\n Continuing with sound disabled\n", Mix_GetError());
+// 	  sound_on = FALSE;
+// 	  return;
+// 	} // if ( !Loaded_WAV...
+//       else
+// 	DebugPrintf ( 1 , "\nSuccessfully loaded file %s.", MusicFiles[ i ]);
+//     } // for
+// 
+// 
+//   //--------------------
+//   // Now that the music files have been loaded successfully, it's time to set
+//   // the music and sound volumes accoridingly, i.e. as specifies by the users
+//   // configuration.
+//   //
+//   Set_Sound_FX_Volume( GameConfig.Current_Sound_FX_Volume );
+// 
+//   // DebugPrintf (1, "done.");
+//   // fflush(stdout);
+// #endif // HAVE_SDL_MIXER
+// } // void InitAudio(void)
 
 // void
 // Set_BG_Music_Volume(float NewVolume)

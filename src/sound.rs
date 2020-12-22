@@ -4,12 +4,21 @@ use crate::{
     misc::find_file,
 };
 
+use cstr::cstr;
 use log::{error, info, warn};
-use sdl::{audio::ll::SDL_CloseAudio, sdl::get_error};
+use sdl::{
+    audio::ll::SDL_CloseAudio,
+    sdl::{
+        get_error,
+        ll::{SDL_InitSubSystem, SDL_INIT_AUDIO},
+    },
+    video::ll::{SDL_RWFromFile, SDL_RWops},
+};
 use std::{
     convert::TryFrom,
     ffi::CStr,
     os::raw::{c_char, c_float, c_int},
+    ptr::null_mut,
 };
 
 extern "C" {
@@ -29,14 +38,34 @@ extern "C" {
     fn Mix_VolumeMusic(volume: c_int) -> c_int;
     fn Mix_LoadMUS(file: *const c_char) -> *mut Mix_Music;
     fn Mix_VolumeChunk(chunk: *mut Mix_Chunk, volume: c_int) -> c_int;
+    fn Mix_OpenAudio(frequency: c_int, format: u16, channels: c_int, chunksize: c_int) -> c_int;
+    fn Mix_AllocateChannels(num_chans: c_int) -> c_int;
+    fn Mix_LoadWAV_RW(src: *mut SDL_RWops, freesrc: c_int) -> *mut Mix_Chunk;
 
     static mut Loaded_WAV_Files: [*mut Mix_Chunk; Sound::All as usize];
     static SoundSampleFilenames: [*mut c_char; Sound::All as usize];
     static mut MusicSongs: [*mut Mix_Music; NUM_COLORS];
     static mut Tmp_MOD_File: *mut Mix_Music;
+    static MusicFiles: [*mut c_char; NUM_COLORS];
 }
 
 const MIX_MAX_VOLUME: u8 = 128;
+const MIX_DEFAULT_FREQUENCY: i32 = 22050;
+
+#[cfg(target_endian = "little")]
+const AUDIO_S16LSB: u16 = 0x8010;
+#[cfg(target_endian = "little")]
+const MIX_DEFAULT_FORMAT: u16 = AUDIO_S16LSB;
+
+#[cfg(not(target_endian = "little"))]
+const AUDIO_S16MSB: u16 = 0x9010;
+#[cfg(not(target_endian = "little"))]
+const MIX_DEFAULT_FORMAT: u16 = AUDIO_S16MSB;
+
+#[inline]
+unsafe fn mix_load_wav(file: *mut c_char) -> *mut Mix_Chunk {
+    Mix_LoadWAV_RW(SDL_RWFromFile(file, cstr!("rb").as_ptr() as *mut c_char), 1)
+}
 
 #[repr(C)]
 struct Mix_Chunk {
@@ -376,4 +405,119 @@ pub unsafe extern "C" fn Set_BG_Music_Volume(new_volume: c_float) {
     }
 
     Mix_VolumeMusic((new_volume * f32::from(MIX_MAX_VOLUME)) as c_int);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Init_Audio() {
+    info!("Initializing SDL Audio Systems");
+
+    if sound_on == 0 {
+        return;
+    }
+
+    // Now SDL_AUDIO is initialized here:
+
+    if SDL_InitSubSystem(SDL_INIT_AUDIO) == -1 {
+        warn!(
+            "SDL Sound subsystem could not be initialized. \
+             Continuing with sound disabled",
+        );
+        sound_on = false.into();
+        return;
+    } else {
+        info!("SDL Audio initialisation successful.");
+    }
+
+    // Now that we have initialized the audio SubSystem, we must open
+    // an audio channel.  This will be done here (see code from Mixer-Tutorial):
+
+    if Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, 2, 100) != 0 {
+        error!("SDL audio channel could not be opened.");
+        warn!(
+            "SDL Mixer Error: {}. Continuing with sound disabled",
+            get_error(),
+        );
+        sound_on = false.into();
+        return;
+    } else {
+        warn!("Successfully opened SDL audio channel.");
+    }
+
+    if Mix_AllocateChannels(20) != 20 {
+        warn!("WARNING: could not get all 20 mixer-channels I asked for...");
+    }
+
+    // Now that the audio channel is opend, its time to load all the
+    // WAV files into memory, something we NEVER did while using the yiff,
+    // because the yiff did all the loading, analyzing and playing...
+
+    Loaded_WAV_Files[0] = null_mut();
+    let iter = SoundSampleFilenames
+        .iter()
+        .copied()
+        .zip(Loaded_WAV_Files.iter_mut())
+        .skip(1);
+    for (sample_filename, loaded_wav_file) in iter {
+        let fpath = find_file(
+            sample_filename,
+            SOUND_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::WarnOnly as c_int,
+        );
+        if !fpath.is_null() {
+            *loaded_wav_file = mix_load_wav(fpath);
+        }
+
+        if loaded_wav_file.is_null() {
+            error!(
+                "Could not load Sound-sample: {}",
+                CStr::from_ptr(sample_filename).to_string_lossy()
+            );
+            warn!("Continuing with sound disabled. Error = {}", get_error());
+            sound_on = false.into();
+            return;
+        } else {
+            info!(
+                "Successfully loaded file {}.",
+                CStr::from_ptr(sample_filename).to_string_lossy()
+            );
+        }
+    }
+
+    let iter = MusicFiles.iter().copied().zip(MusicSongs.iter_mut());
+    for (music_file, music_song) in iter {
+        let fpath = find_file(
+            music_file,
+            SOUND_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::WarnOnly as c_int,
+        );
+        if !fpath.is_null() {
+            *music_song = Mix_LoadMUS(fpath);
+        }
+        if music_song.is_null() {
+            error!(
+                "Error loading sound-file: {}",
+                CStr::from_ptr(music_file).to_string_lossy()
+            );
+            warn!(
+                "SDL Mixer Error: {}. Continuing with sound disabled",
+                get_error()
+            );
+            sound_on = false.into();
+            return;
+        } else {
+            info!(
+                "Successfully loaded file {}.",
+                CStr::from_ptr(music_file).to_string_lossy()
+            );
+        }
+    }
+
+    //--------------------
+    // Now that the music files have been loaded successfully, it's time to set
+    // the music and sound volumes accoridingly, i.e. as specifies by the users
+    // configuration.
+    //
+    Set_Sound_FX_Volume(GameConfig.Current_Sound_FX_Volume);
 }
