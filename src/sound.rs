@@ -17,7 +17,7 @@ use sdl::{
 use std::{
     convert::TryFrom,
     ffi::CStr,
-    os::raw::{c_char, c_float, c_int},
+    os::raw::{c_char, c_float, c_int, c_void},
     ptr::null_mut,
 };
 
@@ -41,12 +41,6 @@ extern "C" {
     fn Mix_OpenAudio(frequency: c_int, format: u16, channels: c_int, chunksize: c_int) -> c_int;
     fn Mix_AllocateChannels(num_chans: c_int) -> c_int;
     fn Mix_LoadWAV_RW(src: *mut SDL_RWops, freesrc: c_int) -> *mut Mix_Chunk;
-
-    static mut Loaded_WAV_Files: [*mut Mix_Chunk; Sound::All as usize];
-    static SoundSampleFilenames: [*mut c_char; Sound::All as usize];
-    static mut MusicSongs: [*mut Mix_Music; NUM_COLORS];
-    static mut Tmp_MOD_File: *mut Mix_Music;
-    static MusicFiles: [*mut c_char; NUM_COLORS];
 }
 
 const MIX_MAX_VOLUME: u8 = 128;
@@ -66,6 +60,63 @@ const MIX_DEFAULT_FORMAT: u16 = AUDIO_S16MSB;
 unsafe fn mix_load_wav(file: *mut c_char) -> *mut Mix_Chunk {
     Mix_LoadWAV_RW(SDL_RWFromFile(file, cstr!("rb").as_ptr() as *mut c_char), 1)
 }
+
+const SOUND_SAMPLE_FILENAMES: [&CStr; Sound::All as usize] = [
+    cstr!("ERRORSOUND_NILL.NOWAV"),
+    cstr!("Blast_Sound_0.wav"),
+    // "Collision_Sound_0.wav", // replaced by damage-dependent-sounds:  Collision_[Neutral|GotDamaged|DamagedEnemy]
+    cstr!("Collision_Neutral.wav"),
+    cstr!("Collision_GotDamaged.wav"),
+    cstr!("Collision_DamagedEnemy.wav"),
+    //"GotIntoBlast_Sound_0.wav", // replaced by GotIntoBlast_Sound_1.wav
+    cstr!("GotIntoBlast_Sound_1.wav"),
+    cstr!("MoveElevator_Sound_0.wav"),
+    cstr!("Refresh_Sound_0.wav"),
+    cstr!("LeaveElevator_Sound_0.wav"),
+    cstr!("EnterElevator_Sound_0.wav"),
+    cstr!("ThouArtDefeated_Sound_0.wav"),
+    cstr!("Got_Hit_Sound_0.wav"),
+    cstr!("TakeoverSetCapsule_Sound_0.wav"),
+    cstr!("Menu_Item_Selected_Sound_0.wav"),
+    cstr!("Move_Menu_Position_Sound_0.wav"),
+    cstr!("Takeover_Game_Won_Sound_0.wav"),
+    cstr!("Takeover_Game_Deadlock_Sound_0.wav"),
+    cstr!("Takeover_Game_Lost_Sound_0.wav"),
+    cstr!("Fire_Bullet_Pulse_Sound_0.wav"),
+    cstr!("Fire_Bullet_Single_Pulse_Sound_0.wav"),
+    cstr!("Fire_Bullet_Military_Sound_0.wav"),
+    cstr!("Fire_Bullet_Flash_Sound_0.wav"),
+    cstr!("Fire_Bullet_Exterminator_Sound_0.wav"),
+    cstr!("Fire_Bullet_Laser_Rifle_Sound.wav"),
+    cstr!("Cry_Sound_0.wav"),
+    cstr!("Takeover_Sound_0.wav"),
+    cstr!("Countdown_Sound.wav"),
+    cstr!("EndCountdown_Sound.wav"),
+    cstr!("InfluExplosion.wav"),
+    cstr!("WhiteNoise.wav"),
+    cstr!("Alert.wav"),
+    cstr!("Screenshot.wav"),
+];
+
+static mut LOADED_WAV_FILES: [*mut Mix_Chunk; Sound::All as usize] =
+    [null_mut(); Sound::All as usize];
+
+const MUSIC_FILES: [&CStr; NUM_COLORS] = [
+    cstr!("AnarchyMenu1.mod"),          // RED
+    cstr!("starpaws.mod"),              // YELLOW
+    cstr!("The_Last_V8.mod"),           // GREEN
+    cstr!("dreamfish-green_beret.mod"), // GRAY
+    #[cfg(feature = "gcw0")]
+    cstr!("dreamfish-green_beret.mod"), // GRAY
+    #[cfg(not(feature = "gcw0"))]
+    cstr!("dreamfish-sanxion.mod"), // BLUE // CRASHES the GCW0 ???
+    cstr!("kollaps-tron.mod"),          // GREENBLUE
+    cstr!("dreamfish-uridium2_loader.mod"), // DARK
+];
+
+static mut MUSIC_SONGS: [*mut Mix_Music; NUM_COLORS] =
+    [null_mut::<c_void>() as *mut Mix_Music; NUM_COLORS];
+static mut TMP_MOD_FILE: *mut Mix_Music = null_mut::<c_void>() as *mut Mix_Music;
 
 #[repr(C)]
 struct Mix_Chunk {
@@ -97,36 +148,36 @@ pub unsafe extern "C" fn Play_Sound(tune: c_int) {
     }
 
     let tune = usize::try_from(tune).unwrap();
-    let newest_sound_channel = mix_play_channel(-1, Loaded_WAV_Files[tune], 0);
+    let newest_sound_channel = mix_play_channel(-1, LOADED_WAV_FILES[tune], 0);
     if newest_sound_channel == -1 {
         warn!(
             "Could not play sound-sample: {} Error: {}.\
              This usually just means that too many samples where played at the same time",
-            CStr::from_ptr(SoundSampleFilenames[tune]).to_string_lossy(),
+            SOUND_SAMPLE_FILENAMES[tune].to_string_lossy(),
             sdl::get_error(),
         );
     } else {
         info!(
             "Successfully playing file {}.",
-            CStr::from_ptr(SoundSampleFilenames[tune]).to_string_lossy()
+            SOUND_SAMPLE_FILENAMES[tune].to_string_lossy()
         );
     }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn FreeSounds() {
-    Loaded_WAV_Files
+    LOADED_WAV_FILES
         .iter()
         .filter(|file| !file.is_null())
         .for_each(|&file| Mix_FreeChunk(file));
 
-    MusicSongs
+    MUSIC_SONGS
         .iter()
         .filter(|song| !song.is_null())
         .for_each(|&song| Mix_FreeMusic(song));
 
-    if !Tmp_MOD_File.is_null() {
-        Mix_FreeMusic(Tmp_MOD_File);
+    if !TMP_MOD_FILE.is_null() {
+        Mix_FreeMusic(TMP_MOD_FILE);
     }
 
     Mix_CloseAudio();
@@ -338,14 +389,14 @@ pub unsafe extern "C" fn Switch_Background_Music_To(filename_raw: *const c_char)
             Mix_ResumeMusic();
             PAUSED = false;
         } else {
-            Mix_PlayMusic(MusicSongs[usize::try_from((*CurLevel).color).unwrap()], -1);
+            Mix_PlayMusic(MUSIC_SONGS[usize::try_from((*CurLevel).color).unwrap()], -1);
             PAUSED = false;
             PREV_COLOR = (*CurLevel).color;
         }
     } else {
         // not using BYCOLOR mechanism: just play specified song
-        if !Tmp_MOD_File.is_null() {
-            Mix_FreeMusic(Tmp_MOD_File);
+        if !TMP_MOD_FILE.is_null() {
+            Mix_FreeMusic(TMP_MOD_FILE);
         }
         let fpath = find_file(
             filename_raw.as_ptr() as *const c_char,
@@ -360,15 +411,15 @@ pub unsafe extern "C" fn Switch_Background_Music_To(filename_raw: *const c_char)
             );
             return;
         }
-        Tmp_MOD_File = Mix_LoadMUS(fpath);
-        if Tmp_MOD_File.is_null() {
+        TMP_MOD_FILE = Mix_LoadMUS(fpath);
+        if TMP_MOD_FILE.is_null() {
             error!(
                 "SDL Mixer Error: {}. Continuing with sound disabled",
                 get_error(),
             );
             return;
         }
-        Mix_PlayMusic(Tmp_MOD_File, -1);
+        Mix_PlayMusic(TMP_MOD_FILE, -1);
     }
 
     Mix_VolumeMusic((GameConfig.Current_BG_Music_Volume * f32::from(MIX_MAX_VOLUME)) as c_int);
@@ -393,7 +444,7 @@ pub unsafe extern "C" fn Set_Sound_FX_Volume(new_volume: c_float) {
     // Set the volume IN the loaded files, if SDL is used...
     // This is done here for the Files 1,2,3 and 4, since these
     // are background music files.
-    Loaded_WAV_Files.iter().skip(1).for_each(|&file| {
+    LOADED_WAV_FILES.iter().skip(1).for_each(|&file| {
         Mix_VolumeChunk(file, (new_volume * f32::from(MIX_MAX_VOLUME)) as c_int);
     });
 }
@@ -451,15 +502,15 @@ pub unsafe extern "C" fn Init_Audio() {
     // WAV files into memory, something we NEVER did while using the yiff,
     // because the yiff did all the loading, analyzing and playing...
 
-    Loaded_WAV_Files[0] = null_mut();
-    let iter = SoundSampleFilenames
+    LOADED_WAV_FILES[0] = null_mut();
+    let iter = SOUND_SAMPLE_FILENAMES
         .iter()
         .copied()
-        .zip(Loaded_WAV_Files.iter_mut())
+        .zip(LOADED_WAV_FILES.iter_mut())
         .skip(1);
     for (sample_filename, loaded_wav_file) in iter {
         let fpath = find_file(
-            sample_filename,
+            sample_filename.as_ptr(),
             SOUND_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
             Criticality::WarnOnly as c_int,
@@ -471,7 +522,7 @@ pub unsafe extern "C" fn Init_Audio() {
         if loaded_wav_file.is_null() {
             error!(
                 "Could not load Sound-sample: {}",
-                CStr::from_ptr(sample_filename).to_string_lossy()
+                sample_filename.to_string_lossy()
             );
             warn!("Continuing with sound disabled. Error = {}", get_error());
             sound_on = false.into();
@@ -479,15 +530,15 @@ pub unsafe extern "C" fn Init_Audio() {
         } else {
             info!(
                 "Successfully loaded file {}.",
-                CStr::from_ptr(sample_filename).to_string_lossy()
+                sample_filename.to_string_lossy()
             );
         }
     }
 
-    let iter = MusicFiles.iter().copied().zip(MusicSongs.iter_mut());
+    let iter = MUSIC_FILES.iter().copied().zip(MUSIC_SONGS.iter_mut());
     for (music_file, music_song) in iter {
         let fpath = find_file(
-            music_file,
+            music_file.as_ptr(),
             SOUND_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
             Criticality::WarnOnly as c_int,
@@ -496,10 +547,7 @@ pub unsafe extern "C" fn Init_Audio() {
             *music_song = Mix_LoadMUS(fpath);
         }
         if music_song.is_null() {
-            error!(
-                "Error loading sound-file: {}",
-                CStr::from_ptr(music_file).to_string_lossy()
-            );
+            error!("Error loading sound-file: {}", music_file.to_string_lossy());
             warn!(
                 "SDL Mixer Error: {}. Continuing with sound disabled",
                 get_error()
@@ -507,10 +555,7 @@ pub unsafe extern "C" fn Init_Audio() {
             sound_on = false.into();
             return;
         } else {
-            info!(
-                "Successfully loaded file {}.",
-                CStr::from_ptr(music_file).to_string_lossy()
-            );
+            info!("Successfully loaded file {}.", music_file.to_string_lossy());
         }
     }
 
