@@ -288,76 +288,76 @@ Technical details:
 @Ret:
 @Int:
 * $Function----------------------------------------------------------*/
-void
-Switch_Background_Music_To ( const char* filename_raw )
-{
-  char* fpath;
-  static int prev_color = -1;
-  static bool paused = FALSE;
-
-#ifndef HAVE_LIBSDL_MIXER
-  return;
-#else
-
-  if ( !sound_on ) return;
-
-  if ( filename_raw == NULL )
-    {
-      Mix_PauseMusic(); // pause currently played background music
-      paused = TRUE;
-      return;
-    }
-
-  // rp: lets cheat when using Mingw32
-#if (!defined __WIN32__  && !defined HAVE_LIBVORBIS)
-  if (strstr (filename_raw, ".ogg"))
-    {
-      DebugPrintf (1, "\n\nWARNING: no ogg vorbis libs were found when configuring,\n\
- can't play %s!\n", filename_raw);
-      return;
-    }
-
-#endif
-
-  // New feature: choose background music by level-color:
-  // if filename_raw==BYCOLOR then chose bg_music[color]
-  // NOTE: if new level-color is the same as before, just resume paused music!
-  if (!strcmp( filename_raw, BYCOLOR))
-    {
-      if (paused && (prev_color == CurLevel->color) )  // current level-song was just paused
-	{
-	  Mix_ResumeMusic ();
-	  paused = FALSE;
-	}
-      else
-	{
-	  Mix_PlayMusic (MusicSongs[CurLevel->color], -1);
-	  paused = FALSE;
-	  prev_color = CurLevel->color;
-	}
-    }
-  else  // not using BYCOLOR mechanism: just play specified song
-    {
-      if (Tmp_MOD_File) Mix_FreeMusic(Tmp_MOD_File);
-      fpath = find_file (filename_raw, SOUND_DIR, NO_THEME, WARNONLY);
-      if ( fpath == NULL ) {
-        DebugPrintf (0, "\nError loading sound-file: %s\n", filename_raw);
-        return;
-      }
-      Tmp_MOD_File = Mix_LoadMUS (fpath);
-      if ( Tmp_MOD_File == NULL )
-	{
-	  DebugPrintf (0, "SDL Mixer Error: %s\n Continuing with sound disabled\n", Mix_GetError());
-          return;
-        }
-      Mix_PlayMusic (Tmp_MOD_File, -1);
-    }
-
-  Mix_VolumeMusic ( (int) rintf( GameConfig.Current_BG_Music_Volume * MIX_MAX_VOLUME ) );
-
-#endif // HAVE_LIBSDL_MIXER
-
-}; // void Switch_Background_Music_To(int Tune)
+// void
+// Switch_Background_Music_To ( const char* filename_raw )
+// {
+//   char* fpath;
+//   static int prev_color = -1;
+//   static bool paused = FALSE;
+// 
+// #ifndef HAVE_LIBSDL_MIXER
+//   return;
+// #else
+// 
+//   if ( !sound_on ) return;
+// 
+//   if ( filename_raw == NULL )
+//     {
+//       Mix_PauseMusic(); // pause currently played background music
+//       paused = TRUE;
+//       return;
+//     }
+// 
+//   // rp: lets cheat when using Mingw32
+// #if (!defined __WIN32__  && !defined HAVE_LIBVORBIS)
+//   if (strstr (filename_raw, ".ogg"))
+//     {
+//       DebugPrintf (1, "\n\nWARNING: no ogg vorbis libs were found when configuring,\n\
+//  can't play %s!\n", filename_raw);
+//       return;
+//     }
+// 
+// #endif
+// 
+//   // New feature: choose background music by level-color:
+//   // if filename_raw==BYCOLOR then chose bg_music[color]
+//   // NOTE: if new level-color is the same as before, just resume paused music!
+//   if (!strcmp( filename_raw, BYCOLOR))
+//     {
+//       if (paused && (prev_color == CurLevel->color) )  // current level-song was just paused
+// 	{
+// 	  Mix_ResumeMusic ();
+// 	  paused = FALSE;
+// 	}
+//       else
+// 	{
+// 	  Mix_PlayMusic (MusicSongs[CurLevel->color], -1);
+// 	  paused = FALSE;
+// 	  prev_color = CurLevel->color;
+// 	}
+//     }
+//   else  // not using BYCOLOR mechanism: just play specified song
+//     {
+//       if (Tmp_MOD_File) Mix_FreeMusic(Tmp_MOD_File);
+//       fpath = find_file (filename_raw, SOUND_DIR, NO_THEME, WARNONLY);
+//       if ( fpath == NULL ) {
+//         DebugPrintf (0, "\nError loading sound-file: %s\n", filename_raw);
+//         return;
+//       }
+//       Tmp_MOD_File = Mix_LoadMUS (fpath);
+//       if ( Tmp_MOD_File == NULL )
+// 	{
+// 	  DebugPrintf (0, "SDL Mixer Error: %s\n Continuing with sound disabled\n", Mix_GetError());
+//           return;
+//         }
+//       Mix_PlayMusic (Tmp_MOD_File, -1);
+//     }
+// 
+//   Mix_VolumeMusic ( (int) rintf( GameConfig.Current_BG_Music_Volume * MIX_MAX_VOLUME ) );
+// 
+// #endif // HAVE_LIBSDL_MIXER
+// 
+// }; // void Switch_Background_Music_To(int Tune)
 
 
 /*@Function============================================================

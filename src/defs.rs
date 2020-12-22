@@ -367,6 +367,7 @@ pub const LOCAL_DATADIR: &str = ".."; // local fallback
 pub const GRAPHICS_DIR: &str = "graphics/";
 pub const GRAPHICS_DIR_C: &CStr = cstr!("graphics/");
 pub const SOUND_DIR: &str = "sound/";
+pub const SOUND_DIR_C: &CStr = cstr!("sound/");
 pub const MAP_DIR: &str = "map/";
 
 pub const MAP_BLOCK_FILE: &str = "map_blocks.png";

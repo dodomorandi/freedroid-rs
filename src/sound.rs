@@ -1,10 +1,11 @@
 use crate::{
-    defs::{Bullet, Sound, NUM_COLORS},
-    global::sound_on,
+    defs::{Bullet, Criticality, Sound, Themed, BYCOLOR, NUM_COLORS, SOUND_DIR_C},
+    global::{sound_on, CurLevel, GameConfig},
+    misc::find_file,
 };
 
-use log::{info, warn};
-use sdl::audio::ll::SDL_CloseAudio;
+use log::{error, info, warn};
+use sdl::{audio::ll::SDL_CloseAudio, sdl::get_error};
 use std::{
     convert::TryFrom,
     ffi::CStr,
@@ -21,13 +22,20 @@ extern "C" {
     ) -> c_int;
     fn Mix_FreeChunk(chunk: *mut Mix_Chunk);
     fn Mix_FreeMusic(music: *mut Mix_Music);
+    fn Mix_PauseMusic();
+    fn Mix_ResumeMusic();
     fn Mix_CloseAudio();
+    fn Mix_PlayMusic(music: *mut Mix_Music, loops: c_int) -> c_int;
+    fn Mix_VolumeMusic(volume: c_int) -> c_int;
+    fn Mix_LoadMUS(file: *const c_char) -> *mut Mix_Music;
 
     static mut Loaded_WAV_Files: [*mut Mix_Chunk; Sound::All as usize];
     static SoundSampleFilenames: [*mut c_char; Sound::All as usize];
     static mut MusicSongs: [*mut Mix_Music; NUM_COLORS];
     static mut Tmp_MOD_File: *mut Mix_Music;
 }
+
+const MIX_MAX_VOLUME: u8 = 128;
 
 #[repr(C)]
 struct Mix_Chunk {
@@ -272,4 +280,66 @@ pub unsafe extern "C" fn Fire_Bullet_Sound(bullet_type: c_int) {
         Exterminator => Play_Sound(Sound::FireBulletExterminator as i32),
         LaserRifle => Play_Sound(Sound::FireBulletLaserRifle as i32),
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Switch_Background_Music_To(filename_raw: *const c_char) {
+    static mut PREV_COLOR: c_int = -1;
+    static mut PAUSED: bool = false;
+
+    if sound_on == 0 {
+        return;
+    }
+
+    if filename_raw.is_null() {
+        Mix_PauseMusic(); // pause currently played background music
+        PAUSED = true;
+        return;
+    }
+
+    let filename_raw = CStr::from_ptr(filename_raw);
+
+    // New feature: choose background music by level-color:
+    // if filename_raw==BYCOLOR then chose bg_music[color]
+    // NOTE: if new level-color is the same as before, just resume paused music!
+    if filename_raw.to_bytes() == BYCOLOR.as_bytes() {
+        if PAUSED && PREV_COLOR == (*CurLevel).color {
+            // current level-song was just paused
+            Mix_ResumeMusic();
+            PAUSED = false;
+        } else {
+            Mix_PlayMusic(MusicSongs[usize::try_from((*CurLevel).color).unwrap()], -1);
+            PAUSED = false;
+            PREV_COLOR = (*CurLevel).color;
+        }
+    } else {
+        // not using BYCOLOR mechanism: just play specified song
+        if !Tmp_MOD_File.is_null() {
+            Mix_FreeMusic(Tmp_MOD_File);
+        }
+        let fpath = find_file(
+            filename_raw.as_ptr() as *const c_char,
+            SOUND_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::WarnOnly as c_int,
+        );
+        if fpath.is_null() {
+            error!(
+                "Error loading sound-file: {}",
+                filename_raw.to_string_lossy()
+            );
+            return;
+        }
+        Tmp_MOD_File = Mix_LoadMUS(fpath);
+        if Tmp_MOD_File.is_null() {
+            error!(
+                "SDL Mixer Error: {}. Continuing with sound disabled",
+                get_error(),
+            );
+            return;
+        }
+        Mix_PlayMusic(Tmp_MOD_File, -1);
+    }
+
+    Mix_VolumeMusic((GameConfig.Current_BG_Music_Volume * f32::from(MIX_MAX_VOLUME)) as c_int);
 }
