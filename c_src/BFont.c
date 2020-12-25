@@ -468,138 +468,138 @@ PrintString (SDL_Surface * Surface, int x, int y, char *fmt, ...)
 //   va_end (args);
 // }
 
-void
-CenteredPrintString (SDL_Surface * Surface, int y, char *fmt, ...)
-{
-  va_list args;
-  char *temp;
-  va_start (args, fmt);
+// void
+// CenteredPrintString (SDL_Surface * Surface, int y, char *fmt, ...)
+// {
+//   va_list args;
+//   char *temp;
+//   va_start (args, fmt);
+// 
+//   if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
+//     {
+//       vsprintf (temp, fmt, args);
+//       CenteredPutString (Surface, y, temp);
+//       free (temp);
+//     }
+//   va_end (args);
+// }
+// 
+// void
+// CenteredPrintStringFont (SDL_Surface * Surface, BFont_Info * Font, int y,
+// 			 char *fmt, ...)
+// {
+//   va_list args;
+//   char *temp;
+//   va_start (args, fmt);
+// 
+//   if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
+//     {
+//       vsprintf (temp, fmt, args);
+//       CenteredPutStringFont (Surface, Font, y, temp);
+//       free (temp);
+//     }
+//   va_end (args);
+// 
+// }
 
-  if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
-    {
-      vsprintf (temp, fmt, args);
-      CenteredPutString (Surface, y, temp);
-      free (temp);
-    }
-  va_end (args);
-}
+// void
+// RightPrintString (SDL_Surface * Surface, int y, char *fmt, ...)
+// {
+//   va_list args;
+//   char *temp;
+//   va_start (args, fmt);
+// 
+//   if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
+//     {
+//       vsprintf (temp, fmt, args);
+//       RightPutString (Surface, y, temp);
+//       free (temp);
+//     }
+//   va_end (args);
+// }
+// 
+// void
+// RightPrintStringFont (SDL_Surface * Surface, BFont_Info * Font, int y,
+// 		      char *fmt, ...)
+// {
+//   va_list args;
+//   char *temp;
+//   va_start (args, fmt);
+// 
+//   if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
+//     {
+//       vsprintf (temp, fmt, args);
+//       RightPutStringFont (Surface, Font, y, temp);
+//       free (temp);
+//     }
+//   va_end (args);
+// }
 
-void
-CenteredPrintStringFont (SDL_Surface * Surface, BFont_Info * Font, int y,
-			 char *fmt, ...)
-{
-  va_list args;
-  char *temp;
-  va_start (args, fmt);
+// void
+// LeftPrintString (SDL_Surface * Surface, int y, char *fmt, ...)
+// {
+//   va_list args;
+//   char *temp;
+//   va_start (args, fmt);
+// 
+//   if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
+//     {
+//       vsprintf (temp, fmt, args);
+//       LeftPutString (Surface, y, temp);
+//       free (temp);
+//     }
+//   va_end (args);
+// }
 
-  if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
-    {
-      vsprintf (temp, fmt, args);
-      CenteredPutStringFont (Surface, Font, y, temp);
-      free (temp);
-    }
-  va_end (args);
+// void
+// LeftPrintStringFont (SDL_Surface * Surface, BFont_Info * Font, int y,
+// 		     char *fmt, ...)
+// {
+//   va_list args;
+//   char *temp;
+//   va_start (args, fmt);
+// 
+//   if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
+//     {
+//       vsprintf (temp, fmt, args);
+//       LeftPutStringFont (Surface, Font, y, temp);
+//       free (temp);
+//     }
+//   va_end (args);
+// }
 
-}
+// void
+// JustifiedPrintString (SDL_Surface * Surface, int y, char *fmt, ...)
+// {
+//   va_list args;
+//   char *temp;
+//   va_start (args, fmt);
+// 
+//   if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
+//     {
+//       vsprintf (temp, fmt, args);
+//       JustifiedPutString (Surface, y, temp);
+//       free (temp);
+//     }
+//   va_end (args);
+// }
 
-void
-RightPrintString (SDL_Surface * Surface, int y, char *fmt, ...)
-{
-  va_list args;
-  char *temp;
-  va_start (args, fmt);
-
-  if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
-    {
-      vsprintf (temp, fmt, args);
-      RightPutString (Surface, y, temp);
-      free (temp);
-    }
-  va_end (args);
-}
-
-void
-RightPrintStringFont (SDL_Surface * Surface, BFont_Info * Font, int y,
-		      char *fmt, ...)
-{
-  va_list args;
-  char *temp;
-  va_start (args, fmt);
-
-  if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
-    {
-      vsprintf (temp, fmt, args);
-      RightPutStringFont (Surface, Font, y, temp);
-      free (temp);
-    }
-  va_end (args);
-}
-
-void
-LeftPrintString (SDL_Surface * Surface, int y, char *fmt, ...)
-{
-  va_list args;
-  char *temp;
-  va_start (args, fmt);
-
-  if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
-    {
-      vsprintf (temp, fmt, args);
-      LeftPutString (Surface, y, temp);
-      free (temp);
-    }
-  va_end (args);
-}
-
-void
-LeftPrintStringFont (SDL_Surface * Surface, BFont_Info * Font, int y,
-		     char *fmt, ...)
-{
-  va_list args;
-  char *temp;
-  va_start (args, fmt);
-
-  if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
-    {
-      vsprintf (temp, fmt, args);
-      LeftPutStringFont (Surface, Font, y, temp);
-      free (temp);
-    }
-  va_end (args);
-}
-
-void
-JustifiedPrintString (SDL_Surface * Surface, int y, char *fmt, ...)
-{
-  va_list args;
-  char *temp;
-  va_start (args, fmt);
-
-  if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
-    {
-      vsprintf (temp, fmt, args);
-      JustifiedPutString (Surface, y, temp);
-      free (temp);
-    }
-  va_end (args);
-}
-
-void
-JustifiedPrintStringFont (SDL_Surface * Surface, BFont_Info * Font, int y,
-			  char *fmt, ...)
-{
-  va_list args;
-  char *temp;
-  va_start (args, fmt);
-
-  if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
-    {
-      vsprintf (temp, fmt, args);
-      JustifiedPutStringFont (Surface, Font, y, temp);
-      free (temp);
-    }
-  va_end (args);
-}
+// void
+// JustifiedPrintStringFont (SDL_Surface * Surface, BFont_Info * Font, int y,
+// 			  char *fmt, ...)
+// {
+//   va_list args;
+//   char *temp;
+//   va_start (args, fmt);
+// 
+//   if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
+//     {
+//       vsprintf (temp, fmt, args);
+//       JustifiedPutStringFont (Surface, Font, y, temp);
+//       free (temp);
+//     }
+//   va_end (args);
+// }
 
 
 /*********************************************************************************************************/

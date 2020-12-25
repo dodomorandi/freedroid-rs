@@ -28,6 +28,34 @@ extern "C" {
     pub static mut Para_BFont: *mut BFontInfo;
     pub static mut CurrentFont: *mut BFontInfo;
     fn vsprintf(str: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
+    fn JustifiedPutStringFont(
+        surface: *mut SDL_Surface,
+        font: *mut BFontInfo,
+        y: c_int,
+        text: *mut c_char,
+    );
+    fn JustifiedPutString(surface: *mut SDL_Surface, y: c_int, text: *mut c_char);
+    fn LeftPutStringFont(
+        surface: *mut SDL_Surface,
+        font: *mut BFontInfo,
+        y: c_int,
+        text: *mut c_char,
+    );
+    fn LeftPutString(surface: *mut SDL_Surface, y: c_int, text: *mut c_char);
+    fn RightPutStringFont(
+        surface: *mut SDL_Surface,
+        font: *mut BFontInfo,
+        y: c_int,
+        text: *mut c_char,
+    );
+    fn RightPutString(surface: *mut SDL_Surface, y: c_int, text: *mut c_char);
+    fn CenteredPutStringFont(
+        surface: *mut SDL_Surface,
+        font: *mut BFontInfo,
+        y: c_int,
+        text: *mut c_char,
+    );
+    fn CenteredPutString(surface: *mut SDL_Surface, y: c_int, text: *mut c_char);
 }
 
 #[derive(Clone)]
@@ -266,4 +294,120 @@ pub unsafe extern "C" fn GetPixel(surface: &mut SDL_Surface, x: i32, y: i32) -> 
         }
         _ => u32::MAX,
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn JustifiedPrintStringFont(
+    surface: *mut SDL_Surface,
+    font: *mut BFontInfo,
+    y: c_int,
+    fmt: *mut c_char,
+    args: ...
+) {
+    let mut args = args.clone();
+
+    let mut temp = vec![0u8; 10001].into_boxed_slice();
+    vsprintf(temp.as_mut_ptr() as *mut c_char, fmt, args.as_va_list());
+    JustifiedPutStringFont(surface, font, y, temp.as_mut_ptr() as *mut c_char);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn JustifiedPrintString(
+    surface: *mut SDL_Surface,
+    y: c_int,
+    fmt: *mut c_char,
+    args: ...
+) {
+    let mut args = args.clone();
+
+    let mut temp = vec![0u8; 10001].into_boxed_slice();
+    vsprintf(temp.as_mut_ptr() as *mut c_char, fmt, args.as_va_list());
+    JustifiedPutString(surface, y, temp.as_mut_ptr() as *mut c_char);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn LeftPrintStringFont(
+    surface: *mut SDL_Surface,
+    font: *mut BFontInfo,
+    y: c_int,
+    fmt: *mut c_char,
+    args: ...
+) {
+    let mut args = args.clone();
+
+    let mut temp = vec![0u8; 10001].into_boxed_slice();
+    vsprintf(temp.as_mut_ptr() as *mut c_char, fmt, args.as_va_list());
+    LeftPutStringFont(surface, font, y, temp.as_mut_ptr() as *mut c_char);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn LeftPrintString(
+    surface: *mut SDL_Surface,
+    y: c_int,
+    fmt: *mut c_char,
+    args: ...
+) {
+    let mut args = args.clone();
+
+    let mut temp = vec![0u8; 10001].into_boxed_slice();
+    vsprintf(temp.as_mut_ptr() as *mut c_char, fmt, args.as_va_list());
+    LeftPutString(surface, y, temp.as_mut_ptr() as *mut c_char);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn RightPrintStringFont(
+    surface: *mut SDL_Surface,
+    font: *mut BFontInfo,
+    y: c_int,
+    fmt: *mut c_char,
+    args: ...
+) {
+    let mut args = args.clone();
+
+    let mut temp = vec![0u8; 10001].into_boxed_slice();
+    vsprintf(temp.as_mut_ptr() as *mut c_char, fmt, args.as_va_list());
+    RightPutStringFont(surface, font, y, temp.as_mut_ptr() as *mut c_char);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn RightPrintString(
+    surface: *mut SDL_Surface,
+    y: c_int,
+    fmt: *mut c_char,
+    args: ...
+) {
+    let mut args = args.clone();
+
+    let mut temp = vec![0u8; 10001].into_boxed_slice();
+    vsprintf(temp.as_mut_ptr() as *mut c_char, fmt, args.as_va_list());
+    RightPutString(surface, y, temp.as_mut_ptr() as *mut c_char);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn CenteredPrintStringFont(
+    surface: *mut SDL_Surface,
+    font: *mut BFontInfo,
+    y: c_int,
+    fmt: *mut c_char,
+    args: ...
+) {
+    let mut args = args.clone();
+
+    let mut temp = vec![0u8; 10001].into_boxed_slice();
+    vsprintf(temp.as_mut_ptr() as *mut c_char, fmt, args.as_va_list());
+    CenteredPutStringFont(surface, font, y, temp.as_mut_ptr() as *mut c_char);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn CenteredPrintString(
+    surface: *mut SDL_Surface,
+    y: c_int,
+    fmt: *mut c_char,
+    args: ...
+) {
+    let mut args = args.clone();
+
+    let mut temp = vec![0u8; 10001].into_boxed_slice();
+    vsprintf(temp.as_mut_ptr() as *mut c_char, fmt, args.as_va_list());
+    CenteredPutString(surface, y, temp.as_mut_ptr() as *mut c_char);
 }
