@@ -9,8 +9,8 @@ use sdl::{
     sdl::Rect,
     video::{
         ll::{
-            SDL_FreeSurface, SDL_LockSurface, SDL_MapRGB, SDL_Rect, SDL_SetColorKey, SDL_Surface,
-            SDL_UnlockSurface, SDL_UpperBlit,
+            SDL_ConvertSurface, SDL_FreeSurface, SDL_GetRGB, SDL_LockSurface, SDL_MapRGB, SDL_Rect,
+            SDL_SetColorKey, SDL_Surface, SDL_UnlockSurface, SDL_UpperBlit,
         },
         SurfaceFlag,
     },
@@ -26,9 +26,11 @@ use std::{
 extern "C" {
     pub static mut Highscore_BFont: *mut BFontInfo;
     pub static mut Para_BFont: *mut BFontInfo;
-    pub static mut CurrentFont: *mut BFontInfo;
     fn vsprintf(str: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
 }
+
+#[no_mangle]
+pub static mut CurrentFont: *mut BFontInfo = null_mut();
 
 #[derive(Clone)]
 #[repr(C)]
@@ -547,4 +549,68 @@ pub unsafe extern "C" fn SetFontHeight(font: &mut BFontInfo, height: c_int) {
 pub unsafe extern "C" fn FreeFont(font: *mut BFontInfo) {
     SDL_FreeSurface((*font).surface);
     libc::free(font as *mut c_void);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn SetFontColor(font: &BFontInfo, r: u8, g: u8, b: u8) -> *mut BFontInfo {
+    let newfont_ptr = libc::malloc(std::mem::size_of::<BFontInfo>()) as *mut BFontInfo;
+    if newfont_ptr.is_null() {
+        return null_mut();
+    }
+
+    let newfont = &mut *newfont_ptr;
+    newfont.h = font.h;
+    newfont.chars.copy_from_slice(&font.chars);
+
+    let surface_ptr =
+        SDL_ConvertSurface(font.surface, (*font.surface).format, (*font.surface).flags);
+    if !surface_ptr.is_null() {
+        let surface = &mut *surface_ptr;
+        if sdl_must_lock(surface) {
+            SDL_LockSurface(surface);
+        }
+        if sdl_must_lock(&*font.surface) {
+            SDL_LockSurface(font.surface);
+        }
+
+        let color_key = GetPixel(surface, 0, surface.h - 1);
+
+        for x in 0..(*font.surface).w {
+            for y in 0..(*font.surface).h {
+                let pixel = GetPixel(&mut *font.surface, x, y);
+
+                if pixel != color_key {
+                    let mut old_r = 0;
+                    let mut old_g = 0;
+                    let mut old_b = 0;
+                    SDL_GetRGB(pixel, surface.format, &mut old_r, &mut old_g, &mut old_b);
+
+                    let new_r = ((u16::from(old_r) * u16::from(r)) / 255)
+                        .try_into()
+                        .unwrap();
+                    let new_g = ((u16::from(old_g) * u16::from(g)) / 255)
+                        .try_into()
+                        .unwrap();
+                    let new_b = ((u16::from(old_b) * u16::from(b)) / 255)
+                        .try_into()
+                        .unwrap();
+
+                    let pixel = SDL_MapRGB(surface.format, new_r, new_g, new_b);
+                    PutPixel(surface, x, y, pixel);
+                }
+            }
+        }
+
+        if sdl_must_lock(surface) {
+            SDL_UnlockSurface(surface);
+        }
+        if sdl_must_lock(&*font.surface) {
+            SDL_UnlockSurface(font.surface);
+        }
+
+        SDL_SetColorKey(surface, SurfaceFlag::SrcColorKey as u32, color_key);
+    }
+
+    newfont.surface = surface_ptr;
+    newfont_ptr
 }
