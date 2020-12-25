@@ -297,20 +297,20 @@ TextWidthFont (BFont_Info * Font, const char *text)
 
 
 /* counts the spaces of the strings */
-int
-count (char *text)
-{
-  char *p = NULL;
-  int pos = -1;
-  int i = 0;
-  /* Calculate the space occupied by the text without spaces */
-  while ((p = strchr (&text[pos + 1], ' ')) != NULL)
-    {
-      i++;
-      pos = p - text;
-    }
-  return i;
-}
+// int
+// count (char *text)
+// {
+//   char *p = NULL;
+//   int pos = -1;
+//   int i = 0;
+//   /* Calculate the space occupied by the text without spaces */
+//   while ((p = strchr (&text[pos + 1], ' ')) != NULL)
+//     {
+//       i++;
+//       pos = p - text;
+//     }
+//   return i;
+// }
 
 // void
 // JustifiedPutString (SDL_Surface * Surface, int y, char *text)

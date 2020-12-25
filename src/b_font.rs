@@ -29,7 +29,6 @@ extern "C" {
     pub static mut CurrentFont: *mut BFontInfo;
     fn vsprintf(str: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
     fn TextWidthFont(font: *mut BFontInfo, text: *const c_char) -> c_int;
-    fn count(text: *mut c_char) -> c_int;
 }
 
 #[derive(Clone)]
@@ -512,4 +511,16 @@ pub unsafe extern "C" fn JustifiedPutString(
     text: *mut c_char,
 ) {
     JustifiedPutStringFont(surface, CurrentFont, y, text);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn count(text: *const c_char) -> c_int {
+    CStr::from_ptr(text)
+        .to_bytes()
+        .iter()
+        .copied()
+        .filter(|&c| c == b' ')
+        .count()
+        .try_into()
+        .unwrap()
 }
