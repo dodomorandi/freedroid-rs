@@ -312,144 +312,144 @@ count (char *text)
   return i;
 }
 
-void
-JustifiedPutString (SDL_Surface * Surface, int y, char *text)
-{
-  JustifiedPutStringFont (Surface, CurrentFont, y, text);
-}
+// void
+// JustifiedPutString (SDL_Surface * Surface, int y, char *text)
+// {
+//   JustifiedPutStringFont (Surface, CurrentFont, y, text);
+// }
+// 
+// void
+// JustifiedPutStringFont (SDL_Surface * Surface, BFont_Info * Font, int y,
+// 			char *text)
+// {
+//   int spaces = 0;
+//   int gap;
+//   int single_gap;
+//   int dif;
+// 
+//   char *strtmp;
+//   char *p;
+//   int pos = -1;
+//   int xpos = 0;
+// 
+// 
+//   if (strchr (text, ' ') == NULL)
+//     {
+//       PutStringFont (Surface, Font, 0, y, text);
+//     }
+//   else
+//     {
+//       gap = (Surface->w - 1) - TextWidthFont (Font, text);
+// 
+//       if (gap <= 0)
+// 	{
+// 	  PutStringFont (Surface, Font, 0, y, text);
+// 	}
+//       else
+// 	{
+// 	  spaces = count (text);
+// 	  dif = gap % spaces;
+// 	  single_gap = (gap - dif) / spaces;
+// 	  xpos = 0;
+// 	  pos = -1;
+// 	  while (spaces > 0)
+// 	    {
+// 	      p = strstr (&text[pos + 1], " ");
+// 	      strtmp = NULL;
+// 	      strtmp =
+// 		(char *) calloc ((p - &text[pos + 1]) + 1, sizeof (char));
+// 	      if (strtmp != NULL)
+// 		{
+// 		  strncpy (strtmp, &text[pos + 1], (p - &text[pos + 1]));
+// 		  PutStringFont (Surface, Font, xpos, y, strtmp);
+// 		  xpos =
+// 		    xpos + TextWidthFont (Font,
+// 					  strtmp) + single_gap +
+// 		    CharWidth (Font, ' ');
+// 		  if (dif >= 0)
+// 		    {
+// 		      xpos++;
+// 		      dif--;
+// 		    }
+// 		  pos = p - text;
+// 		  spaces--;
+// 		  free (strtmp);
+// 		}
+// 	    }
+// 	  strtmp = NULL;
+// 	  strtmp =
+// 	    (char *) calloc (strlen (&text[pos + 1]) + 1, sizeof (char));
+// 
+// 	  if (strtmp != NULL)
+// 	    {
+// 	      strncpy (strtmp, &text[pos + 1], strlen (&text[pos + 1]));
+// 	      PutStringFont (Surface, Font, xpos, y, strtmp);
+// 	      free (strtmp);
+// 	    }
+// 	}
+//     }
+// }
 
-void
-JustifiedPutStringFont (SDL_Surface * Surface, BFont_Info * Font, int y,
-			char *text)
-{
-  int spaces = 0;
-  int gap;
-  int single_gap;
-  int dif;
+// void
+// CenteredPutString (SDL_Surface * Surface, int y, char *text)
+// {
+//   CenteredPutStringFont (Surface, CurrentFont, y, text);
+// }
+// 
+// void
+// CenteredPutStringFont (SDL_Surface * Surface, BFont_Info * Font, int y,
+// 		       char *text)
+// {
+//   PutStringFont (Surface, Font,
+// 		 Surface->w / 2 - TextWidthFont (Font, text) / 2, y, text);
+// }
 
-  char *strtmp;
-  char *p;
-  int pos = -1;
-  int xpos = 0;
+// void
+// RightPutString (SDL_Surface * Surface, int y, char *text)
+// {
+//   RightPutStringFont (Surface, CurrentFont, y, text);
+// }
+// 
+// void
+// RightPutStringFont (SDL_Surface * Surface, BFont_Info * Font, int y,
+// 		    char *text)
+// {
+//   PutStringFont (Surface, Font, Surface->w - TextWidthFont (Font, text) - 1,
+// 		 y, text);
+// }
 
+// void
+// LeftPutString (SDL_Surface * Surface, int y, char *text)
+// {
+//   LeftPutStringFont (Surface, CurrentFont, y, text);
+// }
 
-  if (strchr (text, ' ') == NULL)
-    {
-      PutStringFont (Surface, Font, 0, y, text);
-    }
-  else
-    {
-      gap = (Surface->w - 1) - TextWidthFont (Font, text);
-
-      if (gap <= 0)
-	{
-	  PutStringFont (Surface, Font, 0, y, text);
-	}
-      else
-	{
-	  spaces = count (text);
-	  dif = gap % spaces;
-	  single_gap = (gap - dif) / spaces;
-	  xpos = 0;
-	  pos = -1;
-	  while (spaces > 0)
-	    {
-	      p = strstr (&text[pos + 1], " ");
-	      strtmp = NULL;
-	      strtmp =
-		(char *) calloc ((p - &text[pos + 1]) + 1, sizeof (char));
-	      if (strtmp != NULL)
-		{
-		  strncpy (strtmp, &text[pos + 1], (p - &text[pos + 1]));
-		  PutStringFont (Surface, Font, xpos, y, strtmp);
-		  xpos =
-		    xpos + TextWidthFont (Font,
-					  strtmp) + single_gap +
-		    CharWidth (Font, ' ');
-		  if (dif >= 0)
-		    {
-		      xpos++;
-		      dif--;
-		    }
-		  pos = p - text;
-		  spaces--;
-		  free (strtmp);
-		}
-	    }
-	  strtmp = NULL;
-	  strtmp =
-	    (char *) calloc (strlen (&text[pos + 1]) + 1, sizeof (char));
-
-	  if (strtmp != NULL)
-	    {
-	      strncpy (strtmp, &text[pos + 1], strlen (&text[pos + 1]));
-	      PutStringFont (Surface, Font, xpos, y, strtmp);
-	      free (strtmp);
-	    }
-	}
-    }
-}
-
-void
-CenteredPutString (SDL_Surface * Surface, int y, char *text)
-{
-  CenteredPutStringFont (Surface, CurrentFont, y, text);
-}
-
-void
-CenteredPutStringFont (SDL_Surface * Surface, BFont_Info * Font, int y,
-		       char *text)
-{
-  PutStringFont (Surface, Font,
-		 Surface->w / 2 - TextWidthFont (Font, text) / 2, y, text);
-}
-
-void
-RightPutString (SDL_Surface * Surface, int y, char *text)
-{
-  RightPutStringFont (Surface, CurrentFont, y, text);
-}
-
-void
-RightPutStringFont (SDL_Surface * Surface, BFont_Info * Font, int y,
-		    char *text)
-{
-  PutStringFont (Surface, Font, Surface->w - TextWidthFont (Font, text) - 1,
-		 y, text);
-}
-
-void
-LeftPutString (SDL_Surface * Surface, int y, char *text)
-{
-  LeftPutStringFont (Surface, CurrentFont, y, text);
-}
-
-void
-LeftPutStringFont (SDL_Surface * Surface, BFont_Info * Font, int y,
-		   char *text)
-{
-  PutStringFont (Surface, Font, 0, y, text);
-}
+// void
+// LeftPutStringFont (SDL_Surface * Surface, BFont_Info * Font, int y,
+// 		   char *text)
+// {
+//   PutStringFont (Surface, Font, 0, y, text);
+// }
 
 /******/
 
-void
-PrintString (SDL_Surface * Surface, int x, int y, char *fmt, ...)
-{
-  va_list args;
-  char *temp;
-  va_start (args, fmt);
-
-  if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
-    {
-      vsprintf (temp, fmt, args);
-
-      PutStringFont (Surface, CurrentFont, x, y, temp);
-
-      free (temp);
-    }
-  va_end (args);
-}
+// void
+// PrintString (SDL_Surface * Surface, int x, int y, char *fmt, ...)
+// {
+//   va_list args;
+//   char *temp;
+//   va_start (args, fmt);
+// 
+//   if ((temp = (char *) MyMalloc (1000 + 1)) != NULL)
+//     {
+//       vsprintf (temp, fmt, args);
+// 
+//       PutStringFont (Surface, CurrentFont, x, y, temp);
+// 
+//       free (temp);
+//     }
+//   va_end (args);
+// }
 
 // void
 // PrintStringFont (SDL_Surface * Surface, BFont_Info * Font, int x, int y,

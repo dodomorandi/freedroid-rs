@@ -17,7 +17,7 @@ use sdl::{
 };
 use std::{
     convert::{TryFrom, TryInto},
-    ffi::VaList,
+    ffi::{CStr, VaList},
     mem,
     os::raw::{c_char, c_float, c_int, c_void},
     ptr::null_mut,
@@ -28,34 +28,8 @@ extern "C" {
     pub static mut Para_BFont: *mut BFontInfo;
     pub static mut CurrentFont: *mut BFontInfo;
     fn vsprintf(str: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
-    fn JustifiedPutStringFont(
-        surface: *mut SDL_Surface,
-        font: *mut BFontInfo,
-        y: c_int,
-        text: *mut c_char,
-    );
-    fn JustifiedPutString(surface: *mut SDL_Surface, y: c_int, text: *mut c_char);
-    fn LeftPutStringFont(
-        surface: *mut SDL_Surface,
-        font: *mut BFontInfo,
-        y: c_int,
-        text: *mut c_char,
-    );
-    fn LeftPutString(surface: *mut SDL_Surface, y: c_int, text: *mut c_char);
-    fn RightPutStringFont(
-        surface: *mut SDL_Surface,
-        font: *mut BFontInfo,
-        y: c_int,
-        text: *mut c_char,
-    );
-    fn RightPutString(surface: *mut SDL_Surface, y: c_int, text: *mut c_char);
-    fn CenteredPutStringFont(
-        surface: *mut SDL_Surface,
-        font: *mut BFontInfo,
-        y: c_int,
-        text: *mut c_char,
-    );
-    fn CenteredPutString(surface: *mut SDL_Surface, y: c_int, text: *mut c_char);
+    fn TextWidthFont(font: *mut BFontInfo, text: *const c_char) -> c_int;
+    fn count(text: *mut c_char) -> c_int;
 }
 
 #[derive(Clone)]
@@ -410,4 +384,132 @@ pub unsafe extern "C" fn CenteredPrintString(
     let mut temp = vec![0u8; 10001].into_boxed_slice();
     vsprintf(temp.as_mut_ptr() as *mut c_char, fmt, args.as_va_list());
     CenteredPutString(surface, y, temp.as_mut_ptr() as *mut c_char);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PrintString(
+    surface: *mut SDL_Surface,
+    x: c_int,
+    y: c_int,
+    fmt: *mut c_char,
+    args: ...
+) {
+    let mut args = args.clone();
+
+    let mut temp = vec![0u8; 10001].into_boxed_slice();
+    vsprintf(temp.as_mut_ptr() as *mut c_char, fmt, args.as_va_list());
+
+    PutStringFont(surface, CurrentFont, x, y, temp.as_mut_ptr() as *mut c_char);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn LeftPutStringFont(
+    surface: *mut SDL_Surface,
+    font: *mut BFontInfo,
+    y: c_int,
+    text: *mut c_char,
+) {
+    PutStringFont(surface, font, 0, y, text);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn LeftPutString(surface: *mut SDL_Surface, y: c_int, text: *mut c_char) {
+    LeftPutStringFont(surface, CurrentFont, y, text);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn RightPutStringFont(
+    surface: *mut SDL_Surface,
+    font: *mut BFontInfo,
+    y: c_int,
+    text: *mut c_char,
+) {
+    PutStringFont(
+        surface,
+        font,
+        (*surface).w - TextWidthFont(font, text) - 1,
+        y,
+        text,
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn RightPutString(surface: *mut SDL_Surface, y: c_int, text: *mut c_char) {
+    RightPutStringFont(surface, CurrentFont, y, text);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn CenteredPutStringFont(
+    surface: *mut SDL_Surface,
+    font: *mut BFontInfo,
+    y: c_int,
+    text: *mut c_char,
+) {
+    PutStringFont(
+        surface,
+        font,
+        (*surface).w / 2 - TextWidthFont(font, text) / 2,
+        y,
+        text,
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn CenteredPutString(surface: *mut SDL_Surface, y: c_int, text: *mut c_char) {
+    CenteredPutStringFont(surface, CurrentFont, y, text);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn JustifiedPutStringFont(
+    surface: *mut SDL_Surface,
+    font: *mut BFontInfo,
+    y: c_int,
+    text: *mut c_char,
+) {
+    let text = CStr::from_ptr(text).to_bytes();
+    if !text.contains(&b' ') {
+        PutStringFont(surface, font, 0, y, text.as_ptr() as *const c_char);
+    } else {
+        let gap = ((*surface).w - 1) - TextWidthFont(font, text.as_ptr() as *const c_char);
+
+        if gap <= 0 {
+            PutStringFont(surface, font, 0, y, text.as_ptr() as *const c_char);
+        } else {
+            let mut spaces = count(text.as_ptr() as *mut c_char);
+            let mut dif = gap % spaces;
+            let single_gap = (gap - dif) / spaces;
+            let mut xpos = 0;
+            let mut pos = -1;
+            while spaces > 0 {
+                let p = text[usize::try_from(pos + 1).unwrap()..]
+                    .splitn(2, |&c| c == b' ')
+                    .nth(1)
+                    .unwrap();
+                let strtmp = p.to_vec();
+                PutStringFont(surface, font, xpos, y, strtmp.as_ptr() as *const c_char);
+                xpos = xpos
+                    + TextWidthFont(font, strtmp.as_ptr() as *const c_char)
+                    + single_gap
+                    + CharWidth(&*font, b' '.into());
+                if dif >= 0 {
+                    xpos += 1;
+                    dif -= 1;
+                }
+                pos = p.as_ptr().offset_from(text.as_ptr());
+                spaces -= 1;
+            }
+
+            let strtmp = text[usize::try_from(pos + 1).unwrap()..].to_vec();
+            PutStringFont(surface, font, xpos, y, strtmp.as_ptr() as *const c_char);
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn JustifiedPutString(
+    surface: *mut SDL_Surface,
+    y: c_int,
+    text: *mut c_char,
+) {
+    JustifiedPutStringFont(surface, CurrentFont, y, text);
 }
