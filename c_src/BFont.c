@@ -276,24 +276,24 @@ SetFontHeight (BFont_Info * Font, int height)
 /* } */
 
 
-int
-TextWidth (const char *text)
-{
-  return TextWidthFont (CurrentFont, text);
-}
-
-int
-TextWidthFont (BFont_Info * Font, const char *text)
-{
-  int i = 0, x = 0;
-
-  while (text[i] != '\0')
-    {
-      x += CharWidth (Font, text[i]);
-      i++;
-    }
-  return x;
-}
+// int
+// TextWidth (const char *text)
+// {
+//   return TextWidthFont (CurrentFont, text);
+// }
+// 
+// int
+// TextWidthFont (BFont_Info * Font, const char *text)
+// {
+//   int i = 0, x = 0;
+// 
+//   while (text[i] != '\0')
+//     {
+//       x += CharWidth (Font, text[i]);
+//       i++;
+//     }
+//   return x;
+// }
 
 
 /* counts the spaces of the strings */

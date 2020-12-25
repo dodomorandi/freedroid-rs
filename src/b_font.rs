@@ -28,7 +28,6 @@ extern "C" {
     pub static mut Para_BFont: *mut BFontInfo;
     pub static mut CurrentFont: *mut BFontInfo;
     fn vsprintf(str: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
-    fn TextWidthFont(font: *mut BFontInfo, text: *const c_char) -> c_int;
 }
 
 #[derive(Clone)]
@@ -426,7 +425,7 @@ pub unsafe extern "C" fn RightPutStringFont(
     PutStringFont(
         surface,
         font,
-        (*surface).w - TextWidthFont(font, text) - 1,
+        (*surface).w - TextWidthFont(&*font, text) - 1,
         y,
         text,
     );
@@ -447,7 +446,7 @@ pub unsafe extern "C" fn CenteredPutStringFont(
     PutStringFont(
         surface,
         font,
-        (*surface).w / 2 - TextWidthFont(font, text) / 2,
+        (*surface).w / 2 - TextWidthFont(&*font, text) / 2,
         y,
         text,
     );
@@ -469,7 +468,7 @@ pub unsafe extern "C" fn JustifiedPutStringFont(
     if !text.contains(&b' ') {
         PutStringFont(surface, font, 0, y, text.as_ptr() as *const c_char);
     } else {
-        let gap = ((*surface).w - 1) - TextWidthFont(font, text.as_ptr() as *const c_char);
+        let gap = ((*surface).w - 1) - TextWidthFont(&*font, text.as_ptr() as *const c_char);
 
         if gap <= 0 {
             PutStringFont(surface, font, 0, y, text.as_ptr() as *const c_char);
@@ -487,7 +486,7 @@ pub unsafe extern "C" fn JustifiedPutStringFont(
                 let strtmp = p.to_vec();
                 PutStringFont(surface, font, xpos, y, strtmp.as_ptr() as *const c_char);
                 xpos = xpos
-                    + TextWidthFont(font, strtmp.as_ptr() as *const c_char)
+                    + TextWidthFont(&*font, strtmp.as_ptr() as *const c_char)
                     + single_gap
                     + CharWidth(&*font, b' '.into());
                 if dif >= 0 {
@@ -523,4 +522,18 @@ pub unsafe extern "C" fn count(text: *const c_char) -> c_int {
         .count()
         .try_into()
         .unwrap()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn TextWidth(text: *const c_char) -> c_int {
+    TextWidthFont(&*CurrentFont, text)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn TextWidthFont(font: &BFontInfo, text: *const c_char) -> c_int {
+    CStr::from_ptr(text)
+        .to_bytes()
+        .iter()
+        .map(|&c| CharWidth(font, c.into()))
+        .sum()
 }
