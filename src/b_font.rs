@@ -9,8 +9,8 @@ use sdl::{
     sdl::Rect,
     video::{
         ll::{
-            SDL_LockSurface, SDL_MapRGB, SDL_Rect, SDL_SetColorKey, SDL_Surface, SDL_UnlockSurface,
-            SDL_UpperBlit,
+            SDL_FreeSurface, SDL_LockSurface, SDL_MapRGB, SDL_Rect, SDL_SetColorKey, SDL_Surface,
+            SDL_UnlockSurface, SDL_UpperBlit,
         },
         SurfaceFlag,
     },
@@ -536,4 +536,15 @@ pub unsafe extern "C" fn TextWidthFont(font: &BFontInfo, text: *const c_char) ->
         .iter()
         .map(|&c| CharWidth(font, c.into()))
         .sum()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn SetFontHeight(font: &mut BFontInfo, height: c_int) {
+    font.h = height;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn FreeFont(font: *mut BFontInfo) {
+    SDL_FreeSurface((*font).surface);
+    libc::free(font as *mut c_void);
 }

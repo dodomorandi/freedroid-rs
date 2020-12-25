@@ -113,12 +113,12 @@ void PutPixel (SDL_Surface * surface, int x, int y, Uint32 pixel);
 // }
 
 
-void
-FreeFont (BFont_Info * Font)
-{
-  SDL_FreeSurface (Font->Surface);
-  free (Font);
-}
+// void
+// FreeFont (BFont_Info * Font)
+// {
+//   SDL_FreeSurface (Font->Surface);
+//   free (Font);
+// }
 
 BFont_Info *
 SetFontColor (BFont_Info * Font, Uint8 r, Uint8 g, Uint8 b)
@@ -218,11 +218,11 @@ SetFontColor (BFont_Info * Font, Uint8 r, Uint8 g, Uint8 b)
 /*   return (Font->h); */
 /* } */
 
-void
-SetFontHeight (BFont_Info * Font, int height)
-{
-  Font->h = height;
-}
+// void
+// SetFontHeight (BFont_Info * Font, int height)
+// {
+//   Font->h = height;
+// }
 
 
 /* Return the width of the "c" character */
