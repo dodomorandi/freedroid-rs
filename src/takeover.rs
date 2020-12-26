@@ -24,6 +24,8 @@ extern "C" {
     static mut ActivationMap: Playground;
     static mut CapsuleCountdown: Playground;
     static mut BlockClass: [c_int; TO_BLOCKS];
+    static mut DisplayColumn: [c_int; NUM_LINES];
+    static mut LeaderColor: c_int;
 }
 
 /* Background-color of takeover-game */
@@ -348,4 +350,77 @@ pub unsafe extern "C" fn ProcessCapsules() {
                 *playground = ToBlock::Kabel as i32;
             }
         });
+}
+
+/// ProcessDisplayColumn(): setzt die Korrekten Werte in der Display-
+/// Saeule. Blinkende LEDs werden ebenfalls hier realisiert
+#[no_mangle]
+pub unsafe extern "C" fn ProcessDisplayColumn() {
+    const CONNECTION_LAYER: usize = 3;
+    static mut FLICKER_COLOR: i32 = 0;
+
+    FLICKER_COLOR = !FLICKER_COLOR;
+
+    ActivationMap[ToColor::Gelb as usize][CONNECTION_LAYER]
+        .iter()
+        .zip(ActivationMap[ToColor::Violett as usize][CONNECTION_LAYER].iter())
+        .zip(ToPlayground[ToColor::Gelb as usize][CONNECTION_LAYER - 1].iter())
+        .zip(ToPlayground[ToColor::Violett as usize][CONNECTION_LAYER - 1].iter())
+        .zip(DisplayColumn.iter_mut())
+        .for_each(
+            |(
+                (((&gelb_activation, &violett_activation), &gelb_playground), &violett_playground),
+                display,
+            )| {
+                if gelb_activation >= Condition::Active1 as i32
+                    && violett_activation == Condition::Inactive as i32
+                {
+                    if gelb_playground == ToBlock::Farbtauscher as i32 {
+                        *display = ToColor::Violett as i32;
+                    } else {
+                        *display = ToColor::Gelb as i32;
+                    }
+                } else if gelb_activation == Condition::Inactive as i32
+                    && violett_activation >= Condition::Active1 as i32
+                {
+                    if violett_playground == ToBlock::Farbtauscher as i32 {
+                        *display = ToColor::Gelb as i32;
+                    } else {
+                        *display = ToColor::Violett as i32;
+                    }
+                } else if gelb_activation >= Condition::Active1 as i32
+                    && violett_activation >= Condition::Active1 as i32
+                {
+                    if gelb_playground == ToBlock::Farbtauscher as i32
+                        && violett_playground != ToBlock::Farbtauscher as i32
+                    {
+                        *display = ToColor::Violett as i32;
+                    } else if (gelb_playground != ToBlock::Farbtauscher as i32
+                        && violett_playground == ToBlock::Farbtauscher as i32)
+                        || FLICKER_COLOR == 0
+                    {
+                        *display = ToColor::Gelb as i32;
+                    } else {
+                        *display = ToColor::Violett as i32;
+                    }
+                }
+            },
+        );
+
+    let mut gelb_counter = 0;
+    let mut violett_counter = 0;
+    for &color in DisplayColumn.iter() {
+        if color == ToColor::Gelb as i32 {
+            gelb_counter += 1;
+        } else {
+            violett_counter += 1;
+        }
+    }
+
+    use std::cmp::Ordering;
+    match violett_counter.cmp(&gelb_counter) {
+        Ordering::Less => LeaderColor = ToColor::Gelb as i32,
+        Ordering::Greater => LeaderColor = ToColor::Violett as i32,
+        Ordering::Equal => LeaderColor = ToColor::Remis as i32,
+    }
 }

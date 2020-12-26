@@ -1080,93 +1080,93 @@ ProcessPlayground (void)
 @Ret: void
 @Int:
 * $Function----------------------------------------------------------*/
-void
-ProcessDisplayColumn (void)
-{
-  static int CLayer = 3;	/* the connection-layer to the Column */
-  static int flicker_color = 0;
-  int row;
-  int GelbCounter, ViolettCounter;
-
-  flicker_color = !flicker_color;
-
-  for (row = 0; row < NUM_LINES; row++)
-    {
-      /* eindeutig gelb */
-      if ((ActivationMap[GELB][CLayer][row] >= ACTIVE1) &&
-	  (ActivationMap[VIOLETT][CLayer][row] == INACTIVE))
-	{
-	  /* Farbtauscher ??? */
-	  if (ToPlayground[GELB][CLayer - 1][row] == FARBTAUSCHER)
-	    DisplayColumn[row] = VIOLETT;
-	  else
-	    DisplayColumn[row] = GELB;
-	  continue;
-	}
-
-      /* eindeutig violett */
-      if ((ActivationMap[GELB][CLayer][row] == INACTIVE) &&
-	  (ActivationMap[VIOLETT][CLayer][row] >= ACTIVE1))
-	{
-	  /* Farbtauscher ??? */
-	  if (ToPlayground[VIOLETT][CLayer - 1][row] == FARBTAUSCHER)
-	    DisplayColumn[row] = GELB;
-	  else
-	    DisplayColumn[row] = VIOLETT;
-
-	  continue;
-	}
-
-      /* unentschieden: Flimmern */
-      if ((ActivationMap[GELB][CLayer][row] >= ACTIVE1) &&
-	  (ActivationMap[VIOLETT][CLayer][row] >= ACTIVE1))
-	{
-	  /* Farbtauscher - Faelle */
-	  if ((ToPlayground[GELB][CLayer - 1][row] == FARBTAUSCHER) &&
-	      (ToPlayground[VIOLETT][CLayer - 1][row] != FARBTAUSCHER))
-	    DisplayColumn[row] = VIOLETT;
-	  else if ((ToPlayground[GELB][CLayer - 1][row] != FARBTAUSCHER) &&
-		   (ToPlayground[VIOLETT][CLayer - 1][row] == FARBTAUSCHER))
-	    DisplayColumn[row] = GELB;
-	  else
-	    {
-	      if (flicker_color == 0)
-		DisplayColumn[row] = GELB;
-	      else
-		DisplayColumn[row] = VIOLETT;
-	    }			/* if - else if - else */
-
-	}			/* if unentschieden */
-
-    }				/* for */
-
-  /* Win Color beurteilen */
-  GelbCounter = 0;
-  ViolettCounter = 0;
-  for (row = 0; row < NUM_LINES; row++)
-    if (DisplayColumn[row] == GELB)
-      GelbCounter++;
-    else
-      ViolettCounter++;
-
-  if (ViolettCounter < GelbCounter)
-    LeaderColor = GELB;
-  else if (ViolettCounter > GelbCounter)
-    LeaderColor = VIOLETT;
-  else
-    LeaderColor = REMIS;
-
-  //--------------------
-  // In Freedroid, the resistance a droid against the influencers control should
-  // depend on the details of the final takeover score.  Therefore we set this
-  // resistance factor variable here.
-  //
-  // RP: yes, but as this is now a purely "classic" release, such extensions are
-  // deactivated...
-  //  Me.Current_Victim_Resistance_Factor = 0.2 * ( (float) 12 - abs( ViolettCounter- GelbCounter ) );
-
-  return;
-}; // ProcessDisplayColumn
+// void
+// ProcessDisplayColumn (void)
+// {
+//   static int CLayer = 3;	/* the connection-layer to the Column */
+//   static int flicker_color = 0;
+//   int row;
+//   int GelbCounter, ViolettCounter;
+// 
+//   flicker_color = !flicker_color;
+// 
+//   for (row = 0; row < NUM_LINES; row++)
+//     {
+//       /* eindeutig gelb */
+//       if ((ActivationMap[GELB][CLayer][row] >= ACTIVE1) &&
+// 	  (ActivationMap[VIOLETT][CLayer][row] == INACTIVE))
+// 	{
+// 	  /* Farbtauscher ??? */
+// 	  if (ToPlayground[GELB][CLayer - 1][row] == FARBTAUSCHER)
+// 	    DisplayColumn[row] = VIOLETT;
+// 	  else
+// 	    DisplayColumn[row] = GELB;
+// 	  continue;
+// 	}
+// 
+//       /* eindeutig violett */
+//       if ((ActivationMap[GELB][CLayer][row] == INACTIVE) &&
+// 	  (ActivationMap[VIOLETT][CLayer][row] >= ACTIVE1))
+// 	{
+// 	  /* Farbtauscher ??? */
+// 	  if (ToPlayground[VIOLETT][CLayer - 1][row] == FARBTAUSCHER)
+// 	    DisplayColumn[row] = GELB;
+// 	  else
+// 	    DisplayColumn[row] = VIOLETT;
+// 
+// 	  continue;
+// 	}
+// 
+//       /* unentschieden: Flimmern */
+//       if ((ActivationMap[GELB][CLayer][row] >= ACTIVE1) &&
+// 	  (ActivationMap[VIOLETT][CLayer][row] >= ACTIVE1))
+// 	{
+// 	  /* Farbtauscher - Faelle */
+// 	  if ((ToPlayground[GELB][CLayer - 1][row] == FARBTAUSCHER) &&
+// 	      (ToPlayground[VIOLETT][CLayer - 1][row] != FARBTAUSCHER))
+// 	    DisplayColumn[row] = VIOLETT;
+// 	  else if ((ToPlayground[GELB][CLayer - 1][row] != FARBTAUSCHER) &&
+// 		   (ToPlayground[VIOLETT][CLayer - 1][row] == FARBTAUSCHER))
+// 	    DisplayColumn[row] = GELB;
+// 	  else
+// 	    {
+// 	      if (flicker_color == 0)
+// 		DisplayColumn[row] = GELB;
+// 	      else
+// 		DisplayColumn[row] = VIOLETT;
+// 	    }			/* if - else if - else */
+// 
+// 	}			/* if unentschieden */
+// 
+//     }				/* for */
+// 
+//   /* Win Color beurteilen */
+//   GelbCounter = 0;
+//   ViolettCounter = 0;
+//   for (row = 0; row < NUM_LINES; row++)
+//     if (DisplayColumn[row] == GELB)
+//       GelbCounter++;
+//     else
+//       ViolettCounter++;
+// 
+//   if (ViolettCounter < GelbCounter)
+//     LeaderColor = GELB;
+//   else if (ViolettCounter > GelbCounter)
+//     LeaderColor = VIOLETT;
+//   else
+//     LeaderColor = REMIS;
+// 
+//   //--------------------
+//   // In Freedroid, the resistance a droid against the influencers control should
+//   // depend on the details of the final takeover score.  Therefore we set this
+//   // resistance factor variable here.
+//   //
+//   // RP: yes, but as this is now a purely "classic" release, such extensions are
+//   // deactivated...
+//   //  Me.Current_Victim_Resistance_Factor = 0.2 * ( (float) 12 - abs( ViolettCounter- GelbCounter ) );
+// 
+//   return;
+// }; // ProcessDisplayColumn
 
 /*@Function============================================================
 @Desc: ProcessCapsules():	does the countdown of the capsules and
