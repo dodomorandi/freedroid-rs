@@ -596,54 +596,54 @@ EnemyMovements (void)
  *  define all the SDL_Rects for the takeover-game
  *
  *-----------------------------------------------------------------*/
-int
-set_takeover_rects (void)
-{
-  int i,j;
-  int curx = 0, cury = 0;
-
-  /* Set the fill-blocks */
-  for (i=0; i<NUM_FILL_BLOCKS; i++,curx += TO_FillBlock.w + 2)
-    Set_Rect (FillBlocks[i], curx, cury, TO_FillBlock.w, TO_FillBlock.h);
-
-  /* Set the capsule Blocks */
-  for (i = 0; i < NUM_CAPS_BLOCKS; i++, curx += TO_CapsuleRect.w + 2)
-    Set_Rect (CapsuleBlocks[i], curx, cury, TO_CapsuleRect.w, TO_CapsuleRect.h-2);
-
-  curx = 0;
-  cury += TO_FillBlock.h + 2;
-
-  /* get the game-blocks */
-
-  for (j = 0; j < 2*NUM_PHASES; j++)
-    {
-      for (i = 0; i < TO_BLOCKS; i++)
-	{
-	  Set_Rect (ToGameBlocks[j*TO_BLOCKS+i], curx, cury, TO_ElementRect.w,TO_ElementRect.h);
-	  curx += TO_ElementRect.w + 2;
-	}
-      curx = 0;
-      cury += TO_ElementRect.h + 2;
-    }
-
-  /* Get the ground, column and leader blocks */
-  for (i = 0; i < NUM_GROUND_BLOCKS; i++)
-    {
-      Set_Rect (ToGroundBlocks[i], curx, cury, TO_GroundRect.w, TO_GroundRect.h);
-      curx += TO_GroundRect.w + 2;
-    }
-  cury += TO_GroundRect.h + 2;
-  curx = 0;
-
-  Set_Rect (ToColumnBlock, curx, cury, TO_ColumnRect.w, TO_ColumnRect.h);
-
-  curx += TO_ColumnRect.w + 2;
-
-  Set_Rect (ToLeaderBlock, curx, cury, 2*TO_LeaderLed.w-4, TO_LeaderLed.h);
-
-  return(OK);
-
-}	// int set_takeover_rects
+// int
+// set_takeover_rects (void)
+// {
+//   int i,j;
+//   int curx = 0, cury = 0;
+// 
+//   /* Set the fill-blocks */
+//   for (i=0; i<NUM_FILL_BLOCKS; i++,curx += TO_FillBlock.w + 2)
+//     Set_Rect (FillBlocks[i], curx, cury, TO_FillBlock.w, TO_FillBlock.h);
+// 
+//   /* Set the capsule Blocks */
+//   for (i = 0; i < NUM_CAPS_BLOCKS; i++, curx += TO_CapsuleRect.w + 2)
+//     Set_Rect (CapsuleBlocks[i], curx, cury, TO_CapsuleRect.w, TO_CapsuleRect.h-2);
+// 
+//   curx = 0;
+//   cury += TO_FillBlock.h + 2;
+// 
+//   /* get the game-blocks */
+// 
+//   for (j = 0; j < 2*NUM_PHASES; j++)
+//     {
+//       for (i = 0; i < TO_BLOCKS; i++)
+// 	{
+// 	  Set_Rect (ToGameBlocks[j*TO_BLOCKS+i], curx, cury, TO_ElementRect.w,TO_ElementRect.h);
+// 	  curx += TO_ElementRect.w + 2;
+// 	}
+//       curx = 0;
+//       cury += TO_ElementRect.h + 2;
+//     }
+// 
+//   /* Get the ground, column and leader blocks */
+//   for (i = 0; i < NUM_GROUND_BLOCKS; i++)
+//     {
+//       Set_Rect (ToGroundBlocks[i], curx, cury, TO_GroundRect.w, TO_GroundRect.h);
+//       curx += TO_GroundRect.w + 2;
+//     }
+//   cury += TO_GroundRect.h + 2;
+//   curx = 0;
+// 
+//   Set_Rect (ToColumnBlock, curx, cury, TO_ColumnRect.w, TO_ColumnRect.h);
+// 
+//   curx += TO_ColumnRect.w + 2;
+// 
+//   Set_Rect (ToLeaderBlock, curx, cury, 2*TO_LeaderLed.w-4, TO_LeaderLed.h);
+// 
+//   return(OK);
+// 
+// }	// int set_takeover_rects
 
 /*-----------------------------------------------------------------
  * @Desc: prepares _and displays_ the current Playground

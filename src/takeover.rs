@@ -1,9 +1,18 @@
-use cstr::cstr;
-use std::{ffi::CStr, os::raw::c_int};
+use crate::{
+    defs,
+    global::{
+        CapsuleBlocks, FillBlocks, TO_CapsuleRect, TO_ColumnRect, TO_ElementRect, TO_FillBlock,
+        TO_GroundRect, TO_LeaderLed, ToColumnBlock, ToGameBlocks, ToGroundBlocks, ToLeaderBlock,
+    },
+};
 
-extern "C" {
-    pub fn set_takeover_rects() -> c_int;
-}
+use cstr::cstr;
+use sdl::Rect;
+use std::{
+    convert::{TryFrom, TryInto},
+    ffi::CStr,
+    os::raw::c_int,
+};
 
 /* Background-color of takeover-game */
 pub const TO_BG_COLOR: usize = 63;
@@ -125,3 +134,74 @@ enum ToBlock {
 
 /* the playground type */
 pub type Playground = [[[i32; TO_COLORS]; NUM_LAYERS]; NUM_LINES];
+
+/// Define all the SDL_Rects for the takeover-game
+#[no_mangle]
+pub unsafe extern "C" fn set_takeover_rects() -> c_int {
+    /* Set the fill-blocks */
+    FillBlocks
+        .iter_mut()
+        .zip((0..).step_by(usize::from(TO_FillBlock.w) + 2))
+        .for_each(|(rect, cur_x)| *rect = Rect::new(cur_x, 0, TO_FillBlock.w, TO_FillBlock.h));
+
+    /* Set the capsule Blocks */
+    let start_x =
+        i16::try_from(FillBlocks.len()).unwrap() * (i16::try_from(TO_FillBlock.w).unwrap() + 2);
+    CapsuleBlocks
+        .iter_mut()
+        .zip((start_x..).step_by(usize::try_from(TO_CapsuleRect.w).unwrap() + 2))
+        .for_each(|(rect, cur_x)| {
+            *rect = Rect::new(cur_x, 0, TO_CapsuleRect.w, TO_CapsuleRect.h - 2)
+        });
+
+    /* get the game-blocks */
+    ToGameBlocks
+        .iter_mut()
+        .zip(
+            ((TO_FillBlock.h + 2)..)
+                .step_by(usize::try_from(TO_ElementRect.h).unwrap() + 2)
+                .flat_map(|cur_y| {
+                    (0..)
+                        .step_by(usize::try_from(TO_ElementRect.w).unwrap() + 2)
+                        .take(TO_BLOCKS)
+                        .map(move |cur_x| (cur_x, cur_y))
+                }),
+        )
+        .for_each(|(rect, (cur_x, cur_y))| {
+            *rect = Rect::new(
+                cur_x,
+                cur_y.try_into().unwrap(),
+                TO_ElementRect.w,
+                TO_ElementRect.h,
+            )
+        });
+    let mut cur_y =
+        (TO_FillBlock.h + 2) + (TO_ElementRect.h + 2) * u16::try_from(NUM_PHASES).unwrap() * 2;
+
+    /* Get the ground, column and leader blocks */
+    ToGroundBlocks
+        .iter_mut()
+        .zip((0..).step_by(usize::try_from(TO_GroundRect.w).unwrap() + 2))
+        .for_each(|(rect, cur_x)| {
+            *rect = Rect::new(
+                cur_x,
+                cur_y.try_into().unwrap(),
+                TO_GroundRect.w,
+                TO_GroundRect.h,
+            )
+        });
+    cur_y += TO_GroundRect.h + 2;
+    ToColumnBlock = Rect::new(
+        0,
+        cur_y.try_into().unwrap(),
+        TO_ColumnRect.w,
+        TO_ColumnRect.h,
+    );
+    ToLeaderBlock = Rect::new(
+        i16::try_from(TO_ColumnRect.w).unwrap() + 2,
+        cur_y.try_into().unwrap(),
+        TO_LeaderLed.w * 2 - 4,
+        TO_LeaderLed.h,
+    );
+    defs::OK.into()
+}
