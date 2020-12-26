@@ -1175,28 +1175,28 @@ ProcessDisplayColumn (void)
 @Ret: void
 @Int:
 * $Function----------------------------------------------------------*/
-void
-ProcessCapsules (void)
-{
-  int row;
-  int color;
-
-  for (color = GELB; color <= VIOLETT; color++)
-    for (row = 0; row < NUM_LINES; row++)
-      {
-	if (CapsuleCountdown[color][0][row] > 0)
-	  CapsuleCountdown[color][0][row]--;
-
-	if (CapsuleCountdown[color][0][row] == 0)
-	  {
-	    CapsuleCountdown[color][0][row] = -1;
-	    ActivationMap[color][0][row] = INACTIVE;
-	    ToPlayground[color][0][row] = KABEL;
-	  }
-
-      } /* for row */
-
-}   /* ProcessCapsules() */
+// void
+// ProcessCapsules (void)
+// {
+//   int row;
+//   int color;
+// 
+//   for (color = GELB; color <= VIOLETT; color++)
+//     for (row = 0; row < NUM_LINES; row++)
+//       {
+// 	if (CapsuleCountdown[color][0][row] > 0)
+// 	  CapsuleCountdown[color][0][row]--;
+// 
+// 	if (CapsuleCountdown[color][0][row] == 0)
+// 	  {
+// 	    CapsuleCountdown[color][0][row] = -1;
+// 	    ActivationMap[color][0][row] = INACTIVE;
+// 	    ToPlayground[color][0][row] = KABEL;
+// 	  }
+// 
+//       } /* for row */
+// 
+// }   /* ProcessCapsules() */
 
 
 /*@Function============================================================

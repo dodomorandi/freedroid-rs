@@ -317,3 +317,35 @@ pub unsafe extern "C" fn IsActive(color: c_int, row: c_int) -> c_int {
         false.into()
     }
 }
+
+/// does the countdown of the capsules and kills them if too old
+#[no_mangle]
+pub unsafe extern "C" fn ProcessCapsules() {
+    CapsuleCountdown
+        .iter_mut()
+        .flat_map(|color_countdown| color_countdown.iter_mut())
+        .map(|countdown| &mut countdown[0])
+        .zip(
+            ActivationMap
+                .iter_mut()
+                .flat_map(|color_activation| color_activation.iter_mut())
+                .map(|activation| &mut activation[0]),
+        )
+        .zip(
+            ToPlayground
+                .iter_mut()
+                .flat_map(|color_playground| color_playground.iter_mut())
+                .map(|playground| &mut playground[0]),
+        )
+        .for_each(|((countdown, activation), playground)| {
+            if *countdown > 0 {
+                *countdown -= 1;
+            }
+
+            if *countdown == 0 {
+                *countdown = -1;
+                *activation = Condition::Inactive as i32;
+                *playground = ToBlock::Kabel as i32;
+            }
+        });
+}
