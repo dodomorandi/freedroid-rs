@@ -1226,23 +1226,23 @@ IsActive (int color, int row)
  * different pictures in the playground
  *
  *-----------------------------------------------------------------*/
-void
-AnimateCurrents (void)
-{
-  int color, layer, row;
-
-  for (color = GELB; color <= VIOLETT; color ++)
-    for (layer = 0; layer < NUM_LAYERS; layer ++)
-      for (row = 0; row < NUM_LINES; row ++)
-	if (ActivationMap[color][layer][row] >= ACTIVE1)
-	  {
-	    ActivationMap[color][layer][row] ++;
-	    if (ActivationMap[color][layer][row] == NUM_PHASES)
-	      ActivationMap[color][layer][row] = ACTIVE1;
-	  }
-
-  return;
-}
+// void
+// AnimateCurrents (void)
+// {
+//   int color, layer, row;
+// 
+//   for (color = GELB; color <= VIOLETT; color ++)
+//     for (layer = 0; layer < NUM_LAYERS; layer ++)
+//       for (row = 0; row < NUM_LINES; row ++)
+// 	if (ActivationMap[color][layer][row] >= ACTIVE1)
+// 	  {
+// 	    ActivationMap[color][layer][row] ++;
+// 	    if (ActivationMap[color][layer][row] == NUM_PHASES)
+// 	      ActivationMap[color][layer][row] = ACTIVE1;
+// 	  }
+// 
+//   return;
+// }
 
 
 #undef _takeover_c

@@ -281,3 +281,21 @@ pub unsafe extern "C" fn EnemyMovements() {
 
     CapsuleCurRow[opponent_color] = next_row;
 }
+
+/// Animate the active cables: this is done by cycling over
+/// the active phases ACTIVE1-ACTIVE3, which are represented by
+/// different pictures in the playground
+#[no_mangle]
+pub unsafe extern "C" fn AnimateCurrents() {
+    ActivationMap
+        .iter_mut()
+        .flat_map(|color_map| color_map.iter_mut())
+        .flat_map(|layer_map| layer_map.iter_mut())
+        .filter(|condition| **condition >= Condition::Active1 as i32)
+        .for_each(|condition| {
+            *condition += 1;
+            if *condition == NUM_PHASES.try_into().unwrap() {
+                *condition = Condition::Active1 as i32;
+            }
+        });
+}
