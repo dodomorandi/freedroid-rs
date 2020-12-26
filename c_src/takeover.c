@@ -526,70 +526,70 @@ PlayGame (void)
  * @Ret: void
  * @Int:
  *-----------------------------------------------------------------*/
-void
-EnemyMovements (void)
-{
-  static int Actions = 3;
-  static int MoveProbability = 100;
-  static int TurnProbability = 10;
-  static int SetProbability = 80;
-
-  int action;
-  static int direction = 1;	/* start with this direction */
-  int row = CapsuleCurRow[OpponentColor] - 1;
-
-  if (NumCapsules[ENEMY] == 0)
-    return;
-
-
-  action = MyRandom (Actions);
-  switch (action)
-    {
-    case 0:			/* Move along */
-      if (MyRandom (100) <= MoveProbability)
-	{
-	  row += direction;
-	  if (row > NUM_LINES - 1)
-	    row = 0;
-	  if (row < 0)
-	    row = NUM_LINES - 1;
-	}
-      break;
-
-    case 1:			/* Turn around */
-      if (MyRandom (100) <= TurnProbability)
-	{
-	  direction *= -1;
-	}
-      break;
-
-    case 2:			/* Try to set  capsule */
-      if (MyRandom (100) <= SetProbability)
-	{
-	  if ((row >= 0) &&
-	      (ToPlayground[OpponentColor][0][row] != KABELENDE) &&
-	      (ActivationMap[OpponentColor][0][row] == INACTIVE))
-	    {
-	      NumCapsules[ENEMY]--;
-	      Takeover_Set_Capsule_Sound ();
-	      ToPlayground[OpponentColor][0][row] = VERSTAERKER;
-	      ActivationMap[OpponentColor][0][row] = ACTIVE1;
-	      CapsuleCountdown[OpponentColor][0][row] = CAPSULE_COUNTDOWN;
-	      row = -1;		/* For the next capsule: startpos */
-	    }
-	} /* if MyRandom */
-
-      break;
-
-    default:
-      break;
-
-    }	/* switch action */
-
-  CapsuleCurRow[OpponentColor] = row + 1;
-
-  return;
-}	/* EnemyMovements */
+// void
+// EnemyMovements (void)
+// {
+//   static int Actions = 3;
+//   static int MoveProbability = 100;
+//   static int TurnProbability = 10;
+//   static int SetProbability = 80;
+// 
+//   int action;
+//   static int direction = 1;	/* start with this direction */
+//   int row = CapsuleCurRow[OpponentColor] - 1;
+// 
+//   if (NumCapsules[ENEMY] == 0)
+//     return;
+// 
+// 
+//   action = MyRandom (Actions);
+//   switch (action)
+//     {
+//     case 0:			/* Move along */
+//       if (MyRandom (100) <= MoveProbability)
+// 	{
+// 	  row += direction;
+// 	  if (row > NUM_LINES - 1)
+// 	    row = 0;
+// 	  if (row < 0)
+// 	    row = NUM_LINES - 1;
+// 	}
+//       break;
+// 
+//     case 1:			/* Turn around */
+//       if (MyRandom (100) <= TurnProbability)
+// 	{
+// 	  direction *= -1;
+// 	}
+//       break;
+// 
+//     case 2:			/* Try to set  capsule */
+//       if (MyRandom (100) <= SetProbability)
+// 	{
+// 	  if ((row >= 0) &&
+// 	      (ToPlayground[OpponentColor][0][row] != KABELENDE) &&
+// 	      (ActivationMap[OpponentColor][0][row] == INACTIVE))
+// 	    {
+// 	      NumCapsules[ENEMY]--;
+// 	      Takeover_Set_Capsule_Sound ();
+// 	      ToPlayground[OpponentColor][0][row] = VERSTAERKER;
+// 	      ActivationMap[OpponentColor][0][row] = ACTIVE1;
+// 	      CapsuleCountdown[OpponentColor][0][row] = CAPSULE_COUNTDOWN;
+// 	      row = -1;		/* For the next capsule: startpos */
+// 	    }
+// 	} /* if MyRandom */
+// 
+//       break;
+// 
+//     default:
+//       break;
+// 
+//     }	/* switch action */
+// 
+//   CapsuleCurRow[OpponentColor] = row + 1;
+// 
+//   return;
+// }	/* EnemyMovements */
 
 /*@Function============================================================
  *

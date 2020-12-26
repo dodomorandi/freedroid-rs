@@ -4,6 +4,8 @@ use crate::{
         CapsuleBlocks, FillBlocks, TO_CapsuleRect, TO_ColumnRect, TO_ElementRect, TO_FillBlock,
         TO_GroundRect, TO_LeaderLed, ToColumnBlock, ToGameBlocks, ToGroundBlocks, ToLeaderBlock,
     },
+    misc::MyRandom,
+    sound::Takeover_Set_Capsule_Sound,
 };
 
 use cstr::cstr;
@@ -13,6 +15,15 @@ use std::{
     ffi::CStr,
     os::raw::c_int,
 };
+
+extern "C" {
+    static mut CapsuleCurRow: [c_int; TO_COLORS];
+    static mut OpponentColor: c_int;
+    static mut NumCapsules: [c_int; TO_COLORS];
+    static mut ToPlayground: Playground;
+    static mut ActivationMap: Playground;
+    static mut CapsuleCountdown: Playground;
+}
 
 /* Background-color of takeover-game */
 pub const TO_BG_COLOR: usize = 63;
@@ -133,7 +144,7 @@ enum ToBlock {
 }
 
 /* the playground type */
-pub type Playground = [[[i32; TO_COLORS]; NUM_LAYERS]; NUM_LINES];
+pub type Playground = [[[i32; NUM_LINES]; NUM_LAYERS]; TO_COLORS];
 
 /// Define all the SDL_Rects for the takeover-game
 #[no_mangle]
@@ -204,4 +215,69 @@ pub unsafe extern "C" fn set_takeover_rects() -> c_int {
         TO_LeaderLed.h,
     );
     defs::OK.into()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn EnemyMovements() {
+    const ACTIONS: i32 = 3;
+    const MOVE_PROBABILITY: i32 = 100;
+    const TURN_PROBABILITY: i32 = 10;
+    const SET_PROBABILITY: i32 = 80;
+
+    static mut DIRECTION: i32 = 1; /* start with this direction */
+    let opponent_color = usize::try_from(OpponentColor).unwrap();
+    let mut row = CapsuleCurRow[opponent_color] - 1;
+
+    if NumCapsules[ToOpponents::Enemy as usize] == 0 {
+        return;
+    }
+
+    let next_row = match MyRandom(ACTIONS) {
+        0 => {
+            /* Move along */
+            if MyRandom(100) <= MOVE_PROBABILITY {
+                row += DIRECTION;
+                if row > i32::try_from(NUM_LINES).unwrap() - 1 {
+                    1
+                } else if row < 0 {
+                    i32::try_from(NUM_LINES).unwrap()
+                } else {
+                    row + 1
+                }
+            } else {
+                row + 1
+            }
+        }
+
+        1 => {
+            /* Turn around */
+            if MyRandom(100) <= TURN_PROBABILITY {
+                DIRECTION *= -1;
+            }
+            row + 1
+        }
+
+        2 => {
+            /* Try to set  capsule */
+            match usize::try_from(row) {
+                Ok(row)
+                    if MyRandom(100) <= SET_PROBABILITY
+                        && ToPlayground[opponent_color][0][row] != ToBlock::Kabelende as i32
+                        && ActivationMap[opponent_color][0][row] == Condition::Inactive as i32 =>
+                {
+                    NumCapsules[ToOpponents::Enemy as usize] -= 1;
+                    Takeover_Set_Capsule_Sound();
+                    ToPlayground[opponent_color][0][row] = ToBlock::Verstaerker as i32;
+                    ActivationMap[opponent_color][0][row] = Condition::Active1 as i32;
+                    CapsuleCountdown[opponent_color][0][row] =
+                        i32::try_from(CAPSULE_COUNTDOWN).unwrap() * 2;
+                    0
+                }
+                _ => row + 1,
+            }
+        }
+        _ => row + 1,
+    };
+
+    CapsuleCurRow[opponent_color] = next_row;
 }
