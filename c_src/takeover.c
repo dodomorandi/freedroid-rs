@@ -1206,18 +1206,18 @@ ProcessCapsules (void)
 @Ret: TRUE/FALSE
 @Int:
 * $Function----------------------------------------------------------*/
-int
-IsActive (int color, int row)
-{
-  int CLayer = 3;		/* the connective Layer */
-  int TestElement = ToPlayground[color][CLayer - 1][row];
-
-  if ((ActivationMap[color][CLayer-1][row] >= ACTIVE1) &&
-      (BlockClass[TestElement] == CONNECTOR))
-    return TRUE;
-  else
-    return FALSE;
-}				/* IsActive */
+// int
+// IsActive (int color, int row)
+// {
+//   int CLayer = 3;		/* the connective Layer */
+//   int TestElement = ToPlayground[color][CLayer - 1][row];
+// 
+//   if ((ActivationMap[color][CLayer-1][row] >= ACTIVE1) &&
+//       (BlockClass[TestElement] == CONNECTOR))
+//     return TRUE;
+//   else
+//     return FALSE;
+// }				/* IsActive */
 
 /*-----------------------------------------------------------------
  *

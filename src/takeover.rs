@@ -23,6 +23,7 @@ extern "C" {
     static mut ToPlayground: Playground;
     static mut ActivationMap: Playground;
     static mut CapsuleCountdown: Playground;
+    static mut BlockClass: [c_int; TO_BLOCKS];
 }
 
 /* Background-color of takeover-game */
@@ -67,8 +68,8 @@ pub const TO_TICK_LENGTH: usize = 40; /* Time in ms between ticks */
 pub const MAX_CAPSULES: usize = 13; /* a 999 has 13 !!! */
 
 /* there are two classes of blocks: connectors and non-connectors */
-pub const CONNECTOR: usize = 0;
-pub const NON_CONNECTOR: usize = 1;
+pub const CONNECTOR: i32 = 0;
+pub const NON_CONNECTOR: i32 = 1;
 
 pub const NUM_LAYERS: usize = 4; /* dimension of the playground */
 pub const NUM_LINES: usize = 12;
@@ -298,4 +299,21 @@ pub unsafe extern "C" fn AnimateCurrents() {
                 *condition = Condition::Active1 as i32;
             }
         });
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn IsActive(color: c_int, row: c_int) -> c_int {
+    const CONNECTION_LAYER: usize = 3; /* the connective Layer */
+    let test_element = ToPlayground[usize::try_from(color).unwrap()][CONNECTION_LAYER - 1]
+        [usize::try_from(row).unwrap()];
+
+    if ActivationMap[usize::try_from(color).unwrap()][CONNECTION_LAYER - 1]
+        [usize::try_from(row).unwrap()]
+        >= Condition::Active1 as i32
+        && BlockClass[usize::try_from(test_element).unwrap()] == CONNECTOR
+    {
+        true.into()
+    } else {
+        false.into()
+    }
 }
