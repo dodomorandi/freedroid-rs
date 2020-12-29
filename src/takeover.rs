@@ -26,8 +26,6 @@ extern "C" {
     static mut BlockClass: [c_int; TO_BLOCKS];
     static mut DisplayColumn: [c_int; NUM_LINES];
     static mut LeaderColor: c_int;
-
-    fn ClearPlayground();
 }
 
 /* Background-color of takeover-game */
@@ -715,4 +713,25 @@ pub unsafe extern "C" fn InventPlayground() {
             }
         }
     });
+}
+
+/// Clears Playground (and ActivationMap) to default start-values
+#[no_mangle]
+pub unsafe extern "C" fn ClearPlayground() {
+    ActivationMap
+        .iter_mut()
+        .flatten()
+        .flatten()
+        .for_each(|activation| *activation = Condition::Inactive as i32);
+
+    ToPlayground
+        .iter_mut()
+        .flatten()
+        .flatten()
+        .for_each(|block| *block = ToBlock::Cable as i32);
+
+    DisplayColumn
+        .iter_mut()
+        .enumerate()
+        .for_each(|(row, display_column)| *display_column = i32::try_from(row).unwrap() % 2);
 }
