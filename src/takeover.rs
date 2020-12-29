@@ -11,7 +11,7 @@ use crate::{
 use cstr::cstr;
 use sdl::Rect;
 use std::{
-    convert::{TryFrom, TryInto},
+    convert::{Infallible, TryFrom, TryInto},
     ffi::CStr,
     os::raw::c_int,
 };
@@ -26,6 +26,8 @@ extern "C" {
     static mut BlockClass: [c_int; TO_BLOCKS];
     static mut DisplayColumn: [c_int; NUM_LINES];
     static mut LeaderColor: c_int;
+
+    fn ClearPlayground();
 }
 
 /* Background-color of takeover-game */
@@ -126,7 +128,24 @@ enum ToElement {
     Repeater,
     ColorSwapper,
     Branch,
-    Gatter,
+    Gate,
+}
+
+impl TryFrom<u8> for ToElement {
+    type Error = Infallible;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        use ToElement::*;
+        Ok(match value {
+            0 => Cable,
+            1 => CableEnd,
+            2 => Repeater,
+            3 => ColorSwapper,
+            4 => Branch,
+            5 => Gate,
+            _ => panic!("invalid raw ToElement value"),
+        })
+    }
 }
 
 /* Block-Names */
@@ -144,6 +163,28 @@ enum ToBlock {
     GateMiddle,
     GateBelow,
     Empty,
+}
+
+impl TryFrom<i32> for ToBlock {
+    type Error = Infallible;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        use ToBlock::*;
+        Ok(match value {
+            0 => Cable,
+            1 => CableEnd,
+            2 => Repeater,
+            3 => ColorSwapper,
+            4 => BranchAbove,
+            5 => BranchMiddle,
+            6 => BranchBelow,
+            7 => GateAbove,
+            8 => GateMiddle,
+            9 => GateBelow,
+            10 => Empty,
+            _ => panic!("invalid raw ToBlock value"),
+        })
+    }
 }
 
 /* the playground type */
@@ -487,22 +528,8 @@ fn process_playground_row(
     let (activation, activation_layer) = activation_layer.split_first_mut().unwrap();
     let activation_next = activation_layer.first().copied();
 
+    let playground = ToBlock::try_from(*playground).unwrap();
     use ToBlock::*;
-    let playground = match playground {
-        0 => Cable,
-        1 => CableEnd,
-        2 => Repeater,
-        3 => ColorSwapper,
-        4 => BranchAbove,
-        5 => BranchMiddle,
-        6 => BranchBelow,
-        7 => GateAbove,
-        8 => GateMiddle,
-        9 => GateBelow,
-        10 => Empty,
-        _ => panic!("invalid block"),
-    };
-
     let turn_active = match playground {
         ColorSwapper | BranchMiddle | GateAbove | GateBelow | Cable => {
             activation_last_layer >= Condition::Active1 as i32
@@ -540,4 +567,152 @@ fn process_playground_row(
     } else {
         *activation = Condition::Inactive as i32;
     }
+}
+
+/// generate a random Playground
+#[no_mangle]
+pub unsafe extern "C" fn InventPlayground() {
+    const MAX_PROB: i32 = 100;
+    const ELEMENTS_PROBABILITIES: [i32; TO_ELEMENTS] = [
+        100, /* Cable */
+        2,   /* CableEnd */
+        5,   /* Repeater */
+        5,   /* ColorSwapper: only on last layer */
+        5,   /* Branch */
+        5,   /* Gate */
+    ];
+
+    const BLOCK_IS_CONNECTOR: [bool; TO_BLOCKS] = [
+        true,  /* Cable */
+        false, /* CableEnd */
+        true,  /* Repeater */
+        true,  /* ColorSwapper */
+        true,  /* BranchAbove */
+        false, /* BranchMiddle */
+        true,  /* BranchBelow */
+        false, /* BranchAbove */
+        true,  /* BranchMiddle */
+        false, /* BranchBelow */
+        false, /* Empty */
+    ];
+
+    fn cut_cable(block: &mut i32) {
+        if BLOCK_IS_CONNECTOR[usize::try_from(*block).unwrap()] {
+            *block = ToBlock::CableEnd as i32;
+        }
+    }
+
+    /* first clear the playground: we depend on this !! */
+    ClearPlayground();
+
+    ToPlayground.iter_mut().for_each(|playground_color| {
+        for layer in 1..NUM_LAYERS {
+            let (playground_prev_layers, playground_layer) = playground_color.split_at_mut(layer);
+            let playground_prev_layer = playground_prev_layers.last_mut().unwrap();
+            let playground_layer = &mut playground_layer[0];
+
+            let mut row = 0;
+            while row < NUM_LINES {
+                let block = &mut playground_layer[row];
+                if !matches!((*block).try_into().unwrap(), ToBlock::Cable) {
+                    row += 1;
+                    continue;
+                }
+
+                let new_element =
+                    u8::try_from(MyRandom((TO_ELEMENTS - 1).try_into().unwrap())).unwrap();
+                if MyRandom(MAX_PROB) > ELEMENTS_PROBABILITIES[usize::from(new_element)] {
+                    continue;
+                }
+
+                let prev_block = usize::try_from(playground_prev_layer[row]).unwrap();
+                match ToElement::try_from(new_element).unwrap() {
+                    ToElement::Cable => {
+                        if !BLOCK_IS_CONNECTOR[prev_block] {
+                            *block = ToBlock::Empty as i32;
+                        }
+                    }
+                    ToElement::CableEnd => {
+                        if BLOCK_IS_CONNECTOR[prev_block] {
+                            *block = ToBlock::CableEnd as i32;
+                        } else {
+                            *block = ToBlock::Empty as i32;
+                        }
+                    }
+                    ToElement::Repeater => {
+                        if BLOCK_IS_CONNECTOR[prev_block] {
+                            *block = ToBlock::Repeater as i32;
+                        } else {
+                            *block = ToBlock::Empty as i32;
+                        }
+                    }
+                    ToElement::ColorSwapper => {
+                        if layer != 2 {
+                            continue;
+                        }
+                        if BLOCK_IS_CONNECTOR[prev_block] {
+                            *block = ToBlock::ColorSwapper as i32;
+                        } else {
+                            *block = ToBlock::Empty as i32;
+                        }
+                    }
+                    ToElement::Branch => {
+                        if row > NUM_LINES - 3 {
+                            continue;
+                        }
+                        let next_block = playground_prev_layer[row + 1];
+                        if !BLOCK_IS_CONNECTOR[usize::try_from(next_block).unwrap()] {
+                            continue;
+                        }
+                        let (prev_layer_block, prev_layer_next_blocks) =
+                            playground_prev_layer[row..].split_first_mut().unwrap();
+                        if matches!(
+                            ToBlock::try_from(*prev_layer_block).unwrap(),
+                            ToBlock::BranchAbove | ToBlock::BranchBelow
+                        ) {
+                            continue;
+                        }
+                        let next_next_block = &mut prev_layer_next_blocks[1];
+                        if matches!(
+                            ToBlock::try_from(*next_next_block).unwrap(),
+                            ToBlock::BranchAbove | ToBlock::BranchBelow
+                        ) {
+                            continue;
+                        }
+                        cut_cable(prev_layer_block);
+                        cut_cable(next_next_block);
+
+                        *block = ToBlock::BranchAbove as i32;
+                        playground_layer[row + 1] = ToBlock::BranchMiddle as i32;
+                        playground_layer[row + 2] = ToBlock::BranchBelow as i32;
+                        row += 2;
+                    }
+                    ToElement::Gate => {
+                        if row > NUM_LINES - 3 {
+                            continue;
+                        }
+
+                        let prev_layer_block = usize::try_from(playground_prev_layer[row]).unwrap();
+                        if !BLOCK_IS_CONNECTOR[prev_layer_block] {
+                            continue;
+                        }
+
+                        let next_next_block =
+                            usize::try_from(playground_prev_layer[row + 2]).unwrap();
+                        if !BLOCK_IS_CONNECTOR[next_next_block] {
+                            continue;
+                        }
+                        cut_cable(&mut playground_prev_layer[row + 1]);
+
+                        *block = ToBlock::GateAbove as i32;
+                        playground_layer[row + 1] = ToBlock::GateMiddle as i32;
+                        playground_layer[row + 2] = ToBlock::GateBelow as i32;
+                        row += 2;
+                    }
+                }
+
+                row += 1;
+            }
+        }
+    });
 }

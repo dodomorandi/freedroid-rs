@@ -811,171 +811,171 @@ ClearPlayground (void)
  * @Ret: void
  *
  *-----------------------------------------------------------------*/
-void
-InventPlayground (void)
-{
-  int anElement;
-  int newElement;
-  int row, layer;
-  int color = GELB;
-
-  /* first clear the playground: we depend on this !! */
-  ClearPlayground ();
-
-  for (color = GELB; color < TO_COLORS; color++)
-    {
-      for (layer = 1; layer < NUM_LAYERS - 1; layer++)
-	{
-	  for (row = 0; row < NUM_LINES; row++)
-	    {
-	      if (ToPlayground[color][layer][row] != KABEL)
-		continue;
-
-	      newElement = MyRandom (TO_ELEMENTS-1);
-	      if (MyRandom (MAX_PROB) > ElementProb[newElement])
-		{
-		  row--;
-		  continue;
-		}
-
-	      switch (newElement)
-		{
-		case EL_KABEL:	/* has not to be set any more */
-		  anElement = ToPlayground[color][layer - 1][row];
-		  if (BlockClass[anElement] == NON_CONNECTOR)
-		    ToPlayground[color][layer][row] = LEER;
-		  break;
-
-		case EL_KABELENDE:
-		  anElement = ToPlayground[color][layer - 1][row];
-		  if (BlockClass[anElement] == NON_CONNECTOR)
-		    ToPlayground[color][layer][row] = LEER;
-		  else
-		    ToPlayground[color][layer][row] = KABELENDE;
-		  break;
-
-		case EL_VERSTAERKER:
-		  anElement = ToPlayground[color][layer - 1][row];
-		  if (BlockClass[anElement] == NON_CONNECTOR)
-		    ToPlayground[color][layer][row] = LEER;
-		  else
-		    ToPlayground[color][layer][row] = VERSTAERKER;
-		  break;
-
-		case EL_FARBTAUSCHER:
-		  if (layer != 2)
-		    {		/* only existing on layer 2 */
-		      row--;
-		      continue;
-		    }
-
-		  anElement = ToPlayground[color][layer - 1][row];
-		  if (BlockClass[anElement] == NON_CONNECTOR)
-		    ToPlayground[color][layer][row] = LEER;
-		  else
-		    ToPlayground[color][layer][row] = FARBTAUSCHER;
-		  break;
-
-		case EL_VERZWEIGUNG:
-		  if (row > NUM_LINES - 3)
-		    {
-		      /* try again */
-		      row--;
-		      break;
-		    }
-
-		  anElement = ToPlayground[color][layer - 1][row + 1];
-		  if (BlockClass[anElement] == NON_CONNECTOR)
-		    {
-		      /* try again */
-		      row--;
-		      break;
-		    }
-
-		  /* dont destroy verzweigungen in prev. layer */
-		  anElement = ToPlayground[color][layer - 1][row];
-		  if (anElement == VERZWEIGUNG_O
-		      || anElement == VERZWEIGUNG_U)
-		    {
-		      row--;
-		      break;
-		    }
-		  anElement = ToPlayground[color][layer - 1][row + 2];
-		  if (anElement == VERZWEIGUNG_O
-		      || anElement == VERZWEIGUNG_U)
-		    {
-		      row--;
-		      break;
-		    }
-
-		  /* cut off kabels in last layer, if any */
-		  anElement = ToPlayground[color][layer - 1][row];
-		  if (BlockClass[anElement] == CONNECTOR)
-		    ToPlayground[color][layer - 1][row] = KABELENDE;
-
-		  anElement = ToPlayground[color][layer - 1][row + 2];
-		  if (BlockClass[anElement] == CONNECTOR)
-		    ToPlayground[color][layer - 1][row + 2] = KABELENDE;
-
-		  /* set the verzweigung itself */
-		  ToPlayground[color][layer][row] = VERZWEIGUNG_O;
-		  ToPlayground[color][layer][row + 1] = VERZWEIGUNG_M;
-		  ToPlayground[color][layer][row + 2] = VERZWEIGUNG_U;
-
-		  row += 2;
-		  break;
-
-		case EL_GATTER:
-		  if (row > NUM_LINES - 3)
-		    {
-		      /* try again */
-		      row--;
-		      break;
-		    }
-
-		  anElement = ToPlayground[color][layer - 1][row];
-		  if (BlockClass[anElement] == NON_CONNECTOR)
-		    {
-		      /* try again */
-		      row--;
-		      break;
-		    }
-		  anElement = ToPlayground[color][layer - 1][row + 2];
-		  if (BlockClass[anElement] == NON_CONNECTOR)
-		    {
-		      /* try again */
-		      row--;
-		      break;
-		    }
-
-
-		  /* cut off kabels in last layer, if any */
-		  anElement = ToPlayground[color][layer - 1][row + 1];
-		  if (BlockClass[anElement] == CONNECTOR)
-		    ToPlayground[color][layer - 1][row + 1] = KABELENDE;
-
-		  /* set the GATTER itself */
-		  ToPlayground[color][layer][row] = GATTER_O;
-		  ToPlayground[color][layer][row + 1] = GATTER_M;
-		  ToPlayground[color][layer][row + 2] = GATTER_U;
-
-		  row += 2;
-		  break;
-
-		default:
-                  DebugPrintf ( 0, "ERROR: unknown element '%d' drawn (must be within [0,%d])\n", newElement, TO_ELEMENTS-1 );
-                  row --;
-		  break;
-
-		}		/* switch NewElement */
-
-	    }			/* for row */
-
-	}			/* for layer */
-
-    }				/* for color */
-
-}				/* InventPlayground */
+// void
+// InventPlayground (void)
+// {
+//   int anElement;
+//   int newElement;
+//   int row, layer;
+//   int color = GELB;
+// 
+//   /* first clear the playground: we depend on this !! */
+//   ClearPlayground ();
+// 
+//   for (color = GELB; color < TO_COLORS; color++)
+//     {
+//       for (layer = 1; layer < NUM_LAYERS - 1; layer++)
+// 	{
+// 	  for (row = 0; row < NUM_LINES; row++)
+// 	    {
+// 	      if (ToPlayground[color][layer][row] != KABEL)
+// 		continue;
+// 
+// 	      newElement = MyRandom (TO_ELEMENTS-1);
+// 	      if (MyRandom (MAX_PROB) > ElementProb[newElement])
+// 		{
+// 		  row--;
+// 		  continue;
+// 		}
+// 
+// 	      switch (newElement)
+// 		{
+// 		case EL_KABEL:	/* has not to be set any more */
+// 		  anElement = ToPlayground[color][layer - 1][row];
+// 		  if (BlockClass[anElement] == NON_CONNECTOR)
+// 		    ToPlayground[color][layer][row] = LEER;
+// 		  break;
+// 
+// 		case EL_KABELENDE:
+// 		  anElement = ToPlayground[color][layer - 1][row];
+// 		  if (BlockClass[anElement] == NON_CONNECTOR)
+// 		    ToPlayground[color][layer][row] = LEER;
+// 		  else
+// 		    ToPlayground[color][layer][row] = KABELENDE;
+// 		  break;
+// 
+// 		case EL_VERSTAERKER:
+// 		  anElement = ToPlayground[color][layer - 1][row];
+// 		  if (BlockClass[anElement] == NON_CONNECTOR)
+// 		    ToPlayground[color][layer][row] = LEER;
+// 		  else
+// 		    ToPlayground[color][layer][row] = VERSTAERKER;
+// 		  break;
+// 
+// 		case EL_FARBTAUSCHER:
+// 		  if (layer != 2)
+// 		    {		/* only existing on layer 2 */
+// 		      row--;
+// 		      continue;
+// 		    }
+// 
+// 		  anElement = ToPlayground[color][layer - 1][row];
+// 		  if (BlockClass[anElement] == NON_CONNECTOR)
+// 		    ToPlayground[color][layer][row] = LEER;
+// 		  else
+// 		    ToPlayground[color][layer][row] = FARBTAUSCHER;
+// 		  break;
+// 
+// 		case EL_VERZWEIGUNG:
+// 		  if (row > NUM_LINES - 3)
+// 		    {
+// 		      /* try again */
+// 		      row--;
+// 		      break;
+// 		    }
+// 
+// 		  anElement = ToPlayground[color][layer - 1][row + 1];
+// 		  if (BlockClass[anElement] == NON_CONNECTOR)
+// 		    {
+// 		      /* try again */
+// 		      row--;
+// 		      break;
+// 		    }
+// 
+// 		  /* dont destroy verzweigungen in prev. layer */
+// 		  anElement = ToPlayground[color][layer - 1][row];
+// 		  if (anElement == VERZWEIGUNG_O
+// 		      || anElement == VERZWEIGUNG_U)
+// 		    {
+// 		      row--;
+// 		      break;
+// 		    }
+// 		  anElement = ToPlayground[color][layer - 1][row + 2];
+// 		  if (anElement == VERZWEIGUNG_O
+// 		      || anElement == VERZWEIGUNG_U)
+// 		    {
+// 		      row--;
+// 		      break;
+// 		    }
+// 
+// 		  /* cut off kabels in last layer, if any */
+// 		  anElement = ToPlayground[color][layer - 1][row];
+// 		  if (BlockClass[anElement] == CONNECTOR)
+// 		    ToPlayground[color][layer - 1][row] = KABELENDE;
+// 
+// 		  anElement = ToPlayground[color][layer - 1][row + 2];
+// 		  if (BlockClass[anElement] == CONNECTOR)
+// 		    ToPlayground[color][layer - 1][row + 2] = KABELENDE;
+// 
+// 		  /* set the verzweigung itself */
+// 		  ToPlayground[color][layer][row] = VERZWEIGUNG_O;
+// 		  ToPlayground[color][layer][row + 1] = VERZWEIGUNG_M;
+// 		  ToPlayground[color][layer][row + 2] = VERZWEIGUNG_U;
+// 
+// 		  row += 2;
+// 		  break;
+// 
+// 		case EL_GATTER:
+// 		  if (row > NUM_LINES - 3)
+// 		    {
+// 		      /* try again */
+// 		      row--;
+// 		      break;
+// 		    }
+// 
+// 		  anElement = ToPlayground[color][layer - 1][row];
+// 		  if (BlockClass[anElement] == NON_CONNECTOR)
+// 		    {
+// 		      /* try again */
+// 		      row--;
+// 		      break;
+// 		    }
+// 		  anElement = ToPlayground[color][layer - 1][row + 2];
+// 		  if (BlockClass[anElement] == NON_CONNECTOR)
+// 		    {
+// 		      /* try again */
+// 		      row--;
+// 		      break;
+// 		    }
+// 
+// 
+// 		  /* cut off kabels in last layer, if any */
+// 		  anElement = ToPlayground[color][layer - 1][row + 1];
+// 		  if (BlockClass[anElement] == CONNECTOR)
+// 		    ToPlayground[color][layer - 1][row + 1] = KABELENDE;
+// 
+// 		  /* set the GATTER itself */
+// 		  ToPlayground[color][layer][row] = GATTER_O;
+// 		  ToPlayground[color][layer][row + 1] = GATTER_M;
+// 		  ToPlayground[color][layer][row + 2] = GATTER_U;
+// 
+// 		  row += 2;
+// 		  break;
+// 
+// 		default:
+//                   DebugPrintf ( 0, "ERROR: unknown element '%d' drawn (must be within [0,%d])\n", newElement, TO_ELEMENTS-1 );
+//                   row --;
+// 		  break;
+// 
+// 		}		/* switch NewElement */
+// 
+// 	    }			/* for row */
+// 
+// 	}			/* for layer */
+// 
+//     }				/* for color */
+// 
+// }				/* InventPlayground */
 
 /*-----------------------------------------------------------------
  * @Desc: process the playground following its intrinsic logic
