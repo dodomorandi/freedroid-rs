@@ -46,10 +46,10 @@ pub const NUM_TO_BLOCKS: usize = 2 * NUM_PHASES * TO_BLOCKS; // total number of 
 pub const TO_ELEMENTS: usize = 6;
 
 /* Dimensions of the fill-blocks (in led-column */
-pub const NUM_FILL_BLOCKS: usize = 3; // yellow, violett and black
+pub const NUM_FILL_BLOCKS: usize = 3; // yellow, violet and black
 
 /* Dimensions of a capsule */
-pub const NUM_CAPS_BLOCKS: usize = 3; // yellow, violett and red (?what for)
+pub const NUM_CAPS_BLOCKS: usize = 3; // yellow, violet and red (?what for)
 
 /* Dimensions of ground-, column- und leader blocks */
 pub const NUM_GROUND_BLOCKS: usize = 6;
@@ -112,20 +112,20 @@ pub const TO_COLORS: usize = 2;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(C)]
 pub enum ToColor {
-    Gelb = 0,
-    Violett,
-    Remis,
+    Yellow = 0,
+    Violet,
+    Draw,
 }
 
 /* Element - Names */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(C)]
 enum ToElement {
-    Kabel,
-    Kabelende,
-    Verstaerker,
-    Farbtauscher,
-    Verzweigung,
+    Cable,
+    CableEnd,
+    Repeater,
+    ColorSwapper,
+    Branch,
     Gatter,
 }
 
@@ -133,17 +133,17 @@ enum ToElement {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(C)]
 enum ToBlock {
-    Kabel,
-    Kabelende,
-    Verstaerker,
-    Farbtauscher,
-    VerzweigungO,
-    VerzweigungM,
-    VerzweigungU,
-    GatterO,
-    GatterM,
-    GatterU,
-    Leer,
+    Cable,
+    CableEnd,
+    Repeater,
+    ColorSwapper,
+    BranchAbove,
+    BranchMiddle,
+    BranchBelow,
+    GateAbove,
+    GateMiddle,
+    GateBelow,
+    Empty,
 }
 
 /* the playground type */
@@ -265,12 +265,12 @@ pub unsafe extern "C" fn EnemyMovements() {
             match usize::try_from(row) {
                 Ok(row)
                     if MyRandom(100) <= SET_PROBABILITY
-                        && ToPlayground[opponent_color][0][row] != ToBlock::Kabelende as i32
+                        && ToPlayground[opponent_color][0][row] != ToBlock::CableEnd as i32
                         && ActivationMap[opponent_color][0][row] == Condition::Inactive as i32 =>
                 {
                     NumCapsules[ToOpponents::Enemy as usize] -= 1;
                     Takeover_Set_Capsule_Sound();
-                    ToPlayground[opponent_color][0][row] = ToBlock::Verstaerker as i32;
+                    ToPlayground[opponent_color][0][row] = ToBlock::Repeater as i32;
                     ActivationMap[opponent_color][0][row] = Condition::Active1 as i32;
                     CapsuleCountdown[opponent_color][0][row] =
                         i32::try_from(CAPSULE_COUNTDOWN).unwrap() * 2;
@@ -347,7 +347,7 @@ pub unsafe extern "C" fn ProcessCapsules() {
             if *countdown == 0 {
                 *countdown = -1;
                 *activation = Condition::Inactive as i32;
-                *playground = ToBlock::Kabel as i32;
+                *playground = ToBlock::Cable as i32;
             }
         });
 }
@@ -361,66 +361,183 @@ pub unsafe extern "C" fn ProcessDisplayColumn() {
 
     FLICKER_COLOR = !FLICKER_COLOR;
 
-    ActivationMap[ToColor::Gelb as usize][CONNECTION_LAYER]
+    ActivationMap[ToColor::Yellow as usize][CONNECTION_LAYER]
         .iter()
-        .zip(ActivationMap[ToColor::Violett as usize][CONNECTION_LAYER].iter())
-        .zip(ToPlayground[ToColor::Gelb as usize][CONNECTION_LAYER - 1].iter())
-        .zip(ToPlayground[ToColor::Violett as usize][CONNECTION_LAYER - 1].iter())
+        .zip(ActivationMap[ToColor::Violet as usize][CONNECTION_LAYER].iter())
+        .zip(ToPlayground[ToColor::Yellow as usize][CONNECTION_LAYER - 1].iter())
+        .zip(ToPlayground[ToColor::Violet as usize][CONNECTION_LAYER - 1].iter())
         .zip(DisplayColumn.iter_mut())
         .for_each(
             |(
-                (((&gelb_activation, &violett_activation), &gelb_playground), &violett_playground),
+                (
+                    ((&yellow_activation, &violet_activation), &yellow_playground),
+                    &violet_playground,
+                ),
                 display,
             )| {
-                if gelb_activation >= Condition::Active1 as i32
-                    && violett_activation == Condition::Inactive as i32
+                if yellow_activation >= Condition::Active1 as i32
+                    && violet_activation == Condition::Inactive as i32
                 {
-                    if gelb_playground == ToBlock::Farbtauscher as i32 {
-                        *display = ToColor::Violett as i32;
+                    if yellow_playground == ToBlock::ColorSwapper as i32 {
+                        *display = ToColor::Violet as i32;
                     } else {
-                        *display = ToColor::Gelb as i32;
+                        *display = ToColor::Yellow as i32;
                     }
-                } else if gelb_activation == Condition::Inactive as i32
-                    && violett_activation >= Condition::Active1 as i32
+                } else if yellow_activation == Condition::Inactive as i32
+                    && violet_activation >= Condition::Active1 as i32
                 {
-                    if violett_playground == ToBlock::Farbtauscher as i32 {
-                        *display = ToColor::Gelb as i32;
+                    if violet_playground == ToBlock::ColorSwapper as i32 {
+                        *display = ToColor::Yellow as i32;
                     } else {
-                        *display = ToColor::Violett as i32;
+                        *display = ToColor::Violet as i32;
                     }
-                } else if gelb_activation >= Condition::Active1 as i32
-                    && violett_activation >= Condition::Active1 as i32
+                } else if yellow_activation >= Condition::Active1 as i32
+                    && violet_activation >= Condition::Active1 as i32
                 {
-                    if gelb_playground == ToBlock::Farbtauscher as i32
-                        && violett_playground != ToBlock::Farbtauscher as i32
+                    if yellow_playground == ToBlock::ColorSwapper as i32
+                        && violet_playground != ToBlock::ColorSwapper as i32
                     {
-                        *display = ToColor::Violett as i32;
-                    } else if (gelb_playground != ToBlock::Farbtauscher as i32
-                        && violett_playground == ToBlock::Farbtauscher as i32)
+                        *display = ToColor::Violet as i32;
+                    } else if (yellow_playground != ToBlock::ColorSwapper as i32
+                        && violet_playground == ToBlock::ColorSwapper as i32)
                         || FLICKER_COLOR == 0
                     {
-                        *display = ToColor::Gelb as i32;
+                        *display = ToColor::Yellow as i32;
                     } else {
-                        *display = ToColor::Violett as i32;
+                        *display = ToColor::Violet as i32;
                     }
                 }
             },
         );
 
-    let mut gelb_counter = 0;
-    let mut violett_counter = 0;
+    let mut yellow_counter = 0;
+    let mut violet_counter = 0;
     for &color in DisplayColumn.iter() {
-        if color == ToColor::Gelb as i32 {
-            gelb_counter += 1;
+        if color == ToColor::Yellow as i32 {
+            yellow_counter += 1;
         } else {
-            violett_counter += 1;
+            violet_counter += 1;
         }
     }
 
     use std::cmp::Ordering;
-    match violett_counter.cmp(&gelb_counter) {
-        Ordering::Less => LeaderColor = ToColor::Gelb as i32,
-        Ordering::Greater => LeaderColor = ToColor::Violett as i32,
-        Ordering::Equal => LeaderColor = ToColor::Remis as i32,
+    match violet_counter.cmp(&yellow_counter) {
+        Ordering::Less => LeaderColor = ToColor::Yellow as i32,
+        Ordering::Greater => LeaderColor = ToColor::Violet as i32,
+        Ordering::Equal => LeaderColor = ToColor::Draw as i32,
+    }
+}
+
+/// process the playground following its intrinsic logic
+#[no_mangle]
+pub unsafe extern "C" fn ProcessPlayground() {
+    ActivationMap
+        .iter_mut()
+        .zip(ToPlayground.iter())
+        .enumerate()
+        .for_each(|(color, (activation_color, playground_color))| {
+            playground_color
+                .iter()
+                .enumerate()
+                .skip(1)
+                .for_each(|(layer, playground_layer)| {
+                    let (activation_layer_last, activation_layer) =
+                        activation_color.split_at_mut(layer);
+                    let activation_layer_last = activation_layer_last.last().unwrap();
+                    let activation_layer = &mut activation_layer[0];
+
+                    playground_layer
+                        .iter()
+                        .enumerate()
+                        .for_each(|(row, playground)| {
+                            process_playground_row(
+                                row,
+                                playground,
+                                activation_layer_last,
+                                activation_layer,
+                            )
+                        });
+                });
+
+            activation_color
+                .last_mut()
+                .unwrap()
+                .iter_mut()
+                .enumerate()
+                .for_each(|(row, activation)| {
+                    if IsActive(color.try_into().unwrap(), row.try_into().unwrap()) != 0 {
+                        *activation = Condition::Active1 as i32;
+                    } else {
+                        *activation = Condition::Inactive as i32;
+                    }
+                });
+        });
+}
+
+#[inline]
+fn process_playground_row(
+    row: usize,
+    playground: &i32,
+    activation_layer_last: &[i32],
+    activation_layer: &mut [i32],
+) {
+    let activation_last_layer = activation_layer_last[row];
+    let (activation_last, activation_layer) = activation_layer.split_at_mut(row);
+    let activation_last = activation_last.last().copied();
+    let (activation, activation_layer) = activation_layer.split_first_mut().unwrap();
+    let activation_next = activation_layer.first().copied();
+
+    use ToBlock::*;
+    let playground = match playground {
+        0 => Cable,
+        1 => CableEnd,
+        2 => Repeater,
+        3 => ColorSwapper,
+        4 => BranchAbove,
+        5 => BranchMiddle,
+        6 => BranchBelow,
+        7 => GateAbove,
+        8 => GateMiddle,
+        9 => GateBelow,
+        10 => Empty,
+        _ => panic!("invalid block"),
+    };
+
+    let turn_active = match playground {
+        ColorSwapper | BranchMiddle | GateAbove | GateBelow | Cable => {
+            activation_last_layer >= Condition::Active1 as i32
+        }
+
+        Repeater => {
+            activation_last_layer >= Condition::Active1 as i32
+                || *activation >= Condition::Active1 as i32
+        }
+
+        BranchAbove => activation_next
+            .map(|value| value >= Condition::Active1 as i32)
+            .unwrap_or(false),
+
+        BranchBelow => activation_last
+            .map(|value| value >= Condition::Active1 as i32)
+            .unwrap_or(false),
+
+        GateMiddle => {
+            activation_last
+                .map(|value| value >= Condition::Active1 as i32)
+                .unwrap_or(false)
+                && activation_next
+                    .map(|value| value >= Condition::Active1 as i32)
+                    .unwrap_or(false)
+        }
+
+        CableEnd | Empty => false,
+    };
+
+    if turn_active {
+        if *activation == Condition::Inactive as i32 {
+            *activation = Condition::Active1 as i32;
+        }
+    } else {
+        *activation = Condition::Inactive as i32;
     }
 }

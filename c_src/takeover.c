@@ -983,93 +983,93 @@ InventPlayground (void)
  * @Ret: void
  *
  *-----------------------------------------------------------------*/
-void
-ProcessPlayground (void)
-{
-  int color, layer, row;
-  int TurnActive = FALSE;
-
-  for (color = GELB; color < TO_COLORS; color++)
-    {
-      for (layer = 1; layer < NUM_LAYERS; layer++)
-	{
-	  for (row = 0; row < NUM_LINES; row++)
-	    {
-	      if (layer == NUM_LAYERS - 1)
-		{
-		  if (IsActive (color, row))
-		    ActivationMap[color][layer][row] = ACTIVE1;
-		  else
-		    ActivationMap[color][layer][row] = INACTIVE;
-
-		  continue;
-		}		/* if last layer */
-
-	      TurnActive = FALSE;
-
-	      switch (ToPlayground[color][layer][row])
-		{
-		case FARBTAUSCHER:
-		case VERZWEIGUNG_M:
-		case GATTER_O:
-		case GATTER_U:
-		case KABEL:
-		  if (ActivationMap[color][layer - 1][row] >= ACTIVE1)
-		    TurnActive = TRUE;
-		  break;
-
-		case VERSTAERKER:
-		  if (ActivationMap[color][layer - 1][row] >= ACTIVE1)
-		    TurnActive = TRUE;
-
-		  /* Verstaerker halten sich aber auch selbst aktiv !! */
-		  if (ActivationMap[color][layer][row] >= ACTIVE1)
-		    TurnActive = TRUE;
-
-		  break;
-
-		case KABELENDE:
-		  break;
-
-		case VERZWEIGUNG_O:
-		  if (ActivationMap[color][layer][row + 1] >= ACTIVE1)
-		    TurnActive = TRUE;
-		  break;
-
-		case VERZWEIGUNG_U:
-		  if (ActivationMap[color][layer][row - 1] >= ACTIVE1)
-		    TurnActive = TRUE;
-		  break;
-
-		case GATTER_M:
-		  if ((ActivationMap[color][layer][row - 1] >= ACTIVE1)
-		      && (ActivationMap[color][layer][row + 1] >= ACTIVE1))
-		    TurnActive = TRUE;
-
-		  break;
-
-		default:
-		  break;
-		}		/* switch */
-
-	      if (TurnActive)
-		{
-		  if (ActivationMap[color][layer][row] == INACTIVE)
-		    ActivationMap[color][layer][row] = ACTIVE1;
-		  TurnActive = FALSE;
-		}
-	      else
-		ActivationMap[color][layer][row] = INACTIVE;
-
-
-	    }			/* for row */
-
-	}			/* for layer */
-
-    }				/* for color */
-
-  return;
-}				/* ProcessPlayground */
+// void
+// ProcessPlayground (void)
+// {
+//   int color, layer, row;
+//   int TurnActive = FALSE;
+// 
+//   for (color = GELB; color < TO_COLORS; color++)
+//     {
+//       for (layer = 1; layer < NUM_LAYERS; layer++)
+// 	{
+// 	  for (row = 0; row < NUM_LINES; row++)
+// 	    {
+// 	      if (layer == NUM_LAYERS - 1)
+// 		{
+// 		  if (IsActive (color, row))
+// 		    ActivationMap[color][layer][row] = ACTIVE1;
+// 		  else
+// 		    ActivationMap[color][layer][row] = INACTIVE;
+// 
+// 		  continue;
+// 		}		/* if last layer */
+// 
+// 	      TurnActive = FALSE;
+// 
+// 	      switch (ToPlayground[color][layer][row])
+// 		{
+// 		case FARBTAUSCHER:
+// 		case VERZWEIGUNG_M:
+// 		case GATTER_O:
+// 		case GATTER_U:
+// 		case KABEL:
+// 		  if (ActivationMap[color][layer - 1][row] >= ACTIVE1)
+// 		    TurnActive = TRUE;
+// 		  break;
+// 
+// 		case VERSTAERKER:
+// 		  if (ActivationMap[color][layer - 1][row] >= ACTIVE1)
+// 		    TurnActive = TRUE;
+// 
+// 		  /* Verstaerker halten sich aber auch selbst aktiv !! */
+// 		  if (ActivationMap[color][layer][row] >= ACTIVE1)
+// 		    TurnActive = TRUE;
+// 
+// 		  break;
+// 
+// 		case KABELENDE:
+// 		  break;
+// 
+// 		case VERZWEIGUNG_O:
+// 		  if (ActivationMap[color][layer][row + 1] >= ACTIVE1)
+// 		    TurnActive = TRUE;
+// 		  break;
+// 
+// 		case VERZWEIGUNG_U:
+// 		  if (ActivationMap[color][layer][row - 1] >= ACTIVE1)
+// 		    TurnActive = TRUE;
+// 		  break;
+// 
+// 		case GATTER_M:
+// 		  if ((ActivationMap[color][layer][row - 1] >= ACTIVE1)
+// 		      && (ActivationMap[color][layer][row + 1] >= ACTIVE1))
+// 		    TurnActive = TRUE;
+// 
+// 		  break;
+// 
+// 		default:
+// 		  break;
+// 		}		/* switch */
+// 
+// 	      if (TurnActive)
+// 		{
+// 		  if (ActivationMap[color][layer][row] == INACTIVE)
+// 		    ActivationMap[color][layer][row] = ACTIVE1;
+// 		  TurnActive = FALSE;
+// 		}
+// 	      else
+// 		ActivationMap[color][layer][row] = INACTIVE;
+// 
+// 
+// 	    }			/* for row */
+// 
+// 	}			/* for layer */
+// 
+//     }				/* for color */
+// 
+//   return;
+// }				/* ProcessPlayground */
 
 
 
