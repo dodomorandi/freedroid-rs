@@ -1,24 +1,33 @@
 use crate::{
     defs,
+    defs::Status,
     global::{
-        CapsuleBlocks, FillBlocks, TO_CapsuleRect, TO_ColumnRect, TO_ElementRect, TO_FillBlock,
-        TO_GroundRect, TO_LeaderLed, ToColumnBlock, ToGameBlocks, ToGroundBlocks, ToLeaderBlock,
+        to_blocks, AllEnemys, CapsuleBlocks, Classic_User_Rect, CurCapsuleStart, DruidStart,
+        FillBlocks, LeftCapsulesStart, PlaygroundStart, TO_CapsuleRect, TO_ColumnRect,
+        TO_ColumnStart, TO_ElementRect, TO_FillBlock, TO_GroundRect, TO_LeaderBlockStart,
+        TO_LeaderLed, TO_LeftGroundStart, TO_RightGroundStart, ToColumnBlock, ToGameBlocks,
+        ToGroundBlocks, ToLeaderBlock, User_Rect,
     },
+    graphics::{ne_screen, takeover_bg_pic},
     misc::MyRandom,
     sound::Takeover_Set_Capsule_Sound,
+    view::{PutEnemy, PutInfluence},
 };
 
 use cstr::cstr;
-use sdl::Rect;
+use sdl::{
+    video::ll::{SDL_SetClipRect, SDL_UpperBlit},
+    Rect,
+};
 use std::{
     convert::{Infallible, TryFrom, TryInto},
     ffi::CStr,
     os::raw::c_int,
+    ptr::null_mut,
 };
 
 extern "C" {
     static mut CapsuleCurRow: [c_int; TO_COLORS];
-    static mut OpponentColor: c_int;
     static mut NumCapsules: [c_int; TO_COLORS];
     static mut ToPlayground: Playground;
     static mut ActivationMap: Playground;
@@ -26,6 +35,9 @@ extern "C" {
     static mut BlockClass: [c_int; TO_BLOCKS];
     static mut DisplayColumn: [c_int; NUM_LINES];
     static mut LeaderColor: c_int;
+    static mut YourColor: c_int;
+    static mut OpponentColor: c_int;
+    static mut DroidNum: c_int;
 }
 
 /* Background-color of takeover-game */
@@ -79,12 +91,12 @@ pub const NUM_LINES: usize = 12;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(C)]
 pub enum GroundBlock {
-    GelbOben,
-    GelbMitte,
-    GelbUnten,
-    ViolettOben,
-    ViolettMitte,
-    ViolettUnten,
+    YellowAbove,
+    YellowMiddle,
+    YellowBelow,
+    VioletAbove,
+    VioletMiddle,
+    VioletBelow,
 }
 
 /* Konditions in Connection-layer */
@@ -734,4 +746,281 @@ pub unsafe extern "C" fn ClearPlayground() {
         .iter_mut()
         .enumerate()
         .for_each(|(row, display_column)| *display_column = i32::try_from(row).unwrap() % 2);
+}
+
+/// prepares _and displays_ the current Playground
+///
+/// NOTE: this function should only change the USERFENSTER part
+///       so that we can do Infoline-setting before this
+#[no_mangle]
+pub unsafe extern "C" fn ShowPlayground() {
+    let your_color = usize::try_from(YourColor).unwrap();
+    let opponent_color = usize::try_from(OpponentColor).unwrap();
+
+    let xoffs = Classic_User_Rect.x;
+    let yoffs = Classic_User_Rect.y;
+
+    SDL_SetClipRect(ne_screen, null_mut());
+
+    SDL_UpperBlit(takeover_bg_pic, &mut User_Rect, ne_screen, &mut User_Rect);
+
+    PutInfluence(
+        i32::from(xoffs) + DruidStart[your_color].x,
+        i32::from(yoffs) + DruidStart[your_color].y,
+    );
+
+    if AllEnemys[usize::try_from(DroidNum).unwrap()].status != Status::Out as i32 {
+        PutEnemy(
+            DroidNum,
+            i32::from(xoffs) + DruidStart[opponent_color].x,
+            i32::from(yoffs) + DruidStart[opponent_color].y,
+        );
+    }
+
+    let mut dst = Rect::new(
+        xoffs + i16::try_from(TO_LeftGroundStart.x).unwrap(),
+        yoffs + i16::try_from(TO_LeftGroundStart.y).unwrap(),
+        User_Rect.w,
+        User_Rect.h,
+    );
+
+    SDL_UpperBlit(
+        to_blocks,
+        &mut ToGroundBlocks[GroundBlock::YellowAbove as usize],
+        ne_screen,
+        &mut dst,
+    );
+
+    dst.y += i16::try_from(TO_GroundRect.h).unwrap();
+
+    for _ in 0..12 {
+        SDL_UpperBlit(
+            to_blocks,
+            &mut ToGroundBlocks[GroundBlock::YellowMiddle as usize],
+            ne_screen,
+            &mut dst,
+        );
+
+        dst.y += i16::try_from(TO_GroundRect.h).unwrap();
+    }
+
+    SDL_UpperBlit(
+        to_blocks,
+        &mut ToGroundBlocks[GroundBlock::YellowBelow as usize],
+        ne_screen,
+        &mut dst,
+    );
+
+    dst = Rect::new(
+        xoffs + i16::try_from(TO_LeaderBlockStart.x).unwrap(),
+        yoffs + i16::try_from(TO_LeaderBlockStart.y).unwrap(),
+        0,
+        0,
+    );
+    SDL_UpperBlit(to_blocks, &mut ToLeaderBlock, ne_screen, &mut dst);
+
+    dst.y += i16::try_from(TO_LeaderLed.h).unwrap();
+    for _ in 0..12 {
+        SDL_UpperBlit(to_blocks, &mut ToColumnBlock, ne_screen, &mut dst);
+        dst.y += i16::try_from(TO_ColumnRect.h).unwrap();
+    }
+
+    /* rechte Saeule */
+    dst = Rect::new(
+        xoffs + i16::try_from(TO_RightGroundStart.x).unwrap(),
+        yoffs + i16::try_from(TO_RightGroundStart.y).unwrap(),
+        0,
+        0,
+    );
+
+    SDL_UpperBlit(
+        to_blocks,
+        &mut ToGroundBlocks[GroundBlock::VioletAbove as usize],
+        ne_screen,
+        &mut dst,
+    );
+    dst.y += i16::try_from(TO_GroundRect.h).unwrap();
+
+    for _ in 0..12 {
+        SDL_UpperBlit(
+            to_blocks,
+            &mut ToGroundBlocks[GroundBlock::VioletMiddle as usize],
+            ne_screen,
+            &mut dst,
+        );
+        dst.y += i16::try_from(TO_GroundRect.h).unwrap();
+    }
+
+    SDL_UpperBlit(
+        to_blocks,
+        &mut ToGroundBlocks[GroundBlock::VioletBelow as usize],
+        ne_screen,
+        &mut dst,
+    );
+
+    /* Fill the Leader-LED with its color */
+    let leader_color = usize::try_from(LeaderColor).unwrap();
+    dst = Rect::new(xoffs + TO_LeaderLed.x, yoffs + TO_LeaderLed.y, 0, 0);
+    SDL_UpperBlit(
+        to_blocks,
+        &mut FillBlocks[leader_color],
+        ne_screen,
+        &mut dst,
+    );
+    dst.y += i16::try_from(TO_FillBlock.h).unwrap();
+    SDL_UpperBlit(
+        to_blocks,
+        &mut FillBlocks[leader_color],
+        ne_screen,
+        &mut dst,
+    );
+
+    /* Fill the Display Column with its leds */
+    DisplayColumn
+        .iter()
+        .copied()
+        .enumerate()
+        .for_each(|(line, display_column)| {
+            dst = Rect::new(
+                xoffs + i16::try_from(TO_ColumnStart.x).unwrap(),
+                yoffs
+                    + i16::try_from(TO_ColumnStart.y).unwrap()
+                    + i16::try_from(line).unwrap() * i16::try_from(TO_ColumnRect.h).unwrap(),
+                0,
+                0,
+            );
+            SDL_UpperBlit(
+                to_blocks,
+                &mut FillBlocks[usize::try_from(display_column).unwrap()],
+                ne_screen,
+                &mut dst,
+            );
+        });
+
+    /* Show the yellow playground */
+    ToPlayground[ToColor::Yellow as usize]
+        .iter()
+        .take(NUM_LAYERS - 1)
+        .zip(
+            ActivationMap[ToColor::Yellow as usize]
+                .iter()
+                .take(NUM_LAYERS - 1),
+        )
+        .enumerate()
+        .flat_map(|(layer_index, (playground_layer, activation_layer))| {
+            let layer_index = i16::try_from(layer_index).unwrap();
+            playground_layer
+                .iter()
+                .copied()
+                .zip(activation_layer.iter().copied())
+                .enumerate()
+                .map(move |(line_index, (playground_line, activation_line))| {
+                    (
+                        layer_index,
+                        i16::try_from(line_index).unwrap(),
+                        usize::try_from(playground_line).unwrap(),
+                        usize::try_from(activation_line).unwrap(),
+                    )
+                })
+        })
+        .for_each(
+            |(layer_index, line_index, playground_line, activation_line)| {
+                dst = Rect::new(
+                    xoffs
+                        + i16::try_from(PlaygroundStart[ToColor::Yellow as usize].x).unwrap()
+                        + layer_index * i16::try_from(TO_ElementRect.w).unwrap(),
+                    yoffs
+                        + i16::try_from(PlaygroundStart[ToColor::Yellow as usize].y).unwrap()
+                        + line_index * i16::try_from(TO_ElementRect.h).unwrap(),
+                    0,
+                    0,
+                );
+
+                let block = playground_line + activation_line * TO_BLOCKS;
+                SDL_UpperBlit(to_blocks, &mut ToGameBlocks[block], ne_screen, &mut dst);
+            },
+        );
+
+    /* Show the violet playground */
+    ToPlayground[ToColor::Violet as usize]
+        .iter()
+        .take(NUM_LAYERS - 1)
+        .zip(
+            ActivationMap[ToColor::Violet as usize]
+                .iter()
+                .take(NUM_LAYERS - 1),
+        )
+        .enumerate()
+        .flat_map(|(layer_index, (playground_layer, activation_layer))| {
+            let layer_index = i16::try_from(layer_index).unwrap();
+            playground_layer
+                .iter()
+                .copied()
+                .zip(activation_layer.iter().copied())
+                .enumerate()
+                .map(move |(line_index, (playground_line, activation_line))| {
+                    (
+                        layer_index,
+                        i16::try_from(line_index).unwrap(),
+                        usize::try_from(playground_line).unwrap(),
+                        usize::try_from(activation_line).unwrap(),
+                    )
+                })
+        })
+        .for_each(
+            |(layer_index, line_index, playground_line, activation_line)| {
+                dst = Rect::new(
+                    xoffs
+                        + i16::try_from(PlaygroundStart[ToColor::Violet as usize].x).unwrap()
+                        + (i16::try_from(NUM_LAYERS).unwrap() - layer_index - 2)
+                            * i16::try_from(TO_ElementRect.w).unwrap(),
+                    yoffs
+                        + i16::try_from(PlaygroundStart[ToColor::Violet as usize].y).unwrap()
+                        + line_index * i16::try_from(TO_ElementRect.h).unwrap(),
+                    0,
+                    0,
+                );
+                let block = playground_line + (NUM_PHASES + activation_line) * TO_BLOCKS;
+                SDL_UpperBlit(to_blocks, &mut ToGameBlocks[block], ne_screen, &mut dst);
+            },
+        );
+
+    /* Show the capsules left for each player */
+    NumCapsules
+        .iter()
+        .copied()
+        .enumerate()
+        .for_each(|(player, capsules)| {
+            let color = if player == ToOpponents::You as usize {
+                your_color
+            } else {
+                opponent_color
+            };
+
+            dst = Rect::new(
+                xoffs + i16::try_from(CurCapsuleStart[color].x).unwrap(),
+                yoffs
+                    + i16::try_from(CurCapsuleStart[color].y).unwrap()
+                    + i16::try_from(CapsuleCurRow[color]).unwrap()
+                        * i16::try_from(TO_CapsuleRect.h).unwrap(),
+                0,
+                0,
+            );
+            if capsules != 0 {
+                SDL_UpperBlit(to_blocks, &mut CapsuleBlocks[color], ne_screen, &mut dst);
+            }
+
+            for capsule in 0..capsules.saturating_sub(1) {
+                dst = Rect::new(
+                    xoffs + i16::try_from(LeftCapsulesStart[color].x).unwrap(),
+                    yoffs
+                        + i16::try_from(LeftCapsulesStart[color].y).unwrap()
+                        + i16::try_from(capsule).unwrap()
+                            * i16::try_from(TO_CapsuleRect.h).unwrap(),
+                    0,
+                    0,
+                );
+                SDL_UpperBlit(to_blocks, &mut CapsuleBlocks[color], ne_screen, &mut dst);
+            }
+        });
 }

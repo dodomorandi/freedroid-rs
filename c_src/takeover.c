@@ -654,128 +654,128 @@ PlayGame (void)
  * @Ret: void
  *
  *-----------------------------------------------------------------*/
-void
-ShowPlayground (void)
-{
-  int i, j;
-  int color, player;
-  int block;
-  int xoffs, yoffs;
-  SDL_Rect dst;
-
-  xoffs = Classic_User_Rect.x;
-  yoffs = Classic_User_Rect.y;
-
-  //  SDL_SetColorKey (ne_screen, 0, 0);
-  //  SDL_SetClipRect (ne_screen , &User_Rect);
-  SDL_SetClipRect (ne_screen , NULL);
-
-  //  Fill_Rect (User_Rect, to_bg_color);
-  SDL_BlitSurface (takeover_bg_pic, &User_Rect, ne_screen, &User_Rect);
-
-  PutInfluence (xoffs + DruidStart[YourColor].x, yoffs + DruidStart[YourColor].y);
-
-  if (AllEnemys[DroidNum].status != OUT)
-    PutEnemy (DroidNum, xoffs + DruidStart[!YourColor].x, yoffs + DruidStart[!YourColor].y);
-
-  Set_Rect (dst, xoffs + TO_LeftGroundStart.x, yoffs + TO_LeftGroundStart.y, User_Rect.w, User_Rect.h);
-
-  SDL_BlitSurface (to_blocks, &ToGroundBlocks[GELB_OBEN], ne_screen, &dst);
-
-  dst.y += TO_GroundRect.h;
-
-  for (i = 0; i < 12; i++)
-    {
-      SDL_BlitSurface (to_blocks, &ToGroundBlocks[GELB_MITTE], ne_screen, &dst);
-
-      dst.y += TO_GroundRect.h;
-    }				/* for i=1 to 12 */
-
-  SDL_BlitSurface (to_blocks, &ToGroundBlocks[GELB_UNTEN], ne_screen, &dst);
-
-
-  /* Mittlere Saeule */
-  Set_Rect (dst, xoffs + TO_LeaderBlockStart.x, yoffs + TO_LeaderBlockStart.y, 0, 0);
-  SDL_BlitSurface (to_blocks, &ToLeaderBlock, ne_screen, &dst);
-
-  dst.y += TO_LeaderLed.h;
-  for (i = 0; i < 12; i++, dst.y += TO_ColumnRect.h)
-    SDL_BlitSurface (to_blocks, &ToColumnBlock, ne_screen, &dst);
-
-
-  /* rechte Saeule */
-  Set_Rect (dst, xoffs + TO_RightGroundStart.x, yoffs + TO_RightGroundStart.y, 0, 0);
-
-  SDL_BlitSurface (to_blocks, &ToGroundBlocks[VIOLETT_OBEN], ne_screen, &dst);
-  dst.y += TO_GroundRect.h;
-
-  for (i = 0; i < 12; i++, dst.y += TO_GroundRect.h)
-    SDL_BlitSurface (to_blocks, &ToGroundBlocks[VIOLETT_MITTE], ne_screen, &dst);
-
-  SDL_BlitSurface (to_blocks, &ToGroundBlocks[VIOLETT_UNTEN], ne_screen, &dst);
-
-  /* Fill the Leader-LED with its color */
-  Set_Rect (dst, xoffs + TO_LeaderLed.x, yoffs + TO_LeaderLed.y, 0, 0);
-  SDL_BlitSurface (to_blocks, &FillBlocks[LeaderColor], ne_screen, &dst);
-  dst.y += TO_FillBlock.h;
-  SDL_BlitSurface (to_blocks, &FillBlocks[LeaderColor], ne_screen, &dst);
-
-  /* Fill the Display Column with its leds */
-  for (i = 0; i < NUM_LINES; i++)
-    {
-      Set_Rect (dst, xoffs + TO_ColumnStart.x, yoffs + TO_ColumnStart.y + i*TO_ColumnRect.h, 0, 0);
-      SDL_BlitSurface (to_blocks, &FillBlocks[DisplayColumn[i]], ne_screen, &dst);
-    }
-
-  /* Show the yellow playground */
-  for (i = 0; i < NUM_LAYERS - 1; i++)
-    for (j = 0; j < NUM_LINES; j++)
-      {
-	Set_Rect (dst, xoffs + PlaygroundStart[GELB].x + i * TO_ElementRect.w,
-		  yoffs + PlaygroundStart[GELB].y + j * TO_ElementRect.h, 0, 0);
-	block = ToPlayground[GELB][i][j] + ActivationMap[GELB][i][j]*TO_BLOCKS;
-	SDL_BlitSurface (to_blocks, &ToGameBlocks[block], ne_screen, &dst);
-      }
-
-  /* Show the violett playground */
-  for (i = 0; i < NUM_LAYERS - 1; i++)
-    for (j = 0; j < NUM_LINES; j++)
-      {
-	Set_Rect (dst,
-		  xoffs + PlaygroundStart[VIOLETT].x +(NUM_LAYERS-i-2)*TO_ElementRect.w,
-		  yoffs + PlaygroundStart[VIOLETT].y + j * TO_ElementRect.h, 0, 0);
-	block = ToPlayground[VIOLETT][i][j]+
-	  (NUM_PHASES+ActivationMap[VIOLETT][i][j])*TO_BLOCKS;
-	SDL_BlitSurface (to_blocks, &ToGameBlocks[block],ne_screen, &dst);
-      }
-
-  /* Show the capsules left for each player */
-  for (player = 0; player < 2; player++)
-    {
-      if (player == YOU)
-	color = YourColor;
-      else
-	color = OpponentColor;
-
-      Set_Rect (dst, xoffs + CurCapsuleStart[color].x,
-		yoffs + CurCapsuleStart[color].y + CapsuleCurRow[color] * TO_CapsuleRect.h,
-		0,0);
-      if (NumCapsules[player])
-	SDL_BlitSurface (to_blocks, &CapsuleBlocks[color], ne_screen, &dst);
-
-
-      for (i = 0; i < NumCapsules[player]-1; i++)
-	{
-	  Set_Rect (dst, xoffs + LeftCapsulesStart[color].x,
-		    yoffs + LeftCapsulesStart[color].y + i*TO_CapsuleRect.h, 0, 0);
-	  SDL_BlitSurface (to_blocks, &CapsuleBlocks[color],
-			   ne_screen, &dst);
-	} /* for capsules */
-    } /* for player */
-
-  return;
-
-}				/* ShowPlayground */
+// void
+// ShowPlayground (void)
+// {
+//   int i, j;
+//   int color, player;
+//   int block;
+//   int xoffs, yoffs;
+//   SDL_Rect dst;
+// 
+//   xoffs = Classic_User_Rect.x;
+//   yoffs = Classic_User_Rect.y;
+// 
+//   //  SDL_SetColorKey (ne_screen, 0, 0);
+//   //  SDL_SetClipRect (ne_screen , &User_Rect);
+//   SDL_SetClipRect (ne_screen , NULL);
+// 
+//   //  Fill_Rect (User_Rect, to_bg_color);
+//   SDL_BlitSurface (takeover_bg_pic, &User_Rect, ne_screen, &User_Rect);
+// 
+//   PutInfluence (xoffs + DruidStart[YourColor].x, yoffs + DruidStart[YourColor].y);
+// 
+//   if (AllEnemys[DroidNum].status != OUT)
+//     PutEnemy (DroidNum, xoffs + DruidStart[!YourColor].x, yoffs + DruidStart[!YourColor].y);
+// 
+//   Set_Rect (dst, xoffs + TO_LeftGroundStart.x, yoffs + TO_LeftGroundStart.y, User_Rect.w, User_Rect.h);
+// 
+//   SDL_BlitSurface (to_blocks, &ToGroundBlocks[GELB_OBEN], ne_screen, &dst);
+// 
+//   dst.y += TO_GroundRect.h;
+// 
+//   for (i = 0; i < 12; i++)
+//     {
+//       SDL_BlitSurface (to_blocks, &ToGroundBlocks[GELB_MITTE], ne_screen, &dst);
+// 
+//       dst.y += TO_GroundRect.h;
+//     }				/* for i=1 to 12 */
+// 
+//   SDL_BlitSurface (to_blocks, &ToGroundBlocks[GELB_UNTEN], ne_screen, &dst);
+// 
+// 
+//   /* Mittlere Saeule */
+//   Set_Rect (dst, xoffs + TO_LeaderBlockStart.x, yoffs + TO_LeaderBlockStart.y, 0, 0);
+//   SDL_BlitSurface (to_blocks, &ToLeaderBlock, ne_screen, &dst);
+// 
+//   dst.y += TO_LeaderLed.h;
+//   for (i = 0; i < 12; i++, dst.y += TO_ColumnRect.h)
+//     SDL_BlitSurface (to_blocks, &ToColumnBlock, ne_screen, &dst);
+// 
+// 
+//   /* rechte Saeule */
+//   Set_Rect (dst, xoffs + TO_RightGroundStart.x, yoffs + TO_RightGroundStart.y, 0, 0);
+// 
+//   SDL_BlitSurface (to_blocks, &ToGroundBlocks[VIOLETT_OBEN], ne_screen, &dst);
+//   dst.y += TO_GroundRect.h;
+// 
+//   for (i = 0; i < 12; i++, dst.y += TO_GroundRect.h)
+//     SDL_BlitSurface (to_blocks, &ToGroundBlocks[VIOLETT_MITTE], ne_screen, &dst);
+// 
+//   SDL_BlitSurface (to_blocks, &ToGroundBlocks[VIOLETT_UNTEN], ne_screen, &dst);
+// 
+//   /* Fill the Leader-LED with its color */
+//   Set_Rect (dst, xoffs + TO_LeaderLed.x, yoffs + TO_LeaderLed.y, 0, 0);
+//   SDL_BlitSurface (to_blocks, &FillBlocks[LeaderColor], ne_screen, &dst);
+//   dst.y += TO_FillBlock.h;
+//   SDL_BlitSurface (to_blocks, &FillBlocks[LeaderColor], ne_screen, &dst);
+// 
+//   /* Fill the Display Column with its leds */
+//   for (i = 0; i < NUM_LINES; i++)
+//     {
+//       Set_Rect (dst, xoffs + TO_ColumnStart.x, yoffs + TO_ColumnStart.y + i*TO_ColumnRect.h, 0, 0);
+//       SDL_BlitSurface (to_blocks, &FillBlocks[DisplayColumn[i]], ne_screen, &dst);
+//     }
+// 
+//   /* Show the yellow playground */
+//   for (i = 0; i < NUM_LAYERS - 1; i++)
+//     for (j = 0; j < NUM_LINES; j++)
+//       {
+// 	Set_Rect (dst, xoffs + PlaygroundStart[GELB].x + i * TO_ElementRect.w,
+// 		  yoffs + PlaygroundStart[GELB].y + j * TO_ElementRect.h, 0, 0);
+// 	block = ToPlayground[GELB][i][j] + ActivationMap[GELB][i][j]*TO_BLOCKS;
+// 	SDL_BlitSurface (to_blocks, &ToGameBlocks[block], ne_screen, &dst);
+//       }
+// 
+//   /* Show the violett playground */
+//   for (i = 0; i < NUM_LAYERS - 1; i++)
+//     for (j = 0; j < NUM_LINES; j++)
+//       {
+// 	Set_Rect (dst,
+// 		  xoffs + PlaygroundStart[VIOLETT].x +(NUM_LAYERS-i-2)*TO_ElementRect.w,
+// 		  yoffs + PlaygroundStart[VIOLETT].y + j * TO_ElementRect.h, 0, 0);
+// 	block = ToPlayground[VIOLETT][i][j]+
+// 	  (NUM_PHASES+ActivationMap[VIOLETT][i][j])*TO_BLOCKS;
+// 	SDL_BlitSurface (to_blocks, &ToGameBlocks[block],ne_screen, &dst);
+//       }
+// 
+//   /* Show the capsules left for each player */
+//   for (player = 0; player < 2; player++)
+//     {
+//       if (player == YOU)
+// 	color = YourColor;
+//       else
+// 	color = OpponentColor;
+// 
+//       Set_Rect (dst, xoffs + CurCapsuleStart[color].x,
+// 		yoffs + CurCapsuleStart[color].y + CapsuleCurRow[color] * TO_CapsuleRect.h,
+// 		0,0);
+//       if (NumCapsules[player])
+// 	SDL_BlitSurface (to_blocks, &CapsuleBlocks[color], ne_screen, &dst);
+// 
+// 
+//       for (i = 0; i < NumCapsules[player]-1; i++)
+// 	{
+// 	  Set_Rect (dst, xoffs + LeftCapsulesStart[color].x,
+// 		    yoffs + LeftCapsulesStart[color].y + i*TO_CapsuleRect.h, 0, 0);
+// 	  SDL_BlitSurface (to_blocks, &CapsuleBlocks[color],
+// 			   ne_screen, &dst);
+// 	} /* for capsules */
+//     } /* for player */
+// 
+//   return;
+// 
+// }				/* ShowPlayground */
 
 
 /*-----------------------------------------------------------------
