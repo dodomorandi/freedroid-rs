@@ -11,7 +11,7 @@ use crate::{
     input::{any_key_just_pressed, wait_for_all_keys_released, KeyIsPressedR},
     menu::getMenuAction,
     misc::MyRandom,
-    sound::{CountdownSound, EndCountdownSound, Takeover_Set_Capsule_Sound},
+    sound::{CountdownSound, EndCountdownSound, MoveMenuPositionSound, Takeover_Set_Capsule_Sound},
     view::{DisplayBanner, PutEnemy, PutInfluence},
 };
 
@@ -1167,4 +1167,56 @@ pub unsafe extern "C" fn PlayGame() {
     } /* while (countdown) */
 
     wait_for_all_keys_released();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ChooseColor() {
+    let mut countdown = 100; /* duration in 1/10 seconds given for color choosing */
+
+    const COUNT_TICK_LEN: u32 = 100; /* countdown in 1/10 second steps */
+
+    let mut prev_count_tick = SDL_GetTicks();
+
+    wait_for_all_keys_released();
+
+    let mut color_chosen = false;
+    while !color_chosen {
+        let action = getMenuAction(110);
+        if action.intersects(MenuAction::RIGHT | MenuAction::DOWN_WHEEL) {
+            if YourColor != ToColor::Violet as i32 {
+                MoveMenuPositionSound();
+            }
+            YourColor = ToColor::Violet as i32;
+            OpponentColor = ToColor::Yellow as i32;
+        }
+
+        if action.intersects(MenuAction::LEFT | MenuAction::UP_WHEEL) {
+            if YourColor != ToColor::Yellow as i32 {
+                MoveMenuPositionSound();
+            }
+            YourColor = ToColor::Yellow as i32;
+            OpponentColor = ToColor::Violet as i32;
+        }
+
+        if action.intersects(MenuAction::CLICK) {
+            color_chosen = true;
+        }
+
+        /* wait for next countdown tick */
+        if SDL_GetTicks() >= prev_count_tick + COUNT_TICK_LEN {
+            prev_count_tick += COUNT_TICK_LEN; /* set for next tick */
+            countdown -= 1; /* Count down */
+            let count_text = format!("Color-{}\0", countdown);
+
+            DisplayBanner(count_text.as_ptr() as *const c_char, null_mut(), 0);
+            ShowPlayground();
+        }
+
+        if countdown == 0 {
+            color_chosen = true;
+        }
+
+        SDL_Flip(ne_screen);
+        SDL_Delay(1); // don't hog CPU
+    }
 }

@@ -311,68 +311,68 @@ Takeover (int enemynum)
 @Ret: void
 @Int:
 * $Function----------------------------------------------------------*/
-void
-ChooseColor (void)
-{
-  int countdown = 100;  /* duration in 1/10 seconds given for color choosing */
-  int ColorChosen = FALSE;
-  char count_text[80];
-
-  Uint32 prev_count_tick, count_tick_len;
-
-  count_tick_len = 100; 	/* countdown in 1/10 second steps */
-
-  prev_count_tick = SDL_GetTicks ();
-
-  wait_for_all_keys_released();
-
-  MenuAction_t action = ACTION_NONE;
-  while (!ColorChosen)
-    {
-      action = getMenuAction ( 110 );
-      if ( action & (ACTION_RIGHT|ACTION_DOWN_WHEEL) )
-        {
-	  if (YourColor != VIOLETT) {
-            MoveMenuPositionSound();
-          }
-	  YourColor = VIOLETT;
-	  OpponentColor = GELB;
-	}
-
-      if ( action & (ACTION_LEFT|ACTION_UP_WHEEL) ) {
-        if (YourColor != GELB) {
-          MoveMenuPositionSound();
-        }
-        YourColor = GELB;
-        OpponentColor = VIOLETT;
-      }
-
-      if ( action & ACTION_CLICK ) {
-        ColorChosen = TRUE;
-      }
-
-      /* wait for next countdown tick */
-      if ( SDL_GetTicks() >= prev_count_tick + count_tick_len )
-	{
-	  prev_count_tick += count_tick_len; /* set for next tick */
-	  countdown--;		/* Count down */
-	  sprintf (count_text, "Color-%d", countdown);
-
-	  DisplayBanner (count_text, NULL , 0);
-	  ShowPlayground ();
-	}
-
-
-      if (countdown == 0)
-	ColorChosen = TRUE;
-
-      SDL_Flip (ne_screen);
-      SDL_Delay(1); // don't hog CPU
-    } /* while(!ColorChosen) */
-
-  return;
-
-} /* ChooseColor() */
+// void
+// ChooseColor (void)
+// {
+//   int countdown = 100;  /* duration in 1/10 seconds given for color choosing */
+//   int ColorChosen = FALSE;
+//   char count_text[80];
+// 
+//   Uint32 prev_count_tick, count_tick_len;
+// 
+//   count_tick_len = 100; 	/* countdown in 1/10 second steps */
+// 
+//   prev_count_tick = SDL_GetTicks ();
+// 
+//   wait_for_all_keys_released();
+// 
+//   MenuAction_t action = ACTION_NONE;
+//   while (!ColorChosen)
+//     {
+//       action = getMenuAction ( 110 );
+//       if ( action & (ACTION_RIGHT|ACTION_DOWN_WHEEL) )
+//         {
+// 	  if (YourColor != VIOLETT) {
+//             MoveMenuPositionSound();
+//           }
+// 	  YourColor = VIOLETT;
+// 	  OpponentColor = GELB;
+// 	}
+// 
+//       if ( action & (ACTION_LEFT|ACTION_UP_WHEEL) ) {
+//         if (YourColor != GELB) {
+//           MoveMenuPositionSound();
+//         }
+//         YourColor = GELB;
+//         OpponentColor = VIOLETT;
+//       }
+// 
+//       if ( action & ACTION_CLICK ) {
+//         ColorChosen = TRUE;
+//       }
+// 
+//       /* wait for next countdown tick */
+//       if ( SDL_GetTicks() >= prev_count_tick + count_tick_len )
+// 	{
+// 	  prev_count_tick += count_tick_len; /* set for next tick */
+// 	  countdown--;		/* Count down */
+// 	  sprintf (count_text, "Color-%d", countdown);
+// 
+// 	  DisplayBanner (count_text, NULL , 0);
+// 	  ShowPlayground ();
+// 	}
+// 
+// 
+//       if (countdown == 0)
+// 	ColorChosen = TRUE;
+// 
+//       SDL_Flip (ne_screen);
+//       SDL_Delay(1); // don't hog CPU
+//     } /* while(!ColorChosen) */
+// 
+//   return;
+// 
+// } /* ChooseColor() */
 
 
 /*-----------------------------------------------------------------
