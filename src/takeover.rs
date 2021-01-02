@@ -1,6 +1,5 @@
 use crate::{
-    defs,
-    defs::Status,
+    defs::{self, AltPressed, CtrlPressed, MenuAction, Status},
     global::{
         to_blocks, AllEnemys, CapsuleBlocks, Classic_User_Rect, CurCapsuleStart, DruidStart,
         FillBlocks, LeftCapsulesStart, PlaygroundStart, TO_CapsuleRect, TO_ColumnRect,
@@ -9,20 +8,23 @@ use crate::{
         ToGroundBlocks, ToLeaderBlock, User_Rect,
     },
     graphics::{ne_screen, takeover_bg_pic},
+    input::{any_key_just_pressed, wait_for_all_keys_released, KeyIsPressedR},
+    menu::getMenuAction,
     misc::MyRandom,
-    sound::Takeover_Set_Capsule_Sound,
-    view::{PutEnemy, PutInfluence},
+    sound::{CountdownSound, EndCountdownSound, Takeover_Set_Capsule_Sound},
+    view::{DisplayBanner, PutEnemy, PutInfluence},
 };
 
 use cstr::cstr;
 use sdl::{
-    video::ll::{SDL_SetClipRect, SDL_UpperBlit},
+    sdl::ll::SDL_GetTicks,
+    video::ll::{SDL_Flip, SDL_SetClipRect, SDL_UpperBlit},
     Rect,
 };
 use std::{
     convert::{Infallible, TryFrom, TryInto},
     ffi::CStr,
-    os::raw::c_int,
+    os::raw::{c_char, c_int},
     ptr::null_mut,
 };
 
@@ -38,6 +40,8 @@ extern "C" {
     static mut YourColor: c_int;
     static mut OpponentColor: c_int;
     static mut DroidNum: c_int;
+
+    pub fn SDL_Delay(ms: u32);
 }
 
 /* Background-color of takeover-game */
@@ -1023,4 +1027,144 @@ pub unsafe extern "C" fn ShowPlayground() {
                 SDL_UpperBlit(to_blocks, &mut CapsuleBlocks[color], ne_screen, &mut dst);
             }
         });
+}
+
+/// the acutal Takeover game-playing is done here
+#[no_mangle]
+pub unsafe extern "C" fn PlayGame() {
+    let mut countdown = 100;
+
+    const COUNT_TICK_LEN: u32 = 100;
+    const MOVE_TICK_LEN: u32 = 60;
+
+    let mut prev_count_tick = SDL_GetTicks();
+    let mut prev_move_tick = prev_count_tick;
+
+    wait_for_all_keys_released();
+
+    CountdownSound();
+    let mut finish_takeover = false;
+    let your_color = usize::try_from(YourColor).unwrap();
+    while !finish_takeover {
+        let cur_time = SDL_GetTicks();
+
+        let do_update_count = cur_time > prev_count_tick + COUNT_TICK_LEN;
+        if do_update_count {
+            /* time to count 1 down */
+            prev_count_tick += COUNT_TICK_LEN; /* set for next countdown tick */
+            countdown -= 1;
+            let count_text = format!("Finish-{}\0", countdown);
+            DisplayBanner(
+                count_text.as_bytes().as_ptr() as *const c_char,
+                null_mut(),
+                0,
+            );
+
+            if countdown != 0 && countdown % 10 == 0 {
+                CountdownSound();
+            }
+            if countdown == 0 {
+                EndCountdownSound();
+                finish_takeover = true;
+            }
+
+            AnimateCurrents(); /* do some animation on the active cables */
+        }
+
+        let do_update_move = cur_time > prev_move_tick + MOVE_TICK_LEN;
+        if do_update_move {
+            prev_move_tick += MOVE_TICK_LEN; /* set for next motion tick */
+
+            let key_repeat_delay = if cfg!(target_os = "android") {
+                150 // better to avoid accidential key-repeats on touchscreen
+            } else {
+                110 // PC default, allows for quick-repeat key hits
+            };
+
+            let action = getMenuAction(key_repeat_delay);
+            /* allow for a WIN-key that give immedate victory */
+            if KeyIsPressedR(b'w'.into()) && CtrlPressed() && AltPressed() {
+                LeaderColor = YourColor; /* simple as that */
+                return;
+            }
+
+            if action.intersects(MenuAction::UP | MenuAction::UP_WHEEL) {
+                CapsuleCurRow[your_color] -= 1;
+                if CapsuleCurRow[your_color] < 1 {
+                    CapsuleCurRow[your_color] = NUM_LINES.try_into().unwrap();
+                }
+            }
+
+            if action.intersects(MenuAction::DOWN | MenuAction::DOWN_WHEEL) {
+                CapsuleCurRow[your_color] += 1;
+                if CapsuleCurRow[your_color] > NUM_LINES.try_into().unwrap() {
+                    CapsuleCurRow[your_color] = 1;
+                }
+            }
+
+            if action.intersects(MenuAction::CLICK) {
+                if let Ok(row) = usize::try_from(CapsuleCurRow[your_color] - 1) {
+                    if NumCapsules[ToOpponents::You as usize] > 0
+                        && ToPlayground[your_color][0][row] != ToBlock::CableEnd as i32
+                        && ActivationMap[your_color][0][row] == Condition::Inactive as i32
+                    {
+                        NumCapsules[ToOpponents::You as usize] -= 1;
+                        CapsuleCurRow[your_color] = 0;
+                        ToPlayground[your_color][0][row] = ToBlock::Repeater as i32;
+                        ActivationMap[your_color][0][row] = Condition::Active1 as i32;
+                        CapsuleCountdown[your_color][0][row] =
+                            i32::try_from(CAPSULE_COUNTDOWN * 2).unwrap();
+                        Takeover_Set_Capsule_Sound();
+                    }
+                }
+            }
+
+            EnemyMovements();
+            ProcessCapsules(); /* count down the lifetime of the capsules */
+
+            ProcessPlayground();
+            ProcessPlayground();
+            ProcessPlayground();
+            ProcessPlayground(); /* this has to be done several times to be sure */
+
+            ProcessDisplayColumn();
+            ShowPlayground();
+        } // if do_update_move
+
+        SDL_Flip(ne_screen);
+        SDL_Delay(1);
+    } /* while !FinishTakeover */
+
+    /* Schluss- Countdown */
+    countdown = CAPSULE_COUNTDOWN;
+
+    wait_for_all_keys_released();
+    let mut fast_forward = false;
+    loop {
+        countdown -= 1;
+        if countdown == 0 {
+            break;
+        }
+
+        if !fast_forward {
+            SDL_Delay(COUNT_TICK_LEN);
+        }
+        if any_key_just_pressed() != 0 {
+            fast_forward = true;
+        }
+        prev_count_tick += COUNT_TICK_LEN;
+        ProcessCapsules(); /* count down the lifetime of the capsules */
+        ProcessCapsules(); /* do it twice this time to be faster */
+        AnimateCurrents();
+        ProcessPlayground();
+        ProcessPlayground();
+        ProcessPlayground();
+        ProcessPlayground(); /* this has to be done several times to be sure */
+        ProcessDisplayColumn();
+        ShowPlayground();
+        SDL_Delay(1);
+        SDL_Flip(ne_screen);
+    } /* while (countdown) */
+
+    wait_for_all_keys_released();
 }

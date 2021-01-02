@@ -380,145 +380,145 @@ ChooseColor (void)
  *
  *
  *-----------------------------------------------------------------*/
-void
-PlayGame (void)
-{
-  int countdown = 100;   /* lenght of Game in 1/10 seconds */
-  char count_text[80];
-  int FinishTakeover = FALSE;
-  int row;
-
-  Uint32 prev_count_tick = 0, count_tick_len;  /* tick vars for count-down */
-  Uint32 prev_move_tick = 0, move_tick_len;    /* tick vars for motion */
-
-  count_tick_len = 100;   /* countdown in 1/10 second steps */
-  move_tick_len  = 60;    /* allow motion at this tick-speed in ms */
-
-  prev_count_tick = prev_move_tick = SDL_GetTicks (); /* start tick clock */
-
-  wait_for_all_keys_released();
-  MenuAction_t action = ACTION_NONE;;
-
-  CountdownSound();
-  while (!FinishTakeover)
-    {
-      cur_time = SDL_GetTicks ();
-
-      bool do_update_move  = (cur_time > prev_move_tick  + move_tick_len);
-      bool do_update_count = (cur_time > prev_count_tick + count_tick_len);
-
-      if ( do_update_count ) /* time to count 1 down */
-	{
-          do_update_count = FALSE;
-	  prev_count_tick += count_tick_len;  /* set for next countdown tick */
-	  countdown--;
-	  sprintf (count_text, "Finish-%d", countdown);
-	  DisplayBanner (count_text, NULL , 0 );
-
-	  if (countdown && (countdown%10 == 0) ) CountdownSound();
-	  if (countdown == 0)
-	    {
-	      EndCountdownSound();
-	      FinishTakeover = TRUE;
-	    }
-
-	  AnimateCurrents ();  /* do some animation on the active cables */
-
-	} /* if (countdown_tick has occurred) */
-
-      if ( do_update_move )
-        {
-          do_update_move = FALSE;
-          prev_move_tick += move_tick_len; /* set for next motion tick */
-#ifndef ANDROID
-          Uint32 key_repeat_delay = 110;	// PC default, allows for quick-repeat key hits
-#else
-          Uint32 key_repeat_delay = 150;	// better to avoid accidential key-repeats on touchscreen
-#endif
-          action = getMenuAction ( key_repeat_delay );
-          /* allow for a WIN-key that give immedate victory */
-          if ( KeyIsPressedR ('w') && CtrlPressed() && AltPressed() ) {
-            LeaderColor = YourColor;   /* simple as that */
-            return;
-          }
-
-          if ( action & (ACTION_UP|ACTION_UP_WHEEL) )
-            {
-              CapsuleCurRow[YourColor]--;
-              if (CapsuleCurRow[YourColor] < 1) {
-                CapsuleCurRow[YourColor] = NUM_LINES;
-              }
-            }
-
-          if ( action & (ACTION_DOWN|ACTION_DOWN_WHEEL) )
-            {
-	      CapsuleCurRow[YourColor]++;
-	      if (CapsuleCurRow[YourColor] > NUM_LINES) {
-		CapsuleCurRow[YourColor] = 1;
-              }
-            }
-
-          if ( action & ACTION_CLICK )
-            {
-              row = CapsuleCurRow[YourColor] - 1;
-              if ( (NumCapsules[YOU] > 0) && (row >= 0) && (ToPlayground[YourColor][0][row] != KABELENDE) && (ActivationMap[YourColor][0][row] == INACTIVE) )
-                {
-                  NumCapsules[YOU]--;
-                  CapsuleCurRow[YourColor] = 0;
-                  ToPlayground[YourColor][0][row] = VERSTAERKER;
-                  ActivationMap[YourColor][0][row] = ACTIVE1;
-                  CapsuleCountdown[YourColor][0][row] = CAPSULE_COUNTDOWN * 2;
-                  Takeover_Set_Capsule_Sound ();
-                }
-            }
-
-          EnemyMovements ();
-          ProcessCapsules ();	/* count down the lifetime of the capsules */
-
-	  ProcessPlayground ();
-	  ProcessPlayground ();
-	  ProcessPlayground ();
-	  ProcessPlayground ();	/* this has to be done several times to be sure */
-
-	  ProcessDisplayColumn ();
-          ShowPlayground ();
-	} // if do_update_move
-
-      SDL_Flip (ne_screen);
-      SDL_Delay(1);
-    }	/* while !FinishTakeover */
-
-  /* Schluss- Countdown */
-  countdown = CAPSULE_COUNTDOWN;
-
-  wait_for_all_keys_released();
-  bool fast_forward = FALSE;
-  while (countdown--)
-    {
-      if ( !fast_forward ) {
-        SDL_Delay ( count_tick_len );
-      }
-      if ( any_key_just_pressed() ) {
-        fast_forward = TRUE;
-      }
-      prev_count_tick += count_tick_len;
-      ProcessCapsules ();	/* count down the lifetime of the capsules */
-      ProcessCapsules ();	/* do it twice this time to be faster */
-      AnimateCurrents ();
-      ProcessPlayground ();
-      ProcessPlayground ();
-      ProcessPlayground ();
-      ProcessPlayground ();	/* this has to be done several times to be sure */
-      ProcessDisplayColumn ();
-      ShowPlayground ();
-      SDL_Delay(1);
-      SDL_Flip (ne_screen);
-    }	/* while (countdown) */
-
-  wait_for_all_keys_released();
-  return;
-
-} /* PlayGame() */
+// void
+// PlayGame (void)
+// {
+//   int countdown = 100;   /* lenght of Game in 1/10 seconds */
+//   char count_text[80];
+//   int FinishTakeover = FALSE;
+//   int row;
+// 
+//   Uint32 prev_count_tick = 0, count_tick_len;  /* tick vars for count-down */
+//   Uint32 prev_move_tick = 0, move_tick_len;    /* tick vars for motion */
+// 
+//   count_tick_len = 100;   /* countdown in 1/10 second steps */
+//   move_tick_len  = 60;    /* allow motion at this tick-speed in ms */
+// 
+//   prev_count_tick = prev_move_tick = SDL_GetTicks (); /* start tick clock */
+// 
+//   wait_for_all_keys_released();
+//   MenuAction_t action = ACTION_NONE;;
+// 
+//   CountdownSound();
+//   while (!FinishTakeover)
+//     {
+//       cur_time = SDL_GetTicks ();
+// 
+//       bool do_update_move  = (cur_time > prev_move_tick  + move_tick_len);
+//       bool do_update_count = (cur_time > prev_count_tick + count_tick_len);
+// 
+//       if ( do_update_count ) /* time to count 1 down */
+// 	{
+//           do_update_count = FALSE;
+// 	  prev_count_tick += count_tick_len;  /* set for next countdown tick */
+// 	  countdown--;
+// 	  sprintf (count_text, "Finish-%d", countdown);
+// 	  DisplayBanner (count_text, NULL , 0 );
+// 
+// 	  if (countdown && (countdown%10 == 0) ) CountdownSound();
+// 	  if (countdown == 0)
+// 	    {
+// 	      EndCountdownSound();
+// 	      FinishTakeover = TRUE;
+// 	    }
+// 
+// 	  AnimateCurrents ();  /* do some animation on the active cables */
+// 
+// 	} /* if (countdown_tick has occurred) */
+// 
+//       if ( do_update_move )
+//         {
+//           do_update_move = FALSE;
+//           prev_move_tick += move_tick_len; /* set for next motion tick */
+// #ifndef ANDROID
+//           Uint32 key_repeat_delay = 110;	// PC default, allows for quick-repeat key hits
+// #else
+//           Uint32 key_repeat_delay = 150;	// better to avoid accidential key-repeats on touchscreen
+// #endif
+//           action = getMenuAction ( key_repeat_delay );
+//           /* allow for a WIN-key that give immedate victory */
+//           if ( KeyIsPressedR ('w') && CtrlPressed() && AltPressed() ) {
+//             LeaderColor = YourColor;   /* simple as that */
+//             return;
+//           }
+// 
+//           if ( action & (ACTION_UP|ACTION_UP_WHEEL) )
+//             {
+//               CapsuleCurRow[YourColor]--;
+//               if (CapsuleCurRow[YourColor] < 1) {
+//                 CapsuleCurRow[YourColor] = NUM_LINES;
+//               }
+//             }
+// 
+//           if ( action & (ACTION_DOWN|ACTION_DOWN_WHEEL) )
+//             {
+// 	      CapsuleCurRow[YourColor]++;
+// 	      if (CapsuleCurRow[YourColor] > NUM_LINES) {
+// 		CapsuleCurRow[YourColor] = 1;
+//               }
+//             }
+// 
+//           if ( action & ACTION_CLICK )
+//             {
+//               row = CapsuleCurRow[YourColor] - 1;
+//               if ( (NumCapsules[YOU] > 0) && (row >= 0) && (ToPlayground[YourColor][0][row] != KABELENDE) && (ActivationMap[YourColor][0][row] == INACTIVE) )
+//                 {
+//                   NumCapsules[YOU]--;
+//                   CapsuleCurRow[YourColor] = 0;
+//                   ToPlayground[YourColor][0][row] = VERSTAERKER;
+//                   ActivationMap[YourColor][0][row] = ACTIVE1;
+//                   CapsuleCountdown[YourColor][0][row] = CAPSULE_COUNTDOWN * 2;
+//                   Takeover_Set_Capsule_Sound ();
+//                 }
+//             }
+// 
+//           EnemyMovements ();
+//           ProcessCapsules ();	/* count down the lifetime of the capsules */
+// 
+// 	  ProcessPlayground ();
+// 	  ProcessPlayground ();
+// 	  ProcessPlayground ();
+// 	  ProcessPlayground ();	/* this has to be done several times to be sure */
+// 
+// 	  ProcessDisplayColumn ();
+//           ShowPlayground ();
+// 	} // if do_update_move
+// 
+//       SDL_Flip (ne_screen);
+//       SDL_Delay(1);
+//     }	/* while !FinishTakeover */
+// 
+//   /* Schluss- Countdown */
+//   countdown = CAPSULE_COUNTDOWN;
+// 
+//   wait_for_all_keys_released();
+//   bool fast_forward = FALSE;
+//   while (countdown--)
+//     {
+//       if ( !fast_forward ) {
+//         SDL_Delay ( count_tick_len );
+//       }
+//       if ( any_key_just_pressed() ) {
+//         fast_forward = TRUE;
+//       }
+//       prev_count_tick += count_tick_len;
+//       ProcessCapsules ();	/* count down the lifetime of the capsules */
+//       ProcessCapsules ();	/* do it twice this time to be faster */
+//       AnimateCurrents ();
+//       ProcessPlayground ();
+//       ProcessPlayground ();
+//       ProcessPlayground ();
+//       ProcessPlayground ();	/* this has to be done several times to be sure */
+//       ProcessDisplayColumn ();
+//       ShowPlayground ();
+//       SDL_Delay(1);
+//       SDL_Flip (ne_screen);
+//     }	/* while (countdown) */
+// 
+//   wait_for_all_keys_released();
+//   return;
+// 
+// } /* PlayGame() */
 
 /*-----------------------------------------------------------------
  * @Desc: animiert Gegner beim Uebernehm-Spiel

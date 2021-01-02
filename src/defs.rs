@@ -255,21 +255,21 @@ pub unsafe fn RightPressedR() -> bool {
 
 // ----------------------------------------
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(C)]
-pub enum MenuAction {
-    None = 0b0000_0000_0000,
-    Info = 0b0000_0000_0001,
-    Back = 0b0000_0000_0010,
-    Click = 0b0000_0000_0100,
-    Left = 0b0000_0000_1000,
-    Right = 0b0000_0001_0000,
-    Up = 0b0000_0010_0000,
-    Down = 0b0000_0100_0000,
-    Delete = 0b0000_1000_0000,
-    UpWheel = 0b0001_0000_0000,
-    DownWheel = 0b0010_0000_0000,
-    Last = 0b0100_0000_0000,
+bitflags! {
+    #[repr(C)]
+    pub struct MenuAction: i32 {
+        const INFO = 0b0000_0000_0001;
+        const BACK = 0b0000_0000_0010;
+        const CLICK = 0b0000_0000_0100;
+        const LEFT = 0b0000_0000_1000;
+        const RIGHT = 0b0000_0001_0000;
+        const UP = 0b0000_0010_0000;
+        const DOWN = 0b0000_0100_0000;
+        const DELETE = 0b0000_1000_0000;
+        const UP_WHEEL = 0b0001_0000_0000;
+        const DOWN_WHEEL = 0b0010_0000_0000;
+        const LAST = 0b0100_0000_0000;
+    }
 }
 
 pub const COLLISION_STEPSIZE: f64 = 0.1;

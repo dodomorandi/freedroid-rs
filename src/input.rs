@@ -514,7 +514,7 @@ pub unsafe extern "C" fn JoyAxisMotion() -> c_int {
 #[no_mangle]
 pub unsafe extern "C" fn ReactToSpecialKeys() {
     if cmd_is_activeR(Cmds::Quit) {
-        handle_QuitGame(MenuAction::Click);
+        handle_QuitGame(MenuAction::CLICK);
     }
 
     if cmd_is_activeR(Cmds::Pause) {

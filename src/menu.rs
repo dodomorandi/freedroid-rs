@@ -7,4 +7,5 @@ extern "C" {
     pub fn showMainMenu();
     pub fn Cheatmenu();
     pub fn FreeMenuData();
+    pub fn getMenuAction(wait_repeat_ticks: u32) -> MenuAction;
 }
