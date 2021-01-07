@@ -16,20 +16,18 @@ use sdl::{
     video::ll::{SDL_FreeSurface, SDL_Surface},
 };
 use static_assertions::const_assert;
-#[cfg(feature = "gcw0")]
-use std::os::raw::c_int;
-use std::{convert::TryFrom, ffi::CStr, mem};
+use std::{convert::TryFrom, ffi::CStr, mem, os::raw::c_int};
 
 pub const MAX_THEMES: usize = 100;
 
 pub const JOY_MAX_VAL: usize = 32767; // maximal amplitude of joystick axis values
 
 pub const RESET: usize = 0x01;
-pub const UPDATE: usize = 0x02;
+pub const UPDATE: c_int = 0x02;
 pub const INIT_ONLY: usize = 0x04;
 pub const FREE_ONLY: usize = 0x08;
 
-pub const DROID_ROTATION_TIME: f64 = 3.0;
+pub const DROID_ROTATION_TIME: f32 = 3.0;
 pub const NUM_DECAL_PICS: usize = 2;
 
 #[inline]
@@ -504,8 +502,8 @@ pub const DROID_PHASES: usize = ENEMYPHASES;
 pub const WAIT_LEVELEMPTY: f64 = 0.5; /* warte bevor Graufaerben (in seconds)*/
 pub const SLOWMO_FACTOR: f64 = 0.33; // slow-motion effect on last blast when level is going empty
 pub const WAIT_AFTER_KILLED: usize = 2000; // time (in ms) to wait and still display pictures after the destruction of
-pub const SHOW_WAIT: usize = 3500; // std amount of time to show something
-                                   // the players droid.  This is now measured in seconds and can be a float
+pub const SHOW_WAIT: u32 = 3500; // std amount of time to show something
+                                 // the players droid.  This is now measured in seconds and can be a float
 pub const WAIT_SHIPEMPTY: usize = 20;
 pub const WAIT_TRANSFERMODE: f64 = 0.3; /* this is a "float" indicating the number of seconds the influence
                                         stand still with space pressed, before switching into transfermode

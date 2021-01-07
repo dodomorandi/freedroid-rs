@@ -136,173 +136,173 @@ playground_t CapsuleCountdown;
  * @Ret: TRUE/FALSE:  user has won/lost
  *
  *-----------------------------------------------------------------*/
-int
-Takeover (int enemynum)
-{
-  int row;
-  int FinishTakeover = FALSE;
-  static int RejectEnergy = 0;	/* your energy if you're rejected */
-  char *message;
-  SDL_Rect buf;
-  Uint32 now;
-
-  /* Prevent distortion of framerate by the delay coming from
-   * the time spend in the menu.
-   */
-  Activate_Conservative_Frame_Computation ();
-
-  // Takeover game always uses Classic User_Rect:
-  Copy_Rect (User_Rect, buf);
-  Copy_Rect (Classic_User_Rect, User_Rect);
-
-  DisplayBanner (NULL, NULL,  BANNER_FORCE_UPDATE );
-
-  Fill_Rect (User_Rect, to_bg_color);
-
-  Me.status = MOBILE; /* the new status _after_ the takeover game */
-
-  SDL_ShowCursor (SDL_DISABLE); // no mouse-cursor in takeover game!
-
-  show_droid_info ( Me.type, -1 , 0);
-  show_droid_portrait (Cons_Droid_Rect, Me.type, DROID_ROTATION_TIME, UPDATE);
-
-  wait_for_all_keys_released();
-  while (!FirePressedR()) {
-    show_droid_portrait (Cons_Droid_Rect, Me.type, DROID_ROTATION_TIME, 0);
-    SDL_Delay(1);
-  }
-
-  show_droid_info ( AllEnemys[enemynum].type, -2 ,0);
-  show_droid_portrait (Cons_Droid_Rect,  AllEnemys[enemynum].type, DROID_ROTATION_TIME, UPDATE);
-  wait_for_all_keys_released();
-  while (!FirePressedR()) {
-    show_droid_portrait (Cons_Droid_Rect,  AllEnemys[enemynum].type, DROID_ROTATION_TIME, 0);
-    SDL_Delay(1);
-  }
-
-  SDL_BlitSurface (takeover_bg_pic, NULL, ne_screen, NULL);
-  DisplayBanner (NULL, NULL,  BANNER_FORCE_UPDATE );
-
-  wait_for_all_keys_released();
-  while (!FinishTakeover)
-    {
-      /* Init Color-column and Capsule-Number for each opponenet and your color */
-      for (row = 0; row < NUM_LINES; row++)
-	{
-	  DisplayColumn[row] = (row % 2);
-	  CapsuleCountdown[GELB][0][row] = -1;
-	  CapsuleCountdown[VIOLETT][0][row] = -1;
-	}			/* for row */
-
-      YourColor = GELB;
-      OpponentColor = VIOLETT;
-
-      CapsuleCurRow[GELB] = 0;
-      CapsuleCurRow[VIOLETT] = 0;
-
-      DroidNum = enemynum;
-      OpponentType = AllEnemys[enemynum].type;
-      NumCapsules[YOU] = 3 + ClassOfDruid (Me.type);
-      NumCapsules[ENEMY] = 4 + ClassOfDruid (OpponentType);
-
-      InventPlayground ();
-
-      ShowPlayground ();
-      SDL_Flip (ne_screen);
-
-      ChooseColor ();
-      wait_for_all_keys_released();
-
-      PlayGame ();
-      wait_for_all_keys_released();
-
-      /* Ausgang beurteilen und returnen */
-      if (InvincibleMode || (LeaderColor == YourColor))
-	{
-	  Takeover_Game_Won_Sound ();
-	  if (Me.type == DRUID001)
-	    {
-	      RejectEnergy = Me.energy;
-	      PreTakeEnergy = Me.energy;
-	    }
-
-	  // We provide some security agains too high energy/health values gained
-	  // by very rapid successions of successful takeover attempts
-	  if (Me.energy > Druidmap[DRUID001].maxenergy) Me.energy = Druidmap[DRUID001].maxenergy;
-	  if (Me.health > Druidmap[DRUID001].maxenergy) Me.health = Druidmap[DRUID001].maxenergy;
-
-	  // We allow to gain the current energy/full health that was still in the
-	  // other droid, since all previous damage must be due to fighting damage,
-	  // and this is exactly the sort of damage can usually be cured in refreshes.
-	  Me.energy += AllEnemys[enemynum].energy;
-	  Me.health += Druidmap[OpponentType].maxenergy;
-
-	  Me.type = AllEnemys[enemynum].type;
-
-	  RealScore += Druidmap[OpponentType].score;
-
-	  DeathCount += OpponentType * OpponentType;   // quadratic "importance", max=529
-
-	  AllEnemys[enemynum].status = OUT; // removed droid silently (no blast!)
-
-	  if (LeaderColor != YourColor)	/* only won because of InvincibleMode */
-	    message = "You cheat";
-	  else				/* won the proper way */
-	    message = "Complete";
-
-	  FinishTakeover = TRUE;
-	}				/* LeaderColor == YourColor */
-      else if (LeaderColor == OpponentColor)
-	{
-	  // you lost, but enemy is killed too --> blast it!
-	  AllEnemys[enemynum].energy = -1.0;  /* to be sure */
-
-	  Takeover_Game_Lost_Sound ();
-	  if (Me.type != DRUID001)
-	    {
-	      message = "Rejected";
-	      Me.type = DRUID001;
-	      Me.energy = RejectEnergy;
-	    }
-	  else
-	    {
-	      message = "Burnt Out";
-	      Me.energy = 0;
-	    }
-	  FinishTakeover = TRUE;
-	}			/* LeadColor == OpponentColor */
-      else
-	{
-	  Takeover_Game_Deadlock_Sound ();
-	  message = "Deadlock";
-	}			/* LeadColor == REMIS */
-
-      DisplayBanner (message, NULL , 0 );
-      ShowPlayground ();
-      SDL_Flip (ne_screen);
-
-      wait_for_all_keys_released();
-      now = SDL_GetTicks();
-      while ((!FirePressedR()) && (SDL_GetTicks() - now < SHOW_WAIT) ) {
-#ifdef ANDROID
-        SDL_Flip(ne_screen);
-#endif
-        SDL_Delay(1);
-      }
-
-    }	/* while !FinishTakeover */
-
-  // restore User_Rect
-  Copy_Rect (buf, User_Rect);
-
-  ClearGraphMem();
-
-  if (LeaderColor == YourColor)
-    return TRUE;
-  else
-    return FALSE;
-
-} /* Takeover() */
+// int
+// Takeover (int enemynum)
+// {
+//   int row;
+//   int FinishTakeover = FALSE;
+//   static int RejectEnergy = 0;	/* your energy if you're rejected */
+//   char *message;
+//   SDL_Rect buf;
+//   Uint32 now;
+// 
+//   /* Prevent distortion of framerate by the delay coming from
+//    * the time spend in the menu.
+//    */
+//   Activate_Conservative_Frame_Computation ();
+// 
+//   // Takeover game always uses Classic User_Rect:
+//   Copy_Rect (User_Rect, buf);
+//   Copy_Rect (Classic_User_Rect, User_Rect);
+// 
+//   DisplayBanner (NULL, NULL,  BANNER_FORCE_UPDATE );
+// 
+//   Fill_Rect (User_Rect, to_bg_color);
+// 
+//   Me.status = MOBILE; /* the new status _after_ the takeover game */
+// 
+//   SDL_ShowCursor (SDL_DISABLE); // no mouse-cursor in takeover game!
+// 
+//   show_droid_info ( Me.type, -1 , 0);
+//   show_droid_portrait (Cons_Droid_Rect, Me.type, DROID_ROTATION_TIME, UPDATE);
+// 
+//   wait_for_all_keys_released();
+//   while (!FirePressedR()) {
+//     show_droid_portrait (Cons_Droid_Rect, Me.type, DROID_ROTATION_TIME, 0);
+//     SDL_Delay(1);
+//   }
+// 
+//   show_droid_info ( AllEnemys[enemynum].type, -2 ,0);
+//   show_droid_portrait (Cons_Droid_Rect,  AllEnemys[enemynum].type, DROID_ROTATION_TIME, UPDATE);
+//   wait_for_all_keys_released();
+//   while (!FirePressedR()) {
+//     show_droid_portrait (Cons_Droid_Rect,  AllEnemys[enemynum].type, DROID_ROTATION_TIME, 0);
+//     SDL_Delay(1);
+//   }
+// 
+//   SDL_BlitSurface (takeover_bg_pic, NULL, ne_screen, NULL);
+//   DisplayBanner (NULL, NULL,  BANNER_FORCE_UPDATE );
+// 
+//   wait_for_all_keys_released();
+//   while (!FinishTakeover)
+//     {
+//       /* Init Color-column and Capsule-Number for each opponenet and your color */
+//       for (row = 0; row < NUM_LINES; row++)
+// 	{
+// 	  DisplayColumn[row] = (row % 2);
+// 	  CapsuleCountdown[GELB][0][row] = -1;
+// 	  CapsuleCountdown[VIOLETT][0][row] = -1;
+// 	}			/* for row */
+// 
+//       YourColor = GELB;
+//       OpponentColor = VIOLETT;
+// 
+//       CapsuleCurRow[GELB] = 0;
+//       CapsuleCurRow[VIOLETT] = 0;
+// 
+//       DroidNum = enemynum;
+//       OpponentType = AllEnemys[enemynum].type;
+//       NumCapsules[YOU] = 3 + ClassOfDruid (Me.type);
+//       NumCapsules[ENEMY] = 4 + ClassOfDruid (OpponentType);
+// 
+//       InventPlayground ();
+// 
+//       ShowPlayground ();
+//       SDL_Flip (ne_screen);
+// 
+//       ChooseColor ();
+//       wait_for_all_keys_released();
+// 
+//       PlayGame ();
+//       wait_for_all_keys_released();
+// 
+//       /* Ausgang beurteilen und returnen */
+//       if (InvincibleMode || (LeaderColor == YourColor))
+// 	{
+// 	  Takeover_Game_Won_Sound ();
+// 	  if (Me.type == DRUID001)
+// 	    {
+// 	      RejectEnergy = Me.energy;
+// 	      PreTakeEnergy = Me.energy;
+// 	    }
+// 
+// 	  // We provide some security agains too high energy/health values gained
+// 	  // by very rapid successions of successful takeover attempts
+// 	  if (Me.energy > Druidmap[DRUID001].maxenergy) Me.energy = Druidmap[DRUID001].maxenergy;
+// 	  if (Me.health > Druidmap[DRUID001].maxenergy) Me.health = Druidmap[DRUID001].maxenergy;
+// 
+// 	  // We allow to gain the current energy/full health that was still in the
+// 	  // other droid, since all previous damage must be due to fighting damage,
+// 	  // and this is exactly the sort of damage can usually be cured in refreshes.
+// 	  Me.energy += AllEnemys[enemynum].energy;
+// 	  Me.health += Druidmap[OpponentType].maxenergy;
+// 
+// 	  Me.type = AllEnemys[enemynum].type;
+// 
+// 	  RealScore += Druidmap[OpponentType].score;
+// 
+// 	  DeathCount += OpponentType * OpponentType;   // quadratic "importance", max=529
+// 
+// 	  AllEnemys[enemynum].status = OUT; // removed droid silently (no blast!)
+// 
+// 	  if (LeaderColor != YourColor)	/* only won because of InvincibleMode */
+// 	    message = "You cheat";
+// 	  else				/* won the proper way */
+// 	    message = "Complete";
+// 
+// 	  FinishTakeover = TRUE;
+// 	}				/* LeaderColor == YourColor */
+//       else if (LeaderColor == OpponentColor)
+// 	{
+// 	  // you lost, but enemy is killed too --> blast it!
+// 	  AllEnemys[enemynum].energy = -1.0;  /* to be sure */
+// 
+// 	  Takeover_Game_Lost_Sound ();
+// 	  if (Me.type != DRUID001)
+// 	    {
+// 	      message = "Rejected";
+// 	      Me.type = DRUID001;
+// 	      Me.energy = RejectEnergy;
+// 	    }
+// 	  else
+// 	    {
+// 	      message = "Burnt Out";
+// 	      Me.energy = 0;
+// 	    }
+// 	  FinishTakeover = TRUE;
+// 	}			/* LeadColor == OpponentColor */
+//       else
+// 	{
+// 	  Takeover_Game_Deadlock_Sound ();
+// 	  message = "Deadlock";
+// 	}			/* LeadColor == REMIS */
+// 
+//       DisplayBanner (message, NULL , 0 );
+//       ShowPlayground ();
+//       SDL_Flip (ne_screen);
+// 
+//       wait_for_all_keys_released();
+//       now = SDL_GetTicks();
+//       while ((!FirePressedR()) && (SDL_GetTicks() - now < SHOW_WAIT) ) {
+// #ifdef ANDROID
+//         SDL_Flip(ne_screen);
+// #endif
+//         SDL_Delay(1);
+//       }
+// 
+//     }	/* while !FinishTakeover */
+// 
+//   // restore User_Rect
+//   Copy_Rect (buf, User_Rect);
+// 
+//   ClearGraphMem();
+// 
+//   if (LeaderColor == YourColor)
+//     return TRUE;
+//   else
+//     return FALSE;
+// 
+// } /* Takeover() */
 
 
 /*@Function============================================================

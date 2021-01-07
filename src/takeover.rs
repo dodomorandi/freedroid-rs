@@ -1,24 +1,34 @@
 use crate::{
-    defs::{self, AltPressed, CtrlPressed, MenuAction, Status},
-    global::{
-        to_blocks, AllEnemys, CapsuleBlocks, Classic_User_Rect, CurCapsuleStart, DruidStart,
-        FillBlocks, LeftCapsulesStart, PlaygroundStart, TO_CapsuleRect, TO_ColumnRect,
-        TO_ColumnStart, TO_ElementRect, TO_FillBlock, TO_GroundRect, TO_LeaderBlockStart,
-        TO_LeaderLed, TO_LeftGroundStart, TO_RightGroundStart, ToColumnBlock, ToGameBlocks,
-        ToGroundBlocks, ToLeaderBlock, User_Rect,
+    defs::{
+        self, AltPressed, CtrlPressed, DisplayBannerFlags, Droid, FirePressedR, MenuAction, Status,
+        DROID_ROTATION_TIME, SHOW_WAIT, UPDATE,
     },
-    graphics::{ne_screen, takeover_bg_pic},
+    enemy::ClassOfDruid,
+    global::{
+        to_blocks, AllEnemys, CapsuleBlocks, Classic_User_Rect, Cons_Droid_Rect, CurCapsuleStart,
+        DeathCount, DruidStart, Druidmap, FillBlocks, InvincibleMode, LeftCapsulesStart, Me,
+        PlaygroundStart, PreTakeEnergy, RealScore, TO_CapsuleRect, TO_ColumnRect, TO_ColumnStart,
+        TO_ElementRect, TO_FillBlock, TO_GroundRect, TO_LeaderBlockStart, TO_LeaderLed,
+        TO_LeftGroundStart, TO_RightGroundStart, ToColumnBlock, ToGameBlocks, ToGroundBlocks,
+        ToLeaderBlock, User_Rect,
+    },
+    graphics::{ne_screen, takeover_bg_pic, ClearGraphMem},
     input::{any_key_just_pressed, wait_for_all_keys_released, KeyIsPressedR},
     menu::getMenuAction,
-    misc::MyRandom,
-    sound::{CountdownSound, EndCountdownSound, MoveMenuPositionSound, Takeover_Set_Capsule_Sound},
-    view::{DisplayBanner, PutEnemy, PutInfluence},
+    misc::{Activate_Conservative_Frame_Computation, MyRandom},
+    ship::{show_droid_info, show_droid_portrait},
+    sound::{
+        CountdownSound, EndCountdownSound, MoveMenuPositionSound, Takeover_Game_Deadlock_Sound,
+        Takeover_Game_Lost_Sound, Takeover_Game_Won_Sound, Takeover_Set_Capsule_Sound,
+    },
+    view::{DisplayBanner, Fill_Rect, PutEnemy, PutInfluence},
 };
 
 use cstr::cstr;
 use sdl::{
+    mouse::ll::{SDL_ShowCursor, SDL_DISABLE},
     sdl::ll::SDL_GetTicks,
-    video::ll::{SDL_Flip, SDL_SetClipRect, SDL_UpperBlit},
+    video::ll::{SDL_Color, SDL_Flip, SDL_SetClipRect, SDL_UpperBlit},
     Rect,
 };
 use std::{
@@ -40,6 +50,7 @@ extern "C" {
     static mut YourColor: c_int;
     static mut OpponentColor: c_int;
     static mut DroidNum: c_int;
+    static mut OpponentType: c_int;
 
     pub fn SDL_Delay(ms: u32);
 }
@@ -1219,4 +1230,194 @@ pub unsafe extern "C" fn ChooseColor() {
         SDL_Flip(ne_screen);
         SDL_Delay(1); // don't hog CPU
     }
+}
+
+/// play takeover-game against a druid
+///
+/// Returns true if the user won, false otherwise
+#[no_mangle]
+pub unsafe extern "C" fn Takeover(enemynum: c_int) -> c_int {
+    static mut REJECT_ENERGY: c_int = 0; /* your energy if you're rejected */
+
+    /* Prevent distortion of framerate by the delay coming from
+     * the time spend in the menu.
+     */
+    Activate_Conservative_Frame_Computation();
+
+    // Takeover game always uses Classic User_Rect:
+    let buf = User_Rect;
+    User_Rect = Classic_User_Rect;
+
+    DisplayBanner(
+        null_mut(),
+        null_mut(),
+        DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+    );
+
+    const BG_COLOR: SDL_Color = SDL_Color {
+        r: 130,
+        g: 130,
+        b: 130,
+        unused: 0,
+    };
+    Fill_Rect(User_Rect, BG_COLOR);
+
+    Me.status = Status::Mobile as i32; /* the new status _after_ the takeover game */
+
+    SDL_ShowCursor(SDL_DISABLE); // no mouse-cursor in takeover game!
+
+    show_droid_info(Me.ty, -1, 0);
+    show_droid_portrait(Cons_Droid_Rect, Me.ty, DROID_ROTATION_TIME, UPDATE);
+
+    wait_for_all_keys_released();
+    while !FirePressedR() {
+        show_droid_portrait(Cons_Droid_Rect, Me.ty, DROID_ROTATION_TIME, 0);
+        SDL_Delay(1);
+    }
+
+    let enemy_index: usize = enemynum.try_into().unwrap();
+    show_droid_info(AllEnemys[enemy_index].ty, -2, 0);
+    show_droid_portrait(
+        Cons_Droid_Rect,
+        AllEnemys[enemy_index].ty,
+        DROID_ROTATION_TIME,
+        UPDATE,
+    );
+    wait_for_all_keys_released();
+    while !FirePressedR() {
+        show_droid_portrait(
+            Cons_Droid_Rect,
+            AllEnemys[enemy_index].ty,
+            DROID_ROTATION_TIME,
+            0,
+        );
+        SDL_Delay(1);
+    }
+
+    SDL_UpperBlit(takeover_bg_pic, null_mut(), ne_screen, null_mut());
+    DisplayBanner(
+        null_mut(),
+        null_mut(),
+        DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+    );
+
+    wait_for_all_keys_released();
+    let mut finish_takeover = false;
+    while !finish_takeover {
+        /* Init Color-column and Capsule-Number for each opponenet and your color */
+        DisplayColumn
+            .iter_mut()
+            .enumerate()
+            .for_each(|(row, column)| *column = i32::try_from(row).unwrap() % 2);
+        CapsuleCountdown
+            .iter_mut()
+            .flat_map(|color_countdown| color_countdown[0].iter_mut())
+            .for_each(|x| *x = -1);
+
+        YourColor = ToColor::Yellow as c_int;
+        OpponentColor = ToColor::Violet as c_int;
+
+        CapsuleCurRow[ToColor::Yellow as usize] = 0;
+        CapsuleCurRow[ToColor::Violet as usize] = 0;
+
+        DroidNum = enemynum;
+        OpponentType = AllEnemys[enemy_index].ty;
+        NumCapsules[ToOpponents::You as usize] = 3 + ClassOfDruid(Me.ty);
+        NumCapsules[ToOpponents::Enemy as usize] = 4 + ClassOfDruid(OpponentType);
+
+        InventPlayground();
+
+        ShowPlayground();
+        SDL_Flip(ne_screen);
+
+        ChooseColor();
+        wait_for_all_keys_released();
+
+        PlayGame();
+        wait_for_all_keys_released();
+
+        let message;
+        /* Ausgang beurteilen und returnen */
+        if InvincibleMode != 0 || LeaderColor == YourColor {
+            Takeover_Game_Won_Sound();
+            if Me.ty == Droid::Droid001 as c_int {
+                REJECT_ENERGY = Me.energy as c_int;
+                PreTakeEnergy = Me.energy as c_int;
+            }
+
+            // We provide some security agains too high energy/health values gained
+            // by very rapid successions of successful takeover attempts
+            let droid_map = std::slice::from_raw_parts(Druidmap, Droid::NumDroids as usize);
+            if Me.energy > droid_map[Droid::Droid001 as usize].maxenergy {
+                Me.energy = droid_map[Droid::Droid001 as usize].maxenergy;
+            }
+            if Me.health > droid_map[Droid::Droid001 as usize].maxenergy {
+                Me.health = droid_map[Droid::Droid001 as usize].maxenergy;
+            }
+
+            // We allow to gain the current energy/full health that was still in the
+            // other droid, since all previous damage must be due to fighting damage,
+            // and this is exactly the sort of damage can usually be cured in refreshes.
+            Me.energy += AllEnemys[enemy_index].energy;
+            Me.health += droid_map[usize::try_from(OpponentType).unwrap()].maxenergy;
+
+            Me.ty = AllEnemys[enemy_index].ty;
+
+            RealScore += droid_map[usize::try_from(OpponentType).unwrap()].score as f32;
+
+            DeathCount += (OpponentType * OpponentType) as f32; // quadratic "importance", max=529
+
+            AllEnemys[enemy_index].status = Status::Out as c_int; // removed droid silently (no blast!)
+
+            if LeaderColor != YourColor {
+                /* only won because of InvincibleMode */
+                message = cstr!("You cheat")
+            } else {
+                /* won the proper way */
+                message = cstr!("Complete")
+            };
+
+            finish_takeover = true;
+        } else if LeaderColor == OpponentColor {
+            /* LeaderColor == YourColor */
+            // you lost, but enemy is killed too --> blast it!
+            AllEnemys[enemy_index].energy = -1.0; /* to be sure */
+
+            Takeover_Game_Lost_Sound();
+            if Me.ty != Droid::Droid001 as c_int {
+                message = cstr!("Rejected");
+                Me.ty = Droid::Droid001 as c_int;
+                Me.energy = REJECT_ENERGY as f32;
+            } else {
+                message = cstr!("Burnt Out");
+                Me.energy = 0.;
+            }
+            finish_takeover = true;
+        } else {
+            /* LeadColor == OpponentColor */
+
+            Takeover_Game_Deadlock_Sound();
+            message = cstr!("Deadlock");
+        }
+
+        DisplayBanner(message.as_ptr(), null_mut(), 0);
+        ShowPlayground();
+        SDL_Flip(ne_screen);
+
+        wait_for_all_keys_released();
+        let now = SDL_GetTicks();
+        while !FirePressedR() && SDL_GetTicks() - now < SHOW_WAIT {
+            #[cfg(target_os = "android")]
+            SDL_Flip(ne_screen);
+
+            SDL_Delay(1);
+        }
+    }
+
+    // restore User_Rect
+    User_Rect = buf;
+
+    ClearGraphMem();
+
+    (LeaderColor == YourColor).into()
 }
