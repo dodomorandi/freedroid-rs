@@ -249,31 +249,6 @@ EXTERN int num_highscores;  /* total number of entries in our list (fixed) */
 #else
 #define EXTERN extern
 #endif
-EXTERN SDL_Surface *to_blocks;      /* the global surface containing all game-blocks */
-/* the rectangles containing the blocks */
-EXTERN SDL_Rect FillBlocks[NUM_FILL_BLOCKS];
-EXTERN SDL_Rect CapsuleBlocks[NUM_CAPS_BLOCKS];
-EXTERN SDL_Rect ToGameBlocks[NUM_TO_BLOCKS];
-EXTERN SDL_Rect ToGroundBlocks[NUM_GROUND_BLOCKS];
-EXTERN SDL_Rect ToColumnBlock;
-EXTERN SDL_Rect ToLeaderBlock;
-
-
-EXTERN point LeftCapsulesStart[TO_COLORS];
-EXTERN point CurCapsuleStart[TO_COLORS];
-EXTERN point PlaygroundStart[TO_COLORS];
-EXTERN point DruidStart[TO_COLORS];
-EXTERN point TO_LeftGroundStart;
-EXTERN point TO_RightGroundStart;
-EXTERN point TO_ColumnStart;
-EXTERN point TO_LeaderBlockStart;
-
-EXTERN SDL_Rect TO_LeaderLed;
-EXTERN SDL_Rect TO_FillBlock;
-EXTERN SDL_Rect TO_ElementRect;
-EXTERN SDL_Rect TO_CapsuleRect;
-EXTERN SDL_Rect TO_GroundRect;
-EXTERN SDL_Rect TO_ColumnRect;
 
 #undef EXTERN
 #ifdef _menu_c

@@ -11,16 +11,12 @@ use crate::{
         SHIP_ON_PIC_FILE_C, TAKEOVER_BG_PIC_FILE_C,
     },
     global::{
-        to_blocks, AllBullets, Banner_Rect, Blastmap, Block_Rect, Bulletmap, CapsuleBlocks,
-        Classic_User_Rect, ConsMenuItem_Rect, Cons_Droid_Rect, Cons_Header_Rect, Cons_Menu_Rect,
-        Cons_Menu_Rects, Cons_Text_Rect, CurCapsuleStart, Digit_Rect, DruidStart, Druidmap,
-        FillBlocks, FirstDigit_Rect, Font0_BFont, Font1_BFont, Font2_BFont, Full_User_Rect,
-        GameConfig, Highscore_BFont, LeftCapsulesStart, LeftInfo_Rect, Me, Menu_BFont, Menu_Rect,
-        OptionsMenu_Rect, OrigBlock_Rect, OrigDigit_Rect, Para_BFont, PlaygroundStart,
-        Portrait_Rect, RightInfo_Rect, Screen_Rect, SecondDigit_Rect, TO_CapsuleRect,
-        TO_ColumnRect, TO_ColumnStart, TO_ElementRect, TO_FillBlock, TO_GroundRect,
-        TO_LeaderBlockStart, TO_LeaderLed, TO_LeftGroundStart, TO_RightGroundStart,
-        ThirdDigit_Rect, ToColumnBlock, ToGameBlocks, ToGroundBlocks, ToLeaderBlock, User_Rect,
+        AllBullets, Banner_Rect, Blastmap, Block_Rect, Bulletmap, Classic_User_Rect,
+        ConsMenuItem_Rect, Cons_Droid_Rect, Cons_Header_Rect, Cons_Menu_Rect, Cons_Menu_Rects,
+        Cons_Text_Rect, Digit_Rect, Druidmap, FirstDigit_Rect, Font0_BFont, Font1_BFont,
+        Font2_BFont, Full_User_Rect, GameConfig, Highscore_BFont, LeftInfo_Rect, Me, Menu_BFont,
+        Menu_Rect, OptionsMenu_Rect, OrigBlock_Rect, OrigDigit_Rect, Para_BFont, Portrait_Rect,
+        RightInfo_Rect, Screen_Rect, SecondDigit_Rect, ThirdDigit_Rect, User_Rect,
     },
     input::{any_key_just_pressed, cmd_is_active, wait_for_all_keys_released, SDL_Delay},
     misc::{
@@ -29,7 +25,13 @@ use crate::{
     },
     sound::Play_Sound,
     structs::ThemeList,
-    takeover::{set_takeover_rects, TO_BLOCK_FILE_C},
+    takeover::{
+        set_takeover_rects, CAPSULE_BLOCKS, CAPSULE_RECT, COLUMN_BLOCK, COLUMN_RECT, COLUMN_START,
+        CUR_CAPSULE_STARTS, DROID_STARTS, ELEMENT_RECT, FILL_BLOCK, FILL_BLOCKS, GROUND_RECT,
+        LEADER_BLOCK, LEADER_BLOCK_START, LEADER_LED, LEFT_CAPSULE_STARTS, LEFT_GROUND_START,
+        PLAYGROUND_STARTS, RIGHT_GROUND_START, TO_BLOCKS, TO_BLOCK_FILE_C, TO_GAME_BLOCKS,
+        TO_GROUND_BLOCKS,
+    },
     text::printf_SDL,
     view::DisplayBanner,
 };
@@ -378,7 +380,7 @@ pub unsafe extern "C" fn FreeGraphics() {
     SDL_FreeSurface(ship_on_pic);
     SDL_FreeSurface(progress_meter_pic);
     SDL_FreeSurface(progress_filler_pic);
-    SDL_FreeSurface(to_blocks);
+    SDL_FreeSurface(TO_BLOCKS);
 
     // free fonts
     [
@@ -583,48 +585,48 @@ pub unsafe extern "C" fn ScaleStatRects(scale: c_float) {
     scale!(LeftInfo_Rect);
     scale!(RightInfo_Rect);
 
-    for block in &mut FillBlocks {
+    for block in &mut FILL_BLOCKS {
         scale_rect(block, scale);
     }
 
-    for block in &mut CapsuleBlocks {
+    for block in &mut CAPSULE_BLOCKS {
         scale_rect(block, scale);
     }
 
-    for block in &mut ToGameBlocks {
+    for block in &mut *TO_GAME_BLOCKS.lock().unwrap() {
         scale_rect(block, scale);
     }
 
-    for block in &mut ToGroundBlocks {
+    for block in &mut *TO_GROUND_BLOCKS.lock().unwrap() {
         scale_rect(block, scale);
     }
 
-    scale!(ToColumnBlock);
-    scale!(ToLeaderBlock);
+    scale!(COLUMN_BLOCK);
+    scale!(LEADER_BLOCK);
 
-    for point in &mut LeftCapsulesStart {
+    for point in &mut LEFT_CAPSULE_STARTS {
         scale_point(point, scale);
     }
-    for point in &mut CurCapsuleStart {
+    for point in &mut CUR_CAPSULE_STARTS {
         scale_point(point, scale);
     }
-    for point in &mut PlaygroundStart {
+    for point in &mut PLAYGROUND_STARTS {
         scale_point(point, scale);
     }
-    for point in &mut DruidStart {
+    for point in &mut DROID_STARTS {
         scale_point(point, scale);
     }
-    scale_point!(TO_LeftGroundStart);
-    scale_point!(TO_ColumnStart);
-    scale_point!(TO_RightGroundStart);
-    scale_point!(TO_LeaderBlockStart);
+    scale_point!(LEFT_GROUND_START);
+    scale_point!(COLUMN_START);
+    scale_point!(RIGHT_GROUND_START);
+    scale_point!(LEADER_BLOCK_START);
 
-    scale!(TO_FillBlock);
-    scale!(TO_ElementRect);
-    scale!(TO_CapsuleRect);
-    scale!(TO_LeaderLed);
-    scale!(TO_GroundRect);
-    scale!(TO_ColumnRect);
+    scale!(FILL_BLOCK);
+    scale!(ELEMENT_RECT);
+    scale!(CAPSULE_RECT);
+    scale!(LEADER_LED);
+    scale!(GROUND_RECT);
+    scale!(COLUMN_RECT);
 }
 
 #[no_mangle]
@@ -722,7 +724,7 @@ pub unsafe extern "C" fn ScaleGraphics(scale: c_float) {
     }
 
     //---------- rescale Takeover pics
-    ScalePic(&mut to_blocks, scale);
+    ScalePic(&mut TO_BLOCKS, scale);
     //  printf_SDL (ne_screen, -1, -1, ".");
 
     ScalePic(&mut ship_on_pic, scale);
@@ -1407,14 +1409,14 @@ pub unsafe extern "C" fn InitPictures() -> c_int {
     update_progress(50);
 
     //---------- get Takeover pics
-    free_if_unused(to_blocks); /* this happens when we do theme-switching */
+    free_if_unused(TO_BLOCKS); /* this happens when we do theme-switching */
     let fpath = find_file(
         TO_BLOCK_FILE_C.as_ptr() as *mut c_char,
         GRAPHICS_DIR_C.as_ptr() as *mut c_char,
         Themed::UseTheme as c_int,
         Criticality::Critical as c_int,
     );
-    to_blocks = Load_Block(fpath, 0, 0, null_mut(), 0);
+    TO_BLOCKS = Load_Block(fpath, 0, 0, null_mut(), 0);
 
     update_progress(60);
 

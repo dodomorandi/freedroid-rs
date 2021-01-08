@@ -6,14 +6,12 @@ use crate::{
     },
     highscore::HighscoreEntry,
     structs::{
-        Blast, BlastSpec, Bullet, BulletSpec, Config, DruidSpec, Enemy, Influence, Level, Point,
-        Ship,
+        Blast, BlastSpec, Bullet, BulletSpec, Config, DruidSpec, Enemy, Influence, Level, Ship,
     },
-    takeover::{NUM_CAPS_BLOCKS, NUM_FILL_BLOCKS, NUM_GROUND_BLOCKS, NUM_TO_BLOCKS, TO_COLORS},
 };
 
 use cstr::cstr;
-use sdl::video::ll::{SDL_Rect, SDL_Surface};
+use sdl::video::ll::SDL_Rect;
 use std::{ffi::CStr, ptr::null_mut};
 
 extern "C" {
@@ -88,28 +86,6 @@ extern "C" {
     pub static mut liftrow_rect: [SDL_Rect; MAX_LIFT_ROWS]; /* the lift-row rect's in side-view*/
     pub static mut Highscores: *mut *mut HighscoreEntry;
     pub static mut num_highscores: i32; /* total number of entries in our list (fixed) */
-    pub static mut to_blocks: *mut SDL_Surface; /* the global surface containing all game-blocks */
-    /* the rectangles containing the blocks */
-    pub static mut FillBlocks: [SDL_Rect; NUM_FILL_BLOCKS];
-    pub static mut CapsuleBlocks: [SDL_Rect; NUM_CAPS_BLOCKS];
-    pub static mut ToGameBlocks: [SDL_Rect; NUM_TO_BLOCKS];
-    pub static mut ToGroundBlocks: [SDL_Rect; NUM_GROUND_BLOCKS];
-    pub static mut ToColumnBlock: SDL_Rect;
-    pub static mut ToLeaderBlock: SDL_Rect;
-    pub static mut LeftCapsulesStart: [Point; TO_COLORS];
-    pub static mut CurCapsuleStart: [Point; TO_COLORS];
-    pub static mut PlaygroundStart: [Point; TO_COLORS];
-    pub static mut DruidStart: [Point; TO_COLORS];
-    pub static mut TO_LeftGroundStart: Point;
-    pub static mut TO_RightGroundStart: Point;
-    pub static mut TO_ColumnStart: Point;
-    pub static mut TO_LeaderBlockStart: Point;
-    pub static mut TO_LeaderLed: SDL_Rect;
-    pub static mut TO_FillBlock: SDL_Rect;
-    pub static mut TO_ElementRect: SDL_Rect;
-    pub static mut TO_CapsuleRect: SDL_Rect;
-    pub static mut TO_GroundRect: SDL_Rect;
-    pub static mut TO_ColumnRect: SDL_Rect;
     pub static mut quit_LevelEditor: bool;
     pub static mut quit_Menu: bool;
 }
