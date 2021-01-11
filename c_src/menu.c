@@ -731,38 +731,38 @@ showLevelEditorMenu (void)
 
 @Ret: none
 * $Function----------------------------------------------------------*/
-void
-InitiateMenu (bool with_droids)
-{
-  //--------------------
-  // Here comes the standard initializer for all the menus and submenus
-  // of the big escape menu.  This prepares the screen, so that we can
-  // write on it further down.
-  //
-  Activate_Conservative_Frame_Computation();
-
-  SDL_SetClipRect( ne_screen, NULL );
-  Me.status=MENU;
-  ClearGraphMem();
-  DisplayBanner (NULL, NULL,  BANNER_NO_SDL_UPDATE | BANNER_FORCE_UPDATE );
-  if (with_droids)
-    Assemble_Combat_Picture (0);
-  else
-    Assemble_Combat_Picture (ONLY_SHOW_MAP);
-
-  SDL_SetClipRect( ne_screen, NULL );
-  MakeGridOnScreen( NULL );
-
-  if (Menu_Background) SDL_FreeSurface (Menu_Background);
-  Menu_Background = SDL_DisplayFormat (ne_screen);  // keep a global copy of background
-
-  SDL_ShowCursor (SDL_DISABLE);  // deactivate mouse-cursor in menus
-  SetCurrentFont ( Menu_BFont );
-  fheight = FontHeight (GetCurrentFont()) + 2;
-
-  return;
-
-} // void InitiateMenu (bool with_droids)
+// void
+// InitiateMenu (bool with_droids)
+// {
+//   //--------------------
+//   // Here comes the standard initializer for all the menus and submenus
+//   // of the big escape menu.  This prepares the screen, so that we can
+//   // write on it further down.
+//   //
+//   Activate_Conservative_Frame_Computation();
+// 
+//   SDL_SetClipRect( ne_screen, NULL );
+//   Me.status=MENU;
+//   ClearGraphMem();
+//   DisplayBanner (NULL, NULL,  BANNER_NO_SDL_UPDATE | BANNER_FORCE_UPDATE );
+//   if (with_droids)
+//     Assemble_Combat_Picture (0);
+//   else
+//     Assemble_Combat_Picture (ONLY_SHOW_MAP);
+// 
+//   SDL_SetClipRect( ne_screen, NULL );
+//   MakeGridOnScreen( NULL );
+// 
+//   if (Menu_Background) SDL_FreeSurface (Menu_Background);
+//   Menu_Background = SDL_DisplayFormat (ne_screen);  // keep a global copy of background
+// 
+//   SDL_ShowCursor (SDL_DISABLE);  // deactivate mouse-cursor in menus
+//   SetCurrentFont ( Menu_BFont );
+//   fheight = FontHeight (GetCurrentFont()) + 2;
+// 
+//   return;
+// 
+// } // void InitiateMenu (bool with_droids)
 
 
 // ----------------------------------------------------------------------

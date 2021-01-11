@@ -11,16 +11,20 @@ use crate::{
 };
 
 use crate::{
-    b_font::{PutString, TextWidth},
-    defs::{self, MenuAction},
-    global::User_Rect,
-    graphics::ne_screen,
-    misc::Terminate,
+    b_font::{FontHeight, GetCurrentFont, PutString, SetCurrentFont, TextWidth},
+    defs::{self, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction, Status},
+    global::{Me, Menu_BFont, User_Rect},
+    graphics::{ne_screen, ClearGraphMem, MakeGridOnScreen},
+    misc::{Activate_Conservative_Frame_Computation, Terminate},
     sound::MenuItemSelectedSound,
+    view::{Assemble_Combat_Picture, DisplayBanner},
 };
 
 use cstr::cstr;
-use sdl::video::ll::{SDL_Flip, SDL_FreeSurface, SDL_Surface};
+use sdl::{
+    mouse::ll::{SDL_ShowCursor, SDL_DISABLE},
+    video::ll::{SDL_DisplayFormat, SDL_Flip, SDL_FreeSurface, SDL_SetClipRect, SDL_Surface},
+};
 use std::{
     ffi::CStr,
     os::raw::{c_char, c_int},
@@ -30,7 +34,6 @@ use std::{
 extern "C" {
     pub fn Cheatmenu();
     pub fn getMenuAction(wait_repeat_ticks: u32) -> MenuAction;
-    pub fn InitiateMenu(with_droids: bool);
     pub fn ShowMenu(menu_entries: *const MenuEntry);
     pub static mut fheight: c_int;
     pub static mut Menu_Background: *mut SDL_Surface;
@@ -110,4 +113,40 @@ pub unsafe extern "C" fn showMainMenu() {
 #[no_mangle]
 pub unsafe extern "C" fn FreeMenuData() {
     SDL_FreeSurface(Menu_Background);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn InitiateMenu(with_droids: bool) {
+    // Here comes the standard initializer for all the menus and submenus
+    // of the big escape menu.  This prepares the screen, so that we can
+    // write on it further down.
+    Activate_Conservative_Frame_Computation();
+
+    SDL_SetClipRect(ne_screen, null_mut());
+    Me.status = Status::Menu as i32;
+    ClearGraphMem();
+    DisplayBanner(
+        null_mut(),
+        null_mut(),
+        (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
+            .bits()
+            .into(),
+    );
+    if with_droids {
+        Assemble_Combat_Picture(0);
+    } else {
+        Assemble_Combat_Picture(AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits().into());
+    }
+
+    SDL_SetClipRect(ne_screen, null_mut());
+    MakeGridOnScreen(None);
+
+    if !Menu_Background.is_null() {
+        SDL_FreeSurface(Menu_Background);
+    }
+    Menu_Background = SDL_DisplayFormat(ne_screen); // keep a global copy of background
+
+    SDL_ShowCursor(SDL_DISABLE); // deactivate mouse-cursor in menus
+    SetCurrentFont(Menu_BFont);
+    fheight = FontHeight(&*GetCurrentFont()) + 2;
 }
