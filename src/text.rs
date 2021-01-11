@@ -12,6 +12,12 @@ use crate::{
     misc::{MyRandom, Terminate},
 };
 
+#[cfg(feature = "arcade-input")]
+use crate::{
+    defs::{DownPressedR, LeftPressedR, RightPressedR, UpPressedR},
+    input::{cmd_is_activeR, KeyIsPressedR},
+};
+
 use cstr::cstr;
 use log::{error, info, trace};
 #[cfg(not(feature = "arcade-input"))]
