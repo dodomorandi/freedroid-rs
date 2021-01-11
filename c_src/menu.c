@@ -1498,10 +1498,10 @@ Cheatmenu (void)
   return;
 } /* Cheatmenu() */
 
-void
-FreeMenuData ( void )
-{
-  SDL_FreeSurface (Menu_Background);
-  return;
-}
+// void
+// FreeMenuData ( void )
+// {
+//   SDL_FreeSurface (Menu_Background);
+//   return;
+// }
 #undef _menu_c

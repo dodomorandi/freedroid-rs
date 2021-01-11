@@ -20,7 +20,7 @@ use crate::{
 };
 
 use cstr::cstr;
-use sdl::video::ll::SDL_Flip;
+use sdl::video::ll::{SDL_Flip, SDL_FreeSurface, SDL_Surface};
 use std::{
     ffi::CStr,
     os::raw::{c_char, c_int},
@@ -29,11 +29,11 @@ use std::{
 
 extern "C" {
     pub fn Cheatmenu();
-    pub fn FreeMenuData();
     pub fn getMenuAction(wait_repeat_ticks: u32) -> MenuAction;
     pub fn InitiateMenu(with_droids: bool);
     pub fn ShowMenu(menu_entries: *const MenuEntry);
     pub static mut fheight: c_int;
+    pub static mut Menu_Background: *mut SDL_Surface;
 
     #[cfg(target = "android")]
     pub static MainMenu: [MenuEntry; 8];
@@ -105,4 +105,9 @@ pub unsafe extern "C" fn handle_QuitGame(action: MenuAction) -> *const c_char {
 #[no_mangle]
 pub unsafe extern "C" fn showMainMenu() {
     ShowMenu(MainMenu.as_ptr());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn FreeMenuData() {
+    SDL_FreeSurface(Menu_Background);
 }
