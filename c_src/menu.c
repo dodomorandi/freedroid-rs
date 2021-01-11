@@ -669,42 +669,42 @@ const char *handle_ConfigureKeys ( MenuAction_t action )
   }
   return NULL;
 }
-const char *handle_QuitGame ( MenuAction_t action )
-{
-  if ( action != ACTION_CLICK ) {
-    return NULL;
-  }
-
-  MenuItemSelectedSound();
-  InitiateMenu (FALSE);
-
-#ifdef GCW0
-  const char *quit_string = "Press A to quit";
-#else
-  const char *quit_string = "Hit 'y' or press Fire to quit";
-#endif
-  int text_width = TextWidth ( quit_string );
-  int text_x = User_Rect.x + (User_Rect.w - text_width)/2;
-  int text_y = User_Rect.y + (User_Rect.h - fheight)/2;
-  PutString (ne_screen, text_x, text_y, quit_string);
-  SDL_Flip (ne_screen);
-
-#ifdef GCW0
-  while ( (!Gcw0AnyButtonPressed()) ) SDL_Delay(1);
-  if ( (Gcw0APressed()) ) {
-    while ( (!Gcw0AnyButtonPressedR()) ) SDL_Delay(1); // In case FirePressed && !Gcw0APressed() -> would cause a loop otherwise in the menu...
-    Terminate (OK);
-  }
-#else
-  wait_for_all_keys_released();
-  int key = wait_for_key_pressed();
-  if ( (key == 'y') || (key == key_cmds[CMD_FIRE][0]) || (key == key_cmds[CMD_FIRE][1]) || (key == key_cmds[CMD_FIRE][2]) ) {
-    Terminate (OK);
-  }
-#endif
-
-  return NULL;
-} // handle_QuitGame()
+// const char *handle_QuitGame ( MenuAction_t action )
+// {
+//   if ( action != ACTION_CLICK ) {
+//     return NULL;
+//   }
+// 
+//   MenuItemSelectedSound();
+//   InitiateMenu (FALSE);
+// 
+// #ifdef GCW0
+//   const char *quit_string = "Press A to quit";
+// #else
+//   const char *quit_string = "Hit 'y' or press Fire to quit";
+// #endif
+//   int text_width = TextWidth ( quit_string );
+//   int text_x = User_Rect.x + (User_Rect.w - text_width)/2;
+//   int text_y = User_Rect.y + (User_Rect.h - fheight)/2;
+//   PutString (ne_screen, text_x, text_y, quit_string);
+//   SDL_Flip (ne_screen);
+// 
+// #ifdef GCW0
+//   while ( (!Gcw0AnyButtonPressed()) ) SDL_Delay(1);
+//   if ( (Gcw0APressed()) ) {
+//     while ( (!Gcw0AnyButtonPressedR()) ) SDL_Delay(1); // In case FirePressed && !Gcw0APressed() -> would cause a loop otherwise in the menu...
+//     Terminate (OK);
+//   }
+// #else
+//   wait_for_all_keys_released();
+//   int key = wait_for_key_pressed();
+//   if ( (key == 'y') || (key == key_cmds[CMD_FIRE][0]) || (key == key_cmds[CMD_FIRE][1]) || (key == key_cmds[CMD_FIRE][2]) ) {
+//     Terminate (OK);
+//   }
+// #endif
+// 
+//   return NULL;
+// } // handle_QuitGame()
 
 // ========== Function definitions ==========
 

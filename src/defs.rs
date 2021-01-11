@@ -9,7 +9,10 @@ use crate::{
 use bitflags::bitflags;
 use cstr::cstr;
 #[cfg(feature = "gcw0")]
-use sdl::keysym::{SDLK_BACKSPACE, SDLK_TAB};
+use sdl::keysym::{
+    SDLK_BACKSPACE, SDLK_ESCAPE, SDLK_LALT, SDLK_LCTRL, SDLK_LSHIFT, SDLK_RETURN, SDLK_SPACE,
+    SDLK_TAB,
+};
 use sdl::{
     event::Mod,
     sdl::Rect,
@@ -148,11 +151,29 @@ pub unsafe fn CtrlPressed() -> bool {
 // #define EscapePressedR() KeyIsPressedR (SDLK_ESCAPE)
 // #define SpacePressedR() KeyIsPressedR (SDLK_SPACE)
 
-// #ifdef GCW0 // GCW0 keys are currently mapped to SDL key by the firmware...
-// #define Gcw0APressed() (KeyIsPressed(SDLK_LCTRL))
-// #define Gcw0BPressed() (KeyIsPressed(SDLK_LALT))
-// #define Gcw0XPressed() (KeyIsPressed(SDLK_LSHIFT))
-// #define Gcw0YPressed() (KeyIsPressed(SDLK_SPACE))
+#[cfg(feature = "gcw0")]
+#[inline]
+pub unsafe fn gcw0_a_pressed() -> bool {
+    KeyIsPressed(SDLK_LCTRL as c_int)
+}
+
+#[cfg(feature = "gcw0")]
+#[inline]
+pub unsafe fn gcw0_b_pressed() -> bool {
+    KeyIsPressed(SDLK_LALT as c_int)
+}
+
+#[cfg(feature = "gcw0")]
+#[inline]
+pub unsafe fn gcw0_x_pressed() -> bool {
+    KeyIsPressed(SDLK_LSHIFT as c_int)
+}
+
+#[cfg(feature = "gcw0")]
+#[inline]
+pub unsafe fn gcw0_y_pressed() -> bool {
+    KeyIsPressed(SDLK_SPACE as c_int)
+}
 
 #[cfg(feature = "gcw0")]
 #[inline]
@@ -166,17 +187,54 @@ pub unsafe fn gcw0_ls_pressed() -> bool {
     KeyIsPressed(SDLK_TAB as c_int)
 }
 
-// #define Gcw0StartPressed() (KeyIsPressed(SDLK_RETURN))
-// #define Gcw0SelectPressed() (KeyIsPressed(SDLK_ESCAPE))
+#[cfg(feature = "gcw0")]
+#[inline]
+pub unsafe fn gcw0_start_pressed() -> bool {
+    KeyIsPressed(SDLK_RETURN as c_int)
+}
 
-// #define Gcw0AnyButtonPressed() (Gcw0APressed() || Gcw0BPressed()\
-//         || Gcw0XPressed() || Gcw0YPressed() || Gcw0LSPressed() || Gcw0RSPressed()\
-// 	|| Gcw0StartPressed() || Gcw0SelectPressed())
+#[cfg(feature = "gcw0")]
+#[inline]
+pub unsafe fn gcw0_select_pressed() -> bool {
+    KeyIsPressed(SDLK_ESCAPE as c_int)
+}
 
-// #define Gcw0APressedR() (KeyIsPressedR(SDLK_LCTRL))
-// #define Gcw0BPressedR() (KeyIsPressedR(SDLK_LALT))
-// #define Gcw0XPressedR() (KeyIsPressedR(SDLK_LSHIFT))
-// #define Gcw0YPressedR() (KeyIsPressedR(SDLK_SPACE))
+#[cfg(feature = "gcw0")]
+#[inline]
+pub unsafe fn gcw0_any_button_pressed() -> bool {
+    gcw0_a_pressed()
+        || gcw0_b_pressed()
+        || gcw0_x_pressed()
+        || gcw0_y_pressed()
+        || gcw0_ls_pressed()
+        || gcw0_rs_pressed()
+        || gcw0_start_pressed()
+        || gcw0_select_pressed()
+}
+
+#[cfg(feature = "gcw0")]
+#[inline]
+pub unsafe fn gcw0_a_pressed_r() -> bool {
+    KeyIsPressedR(SDLK_LCTRL as c_int)
+}
+
+#[cfg(feature = "gcw0")]
+#[inline]
+pub unsafe fn gcw0_b_pressed_r() -> bool {
+    KeyIsPressedR(SDLK_LALT as c_int)
+}
+
+#[cfg(feature = "gcw0")]
+#[inline]
+pub unsafe fn gcw0_x_pressed_r() -> bool {
+    KeyIsPressedR(SDLK_LSHIFT as c_int)
+}
+
+#[cfg(feature = "gcw0")]
+#[inline]
+pub unsafe fn gcw0_y_pressed_r() -> bool {
+    KeyIsPressedR(SDLK_SPACE as c_int)
+}
 
 #[cfg(feature = "gcw0")]
 #[inline]
@@ -190,13 +248,30 @@ pub unsafe fn gcw0_ls_pressed_r() -> bool {
     KeyIsPressed(SDLK_TAB as c_int)
 }
 
-// #define Gcw0StartPressedR() (KeyIsPressedR(SDLK_RETURN))
-// #define Gcw0SelectPressedR() (KeyIsPressedR(SDLK_ESCAPE))
+#[cfg(feature = "gcw0")]
+#[inline]
+pub unsafe fn gcw0_start_pressed_r() -> bool {
+    KeyIsPressed(SDLK_RETURN as c_int)
+}
 
-// #define Gcw0AnyButtonPressedR() (Gcw0APressedR() || Gcw0BPressedR()\
-//         || Gcw0XPressedR() || Gcw0YPressedR() || Gcw0LSPressedR()\
-// 	|| Gcw0RSPressedR() || Gcw0StartPressedR() || Gcw0SelectPressedR())
-// #endif // GCW0 keys
+#[cfg(feature = "gcw0")]
+#[inline]
+pub unsafe fn gcw0_select_pressed_r() -> bool {
+    KeyIsPressed(SDLK_ESCAPE as c_int)
+}
+
+#[cfg(feature = "gcw0")]
+#[inline]
+pub unsafe fn gcw0_any_button_pressed_r() -> bool {
+    gcw0_a_pressed_r()
+        || gcw0_b_pressed_r()
+        || gcw0_x_pressed_r()
+        || gcw0_y_pressed_r()
+        || gcw0_ls_pressed_r()
+        || gcw0_rs_pressed_r()
+        || gcw0_start_pressed_r()
+        || gcw0_select_pressed_r()
+}
 
 #[inline]
 pub unsafe fn UpPressed() -> bool {
