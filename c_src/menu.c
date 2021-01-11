@@ -709,10 +709,10 @@ const char *handle_ConfigureKeys ( MenuAction_t action )
 // ========== Function definitions ==========
 
 // simple wrapper to ShowMenu() to provide the external entry point into the main menu
-void showMainMenu (void)
-{
-  ShowMenu ( MainMenu );
-} // showMainMenu()
+// void showMainMenu (void)
+// {
+//   ShowMenu ( MainMenu );
+// } // showMainMenu()
 
 // simple wrapper to ShowMenu() to provide the external entry point into the Level Editor menu
 void

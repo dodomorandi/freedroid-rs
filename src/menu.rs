@@ -28,12 +28,25 @@ use std::{
 };
 
 extern "C" {
-    pub fn showMainMenu();
     pub fn Cheatmenu();
     pub fn FreeMenuData();
     pub fn getMenuAction(wait_repeat_ticks: u32) -> MenuAction;
     pub fn InitiateMenu(with_droids: bool);
+    pub fn ShowMenu(menu_entries: *const MenuEntry);
     pub static mut fheight: c_int;
+
+    #[cfg(target = "android")]
+    pub static MainMenu: [MenuEntry; 8];
+
+    #[cfg(not(target = "android"))]
+    pub static MainMenu: [MenuEntry; 10];
+}
+
+#[repr(C)]
+pub struct MenuEntry {
+    name: *const c_char,
+    handler: unsafe extern "C" fn() -> *const c_char,
+    submenu: *const MenuEntry,
 }
 
 #[no_mangle]
@@ -86,4 +99,10 @@ pub unsafe extern "C" fn handle_QuitGame(action: MenuAction) -> *const c_char {
     }
 
     null_mut()
+}
+
+/// simple wrapper to ShowMenu() to provide the external entry point into the main menu
+#[no_mangle]
+pub unsafe extern "C" fn showMainMenu() {
+    ShowMenu(MainMenu.as_ptr());
 }
