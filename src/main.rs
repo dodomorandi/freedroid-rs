@@ -21,6 +21,7 @@ mod sound;
 mod structs;
 mod takeover;
 mod text;
+mod vars;
 mod view;
 
 use sdl::video::ll::SDL_Surface;

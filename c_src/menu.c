@@ -1233,270 +1233,270 @@ Display_Key_Config (int selx, int sely)
 // ----------------------------------------------------------------------
 // Cheat menu
 // ----------------------------------------------------------------------
-void
-Cheatmenu (void)
-{
-  char *input;		/* string input from user */
-  int Weiter;
-  int LNum, X, Y, num;
-  int i, l;
-  int x0, y0;
-  Waypoint WpList;      /* pointer on current waypoint-list  */
-  BFont_Info *font;
-  char *status;
-
-  // Prevent distortion of framerate by the delay coming from
-  // the time spend in the menu.
-  Activate_Conservative_Frame_Computation();
-
-  font =  Font0_BFont;
-
-
-  SetCurrentFont (font);  /* not the ideal one, but there's currently */
-				/* no other it seems.. */
-  x0 = 50;
-  y0 = 20;
-
-  Weiter = FALSE;
-  while (!Weiter)
-    {
-      ClearGraphMem ();
-      printf_SDL (ne_screen, x0, y0, "Current position: Level=%d, X=%d, Y=%d\n",
-		   CurLevel->levelnum, (int)Me.pos.x, (int)Me.pos.y);
-      printf_SDL (ne_screen, -1, -1, " a. Armageddon (alle Robots sprengen)\n");
-      printf_SDL (ne_screen, -1, -1, " l. robot list of current level\n");
-      printf_SDL (ne_screen, -1, -1, " g. complete robot list\n");
-      printf_SDL (ne_screen, -1, -1, " d. destroy robots on current level\n");
-      printf_SDL (ne_screen, -1, -1, " t. Teleportation\n");
-      printf_SDL (ne_screen, -1, -1, " r. change to new robot type\n");
-      printf_SDL (ne_screen, -1, -1, " i. Invinciblemode: %s",
-		  InvincibleMode ? "ON\n" : "OFF\n");
-      printf_SDL (ne_screen, -1, -1, " e. set energy\n");
-      printf_SDL (ne_screen, -1, -1, " n. No hidden droids: %s",
-		  show_all_droids ? "ON\n" : "OFF\n" );
-      printf_SDL (ne_screen, -1, -1, " m. Map of Deck xy\n");
-      printf_SDL (ne_screen, -1, -1, " s. Sound: %s",
-		  sound_on ? "ON\n" : "OFF\n");
-      printf_SDL (ne_screen, -1, -1, " w. Print current waypoints\n");
-      printf_SDL (ne_screen, -1, -1, " z. change Zoom factor\n");
-      printf_SDL (ne_screen, -1, -1, " f. Freeze on this positon: %s",
-		  stop_influencer ? "ON\n" : "OFF\n");
-      printf_SDL (ne_screen, -1, -1, " q. RESUME game\n");
-
-      switch (getchar_raw ())
-	{
-	case 'f':
-	  stop_influencer = !stop_influencer;
-	  break;
-
-	case 'z':
-	  ClearGraphMem();
-	  printf_SDL (ne_screen, x0, y0, "Current Zoom factor: %f\n",
-		      CurrentCombatScaleFactor);
-	  printf_SDL (ne_screen, -1, -1, "New zoom factor: ");
-	  input = GetString (40, 2);
-	  sscanf (input, "%f", &CurrentCombatScaleFactor);
-	  free (input);
-	  SetCombatScaleTo (CurrentCombatScaleFactor);
-	  break;
-
-	case 'a': /* armageddon */
-	  Weiter = 1;
-	  Armageddon ();
-	  break;
-
-	case 'l': /* robot list of this deck */
-	  l = 0; /* line counter for enemy output */
-	  for (i = 0; i < NumEnemys; i++)
-	    {
-	      if (AllEnemys[i].levelnum == CurLevel->levelnum)
-		{
-		  if (l && !(l%20))
-		    {
-		      printf_SDL (ne_screen, -1, -1, " --- MORE --- \n");
-		      if( getchar_raw () == 'q')
-			break;
-		    }
-		  if (!(l % 20) )
-		    {
-		      ClearGraphMem ();
-		      printf_SDL (ne_screen, x0, y0,
-				   " NR.   ID  X    Y   ENERGY   Status\n");
-		      printf_SDL (ne_screen, -1, -1,
-				  "---------------------------------------------\n");
-		    }
-
-		  l ++;
-		  if (AllEnemys[i].status == OUT)
-		    status = "OUT";
-		  else if (AllEnemys[i].status == TERMINATED)
-		    status = "DEAD";
-		  else
-		    status = "ACTIVE";
-
-		  printf_SDL (ne_screen, -1, -1,
-			      "%d.   %s   %d   %d   %d    %s.\n", i,
-			      Druidmap[AllEnemys[i].type].druidname,
-			      (int)AllEnemys[i].pos.x,
-			      (int)AllEnemys[i].pos.y,
-			      (int)AllEnemys[i].energy,
-			      status);
-		} /* if (enemy on current level)  */
-	    } /* for (i<NumEnemys) */
-
-	  printf_SDL (ne_screen, -1, -1," --- END --- \n");
-	  getchar_raw ();
-	  break;
-
-	case 'g': /* complete robot list of this ship */
-	  for (i = 0; i < NumEnemys ; i++)
-	    {
-	      if ( AllEnemys[i].type == (-1) ) continue;
-
-	      if (i && !(i%13))
-		{
-		  printf_SDL (ne_screen, -1, -1, " --- MORE --- ('q' to quit)\n");
-		  if (getchar_raw () == 'q')
-		    break;
-		}
-	      if ( !(i % 13) )
-		{
-		  ClearGraphMem ();
-		  printf_SDL (ne_screen, x0, y0, "Nr.  Lev. ID  Energy  Status.\n");
-		  printf_SDL (ne_screen, -1, -1, "------------------------------\n");
-		}
-
-	      printf_SDL (ne_screen, -1, -1, "%d  %d  %s  %d  %s\n",
-			  i, AllEnemys[i].levelnum,
-			  Druidmap[AllEnemys[i].type].druidname,
-			  (int)AllEnemys[i].energy,
-			  InfluenceModeNames[AllEnemys[i].status]);
-	    } /* for (i<NumEnemys) */
-
-	  printf_SDL (ne_screen, -1, -1, " --- END ---\n");
-	  getchar_raw ();
-	  break;
-
-
-	case 'd': /* destroy all robots on this level, haha */
-	  for (i = 0; i < NumEnemys; i++)
-	    {
-	      if (AllEnemys[i].levelnum == CurLevel->levelnum)
-		AllEnemys[i].energy = -100;
-	    }
-	  printf_SDL (ne_screen, -1, -1, "All robots on this deck killed!\n");
-	  getchar_raw ();
-	  break;
-
-
-	case 't': /* Teleportation */
-	  ClearGraphMem ();
-	  printf_SDL (ne_screen, x0, y0, "Enter Level, X, Y: ");
-	  input = GetString (40, 2);
-	  sscanf (input, "%d, %d, %d\n", &LNum, &X, &Y);
-	  free (input);
-	  Teleport (LNum, X, Y);
-	  break;
-
-	case 'r': /* change to new robot type */
-	  ClearGraphMem ();
-	  printf_SDL (ne_screen, x0, y0, "Type number of new robot: ");
-	  input = GetString (40, 2);
-	  for (i = 0; i < Number_Of_Droid_Types ; i++)
-	    if (!strcmp (Druidmap[i].druidname, input))
-	      break;
-
-	  if ( i == Number_Of_Droid_Types )
-	    {
-	      printf_SDL (ne_screen, x0, y0+20,
-			  "Unrecognized robot-type: %s", input);
-	      getchar_raw ();
-	      ClearGraphMem();
-	    }
-	  else
-	    {
-	      Me.type = i;
-	      Me.energy = Druidmap[Me.type].maxenergy;
-	      Me.health = Me.energy;
-	      printf_SDL (ne_screen, x0, y0+20, "You are now a %s. Have fun!\n", input);
-	      getchar_raw ();
-	    }
-	  free (input);
-	  break;
-
-	case 'i': /* togge Invincible mode */
-	  InvincibleMode = !InvincibleMode;
-	  break;
-
-	case 'e': /* complete heal */
-	  ClearGraphMem();
-	  printf_SDL (ne_screen, x0, y0, "Current energy: %f\n", Me.energy);
-	  printf_SDL (ne_screen, -1, -1, "Enter your new energy: ");
-	  input = GetString (40, 2);
-	  sscanf (input, "%d", &num);
-	  free (input);
-	  Me.energy = (float) num;
-	  if (Me.energy > Me.health) Me.health = Me.energy;
-	  break;
-
-	case 'n': /* toggle display of all droids */
-	  show_all_droids = !show_all_droids;
-	  break;
-
-	case 's': /* toggle sound on/off */
-	  sound_on = !sound_on;
-	  break;
-
-	case 'm': /* Show deck map in Concept view */
-	  printf_SDL (ne_screen, -1, -1, "\nLevelnum: ");
-	  input = GetString (40, 2);
-	  sscanf (input, "%d", &LNum);
-	  free (input);
-	  ShowDeckMap (curShip.AllLevels[LNum]);
-	  getchar_raw ();
-	  break;
-
-	case 'w':  /* print waypoint info of current level */
-	  WpList = CurLevel->AllWaypoints;
-	  for (i=0; i<CurLevel->num_waypoints; i++)
-	    {
-	      if (i && !(i%20))
-		{
-		  printf_SDL (ne_screen, -1, -1, " ---- MORE -----\n");
-		  if (getchar_raw () == 'q')
-		    break;
-		}
-	      if ( !(i%20) )
-		{
-		  ClearGraphMem ();
-		  printf_SDL (ne_screen, x0, y0, "Nr.   X   Y      C1  C2  C3  C4\n");
-		  printf_SDL (ne_screen, -1, -1, "------------------------------------\n");
-		}
-	      printf_SDL (ne_screen, -1, -1, "%2d   %2d  %2d      %2d  %2d  %2d  %2d\n",
-			  i, WpList[i].x, WpList[i].y,
-			  WpList[i].connections[0],
-			  WpList[i].connections[1],
-			  WpList[i].connections[2],
-			  WpList[i].connections[3]);
-
-	    } /* for (all waypoints) */
-	  printf_SDL (ne_screen, -1, -1, " --- END ---\n");
-	  getchar_raw ();
-	  break;
-
-	case ' ':
-	case 'q':
-	  Weiter = 1;
-	  break;
-	} /* switch (getchar_raw()) */
-    } /* while (!Weiter) */
-
-  ClearGraphMem ();
-
-  update_input (); /* treat all pending keyboard events */
-
-  return;
-} /* Cheatmenu() */
+// void
+// Cheatmenu (void)
+// {
+//   char *input;		/* string input from user */
+//   int Weiter;
+//   int LNum, X, Y, num;
+//   int i, l;
+//   int x0, y0;
+//   Waypoint WpList;      /* pointer on current waypoint-list  */
+//   BFont_Info *font;
+//   char *status;
+// 
+//   // Prevent distortion of framerate by the delay coming from
+//   // the time spend in the menu.
+//   Activate_Conservative_Frame_Computation();
+// 
+//   font =  Font0_BFont;
+// 
+// 
+//   SetCurrentFont (font);  /* not the ideal one, but there's currently */
+// 				/* no other it seems.. */
+//   x0 = 50;
+//   y0 = 20;
+// 
+//   Weiter = FALSE;
+//   while (!Weiter)
+//     {
+//       ClearGraphMem ();
+//       printf_SDL (ne_screen, x0, y0, "Current position: Level=%d, X=%d, Y=%d\n",
+// 		   CurLevel->levelnum, (int)Me.pos.x, (int)Me.pos.y);
+//       printf_SDL (ne_screen, -1, -1, " a. Armageddon (alle Robots sprengen)\n");
+//       printf_SDL (ne_screen, -1, -1, " l. robot list of current level\n");
+//       printf_SDL (ne_screen, -1, -1, " g. complete robot list\n");
+//       printf_SDL (ne_screen, -1, -1, " d. destroy robots on current level\n");
+//       printf_SDL (ne_screen, -1, -1, " t. Teleportation\n");
+//       printf_SDL (ne_screen, -1, -1, " r. change to new robot type\n");
+//       printf_SDL (ne_screen, -1, -1, " i. Invinciblemode: %s",
+// 		  InvincibleMode ? "ON\n" : "OFF\n");
+//       printf_SDL (ne_screen, -1, -1, " e. set energy\n");
+//       printf_SDL (ne_screen, -1, -1, " n. No hidden droids: %s",
+// 		  show_all_droids ? "ON\n" : "OFF\n" );
+//       printf_SDL (ne_screen, -1, -1, " m. Map of Deck xy\n");
+//       printf_SDL (ne_screen, -1, -1, " s. Sound: %s",
+// 		  sound_on ? "ON\n" : "OFF\n");
+//       printf_SDL (ne_screen, -1, -1, " w. Print current waypoints\n");
+//       printf_SDL (ne_screen, -1, -1, " z. change Zoom factor\n");
+//       printf_SDL (ne_screen, -1, -1, " f. Freeze on this positon: %s",
+// 		  stop_influencer ? "ON\n" : "OFF\n");
+//       printf_SDL (ne_screen, -1, -1, " q. RESUME game\n");
+// 
+//       switch (getchar_raw ())
+// 	{
+// 	case 'f':
+// 	  stop_influencer = !stop_influencer;
+// 	  break;
+// 
+// 	case 'z':
+// 	  ClearGraphMem();
+// 	  printf_SDL (ne_screen, x0, y0, "Current Zoom factor: %f\n",
+// 		      CurrentCombatScaleFactor);
+// 	  printf_SDL (ne_screen, -1, -1, "New zoom factor: ");
+// 	  input = GetString (40, 2);
+// 	  sscanf (input, "%f", &CurrentCombatScaleFactor);
+// 	  free (input);
+// 	  SetCombatScaleTo (CurrentCombatScaleFactor);
+// 	  break;
+// 
+// 	case 'a': /* armageddon */
+// 	  Weiter = 1;
+// 	  Armageddon ();
+// 	  break;
+// 
+// 	case 'l': /* robot list of this deck */
+// 	  l = 0; /* line counter for enemy output */
+// 	  for (i = 0; i < NumEnemys; i++)
+// 	    {
+// 	      if (AllEnemys[i].levelnum == CurLevel->levelnum)
+// 		{
+// 		  if (l && !(l%20))
+// 		    {
+// 		      printf_SDL (ne_screen, -1, -1, " --- MORE --- \n");
+// 		      if( getchar_raw () == 'q')
+// 			break;
+// 		    }
+// 		  if (!(l % 20) )
+// 		    {
+// 		      ClearGraphMem ();
+// 		      printf_SDL (ne_screen, x0, y0,
+// 				   " NR.   ID  X    Y   ENERGY   Status\n");
+// 		      printf_SDL (ne_screen, -1, -1,
+// 				  "---------------------------------------------\n");
+// 		    }
+// 
+// 		  l ++;
+// 		  if (AllEnemys[i].status == OUT)
+// 		    status = "OUT";
+// 		  else if (AllEnemys[i].status == TERMINATED)
+// 		    status = "DEAD";
+// 		  else
+// 		    status = "ACTIVE";
+// 
+// 		  printf_SDL (ne_screen, -1, -1,
+// 			      "%d.   %s   %d   %d   %d    %s.\n", i,
+// 			      Druidmap[AllEnemys[i].type].druidname,
+// 			      (int)AllEnemys[i].pos.x,
+// 			      (int)AllEnemys[i].pos.y,
+// 			      (int)AllEnemys[i].energy,
+// 			      status);
+// 		} /* if (enemy on current level)  */
+// 	    } /* for (i<NumEnemys) */
+// 
+// 	  printf_SDL (ne_screen, -1, -1," --- END --- \n");
+// 	  getchar_raw ();
+// 	  break;
+// 
+// 	case 'g': /* complete robot list of this ship */
+// 	  for (i = 0; i < NumEnemys ; i++)
+// 	    {
+// 	      if ( AllEnemys[i].type == (-1) ) continue;
+// 
+// 	      if (i && !(i%13))
+// 		{
+// 		  printf_SDL (ne_screen, -1, -1, " --- MORE --- ('q' to quit)\n");
+// 		  if (getchar_raw () == 'q')
+// 		    break;
+// 		}
+// 	      if ( !(i % 13) )
+// 		{
+// 		  ClearGraphMem ();
+// 		  printf_SDL (ne_screen, x0, y0, "Nr.  Lev. ID  Energy  Status.\n");
+// 		  printf_SDL (ne_screen, -1, -1, "------------------------------\n");
+// 		}
+// 
+// 	      printf_SDL (ne_screen, -1, -1, "%d  %d  %s  %d  %s\n",
+// 			  i, AllEnemys[i].levelnum,
+// 			  Druidmap[AllEnemys[i].type].druidname,
+// 			  (int)AllEnemys[i].energy,
+// 			  InfluenceModeNames[AllEnemys[i].status]);
+// 	    } /* for (i<NumEnemys) */
+// 
+// 	  printf_SDL (ne_screen, -1, -1, " --- END ---\n");
+// 	  getchar_raw ();
+// 	  break;
+// 
+// 
+// 	case 'd': /* destroy all robots on this level, haha */
+// 	  for (i = 0; i < NumEnemys; i++)
+// 	    {
+// 	      if (AllEnemys[i].levelnum == CurLevel->levelnum)
+// 		AllEnemys[i].energy = -100;
+// 	    }
+// 	  printf_SDL (ne_screen, -1, -1, "All robots on this deck killed!\n");
+// 	  getchar_raw ();
+// 	  break;
+// 
+// 
+// 	case 't': /* Teleportation */
+// 	  ClearGraphMem ();
+// 	  printf_SDL (ne_screen, x0, y0, "Enter Level, X, Y: ");
+// 	  input = GetString (40, 2);
+// 	  sscanf (input, "%d, %d, %d\n", &LNum, &X, &Y);
+// 	  free (input);
+// 	  Teleport (LNum, X, Y);
+// 	  break;
+// 
+// 	case 'r': /* change to new robot type */
+// 	  ClearGraphMem ();
+// 	  printf_SDL (ne_screen, x0, y0, "Type number of new robot: ");
+// 	  input = GetString (40, 2);
+// 	  for (i = 0; i < Number_Of_Droid_Types ; i++)
+// 	    if (!strcmp (Druidmap[i].druidname, input))
+// 	      break;
+// 
+// 	  if ( i == Number_Of_Droid_Types )
+// 	    {
+// 	      printf_SDL (ne_screen, x0, y0+20,
+// 			  "Unrecognized robot-type: %s", input);
+// 	      getchar_raw ();
+// 	      ClearGraphMem();
+// 	    }
+// 	  else
+// 	    {
+// 	      Me.type = i;
+// 	      Me.energy = Druidmap[Me.type].maxenergy;
+// 	      Me.health = Me.energy;
+// 	      printf_SDL (ne_screen, x0, y0+20, "You are now a %s. Have fun!\n", input);
+// 	      getchar_raw ();
+// 	    }
+// 	  free (input);
+// 	  break;
+// 
+// 	case 'i': /* togge Invincible mode */
+// 	  InvincibleMode = !InvincibleMode;
+// 	  break;
+// 
+// 	case 'e': /* complete heal */
+// 	  ClearGraphMem();
+// 	  printf_SDL (ne_screen, x0, y0, "Current energy: %f\n", Me.energy);
+// 	  printf_SDL (ne_screen, -1, -1, "Enter your new energy: ");
+// 	  input = GetString (40, 2);
+// 	  sscanf (input, "%d", &num);
+// 	  free (input);
+// 	  Me.energy = (float) num;
+// 	  if (Me.energy > Me.health) Me.health = Me.energy;
+// 	  break;
+// 
+// 	case 'n': /* toggle display of all droids */
+// 	  show_all_droids = !show_all_droids;
+// 	  break;
+// 
+// 	case 's': /* toggle sound on/off */
+// 	  sound_on = !sound_on;
+// 	  break;
+// 
+// 	case 'm': /* Show deck map in Concept view */
+// 	  printf_SDL (ne_screen, -1, -1, "\nLevelnum: ");
+// 	  input = GetString (40, 2);
+// 	  sscanf (input, "%d", &LNum);
+// 	  free (input);
+// 	  ShowDeckMap (curShip.AllLevels[LNum]);
+// 	  getchar_raw ();
+// 	  break;
+// 
+// 	case 'w':  /* print waypoint info of current level */
+// 	  WpList = CurLevel->AllWaypoints;
+// 	  for (i=0; i<CurLevel->num_waypoints; i++)
+// 	    {
+// 	      if (i && !(i%20))
+// 		{
+// 		  printf_SDL (ne_screen, -1, -1, " ---- MORE -----\n");
+// 		  if (getchar_raw () == 'q')
+// 		    break;
+// 		}
+// 	      if ( !(i%20) )
+// 		{
+// 		  ClearGraphMem ();
+// 		  printf_SDL (ne_screen, x0, y0, "Nr.   X   Y      C1  C2  C3  C4\n");
+// 		  printf_SDL (ne_screen, -1, -1, "------------------------------------\n");
+// 		}
+// 	      printf_SDL (ne_screen, -1, -1, "%2d   %2d  %2d      %2d  %2d  %2d  %2d\n",
+// 			  i, WpList[i].x, WpList[i].y,
+// 			  WpList[i].connections[0],
+// 			  WpList[i].connections[1],
+// 			  WpList[i].connections[2],
+// 			  WpList[i].connections[3]);
+// 
+// 	    } /* for (all waypoints) */
+// 	  printf_SDL (ne_screen, -1, -1, " --- END ---\n");
+// 	  getchar_raw ();
+// 	  break;
+// 
+// 	case ' ':
+// 	case 'q':
+// 	  Weiter = 1;
+// 	  break;
+// 	} /* switch (getchar_raw()) */
+//     } /* while (!Weiter) */
+// 
+//   ClearGraphMem ();
+// 
+//   update_input (); /* treat all pending keyboard events */
+// 
+//   return;
+// } /* Cheatmenu() */
 
 // void
 // FreeMenuData ( void )

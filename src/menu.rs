@@ -12,11 +12,19 @@ use crate::{
 
 use crate::{
     b_font::{FontHeight, GetCurrentFont, PutString, SetCurrentFont, TextWidth},
-    defs::{self, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction, Status},
-    global::{Me, Menu_BFont, User_Rect},
-    graphics::{ne_screen, ClearGraphMem, MakeGridOnScreen},
-    misc::{Activate_Conservative_Frame_Computation, Terminate},
+    defs::{self, AssembleCombatWindowFlags, DisplayBannerFlags, Droid, MenuAction, Status},
+    global::{
+        curShip, show_all_droids, sound_on, stop_influencer, AllEnemys, CurLevel,
+        CurrentCombatScaleFactor, Druidmap, Font0_BFont, InvincibleMode, Me, Menu_BFont, NumEnemys,
+        Number_Of_Droid_Types, User_Rect,
+    },
+    graphics::{ne_screen, ClearGraphMem, MakeGridOnScreen, SetCombatScaleTo},
+    input::update_input,
+    misc::{Activate_Conservative_Frame_Computation, Armageddon, Teleport, Terminate},
+    ship::ShowDeckMap,
     sound::MenuItemSelectedSound,
+    text::{getchar_raw, printf_SDL, GetString},
+    vars::InfluenceModeNames,
     view::{Assemble_Combat_Picture, DisplayBanner},
 };
 
@@ -26,13 +34,13 @@ use sdl::{
     video::ll::{SDL_DisplayFormat, SDL_Flip, SDL_FreeSurface, SDL_SetClipRect, SDL_Surface},
 };
 use std::{
+    convert::{TryFrom, TryInto},
     ffi::CStr,
-    os::raw::{c_char, c_int},
+    os::raw::{c_char, c_int, c_void},
     ptr::null_mut,
 };
 
 extern "C" {
-    pub fn Cheatmenu();
     pub fn getMenuAction(wait_repeat_ticks: u32) -> MenuAction;
     pub fn ShowMenu(menu_entries: *const MenuEntry);
     pub static mut fheight: c_int;
@@ -149,4 +157,512 @@ pub unsafe extern "C" fn InitiateMenu(with_droids: bool) {
     SDL_ShowCursor(SDL_DISABLE); // deactivate mouse-cursor in menus
     SetCurrentFont(Menu_BFont);
     fheight = FontHeight(&*GetCurrentFont()) + 2;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Cheatmenu() {
+    // Prevent distortion of framerate by the delay coming from
+    // the time spend in the menu.
+    Activate_Conservative_Frame_Computation();
+
+    let font = Font0_BFont;
+
+    SetCurrentFont(font); /* not the ideal one, but there's currently */
+    /* no other it seems.. */
+    const X0: i32 = 50;
+    const Y0: i32 = 20;
+
+    let cur_level = &mut *CurLevel;
+    let droid_map = std::slice::from_raw_parts(Druidmap, Droid::NumDroids as usize);
+    let mut resume = false;
+    while !resume {
+        ClearGraphMem();
+        printf_SDL(
+            ne_screen,
+            X0,
+            Y0,
+            cstr!("Current position: Level=%d, X=%d, Y=%d\n").as_ptr() as *mut c_char,
+            cur_level.levelnum,
+            Me.pos.x as c_int,
+            Me.pos.y as c_int,
+        );
+        printf_SDL(
+            ne_screen,
+            -1,
+            -1,
+            cstr!(" a. Armageddon (alle Robots sprengen)\n").as_ptr() as *mut c_char,
+        );
+        printf_SDL(
+            ne_screen,
+            -1,
+            -1,
+            cstr!(" l. robot list of current level\n").as_ptr() as *mut c_char,
+        );
+        printf_SDL(
+            ne_screen,
+            -1,
+            -1,
+            cstr!(" g. complete robot list\n").as_ptr() as *mut c_char,
+        );
+        printf_SDL(
+            ne_screen,
+            -1,
+            -1,
+            cstr!(" d. destroy robots on current level\n").as_ptr() as *mut c_char,
+        );
+        printf_SDL(
+            ne_screen,
+            -1,
+            -1,
+            cstr!(" t. Teleportation\n").as_ptr() as *mut c_char,
+        );
+        printf_SDL(
+            ne_screen,
+            -1,
+            -1,
+            cstr!(" r. change to new robot type\n").as_ptr() as *mut c_char,
+        );
+        printf_SDL(
+            ne_screen,
+            -1,
+            -1,
+            cstr!(" i. Invinciblemode: %s").as_ptr() as *mut c_char,
+            if InvincibleMode != 0 {
+                cstr!("ON\n").as_ptr() as *mut c_char
+            } else {
+                cstr!("OFF\n").as_ptr() as *mut c_char
+            },
+        );
+        printf_SDL(
+            ne_screen,
+            -1,
+            -1,
+            cstr!(" e. set energy\n").as_ptr() as *mut c_char,
+        );
+        printf_SDL(
+            ne_screen,
+            -1,
+            -1,
+            cstr!(" n. No hidden droids: %s").as_ptr() as *mut c_char,
+            if show_all_droids != 0 {
+                cstr!("ON\n").as_ptr() as *mut c_char
+            } else {
+                cstr!("OFF\n").as_ptr() as *mut c_char
+            },
+        );
+        printf_SDL(
+            ne_screen,
+            -1,
+            -1,
+            cstr!(" m. Map of Deck xy\n").as_ptr() as *mut c_char,
+        );
+        printf_SDL(
+            ne_screen,
+            -1,
+            -1,
+            cstr!(" s. Sound: %s").as_ptr() as *mut c_char,
+            if sound_on != 0 {
+                cstr!("ON\n").as_ptr() as *mut c_char
+            } else {
+                cstr!("OFF\n").as_ptr() as *mut c_char
+            },
+        );
+        printf_SDL(
+            ne_screen,
+            -1,
+            -1,
+            cstr!(" w. Print current waypoints\n").as_ptr() as *mut c_char,
+        );
+        printf_SDL(
+            ne_screen,
+            -1,
+            -1,
+            cstr!(" z. change Zoom factor\n").as_ptr() as *mut c_char,
+        );
+        printf_SDL(
+            ne_screen,
+            -1,
+            -1,
+            cstr!(" f. Freeze on this positon: %s").as_ptr() as *mut c_char,
+            if stop_influencer != 0 {
+                cstr!("ON\n").as_ptr() as *mut c_char
+            } else {
+                cstr!("OFF\n").as_ptr() as *mut c_char
+            },
+        );
+        printf_SDL(
+            ne_screen,
+            -1,
+            -1,
+            cstr!(" q. RESUME game\n").as_ptr() as *mut c_char,
+        );
+
+        match u8::try_from(getchar_raw()).ok() {
+            Some(b'f') => {
+                stop_influencer = !stop_influencer;
+            }
+
+            Some(b'z') => {
+                ClearGraphMem();
+                printf_SDL(
+                    ne_screen,
+                    X0,
+                    Y0,
+                    cstr!("Current Zoom factor: %f\n").as_ptr() as *mut c_char,
+                    CurrentCombatScaleFactor as f64,
+                );
+                printf_SDL(
+                    ne_screen,
+                    -1,
+                    -1,
+                    cstr!("New zoom factor: ").as_ptr() as *mut c_char,
+                );
+                let input = GetString(40, 2);
+                libc::sscanf(
+                    input,
+                    cstr!("%f").as_ptr() as *mut c_char,
+                    &mut CurrentCombatScaleFactor,
+                );
+                libc::free(input as *mut c_void);
+                SetCombatScaleTo(CurrentCombatScaleFactor);
+            }
+
+            Some(b'a') => {
+                /* armageddon */
+                resume = true;
+                Armageddon();
+            }
+
+            Some(b'l') => {
+                /* robot list of this deck */
+                let mut l = 0; /* line counter for enemy output */
+                for i in 0..usize::try_from(NumEnemys).unwrap() {
+                    if AllEnemys[i].levelnum == cur_level.levelnum {
+                        if l != 0 && l % 20 == 0 {
+                            printf_SDL(
+                                ne_screen,
+                                -1,
+                                -1,
+                                cstr!(" --- MORE --- \n").as_ptr() as *mut c_char,
+                            );
+                            if getchar_raw() == b'q'.into() {
+                                break;
+                            }
+                        }
+                        if l % 20 == 0 {
+                            ClearGraphMem();
+                            printf_SDL(
+                                ne_screen,
+                                X0,
+                                Y0,
+                                cstr!(" NR.   ID  X    Y   ENERGY   Status\n").as_ptr()
+                                    as *mut c_char,
+                            );
+                            printf_SDL(
+                                ne_screen,
+                                -1,
+                                -1,
+                                cstr!("---------------------------------------------\n").as_ptr()
+                                    as *mut c_char,
+                            );
+                        }
+
+                        l += 1;
+                        let status = if AllEnemys[i].status == Status::Out as i32 {
+                            cstr!("OUT").as_ptr() as *mut c_char
+                        } else if AllEnemys[i].status == Status::Terminated as i32 {
+                            cstr!("DEAD").as_ptr() as *mut c_char
+                        } else {
+                            cstr!("ACTIVE").as_ptr() as *mut c_char
+                        };
+
+                        printf_SDL(
+                            ne_screen,
+                            -1,
+                            -1,
+                            cstr!("%d.   %s   %d   %d   %d    %s.\n").as_ptr() as *mut c_char,
+                            i as i32,
+                            droid_map[usize::try_from(AllEnemys[i].ty).unwrap()]
+                                .druidname
+                                .as_ptr(),
+                            AllEnemys[i].pos.x as c_int,
+                            AllEnemys[i].pos.y as c_int,
+                            AllEnemys[i].energy as c_int,
+                            status,
+                        );
+                    }
+                }
+
+                printf_SDL(
+                    ne_screen,
+                    -1,
+                    -1,
+                    cstr!(" --- END --- \n").as_ptr() as *mut c_char,
+                );
+                getchar_raw();
+            }
+
+            Some(b'g') => {
+                /* complete robot list of this ship */
+                for i in 0..usize::try_from(NumEnemys).unwrap() {
+                    if AllEnemys[i].ty == -1 {
+                        continue;
+                    }
+
+                    if i != 0 && !i % 13 == 0 {
+                        printf_SDL(
+                            ne_screen,
+                            -1,
+                            -1,
+                            cstr!(" --- MORE --- ('q' to quit)\n").as_ptr() as *mut c_char,
+                        );
+                        if getchar_raw() == b'q'.into() {
+                            break;
+                        }
+                    }
+                    if i % 13 == 0 {
+                        ClearGraphMem();
+                        printf_SDL(
+                            ne_screen,
+                            X0,
+                            Y0,
+                            cstr!("Nr.  Lev. ID  Energy  Status.\n").as_ptr() as *mut c_char,
+                        );
+                        printf_SDL(
+                            ne_screen,
+                            -1,
+                            -1,
+                            cstr!("------------------------------\n").as_ptr() as *mut c_char,
+                        );
+                    }
+
+                    printf_SDL(
+                        ne_screen,
+                        -1,
+                        -1,
+                        cstr!("%d  %d  %s  %d  %s\n").as_ptr() as *mut c_char,
+                        i as i32,
+                        AllEnemys[i].levelnum,
+                        droid_map[usize::try_from(AllEnemys[i].ty).unwrap()]
+                            .druidname
+                            .as_ptr(),
+                        AllEnemys[i].energy as c_int,
+                        InfluenceModeNames[usize::try_from(AllEnemys[i].status).unwrap()],
+                    );
+                }
+
+                printf_SDL(
+                    ne_screen,
+                    -1,
+                    -1,
+                    cstr!(" --- END ---\n").as_ptr() as *mut c_char,
+                );
+                getchar_raw();
+            }
+
+            Some(b'd') => {
+                /* destroy all robots on this level, haha */
+                for enemy in &mut AllEnemys {
+                    if enemy.levelnum == cur_level.levelnum {
+                        enemy.energy = -100.;
+                    }
+                }
+                printf_SDL(
+                    ne_screen,
+                    -1,
+                    -1,
+                    cstr!("All robots on this deck killed!\n").as_ptr() as *mut c_char,
+                );
+                getchar_raw();
+            }
+
+            Some(b't') => {
+                /* Teleportation */
+                ClearGraphMem();
+                printf_SDL(
+                    ne_screen,
+                    X0,
+                    Y0,
+                    cstr!("Enter Level, X, Y: ").as_ptr() as *mut c_char,
+                );
+                let input = GetString(40, 2);
+                let mut l_num = 0;
+                let mut x = 0;
+                let mut y = 0;
+
+                libc::sscanf(
+                    input,
+                    cstr!("%d, %d, %d\n").as_ptr() as *mut c_char,
+                    &mut l_num,
+                    &mut x,
+                    &mut y,
+                );
+                libc::free(input as *mut c_void);
+                Teleport(l_num, x, y);
+            }
+
+            Some(b'r') => {
+                /* change to new robot type */
+                ClearGraphMem();
+                printf_SDL(
+                    ne_screen,
+                    X0,
+                    Y0,
+                    cstr!("Type number of new robot: ").as_ptr() as *mut c_char,
+                );
+                let input = GetString(40, 2);
+                let mut i = 0;
+                for _ in 0..u32::try_from(Number_Of_Droid_Types).unwrap() {
+                    if libc::strcmp(droid_map[i].druidname.as_ptr(), input) != 0 {
+                        break;
+                    }
+                    i += 1;
+                }
+
+                if i == usize::try_from(Number_Of_Droid_Types).unwrap() {
+                    printf_SDL(
+                        ne_screen,
+                        X0,
+                        Y0 + 20,
+                        cstr!("Unrecognized robot-type: %s").as_ptr() as *mut c_char,
+                        input,
+                    );
+                    getchar_raw();
+                    ClearGraphMem();
+                } else {
+                    Me.ty = i.try_into().unwrap();
+                    Me.energy = droid_map[usize::try_from(Me.ty).unwrap()].maxenergy;
+                    Me.health = Me.energy;
+                    printf_SDL(
+                        ne_screen,
+                        X0,
+                        Y0 + 20,
+                        cstr!("You are now a %s. Have fun!\n").as_ptr() as *mut c_char,
+                        input,
+                    );
+                    getchar_raw();
+                }
+                libc::free(input as *mut c_void);
+            }
+
+            Some(b'i') => {
+                /* togge Invincible mode */
+                InvincibleMode = !InvincibleMode;
+            }
+
+            Some(b'e') => {
+                /* complete heal */
+                ClearGraphMem();
+                printf_SDL(
+                    ne_screen,
+                    X0,
+                    Y0,
+                    cstr!("Current energy: %f\n").as_ptr() as *mut c_char,
+                    Me.energy as f64,
+                );
+                printf_SDL(
+                    ne_screen,
+                    -1,
+                    -1,
+                    cstr!("Enter your new energy: ").as_ptr() as *mut c_char,
+                );
+                let input = GetString(40, 2);
+                let mut num = 0;
+                libc::sscanf(input, cstr!("%d").as_ptr() as *mut c_char, &mut num);
+                libc::free(input as *mut c_void);
+                Me.energy = num as f32;
+                if Me.energy > Me.health {
+                    Me.health = Me.energy;
+                }
+            }
+
+            Some(b'n') => {
+                /* toggle display of all droids */
+                show_all_droids = !show_all_droids;
+            }
+
+            Some(b's') => {
+                /* toggle sound on/off */
+                sound_on = !sound_on;
+            }
+
+            Some(b'm') => {
+                /* Show deck map in Concept view */
+                printf_SDL(
+                    ne_screen,
+                    -1,
+                    -1,
+                    cstr!("\nLevelnum: ").as_ptr() as *mut c_char,
+                );
+                let input = GetString(40, 2);
+                let mut l_num = 0;
+                libc::sscanf(input, cstr!("%d").as_ptr() as *mut c_char, &mut l_num);
+                libc::free(input as *mut c_void);
+                ShowDeckMap(*curShip.AllLevels[usize::try_from(l_num).unwrap()]);
+                getchar_raw();
+            }
+
+            Some(b'w') => {
+                /* print waypoint info of current level */
+                for (i, waypoint) in cur_level.AllWaypoints.iter_mut().enumerate() {
+                    if i != 0 && i % 20 == 0 {
+                        printf_SDL(
+                            ne_screen,
+                            -1,
+                            -1,
+                            cstr!(" ---- MORE -----\n").as_ptr() as *mut c_char,
+                        );
+                        if getchar_raw() == b'q'.into() {
+                            break;
+                        }
+                    }
+                    if i % 20 == 0 {
+                        ClearGraphMem();
+                        printf_SDL(
+                            ne_screen,
+                            X0,
+                            Y0,
+                            cstr!("Nr.   X   Y      C1  C2  C3  C4\n").as_ptr() as *mut c_char,
+                        );
+                        printf_SDL(
+                            ne_screen,
+                            -1,
+                            -1,
+                            cstr!("------------------------------------\n").as_ptr() as *mut c_char,
+                        );
+                    }
+                    printf_SDL(
+                        ne_screen,
+                        -1,
+                        -1,
+                        cstr!("%2d   %2d  %2d      %2d  %2d  %2d  %2d\n").as_ptr() as *mut c_char,
+                        i as i32,
+                        i32::from(waypoint.x),
+                        i32::from(waypoint.y),
+                        waypoint.connections[0],
+                        waypoint.connections[1],
+                        waypoint.connections[2],
+                        waypoint.connections[3],
+                    );
+                }
+                printf_SDL(
+                    ne_screen,
+                    -1,
+                    -1,
+                    cstr!(" --- END ---\n").as_ptr() as *mut c_char,
+                );
+                getchar_raw();
+            }
+
+            Some(b' ') | Some(b'q') => {
+                resume = true;
+            }
+
+            _ => {}
+        }
+    }
+
+    ClearGraphMem();
+
+    update_input(); /* treat all pending keyboard events */
 }
