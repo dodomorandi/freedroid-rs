@@ -2,7 +2,7 @@
 use crate::input::{KeyIsPressed, KeyIsPressedR};
 use crate::{
     global::User_Rect,
-    input::{cmd_is_active, cmd_is_activeR, ModIsPressed},
+    input::{cmd_is_active, cmd_is_activeR, KeyIsPressed, KeyIsPressedR, ModIsPressed},
     structs::Point,
 };
 
@@ -15,6 +15,7 @@ use sdl::keysym::{
 };
 use sdl::{
     event::Mod,
+    keysym::SDLK_RETURN,
     sdl::Rect,
     video::ll::{SDL_FreeSurface, SDL_Surface},
 };
@@ -123,8 +124,15 @@ pub enum Cmds {
 
 //--------------------------------------------------
 
-// #define ReturnPressed() (KeyIsPressed(SDLK_RETURN))
-// #define ReturnPressedR() (KeyIsPressedR(SDLK_RETURN))
+#[inline]
+pub unsafe fn ReturnPressed() -> bool {
+    KeyIsPressed(SDLK_RETURN as i32)
+}
+
+#[inline]
+pub unsafe fn ReturnPressedR() -> bool {
+    KeyIsPressedR(SDLK_RETURN as i32)
+}
 
 #[inline]
 pub unsafe fn ShiftPressed() -> bool {

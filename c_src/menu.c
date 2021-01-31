@@ -771,89 +771,89 @@ showLevelEditorMenu (void)
 // such as from touchpad 'wheel' or android joystic emulation
 // don't create unexpected menu movements:
 // ==> ignore all movement commands withing delay_ms milliseconds of each other
-MenuAction_t
-getMenuAction ( Uint32 wait_repeat_ticks )
-{
-  MenuAction_t action = ACTION_NONE;
-
-  // 'normal' menu action keys get released
-  if ( KeyIsPressedR ( SDLK_BACKSPACE ) ) {
-    action = ACTION_DELETE;
-  }
-  if ( cmd_is_activeR(CMD_BACK) || KeyIsPressedR(SDLK_ESCAPE) ) {
-    action = ACTION_BACK;
-  }
-
-  if ( FirePressed() || ReturnPressedR() ) {
-    action = ACTION_CLICK;
-  }
-
-  // ----- up/down motion: allow for key-repeat, but carefully control repeat rate (modelled on takeover game)
-  static Uint32 last_movekey_time = 0;
-
-  static int up    = FALSE;
-  static int down  = FALSE;
-  static int left  = FALSE;
-  static int right = FALSE;
-
-  // we register if there have been key-press events in the "waiting period" between move-ticks
-  if ( !up && (UpPressed () || KeyIsPressed(SDLK_UP)) )
-    {
-      up = TRUE;
-      last_movekey_time = SDL_GetTicks();
-      action |= ACTION_UP;
-    }
-  if (!down && (DownPressed() || KeyIsPressed(SDLK_DOWN)) )
-    {
-      down = TRUE;
-      last_movekey_time = SDL_GetTicks();
-      action |= ACTION_DOWN;
-    }
-  if ( !left && (LeftPressed() || KeyIsPressed(SDLK_LEFT)) )
-    {
-      left = TRUE;
-      last_movekey_time = SDL_GetTicks();
-      action |= ACTION_LEFT;
-    }
-  if ( !right && (RightPressed() || KeyIsPressed(SDLK_RIGHT)) )
-    {
-      right = TRUE;
-      last_movekey_time = SDL_GetTicks();
-      action |= ACTION_RIGHT;
-    }
-
-  if (! (UpPressed()   || KeyIsPressed(SDLK_UP)))    { up   = FALSE; }
-  if (! (DownPressed() || KeyIsPressed(SDLK_DOWN)))  { down = FALSE; }
-  if (! (LeftPressed() || KeyIsPressed(SDLK_LEFT)))  { left = FALSE; }
-  if (! (RightPressed()|| KeyIsPressed(SDLK_RIGHT))) { right= FALSE; }
-
-  // check if enough time since we registered last new move-action
-  if ( SDL_GetTicks() - last_movekey_time > wait_repeat_ticks )
-    {
-      if ( up ) {
-        action |= ACTION_UP;
-      }
-      if ( down ) {
-        action |= ACTION_DOWN;
-      }
-      if ( left ) {
-        action |= ACTION_LEFT;
-      }
-      if ( right ) {
-        action |= ACTION_RIGHT;
-      }
-    }
-  // special handling of mouse wheel: register every event, no need for key-repeat delays
-  if ( WheelUpPressed() ) {
-    action |= ACTION_UP_WHEEL;
-  }
-  if ( WheelDownPressed() ) {
-    action |= ACTION_DOWN_WHEEL;
-  }
-
-  return action;
-
-} // getMenuAction()
+// MenuAction_t
+// getMenuAction ( Uint32 wait_repeat_ticks )
+// {
+//   MenuAction_t action = ACTION_NONE;
+// 
+//   // 'normal' menu action keys get released
+//   if ( KeyIsPressedR ( SDLK_BACKSPACE ) ) {
+//     action = ACTION_DELETE;
+//   }
+//   if ( cmd_is_activeR(CMD_BACK) || KeyIsPressedR(SDLK_ESCAPE) ) {
+//     action = ACTION_BACK;
+//   }
+// 
+//   if ( FirePressed() || ReturnPressedR() ) {
+//     action = ACTION_CLICK;
+//   }
+// 
+//   // ----- up/down motion: allow for key-repeat, but carefully control repeat rate (modelled on takeover game)
+//   static Uint32 last_movekey_time = 0;
+// 
+//   static int up    = FALSE;
+//   static int down  = FALSE;
+//   static int left  = FALSE;
+//   static int right = FALSE;
+// 
+//   // we register if there have been key-press events in the "waiting period" between move-ticks
+//   if ( !up && (UpPressed () || KeyIsPressed(SDLK_UP)) )
+//     {
+//       up = TRUE;
+//       last_movekey_time = SDL_GetTicks();
+//       action |= ACTION_UP;
+//     }
+//   if (!down && (DownPressed() || KeyIsPressed(SDLK_DOWN)) )
+//     {
+//       down = TRUE;
+//       last_movekey_time = SDL_GetTicks();
+//       action |= ACTION_DOWN;
+//     }
+//   if ( !left && (LeftPressed() || KeyIsPressed(SDLK_LEFT)) )
+//     {
+//       left = TRUE;
+//       last_movekey_time = SDL_GetTicks();
+//       action |= ACTION_LEFT;
+//     }
+//   if ( !right && (RightPressed() || KeyIsPressed(SDLK_RIGHT)) )
+//     {
+//       right = TRUE;
+//       last_movekey_time = SDL_GetTicks();
+//       action |= ACTION_RIGHT;
+//     }
+// 
+//   if (! (UpPressed()   || KeyIsPressed(SDLK_UP)))    { up   = FALSE; }
+//   if (! (DownPressed() || KeyIsPressed(SDLK_DOWN)))  { down = FALSE; }
+//   if (! (LeftPressed() || KeyIsPressed(SDLK_LEFT)))  { left = FALSE; }
+//   if (! (RightPressed()|| KeyIsPressed(SDLK_RIGHT))) { right= FALSE; }
+// 
+//   // check if enough time since we registered last new move-action
+//   if ( SDL_GetTicks() - last_movekey_time > wait_repeat_ticks )
+//     {
+//       if ( up ) {
+//         action |= ACTION_UP;
+//       }
+//       if ( down ) {
+//         action |= ACTION_DOWN;
+//       }
+//       if ( left ) {
+//         action |= ACTION_LEFT;
+//       }
+//       if ( right ) {
+//         action |= ACTION_RIGHT;
+//       }
+//     }
+//   // special handling of mouse wheel: register every event, no need for key-repeat delays
+//   if ( WheelUpPressed() ) {
+//     action |= ACTION_UP_WHEEL;
+//   }
+//   if ( WheelDownPressed() ) {
+//     action |= ACTION_DOWN_WHEEL;
+//   }
+// 
+//   return action;
+// 
+// } // getMenuAction()
 
 
 //

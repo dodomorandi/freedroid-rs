@@ -1,8 +1,5 @@
 #[cfg(not(feature = "gcw0"))]
-use crate::{
-    defs::Cmds,
-    input::{key_cmds, wait_for_all_keys_released, wait_for_key_pressed},
-};
+use crate::input::{key_cmds, wait_for_all_keys_released, wait_for_key_pressed};
 
 #[cfg(feature = "gcw0")]
 use crate::{
@@ -12,14 +9,19 @@ use crate::{
 
 use crate::{
     b_font::{FontHeight, GetCurrentFont, PutString, SetCurrentFont, TextWidth},
-    defs::{self, AssembleCombatWindowFlags, DisplayBannerFlags, Droid, MenuAction, Status},
+    defs::{
+        self, AssembleCombatWindowFlags, Cmds, DisplayBannerFlags, DownPressed, Droid, FirePressed,
+        LeftPressed, MenuAction, ReturnPressedR, RightPressed, Status, UpPressed,
+    },
     global::{
         curShip, show_all_droids, sound_on, stop_influencer, AllEnemys, CurLevel,
         CurrentCombatScaleFactor, Druidmap, Font0_BFont, InvincibleMode, Me, Menu_BFont, NumEnemys,
         Number_Of_Droid_Types, User_Rect,
     },
     graphics::{ne_screen, ClearGraphMem, MakeGridOnScreen, SetCombatScaleTo},
-    input::update_input,
+    input::{
+        cmd_is_activeR, update_input, KeyIsPressed, KeyIsPressedR, WheelDownPressed, WheelUpPressed,
+    },
     misc::{Activate_Conservative_Frame_Computation, Armageddon, Teleport, Terminate},
     ship::ShowDeckMap,
     sound::MenuItemSelectedSound,
@@ -30,7 +32,9 @@ use crate::{
 
 use cstr::cstr;
 use sdl::{
+    keysym::{SDLK_BACKSPACE, SDLK_DOWN, SDLK_ESCAPE, SDLK_LEFT, SDLK_RIGHT, SDLK_UP},
     mouse::ll::{SDL_ShowCursor, SDL_DISABLE},
+    sdl::ll::SDL_GetTicks,
     video::ll::{SDL_DisplayFormat, SDL_Flip, SDL_FreeSurface, SDL_SetClipRect, SDL_Surface},
 };
 use std::{
@@ -41,7 +45,6 @@ use std::{
 };
 
 extern "C" {
-    pub fn getMenuAction(wait_repeat_ticks: u32) -> MenuAction;
     pub fn ShowMenu(menu_entries: *const MenuEntry);
     pub static mut fheight: c_int;
     pub static mut Menu_Background: *mut SDL_Surface;
@@ -665,4 +668,101 @@ pub unsafe extern "C" fn Cheatmenu() {
     ClearGraphMem();
 
     update_input(); /* treat all pending keyboard events */
+}
+
+/// get menu input actions
+///
+/// NOTE: built-in time delay to ensure spurious key-repetitions
+/// such as from touchpad 'wheel' or android joystic emulation
+/// don't create unexpected menu movements:
+/// ==> ignore all movement commands withing delay_ms milliseconds of each other
+#[no_mangle]
+pub unsafe extern "C" fn getMenuAction(wait_repeat_ticks: u32) -> MenuAction {
+    let mut action = MenuAction::empty();
+
+    // 'normal' menu action keys get released
+    if KeyIsPressedR(SDLK_BACKSPACE as c_int) {
+        {
+            action = MenuAction::DELETE;
+        }
+    }
+    if cmd_is_activeR(Cmds::Back) || KeyIsPressedR(SDLK_ESCAPE as c_int) {
+        {
+            action = MenuAction::BACK;
+        }
+    }
+
+    if FirePressed() || ReturnPressedR() {
+        {
+            action = MenuAction::CLICK;
+        }
+    }
+
+    // ----- up/down motion: allow for key-repeat, but carefully control repeat rate (modelled on takeover game)
+    static mut last_movekey_time: u32 = 0;
+
+    static mut up: bool = false;
+    static mut down: bool = false;
+    static mut left: bool = false;
+    static mut right: bool = false;
+
+    // we register if there have been key-press events in the "waiting period" between move-ticks
+    if !up && (UpPressed() || KeyIsPressed(SDLK_UP as c_int)) {
+        up = true;
+        last_movekey_time = SDL_GetTicks();
+        action |= MenuAction::UP;
+    }
+    if !down && (DownPressed() || KeyIsPressed(SDLK_DOWN as c_int)) {
+        down = true;
+        last_movekey_time = SDL_GetTicks();
+        action |= MenuAction::DOWN;
+    }
+    if !left && (LeftPressed() || KeyIsPressed(SDLK_LEFT as c_int)) {
+        left = true;
+        last_movekey_time = SDL_GetTicks();
+        action |= MenuAction::LEFT;
+    }
+    if !right && (RightPressed() || KeyIsPressed(SDLK_RIGHT as c_int)) {
+        right = true;
+        last_movekey_time = SDL_GetTicks();
+        action |= MenuAction::RIGHT;
+    }
+
+    if !(UpPressed() || KeyIsPressed(SDLK_UP as c_int)) {
+        up = false;
+    }
+    if !(DownPressed() || KeyIsPressed(SDLK_DOWN as c_int)) {
+        down = false;
+    }
+    if !(LeftPressed() || KeyIsPressed(SDLK_LEFT as c_int)) {
+        left = false;
+    }
+    if !(RightPressed() || KeyIsPressed(SDLK_RIGHT as c_int)) {
+        right = false;
+    }
+
+    // check if enough time since we registered last new move-action
+    if SDL_GetTicks() - last_movekey_time > wait_repeat_ticks {
+        if up {
+            action |= MenuAction::UP;
+        }
+        if down {
+            action |= MenuAction::DOWN;
+        }
+        if left {
+            action |= MenuAction::LEFT;
+        }
+        if right {
+            action |= MenuAction::RIGHT;
+        }
+    }
+    // special handling of mouse wheel: register every event, no need for key-repeat delays
+    if WheelUpPressed() {
+        action |= MenuAction::UP_WHEEL;
+    }
+    if WheelDownPressed() {
+        action |= MenuAction::DOWN_WHEEL;
+    }
+
+    action
 }
