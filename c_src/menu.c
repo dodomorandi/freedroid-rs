@@ -859,157 +859,157 @@ showLevelEditorMenu (void)
 //
 // Generic menu handler
 //
-void
-ShowMenu ( const MenuEntry_t MenuEntries[] )
-{
-  InitiateMenu ( FALSE );
-  wait_for_all_keys_released();
-
-  // figure out menu-start point to make it centered
-  int num_entries = 0;
-  int menu_width = 0;
-  int entry_len;
-  while ( MenuEntries[num_entries].name != NULL ) {
-    entry_len = TextWidth ( MenuEntries[num_entries].name );
-    if ( entry_len > menu_width) {
-      menu_width = entry_len;
-    }
-    num_entries ++;
-  }
-  int menu_height = num_entries * fheight;
-  int menu_x = Full_User_Rect.x + (Full_User_Rect.w - menu_width)/2;
-  int menu_y = Full_User_Rect.y + (Full_User_Rect.h - menu_height)/2;
-  int influ_x = menu_x - Block_Rect.w - fheight;
-
-  int menu_pos = 0;
-
-  MenuAction_t action = ACTION_NONE;
-  const Uint32 wait_move_ticks = 100;
-  static Uint32 last_move_tick = 0;
-  bool finished = FALSE;
-  quit_Menu = FALSE;
-  bool need_update = TRUE;
-  while ( !finished )
-    {
-      const char* (*handler)( MenuAction_t action ) = MenuEntries[menu_pos].handler;
-      const MenuEntry_t *submenu = MenuEntries[menu_pos].submenu;
-
-      if ( need_update )
-        {
-          SDL_BlitSurface (Menu_Background, NULL, ne_screen, NULL);
-          // print menu
-          int i;
-          for ( i = 0; i < num_entries; i ++ )
-            {
-              char fullName[256];
-              const char *arg = NULL;
-              if ( MenuEntries[i].handler ) {
-                arg = (*MenuEntries[i].handler)( ACTION_INFO );
-              }
-              sprintf ( fullName, "%s%s", MenuEntries[i].name, (arg == NULL) ? "" : arg );
-              PutString (ne_screen, menu_x, menu_y + i * fheight, fullName );
-            }
-          PutInfluence (influ_x, menu_y + (menu_pos - 0.5) * fheight);
-#ifndef ANDROID
-          SDL_Flip( ne_screen );
-#endif
-          need_update = FALSE;
-        }
-#ifdef ANDROID
-      SDL_Flip( ne_screen );	// for responsive input on Android, we need to run this every cycle
-#endif
-      action = getMenuAction( 250 );
-
-      bool time_for_move = ( SDL_GetTicks() - last_move_tick > wait_move_ticks );
-      switch ( action )
-        {
-        case ACTION_BACK:
-          finished = TRUE;
-          wait_for_all_keys_released();
-          break;
-
-        case ACTION_CLICK:
-          if ( !handler && !submenu ) {
-            MenuItemSelectedSound();
-            finished = TRUE;
-            break;
-          }
-          if ( handler ) {
-            wait_for_all_keys_released();
-            (*handler)(action);
-          }
-          if ( submenu ) {
-            MenuItemSelectedSound();
-            wait_for_all_keys_released();
-            ShowMenu ( submenu );
-            InitiateMenu (FALSE);
-          }
-          need_update = TRUE;
-          break;
-
-        case ACTION_RIGHT:
-        case ACTION_LEFT:
-          if ( !time_for_move ) continue;
-
-          if ( handler ) {
-            (*handler)(action);
-          }
-          last_move_tick = SDL_GetTicks();
-          need_update = TRUE;
-          break;
-
-        case ACTION_UP:
-          if ( !time_for_move ) continue;
-          // intentional fall-through
-        case ACTION_UP_WHEEL:
-          MoveMenuPositionSound();
-          if (menu_pos > 0) {
-            menu_pos--;
-          } else {
-            menu_pos = num_entries - 1;
-          }
-          last_move_tick = SDL_GetTicks();
-          need_update = TRUE;
-          break;
-
-        case ACTION_DOWN:
-          if ( !time_for_move ) continue;
-          // intentional fall-through
-        case ACTION_DOWN_WHEEL:
-          MoveMenuPositionSound();
-          if ( menu_pos < num_entries - 1 ) {
-            menu_pos++;
-          } else {
-            menu_pos = 0;
-          }
-          last_move_tick = SDL_GetTicks();
-          need_update = TRUE;
-          break;
-
-        default:
-          break;
-        } // switch(action)
-
-      if ( quit_Menu ) {
-        finished = TRUE;
-      }
-
-      SDL_Delay(1);	// don't hog CPU
-    } // while !finished
-
-  ClearGraphMem();
-  SDL_ShowCursor ( SDL_ENABLE );  // reactivate mouse-cursor for game
-  // Since we've faded out the whole scren, it can't hurt
-  // to have the top status bar redrawn...
-  BannerIsDestroyed = TRUE;
-  Me.status = MOBILE;
-
-  while ( any_key_is_pressedR() ) // wait for all key/controller-release
-    SDL_Delay(1);
-
-  return;
-
-} // ShowMenu()
+// void
+// ShowMenu ( const MenuEntry_t MenuEntries[] )
+// {
+//   InitiateMenu ( FALSE );
+//   wait_for_all_keys_released();
+// 
+//   // figure out menu-start point to make it centered
+//   int num_entries = 0;
+//   int menu_width = 0;
+//   int entry_len;
+//   while ( MenuEntries[num_entries].name != NULL ) {
+//     entry_len = TextWidth ( MenuEntries[num_entries].name );
+//     if ( entry_len > menu_width) {
+//       menu_width = entry_len;
+//     }
+//     num_entries ++;
+//   }
+//   int menu_height = num_entries * fheight;
+//   int menu_x = Full_User_Rect.x + (Full_User_Rect.w - menu_width)/2;
+//   int menu_y = Full_User_Rect.y + (Full_User_Rect.h - menu_height)/2;
+//   int influ_x = menu_x - Block_Rect.w - fheight;
+// 
+//   int menu_pos = 0;
+// 
+//   MenuAction_t action = ACTION_NONE;
+//   const Uint32 wait_move_ticks = 100;
+//   static Uint32 last_move_tick = 0;
+//   bool finished = FALSE;
+//   quit_Menu = FALSE;
+//   bool need_update = TRUE;
+//   while ( !finished )
+//     {
+//       const char* (*handler)( MenuAction_t action ) = MenuEntries[menu_pos].handler;
+//       const MenuEntry_t *submenu = MenuEntries[menu_pos].submenu;
+// 
+//       if ( need_update )
+//         {
+//           SDL_BlitSurface (Menu_Background, NULL, ne_screen, NULL);
+//           // print menu
+//           int i;
+//           for ( i = 0; i < num_entries; i ++ )
+//             {
+//               char fullName[256];
+//               const char *arg = NULL;
+//               if ( MenuEntries[i].handler ) {
+//                 arg = (*MenuEntries[i].handler)( ACTION_INFO );
+//               }
+//               sprintf ( fullName, "%s%s", MenuEntries[i].name, (arg == NULL) ? "" : arg );
+//               PutString (ne_screen, menu_x, menu_y + i * fheight, fullName );
+//             }
+//           PutInfluence (influ_x, menu_y + (menu_pos - 0.5) * fheight);
+// #ifndef ANDROID
+//           SDL_Flip( ne_screen );
+// #endif
+//           need_update = FALSE;
+//         }
+// #ifdef ANDROID
+//       SDL_Flip( ne_screen );	// for responsive input on Android, we need to run this every cycle
+// #endif
+//       action = getMenuAction( 250 );
+// 
+//       bool time_for_move = ( SDL_GetTicks() - last_move_tick > wait_move_ticks );
+//       switch ( action )
+//         {
+//         case ACTION_BACK:
+//           finished = TRUE;
+//           wait_for_all_keys_released();
+//           break;
+// 
+//         case ACTION_CLICK:
+//           if ( !handler && !submenu ) {
+//             MenuItemSelectedSound();
+//             finished = TRUE;
+//             break;
+//           }
+//           if ( handler ) {
+//             wait_for_all_keys_released();
+//             (*handler)(action);
+//           }
+//           if ( submenu ) {
+//             MenuItemSelectedSound();
+//             wait_for_all_keys_released();
+//             ShowMenu ( submenu );
+//             InitiateMenu (FALSE);
+//           }
+//           need_update = TRUE;
+//           break;
+// 
+//         case ACTION_RIGHT:
+//         case ACTION_LEFT:
+//           if ( !time_for_move ) continue;
+// 
+//           if ( handler ) {
+//             (*handler)(action);
+//           }
+//           last_move_tick = SDL_GetTicks();
+//           need_update = TRUE;
+//           break;
+// 
+//         case ACTION_UP:
+//           if ( !time_for_move ) continue;
+//           // intentional fall-through
+//         case ACTION_UP_WHEEL:
+//           MoveMenuPositionSound();
+//           if (menu_pos > 0) {
+//             menu_pos--;
+//           } else {
+//             menu_pos = num_entries - 1;
+//           }
+//           last_move_tick = SDL_GetTicks();
+//           need_update = TRUE;
+//           break;
+// 
+//         case ACTION_DOWN:
+//           if ( !time_for_move ) continue;
+//           // intentional fall-through
+//         case ACTION_DOWN_WHEEL:
+//           MoveMenuPositionSound();
+//           if ( menu_pos < num_entries - 1 ) {
+//             menu_pos++;
+//           } else {
+//             menu_pos = 0;
+//           }
+//           last_move_tick = SDL_GetTicks();
+//           need_update = TRUE;
+//           break;
+// 
+//         default:
+//           break;
+//         } // switch(action)
+// 
+//       if ( quit_Menu ) {
+//         finished = TRUE;
+//       }
+// 
+//       SDL_Delay(1);	// don't hog CPU
+//     } // while !finished
+// 
+//   ClearGraphMem();
+//   SDL_ShowCursor ( SDL_ENABLE );  // reactivate mouse-cursor for game
+//   // Since we've faded out the whole scren, it can't hurt
+//   // to have the top status bar redrawn...
+//   BannerIsDestroyed = TRUE;
+//   Me.status = MOBILE;
+// 
+//   while ( any_key_is_pressedR() ) // wait for all key/controller-release
+//     SDL_Delay(1);
+// 
+//   return;
+// 
+// } // ShowMenu()
 
 /*@Function============================================================
 @Desc: This function provides the credits screen.  It is a submenu of

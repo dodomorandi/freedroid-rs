@@ -14,28 +14,31 @@ use crate::{
         LeftPressed, MenuAction, ReturnPressedR, RightPressed, Status, UpPressed,
     },
     global::{
-        curShip, show_all_droids, sound_on, stop_influencer, AllEnemys, CurLevel,
-        CurrentCombatScaleFactor, Druidmap, Font0_BFont, InvincibleMode, Me, Menu_BFont, NumEnemys,
-        Number_Of_Droid_Types, User_Rect,
+        curShip, quit_Menu, show_all_droids, sound_on, stop_influencer, AllEnemys, Block_Rect,
+        CurLevel, CurrentCombatScaleFactor, Druidmap, Font0_BFont, Full_User_Rect, InvincibleMode,
+        Me, Menu_BFont, NumEnemys, Number_Of_Droid_Types, User_Rect,
     },
-    graphics::{ne_screen, ClearGraphMem, MakeGridOnScreen, SetCombatScaleTo},
+    graphics::{ne_screen, BannerIsDestroyed, ClearGraphMem, MakeGridOnScreen, SetCombatScaleTo},
     input::{
-        cmd_is_activeR, update_input, KeyIsPressed, KeyIsPressedR, WheelDownPressed, WheelUpPressed,
+        any_key_is_pressedR, cmd_is_activeR, update_input, KeyIsPressed, KeyIsPressedR, SDL_Delay,
+        WheelDownPressed, WheelUpPressed,
     },
     misc::{Activate_Conservative_Frame_Computation, Armageddon, Teleport, Terminate},
     ship::ShowDeckMap,
-    sound::MenuItemSelectedSound,
+    sound::{MenuItemSelectedSound, MoveMenuPositionSound},
     text::{getchar_raw, printf_SDL, GetString},
     vars::InfluenceModeNames,
-    view::{Assemble_Combat_Picture, DisplayBanner},
+    view::{Assemble_Combat_Picture, DisplayBanner, PutInfluence},
 };
 
 use cstr::cstr;
 use sdl::{
     keysym::{SDLK_BACKSPACE, SDLK_DOWN, SDLK_ESCAPE, SDLK_LEFT, SDLK_RIGHT, SDLK_UP},
-    mouse::ll::{SDL_ShowCursor, SDL_DISABLE},
+    mouse::ll::{SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE},
     sdl::ll::SDL_GetTicks,
-    video::ll::{SDL_DisplayFormat, SDL_Flip, SDL_FreeSurface, SDL_SetClipRect, SDL_Surface},
+    video::ll::{
+        SDL_DisplayFormat, SDL_Flip, SDL_FreeSurface, SDL_SetClipRect, SDL_Surface, SDL_UpperBlit,
+    },
 };
 use std::{
     convert::{TryFrom, TryInto},
@@ -45,7 +48,6 @@ use std::{
 };
 
 extern "C" {
-    pub fn ShowMenu(menu_entries: *const MenuEntry);
     pub static mut fheight: c_int;
     pub static mut Menu_Background: *mut SDL_Surface;
 
@@ -59,7 +61,7 @@ extern "C" {
 #[repr(C)]
 pub struct MenuEntry {
     name: *const c_char,
-    handler: unsafe extern "C" fn() -> *const c_char,
+    handler: Option<unsafe extern "C" fn(MenuAction) -> *const c_char>,
     submenu: *const MenuEntry,
 }
 
@@ -765,4 +767,187 @@ pub unsafe extern "C" fn getMenuAction(wait_repeat_ticks: u32) -> MenuAction {
     }
 
     action
+}
+
+/// Generic menu handler
+#[no_mangle]
+pub unsafe extern "C" fn ShowMenu(menu_entries: *const MenuEntry) {
+    use std::ops::Not;
+
+    InitiateMenu(false);
+    wait_for_all_keys_released();
+
+    // figure out menu-start point to make it centered
+    let mut num_entries = 0;
+    let mut menu_width = None::<i32>;
+    loop {
+        let entry = &*menu_entries.add(num_entries);
+        if entry.name.is_null() {
+            break;
+        }
+
+        let width = TextWidth(entry.name);
+        menu_width = Some(
+            menu_width
+                .map(|menu_width| menu_width.max(width))
+                .unwrap_or(width),
+        );
+
+        num_entries += 1;
+    }
+    let menu_entries = std::slice::from_raw_parts(menu_entries, num_entries);
+    let menu_width = menu_width.unwrap();
+
+    let menu_height = i32::try_from(num_entries).unwrap() * fheight;
+    let menu_x = i32::from(Full_User_Rect.x) + (i32::from(Full_User_Rect.w) - menu_width) / 2;
+    let menu_y = i32::from(Full_User_Rect.y) + (i32::from(Full_User_Rect.h) - menu_height) / 2;
+    let influ_x = menu_x - i32::from(Block_Rect.w) - fheight;
+
+    let mut menu_pos = 0;
+
+    let wait_move_ticks: u32 = 100;
+    static mut LAST_MOVE_TICK: u32 = 0;
+    let mut finished = false;
+    quit_Menu = false;
+    let mut need_update = true;
+    while !finished {
+        let handler = menu_entries[menu_pos].handler;
+        let submenu = menu_entries[menu_pos].submenu;
+
+        if need_update {
+            SDL_UpperBlit(Menu_Background, null_mut(), ne_screen, null_mut());
+            // print menu
+            menu_entries.iter().enumerate().for_each(|(i, entry)| {
+                let arg = entry
+                    .handler
+                    .map(|handler| (handler)(MenuAction::INFO))
+                    .unwrap_or(null_mut());
+
+                let arg = if arg.is_null() {
+                    cstr!("").as_ptr()
+                } else {
+                    arg
+                };
+
+                let mut full_name: [c_char; 256] = [0; 256];
+                libc::sprintf(
+                    full_name.as_mut_ptr(),
+                    cstr!("%s%s").as_ptr(),
+                    entry.name,
+                    arg,
+                );
+                PutString(
+                    ne_screen,
+                    menu_x,
+                    menu_y + i32::try_from(i).unwrap() * fheight,
+                    full_name.as_ptr(),
+                );
+            });
+            PutInfluence(
+                influ_x,
+                menu_y + ((menu_pos as f64 - 0.5) * f64::from(fheight)) as c_int,
+            );
+
+            #[cfg(not(target_os = "android"))]
+            SDL_Flip(ne_screen);
+
+            need_update = false;
+        }
+
+        #[cfg(target_os = "android")]
+        SDL_Flip(ne_screen); // for responsive input on Android, we need to run this every cycle
+
+        let action = getMenuAction(250);
+
+        let time_for_move = SDL_GetTicks() - LAST_MOVE_TICK > wait_move_ticks;
+        match action {
+            MenuAction::BACK => {
+                finished = true;
+                wait_for_all_keys_released();
+            }
+
+            MenuAction::CLICK => {
+                if handler.is_none() && submenu.is_null() {
+                    MenuItemSelectedSound();
+                    finished = true;
+                } else {
+                    if let Some(handler) = handler {
+                        wait_for_all_keys_released();
+                        (handler)(action);
+                    }
+
+                    if submenu.is_null().not() {
+                        MenuItemSelectedSound();
+                        wait_for_all_keys_released();
+                        ShowMenu(submenu);
+                        InitiateMenu(false);
+                    }
+                    need_update = true;
+                }
+            }
+
+            MenuAction::RIGHT | MenuAction::LEFT => {
+                if !time_for_move {
+                    continue;
+                }
+
+                if let Some(handler) = handler {
+                    (handler)(action);
+                }
+                LAST_MOVE_TICK = SDL_GetTicks();
+                need_update = true;
+            }
+
+            MenuAction::UP | MenuAction::UP_WHEEL => {
+                if action == MenuAction::UP && !time_for_move {
+                    continue;
+                }
+
+                MoveMenuPositionSound();
+                if menu_pos > 0 {
+                    menu_pos -= 1;
+                } else {
+                    menu_pos = num_entries - 1;
+                }
+                LAST_MOVE_TICK = SDL_GetTicks();
+                need_update = true;
+            }
+
+            MenuAction::DOWN | MenuAction::DOWN_WHEEL => {
+                if action == MenuAction::DOWN && !time_for_move {
+                    continue;
+                }
+
+                MoveMenuPositionSound();
+                if menu_pos < num_entries - 1 {
+                    menu_pos += 1;
+                } else {
+                    menu_pos = 0;
+                }
+                LAST_MOVE_TICK = SDL_GetTicks();
+                need_update = true;
+            }
+
+            _ => {}
+        }
+
+        if quit_Menu {
+            finished = true;
+        }
+
+        SDL_Delay(1); // don't hog CPU
+    }
+
+    ClearGraphMem();
+    SDL_ShowCursor(SDL_ENABLE); // reactivate mouse-cursor for game
+                                // Since we've faded out the whole scren, it can't hurt
+                                // to have the top status bar redrawn...
+    BannerIsDestroyed = true.into();
+    Me.status = Status::Mobile as i32;
+
+    while any_key_is_pressedR()
+    // wait for all key/controller-release
+    {
+        SDL_Delay(1);
+    }
 }
