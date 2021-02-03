@@ -701,60 +701,60 @@ pub unsafe extern "C" fn getMenuAction(wait_repeat_ticks: u32) -> MenuAction {
     }
 
     // ----- up/down motion: allow for key-repeat, but carefully control repeat rate (modelled on takeover game)
-    static mut last_movekey_time: u32 = 0;
+    static mut LAST_MOVEKEY_TIME: u32 = 0;
 
-    static mut up: bool = false;
-    static mut down: bool = false;
-    static mut left: bool = false;
-    static mut right: bool = false;
+    static mut UP: bool = false;
+    static mut DOWN: bool = false;
+    static mut LEFT: bool = false;
+    static mut RIGHT: bool = false;
 
     // we register if there have been key-press events in the "waiting period" between move-ticks
-    if !up && (UpPressed() || KeyIsPressed(SDLK_UP as c_int)) {
-        up = true;
-        last_movekey_time = SDL_GetTicks();
+    if !UP && (UpPressed() || KeyIsPressed(SDLK_UP as c_int)) {
+        UP = true;
+        LAST_MOVEKEY_TIME = SDL_GetTicks();
         action |= MenuAction::UP;
     }
-    if !down && (DownPressed() || KeyIsPressed(SDLK_DOWN as c_int)) {
-        down = true;
-        last_movekey_time = SDL_GetTicks();
+    if !DOWN && (DownPressed() || KeyIsPressed(SDLK_DOWN as c_int)) {
+        DOWN = true;
+        LAST_MOVEKEY_TIME = SDL_GetTicks();
         action |= MenuAction::DOWN;
     }
-    if !left && (LeftPressed() || KeyIsPressed(SDLK_LEFT as c_int)) {
-        left = true;
-        last_movekey_time = SDL_GetTicks();
+    if !LEFT && (LeftPressed() || KeyIsPressed(SDLK_LEFT as c_int)) {
+        LEFT = true;
+        LAST_MOVEKEY_TIME = SDL_GetTicks();
         action |= MenuAction::LEFT;
     }
-    if !right && (RightPressed() || KeyIsPressed(SDLK_RIGHT as c_int)) {
-        right = true;
-        last_movekey_time = SDL_GetTicks();
+    if !RIGHT && (RightPressed() || KeyIsPressed(SDLK_RIGHT as c_int)) {
+        RIGHT = true;
+        LAST_MOVEKEY_TIME = SDL_GetTicks();
         action |= MenuAction::RIGHT;
     }
 
     if !(UpPressed() || KeyIsPressed(SDLK_UP as c_int)) {
-        up = false;
+        UP = false;
     }
     if !(DownPressed() || KeyIsPressed(SDLK_DOWN as c_int)) {
-        down = false;
+        DOWN = false;
     }
     if !(LeftPressed() || KeyIsPressed(SDLK_LEFT as c_int)) {
-        left = false;
+        LEFT = false;
     }
     if !(RightPressed() || KeyIsPressed(SDLK_RIGHT as c_int)) {
-        right = false;
+        RIGHT = false;
     }
 
     // check if enough time since we registered last new move-action
-    if SDL_GetTicks() - last_movekey_time > wait_repeat_ticks {
-        if up {
+    if SDL_GetTicks() - LAST_MOVEKEY_TIME > wait_repeat_ticks {
+        if UP {
             action |= MenuAction::UP;
         }
-        if down {
+        if DOWN {
             action |= MenuAction::DOWN;
         }
-        if left {
+        if LEFT {
             action |= MenuAction::LEFT;
         }
-        if right {
+        if RIGHT {
             action |= MenuAction::RIGHT;
         }
     }
