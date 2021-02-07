@@ -1184,48 +1184,48 @@ Key_Config_Menu (void)
 // subroutine to display the current key-config and highlight
 //  current selection
 // ------------------------------------------------------------
-#define PosFont(x,y) ( (((x)!=selx)||((y)!=sely)) ? Font1_BFont : Font2_BFont )
-void
-Display_Key_Config (int selx, int sely)
-{
-  int startx = Full_User_Rect.x + 1.2*Block_Rect.w;
-  int starty = Full_User_Rect.y + FontHeight(GetCurrentFont());
-  int col1 = startx + 7.5 * CharWidth(GetCurrentFont(), 'O');
-  int col2 = col1 + 6.5 * CharWidth(GetCurrentFont(), 'O');
-  int col3 = col2 + 6.5 * CharWidth(GetCurrentFont(), 'O');
-  int posy = 0;
-  int lheight = FontHeight (Font0_BFont) + 2;
-
-  SDL_BlitSurface (Menu_Background, NULL, ne_screen, NULL);
-
-  //      PutInfluence (startx - 1.1*Block_Rect.w, starty + (MenuPosition-1.5)*lheight);
-  //PrintStringFont (ne_screen, (sely==1)? Font2_BFont:Font1_BFont, startx, starty+(posy++)*lheight, "Back");
-#ifdef GCW0
-  PrintStringFont (ne_screen, Font0_BFont, col1, starty, "(RShldr to clear an entry)");
-#else
-  PrintStringFont (ne_screen, Font0_BFont, col1, starty, "(Backspace to clear an entry)");
-#endif
-  posy++;
-  PrintStringFont (ne_screen, Font0_BFont, startx, starty + (posy)*lheight, "Command");
-  PrintStringFont (ne_screen, Font0_BFont, col1,   starty + (posy)*lheight, "Key1");
-  PrintStringFont (ne_screen, Font0_BFont, col2,   starty + (posy)*lheight, "Key2");
-  PrintStringFont (ne_screen, Font0_BFont, col3,   starty + (posy)*lheight, "Key3");
-  posy ++;
-
-  int i;
-  for (i=0; i < CMD_LAST; i++)
-    {
-      PrintStringFont (ne_screen, Font0_BFont,  startx, starty+(posy)*lheight, cmd_strings[i]);
-      PrintStringFont (ne_screen, PosFont(1,1+i), col1, starty+(posy)*lheight, keystr[key_cmds[i][0]]);
-      PrintStringFont (ne_screen, PosFont(2,1+i), col2, starty+(posy)*lheight, keystr[key_cmds[i][1]]);
-      PrintStringFont (ne_screen, PosFont(3,1+i), col3, starty+(posy)*lheight, keystr[key_cmds[i][2]]);
-      posy ++;
-    }
-
-  SDL_Flip( ne_screen );
-
-  return;
-} // Display_Key_Config
+// #define PosFont(x,y) ( (((x)!=selx)||((y)!=sely)) ? Font1_BFont : Font2_BFont )
+// void
+// Display_Key_Config (int selx, int sely)
+// {
+//   int startx = Full_User_Rect.x + 1.2*Block_Rect.w;
+//   int starty = Full_User_Rect.y + FontHeight(GetCurrentFont());
+//   int col1 = startx + 7.5 * CharWidth(GetCurrentFont(), 'O');
+//   int col2 = col1 + 6.5 * CharWidth(GetCurrentFont(), 'O');
+//   int col3 = col2 + 6.5 * CharWidth(GetCurrentFont(), 'O');
+//   int posy = 0;
+//   int lheight = FontHeight (Font0_BFont) + 2;
+// 
+//   SDL_BlitSurface (Menu_Background, NULL, ne_screen, NULL);
+// 
+//   //      PutInfluence (startx - 1.1*Block_Rect.w, starty + (MenuPosition-1.5)*lheight);
+//   //PrintStringFont (ne_screen, (sely==1)? Font2_BFont:Font1_BFont, startx, starty+(posy++)*lheight, "Back");
+// #ifdef GCW0
+//   PrintStringFont (ne_screen, Font0_BFont, col1, starty, "(RShldr to clear an entry)");
+// #else
+//   PrintStringFont (ne_screen, Font0_BFont, col1, starty, "(Backspace to clear an entry)");
+// #endif
+//   posy++;
+//   PrintStringFont (ne_screen, Font0_BFont, startx, starty + (posy)*lheight, "Command");
+//   PrintStringFont (ne_screen, Font0_BFont, col1,   starty + (posy)*lheight, "Key1");
+//   PrintStringFont (ne_screen, Font0_BFont, col2,   starty + (posy)*lheight, "Key2");
+//   PrintStringFont (ne_screen, Font0_BFont, col3,   starty + (posy)*lheight, "Key3");
+//   posy ++;
+// 
+//   int i;
+//   for (i=0; i < CMD_LAST; i++)
+//     {
+//       PrintStringFont (ne_screen, Font0_BFont,  startx, starty+(posy)*lheight, cmd_strings[i]);
+//       PrintStringFont (ne_screen, PosFont(1,1+i), col1, starty+(posy)*lheight, keystr[key_cmds[i][0]]);
+//       PrintStringFont (ne_screen, PosFont(2,1+i), col2, starty+(posy)*lheight, keystr[key_cmds[i][1]]);
+//       PrintStringFont (ne_screen, PosFont(3,1+i), col3, starty+(posy)*lheight, keystr[key_cmds[i][2]]);
+//       posy ++;
+//     }
+// 
+//   SDL_Flip( ne_screen );
+// 
+//   return;
+// } // Display_Key_Config
 
 
 // ======================================================================

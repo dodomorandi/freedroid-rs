@@ -8,20 +8,24 @@ use crate::{
 };
 
 use crate::{
-    b_font::{FontHeight, GetCurrentFont, PutString, SetCurrentFont, TextWidth},
+    b_font::{
+        CharWidth, FontHeight, GetCurrentFont, PrintStringFont, PutString, SetCurrentFont,
+        TextWidth,
+    },
     defs::{
         self, AssembleCombatWindowFlags, Cmds, DisplayBannerFlags, DownPressed, Droid, FirePressed,
         LeftPressed, MenuAction, ReturnPressedR, RightPressed, Status, UpPressed,
     },
     global::{
         curShip, quit_Menu, show_all_droids, sound_on, stop_influencer, AllEnemys, Block_Rect,
-        CurLevel, CurrentCombatScaleFactor, Druidmap, Font0_BFont, Full_User_Rect, InvincibleMode,
-        Me, Menu_BFont, NumEnemys, Number_Of_Droid_Types, User_Rect,
+        CurLevel, CurrentCombatScaleFactor, Druidmap, Font0_BFont, Font1_BFont, Font2_BFont,
+        Full_User_Rect, InvincibleMode, Me, Menu_BFont, NumEnemys, Number_Of_Droid_Types,
+        User_Rect,
     },
     graphics::{ne_screen, BannerIsDestroyed, ClearGraphMem, MakeGridOnScreen, SetCombatScaleTo},
     input::{
-        any_key_is_pressedR, cmd_is_activeR, update_input, KeyIsPressed, KeyIsPressedR, SDL_Delay,
-        WheelDownPressed, WheelUpPressed,
+        any_key_is_pressedR, cmd_is_activeR, cmd_strings, keystr, update_input, KeyIsPressed,
+        KeyIsPressedR, SDL_Delay, WheelDownPressed, WheelUpPressed,
     },
     misc::{Activate_Conservative_Frame_Computation, Armageddon, Teleport, Terminate},
     ship::ShowDeckMap,
@@ -950,4 +954,117 @@ pub unsafe extern "C" fn ShowMenu(menu_entries: *const MenuEntry) {
     {
         SDL_Delay(1);
     }
+}
+
+/// subroutine to display the current key-config and highlight current selection
+#[no_mangle]
+pub unsafe extern "C" fn Display_Key_Config(selx: c_int, sely: c_int) {
+    let startx = i32::from(Full_User_Rect.x) + (1.2 * f32::from(Block_Rect.w)) as i32;
+    let starty = i32::from(Full_User_Rect.y) + FontHeight(&*GetCurrentFont());
+    let col1 = startx + (7.5 * f64::from(CharWidth(&*GetCurrentFont(), b'O'.into()))) as i32;
+    let col2 = col1 + (6.5 * f64::from(CharWidth(&*GetCurrentFont(), b'O'.into()))) as i32;
+    let col3 = col2 + (6.5 * f64::from(CharWidth(&*GetCurrentFont(), b'O'.into()))) as i32;
+    let lheight = FontHeight(&*Font0_BFont) + 2;
+
+    SDL_UpperBlit(Menu_Background, null_mut(), ne_screen, null_mut());
+
+    #[cfg(feature = "gcw0")]
+    PrintStringFont(
+        ne_screen,
+        Font0_BFont,
+        col1,
+        starty,
+        cstr!("(RShldr to clear an entry)").as_ptr() as *mut c_char,
+    );
+
+    #[cfg(not(feature = "gcw0"))]
+    {
+        PrintStringFont(
+            ne_screen,
+            Font0_BFont,
+            col1,
+            starty,
+            cstr!("(RShldr to clear an entry)").as_ptr() as *mut c_char,
+        );
+        PrintStringFont(
+            ne_screen,
+            Font0_BFont,
+            col1,
+            starty,
+            cstr!("(Backspace to clear an entry)").as_ptr() as *mut c_char,
+        );
+    }
+
+    let mut posy = 1;
+    PrintStringFont(
+        ne_screen,
+        Font0_BFont,
+        startx,
+        starty + (posy) * lheight,
+        cstr!("Command").as_ptr() as *mut c_char,
+    );
+    PrintStringFont(
+        ne_screen,
+        Font0_BFont,
+        col1,
+        starty + (posy) * lheight,
+        cstr!("Key1").as_ptr() as *mut c_char,
+    );
+    PrintStringFont(
+        ne_screen,
+        Font0_BFont,
+        col2,
+        starty + (posy) * lheight,
+        cstr!("Key2").as_ptr() as *mut c_char,
+    );
+    PrintStringFont(
+        ne_screen,
+        Font0_BFont,
+        col3,
+        starty + (posy) * lheight,
+        cstr!("Key3").as_ptr() as *mut c_char,
+    );
+    posy += 1;
+
+    for i in 0..Cmds::Last as usize {
+        let pos_font = |x, y| {
+            if x != selx || i32::try_from(y).unwrap() != sely {
+                Font1_BFont
+            } else {
+                Font2_BFont
+            }
+        };
+
+        PrintStringFont(
+            ne_screen,
+            Font0_BFont,
+            startx,
+            starty + (posy) * lheight,
+            cmd_strings[i] as *mut c_char,
+        );
+        PrintStringFont(
+            ne_screen,
+            pos_font(1, 1 + i),
+            col1,
+            starty + (posy) * lheight,
+            keystr[usize::try_from(key_cmds[i][0]).unwrap()] as *mut c_char,
+        );
+        PrintStringFont(
+            ne_screen,
+            pos_font(2, 1 + i),
+            col2,
+            starty + (posy) * lheight,
+            keystr[usize::try_from(key_cmds[i][1]).unwrap()] as *mut c_char,
+        );
+        PrintStringFont(
+            ne_screen,
+            pos_font(3, 1 + i),
+            col3,
+            starty + (posy) * lheight,
+            keystr[usize::try_from(key_cmds[i][2]).unwrap()] as *mut c_char,
+        );
+        posy += 1;
+    }
+
+    SDL_Flip(ne_screen);
 }
