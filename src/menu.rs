@@ -1068,3 +1068,98 @@ pub unsafe extern "C" fn Display_Key_Config(selx: c_int, sely: c_int) {
 
     SDL_Flip(ne_screen);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn Key_Config_Menu() {
+    let mut selx = 1;
+    let mut sely = 1; // currently selected menu-position
+    const WAIT_MOVE_TICKS: u32 = 100;
+    static mut LAST_MOVE_TICK: u32 = 0;
+
+    let mut finished = false;
+    while !finished {
+        Display_Key_Config(i32::try_from(selx).unwrap(), i32::try_from(sely).unwrap());
+
+        let action = getMenuAction(250);
+        let time_for_move = SDL_GetTicks() - LAST_MOVE_TICK > WAIT_MOVE_TICKS;
+
+        match action {
+            MenuAction::BACK => {
+                finished = true;
+                wait_for_all_keys_released();
+            }
+
+            MenuAction::CLICK => {
+                MenuItemSelectedSound();
+
+                key_cmds[sely - 1][selx - 1] = b'_'.into();
+                Display_Key_Config(i32::try_from(selx).unwrap(), i32::try_from(sely).unwrap());
+                key_cmds[sely - 1][selx - 1] = getchar_raw(); // includes joystick input!;
+                wait_for_all_keys_released();
+                LAST_MOVE_TICK = SDL_GetTicks();
+            }
+
+            MenuAction::UP | MenuAction::UP_WHEEL => {
+                if action == MenuAction::UP && !time_for_move {
+                    continue;
+                }
+                if sely > 1 {
+                    sely -= 1;
+                } else {
+                    sely = Cmds::Last as usize;
+                }
+                MoveMenuPositionSound();
+                LAST_MOVE_TICK = SDL_GetTicks();
+            }
+
+            MenuAction::DOWN | MenuAction::DOWN_WHEEL => {
+                if action == MenuAction::DOWN && !time_for_move {
+                    continue;
+                }
+                if sely < Cmds::Last as usize {
+                    sely += 1;
+                } else {
+                    sely = 1;
+                }
+                MoveMenuPositionSound();
+                LAST_MOVE_TICK = SDL_GetTicks();
+            }
+
+            MenuAction::RIGHT => {
+                if !time_for_move {
+                    continue;
+                }
+
+                if selx < 3 {
+                    selx += 1;
+                } else {
+                    selx = 1;
+                }
+                MoveMenuPositionSound();
+                LAST_MOVE_TICK = SDL_GetTicks();
+            }
+
+            MenuAction::LEFT => {
+                if !time_for_move {
+                    continue;
+                }
+
+                if selx > 1 {
+                    selx -= 1;
+                } else {
+                    selx = 3;
+                }
+                MoveMenuPositionSound();
+                LAST_MOVE_TICK = SDL_GetTicks();
+            }
+
+            MenuAction::DELETE => {
+                key_cmds[sely - 1][selx - 1] = 0;
+                MenuItemSelectedSound();
+            }
+            _ => {}
+        }
+
+        SDL_Delay(1);
+    }
+}

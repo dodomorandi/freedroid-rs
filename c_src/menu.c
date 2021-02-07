@@ -1090,95 +1090,95 @@ ShowCredits (void)
 // ------------------------------------------------------------
 // show/edit keyboard-config
 // ------------------------------------------------------------
-void
-Key_Config_Menu (void)
-{
-  int LastMenuPos = CMD_LAST;
-  int selx = 1, sely = 1;   // currently selected menu-position
-  int oldkey, newkey = -1;
-  MenuAction_t action = ACTION_NONE;
-  const Uint32 wait_move_ticks = 100;
-  static Uint32 last_move_tick = 0;
-
-  bool finished = FALSE;
-  while (!finished)
-    {
-      Display_Key_Config (selx, sely);
-
-      action = getMenuAction( 250 );
-      bool time_for_move = (SDL_GetTicks() - last_move_tick > wait_move_ticks);
-
-      switch ( action )
-        {
-        case ACTION_BACK:
-          finished = TRUE;
-          wait_for_all_keys_released();
-          break;
-
-        case ACTION_CLICK:
-          MenuItemSelectedSound();
-
-          oldkey = key_cmds[sely-1][selx-1];
-          key_cmds[sely-1][selx-1] = '_';
-          Display_Key_Config (selx, sely);
-          newkey = getchar_raw(); // includes joystick input!
-          key_cmds[sely-1][selx-1] = newkey;
-          wait_for_all_keys_released();
-          last_move_tick = SDL_GetTicks();
-          break;
-
-        case ACTION_UP:
-          if ( !time_for_move ) continue;
-          // intentional fall-through
-        case ACTION_UP_WHEEL:
-          if ( sely > 1 ) sely--;
-          else sely = LastMenuPos;
-          MoveMenuPositionSound();
-          last_move_tick = SDL_GetTicks();
-          break;
-
-        case ACTION_DOWN:
-          if ( !time_for_move ) continue;
-          // intentional fall-through
-        case ACTION_DOWN_WHEEL:
-          if ( sely < LastMenuPos ) sely++;
-          else sely = 1;
-          MoveMenuPositionSound();
-          last_move_tick = SDL_GetTicks();
-          break;
-
-        case ACTION_RIGHT:
-          if ( !time_for_move ) continue;
-
-          if ( selx < 3 ) selx++;
-          else selx = 1;
-          MoveMenuPositionSound();
-          last_move_tick = SDL_GetTicks();
-          break;
-
-        case ACTION_LEFT:
-          if ( !time_for_move ) continue;
-
-          if ( selx > 1 ) selx--;
-          else selx = 3;
-          MoveMenuPositionSound();
-          last_move_tick = SDL_GetTicks();
-          break;
-
-        case ACTION_DELETE:
-          key_cmds[sely-1][selx-1] = 0;
-          MenuItemSelectedSound();
-          break;
-        default:
-          break;
-        } // switch(action)
-
-      SDL_Delay(1);
-    } // while !finished
-
-  return;
-
-} // Key_Config_Menu()
+// void
+// Key_Config_Menu (void)
+// {
+//   int LastMenuPos = CMD_LAST;
+//   int selx = 1, sely = 1;   // currently selected menu-position
+//   int oldkey, newkey = -1;
+//   MenuAction_t action = ACTION_NONE;
+//   const Uint32 wait_move_ticks = 100;
+//   static Uint32 last_move_tick = 0;
+// 
+//   bool finished = FALSE;
+//   while (!finished)
+//     {
+//       Display_Key_Config (selx, sely);
+// 
+//       action = getMenuAction( 250 );
+//       bool time_for_move = (SDL_GetTicks() - last_move_tick > wait_move_ticks);
+// 
+//       switch ( action )
+//         {
+//         case ACTION_BACK:
+//           finished = TRUE;
+//           wait_for_all_keys_released();
+//           break;
+// 
+//         case ACTION_CLICK:
+//           MenuItemSelectedSound();
+// 
+//           oldkey = key_cmds[sely-1][selx-1];
+//           key_cmds[sely-1][selx-1] = '_';
+//           Display_Key_Config (selx, sely);
+//           newkey = getchar_raw(); // includes joystick input!
+//           key_cmds[sely-1][selx-1] = newkey;
+//           wait_for_all_keys_released();
+//           last_move_tick = SDL_GetTicks();
+//           break;
+// 
+//         case ACTION_UP:
+//           if ( !time_for_move ) continue;
+//           // intentional fall-through
+//         case ACTION_UP_WHEEL:
+//           if ( sely > 1 ) sely--;
+//           else sely = LastMenuPos;
+//           MoveMenuPositionSound();
+//           last_move_tick = SDL_GetTicks();
+//           break;
+// 
+//         case ACTION_DOWN:
+//           if ( !time_for_move ) continue;
+//           // intentional fall-through
+//         case ACTION_DOWN_WHEEL:
+//           if ( sely < LastMenuPos ) sely++;
+//           else sely = 1;
+//           MoveMenuPositionSound();
+//           last_move_tick = SDL_GetTicks();
+//           break;
+// 
+//         case ACTION_RIGHT:
+//           if ( !time_for_move ) continue;
+// 
+//           if ( selx < 3 ) selx++;
+//           else selx = 1;
+//           MoveMenuPositionSound();
+//           last_move_tick = SDL_GetTicks();
+//           break;
+// 
+//         case ACTION_LEFT:
+//           if ( !time_for_move ) continue;
+// 
+//           if ( selx > 1 ) selx--;
+//           else selx = 3;
+//           MoveMenuPositionSound();
+//           last_move_tick = SDL_GetTicks();
+//           break;
+// 
+//         case ACTION_DELETE:
+//           key_cmds[sely-1][selx-1] = 0;
+//           MenuItemSelectedSound();
+//           break;
+//         default:
+//           break;
+//         } // switch(action)
+// 
+//       SDL_Delay(1);
+//     } // while !finished
+// 
+//   return;
+// 
+// } // Key_Config_Menu()
 
 // ------------------------------------------------------------
 // subroutine to display the current key-config and highlight
