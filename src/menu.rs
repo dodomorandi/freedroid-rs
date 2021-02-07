@@ -15,19 +15,23 @@ use crate::{
     defs::{
         self, AssembleCombatWindowFlags, Cmds, DisplayBannerFlags, DownPressed, Droid, FirePressed,
         LeftPressed, MenuAction, ReturnPressedR, RightPressed, Status, UpPressed,
+        CREDITS_PIC_FILE_C, GRAPHICS_DIR_C,
     },
     global::{
         curShip, quit_Menu, show_all_droids, sound_on, stop_influencer, AllEnemys, Block_Rect,
         CurLevel, CurrentCombatScaleFactor, Druidmap, Font0_BFont, Font1_BFont, Font2_BFont,
         Full_User_Rect, InvincibleMode, Me, Menu_BFont, NumEnemys, Number_Of_Droid_Types,
-        User_Rect,
+        Screen_Rect, User_Rect,
     },
-    graphics::{ne_screen, BannerIsDestroyed, ClearGraphMem, MakeGridOnScreen, SetCombatScaleTo},
+    graphics::{
+        ne_screen, BannerIsDestroyed, ClearGraphMem, DisplayImage, MakeGridOnScreen,
+        SetCombatScaleTo,
+    },
     input::{
         any_key_is_pressedR, cmd_is_activeR, cmd_strings, keystr, update_input, KeyIsPressed,
         KeyIsPressedR, SDL_Delay, WheelDownPressed, WheelUpPressed,
     },
-    misc::{Activate_Conservative_Frame_Computation, Armageddon, Teleport, Terminate},
+    misc::{find_file, Activate_Conservative_Frame_Computation, Armageddon, Teleport, Terminate},
     ship::ShowDeckMap,
     sound::{MenuItemSelectedSound, MoveMenuPositionSound},
     text::{getchar_raw, printf_SDL, GetString},
@@ -36,6 +40,7 @@ use crate::{
 };
 
 use cstr::cstr;
+use defs::{get_user_center, Criticality, Themed};
 use sdl::{
     keysym::{SDLK_BACKSPACE, SDLK_DOWN, SDLK_ESCAPE, SDLK_LEFT, SDLK_RIGHT, SDLK_UP},
     mouse::ll::{SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE},
@@ -1162,4 +1167,163 @@ pub unsafe extern "C" fn Key_Config_Menu() {
 
         SDL_Delay(1);
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ShowCredits() {
+    let col2 = 2 * i32::from(User_Rect.w) / 3;
+
+    let h = FontHeight(&*Menu_BFont);
+    let em = CharWidth(&*Menu_BFont, b'm'.into());
+
+    let screen = Screen_Rect;
+    SDL_SetClipRect(ne_screen, null_mut());
+    DisplayImage(find_file(
+        CREDITS_PIC_FILE_C.as_ptr() as *mut c_char,
+        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        Themed::NoTheme as i32,
+        Criticality::Critical as i32,
+    ));
+    MakeGridOnScreen(Some(&screen));
+
+    let oldfont = GetCurrentFont();
+    SetCurrentFont(Font1_BFont);
+
+    printf_SDL(
+        ne_screen,
+        i32::from(get_user_center().x) - 2 * em,
+        h,
+        cstr!("CREDITS\n").as_ptr() as *mut c_char,
+    );
+
+    printf_SDL(
+        ne_screen,
+        em,
+        -1,
+        cstr!("PROGRAMMING:").as_ptr() as *mut c_char,
+    );
+    printf_SDL(
+        ne_screen,
+        col2,
+        -1,
+        cstr!("Johannes Prix\n").as_ptr() as *mut c_char,
+    );
+    printf_SDL(
+        ne_screen,
+        -1,
+        -1,
+        cstr!("Reinhard Prix\n").as_ptr() as *mut c_char,
+    );
+    printf_SDL(ne_screen, -1, -1, cstr!("\n").as_ptr() as *mut c_char);
+
+    printf_SDL(ne_screen, em, -1, cstr!("ARTWORK:").as_ptr() as *mut c_char);
+    printf_SDL(
+        ne_screen,
+        col2,
+        -1,
+        cstr!("Bastian Salmela\n").as_ptr() as *mut c_char,
+    );
+    printf_SDL(ne_screen, -1, -1, cstr!("\n").as_ptr() as *mut c_char);
+    printf_SDL(
+        ne_screen,
+        em,
+        -1,
+        cstr!("ADDITIONAL THEMES:\n").as_ptr() as *mut c_char,
+    );
+    printf_SDL(
+        ne_screen,
+        2 * em,
+        -1,
+        cstr!("Lanzz-theme").as_ptr() as *mut c_char,
+    );
+    printf_SDL(
+        ne_screen,
+        col2,
+        -1,
+        cstr!("Lanzz\n").as_ptr() as *mut c_char,
+    );
+    printf_SDL(
+        ne_screen,
+        2 * em,
+        -1,
+        cstr!("Para90-theme").as_ptr() as *mut c_char,
+    );
+    printf_SDL(
+        ne_screen,
+        col2,
+        -1,
+        cstr!("Andreas Wedemeyer\n").as_ptr() as *mut c_char,
+    );
+
+    printf_SDL(ne_screen, -1, -1, cstr!("\n").as_ptr() as *mut c_char);
+    printf_SDL(
+        ne_screen,
+        em,
+        -1,
+        cstr!("C64 LEGACY MODS:\n").as_ptr() as *mut c_char,
+    );
+
+    printf_SDL(
+        ne_screen,
+        2 * em,
+        -1,
+        cstr!("Green Beret, Sanxion, Uridium2").as_ptr() as *mut c_char,
+    );
+    printf_SDL(
+        ne_screen,
+        col2,
+        -1,
+        cstr!("#dreamfish/trsi\n").as_ptr() as *mut c_char,
+    );
+
+    printf_SDL(
+        ne_screen,
+        2 * em,
+        -1,
+        cstr!("The last V8, Anarchy").as_ptr() as *mut c_char,
+    );
+    printf_SDL(
+        ne_screen,
+        col2,
+        -1,
+        cstr!("4-mat\n").as_ptr() as *mut c_char,
+    );
+
+    printf_SDL(ne_screen, 2 * em, -1, cstr!("Tron").as_ptr() as *mut c_char);
+    printf_SDL(
+        ne_screen,
+        col2,
+        -1,
+        cstr!("Kollaps\n").as_ptr() as *mut c_char,
+    );
+
+    printf_SDL(
+        ne_screen,
+        2 * em,
+        -1,
+        cstr!("Starpaws").as_ptr() as *mut c_char,
+    );
+    printf_SDL(
+        ne_screen,
+        col2,
+        -1,
+        cstr!("Nashua\n").as_ptr() as *mut c_char,
+    );
+
+    printf_SDL(
+        ne_screen,
+        2 * em,
+        -1,
+        cstr!("Commando").as_ptr() as *mut c_char,
+    );
+    printf_SDL(
+        ne_screen,
+        col2,
+        -1,
+        cstr!("Android").as_ptr() as *mut c_char,
+    );
+
+    SDL_Flip(ne_screen);
+    wait_for_key_pressed();
+    SetCurrentFont(oldfont);
 }
