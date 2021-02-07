@@ -642,33 +642,33 @@ const char *handle_LE_SaveShip ( MenuAction_t action )
   return NULL;
 }
 
-const char *handle_Highscores ( MenuAction_t action )
-{
-  if ( action == ACTION_CLICK ) {
-    MenuItemSelectedSound();
-    ShowHighscores();
-  }
-  return NULL;
-}
-const char *handle_Credits ( MenuAction_t action )
-{
-  if ( action == ACTION_CLICK ) {
-    MenuItemSelectedSound();
-    ShowCredits();
-  }
+// const char *handle_Highscores ( MenuAction_t action )
+// {
+//   if ( action == ACTION_CLICK ) {
+//     MenuItemSelectedSound();
+//     ShowHighscores();
+//   }
+//   return NULL;
+// }
+// const char *handle_Credits ( MenuAction_t action )
+// {
+//   if ( action == ACTION_CLICK ) {
+//     MenuItemSelectedSound();
+//     ShowCredits();
+//   }
+// 
+//   return NULL;
+// 
+// } // handle_Credits()
 
-  return NULL;
-
-} // handle_Credits()
-
-const char *handle_ConfigureKeys ( MenuAction_t action )
-{
-  if ( action == ACTION_CLICK ) {
-    MenuItemSelectedSound();
-    Key_Config_Menu();
-  }
-  return NULL;
-}
+// const char *handle_ConfigureKeys ( MenuAction_t action )
+// {
+//   if ( action == ACTION_CLICK ) {
+//     MenuItemSelectedSound();
+//     Key_Config_Menu();
+//   }
+//   return NULL;
+// }
 // const char *handle_QuitGame ( MenuAction_t action )
 // {
 //   if ( action != ACTION_CLICK ) {
@@ -715,12 +715,12 @@ const char *handle_ConfigureKeys ( MenuAction_t action )
 // } // showMainMenu()
 
 // simple wrapper to ShowMenu() to provide the external entry point into the Level Editor menu
-void
-showLevelEditorMenu (void)
-{
-  quit_LevelEditor = FALSE;
-  ShowMenu ( LevelEditorMenu );
-}
+// void
+// showLevelEditorMenu (void)
+// {
+//   quit_LevelEditor = FALSE;
+//   ShowMenu ( LevelEditorMenu );
+// }
 
 /*@Function============================================================
 @Desc: This function prepares the screen for a menu and

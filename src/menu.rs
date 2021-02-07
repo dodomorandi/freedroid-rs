@@ -18,15 +18,16 @@ use crate::{
         CREDITS_PIC_FILE_C, GRAPHICS_DIR_C,
     },
     global::{
-        curShip, quit_Menu, show_all_droids, sound_on, stop_influencer, AllEnemys, Block_Rect,
-        CurLevel, CurrentCombatScaleFactor, Druidmap, Font0_BFont, Font1_BFont, Font2_BFont,
-        Full_User_Rect, InvincibleMode, Me, Menu_BFont, NumEnemys, Number_Of_Droid_Types,
-        Screen_Rect, User_Rect,
+        curShip, quit_LevelEditor, quit_Menu, show_all_droids, sound_on, stop_influencer,
+        AllEnemys, Block_Rect, CurLevel, CurrentCombatScaleFactor, Druidmap, Font0_BFont,
+        Font1_BFont, Font2_BFont, Full_User_Rect, InvincibleMode, Me, Menu_BFont, NumEnemys,
+        Number_Of_Droid_Types, Screen_Rect, User_Rect,
     },
     graphics::{
         ne_screen, BannerIsDestroyed, ClearGraphMem, DisplayImage, MakeGridOnScreen,
         SetCombatScaleTo,
     },
+    highscore::ShowHighscores,
     input::{
         any_key_is_pressedR, cmd_is_activeR, cmd_strings, keystr, update_input, KeyIsPressed,
         KeyIsPressedR, SDL_Delay, WheelDownPressed, WheelUpPressed,
@@ -59,6 +60,7 @@ use std::{
 extern "C" {
     pub static mut fheight: c_int;
     pub static mut Menu_Background: *mut SDL_Surface;
+    pub static LevelEditorMenu: *const MenuEntry;
 
     #[cfg(target = "android")]
     pub static MainMenu: [MenuEntry; 8];
@@ -1326,4 +1328,40 @@ pub unsafe extern "C" fn ShowCredits() {
     SDL_Flip(ne_screen);
     wait_for_key_pressed();
     SetCurrentFont(oldfont);
+}
+
+/// simple wrapper to ShowMenu() to provide the external entry point into the Level Editor menu
+#[no_mangle]
+pub unsafe extern "C" fn showLevelEditorMenu() {
+    quit_LevelEditor = false;
+    ShowMenu(LevelEditorMenu);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_ConfigureKeys(action: MenuAction) -> *const c_char {
+    if action == MenuAction::CLICK {
+        MenuItemSelectedSound();
+        Key_Config_Menu();
+    }
+
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_Highscores(action: MenuAction) -> *const c_char {
+    if action == MenuAction::CLICK {
+        MenuItemSelectedSound();
+        ShowHighscores();
+    }
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_Credits(action: MenuAction) -> *const c_char {
+    if action == MenuAction::CLICK {
+        MenuItemSelectedSound();
+        ShowCredits();
+    }
+
+    null_mut()
 }

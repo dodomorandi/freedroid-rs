@@ -25,6 +25,10 @@ use std::{
     ptr::null_mut,
 };
 
+extern "C" {
+    pub fn ShowHighscores();
+}
+
 #[repr(C)]
 pub struct HighscoreEntry {
     name: [c_char; MAX_NAME_LEN + 5],
