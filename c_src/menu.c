@@ -594,23 +594,23 @@ const char *handle_LE_Name ( MenuAction_t action )
   return NULL;
 }
 
-const char *handle_LE_Music ( MenuAction_t action )
-{
-  if ( action == ACTION_INFO ) {
-    return CurLevel->Background_Song_Name;
-  }
-
-  if ( action == ACTION_CLICK )
-    {
-      DisplayText ("Music filename: ", Menu_Rect.x - 2*fheight, Menu_Rect.y - 3*fheight, &Full_User_Rect);
-      SDL_Flip( ne_screen );
-      free ( CurLevel->Background_Song_Name );
-      CurLevel->Background_Song_Name = GetString(20, 2);
-      Switch_Background_Music_To ( CurLevel->Background_Song_Name );
-    }
-
-  return NULL;
-}
+// const char *handle_LE_Music ( MenuAction_t action )
+// {
+//   if ( action == ACTION_INFO ) {
+//     return CurLevel->Background_Song_Name;
+//   }
+// 
+//   if ( action == ACTION_CLICK )
+//     {
+//       DisplayText ("Music filename: ", Menu_Rect.x - 2*fheight, Menu_Rect.y - 3*fheight, &Full_User_Rect);
+//       SDL_Flip( ne_screen );
+//       free ( CurLevel->Background_Song_Name );
+//       CurLevel->Background_Song_Name = GetString(20, 2);
+//       Switch_Background_Music_To ( CurLevel->Background_Song_Name );
+//     }
+// 
+//   return NULL;
+// }
 
 // const char *handle_LE_Comment ( MenuAction_t action )
 // {

@@ -20,8 +20,8 @@ use crate::{
     global::{
         curShip, quit_LevelEditor, quit_Menu, show_all_droids, sound_on, stop_influencer,
         AllEnemys, Block_Rect, CurLevel, CurrentCombatScaleFactor, Druidmap, Font0_BFont,
-        Font1_BFont, Font2_BFont, Full_User_Rect, InvincibleMode, Me, Menu_BFont, NumEnemys,
-        Number_Of_Droid_Types, Screen_Rect, User_Rect,
+        Font1_BFont, Font2_BFont, Full_User_Rect, InvincibleMode, Me, Menu_BFont, Menu_Rect,
+        NumEnemys, Number_Of_Droid_Types, Screen_Rect, User_Rect,
     },
     graphics::{
         ne_screen, BannerIsDestroyed, ClearGraphMem, DisplayImage, MakeGridOnScreen,
@@ -35,8 +35,8 @@ use crate::{
     map::SaveShip,
     misc::{find_file, Activate_Conservative_Frame_Computation, Armageddon, Teleport, Terminate},
     ship::ShowDeckMap,
-    sound::{MenuItemSelectedSound, MoveMenuPositionSound},
-    text::{getchar_raw, printf_SDL, GetString},
+    sound::{MenuItemSelectedSound, MoveMenuPositionSound, Switch_Background_Music_To},
+    text::{getchar_raw, printf_SDL, DisplayText, GetString},
     vars::InfluenceModeNames,
     view::{Assemble_Combat_Picture, DisplayBanner, PutInfluence},
 };
@@ -1413,4 +1413,27 @@ pub unsafe extern "C" fn handle_LE_Comment(action: MenuAction) -> *const c_char 
     } else {
         null_mut()
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_LE_Music(action: MenuAction) -> *const c_char {
+    let cur_level = &mut *CurLevel;
+    if action == MenuAction::INFO {
+        return cur_level.Background_Song_Name;
+    }
+
+    if action == MenuAction::CLICK {
+        DisplayText(
+            cstr!("Music filename: ").as_ptr() as *mut c_char,
+            i32::from(Menu_Rect.x) - 2 * fheight,
+            i32::from(Menu_Rect.y) - 3 * fheight,
+            &Full_User_Rect,
+        );
+        SDL_Flip(ne_screen);
+        libc::free(cur_level.Background_Song_Name as *mut c_void);
+        cur_level.Background_Song_Name = GetString(20, 2);
+        Switch_Background_Music_To(cur_level.Background_Song_Name);
+    }
+
+    null_mut()
 }
