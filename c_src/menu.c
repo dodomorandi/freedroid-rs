@@ -576,23 +576,23 @@ const char *handle_LE_SizeY ( MenuAction_t action )
   return NULL;
 }
 
-const char *handle_LE_Name ( MenuAction_t action )
-{
-  if ( action == ACTION_INFO ) {
-    return CurLevel->Levelname;
-  }
-
-  if ( action == ACTION_CLICK )
-    {
-      DisplayText ("New level name: ", Menu_Rect.x-2*fheight, Menu_Rect.y - 3*fheight, &Full_User_Rect );
-      SDL_Flip( ne_screen );
-      free ( CurLevel->Levelname );
-      CurLevel->Levelname = GetString(15, 2);
-      InitiateMenu (FALSE);
-    }
-
-  return NULL;
-}
+// const char *handle_LE_Name ( MenuAction_t action )
+// {
+//   if ( action == ACTION_INFO ) {
+//     return CurLevel->Levelname;
+//   }
+// 
+//   if ( action == ACTION_CLICK )
+//     {
+//       DisplayText ("New level name: ", Menu_Rect.x-2*fheight, Menu_Rect.y - 3*fheight, &Full_User_Rect );
+//       SDL_Flip( ne_screen );
+//       free ( CurLevel->Levelname );
+//       CurLevel->Levelname = GetString(15, 2);
+//       InitiateMenu (FALSE);
+//     }
+// 
+//   return NULL;
+// }
 
 // const char *handle_LE_Music ( MenuAction_t action )
 // {

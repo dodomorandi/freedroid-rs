@@ -1437,3 +1437,26 @@ pub unsafe extern "C" fn handle_LE_Music(action: MenuAction) -> *const c_char {
 
     null_mut()
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_LE_Name(action: MenuAction) -> *const c_char {
+    let cur_level = &mut *CurLevel;
+    if action == MenuAction::INFO {
+        return cur_level.Levelname;
+    }
+
+    if action == MenuAction::CLICK {
+        DisplayText(
+            cstr!("New level name: ").as_ptr() as *mut c_char,
+            i32::from(Menu_Rect.x) - 2 * fheight,
+            i32::from(Menu_Rect.y) - 3 * fheight,
+            &Full_User_Rect,
+        );
+        SDL_Flip(ne_screen);
+        libc::free(cur_level.Levelname as *mut c_void);
+        cur_level.Levelname = GetString(15, 2);
+        InitiateMenu(false);
+    }
+
+    null_mut()
+}
