@@ -1405,3 +1405,12 @@ pub unsafe extern "C" fn handle_LE_SaveShip(action: MenuAction) -> *const c_char
 
     null_mut()
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_LE_Comment(action: MenuAction) -> *const c_char {
+    if action == MenuAction::INFO {
+        (*CurLevel).Level_Enter_Comment
+    } else {
+        null_mut()
+    }
+}

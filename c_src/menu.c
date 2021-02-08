@@ -612,13 +612,13 @@ const char *handle_LE_Music ( MenuAction_t action )
   return NULL;
 }
 
-const char *handle_LE_Comment ( MenuAction_t action )
-{
-  if ( action == ACTION_INFO ) {
-    return CurLevel->Level_Enter_Comment;
-  }
-  return NULL;
-}
+// const char *handle_LE_Comment ( MenuAction_t action )
+// {
+//   if ( action == ACTION_INFO ) {
+//     return CurLevel->Level_Enter_Comment;
+//   }
+//   return NULL;
+// }
 
 // const char *handle_LE_SaveShip ( MenuAction_t action )
 // {
