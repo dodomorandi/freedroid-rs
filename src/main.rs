@@ -13,6 +13,7 @@ mod highscore;
 mod influence;
 mod init;
 mod input;
+mod level_editor;
 mod map;
 mod menu;
 mod misc;

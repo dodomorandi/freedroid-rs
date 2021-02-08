@@ -13,9 +13,10 @@ use crate::{
         SetCurrentFont, TextWidth,
     },
     defs::{
-        self, AssembleCombatWindowFlags, Cmds, DisplayBannerFlags, DownPressed, Droid, FirePressed,
-        LeftPressed, MenuAction, ReturnPressedR, RightPressed, Status, UpPressed,
-        CREDITS_PIC_FILE_C, GRAPHICS_DIR_C,
+        self, get_user_center, AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags,
+        DownPressed, Droid, FirePressed, LeftPressed, MapTile, MenuAction, ReturnPressedR,
+        RightPressed, Status, Themed, UpPressed, BYCOLOR, CREDITS_PIC_FILE_C, GRAPHICS_DIR_C,
+        MAX_MAP_COLS, MAX_MAP_ROWS,
     },
     global::{
         curShip, quit_LevelEditor, quit_Menu, show_all_droids, sound_on, stop_influencer,
@@ -32,8 +33,12 @@ use crate::{
         any_key_is_pressedR, cmd_is_activeR, cmd_strings, keystr, update_input, KeyIsPressed,
         KeyIsPressedR, SDL_Delay, WheelDownPressed, WheelUpPressed,
     },
+    level_editor::LevelEditor,
     map::SaveShip,
-    misc::{find_file, Activate_Conservative_Frame_Computation, Armageddon, Teleport, Terminate},
+    misc::{
+        find_file, Activate_Conservative_Frame_Computation, Armageddon, MyMalloc, Teleport,
+        Terminate,
+    },
     ship::ShowDeckMap,
     sound::{MenuItemSelectedSound, MoveMenuPositionSound, Switch_Background_Music_To},
     text::{getchar_raw, printf_SDL, DisplayText, GetString},
@@ -42,7 +47,7 @@ use crate::{
 };
 
 use cstr::cstr;
-use defs::{get_user_center, Criticality, Themed};
+use log::error;
 use sdl::{
     keysym::{SDLK_BACKSPACE, SDLK_DOWN, SDLK_ESCAPE, SDLK_LEFT, SDLK_RIGHT, SDLK_UP},
     mouse::ll::{SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE},
@@ -62,6 +67,16 @@ extern "C" {
     pub static mut fheight: c_int;
     pub static mut Menu_Background: *mut SDL_Surface;
     pub static LevelEditorMenu: *const MenuEntry;
+    pub static ColorNames: *const *const c_char;
+    pub static numLevelColors: c_int;
+
+    pub fn menuChangeInt(
+        action: MenuAction,
+        val: *mut c_int,
+        step: c_int,
+        min_val: c_int,
+        max_val: c_int,
+    );
 
     #[cfg(target = "android")]
     pub static MainMenu: [MenuEntry; 8];
@@ -1458,5 +1473,145 @@ pub unsafe extern "C" fn handle_LE_Name(action: MenuAction) -> *const c_char {
         InitiateMenu(false);
     }
 
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_OpenLevelEditor(action: MenuAction) -> *const c_char {
+    if action == MenuAction::CLICK {
+        MenuItemSelectedSound();
+        LevelEditor();
+    }
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_LE_Exit(action: MenuAction) -> *const c_char {
+    if action == MenuAction::CLICK {
+        MenuItemSelectedSound();
+        quit_LevelEditor = true;
+        quit_Menu = true;
+    }
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_LE_LevelNumber(action: MenuAction) -> *const c_char {
+    static mut BUF: [c_char; 256] = [0; 256];
+    let cur_level = &*CurLevel;
+    if action == MenuAction::INFO {
+        libc::sprintf(
+            BUF.as_mut_ptr(),
+            cstr!("%d").as_ptr() as *mut c_char,
+            cur_level.levelnum,
+        );
+        return BUF.as_ptr();
+    }
+
+    let mut curlevel = cur_level.levelnum;
+    menuChangeInt(action, &mut curlevel, 1, 0, curShip.num_levels - 1);
+    Teleport(curlevel, 3, 3);
+    Switch_Background_Music_To(BYCOLOR.as_ptr());
+    InitiateMenu(false);
+
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_LE_Color(action: MenuAction) -> *const c_char {
+    let cur_level = &mut *CurLevel;
+    if action == MenuAction::INFO {
+        return *ColorNames.add(usize::try_from(cur_level.color).unwrap());
+    }
+    menuChangeInt(action, &mut cur_level.color, 1, 0, numLevelColors - 1);
+    Switch_Background_Music_To(BYCOLOR.as_ptr());
+    InitiateMenu(false);
+
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_LE_SizeX(action: MenuAction) -> *const c_char {
+    static mut BUF: [c_char; 256] = [0; 256];
+    let cur_level = &mut *CurLevel;
+    if action == MenuAction::INFO {
+        libc::sprintf(
+            BUF.as_mut_ptr(),
+            cstr!("%d").as_ptr() as *mut c_char,
+            cur_level.xlen,
+        );
+        return BUF.as_ptr();
+    }
+
+    let oldxlen = cur_level.xlen;
+    menuChangeInt(
+        action,
+        &mut cur_level.xlen,
+        1,
+        0,
+        i32::try_from(MAX_MAP_COLS).unwrap() - 1,
+    );
+    let newmem = usize::try_from(cur_level.xlen).unwrap();
+    // adjust memory sizes for new value
+    for row in 0..usize::try_from(cur_level.ylen).unwrap() {
+        cur_level.map[row] = libc::realloc(cur_level.map[row] as *mut c_void, newmem) as *mut i8;
+        if cur_level.map[row].is_null() {
+            error!(
+                "Failed to re-allocate to {} bytes in map row {}",
+                newmem, row,
+            );
+            Terminate(defs::ERR.into());
+        }
+        if cur_level.xlen > oldxlen {
+            // fill new map area with VOID
+            *cur_level.map[row].add(usize::try_from(cur_level.xlen - 1).unwrap()) =
+                MapTile::Void as i8;
+        }
+    }
+    InitiateMenu(false);
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_LE_SizeY(action: MenuAction) -> *const c_char {
+    use std::cmp::Ordering;
+
+    static mut BUF: [c_char; 256] = [0; 256];
+    let cur_level = &mut *CurLevel;
+    if action == MenuAction::INFO {
+        libc::sprintf(
+            BUF.as_mut_ptr(),
+            cstr!("%d").as_ptr() as *mut c_char,
+            cur_level.ylen,
+        );
+        return BUF.as_ptr();
+    }
+
+    let oldylen = cur_level.ylen;
+    menuChangeInt(
+        action,
+        &mut cur_level.ylen,
+        1,
+        0,
+        i32::try_from(MAX_MAP_ROWS - 1).unwrap(),
+    );
+    match oldylen.cmp(&cur_level.ylen) {
+        Ordering::Greater => {
+            libc::free(cur_level.map[usize::try_from(oldylen - 1).unwrap()] as *mut c_void);
+            cur_level.map[usize::try_from(oldylen - 1).unwrap()] = null_mut();
+        }
+        Ordering::Less => {
+            cur_level.map[usize::try_from(cur_level.ylen - 1).unwrap()] =
+                MyMalloc(cur_level.xlen.into()) as *mut i8;
+            std::ptr::write_bytes(
+                cur_level.map[usize::try_from(cur_level.ylen - 1).unwrap()],
+                MapTile::Void as u8,
+                usize::try_from(cur_level.xlen).unwrap(),
+            )
+        }
+        Ordering::Equal => {}
+    }
+
+    InitiateMenu(false);
     null_mut()
 }

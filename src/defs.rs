@@ -561,7 +561,7 @@ pub enum Sound {
 
 // choose background music by level-color:
 // if filename_raw==BYCOLOR then chose bg_music[color]
-pub const BYCOLOR: &str = "BYCOLOR";
+pub const BYCOLOR: &CStr = cstr!("BYCOLOR");
 
 // The sounds when the influencers energy is low or when he is in transfer mode
 // occur periodically.  These constants specify which intervals are to be used

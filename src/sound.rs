@@ -383,7 +383,7 @@ pub unsafe extern "C" fn Switch_Background_Music_To(filename_raw: *const c_char)
     // New feature: choose background music by level-color:
     // if filename_raw==BYCOLOR then chose bg_music[color]
     // NOTE: if new level-color is the same as before, just resume paused music!
-    if filename_raw.to_bytes() == BYCOLOR.as_bytes() {
+    if filename_raw.to_bytes() == BYCOLOR.to_bytes() {
         if PAUSED && PREV_COLOR == (*CurLevel).color {
             // current level-song was just paused
             Mix_ResumeMusic();

@@ -474,107 +474,107 @@ handle_ShowDeathCount ( MenuAction_t action )
   return NULL;
 }
 
-const char *handle_OpenLevelEditor ( MenuAction_t action )
-{
-  if ( action == ACTION_CLICK ) {
-    MenuItemSelectedSound();
-    LevelEditor();
-  }
-  return NULL;
-}
-
-const char *handle_LE_Exit ( MenuAction_t action )
-{
-  if ( action == ACTION_CLICK )
-    {
-      MenuItemSelectedSound();
-      quit_LevelEditor = TRUE;
-      quit_Menu = TRUE;
-    }
-  return NULL;
-}
-
-const char *handle_LE_LevelNumber ( MenuAction_t action )
-{
-  static char buf[256];
-  if ( action == ACTION_INFO ) {
-    sprintf ( buf, "%d" , CurLevel->levelnum );
-    return buf;
-  }
-
-  int curlevel = CurLevel->levelnum;
-  menuChangeInt ( action, &curlevel, 1, 0, curShip.num_levels -1 );
-  Teleport ( curlevel, 3 , 3 );
-  Switch_Background_Music_To ( BYCOLOR );
-  InitiateMenu(FALSE);
-
-  return NULL;
-}
-
-const char *handle_LE_Color ( MenuAction_t action )
-{
-  if ( action == ACTION_INFO ) {
-    return ColorNames[CurLevel->color];
-  }
-  menuChangeInt ( action, &(CurLevel->color), 1, 0, numLevelColors-1 );
-  Switch_Background_Music_To ( BYCOLOR );
-  InitiateMenu(FALSE);
-
-  return NULL;
-}
-
-const char *handle_LE_SizeX ( MenuAction_t action )
-{
-  static char buf[256];
-  if ( action == ACTION_INFO ) {
-    sprintf ( buf, "%d" , CurLevel->xlen );
-    return buf;
-  }
-
-  int oldxlen = CurLevel->xlen;
-  menuChangeInt ( action, &(CurLevel->xlen), 1, 0, MAX_MAP_COLS-1 );
-  size_t newmem = CurLevel->xlen * sizeof( CurLevel->map[0][0] );
-  // adjust memory sizes for new value
-  int row;
-  for ( row = 0 ; row < CurLevel->ylen ; row++ )
-    {
-      CurLevel->map[row] = realloc( CurLevel->map[row], newmem );
-      if ( CurLevel->map[row] == NULL ) {
-        DebugPrintf ( 0, "Failed to re-allocate to %z bytes in map row %d\n", newmem, row );
-        Terminate(ERR);
-      }
-      if ( CurLevel->xlen > oldxlen ) { // fill new map area with VOID
-        CurLevel->map[ row ] [ CurLevel->xlen - 1 ] = VOID;
-      }
-    }
-  InitiateMenu(FALSE);
-  return NULL;
-}
-
-const char *handle_LE_SizeY ( MenuAction_t action )
-{
-  static char buf[256];
-  if ( action == ACTION_INFO ) {
-    sprintf ( buf, "%d" , CurLevel->ylen );
-    return buf;
-  }
-
-  int oldylen = CurLevel->ylen;
-  menuChangeInt ( action, &(CurLevel->ylen), 1, 0, MAX_MAP_ROWS-1 );
-  if ( oldylen > CurLevel->ylen )
-    {
-      free ( CurLevel->map[oldylen - 1] );
-      CurLevel->map[oldylen - 1] = NULL;
-    }
-  else if ( oldylen < CurLevel->ylen )
-    {
-      CurLevel->map[ CurLevel->ylen-1 ] = MyMalloc ( CurLevel->xlen * sizeof( CurLevel->map[0][0] ) );
-      memset ( CurLevel->map[ CurLevel->ylen-1 ], VOID, CurLevel->xlen * sizeof( CurLevel->map[0][0] ) );
-    }
-
-  InitiateMenu (FALSE);
-  return NULL;
-}
+// const char *handle_OpenLevelEditor ( MenuAction_t action )
+// {
+//   if ( action == ACTION_CLICK ) {
+//     MenuItemSelectedSound();
+//     LevelEditor();
+//   }
+//   return NULL;
+// }
+// 
+// const char *handle_LE_Exit ( MenuAction_t action )
+// {
+//   if ( action == ACTION_CLICK )
+//     {
+//       MenuItemSelectedSound();
+//       quit_LevelEditor = TRUE;
+//       quit_Menu = TRUE;
+//     }
+//   return NULL;
+// }
+// 
+// const char *handle_LE_LevelNumber ( MenuAction_t action )
+// {
+//   static char buf[256];
+//   if ( action == ACTION_INFO ) {
+//     sprintf ( buf, "%d" , CurLevel->levelnum );
+//     return buf;
+//   }
+// 
+//   int curlevel = CurLevel->levelnum;
+//   menuChangeInt ( action, &curlevel, 1, 0, curShip.num_levels -1 );
+//   Teleport ( curlevel, 3 , 3 );
+//   Switch_Background_Music_To ( BYCOLOR );
+//   InitiateMenu(FALSE);
+// 
+//   return NULL;
+// }
+// 
+// const char *handle_LE_Color ( MenuAction_t action )
+// {
+//   if ( action == ACTION_INFO ) {
+//     return ColorNames[CurLevel->color];
+//   }
+//   menuChangeInt ( action, &(CurLevel->color), 1, 0, numLevelColors-1 );
+//   Switch_Background_Music_To ( BYCOLOR );
+//   InitiateMenu(FALSE);
+// 
+//   return NULL;
+// }
+// 
+// const char *handle_LE_SizeX ( MenuAction_t action )
+// {
+//   static char buf[256];
+//   if ( action == ACTION_INFO ) {
+//     sprintf ( buf, "%d" , CurLevel->xlen );
+//     return buf;
+//   }
+// 
+//   int oldxlen = CurLevel->xlen;
+//   menuChangeInt ( action, &(CurLevel->xlen), 1, 0, MAX_MAP_COLS-1 );
+//   size_t newmem = CurLevel->xlen * sizeof( CurLevel->map[0][0] );
+//   // adjust memory sizes for new value
+//   int row;
+//   for ( row = 0 ; row < CurLevel->ylen ; row++ )
+//     {
+//       CurLevel->map[row] = realloc( CurLevel->map[row], newmem );
+//       if ( CurLevel->map[row] == NULL ) {
+//         DebugPrintf ( 0, "Failed to re-allocate to %z bytes in map row %d\n", newmem, row );
+//         Terminate(ERR);
+//       }
+//       if ( CurLevel->xlen > oldxlen ) { // fill new map area with VOID
+//         CurLevel->map[ row ] [ CurLevel->xlen - 1 ] = VOID;
+//       }
+//     }
+//   InitiateMenu(FALSE);
+//   return NULL;
+// }
+// 
+// const char *handle_LE_SizeY ( MenuAction_t action )
+// {
+//   static char buf[256];
+//   if ( action == ACTION_INFO ) {
+//     sprintf ( buf, "%d" , CurLevel->ylen );
+//     return buf;
+//   }
+// 
+//   int oldylen = CurLevel->ylen;
+//   menuChangeInt ( action, &(CurLevel->ylen), 1, 0, MAX_MAP_ROWS-1 );
+//   if ( oldylen > CurLevel->ylen )
+//     {
+//       free ( CurLevel->map[oldylen - 1] );
+//       CurLevel->map[oldylen - 1] = NULL;
+//     }
+//   else if ( oldylen < CurLevel->ylen )
+//     {
+//       CurLevel->map[ CurLevel->ylen-1 ] = MyMalloc ( CurLevel->xlen * sizeof( CurLevel->map[0][0] ) );
+//       memset ( CurLevel->map[ CurLevel->ylen-1 ], VOID, CurLevel->xlen * sizeof( CurLevel->map[0][0] ) );
+//     }
+// 
+//   InitiateMenu (FALSE);
+//   return NULL;
+// }
 
 // const char *handle_LE_Name ( MenuAction_t action )
 // {
