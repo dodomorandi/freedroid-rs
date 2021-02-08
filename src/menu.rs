@@ -9,8 +9,8 @@ use crate::{
 
 use crate::{
     b_font::{
-        CharWidth, FontHeight, GetCurrentFont, PrintStringFont, PutString, SetCurrentFont,
-        TextWidth,
+        CenteredPutString, CharWidth, FontHeight, GetCurrentFont, PrintStringFont, PutString,
+        SetCurrentFont, TextWidth,
     },
     defs::{
         self, AssembleCombatWindowFlags, Cmds, DisplayBannerFlags, DownPressed, Droid, FirePressed,
@@ -32,6 +32,7 @@ use crate::{
         any_key_is_pressedR, cmd_is_activeR, cmd_strings, keystr, update_input, KeyIsPressed,
         KeyIsPressedR, SDL_Delay, WheelDownPressed, WheelUpPressed,
     },
+    map::SaveShip,
     misc::{find_file, Activate_Conservative_Frame_Computation, Armageddon, Teleport, Terminate},
     ship::ShowDeckMap,
     sound::{MenuItemSelectedSound, MoveMenuPositionSound},
@@ -68,6 +69,11 @@ extern "C" {
     #[cfg(not(target = "android"))]
     pub static MainMenu: [MenuEntry; 10];
 }
+
+const FILENAME_LEN: u8 = 128;
+const SHIP_EXT: &CStr = cstr!(".shp");
+const ELEVEXT: &CStr = cstr!(".elv");
+const CREWEXT: &CStr = cstr!(".crw");
 
 #[repr(C)]
 pub struct MenuEntry {
@@ -1361,6 +1367,40 @@ pub unsafe extern "C" fn handle_Credits(action: MenuAction) -> *const c_char {
     if action == MenuAction::CLICK {
         MenuItemSelectedSound();
         ShowCredits();
+    }
+
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_LE_SaveShip(action: MenuAction) -> *const c_char {
+    const SHIPNAME: &CStr = cstr!("Testship");
+    static mut FNAME: [c_char; 255] = [0; 255];
+    libc::snprintf(
+        FNAME.as_mut_ptr(),
+        FNAME.len() - 1,
+        cstr!("%s%s").as_ptr() as *mut c_char,
+        SHIPNAME.as_ptr() as *mut c_char,
+        SHIP_EXT.as_ptr() as *mut c_char,
+    );
+
+    if action == MenuAction::INFO {
+        return FNAME.as_ptr();
+    }
+
+    if action == MenuAction::CLICK {
+        SaveShip(SHIPNAME.as_ptr());
+        let mut output = [0; 255];
+        libc::snprintf(
+            output.as_mut_ptr(),
+            output.len() - 1,
+            cstr!("Ship saved as '%s'").as_ptr() as *mut c_char,
+            FNAME,
+        );
+        CenteredPutString(ne_screen, 3 * FontHeight(&*Menu_BFont), output.as_mut_ptr());
+        SDL_Flip(ne_screen);
+        wait_for_key_pressed();
+        InitiateMenu(false);
     }
 
     null_mut()

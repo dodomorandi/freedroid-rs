@@ -620,27 +620,27 @@ const char *handle_LE_Comment ( MenuAction_t action )
   return NULL;
 }
 
-const char *handle_LE_SaveShip ( MenuAction_t action )
-{
-  const char *shipname = "Testship";
-  static char fname[255];
-  snprintf ( fname, sizeof(fname)-1, "%s%s", shipname, SHIP_EXT );
-  if ( action == ACTION_INFO ) {
-    return fname;
-  }
-  if ( action == ACTION_CLICK )
-    {
-      SaveShip( shipname );
-      char output[255];
-      snprintf ( output, sizeof(output)-1, "Ship saved as '%s'", fname );
-      CenteredPutString (ne_screen, 3*FontHeight(Menu_BFont), output );
-      SDL_Flip ( ne_screen );
-      wait_for_key_pressed();
-      InitiateMenu (FALSE);
-    }
-
-  return NULL;
-}
+// const char *handle_LE_SaveShip ( MenuAction_t action )
+// {
+//   const char *shipname = "Testship";
+//   static char fname[255];
+//   snprintf ( fname, sizeof(fname)-1, "%s%s", shipname, SHIP_EXT );
+//   if ( action == ACTION_INFO ) {
+//     return fname;
+//   }
+//   if ( action == ACTION_CLICK )
+//     {
+//       SaveShip( shipname );
+//       char output[255];
+//       snprintf ( output, sizeof(output)-1, "Ship saved as '%s'", fname );
+//       CenteredPutString (ne_screen, 3*FontHeight(Menu_BFont), output );
+//       SDL_Flip ( ne_screen );
+//       wait_for_key_pressed();
+//       InitiateMenu (FALSE);
+//     }
+// 
+//   return NULL;
+// }
 
 // const char *handle_Highscores ( MenuAction_t action )
 // {

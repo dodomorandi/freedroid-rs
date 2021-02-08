@@ -11,6 +11,10 @@ use std::{
     os::raw::{c_char, c_float, c_int, c_uchar, c_void},
 };
 
+extern "C" {
+    pub fn SaveShip(shipname: *const c_char) -> c_int;
+}
+
 const WALLPASS: f32 = 4_f32 / 64.;
 
 const KONSOLEPASS_X: f32 = 0.5625;
