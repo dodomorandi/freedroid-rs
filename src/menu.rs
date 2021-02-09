@@ -62,6 +62,7 @@ use sdl::{
 use std::{
     convert::{TryFrom, TryInto},
     ffi::CStr,
+    ops::{AddAssign, SubAssign},
     os::raw::{c_char, c_float, c_int, c_void},
     ptr::null_mut,
 };
@@ -73,23 +74,9 @@ extern "C" {
     pub static ColorNames: *const *const c_char;
     pub static numLevelColors: c_int;
 
-    pub fn menuChangeInt(
-        action: MenuAction,
-        val: *mut c_int,
-        step: c_int,
-        min_val: c_int,
-        max_val: c_int,
-    );
     pub fn flipToggle(toggle: *mut c_int);
     pub fn setTheme(theme_index: c_int);
     pub fn isToggleOn(toggle: c_int) -> *const c_char;
-    pub fn menuChangeFloat(
-        action: MenuAction,
-        val: *mut c_float,
-        step: c_float,
-        min_value: c_float,
-        max_value: c_float,
-    );
 
     #[cfg(target = "android")]
     pub static MainMenu: [MenuEntry; 8];
@@ -1880,4 +1867,45 @@ pub unsafe extern "C" fn handle_ShowDeathCount(action: MenuAction) -> *const c_c
         InitiateMenu(false);
     }
     null_mut()
+}
+
+unsafe fn menu_change<T>(action: MenuAction, val: &mut T, step: T, min_value: T, max_value: T)
+where
+    T: PartialOrd + AddAssign + SubAssign,
+{
+    if action == MenuAction::RIGHT && *val < max_value {
+        MoveLiftSound();
+        *val += step;
+        if *val > max_value {
+            *val = max_value;
+        }
+    } else if action == MenuAction::LEFT && *val > min_value {
+        MoveLiftSound();
+        *val -= step;
+        if *val <= min_value {
+            *val = min_value;
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn menuChangeFloat(
+    action: MenuAction,
+    val: &mut c_float,
+    step: c_float,
+    min_value: c_float,
+    max_value: c_float,
+) {
+    menu_change(action, val, step, min_value, max_value)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn menuChangeInt(
+    action: MenuAction,
+    val: &mut c_int,
+    step: c_int,
+    min_value: c_int,
+    max_value: c_int,
+) {
+    menu_change(action, val, step, min_value, max_value)
 }

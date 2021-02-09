@@ -207,31 +207,31 @@ setTheme ( int theme_index )
   InitPictures();
   return;
 } // setTheme()
-void
-menuChangeFloat ( MenuAction_t action, float *val, float step, float min_val, float max_val )
-{
-  if ( (action == ACTION_RIGHT) && ( (*val) < max_val ) )
-    {
-      MoveLiftSound();
-      (*val) += step;
-      if ( (*val) > max_val ) (*val) = max_val;
-    }
-  if ( (action == ACTION_LEFT) && ( (*val) > min_val ) )
-    {
-      MoveLiftSound();
-      (*val) -= step;
-      if ( (*val) < min_val ) (*val) = min_val;
-    }
-  return;
-} // menuChangeFloat()
-void
-menuChangeInt ( MenuAction_t action, int *val, int step, int min_val, int max_val )
-{
-  float float_val = (float)(*val);
-  menuChangeFloat ( action, &float_val, step, min_val, max_val );
-  (*val) = (int)round(float_val);
-  return;
-} // menuChangeInt()
+// void
+// menuChangeFloat ( MenuAction_t action, float *val, float step, float min_val, float max_val )
+// {
+//   if ( (action == ACTION_RIGHT) && ( (*val) < max_val ) )
+//     {
+//       MoveLiftSound();
+//       (*val) += step;
+//       if ( (*val) > max_val ) (*val) = max_val;
+//     }
+//   if ( (action == ACTION_LEFT) && ( (*val) > min_val ) )
+//     {
+//       MoveLiftSound();
+//       (*val) -= step;
+//       if ( (*val) < min_val ) (*val) = min_val;
+//     }
+//   return;
+// } // menuChangeFloat()
+// void
+// menuChangeInt ( MenuAction_t action, int *val, int step, int min_val, int max_val )
+// {
+//   float float_val = (float)(*val);
+//   menuChangeFloat ( action, &float_val, step, min_val, max_val );
+//   (*val) = (int)round(float_val);
+//   return;
+// } // menuChangeInt()
 
 
 // ========== menu entry handler functions ====================
