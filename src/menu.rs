@@ -20,13 +20,13 @@ use crate::{
     },
     global::{
         curShip, quit_LevelEditor, quit_Menu, show_all_droids, sound_on, stop_influencer,
-        AllEnemys, Block_Rect, CurLevel, CurrentCombatScaleFactor, Druidmap, Font0_BFont,
-        Font1_BFont, Font2_BFont, Full_User_Rect, InvincibleMode, Me, Menu_BFont, Menu_Rect,
-        NumEnemys, Number_Of_Droid_Types, Screen_Rect, User_Rect,
+        AllEnemys, Block_Rect, Classic_User_Rect, CurLevel, CurrentCombatScaleFactor, Druidmap,
+        Font0_BFont, Font1_BFont, Font2_BFont, Full_User_Rect, GameConfig, InvincibleMode, Me,
+        Menu_BFont, Menu_Rect, NumEnemys, Number_Of_Droid_Types, Screen_Rect, User_Rect,
     },
     graphics::{
-        ne_screen, BannerIsDestroyed, ClearGraphMem, DisplayImage, MakeGridOnScreen,
-        SetCombatScaleTo,
+        classic_theme_index, ne_screen, toggle_fullscreen, AllThemes, BannerIsDestroyed,
+        ClearGraphMem, DisplayImage, MakeGridOnScreen, SetCombatScaleTo,
     },
     highscore::ShowHighscores,
     input::{
@@ -40,7 +40,10 @@ use crate::{
         Terminate,
     },
     ship::ShowDeckMap,
-    sound::{MenuItemSelectedSound, MoveMenuPositionSound, Switch_Background_Music_To},
+    sound::{
+        MenuItemSelectedSound, MoveLiftSound, MoveMenuPositionSound, Set_BG_Music_Volume,
+        Set_Sound_FX_Volume, Switch_Background_Music_To,
+    },
     text::{getchar_raw, printf_SDL, DisplayText, GetString},
     vars::InfluenceModeNames,
     view::{Assemble_Combat_Picture, DisplayBanner, PutInfluence},
@@ -59,7 +62,7 @@ use sdl::{
 use std::{
     convert::{TryFrom, TryInto},
     ffi::CStr,
-    os::raw::{c_char, c_int, c_void},
+    os::raw::{c_char, c_float, c_int, c_void},
     ptr::null_mut,
 };
 
@@ -76,6 +79,16 @@ extern "C" {
         step: c_int,
         min_val: c_int,
         max_val: c_int,
+    );
+    pub fn flipToggle(toggle: *mut c_int);
+    pub fn setTheme(theme_index: c_int);
+    pub fn isToggleOn(toggle: c_int) -> *const c_char;
+    pub fn menuChangeFloat(
+        action: MenuAction,
+        val: *mut c_float,
+        step: c_float,
+        min_value: c_float,
+        max_value: c_float,
     );
 
     #[cfg(target = "android")]
@@ -1613,5 +1626,258 @@ pub unsafe extern "C" fn handle_LE_SizeY(action: MenuAction) -> *const c_char {
     }
 
     InitiateMenu(false);
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_StrictlyClassic(action: MenuAction) -> *const c_char {
+    if action == MenuAction::CLICK {
+        MenuItemSelectedSound();
+        GameConfig.Droid_Talk = false.into();
+        GameConfig.ShowDecals = false.into();
+        GameConfig.TakeoverActivates = true.into();
+        GameConfig.FireHoldTakeover = true.into();
+        GameConfig.AllMapVisible = true.into();
+        GameConfig.emptyLevelSpeedup = 1.0;
+
+        // set window type
+        GameConfig.FullUserRect = false.into();
+        User_Rect = Classic_User_Rect;
+        // set theme
+        setTheme(classic_theme_index);
+        InitiateMenu(false);
+    }
+
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_WindowType(action: MenuAction) -> *const c_char {
+    if action == MenuAction::INFO {
+        return if GameConfig.FullUserRect != 0 {
+            cstr!("Full").as_ptr()
+        } else {
+            cstr!("Classic").as_ptr()
+        };
+    }
+
+    if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
+        flipToggle(&mut GameConfig.FullUserRect);
+        if GameConfig.FullUserRect != 0 {
+            User_Rect = Full_User_Rect;
+        } else {
+            User_Rect = Classic_User_Rect;
+        }
+
+        InitiateMenu(false);
+    }
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_Theme(action: MenuAction) -> *const c_char {
+    if action == MenuAction::INFO {
+        return AllThemes.theme_name[usize::try_from(AllThemes.cur_tnum).unwrap()] as *const c_char;
+    }
+
+    if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
+        MoveLiftSound();
+        let mut tnum = AllThemes.cur_tnum;
+        if action == MenuAction::CLICK && action == MenuAction::RIGHT {
+            tnum += 1;
+        } else {
+            tnum -= 1;
+        }
+
+        if tnum < 0 {
+            tnum = AllThemes.num_themes - 1;
+        }
+        if tnum > AllThemes.num_themes - 1 {
+            tnum = 0;
+        }
+
+        setTheme(tnum);
+        InitiateMenu(false);
+    }
+
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_DroidTalk(action: MenuAction) -> *const c_char {
+    if action == MenuAction::INFO {
+        return isToggleOn(GameConfig.Droid_Talk);
+    }
+    if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
+        flipToggle(&mut GameConfig.Droid_Talk);
+    }
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_AllMapVisible(action: MenuAction) -> *const c_char {
+    if action == MenuAction::INFO {
+        return isToggleOn(GameConfig.AllMapVisible);
+    }
+    if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
+        flipToggle(&mut GameConfig.AllMapVisible);
+        InitiateMenu(false);
+    }
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_ShowDecals(action: MenuAction) -> *const c_char {
+    if action == MenuAction::INFO {
+        return isToggleOn(GameConfig.ShowDecals);
+    }
+    if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
+        flipToggle(&mut GameConfig.ShowDecals);
+        InitiateMenu(false);
+    }
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_TransferIsActivate(action: MenuAction) -> *const c_char {
+    if action == MenuAction::INFO {
+        return isToggleOn(GameConfig.TakeoverActivates);
+    }
+    if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
+        flipToggle(&mut GameConfig.TakeoverActivates);
+    }
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_FireIsTransfer(action: MenuAction) -> *const c_char {
+    if action == MenuAction::INFO {
+        return isToggleOn(GameConfig.FireHoldTakeover);
+    }
+    if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
+        flipToggle(&mut GameConfig.FireHoldTakeover);
+    }
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_EmptyLevelSpeedup(action: MenuAction) -> *const c_char {
+    static mut BUF: [c_char; 256] = [0; 256];
+    if action == MenuAction::INFO {
+        libc::sprintf(
+            BUF.as_mut_ptr(),
+            cstr!("%3.1f").as_ptr() as *mut c_char,
+            f64::from(GameConfig.emptyLevelSpeedup),
+        );
+        return BUF.as_ptr();
+    }
+
+    menuChangeFloat(action, &mut GameConfig.emptyLevelSpeedup, 0.1, 0.5, 2.0);
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_MusicVolume(action: MenuAction) -> *const c_char {
+    static mut BUF: [c_char; 256] = [0; 256];
+    if action == MenuAction::INFO {
+        libc::sprintf(
+            BUF.as_mut_ptr(),
+            cstr!("%4.2f").as_ptr() as *mut c_char,
+            f64::from(GameConfig.Current_BG_Music_Volume),
+        );
+        return BUF.as_ptr();
+    }
+
+    menuChangeFloat(
+        action,
+        &mut GameConfig.Current_BG_Music_Volume,
+        0.05,
+        0.,
+        1.,
+    );
+    Set_BG_Music_Volume(GameConfig.Current_BG_Music_Volume);
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_SoundVolume(action: MenuAction) -> *const c_char {
+    static mut BUF: [c_char; 256] = [0; 256];
+    if action == MenuAction::INFO {
+        libc::sprintf(
+            BUF.as_mut_ptr(),
+            cstr!("%4.2f").as_ptr() as *mut c_char,
+            f64::from(GameConfig.Current_Sound_FX_Volume),
+        );
+        return BUF.as_ptr();
+    }
+
+    menuChangeFloat(
+        action,
+        &mut GameConfig.Current_Sound_FX_Volume,
+        0.05,
+        0.,
+        1.,
+    );
+    Set_Sound_FX_Volume(GameConfig.Current_Sound_FX_Volume);
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_Fullscreen(action: MenuAction) -> *const c_char {
+    if action == MenuAction::INFO {
+        return isToggleOn(GameConfig.UseFullscreen);
+    }
+    if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
+        toggle_fullscreen();
+        MenuItemSelectedSound();
+    }
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_ShowPosition(action: MenuAction) -> *const c_char {
+    if action == MenuAction::INFO {
+        return isToggleOn(GameConfig.Draw_Position);
+    }
+    if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
+        flipToggle(&mut GameConfig.Draw_Position);
+        InitiateMenu(false);
+    }
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_ShowFramerate(action: MenuAction) -> *const c_char {
+    if action == MenuAction::INFO {
+        return isToggleOn(GameConfig.Draw_Framerate);
+    }
+    if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
+        flipToggle(&mut GameConfig.Draw_Framerate);
+        InitiateMenu(false);
+    }
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_ShowEnergy(action: MenuAction) -> *const c_char {
+    if action == MenuAction::INFO {
+        return isToggleOn(GameConfig.Draw_Energy);
+    }
+    if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
+        flipToggle(&mut GameConfig.Draw_Energy);
+        InitiateMenu(false);
+    }
+    null_mut()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn handle_ShowDeathCount(action: MenuAction) -> *const c_char {
+    if action == MenuAction::INFO {
+        return isToggleOn(GameConfig.Draw_DeathCount);
+    }
+    if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
+        flipToggle(&mut GameConfig.Draw_DeathCount);
+        InitiateMenu(false);
+    }
     null_mut()
 }

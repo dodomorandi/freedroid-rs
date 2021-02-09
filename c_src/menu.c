@@ -235,244 +235,244 @@ menuChangeInt ( MenuAction_t action, int *val, int step, int min_val, int max_va
 
 
 // ========== menu entry handler functions ====================
-const char *
-handle_StrictlyClassic ( MenuAction_t action )
-{
-  if ( action == ACTION_CLICK )
-    {
-      MenuItemSelectedSound();
-      GameConfig.Droid_Talk = FALSE;
-      GameConfig.ShowDecals = FALSE;
-      GameConfig.TakeoverActivates = TRUE;
-      GameConfig.FireHoldTakeover = TRUE;
-      GameConfig.AllMapVisible = TRUE;
-      GameConfig.emptyLevelSpeedup = 1.0;
-
-      // set window type
-      GameConfig.FullUserRect = FALSE;
-      Copy_Rect (Classic_User_Rect, User_Rect);
-      // set theme
-      setTheme ( classic_theme_index );
-      InitiateMenu (FALSE);
-    }
-
-  return NULL;
-}
-
-const char *
-handle_WindowType ( MenuAction_t action )
-{
-  if ( action == ACTION_INFO ) {
-    return GameConfig.FullUserRect ? "Full" : "Classic";
-  }
-
-  if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) )
-    {
-      flipToggle ( &GameConfig.FullUserRect );
-      if ( GameConfig.FullUserRect )
-        Copy_Rect ( Full_User_Rect, User_Rect );
-      else
-        Copy_Rect ( Classic_User_Rect, User_Rect );
-
-      InitiateMenu (FALSE);
-    }
-  return NULL;
-} // handle_WindowType()
-
-const char *
-handle_Theme ( MenuAction_t action )
-{
-  if ( action == ACTION_INFO ) {
-    return AllThemes.theme_name [ AllThemes.cur_tnum ];
-  }
-
-  if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) )
-    {
-      MoveLiftSound();
-      int tnum = AllThemes.cur_tnum;
-      if ( (action == ACTION_CLICK) && (action == ACTION_RIGHT) )
-        tnum ++;
-      else
-        tnum --;
-
-      if ( tnum < 0 ) tnum = AllThemes.num_themes - 1;
-      if ( tnum > AllThemes.num_themes - 1 ) tnum = 0;
-
-      setTheme ( tnum );
-      InitiateMenu (FALSE);
-    }
-
-  return NULL;
-} // handle_Theme()
-
-const char *
-handle_DroidTalk ( MenuAction_t action )
-{
-  if ( action == ACTION_INFO ) {
-    return isToggleOn ( GameConfig.Droid_Talk );
-  }
-  if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) ) {
-    flipToggle ( &GameConfig.Droid_Talk );
-  }
-  return NULL;
-}
-
-const char *
-handle_AllMapVisible ( MenuAction_t action )
-{
-  if ( action == ACTION_INFO ) {
-    return isToggleOn ( GameConfig.AllMapVisible );
-  }
-  if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) )
-    {
-      flipToggle ( &GameConfig.AllMapVisible );
-      InitiateMenu (FALSE);
-    }
-  return NULL;
-}
-
-const char *
-handle_ShowDecals ( MenuAction_t action )
-{
-  if ( action == ACTION_INFO ) {
-    return isToggleOn ( GameConfig.ShowDecals );
-  }
-  if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) )
-    {
-      flipToggle ( &GameConfig.ShowDecals );
-      InitiateMenu (FALSE);
-    }
-  return NULL;
-}
-
-const char *
-handle_TransferIsActivate ( MenuAction_t action )
-{
-  if ( action == ACTION_INFO ) {
-    return isToggleOn ( GameConfig.TakeoverActivates );
-  }
-  if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) ) {
-    flipToggle ( &GameConfig.TakeoverActivates );
-  }
-  return NULL;
-}
-
-const char *
-handle_FireIsTransfer ( MenuAction_t action )
-{
-  if ( action == ACTION_INFO ) {
-    return isToggleOn ( GameConfig.FireHoldTakeover );
-  }
-  if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) ) {
-    flipToggle ( &GameConfig.FireHoldTakeover );
-  }
-  return NULL;
-}
-
-const char *
-handle_EmptyLevelSpeedup ( MenuAction_t action )
-{
-  static char buf[256];
-  if ( action == ACTION_INFO ) {
-    sprintf ( buf, "%3.1f" , GameConfig.emptyLevelSpeedup );
-    return buf;
-  }
-
-  menuChangeFloat ( action, &(GameConfig.emptyLevelSpeedup), 0.1, 0.5, 2.0 );
-  return NULL;
-}
-
-const char *
-handle_MusicVolume ( MenuAction_t action )
-{
-  static char buf[256];
-  if ( action == ACTION_INFO ) {
-    sprintf ( buf, "%4.2f" , GameConfig.Current_BG_Music_Volume );
-    return buf;
-  }
-
-  menuChangeFloat ( action, &(GameConfig.Current_BG_Music_Volume), 0.05, 0, 1 );
-  Set_BG_Music_Volume ( GameConfig.Current_BG_Music_Volume );
-  return NULL;
-}
-
-const char *
-handle_SoundVolume ( MenuAction_t action )
-{
-  static char buf[256];
-  if ( action == ACTION_INFO ) {
-    sprintf ( buf, "%4.2f" , GameConfig.Current_Sound_FX_Volume );
-    return buf;
-  }
-
-  menuChangeFloat ( action, &(GameConfig.Current_Sound_FX_Volume), 0.05, 0, 1 );
-  Set_Sound_FX_Volume( GameConfig.Current_Sound_FX_Volume );
-  return NULL;
-}
-
-const char *
-handle_Fullscreen ( MenuAction_t action )
-{
-  if ( action == ACTION_INFO ) {
-    return isToggleOn ( GameConfig.UseFullscreen );
-  }
-  if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) ) {
-      toggle_fullscreen();
-      MenuItemSelectedSound();
-  }
-  return NULL;
-}
-
-
-
-const char *
-handle_ShowPosition ( MenuAction_t action )
-{
-  if ( action == ACTION_INFO ) {
-    return isToggleOn ( GameConfig.Draw_Position );
-  }
-  if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) ) {
-    flipToggle ( &GameConfig.Draw_Position );
-    InitiateMenu (FALSE);
-  }
-  return NULL;
-}
-const char *
-handle_ShowFramerate ( MenuAction_t action )
-{
-  if ( action == ACTION_INFO ) {
-    return isToggleOn ( GameConfig.Draw_Framerate );
-  }
-  if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) ) {
-    flipToggle ( &GameConfig.Draw_Framerate );
-    InitiateMenu (FALSE);
-  }
-  return NULL;
-}
-const char *
-handle_ShowEnergy ( MenuAction_t action )
-{
-  if ( action == ACTION_INFO ) {
-    return isToggleOn ( GameConfig.Draw_Energy );
-  }
-  if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) ) {
-    flipToggle ( &GameConfig.Draw_Energy );
-    InitiateMenu (FALSE);
-  }
-  return NULL;
-}
-const char *
-handle_ShowDeathCount ( MenuAction_t action )
-{
-  if ( action == ACTION_INFO ) {
-    return isToggleOn ( GameConfig.Draw_DeathCount );
-  }
-  if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) ) {
-    flipToggle ( &GameConfig.Draw_DeathCount );
-    InitiateMenu (FALSE);
-  }
-  return NULL;
-}
+// const char *
+// handle_StrictlyClassic ( MenuAction_t action )
+// {
+//   if ( action == ACTION_CLICK )
+//     {
+//       MenuItemSelectedSound();
+//       GameConfig.Droid_Talk = FALSE;
+//       GameConfig.ShowDecals = FALSE;
+//       GameConfig.TakeoverActivates = TRUE;
+//       GameConfig.FireHoldTakeover = TRUE;
+//       GameConfig.AllMapVisible = TRUE;
+//       GameConfig.emptyLevelSpeedup = 1.0;
+// 
+//       // set window type
+//       GameConfig.FullUserRect = FALSE;
+//       Copy_Rect (Classic_User_Rect, User_Rect);
+//       // set theme
+//       setTheme ( classic_theme_index );
+//       InitiateMenu (FALSE);
+//     }
+// 
+//   return NULL;
+// }
+// 
+// const char *
+// handle_WindowType ( MenuAction_t action )
+// {
+//   if ( action == ACTION_INFO ) {
+//     return GameConfig.FullUserRect ? "Full" : "Classic";
+//   }
+// 
+//   if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) )
+//     {
+//       flipToggle ( &GameConfig.FullUserRect );
+//       if ( GameConfig.FullUserRect )
+//         Copy_Rect ( Full_User_Rect, User_Rect );
+//       else
+//         Copy_Rect ( Classic_User_Rect, User_Rect );
+// 
+//       InitiateMenu (FALSE);
+//     }
+//   return NULL;
+// } // handle_WindowType()
+// 
+// const char *
+// handle_Theme ( MenuAction_t action )
+// {
+//   if ( action == ACTION_INFO ) {
+//     return AllThemes.theme_name [ AllThemes.cur_tnum ];
+//   }
+// 
+//   if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) )
+//     {
+//       MoveLiftSound();
+//       int tnum = AllThemes.cur_tnum;
+//       if ( (action == ACTION_CLICK) && (action == ACTION_RIGHT) )
+//         tnum ++;
+//       else
+//         tnum --;
+// 
+//       if ( tnum < 0 ) tnum = AllThemes.num_themes - 1;
+//       if ( tnum > AllThemes.num_themes - 1 ) tnum = 0;
+// 
+//       setTheme ( tnum );
+//       InitiateMenu (FALSE);
+//     }
+// 
+//   return NULL;
+// } // handle_Theme()
+// 
+// const char *
+// handle_DroidTalk ( MenuAction_t action )
+// {
+//   if ( action == ACTION_INFO ) {
+//     return isToggleOn ( GameConfig.Droid_Talk );
+//   }
+//   if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) ) {
+//     flipToggle ( &GameConfig.Droid_Talk );
+//   }
+//   return NULL;
+// }
+// 
+// const char *
+// handle_AllMapVisible ( MenuAction_t action )
+// {
+//   if ( action == ACTION_INFO ) {
+//     return isToggleOn ( GameConfig.AllMapVisible );
+//   }
+//   if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) )
+//     {
+//       flipToggle ( &GameConfig.AllMapVisible );
+//       InitiateMenu (FALSE);
+//     }
+//   return NULL;
+// }
+// 
+// const char *
+// handle_ShowDecals ( MenuAction_t action )
+// {
+//   if ( action == ACTION_INFO ) {
+//     return isToggleOn ( GameConfig.ShowDecals );
+//   }
+//   if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) )
+//     {
+//       flipToggle ( &GameConfig.ShowDecals );
+//       InitiateMenu (FALSE);
+//     }
+//   return NULL;
+// }
+// 
+// const char *
+// handle_TransferIsActivate ( MenuAction_t action )
+// {
+//   if ( action == ACTION_INFO ) {
+//     return isToggleOn ( GameConfig.TakeoverActivates );
+//   }
+//   if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) ) {
+//     flipToggle ( &GameConfig.TakeoverActivates );
+//   }
+//   return NULL;
+// }
+// 
+// const char *
+// handle_FireIsTransfer ( MenuAction_t action )
+// {
+//   if ( action == ACTION_INFO ) {
+//     return isToggleOn ( GameConfig.FireHoldTakeover );
+//   }
+//   if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) ) {
+//     flipToggle ( &GameConfig.FireHoldTakeover );
+//   }
+//   return NULL;
+// }
+// 
+// const char *
+// handle_EmptyLevelSpeedup ( MenuAction_t action )
+// {
+//   static char buf[256];
+//   if ( action == ACTION_INFO ) {
+//     sprintf ( buf, "%3.1f" , GameConfig.emptyLevelSpeedup );
+//     return buf;
+//   }
+// 
+//   menuChangeFloat ( action, &(GameConfig.emptyLevelSpeedup), 0.1, 0.5, 2.0 );
+//   return NULL;
+// }
+// 
+// const char *
+// handle_MusicVolume ( MenuAction_t action )
+// {
+//   static char buf[256];
+//   if ( action == ACTION_INFO ) {
+//     sprintf ( buf, "%4.2f" , GameConfig.Current_BG_Music_Volume );
+//     return buf;
+//   }
+// 
+//   menuChangeFloat ( action, &(GameConfig.Current_BG_Music_Volume), 0.05, 0, 1 );
+//   Set_BG_Music_Volume ( GameConfig.Current_BG_Music_Volume );
+//   return NULL;
+// }
+// 
+// const char *
+// handle_SoundVolume ( MenuAction_t action )
+// {
+//   static char buf[256];
+//   if ( action == ACTION_INFO ) {
+//     sprintf ( buf, "%4.2f" , GameConfig.Current_Sound_FX_Volume );
+//     return buf;
+//   }
+// 
+//   menuChangeFloat ( action, &(GameConfig.Current_Sound_FX_Volume), 0.05, 0, 1 );
+//   Set_Sound_FX_Volume( GameConfig.Current_Sound_FX_Volume );
+//   return NULL;
+// }
+// 
+// const char *
+// handle_Fullscreen ( MenuAction_t action )
+// {
+//   if ( action == ACTION_INFO ) {
+//     return isToggleOn ( GameConfig.UseFullscreen );
+//   }
+//   if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) ) {
+//       toggle_fullscreen();
+//       MenuItemSelectedSound();
+//   }
+//   return NULL;
+// }
+// 
+// 
+// 
+// const char *
+// handle_ShowPosition ( MenuAction_t action )
+// {
+//   if ( action == ACTION_INFO ) {
+//     return isToggleOn ( GameConfig.Draw_Position );
+//   }
+//   if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) ) {
+//     flipToggle ( &GameConfig.Draw_Position );
+//     InitiateMenu (FALSE);
+//   }
+//   return NULL;
+// }
+// const char *
+// handle_ShowFramerate ( MenuAction_t action )
+// {
+//   if ( action == ACTION_INFO ) {
+//     return isToggleOn ( GameConfig.Draw_Framerate );
+//   }
+//   if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) ) {
+//     flipToggle ( &GameConfig.Draw_Framerate );
+//     InitiateMenu (FALSE);
+//   }
+//   return NULL;
+// }
+// const char *
+// handle_ShowEnergy ( MenuAction_t action )
+// {
+//   if ( action == ACTION_INFO ) {
+//     return isToggleOn ( GameConfig.Draw_Energy );
+//   }
+//   if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) ) {
+//     flipToggle ( &GameConfig.Draw_Energy );
+//     InitiateMenu (FALSE);
+//   }
+//   return NULL;
+// }
+// const char *
+// handle_ShowDeathCount ( MenuAction_t action )
+// {
+//   if ( action == ACTION_INFO ) {
+//     return isToggleOn ( GameConfig.Draw_DeathCount );
+//   }
+//   if ( (action == ACTION_CLICK) || (action == ACTION_LEFT) || (action == ACTION_RIGHT) ) {
+//     flipToggle ( &GameConfig.Draw_DeathCount );
+//     InitiateMenu (FALSE);
+//   }
+//   return NULL;
+// }
 
 // const char *handle_OpenLevelEditor ( MenuAction_t action )
 // {
