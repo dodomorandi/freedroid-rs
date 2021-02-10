@@ -19,14 +19,14 @@ use crate::{
         MAX_MAP_COLS, MAX_MAP_ROWS,
     },
     global::{
-        curShip, quit_LevelEditor, quit_Menu, show_all_droids, sound_on, stop_influencer,
-        AllEnemys, Block_Rect, Classic_User_Rect, CurLevel, CurrentCombatScaleFactor, Druidmap,
-        Font0_BFont, Font1_BFont, Font2_BFont, Full_User_Rect, GameConfig, InvincibleMode, Me,
-        Menu_BFont, Menu_Rect, NumEnemys, Number_Of_Droid_Types, Screen_Rect, User_Rect,
+        curShip, show_all_droids, sound_on, stop_influencer, AllEnemys, Block_Rect,
+        Classic_User_Rect, CurLevel, CurrentCombatScaleFactor, Druidmap, Font0_BFont, Font1_BFont,
+        Font2_BFont, Full_User_Rect, GameConfig, InvincibleMode, Me, Menu_BFont, Menu_Rect,
+        NumEnemys, Number_Of_Droid_Types, Screen_Rect, User_Rect,
     },
     graphics::{
         classic_theme_index, ne_screen, toggle_fullscreen, AllThemes, BannerIsDestroyed,
-        ClearGraphMem, DisplayImage, MakeGridOnScreen, SetCombatScaleTo,
+        ClearGraphMem, DisplayImage, InitPictures, MakeGridOnScreen, SetCombatScaleTo,
     },
     highscore::ShowHighscores,
     input::{
@@ -34,7 +34,7 @@ use crate::{
         KeyIsPressedR, SDL_Delay, WheelDownPressed, WheelUpPressed,
     },
     level_editor::LevelEditor,
-    map::SaveShip,
+    map::{numLevelColors, ColorNames, SaveShip},
     misc::{
         find_file, Activate_Conservative_Frame_Computation, Armageddon, MyMalloc, Teleport,
         Terminate,
@@ -62,33 +62,141 @@ use sdl::{
 use std::{
     convert::{TryFrom, TryInto},
     ffi::CStr,
-    ops::{AddAssign, SubAssign},
+    ops::{AddAssign, Not, SubAssign},
     os::raw::{c_char, c_float, c_int, c_void},
     ptr::null_mut,
 };
 
-extern "C" {
-    pub static mut fheight: c_int;
-    pub static mut Menu_Background: *mut SDL_Surface;
-    pub static LevelEditorMenu: *const MenuEntry;
-    pub static ColorNames: *const *const c_char;
-    pub static numLevelColors: c_int;
+static mut FONT_HEIGHT: i32 = 0;
+static mut MENU_BACKGROUND: *mut SDL_Surface = null_mut();
+static mut QUIT_MENU: bool = false;
 
-    pub fn flipToggle(toggle: *mut c_int);
-    pub fn setTheme(theme_index: c_int);
-    pub fn isToggleOn(toggle: c_int) -> *const c_char;
+#[no_mangle]
+pub static mut quit_LevelEditor: bool = false;
 
-    #[cfg(target = "android")]
-    pub static MainMenu: [MenuEntry; 8];
+// const FILENAME_LEN: u8 = 128;
+const SHIP_EXT: &CStr = cstr!(".shp");
+// const ELEVEXT: &CStr = cstr!(".elv");
+// const CREWEXT: &CStr = cstr!(".crw");
 
-    #[cfg(not(target = "android"))]
-    pub static MainMenu: [MenuEntry; 10];
+macro_rules! menu_entry {
+    () => {
+        MenuEntry {
+            name: null_mut(),
+            handler: None,
+            submenu: null_mut(),
+        }
+    };
+    ($name:tt) => {
+        MenuEntry {
+            name: cstr!($name).as_ptr(),
+            handler: None,
+            submenu: null_mut(),
+        }
+    };
+    ($name:tt, $handler:expr) => {
+        MenuEntry {
+            name: cstr!($name).as_ptr(),
+            handler: Some($handler),
+            submenu: null_mut(),
+        }
+    };
+    ($name:tt, None, $submenu:expr) => {
+        MenuEntry {
+            name: cstr!($name).as_ptr(),
+            handler: None,
+            submenu: $submenu.as_ptr(),
+        }
+    };
+    ($name:tt, $handler:expr, $submenu:expr) => {
+        MenuEntry {
+            name: cstr!($name).as_ptr(),
+            handler: Some($handler),
+            submenu: $submenu.as_ptr(),
+        }
+    };
 }
 
-const FILENAME_LEN: u8 = 128;
-const SHIP_EXT: &CStr = cstr!(".shp");
-const ELEVEXT: &CStr = cstr!(".elv");
-const CREWEXT: &CStr = cstr!(".crw");
+#[cfg(target_os = "android")]
+const LEGACY_MENU: [MenuEntry; 10] = [
+    menu_entry! { "Back" },
+    menu_entry! { "Set Strictly Classic", handle_StrictlyClassic},
+    menu_entry! { "Combat Window: ", handle_WindowType},
+    menu_entry! { "Graphics Theme: ", handle_Theme},
+    menu_entry! { "Droid Talk: ", handle_DroidTalk},
+    menu_entry! { "Show Decals: ", handle_ShowDecals},
+    menu_entry! { "All Map Visible: ", handle_AllMapVisible},
+    menu_entry! { "Empty Level Speedup: ", handle_EmptyLevelSpeedup, NULL },
+    menu_entry! {},
+];
+
+#[cfg(not(target_os = "android"))]
+const LEGACY_MENU: [MenuEntry; 11] = [
+    menu_entry! { "Back"},
+    menu_entry! { "Set Strictly Classic", handle_StrictlyClassic},
+    menu_entry! { "Combat Window: ", handle_WindowType},
+    menu_entry! { "Graphics Theme: ", handle_Theme},
+    menu_entry! { "Droid Talk: ", handle_DroidTalk},
+    menu_entry! { "Show Decals: ", handle_ShowDecals},
+    menu_entry! { "All Map Visible: ", handle_AllMapVisible},
+    menu_entry! { "Transfer = Activate: ", handle_TransferIsActivate},
+    menu_entry! { "Hold Fire to Transfer: ", handle_FireIsTransfer},
+    menu_entry! { "Empty Level Speedup: ", handle_EmptyLevelSpeedup},
+    menu_entry! {},
+];
+
+const GRAPHICS_SOUND_MENU: [MenuEntry; 5] = [
+    menu_entry! { "Back"},
+    menu_entry! { "Music Volume: ", handle_MusicVolume},
+    menu_entry! { "Sound Volume: ", handle_SoundVolume},
+    menu_entry! { "Fullscreen Mode: ", handle_Fullscreen},
+    menu_entry! {},
+];
+
+const HUD_MENU: [MenuEntry; 5] = [
+    menu_entry! { "Back"},
+    menu_entry! { "Show Position: ", handle_ShowPosition},
+    menu_entry! { "Show Framerate: ", handle_ShowFramerate},
+    menu_entry! { "Show Energy: ", handle_ShowEnergy},
+    menu_entry! {},
+];
+
+const LEVEL_EDITOR_MENU: [MenuEntry; 8] = [
+    menu_entry! { "Exit Level Editor", 	handle_LE_Exit},
+    menu_entry! { "Current Level: ", handle_LE_LevelNumber},
+    menu_entry! { "Level Color: ", handle_LE_Color},
+    menu_entry! { "Levelsize X: ", handle_LE_SizeX},
+    menu_entry! { "Levelsize Y: ", handle_LE_SizeY},
+    menu_entry! { "Level Name: ", handle_LE_Name},
+    menu_entry! { "Save ship: ", handle_LE_SaveShip},
+    menu_entry! {},
+];
+
+#[cfg(target_os = "android")]
+const MAIN_MENU: [MenuEntry; 8] = [
+    menu_entry! { "Back to Game"},
+    menu_entry! { "Graphics & Sound", None, GraphicsSoundMenu },
+    menu_entry! { "Legacy Options", None, LegacyMenu },
+    menu_entry! { "HUD Settings", None, HUDMenu },
+    menu_entry! { "Highscores", handle_Highscores},
+    menu_entry! { "Credits", handle_Credits},
+    menu_entry! { "Quit Game", handle_QuitGame},
+    menu_entry! {},
+];
+
+#[cfg(not(target_os = "android"))]
+const MAIN_MENU: [MenuEntry; 10] = [
+    menu_entry! { "Back to Game"},
+    menu_entry! { "Graphics & Sound", None, GRAPHICS_SOUND_MENU },
+    menu_entry! { "Legacy Options", None, LEGACY_MENU },
+    menu_entry! { "HUD Settings", None, HUD_MENU },
+    menu_entry! { "Level Editor", handle_OpenLevelEditor},
+    menu_entry! { "Highscores", handle_Highscores},
+    menu_entry! { "Credits", handle_Credits},
+    menu_entry! { "Configure Keys", handle_ConfigureKeys},
+    menu_entry! { "Quit Game", handle_QuitGame},
+    menu_entry! {},
+];
 
 #[repr(C)]
 pub struct MenuEntry {
@@ -114,7 +222,7 @@ pub unsafe extern "C" fn handle_QuitGame(action: MenuAction) -> *const c_char {
 
     let text_width = TextWidth(QUIT_STRING.as_ptr());
     let text_x = i32::from(User_Rect.x) + (i32::from(User_Rect.w) - text_width) / 2;
-    let text_y = i32::from(User_Rect.y) + (i32::from(User_Rect.h) - fheight) / 2;
+    let text_y = i32::from(User_Rect.y) + (i32::from(User_Rect.h) - FONT_HEIGHT) / 2;
     PutString(ne_screen, text_x, text_y, QUIT_STRING.as_ptr());
     SDL_Flip(ne_screen);
 
@@ -152,12 +260,12 @@ pub unsafe extern "C" fn handle_QuitGame(action: MenuAction) -> *const c_char {
 /// simple wrapper to ShowMenu() to provide the external entry point into the main menu
 #[no_mangle]
 pub unsafe extern "C" fn showMainMenu() {
-    ShowMenu(MainMenu.as_ptr());
+    ShowMenu(MAIN_MENU.as_ptr());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn FreeMenuData() {
-    SDL_FreeSurface(Menu_Background);
+    SDL_FreeSurface(MENU_BACKGROUND);
 }
 
 #[no_mangle]
@@ -186,14 +294,14 @@ pub unsafe extern "C" fn InitiateMenu(with_droids: bool) {
     SDL_SetClipRect(ne_screen, null_mut());
     MakeGridOnScreen(None);
 
-    if !Menu_Background.is_null() {
-        SDL_FreeSurface(Menu_Background);
+    if !MENU_BACKGROUND.is_null() {
+        SDL_FreeSurface(MENU_BACKGROUND);
     }
-    Menu_Background = SDL_DisplayFormat(ne_screen); // keep a global copy of background
+    MENU_BACKGROUND = SDL_DisplayFormat(ne_screen); // keep a global copy of background
 
     SDL_ShowCursor(SDL_DISABLE); // deactivate mouse-cursor in menus
     SetCurrentFont(Menu_BFont);
-    fheight = FontHeight(&*GetCurrentFont()) + 2;
+    FONT_HEIGHT = FontHeight(&*GetCurrentFont()) + 2;
 }
 
 #[no_mangle]
@@ -804,8 +912,6 @@ pub unsafe extern "C" fn getMenuAction(wait_repeat_ticks: u32) -> MenuAction {
 /// Generic menu handler
 #[no_mangle]
 pub unsafe extern "C" fn ShowMenu(menu_entries: *const MenuEntry) {
-    use std::ops::Not;
-
     InitiateMenu(false);
     wait_for_all_keys_released();
 
@@ -830,24 +936,24 @@ pub unsafe extern "C" fn ShowMenu(menu_entries: *const MenuEntry) {
     let menu_entries = std::slice::from_raw_parts(menu_entries, num_entries);
     let menu_width = menu_width.unwrap();
 
-    let menu_height = i32::try_from(num_entries).unwrap() * fheight;
+    let menu_height = i32::try_from(num_entries).unwrap() * FONT_HEIGHT;
     let menu_x = i32::from(Full_User_Rect.x) + (i32::from(Full_User_Rect.w) - menu_width) / 2;
     let menu_y = i32::from(Full_User_Rect.y) + (i32::from(Full_User_Rect.h) - menu_height) / 2;
-    let influ_x = menu_x - i32::from(Block_Rect.w) - fheight;
+    let influ_x = menu_x - i32::from(Block_Rect.w) - FONT_HEIGHT;
 
     let mut menu_pos = 0;
 
     let wait_move_ticks: u32 = 100;
     static mut LAST_MOVE_TICK: u32 = 0;
     let mut finished = false;
-    quit_Menu = false;
+    QUIT_MENU = false;
     let mut need_update = true;
     while !finished {
         let handler = menu_entries[menu_pos].handler;
         let submenu = menu_entries[menu_pos].submenu;
 
         if need_update {
-            SDL_UpperBlit(Menu_Background, null_mut(), ne_screen, null_mut());
+            SDL_UpperBlit(MENU_BACKGROUND, null_mut(), ne_screen, null_mut());
             // print menu
             menu_entries.iter().enumerate().for_each(|(i, entry)| {
                 let arg = entry
@@ -871,13 +977,13 @@ pub unsafe extern "C" fn ShowMenu(menu_entries: *const MenuEntry) {
                 PutString(
                     ne_screen,
                     menu_x,
-                    menu_y + i32::try_from(i).unwrap() * fheight,
+                    menu_y + i32::try_from(i).unwrap() * FONT_HEIGHT,
                     full_name.as_ptr(),
                 );
             });
             PutInfluence(
                 influ_x,
-                menu_y + ((menu_pos as f64 - 0.5) * f64::from(fheight)) as c_int,
+                menu_y + ((menu_pos as f64 - 0.5) * f64::from(FONT_HEIGHT)) as c_int,
             );
 
             #[cfg(not(target_os = "android"))]
@@ -963,7 +1069,7 @@ pub unsafe extern "C" fn ShowMenu(menu_entries: *const MenuEntry) {
             _ => {}
         }
 
-        if quit_Menu {
+        if QUIT_MENU {
             finished = true;
         }
 
@@ -994,7 +1100,7 @@ pub unsafe extern "C" fn Display_Key_Config(selx: c_int, sely: c_int) {
     let col3 = col2 + (6.5 * f64::from(CharWidth(&*GetCurrentFont(), b'O'.into()))) as i32;
     let lheight = FontHeight(&*Font0_BFont) + 2;
 
-    SDL_UpperBlit(Menu_Background, null_mut(), ne_screen, null_mut());
+    SDL_UpperBlit(MENU_BACKGROUND, null_mut(), ne_screen, null_mut());
 
     #[cfg(feature = "gcw0")]
     PrintStringFont(
@@ -1355,7 +1461,7 @@ pub unsafe extern "C" fn ShowCredits() {
 #[no_mangle]
 pub unsafe extern "C" fn showLevelEditorMenu() {
     quit_LevelEditor = false;
-    ShowMenu(LevelEditorMenu);
+    ShowMenu(LEVEL_EDITOR_MENU.as_ptr());
 }
 
 #[no_mangle]
@@ -1440,8 +1546,8 @@ pub unsafe extern "C" fn handle_LE_Music(action: MenuAction) -> *const c_char {
     if action == MenuAction::CLICK {
         DisplayText(
             cstr!("Music filename: ").as_ptr() as *mut c_char,
-            i32::from(Menu_Rect.x) - 2 * fheight,
-            i32::from(Menu_Rect.y) - 3 * fheight,
+            i32::from(Menu_Rect.x) - 2 * FONT_HEIGHT,
+            i32::from(Menu_Rect.y) - 3 * FONT_HEIGHT,
             &Full_User_Rect,
         );
         SDL_Flip(ne_screen);
@@ -1463,8 +1569,8 @@ pub unsafe extern "C" fn handle_LE_Name(action: MenuAction) -> *const c_char {
     if action == MenuAction::CLICK {
         DisplayText(
             cstr!("New level name: ").as_ptr() as *mut c_char,
-            i32::from(Menu_Rect.x) - 2 * fheight,
-            i32::from(Menu_Rect.y) - 3 * fheight,
+            i32::from(Menu_Rect.x) - 2 * FONT_HEIGHT,
+            i32::from(Menu_Rect.y) - 3 * FONT_HEIGHT,
             &Full_User_Rect,
         );
         SDL_Flip(ne_screen);
@@ -1490,7 +1596,7 @@ pub unsafe extern "C" fn handle_LE_Exit(action: MenuAction) -> *const c_char {
     if action == MenuAction::CLICK {
         MenuItemSelectedSound();
         quit_LevelEditor = true;
-        quit_Menu = true;
+        QUIT_MENU = true;
     }
     null_mut()
 }
@@ -1908,4 +2014,33 @@ pub unsafe extern "C" fn menuChangeInt(
     max_value: c_int,
 ) {
     menu_change(action, val, step, min_value, max_value)
+}
+
+#[no_mangle]
+pub extern "C" fn isToggleOn(toggle: c_int) -> *const c_char {
+    if toggle != 0 {
+        cstr!("YES").as_ptr()
+    } else {
+        cstr!("NO").as_ptr()
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn flipToggle(toggle: *mut c_int) {
+    if toggle.is_null().not() {
+        MenuItemSelectedSound();
+        *toggle = !*toggle;
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn setTheme(theme_index: c_int) {
+    assert!(theme_index >= 0 && theme_index < AllThemes.num_themes);
+
+    AllThemes.cur_tnum = theme_index;
+    libc::strcpy(
+        GameConfig.Theme_Name.as_mut_ptr(),
+        AllThemes.theme_name[usize::try_from(AllThemes.cur_tnum).unwrap()] as *const c_char,
+    );
+    InitPictures();
 }

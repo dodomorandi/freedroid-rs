@@ -86,8 +86,6 @@ extern "C" {
     pub static mut liftrow_rect: [SDL_Rect; MAX_LIFT_ROWS]; /* the lift-row rect's in side-view*/
     pub static mut Highscores: *mut *mut HighscoreEntry;
     pub static mut num_highscores: i32; /* total number of entries in our list (fixed) */
-    pub static mut quit_LevelEditor: bool;
-    pub static mut quit_Menu: bool;
 }
 
 pub const INFLUENCE_MODE_NAMES: [&'static CStr; 17] = [

@@ -13,6 +13,9 @@ use std::{
 
 extern "C" {
     pub fn SaveShip(shipname: *const c_char) -> c_int;
+
+    pub static ColorNames: *const *const c_char;
+    pub static numLevelColors: c_int;
 }
 
 const WALLPASS: f32 = 4_f32 / 64.;
