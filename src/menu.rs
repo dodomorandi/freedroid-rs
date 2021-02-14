@@ -19,10 +19,9 @@ use crate::{
         MAX_MAP_COLS, MAX_MAP_ROWS,
     },
     global::{
-        curShip, show_all_droids, sound_on, stop_influencer, AllEnemys, Block_Rect,
-        Classic_User_Rect, CurLevel, CurrentCombatScaleFactor, Druidmap, Font0_BFont, Font1_BFont,
-        Font2_BFont, Full_User_Rect, GameConfig, InvincibleMode, Me, Menu_BFont, Menu_Rect,
-        NumEnemys, Number_Of_Droid_Types, Screen_Rect, User_Rect,
+        curShip, show_all_droids, sound_on, stop_influencer, AllEnemys, CurLevel,
+        CurrentCombatScaleFactor, Druidmap, Font0_BFont, Font1_BFont, Font2_BFont, GameConfig,
+        InvincibleMode, Menu_BFont, NumEnemys, Number_Of_Droid_Types, INFLUENCE_MODE_NAMES,
     },
     graphics::{
         classic_theme_index, ne_screen, toggle_fullscreen, AllThemes, BannerIsDestroyed,
@@ -45,7 +44,7 @@ use crate::{
         Set_Sound_FX_Volume, Switch_Background_Music_To,
     },
     text::{getchar_raw, printf_SDL, DisplayText, GetString},
-    vars::InfluenceModeNames,
+    vars::{Block_Rect, Classic_User_Rect, Full_User_Rect, Me, Menu_Rect, Screen_Rect, User_Rect},
     view::{Assemble_Combat_Picture, DisplayBanner, PutInfluence},
 };
 
@@ -592,7 +591,7 @@ pub unsafe extern "C" fn Cheatmenu() {
                             .druidname
                             .as_ptr(),
                         AllEnemys[i].energy as c_int,
-                        InfluenceModeNames[usize::try_from(AllEnemys[i].status).unwrap()],
+                        INFLUENCE_MODE_NAMES[usize::try_from(AllEnemys[i].status).unwrap()],
                     );
                 }
 

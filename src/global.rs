@@ -1,13 +1,8 @@
 use crate::{
     b_font::BFontInfo,
-    defs::{
-        AlertNames, ALLBLASTTYPES, ALLSHIPS, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, MAX_LEVELS,
-        MAX_LIFT_ROWS,
-    },
+    defs::{ALLBLASTTYPES, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_LIFT_ROWS},
     highscore::HighscoreEntry,
-    structs::{
-        Blast, BlastSpec, Bullet, BulletSpec, Config, DruidSpec, Enemy, Influence, Level, Ship,
-    },
+    structs::{Blast, BlastSpec, Bullet, BulletSpec, Config, DruidSpec, Enemy, Level, Ship},
 };
 
 use cstr::cstr;
@@ -16,45 +11,14 @@ use std::{ffi::CStr, ptr::null_mut};
 
 extern "C" {
     pub static mut ConfigDir: [i8; 255];
-    pub static mut OrigBlock_Rect: SDL_Rect;
-    pub static mut Block_Rect: SDL_Rect;
-    pub static mut Screen_Rect: SDL_Rect;
-    pub static mut User_Rect: SDL_Rect;
-    pub static mut Classic_User_Rect: SDL_Rect;
-    pub static mut Full_User_Rect: SDL_Rect;
-    pub static mut Banner_Rect: SDL_Rect;
-    pub static mut Portrait_Rect: SDL_Rect;
-    pub static mut Cons_Droid_Rect: SDL_Rect;
-    pub static mut Menu_Rect: SDL_Rect;
-    pub static mut OptionsMenu_Rect: SDL_Rect;
-    pub static mut OrigDigit_Rect: SDL_Rect;
-    pub static mut Digit_Rect: SDL_Rect;
     pub static mut FirstDigit_Rect: SDL_Rect;
     pub static mut SecondDigit_Rect: SDL_Rect;
     pub static mut ThirdDigit_Rect: SDL_Rect;
-    pub static mut Cons_Header_Rect: SDL_Rect;
-    pub static mut Cons_Menu_Rect: SDL_Rect;
-    pub static mut Cons_Text_Rect: SDL_Rect;
-    pub static mut Cons_Menu_Rects: [SDL_Rect; 4];
-    pub static mut LeftInfo_Rect: SDL_Rect;
-    pub static mut RightInfo_Rect: SDL_Rect;
     pub static mut ConsMenuItem_Rect: SDL_Rect;
-    pub static mut ProgressMeter_Rect: SDL_Rect;
-    pub static mut ProgressBar_Rect: SDL_Rect;
-    pub static mut ProgressText_Rect: SDL_Rect;
     pub static mut LastRefreshSound: f32;
     pub static mut LastGotIntoBlastSound: f32;
     pub static mut FPSover1: f32;
-    pub static mut Alertcolor: [*mut i8; AlertNames::Last as usize];
-    pub static mut Shipnames: [*mut i8; ALLSHIPS];
-    pub static mut Classname: *mut *mut i8;
-    pub static mut Classes: *mut *mut i8;
-    pub static mut Weaponnames: *mut *mut i8;
-    pub static mut Sensornames: *mut *mut i8;
-    pub static mut Brainnames: *mut *mut i8;
-    pub static mut Drivenames: *mut *mut i8;
     pub static mut ThisMessageTime: i32;
-    pub static mut Me: Influence; /* the influence data */
     pub static mut Druidmap: *mut DruidSpec;
     pub static mut Bulletmap: *mut BulletSpec;
     pub static mut Blastmap: [BlastSpec; ALLBLASTTYPES];
@@ -88,7 +52,7 @@ extern "C" {
     pub static mut num_highscores: i32; /* total number of entries in our list (fixed) */
 }
 
-pub const INFLUENCE_MODE_NAMES: [&'static CStr; 17] = [
+pub const INFLUENCE_MODE_NAMES: [&CStr; 17] = [
     cstr!("Mobile"),
     cstr!("Transfer"),
     cstr!("Weapon"),

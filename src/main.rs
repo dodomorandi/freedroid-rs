@@ -3,6 +3,17 @@
 #![feature(const_maybe_uninit_assume_init)]
 #![feature(extern_types)]
 
+macro_rules! rect {
+    ($x:expr, $y:expr, $w:expr, $h:expr) => {
+        ::sdl::Rect {
+            x: $x,
+            y: $y,
+            w: $w,
+            h: $h,
+        }
+    };
+}
+
 mod b_font;
 mod bullet;
 mod defs;
@@ -28,11 +39,11 @@ mod view;
 use defs::{AlertNames, Status};
 use global::{
     AlertBonusPerSec, AlertLevel, AlertThreshold, AllEnemys, CurLevel, DeathCount,
-    DeathCountDrainSpeed, LastGotIntoBlastSound, LastRefreshSound, LevelDoorsNotMovedTime, Me,
+    DeathCountDrainSpeed, LastGotIntoBlastSound, LastRefreshSound, LevelDoorsNotMovedTime,
     RealScore, ShowScore, SkipAFewFrames, ThisMessageTime,
 };
 use misc::Frame_Time;
-use vars::ShipEmptyCounter;
+use vars::{Me, ShipEmptyCounter};
 
 use sdl::video::ll::SDL_Surface;
 use std::{

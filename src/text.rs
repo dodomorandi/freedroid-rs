@@ -3,13 +3,14 @@ use crate::{
     defs::{
         self, Cmds, DownPressed, FirePressedR, PointerStates, UpPressed, SHOW_WAIT, TEXT_STRETCH,
     },
-    global::{AllEnemys, GameConfig, Me, Screen_Rect},
+    global::{AllEnemys, GameConfig},
     graphics::{ne_screen, vid_bpp},
     input::{
         any_key_just_pressed, joy_num_axes, joy_sensitivity, key_cmds, update_input,
         wait_for_all_keys_released, SDL_Delay, WheelDownPressed, WheelUpPressed,
     },
     misc::{MyRandom, Terminate},
+    vars::{Me, Screen_Rect},
 };
 
 #[cfg(feature = "arcade-input")]

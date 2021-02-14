@@ -1,9 +1,9 @@
 #[cfg(feature = "gcw0")]
 use crate::input::{KeyIsPressed, KeyIsPressedR};
 use crate::{
-    global::User_Rect,
     input::{cmd_is_active, cmd_is_activeR, KeyIsPressed, KeyIsPressedR, ModIsPressed},
     structs::Point,
+    vars::User_Rect,
 };
 
 use bitflags::bitflags;

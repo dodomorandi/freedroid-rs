@@ -41,37 +41,37 @@
 
 EXTERN char ConfigDir[255];
 
-EXTERN SDL_Rect OrigBlock_Rect;
-EXTERN SDL_Rect Block_Rect;
-EXTERN SDL_Rect Screen_Rect;
-EXTERN SDL_Rect User_Rect;
-EXTERN SDL_Rect Classic_User_Rect;
-EXTERN SDL_Rect Full_User_Rect;
-EXTERN SDL_Rect Banner_Rect;
-EXTERN SDL_Rect Portrait_Rect;
-EXTERN SDL_Rect Cons_Droid_Rect;
-EXTERN SDL_Rect Menu_Rect;
-EXTERN SDL_Rect OptionsMenu_Rect;
-EXTERN SDL_Rect OrigDigit_Rect;
-EXTERN SDL_Rect Digit_Rect;
+extern SDL_Rect OrigBlock_Rect;
+extern SDL_Rect Block_Rect;
+extern SDL_Rect Screen_Rect;
+extern SDL_Rect User_Rect;
+extern SDL_Rect Classic_User_Rect;
+extern SDL_Rect Full_User_Rect;
+extern SDL_Rect Banner_Rect;
+extern SDL_Rect Portrait_Rect;
+extern SDL_Rect Cons_Droid_Rect;
+extern SDL_Rect Menu_Rect;
+extern SDL_Rect OptionsMenu_Rect;
+extern SDL_Rect OrigDigit_Rect;
+extern SDL_Rect Digit_Rect;
 EXTERN SDL_Rect FirstDigit_Rect;
 EXTERN SDL_Rect SecondDigit_Rect;
 EXTERN SDL_Rect ThirdDigit_Rect;
 
-EXTERN SDL_Rect Cons_Header_Rect;
-EXTERN SDL_Rect Cons_Menu_Rect;
-EXTERN SDL_Rect Cons_Text_Rect;
-EXTERN SDL_Rect Cons_Menu_Rects[4];
+extern SDL_Rect Cons_Header_Rect;
+extern SDL_Rect Cons_Menu_Rect;
+extern SDL_Rect Cons_Text_Rect;
+extern SDL_Rect Cons_Menu_Rects[4];
 
-EXTERN SDL_Rect LeftInfo_Rect;
-EXTERN SDL_Rect RightInfo_Rect;
+extern SDL_Rect LeftInfo_Rect;
+extern SDL_Rect RightInfo_Rect;
 
-EXTERN SDL_Rect ConsMenuItem_Rect;
+extern SDL_Rect ConsMenuItem_Rect;
 
 
-EXTERN SDL_Rect ProgressMeter_Rect;
-EXTERN SDL_Rect ProgressBar_Rect;
-EXTERN SDL_Rect ProgressText_Rect;
+extern SDL_Rect ProgressMeter_Rect;
+extern SDL_Rect ProgressBar_Rect;
+extern SDL_Rect ProgressText_Rect;
 
 
 EXTERN float LastRefreshSound;
@@ -89,7 +89,7 @@ EXTERN char *Drivenames[];
 EXTERN char *InfluenceModeNames[];
 EXTERN int ThisMessageTime;
 
-EXTERN influence_t Me;		/* the influence data */
+extern influence_t Me;		/* the influence data */
 EXTERN Druidspec Druidmap;
 EXTERN Bulletspec Bulletmap;
 EXTERN blastspec Blastmap[ALLBLASTTYPES];

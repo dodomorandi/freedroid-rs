@@ -30,43 +30,38 @@
  * the variable _declarations_ should be made in global.h under _main_c
  *
  */
-SDL_Rect OrigBlock_Rect = {0, 0, 64, 64};      // not to be rescaled ever!!
-SDL_Rect Block_Rect = {0, 0, 64, 64};
-SDL_Rect Screen_Rect = {0, 0, 640, 480};
-SDL_Rect User_Rect = {0, 0, 0, 0};
-SDL_Rect Classic_User_Rect = {32, 150, 9*64, 4*64};
-SDL_Rect Full_User_Rect = {0, 64, 640, 480 - 64};
-SDL_Rect Banner_Rect = {0, 0, 640, 64 };
-SDL_Rect Portrait_Rect = {0, 0, 132, 180};  // for droid-pic display in console
-SDL_Rect Cons_Droid_Rect = {30, 190, 132, 180};
+extern SDL_Rect OrigBlock_Rect;      // not to be rescaled ever!!
+extern SDL_Rect Block_Rect;
+extern SDL_Rect Screen_Rect;
+extern SDL_Rect User_Rect;
+extern SDL_Rect Classic_User_Rect;
+extern SDL_Rect Full_User_Rect;
+extern SDL_Rect Banner_Rect;
+extern SDL_Rect Portrait_Rect;  // for droid-pic display in console
+extern SDL_Rect Cons_Droid_Rect;
 
-SDL_Rect Menu_Rect = {2*64, 150, 640 - 3*64, 480 - 64};
-SDL_Rect OptionsMenu_Rect = {232, 0, 0, 0};
+extern SDL_Rect Menu_Rect;
+extern SDL_Rect OptionsMenu_Rect;
 
-SDL_Rect OrigDigit_Rect = {0, 0, 16, 18};  	 // not to be rescaled!
-SDL_Rect Digit_Rect = {0, 0, 16, 18};
+extern SDL_Rect OrigDigit_Rect;  	 // not to be rescaled!
+extern SDL_Rect Digit_Rect;
 
-SDL_Rect Cons_Header_Rect = {75, 64+40, 640 - 80, 135 - 64};
-SDL_Rect Cons_Menu_Rect = {60, 180, 100, 256};
-SDL_Rect Cons_Text_Rect = {180, 180, 640-185, 480 - 185};
-SDL_Rect Cons_Menu_Rects[4] = {
-  {60, 180 + 0*64, 100, 62},
-  {60, 181 + 1*64, 100, 62},
-  {60, 181 + 2*64, 100, 62},
-  {60, 181 + 3*64, 100, 62} };
+extern SDL_Rect Cons_Header_Rect;
+extern SDL_Rect Cons_Menu_Rect;
+extern SDL_Rect Cons_Text_Rect;
+extern SDL_Rect Cons_Menu_Rects[4];
 
 // Startpos + dimensions of Banner-Texts
-SDL_Rect LeftInfo_Rect = { 26, 44, 0, 0 };
-SDL_Rect RightInfo_Rect ={484, 44, 0, 0 };
+extern SDL_Rect LeftInfo_Rect;
+extern SDL_Rect RightInfo_Rect;
 
-SDL_Rect ProgressMeter_Rect = {0, 0, 640, 480};
-SDL_Rect ProgressBar_Rect = {446, 155, 22, 111};
-SDL_Rect ProgressText_Rect = {213, 390, 157, 30};
+extern SDL_Rect ProgressMeter_Rect;
+extern SDL_Rect ProgressBar_Rect;
+extern SDL_Rect ProgressText_Rect;
 
-int ShipEmptyCounter = 0;	/* counter to Message: you have won(this ship */
+extern int ShipEmptyCounter;	/* counter to Message: you have won(this ship */
 
-influence_t Me = {
-  DRUID001, TRANSFERMODE, {0, 0}, {120, 48}, 100, 100, 0, 0, 0, 0, 0, 0, NULL };
+extern influence_t Me;
 
 char *InfluenceModeNames[] = {
   "Mobile",

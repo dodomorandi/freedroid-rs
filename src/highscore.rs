@@ -3,11 +3,10 @@ use crate::input::wait_for_key_pressed;
 use crate::{
     b_font::{FontHeight, GetCurrentFont, Highscore_BFont, Para_BFont, SetCurrentFont},
     defs::{self, Status, DATE_LEN, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN},
-    global::{
-        num_highscores, ConfigDir, Highscores, Me, Portrait_Rect, RealScore, ShowScore, User_Rect,
-    },
+    global::{num_highscores, ConfigDir, Highscores, RealScore, ShowScore},
     graphics::{ne_screen, pic999, MakeGridOnScreen},
     text::{printf_SDL, DisplayText, GetString},
+    vars::{Me, Portrait_Rect, User_Rect},
     view::Assemble_Combat_Picture,
 };
 

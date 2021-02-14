@@ -35,7 +35,7 @@
 #define EXTERN extern
 #endif
 
-EXTERN int ShipEmptyCounter;
+extern int ShipEmptyCounter;
 
 /* main.c */
 #undef EXTERN

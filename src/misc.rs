@@ -9,8 +9,8 @@ use crate::{
     },
     enemy::{AnimateEnemys, ShuffleEnemys},
     global::{
-        curShip, debug_level, AllBlasts, AllEnemys, ConfigDir, CurLevel, FPSover1, GameConfig, Me,
-        NumEnemys, ProgressBar_Rect, ProgressMeter_Rect, ProgressText_Rect, SkipAFewFrames,
+        curShip, debug_level, AllBlasts, AllEnemys, ConfigDir, CurLevel, FPSover1, GameConfig,
+        NumEnemys, SkipAFewFrames,
     },
     graphics::{
         ne_screen, progress_filler_pic, progress_meter_pic, BannerIsDestroyed, FreeGraphics,
@@ -25,6 +25,7 @@ use crate::{
     ship::FreeDroidPics,
     sound::{FreeSounds, LeaveLiftSound},
     text::printf_SDL,
+    vars::{Me, ProgressBar_Rect, ProgressMeter_Rect, ProgressText_Rect},
     view::{Assemble_Combat_Picture, DisplayBanner},
 };
 
