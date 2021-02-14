@@ -15,7 +15,25 @@ fn main() {
         .map(|entry| entry.path())
         .collect();
 
+    let headers: Vec<_> = fs::read_dir("./c_src")
+        .unwrap()
+        .map(|entry| entry.unwrap())
+        .filter(|entry| {
+            entry
+                .path()
+                .extension()
+                .and_then(|extension| extension.to_str())
+                .map(|extension| extension == "h")
+                .unwrap_or(false)
+        })
+        .map(|entry| entry.path())
+        .collect();
+
     for file in &files {
+        println!("cargo:rerun-if-changed={}", file.display());
+    }
+
+    for file in &headers {
         println!("cargo:rerun-if-changed={}", file.display());
     }
 
