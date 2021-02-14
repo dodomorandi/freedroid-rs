@@ -11,9 +11,9 @@ use crate::{
         SHIP_ON_PIC_FILE_C, TAKEOVER_BG_PIC_FILE_C,
     },
     global::{
-        AllBullets, Blastmap, Bulletmap, ConsMenuItem_Rect, Druidmap, FirstDigit_Rect, Font0_BFont,
-        Font1_BFont, Font2_BFont, GameConfig, Highscore_BFont, Menu_BFont, Para_BFont,
-        SecondDigit_Rect, ThirdDigit_Rect,
+        AllBullets, Blastmap, Bulletmap, Druidmap, FirstDigit_Rect, Font0_BFont, Font1_BFont,
+        Font2_BFont, GameConfig, Highscore_BFont, Menu_BFont, Para_BFont, SecondDigit_Rect,
+        ThirdDigit_Rect,
     },
     input::{any_key_just_pressed, cmd_is_active, wait_for_all_keys_released, SDL_Delay},
     misc::{
@@ -31,10 +31,10 @@ use crate::{
     },
     text::printf_SDL,
     vars::{
-        Banner_Rect, Block_Rect, Classic_User_Rect, Cons_Droid_Rect, Cons_Header_Rect,
-        Cons_Menu_Rect, Cons_Menu_Rects, Cons_Text_Rect, Digit_Rect, Full_User_Rect, LeftInfo_Rect,
-        Me, Menu_Rect, OptionsMenu_Rect, OrigBlock_Rect, OrigDigit_Rect, Portrait_Rect,
-        RightInfo_Rect, Screen_Rect, User_Rect,
+        Banner_Rect, Block_Rect, Classic_User_Rect, ConsMenuItem_Rect, Cons_Droid_Rect,
+        Cons_Header_Rect, Cons_Menu_Rect, Cons_Menu_Rects, Cons_Text_Rect, Digit_Rect,
+        Full_User_Rect, LeftInfo_Rect, Me, Menu_Rect, OptionsMenu_Rect, OrigBlock_Rect,
+        OrigDigit_Rect, Portrait_Rect, RightInfo_Rect, Screen_Rect, User_Rect,
     },
     view::DisplayBanner,
 };

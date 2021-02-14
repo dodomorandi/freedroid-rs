@@ -14,6 +14,7 @@ use std::{
 
 extern "C" {
     pub fn SaveShip(shipname: *const c_char) -> c_int;
+    pub fn MoveLevelDoors();
 
     pub static ColorNames: *const *const c_char;
     pub static numLevelColors: c_int;
@@ -367,4 +368,16 @@ pub unsafe extern "C" fn IsPassable(x: c_float, y: c_float, check_pos: c_int) ->
         }
         _ => -1,
     }
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ColorNames {
+    Red,
+    Yellow,
+    Green,
+    Gray,
+    Blue,
+    Greenblue,
+    Dark,
 }

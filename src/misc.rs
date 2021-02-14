@@ -17,7 +17,7 @@ use crate::{
         Load_Block, ScalePic,
     },
     highscore::SaveHighscores,
-    influence::AnimateInfluence,
+    influencer::AnimateInfluence,
     init::FreeGameMem,
     input::{cmd_is_active, cmd_is_activeR, cmd_strings, key_cmds, KeyIsPressedR, SDL_Delay},
     map::{AnimateRefresh, FreeShipMemory},

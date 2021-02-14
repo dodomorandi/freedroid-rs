@@ -54,139 +54,139 @@ void UpdateCountersForThisFrame (void);
  * @Ret: void
  *
  *-----------------------------------------------------------------*/
-int
-c_main (int argc, char * argv[])
-{
-  int i, level;
-  Uint32 now;
-  float scale;
-
-  GameOver = FALSE;
-  QuitProgram = FALSE;
-
-  debug_level = 0;       /* 0=no debug 1=first debug level (at the moment=all) */
-
-  joy_sensitivity = 1;
-  sound_on = TRUE;	 /* default value, can be overridden by command-line */
-
-  init_keystr();
-
-  now = SDL_GetTicks();
-  InitFreedroid (argc, argv);   // Initialisation of global variables and arrays
-
-  SDL_ShowCursor (SDL_DISABLE);
-
-#ifdef __WIN32__
-  // spread the word :)
-  Win32Disclaimer ();
-#endif
-
-  while (!QuitProgram)
-    {
-      InitNewMission ( STANDARD_MISSION );
-
-      // scale Level-pic rects
-      if ( (scale = GameConfig.scale) != 1.0)
-	{
-	  for (level = 0; level < curShip.num_levels; level++)
-	    for (i=0; i<curShip.num_level_rects[level]; i++)
-	      ScaleRect (curShip.Level_Rects[level][i], scale);
-	  for (i=0; i < curShip.num_lift_rows; i++)
-	    ScaleRect (curShip.LiftRow_Rect[i], scale);
-	}
-
-
-      // release all keys
-      wait_for_all_keys_released();
-
-      show_droid_info (Me.type, -3, 0);  // show unit-intro page
-      show_droid_portrait (Cons_Droid_Rect, Me.type, DROID_ROTATION_TIME, RESET);
-      now=SDL_GetTicks();
-      while (  (SDL_GetTicks() - now < SHOW_WAIT) && (!FirePressedR())) {
-	show_droid_portrait (Cons_Droid_Rect, Me.type, DROID_ROTATION_TIME, 0);
-        SDL_Delay(1);
-      }
-
-      ClearGraphMem();
-      DisplayBanner (NULL, NULL, BANNER_FORCE_UPDATE |BANNER_NO_SDL_UPDATE);
-      SDL_Flip(ne_screen);
-
-      GameOver = FALSE;
-
-      SDL_SetCursor (crosshair_cursor); // default cursor is a crosshair
-      SDL_ShowCursor (SDL_ENABLE);
-
-      while (!GameOver && !QuitProgram)
-	{
-	  StartTakingTimeForFPSCalculation();
-
-	  UpdateCountersForThisFrame ();
-
-	  ReactToSpecialKeys();
-
-	  if (show_cursor) SDL_ShowCursor(SDL_ENABLE);
-	  else SDL_ShowCursor(SDL_DISABLE);
-
-	  MoveLevelDoors ();
-
-	  AnimateRefresh ();
-
-	  ExplodeBlasts ();	// move blasts to the right current "phase" of the blast
-
-	  AlertLevelWarning ();  // tout tout, blink blink... Alert!!
-
-	  DisplayBanner (NULL, NULL,  0 );
-
-	  MoveBullets ();   // leave this in front of graphics output: time_in_frames should start with 1
-
-	  Assemble_Combat_Picture ( DO_SCREEN_UPDATE );
-
-	  for (i = 0; i < MAXBULLETS; i++) CheckBulletCollisions (i);
-
-	  MoveInfluence ();	// change Influ-speed depending on keys pressed, but
-	                        // also change his status and position and "phase" of rotation
-
-
-	  MoveEnemys ();	// move all the enemys:
-	                        // also do attacks on influ and also move "phase" or their rotation
-
-
-	  CheckInfluenceWallCollisions ();	/* Testen ob der Weg nicht durch Mauern verstellt ist */
-	  CheckInfluenceEnemyCollision ();
-
-          // control speed of time-flow: dark-levels=emptyLevelSpeedup, normal-levels=1.0
-          if ( ! CurLevel->empty )
-            {
-              set_time_factor ( 1.0 );
-            }
-          else
-            {
-              if ( CurLevel->color == PD_DARK )
-                {
-                  set_time_factor ( GameConfig.emptyLevelSpeedup );
-                } // if level is already dark
-              else if ( CurLevel->timer <= 0 ) // time to switch off the lights ...
-                {
-                  CurLevel->color = PD_DARK;
-                  Switch_Background_Music_To (BYCOLOR);  // start new background music
-                } // if wait timer hit 0
-            } // if level empty
-
-	  CheckIfMissionIsComplete ();
-
-	  if (!GameConfig.HogCPU)	// don't use up 100% CPU unless requested
-	    SDL_Delay (1);
-
-	  ComputeFPSForThisFrame();
-
-	} /* while !GameOver */
-
-    } /* while !QuitProgram */
-
-
-  Terminate (0);
-  return (0);
-}				// void main(void)
+// int
+// c_main (int argc, char * argv[])
+// {
+//   int i, level;
+//   Uint32 now;
+//   float scale;
+// 
+//   GameOver = FALSE;
+//   QuitProgram = FALSE;
+// 
+//   debug_level = 0;       /* 0=no debug 1=first debug level (at the moment=all) */
+// 
+//   joy_sensitivity = 1;
+//   sound_on = TRUE;	 /* default value, can be overridden by command-line */
+// 
+//   init_keystr();
+// 
+//   now = SDL_GetTicks();
+//   InitFreedroid (argc, argv);   // Initialisation of global variables and arrays
+// 
+//   SDL_ShowCursor (SDL_DISABLE);
+// 
+// #ifdef __WIN32__
+//   // spread the word :)
+//   Win32Disclaimer ();
+// #endif
+// 
+//   while (!QuitProgram)
+//     {
+//       InitNewMission ( STANDARD_MISSION );
+// 
+//       // scale Level-pic rects
+//       if ( (scale = GameConfig.scale) != 1.0)
+// 	{
+// 	  for (level = 0; level < curShip.num_levels; level++)
+// 	    for (i=0; i<curShip.num_level_rects[level]; i++)
+// 	      ScaleRect (curShip.Level_Rects[level][i], scale);
+// 	  for (i=0; i < curShip.num_lift_rows; i++)
+// 	    ScaleRect (curShip.LiftRow_Rect[i], scale);
+// 	}
+// 
+// 
+//       // release all keys
+//       wait_for_all_keys_released();
+// 
+//       show_droid_info (Me.type, -3, 0);  // show unit-intro page
+//       show_droid_portrait (Cons_Droid_Rect, Me.type, DROID_ROTATION_TIME, RESET);
+//       now=SDL_GetTicks();
+//       while (  (SDL_GetTicks() - now < SHOW_WAIT) && (!FirePressedR())) {
+// 	show_droid_portrait (Cons_Droid_Rect, Me.type, DROID_ROTATION_TIME, 0);
+//         SDL_Delay(1);
+//       }
+// 
+//       ClearGraphMem();
+//       DisplayBanner (NULL, NULL, BANNER_FORCE_UPDATE |BANNER_NO_SDL_UPDATE);
+//       SDL_Flip(ne_screen);
+// 
+//       GameOver = FALSE;
+// 
+//       SDL_SetCursor (crosshair_cursor); // default cursor is a crosshair
+//       SDL_ShowCursor (SDL_ENABLE);
+// 
+//       while (!GameOver && !QuitProgram)
+// 	{
+// 	  StartTakingTimeForFPSCalculation();
+// 
+// 	  UpdateCountersForThisFrame ();
+// 
+// 	  ReactToSpecialKeys();
+// 
+// 	  if (show_cursor) SDL_ShowCursor(SDL_ENABLE);
+// 	  else SDL_ShowCursor(SDL_DISABLE);
+// 
+// 	  MoveLevelDoors ();
+// 
+// 	  AnimateRefresh ();
+// 
+// 	  ExplodeBlasts ();	// move blasts to the right current "phase" of the blast
+// 
+// 	  AlertLevelWarning ();  // tout tout, blink blink... Alert!!
+// 
+// 	  DisplayBanner (NULL, NULL,  0 );
+// 
+// 	  MoveBullets ();   // leave this in front of graphics output: time_in_frames should start with 1
+// 
+// 	  Assemble_Combat_Picture ( DO_SCREEN_UPDATE );
+// 
+// 	  for (i = 0; i < MAXBULLETS; i++) CheckBulletCollisions (i);
+// 
+// 	  MoveInfluence ();	// change Influ-speed depending on keys pressed, but
+// 	                        // also change his status and position and "phase" of rotation
+// 
+// 
+// 	  MoveEnemys ();	// move all the enemys:
+// 	                        // also do attacks on influ and also move "phase" or their rotation
+// 
+// 
+// 	  CheckInfluenceWallCollisions ();	/* Testen ob der Weg nicht durch Mauern verstellt ist */
+// 	  CheckInfluenceEnemyCollision ();
+// 
+//           // control speed of time-flow: dark-levels=emptyLevelSpeedup, normal-levels=1.0
+//           if ( ! CurLevel->empty )
+//             {
+//               set_time_factor ( 1.0 );
+//             }
+//           else
+//             {
+//               if ( CurLevel->color == PD_DARK )
+//                 {
+//                   set_time_factor ( GameConfig.emptyLevelSpeedup );
+//                 } // if level is already dark
+//               else if ( CurLevel->timer <= 0 ) // time to switch off the lights ...
+//                 {
+//                   CurLevel->color = PD_DARK;
+//                   Switch_Background_Music_To (BYCOLOR);  // start new background music
+//                 } // if wait timer hit 0
+//             } // if level empty
+// 
+// 	  CheckIfMissionIsComplete ();
+// 
+// 	  if (!GameConfig.HogCPU)	// don't use up 100% CPU unless requested
+// 	    SDL_Delay (1);
+// 
+// 	  ComputeFPSForThisFrame();
+// 
+// 	} /* while !GameOver */
+// 
+//     } /* while !QuitProgram */
+// 
+// 
+//   Terminate (0);
+//   return (0);
+// }				// void main(void)
 
 /*-----------------------------------------------------------------
 @Desc: This function updates counters and is called ONCE every frame.

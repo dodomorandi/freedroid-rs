@@ -8,4 +8,5 @@ extern "C" {
     pub fn show_droid_info(droid_type: c_int, page: c_int, flags: c_int);
     pub fn show_droid_portrait(dst: Rect, droid_type: c_int, cycle_time: c_float, flags: c_int);
     pub fn ShowDeckMap(deck: Level);
+    pub fn AlertLevelWarning();
 }

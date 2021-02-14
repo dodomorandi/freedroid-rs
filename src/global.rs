@@ -14,7 +14,6 @@ extern "C" {
     pub static mut FirstDigit_Rect: SDL_Rect;
     pub static mut SecondDigit_Rect: SDL_Rect;
     pub static mut ThirdDigit_Rect: SDL_Rect;
-    pub static mut ConsMenuItem_Rect: SDL_Rect;
     pub static mut LastRefreshSound: f32;
     pub static mut LastGotIntoBlastSound: f32;
     pub static mut FPSover1: f32;

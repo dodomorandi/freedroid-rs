@@ -26,7 +26,7 @@ pub const MAX_THEMES: usize = 100;
 
 pub const JOY_MAX_VAL: usize = 32767; // maximal amplitude of joystick axis values
 
-pub const RESET: usize = 0x01;
+pub const RESET: c_int = 0x01;
 pub const UPDATE: c_int = 0x02;
 pub const INIT_ONLY: usize = 0x04;
 pub const FREE_ONLY: usize = 0x08;
