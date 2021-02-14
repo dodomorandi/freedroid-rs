@@ -1,15 +1,11 @@
 use crate::{
     b_font::{FontHeight, PrintStringFont, PutStringFont, SetCurrentFont},
     defs::{
-        self, get_user_center, AssembleCombatWindowFlags, Bullet, DisplayBannerFlags, Status,
+        self, get_user_center, AssembleCombatWindowFlags, BulletKind, DisplayBannerFlags, Status,
         BLINKENERGY, CRY_SOUND_INTERVAL, FLASH_DURATION, LEFT_TEXT_LEN, MAXBLASTS, MAXBULLETS,
         RIGHT_TEXT_LEN, TRANSFER_SOUND_INTERVAL,
     },
-    global::{
-        show_all_droids, AllBlasts, AllBullets, AllEnemys, Blastmap, Bulletmap, CurLevel,
-        DeathCount, Druidmap, FirstDigit_Rect, Font0_BFont, GameConfig, Number_Of_Droid_Types,
-        Para_BFont, SecondDigit_Rect, ShowScore, ThirdDigit_Rect, INFLUENCE_MODE_NAMES,
-    },
+    global::{Font0_BFont, GameConfig, Para_BFont, INFLUENCE_MODE_NAMES},
     graphics::{
         banner_pic, ne_screen, ApplyFilter, BannerIsDestroyed, BuildBlock, Decal_pics,
         EnemyDigitSurfacePointer, EnemySurfacePointer, InfluDigitSurfacePointer,
@@ -17,10 +13,13 @@ use crate::{
     },
     map::{GetMapBrick, IsVisible},
     misc::{Frame_Time, Terminate},
+    show_all_droids,
     sound::{CrySound, TransferSound},
     structs::{Enemy, Finepoint, GrobPoint, Point},
     text::DisplayText,
-    vars::{Banner_Rect, Block_Rect, Full_User_Rect, LeftInfo_Rect, Me, RightInfo_Rect, User_Rect},
+    vars::{Banner_Rect, Block_Rect, Full_User_Rect, LeftInfo_Rect, RightInfo_Rect, User_Rect},
+    AllBlasts, AllBullets, AllEnemys, Blastmap, Bulletmap, CurLevel, DeathCount, Druidmap,
+    FirstDigit_Rect, Me, Number_Of_Droid_Types, SecondDigit_Rect, ShowScore, ThirdDigit_Rect,
 };
 
 use cstr::cstr;
@@ -583,7 +582,7 @@ pub unsafe extern "C" fn PutBullet(bullet_number: c_int) {
     // draw a big white or black rectangle right over the
     // combat window, white for even frames and black for
     // odd frames.
-    if cur_bullet.ty == Bullet::Flash as u8 {
+    if cur_bullet.ty == BulletKind::Flash as u8 {
         // Now the whole window will be filled with either white
         // or black each frame until the flash is over.  (Flash
         // deletion after some time is done in CheckBulletCollisions.)

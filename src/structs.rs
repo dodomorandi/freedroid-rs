@@ -1,6 +1,7 @@
 use crate::defs::*;
 
 use sdl::video::ll::{SDL_Rect, SDL_Surface};
+use std::ptr::null_mut;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -62,6 +63,12 @@ pub struct Config {
 pub struct Finepoint {
     pub x: f32,
     pub y: f32,
+}
+
+impl Finepoint {
+    pub const fn default_const() -> Self {
+        Self { x: 0., y: 0. }
+    }
 }
 
 pub type Vect = Finepoint;
@@ -172,6 +179,25 @@ pub struct Bullet {
     pub angle: f32,
     pub Surfaces_were_generated: i32,
     pub SurfacePointer: [*mut SDL_Surface; MAX_PHASES_IN_A_BULLET],
+}
+
+impl Bullet {
+    pub const fn default_const() -> Self {
+        Bullet {
+            pos: Finepoint::default_const(),
+            prev_pos: Finepoint::default_const(),
+            speed: Finepoint::default_const(),
+            ty: 0,
+            phase: 0,
+            time_in_frames: 0,
+            time_in_seconds: 0.,
+            mine: false,
+            owner: 0,
+            angle: 0.,
+            Surfaces_were_generated: 0,
+            SurfacePointer: [null_mut(); MAX_PHASES_IN_A_BULLET],
+        }
+    }
 }
 
 #[repr(C)]

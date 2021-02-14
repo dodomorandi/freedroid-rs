@@ -695,7 +695,7 @@ pub const PUSHSPEED: usize = 2;
 /* Schusstypen */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(C)]
-pub enum Bullet {
+pub enum BulletKind {
     Pulse = 0,
     SinglePulse,
     Military,

@@ -1,9 +1,9 @@
 use crate::{
+    curShip,
     defs::{Direction, MapTile, MAX_REFRESHES_ON_LEVEL},
-    global::{curShip, CurLevel},
     misc::Frame_Time,
     structs::{Finepoint, Level},
-    vars::Me,
+    CurLevel, Me,
 };
 
 use log::trace;

@@ -4,7 +4,6 @@ use crate::{
         DROID_ROTATION_TIME, SHOW_WAIT, UPDATE,
     },
     enemy::ClassOfDruid,
-    global::{AllEnemys, DeathCount, Druidmap, InvincibleMode, PreTakeEnergy, RealScore},
     graphics::{ne_screen, takeover_bg_pic, ClearGraphMem},
     input::{any_key_just_pressed, wait_for_all_keys_released, KeyIsPressedR},
     menu::getMenuAction,
@@ -17,6 +16,7 @@ use crate::{
     structs::Point,
     vars::{Classic_User_Rect, Cons_Droid_Rect, Me, User_Rect},
     view::{DisplayBanner, Fill_Rect, PutEnemy, PutInfluence},
+    AllEnemys, DeathCount, Druidmap, InvincibleMode, PreTakeEnergy, RealScore,
 };
 
 use cstr::cstr;

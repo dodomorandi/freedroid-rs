@@ -38,15 +38,12 @@ mod view;
 use bullet::{CheckBulletCollisions, ExplodeBlasts, MoveBullets};
 use defs::{
     scale_rect, AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, FirePressedR, Status,
-    BYCOLOR, DROID_ROTATION_TIME, MAXBULLETS, RESET, SHOW_WAIT, STANDARD_MISSION_C,
+    ALLBLASTTYPES, ALLSHIPS, BYCOLOR, DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS,
+    MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_LEVEL_RECTS, MAX_LIFTS, MAX_LIFT_ROWS,
+    MAX_PHASES_IN_A_BULLET, RESET, SHOW_WAIT, STANDARD_MISSION_C,
 };
 use enemy::MoveEnemys;
-use global::{
-    curShip, debug_level, sound_on, AlertBonusPerSec, AlertLevel, AlertThreshold, AllEnemys,
-    CurLevel, DeathCount, DeathCountDrainSpeed, GameConfig, GameOver, LastGotIntoBlastSound,
-    LastRefreshSound, LevelDoorsNotMovedTime, QuitProgram, RealScore, ShowScore, SkipAFewFrames,
-    ThisMessageTime,
-};
+use global::{GameConfig, LevelDoorsNotMovedTime, SkipAFewFrames};
 use graphics::{crosshair_cursor, ne_screen, ClearGraphMem};
 use influencer::{CheckInfluenceEnemyCollision, CheckInfluenceWallCollisions, MoveInfluence};
 use init::{CheckIfMissionIsComplete, InitFreedroid, InitNewMission};
@@ -61,6 +58,9 @@ use misc::{
 };
 use ship::{show_droid_info, show_droid_portrait, AlertLevelWarning};
 use sound::Switch_Background_Music_To;
+use structs::{
+    Blast, BlastSpec, Bullet, BulletSpec, DruidSpec, Enemy, Finepoint, Level, Lift, Ship,
+};
 use vars::{Cons_Droid_Rect, Me, ShipEmptyCounter};
 use view::{Assemble_Combat_Picture, DisplayBanner};
 
@@ -68,14 +68,196 @@ use sdl::{
     mouse::ll::{SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE},
     sdl::ll::SDL_GetTicks,
     video::ll::{SDL_Flip, SDL_Surface},
+    Rect,
 };
 use std::{
     convert::TryFrom,
     env,
     ffi::CString,
-    os::raw::{c_char, c_int},
+    os::raw::{c_char, c_float, c_int},
     ptr::null_mut,
 };
+
+const RECT_ZERO: Rect = Rect {
+    x: 0,
+    y: 0,
+    h: 0,
+    w: 0,
+};
+
+#[no_mangle]
+static mut LastGotIntoBlastSound: c_float = 2.;
+
+#[no_mangle]
+static mut LastRefreshSound: c_float = 2.;
+
+#[no_mangle]
+static mut CurLevel: *mut Level = null_mut(); /* the current level data */
+
+#[no_mangle]
+static mut curShip: Ship = Ship {
+    num_levels: 0,
+    num_lifts: 0,
+    num_lift_rows: 0,
+    AreaName: [0; 100],
+    AllLevels: [null_mut(); MAX_LEVELS],
+    AllLifts: [Lift {
+        level: 0,
+        x: 0,
+        y: 0,
+        up: 0,
+        down: 0,
+        lift_row: 0,
+    }; MAX_LIFTS],
+    LiftRow_Rect: [RECT_ZERO; MAX_LIFT_ROWS], /* the lift-row rectangles */
+    Level_Rects: [[RECT_ZERO; MAX_LEVELS]; MAX_LEVEL_RECTS], /* level rectangles */
+    num_level_rects: [0; MAX_LEVELS],         /* how many rects has a level */
+}; /* the current ship-data */
+
+#[no_mangle]
+static mut GameOver: i32 = 0;
+
+#[no_mangle]
+static mut QuitProgram: i32 = 0;
+
+#[no_mangle]
+static mut debug_level: i32 = 0; /* 0=no debug 1=some debug messages 2=...etc */
+
+#[no_mangle]
+static mut sound_on: i32 = 1; /* Toggle TRUE/FALSE for turning sounds on/off */
+
+#[no_mangle]
+static mut ThisMessageTime: i32 = 0;
+
+#[no_mangle]
+static mut ShowScore: i64 = 0;
+
+#[no_mangle]
+static mut RealScore: f32 = 0.;
+
+#[no_mangle]
+static mut DeathCount: f32 = 0.; // a cumulative/draining counter of kills->determines Alert!
+
+#[no_mangle]
+static mut DeathCountDrainSpeed: f32 = 0.; // drain per second
+
+#[no_mangle]
+static mut AlertLevel: i32 = 0;
+
+#[no_mangle]
+static mut AlertThreshold: i32 = 0; // threshold for FIRST Alert-color (yellow), the others are 2*, 3*..
+
+#[no_mangle]
+static mut AlertBonusPerSec: f32 = 0.; // bonus/sec for FIRST Alert-color, the others are 2*, 3*,...
+
+#[no_mangle]
+static mut AllEnemys: [Enemy; MAX_ENEMYS_ON_SHIP] = [Enemy {
+    ty: 0,
+    levelnum: 0,
+    pos: Finepoint { x: 0., y: 0. },
+    speed: Finepoint { x: 0., y: 0. },
+    energy: 0.,
+    phase: 0.,
+    nextwaypoint: 0,
+    lastwaypoint: 0,
+    status: 0,
+    warten: 0.,
+    passable: 0,
+    firewait: 0.,
+    TextVisibleTime: 0.,
+    TextToBeDisplayed: null_mut(),
+    NumberOfPeriodicSpecialStatements: 0,
+    PeriodicSpecialStatements: null_mut(),
+}; MAX_ENEMYS_ON_SHIP];
+
+#[no_mangle]
+static mut ConfigDir: [i8; 255] = [0; 255];
+
+#[no_mangle]
+static mut Druidmap: *mut DruidSpec = null_mut();
+
+#[no_mangle]
+static mut InvincibleMode: i32 = 0;
+
+#[no_mangle]
+static mut show_all_droids: i32 = 0; /* display enemys regardless of IsVisible() */
+
+#[no_mangle]
+static mut stop_influencer: i32 = 0; /* for bullet debugging: stop where u are */
+
+#[no_mangle]
+static mut NumEnemys: i32 = 0;
+
+#[no_mangle]
+static mut InfluenceModeNames: [*mut c_char; 25] = [null_mut(); 25];
+
+#[no_mangle]
+static mut Number_Of_Droid_Types: i32 = 0;
+
+#[no_mangle]
+static mut PreTakeEnergy: i32 = 0;
+
+#[no_mangle]
+static mut AllBullets: [Bullet; MAXBULLETS + 10] = [Bullet::default_const(); MAXBULLETS + 10];
+
+#[no_mangle]
+static mut AllBlasts: [Blast; MAXBLASTS + 10] = [Blast {
+    PX: 0.,
+    PY: 0.,
+    ty: 0,
+    phase: 0.,
+    MessageWasDone: 0,
+    mine: false,
+}; MAXBLASTS + 10];
+
+#[no_mangle]
+static mut FirstDigit_Rect: Rect = RECT_ZERO;
+
+#[no_mangle]
+static mut SecondDigit_Rect: Rect = RECT_ZERO;
+
+#[no_mangle]
+static mut ThirdDigit_Rect: Rect = RECT_ZERO;
+
+#[no_mangle]
+static mut Bulletmap: *mut BulletSpec = null_mut();
+
+#[no_mangle]
+static mut Blastmap: [BlastSpec; ALLBLASTTYPES] = [BlastSpec {
+    phases: 0,
+    picpointer: null_mut(),
+    block: null_mut(),
+    total_animation_time: 0.,
+    SurfacePointer: [null_mut(); MAX_PHASES_IN_A_BULLET],
+}; ALLBLASTTYPES];
+
+#[no_mangle]
+static mut FPSover1: f32 = 0.;
+
+#[no_mangle]
+static mut Alertcolor: [*mut i8; AlertNames::Last as usize] =
+    [null_mut(); AlertNames::Last as usize];
+
+#[no_mangle]
+static mut Shipnames: [*mut i8; ALLSHIPS] = [null_mut(); ALLSHIPS];
+
+#[no_mangle]
+static mut Classname: *mut *mut i8 = null_mut();
+
+#[no_mangle]
+static mut Classes: *mut *mut i8 = null_mut();
+
+#[no_mangle]
+static mut Weaponnames: *mut *mut i8 = null_mut();
+
+#[no_mangle]
+static mut Sensornames: *mut *mut i8 = null_mut();
+
+#[no_mangle]
+static mut Brainnames: *mut *mut i8 = null_mut();
+
+#[no_mangle]
+static mut Drivenames: *mut *mut i8 = null_mut();
 
 fn main() {
     env_logger::init();
@@ -84,13 +266,7 @@ fn main() {
     let mut c_args: Vec<_> = args.iter().map(|arg| arg.as_ptr()).collect();
 
     unsafe {
-        GameOver = false.into();
-        QuitProgram = false.into();
-
-        debug_level = 0; /* 0=no debug 1=first debug level (at the moment=all) */
-
         joy_sensitivity = 1;
-        sound_on = true.into(); /* default value, can be overridden by command-line */
 
         init_keystr();
 

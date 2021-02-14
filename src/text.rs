@@ -3,7 +3,7 @@ use crate::{
     defs::{
         self, Cmds, DownPressed, FirePressedR, PointerStates, UpPressed, SHOW_WAIT, TEXT_STRETCH,
     },
-    global::{AllEnemys, GameConfig},
+    global::GameConfig,
     graphics::{ne_screen, vid_bpp},
     input::{
         any_key_just_pressed, joy_num_axes, joy_sensitivity, key_cmds, update_input,
@@ -11,6 +11,7 @@ use crate::{
     },
     misc::{MyRandom, Terminate},
     vars::{Me, Screen_Rect},
+    AllEnemys,
 };
 
 #[cfg(feature = "arcade-input")]

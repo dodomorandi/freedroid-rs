@@ -1,7 +1,8 @@
 use crate::{
-    defs::{Bullet, Criticality, Sound, Themed, BYCOLOR, NUM_COLORS, SOUND_DIR_C},
-    global::{sound_on, CurLevel, GameConfig},
+    defs::{BulletKind, Criticality, Sound, Themed, BYCOLOR, NUM_COLORS, SOUND_DIR_C},
+    global::GameConfig,
     misc::find_file,
+    sound_on, CurLevel,
 };
 
 use cstr::cstr;
@@ -342,7 +343,7 @@ pub unsafe extern "C" fn Fire_Bullet_Sound(bullet_type: c_int) {
         return;
     }
 
-    use Bullet::*;
+    use BulletKind::*;
     let bullet_type = match bullet_type {
         0 => Pulse,
         1 => SinglePulse,

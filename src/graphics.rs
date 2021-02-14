@@ -11,9 +11,7 @@ use crate::{
         SHIP_ON_PIC_FILE_C, TAKEOVER_BG_PIC_FILE_C,
     },
     global::{
-        AllBullets, Blastmap, Bulletmap, Druidmap, FirstDigit_Rect, Font0_BFont, Font1_BFont,
-        Font2_BFont, GameConfig, Highscore_BFont, Menu_BFont, Para_BFont, SecondDigit_Rect,
-        ThirdDigit_Rect,
+        Font0_BFont, Font1_BFont, Font2_BFont, GameConfig, Highscore_BFont, Menu_BFont, Para_BFont,
     },
     input::{any_key_just_pressed, cmd_is_active, wait_for_all_keys_released, SDL_Delay},
     misc::{
@@ -37,6 +35,7 @@ use crate::{
         OrigDigit_Rect, Portrait_Rect, RightInfo_Rect, Screen_Rect, User_Rect,
     },
     view::DisplayBanner,
+    AllBullets, Blastmap, Bulletmap, Druidmap, FirstDigit_Rect, SecondDigit_Rect, ThirdDigit_Rect,
 };
 
 use array_init::array_init;

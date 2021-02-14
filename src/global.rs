@@ -1,8 +1,8 @@
 use crate::{
     b_font::BFontInfo,
-    defs::{ALLBLASTTYPES, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_LIFT_ROWS},
+    defs::{MAX_LEVELS, MAX_LIFT_ROWS},
     highscore::HighscoreEntry,
-    structs::{Blast, BlastSpec, Bullet, BulletSpec, Config, DruidSpec, Enemy, Level, Ship},
+    structs::Config,
 };
 
 use cstr::cstr;
@@ -10,41 +10,8 @@ use sdl::video::ll::SDL_Rect;
 use std::{ffi::CStr, ptr::null_mut};
 
 extern "C" {
-    pub static mut ConfigDir: [i8; 255];
-    pub static mut FirstDigit_Rect: SDL_Rect;
-    pub static mut SecondDigit_Rect: SDL_Rect;
-    pub static mut ThirdDigit_Rect: SDL_Rect;
-    pub static mut LastRefreshSound: f32;
-    pub static mut LastGotIntoBlastSound: f32;
-    pub static mut FPSover1: f32;
-    pub static mut ThisMessageTime: i32;
-    pub static mut Druidmap: *mut DruidSpec;
-    pub static mut Bulletmap: *mut BulletSpec;
-    pub static mut Blastmap: [BlastSpec; ALLBLASTTYPES];
-    pub static mut Number_Of_Droid_Types: i32;
-    pub static mut PreTakeEnergy: i32;
-    pub static mut QuitProgram: i32;
-    pub static mut GameOver: i32;
-    pub static mut InvincibleMode: i32;
     pub static mut HideInvisibleMap: i32;
-    pub static mut AlertLevel: i32;
-    pub static mut AlertThreshold: i32; // threshold for FIRST Alert-color (yellow), the others are 2*, 3*..
-    pub static mut AlertBonusPerSec: f32; // bonus/sec for FIRST Alert-color, the others are 2*, 3*,...
-    pub static mut DeathCount: f32; // a cumulative/draining counter of kills->determines Alert!
-    pub static mut DeathCountDrainSpeed: f32; // drain per second
-    pub static mut RealScore: f32;
-    pub static mut ShowScore: i64;
-    pub static mut AllEnemys: [Enemy; MAX_ENEMYS_ON_SHIP];
-    pub static mut NumEnemys: i32;
-    pub static mut CurLevel: *mut Level; /* the current level data */
-    pub static mut curShip: Ship; /* the current ship-data */
-    pub static mut AllBullets: [Bullet; MAXBULLETS + 10];
-    pub static mut AllBlasts: [Blast; MAXBLASTS + 10];
-    pub static mut sound_on: i32; /* Toggle TRUE/FALSE for turning sounds on/off */
-    pub static mut debug_level: i32; /* 0=no debug 1=some debug messages 2=...etc */
     /* (currently only 0 or !=0 is implemented) */
-    pub static mut show_all_droids: i32; /* display enemys regardless of IsVisible() */
-    pub static mut stop_influencer: i32; /* for bullet debugging: stop where u are */
     pub static mut level_rect: [SDL_Rect; MAX_LEVELS]; /* rect's of levels in side-view */
     pub static mut liftrow_rect: [SDL_Rect; MAX_LIFT_ROWS]; /* the lift-row rect's in side-view*/
     pub static mut Highscores: *mut *mut HighscoreEntry;

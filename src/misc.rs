@@ -2,16 +2,14 @@
 use crate::defs::{gcw0_ls_pressed_r, gcw0_rs_pressed_r};
 use crate::{
     bullet::DeleteBullet,
+    curShip, debug_level,
     defs::{
         self, scale_rect, AssembleCombatWindowFlags, Cmds, Criticality, FirePressedR, Status,
         Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE_C,
         PROGRESS_METER_FILE_C,
     },
     enemy::{AnimateEnemys, ShuffleEnemys},
-    global::{
-        curShip, debug_level, AllBlasts, AllEnemys, ConfigDir, CurLevel, FPSover1, GameConfig,
-        NumEnemys, SkipAFewFrames,
-    },
+    global::{GameConfig, SkipAFewFrames},
     graphics::{
         ne_screen, progress_filler_pic, progress_meter_pic, BannerIsDestroyed, FreeGraphics,
         Load_Block, ScalePic,
@@ -27,6 +25,7 @@ use crate::{
     text::printf_SDL,
     vars::{Me, ProgressBar_Rect, ProgressMeter_Rect, ProgressText_Rect},
     view::{Assemble_Combat_Picture, DisplayBanner},
+    AllBlasts, AllEnemys, ConfigDir, CurLevel, FPSover1, NumEnemys,
 };
 
 use cstr::cstr;
