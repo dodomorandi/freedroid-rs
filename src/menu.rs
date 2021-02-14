@@ -1629,7 +1629,7 @@ pub unsafe extern "C" fn handle_LE_LevelNumber(action: MenuAction) -> *const c_c
 pub unsafe extern "C" fn handle_LE_Color(action: MenuAction) -> *const c_char {
     let cur_level = &mut *CurLevel;
     if action == MenuAction::INFO {
-        return *ColorNames.add(usize::try_from(cur_level.color).unwrap());
+        return ColorNames[usize::try_from(cur_level.color).unwrap()];
     }
     menuChangeInt(action, &mut cur_level.color, 1, 0, numLevelColors - 1);
     Switch_Background_Music_To(BYCOLOR.as_ptr());

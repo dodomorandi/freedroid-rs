@@ -16,7 +16,7 @@ extern "C" {
     pub fn SaveShip(shipname: *const c_char) -> c_int;
     pub fn MoveLevelDoors();
 
-    pub static ColorNames: *const *const c_char;
+    pub static ColorNames: [*const c_char; 7];
     pub static numLevelColors: c_int;
 }
 
