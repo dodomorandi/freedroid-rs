@@ -38,6 +38,7 @@
 #include "global.h"
 #include "proto.h"
 #include "text.h"
+#include "vars.h"
 
 int CursorIsOnRect (SDL_Rect *rect);
 SDL_Rect up_rect,down_rect,left_rect,right_rect;

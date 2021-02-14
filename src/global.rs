@@ -1,8 +1,8 @@
 use crate::{
     b_font::BFontInfo,
-    defs::{MAX_LEVELS, MAX_LIFT_ROWS},
+    defs::{ALLBLASTTYPES, MAX_LEVELS, MAX_LIFT_ROWS},
     highscore::HighscoreEntry,
-    structs::Config,
+    structs::{BlastSpec, BulletSpec, Config, DruidSpec},
 };
 
 use cstr::cstr;
@@ -10,6 +10,9 @@ use sdl::video::ll::SDL_Rect;
 use std::{ffi::CStr, ptr::null_mut};
 
 extern "C" {
+    pub static mut Druidmap: *mut DruidSpec;
+    pub static mut Bulletmap: *mut BulletSpec;
+    pub static mut Blastmap: [BlastSpec; ALLBLASTTYPES];
     pub static mut HideInvisibleMap: i32;
     /* (currently only 0 or !=0 is implemented) */
     pub static mut level_rect: [SDL_Rect; MAX_LEVELS]; /* rect's of levels in side-view */

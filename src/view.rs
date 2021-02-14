@@ -5,7 +5,9 @@ use crate::{
         BLINKENERGY, CRY_SOUND_INTERVAL, FLASH_DURATION, LEFT_TEXT_LEN, MAXBLASTS, MAXBULLETS,
         RIGHT_TEXT_LEN, TRANSFER_SOUND_INTERVAL,
     },
-    global::{Font0_BFont, GameConfig, Para_BFont, INFLUENCE_MODE_NAMES},
+    global::{
+        Blastmap, Bulletmap, Druidmap, Font0_BFont, GameConfig, Para_BFont, INFLUENCE_MODE_NAMES,
+    },
     graphics::{
         banner_pic, ne_screen, ApplyFilter, BannerIsDestroyed, BuildBlock, Decal_pics,
         EnemyDigitSurfacePointer, EnemySurfacePointer, InfluDigitSurfacePointer,
@@ -18,8 +20,8 @@ use crate::{
     structs::{Enemy, Finepoint, GrobPoint, Point},
     text::DisplayText,
     vars::{Banner_Rect, Block_Rect, Full_User_Rect, LeftInfo_Rect, RightInfo_Rect, User_Rect},
-    AllBlasts, AllBullets, AllEnemys, Blastmap, Bulletmap, CurLevel, DeathCount, Druidmap,
-    FirstDigit_Rect, Me, Number_Of_Droid_Types, SecondDigit_Rect, ShowScore, ThirdDigit_Rect,
+    AllBlasts, AllBullets, AllEnemys, CurLevel, DeathCount, FirstDigit_Rect, Me,
+    Number_Of_Droid_Types, SecondDigit_Rect, ShowScore, ThirdDigit_Rect,
 };
 
 use cstr::cstr;

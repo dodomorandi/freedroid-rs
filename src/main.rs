@@ -38,9 +38,8 @@ mod view;
 use bullet::{CheckBulletCollisions, ExplodeBlasts, MoveBullets};
 use defs::{
     scale_rect, AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, FirePressedR, Status,
-    ALLBLASTTYPES, ALLSHIPS, BYCOLOR, DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS,
-    MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_LEVEL_RECTS, MAX_LIFTS, MAX_LIFT_ROWS,
-    MAX_PHASES_IN_A_BULLET, RESET, SHOW_WAIT, STANDARD_MISSION_C,
+    BYCOLOR, DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, MAX_LEVELS,
+    MAX_LEVEL_RECTS, MAX_LIFTS, MAX_LIFT_ROWS, RESET, SHOW_WAIT, STANDARD_MISSION_C,
 };
 use enemy::MoveEnemys;
 use global::{GameConfig, LevelDoorsNotMovedTime, SkipAFewFrames};
@@ -58,9 +57,7 @@ use misc::{
 };
 use ship::{show_droid_info, show_droid_portrait, AlertLevelWarning};
 use sound::Switch_Background_Music_To;
-use structs::{
-    Blast, BlastSpec, Bullet, BulletSpec, DruidSpec, Enemy, Finepoint, Level, Lift, Ship,
-};
+use structs::{Blast, Bullet, Enemy, Finepoint, Level, Lift, Ship};
 use vars::{Cons_Droid_Rect, Me, ShipEmptyCounter};
 use view::{Assemble_Combat_Picture, DisplayBanner};
 
@@ -174,9 +171,6 @@ static mut AllEnemys: [Enemy; MAX_ENEMYS_ON_SHIP] = [Enemy {
 static mut ConfigDir: [i8; 255] = [0; 255];
 
 #[no_mangle]
-static mut Druidmap: *mut DruidSpec = null_mut();
-
-#[no_mangle]
 static mut InvincibleMode: i32 = 0;
 
 #[no_mangle]
@@ -187,9 +181,6 @@ static mut stop_influencer: i32 = 0; /* for bullet debugging: stop where u are *
 
 #[no_mangle]
 static mut NumEnemys: i32 = 0;
-
-#[no_mangle]
-static mut InfluenceModeNames: [*mut c_char; 25] = [null_mut(); 25];
 
 #[no_mangle]
 static mut Number_Of_Droid_Types: i32 = 0;
@@ -220,44 +211,7 @@ static mut SecondDigit_Rect: Rect = RECT_ZERO;
 static mut ThirdDigit_Rect: Rect = RECT_ZERO;
 
 #[no_mangle]
-static mut Bulletmap: *mut BulletSpec = null_mut();
-
-#[no_mangle]
-static mut Blastmap: [BlastSpec; ALLBLASTTYPES] = [BlastSpec {
-    phases: 0,
-    picpointer: null_mut(),
-    block: null_mut(),
-    total_animation_time: 0.,
-    SurfacePointer: [null_mut(); MAX_PHASES_IN_A_BULLET],
-}; ALLBLASTTYPES];
-
-#[no_mangle]
 static mut FPSover1: f32 = 0.;
-
-#[no_mangle]
-static mut Alertcolor: [*mut i8; AlertNames::Last as usize] =
-    [null_mut(); AlertNames::Last as usize];
-
-#[no_mangle]
-static mut Shipnames: [*mut i8; ALLSHIPS] = [null_mut(); ALLSHIPS];
-
-#[no_mangle]
-static mut Classname: *mut *mut i8 = null_mut();
-
-#[no_mangle]
-static mut Classes: *mut *mut i8 = null_mut();
-
-#[no_mangle]
-static mut Weaponnames: *mut *mut i8 = null_mut();
-
-#[no_mangle]
-static mut Sensornames: *mut *mut i8 = null_mut();
-
-#[no_mangle]
-static mut Brainnames: *mut *mut i8 = null_mut();
-
-#[no_mangle]
-static mut Drivenames: *mut *mut i8 = null_mut();
 
 fn main() {
     env_logger::init();
