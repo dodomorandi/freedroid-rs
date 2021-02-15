@@ -1518,7 +1518,7 @@ pub unsafe extern "C" fn handle_LE_SaveShip(action: MenuAction) -> *const c_char
             output.as_mut_ptr(),
             output.len() - 1,
             cstr!("Ship saved as '%s'").as_ptr() as *mut c_char,
-            FNAME,
+            FNAME.as_ptr(),
         );
         CenteredPutString(ne_screen, 3 * FontHeight(&*Menu_BFont), output.as_mut_ptr());
         SDL_Flip(ne_screen);
