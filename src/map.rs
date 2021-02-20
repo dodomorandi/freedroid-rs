@@ -1,12 +1,15 @@
 use crate::{
     curShip,
-    defs::{self, Direction, MapTile, MAX_REFRESHES_ON_LEVEL},
+    defs::{self, Direction, MapTile, Status, MAX_REFRESHES_ON_LEVEL},
+    global::{LevelDoorsNotMovedTime, Time_For_Each_Phase_Of_Door_Movement},
     menu::SHIP_EXT,
     misc::{Frame_Time, Terminate},
     structs::{Finepoint, Level},
-    CurLevel, Me,
+    vars::Block_Rect,
+    AllEnemys, CurLevel, Me, NumEnemys,
 };
 
+use defs::MAX_DOORS_ON_LEVEL;
 use log::{error, trace};
 use std::{
     convert::{TryFrom, TryInto},
@@ -16,7 +19,6 @@ use std::{
 };
 
 extern "C" {
-    pub fn MoveLevelDoors();
     pub fn StructToMem(level: *mut Level) -> *mut c_char;
 
     pub static ColorNames: [*const c_char; 7];
@@ -496,6 +498,93 @@ freedroid-discussion@lists.sourceforge.net\n\
         Err(err) => {
             error!("Error writing to ship file: {}. Terminating", err);
             Terminate(defs::ERR.into());
+        }
+    }
+}
+
+/// This funtion moves the level doors in the sense that they are opened
+/// or closed depending on whether there is a robot close to the door or
+/// not.  Initially this function did not take into account the framerate
+/// and just worked every frame.  But this WASTES COMPUTATION time and it
+/// DOES THE ANIMATION TOO QUICKLY.  So, the most reasonable way out seems
+/// to be to operate this function only from time to time, e.g. after a
+/// specified delay has passed.
+#[no_mangle]
+pub unsafe extern "C" fn MoveLevelDoors() {
+    // This prevents animation going too quick.
+    // The constant should be replaced by a variable, that can be
+    // set from within the theme, but that may be done later...
+    if LevelDoorsNotMovedTime < Time_For_Each_Phase_Of_Door_Movement {
+        return;
+    }
+    LevelDoorsNotMovedTime = 0.;
+
+    let cur_level = &*CurLevel;
+    for i in 0..MAX_DOORS_ON_LEVEL {
+        let doorx = cur_level.doors[i].x;
+        let doory = cur_level.doors[i].y;
+
+        /* Keine weiteren Tueren */
+        if doorx == -1 && doory == -1 {
+            break;
+        }
+
+        let pos =
+            cur_level.map[usize::try_from(doory).unwrap()].add(usize::try_from(doorx).unwrap());
+
+        // NORMALISATION doorx = doorx * Block_Rect.w + Block_Rect.w / 2;
+        // NORMALISATION doory = doory * Block_Rect.h + Block_Rect.h / 2;
+
+        /* first check Influencer gegen Tuer */
+        let xdist = Me.pos.x - f32::from(doorx);
+        let ydist = Me.pos.y - f32::from(doory);
+        let dist2 = xdist * xdist + ydist * ydist;
+
+        const DOOROPENDIST2: f32 = 1.;
+        if dist2 < DOOROPENDIST2 {
+            if *pos != MapTile::HGanztuere as i8 && *pos != MapTile::VGanztuere as i8 {
+                *pos += 1;
+            }
+        } else {
+            /* alle Enemys checken */
+            let mut j = 0;
+            while j < usize::try_from(NumEnemys).unwrap() {
+                /* ignore druids that are dead or on other levels */
+                if AllEnemys[j].status == Status::Out as i32
+                    || AllEnemys[j].status == Status::Terminated as i32
+                    || AllEnemys[j].levelnum != cur_level.levelnum
+                {
+                    j += 1;
+                    continue;
+                }
+
+                let xdist = (AllEnemys[j].pos.x - f32::from(doorx)).trunc().abs();
+                if xdist < Block_Rect.w.into() {
+                    let ydist = (AllEnemys[j].pos.y - f32::from(doory)).trunc().abs();
+                    if ydist < Block_Rect.h.into() {
+                        let dist2 = xdist * xdist + ydist * ydist;
+                        if dist2 < DOOROPENDIST2 {
+                            if *pos != MapTile::HGanztuere as i8
+                                && *pos != MapTile::VGanztuere as i8
+                            {
+                                *pos += 1;
+                            }
+
+                            break; /* one druid is enough to open a door */
+                        }
+                    }
+                }
+
+                j += 1;
+            }
+
+            /* No druid near: close door if it isnt closed */
+            if j == usize::try_from(NumEnemys).unwrap()
+                && *pos != MapTile::VZutuere as i8
+                && *pos != MapTile::HZutuere as i8
+            {
+                *pos -= 1;
+            }
         }
     }
 }

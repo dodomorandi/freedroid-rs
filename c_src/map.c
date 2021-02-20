@@ -1265,82 +1265,82 @@ GetThisLevelsDroids( char* SectionPointer )
 
 @Ret:
 * $Function----------------------------------------------------------*/
-void
-MoveLevelDoors (void)
-{
-  int i, j;
-  int doorx, doory;
-  float xdist, ydist;
-  float dist2;
-  char *Pos;
-
-  // This prevents animation going too quick.
-  // The constant should be replaced by a variable, that can be
-  // set from within the theme, but that may be done later...
-  if ( LevelDoorsNotMovedTime < Time_For_Each_Phase_Of_Door_Movement ) return;
-  LevelDoorsNotMovedTime=0;
-
-
-  for (i = 0; i < MAX_DOORS_ON_LEVEL; i++)
-    {
-      doorx = (CurLevel->doors[i].x);
-      doory = (CurLevel->doors[i].y);
-
-      /* Keine weiteren Tueren */
-      if (doorx == -1 && doory == -1)
-	break;
-
-      Pos = &(CurLevel->map[doory][doorx]);
-
-      // NORMALISATION doorx = doorx * Block_Rect.w + Block_Rect.w / 2;
-      // NORMALISATION doory = doory * Block_Rect.h + Block_Rect.h / 2;
-
-      /* first check Influencer gegen Tuer */
-      xdist = Me.pos.x - doorx;
-      ydist = Me.pos.y - doory;
-      dist2 = xdist * xdist + ydist * ydist;
-
-      if (dist2 < DOOROPENDIST2)
-	{
-	  if ((*Pos != H_GANZTUERE) && (*Pos != V_GANZTUERE))
-	    *Pos += 1;
-	}
-      else
-	{
-	  /* alle Enemys checken */
-	  for (j = 0; j < NumEnemys; j++)
-	    {
-	      /* ignore druids that are dead or on other levels */
-	      if (AllEnemys[j].status == OUT || AllEnemys[j].status == TERMINATED ||
-		  AllEnemys[j].levelnum != CurLevel->levelnum)
-		continue;
-
-	      xdist = abs ((int)(AllEnemys[j].pos.x - doorx));
-	      if (xdist < Block_Rect.w)
-		{
-		  ydist = abs ((int)(AllEnemys[j].pos.y - doory));
-		  if (ydist < Block_Rect.h)
-		    {
-		      dist2 = xdist * xdist + ydist * ydist;
-		      if (dist2 < DOOROPENDIST2)
-			{
-			  if ((*Pos != H_GANZTUERE) && (*Pos != V_GANZTUERE))
-			    *Pos += 1;
-
-			  break;	/* one druid is enough to open a door */
-			}	/* if */
-		    }		/* if */
-		}		/* if */
-	    }			/* for */
-
-	  /* No druid near: close door if it isnt closed */
-	  if (j == NumEnemys)
-	    if ((*Pos != V_ZUTUERE) && (*Pos != H_ZUTUERE))
-	      *Pos -= 1;
-
-	}			/* else */
-    }				/* for */
-}				/* MoveLevelDoors */
+// void
+// MoveLevelDoors (void)
+// {
+//   int i, j;
+//   int doorx, doory;
+//   float xdist, ydist;
+//   float dist2;
+//   char *Pos;
+// 
+//   // This prevents animation going too quick.
+//   // The constant should be replaced by a variable, that can be
+//   // set from within the theme, but that may be done later...
+//   if ( LevelDoorsNotMovedTime < Time_For_Each_Phase_Of_Door_Movement ) return;
+//   LevelDoorsNotMovedTime=0;
+// 
+// 
+//   for (i = 0; i < MAX_DOORS_ON_LEVEL; i++)
+//     {
+//       doorx = (CurLevel->doors[i].x);
+//       doory = (CurLevel->doors[i].y);
+// 
+//       /* Keine weiteren Tueren */
+//       if (doorx == -1 && doory == -1)
+// 	break;
+// 
+//       Pos = &(CurLevel->map[doory][doorx]);
+// 
+//       // NORMALISATION doorx = doorx * Block_Rect.w + Block_Rect.w / 2;
+//       // NORMALISATION doory = doory * Block_Rect.h + Block_Rect.h / 2;
+// 
+//       /* first check Influencer gegen Tuer */
+//       xdist = Me.pos.x - doorx;
+//       ydist = Me.pos.y - doory;
+//       dist2 = xdist * xdist + ydist * ydist;
+// 
+//       if (dist2 < DOOROPENDIST2)
+// 	{
+// 	  if ((*Pos != H_GANZTUERE) && (*Pos != V_GANZTUERE))
+// 	    *Pos += 1;
+// 	}
+//       else
+// 	{
+// 	  /* alle Enemys checken */
+// 	  for (j = 0; j < NumEnemys; j++)
+// 	    {
+// 	      /* ignore druids that are dead or on other levels */
+// 	      if (AllEnemys[j].status == OUT || AllEnemys[j].status == TERMINATED ||
+// 		  AllEnemys[j].levelnum != CurLevel->levelnum)
+// 		continue;
+// 
+// 	      xdist = abs ((int)(AllEnemys[j].pos.x - doorx));
+// 	      if (xdist < Block_Rect.w)
+// 		{
+// 		  ydist = abs ((int)(AllEnemys[j].pos.y - doory));
+// 		  if (ydist < Block_Rect.h)
+// 		    {
+// 		      dist2 = xdist * xdist + ydist * ydist;
+// 		      if (dist2 < DOOROPENDIST2)
+// 			{
+// 			  if ((*Pos != H_GANZTUERE) && (*Pos != V_GANZTUERE))
+// 			    *Pos += 1;
+// 
+// 			  break;	/* one druid is enough to open a door */
+// 			}	/* if */
+// 		    }		/* if */
+// 		}		/* if */
+// 	    }			/* for */
+// 
+// 	  /* No druid near: close door if it isnt closed */
+// 	  if (j == NumEnemys)
+// 	    if ((*Pos != V_ZUTUERE) && (*Pos != H_ZUTUERE))
+// 	      *Pos -= 1;
+// 
+// 	}			/* else */
+//     }				/* for */
+// }				/* MoveLevelDoors */
 
 
 /*@Function============================================================
