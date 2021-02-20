@@ -406,128 +406,128 @@ char *StructToMem(Level Lev)
 @Ret: OK | ERR
 @Int:
 * $Function----------------------------------------------------------*/
-int SaveShip( const char *shipname)
-{
-  char *LevelMem;		/* linear memory for one Level */
-  char *MapHeaderString;
-  FILE *ShipFile;  // to this file we will save all the ship data...
-  char filename[FILENAME_LEN+1];
-  int level_anz;
-  int array_i, array_num;
-  int i;
-
-  DebugPrintf (2, "\nint SaveShip(char *shipname): real function call confirmed.");
-
-  /* Get the complete filename */
-  strcpy(filename, shipname);
-  strcat(filename, SHIP_EXT);
-
-  /* count the levels */
-  level_anz = 0;
-  while(curShip.AllLevels[level_anz++]);
-  level_anz --;
-
-  DebugPrintf (2, "\nint SaveShip(char *shipname): now opening the ship file...");
-
-  /* open file */
-  if( (ShipFile = fopen(filename, "w")) == NULL) {
-    printf("\n\nError opening ship file...\n\nTerminating...\n\n");
-    Terminate(ERR);
-    return ERR;
-  }
-
-  //--------------------
-  // Now that the file is opend for writing, we can start writing.  And the first thing
-  // we will write to the file will be a fine header, indicating what this file is about
-  // and things like that...
-  //
-  MapHeaderString="\n\
-----------------------------------------------------------------------\n\
-This file was generated using the Freedroid level editor.\n\
-Please feel free to make any modifications you like, but in order for you\n\
-to have an easier time, it is recommended that you use the Freedroid level\n\
-editor for this purpose.  If you have created some good new maps, please \n\
-send a short notice (not too large files attached) to the freedroid project.\n\
-\n\
-freedroid-discussion@lists.sourceforge.net\n\
-----------------------------------------------------------------------\n\
-\n";
-  fwrite ( MapHeaderString , strlen( MapHeaderString), sizeof(char), ShipFile);
-
-  // Now we write the area name back into the file
-  fwrite ( AREA_NAME_STRING , strlen( AREA_NAME_STRING ), sizeof(char), ShipFile);
-  fwrite ( curShip.AreaName , strlen( curShip.AreaName ), sizeof(char), ShipFile);
-  fwrite( "\"\n\n  ", strlen( "\"\n\n  " ) , sizeof(char) , ShipFile );
-
-  /* Save all Levels */
-
-  DebugPrintf (2, "\nint SaveShip(char *shipname): now saving levels...");
-
-  for( i=0; i<level_anz; i++)
-    {
-
-      //--------------------
-      // What the heck does this do?
-      // Do we really need this?  Why?
-      //
-      array_i =-1;
-      array_num = -1;
-      while( curShip.AllLevels[++array_i] != NULL)
-	{
-	  if( curShip.AllLevels[array_i]->levelnum == i)
-	    {
-	      if( array_num != -1 )
-		{
-		  printf("\n\nIdentical Levelnumber Error in SaveShip...\n\nTerminating\n\n");
-		  Terminate(ERR);
-		  return ERR;
-		}
-	      else array_num = array_i;
-	    }
-	} // while
-      if ( array_num == -1 ) {
-
-	printf("\n\nMissing Levelnumber error in SaveShip...\n\nTerminating\n\n");
-	Terminate(ERR);
-
-	level_anz ++;
-	continue;
-      }
-
-      //--------------------
-      // Now comes the real saving part FOR ONE LEVEL.  First THE LEVEL is packed into a string and
-      // then this string is wirtten to the file.  easy. simple.
-      //
-      LevelMem = StructToMem(curShip.AllLevels[array_num]);
-      fwrite(LevelMem, strlen(LevelMem), sizeof(char), ShipFile);
-
-      free(LevelMem);
-    }
-
-  //--------------------
-  // Now we are almost done writing.  Everything that is missing is
-  // the termination string for the ship file.  This termination string
-  // is needed later for the ship loading functions to find the end of
-  // the data and to be able to terminate the long file-string with a
-  // null character at the right position.
-  //
-  fwrite( END_OF_SHIP_DATA_STRING , strlen( END_OF_SHIP_DATA_STRING ) , sizeof(char) , ShipFile );
-  fwrite( "\n\n  ", strlen( "\n\n  " ) , sizeof(char) , ShipFile );
-
-
-  DebugPrintf (2, "\nint SaveShip(char *shipname): now closing ship file...");
-
-  if( fclose(ShipFile) == EOF)
-    {
-      printf("\n\nClosing of ship file failed in SaveShip...\n\nTerminating\n\n");
-      Terminate(ERR);
-      return ERR;
-    }
-
-  DebugPrintf (2, "\nint SaveShip(char *shipname): end of function reached.");
-
-  return OK;
-} /* SaveShip */
+// int SaveShip( const char *shipname)
+// {
+//   char *LevelMem;		/* linear memory for one Level */
+//   char *MapHeaderString;
+//   FILE *ShipFile;  // to this file we will save all the ship data...
+//   char filename[FILENAME_LEN+1];
+//   int level_anz;
+//   int array_i, array_num;
+//   int i;
+// 
+//   DebugPrintf (2, "\nint SaveShip(char *shipname): real function call confirmed.");
+// 
+//   /* Get the complete filename */
+//   strcpy(filename, shipname);
+//   strcat(filename, SHIP_EXT);
+// 
+//   /* count the levels */
+//   level_anz = 0;
+//   while(curShip.AllLevels[level_anz++]);
+//   level_anz --;
+// 
+//   DebugPrintf (2, "\nint SaveShip(char *shipname): now opening the ship file...");
+// 
+//   /* open file */
+//   if( (ShipFile = fopen(filename, "w")) == NULL) {
+//     printf("\n\nError opening ship file...\n\nTerminating...\n\n");
+//     Terminate(ERR);
+//     return ERR;
+//   }
+// 
+//   //--------------------
+//   // Now that the file is opend for writing, we can start writing.  And the first thing
+//   // we will write to the file will be a fine header, indicating what this file is about
+//   // and things like that...
+//   //
+//   MapHeaderString="\n\
+// ----------------------------------------------------------------------\n\
+// This file was generated using the Freedroid level editor.\n\
+// Please feel free to make any modifications you like, but in order for you\n\
+// to have an easier time, it is recommended that you use the Freedroid level\n\
+// editor for this purpose.  If you have created some good new maps, please \n\
+// send a short notice (not too large files attached) to the freedroid project.\n\
+// \n\
+// freedroid-discussion@lists.sourceforge.net\n\
+// ----------------------------------------------------------------------\n\
+// \n";
+//   fwrite ( MapHeaderString , strlen( MapHeaderString), sizeof(char), ShipFile);
+// 
+//   // Now we write the area name back into the file
+//   fwrite ( AREA_NAME_STRING , strlen( AREA_NAME_STRING ), sizeof(char), ShipFile);
+//   fwrite ( curShip.AreaName , strlen( curShip.AreaName ), sizeof(char), ShipFile);
+//   fwrite( "\"\n\n  ", strlen( "\"\n\n  " ) , sizeof(char) , ShipFile );
+// 
+//   /* Save all Levels */
+// 
+//   DebugPrintf (2, "\nint SaveShip(char *shipname): now saving levels...");
+// 
+//   for( i=0; i<level_anz; i++)
+//     {
+// 
+//       //--------------------
+//       // What the heck does this do?
+//       // Do we really need this?  Why?
+//       //
+//       array_i =-1;
+//       array_num = -1;
+//       while( curShip.AllLevels[++array_i] != NULL)
+// 	{
+// 	  if( curShip.AllLevels[array_i]->levelnum == i)
+// 	    {
+// 	      if( array_num != -1 )
+// 		{
+// 		  printf("\n\nIdentical Levelnumber Error in SaveShip...\n\nTerminating\n\n");
+// 		  Terminate(ERR);
+// 		  return ERR;
+// 		}
+// 	      else array_num = array_i;
+// 	    }
+// 	} // while
+//       if ( array_num == -1 ) {
+// 
+// 	printf("\n\nMissing Levelnumber error in SaveShip...\n\nTerminating\n\n");
+// 	Terminate(ERR);
+// 
+// 	level_anz ++;
+// 	continue;
+//       }
+// 
+//       //--------------------
+//       // Now comes the real saving part FOR ONE LEVEL.  First THE LEVEL is packed into a string and
+//       // then this string is wirtten to the file.  easy. simple.
+//       //
+//       LevelMem = StructToMem(curShip.AllLevels[array_num]);
+//       fwrite(LevelMem, strlen(LevelMem), sizeof(char), ShipFile);
+// 
+//       free(LevelMem);
+//     }
+// 
+//   //--------------------
+//   // Now we are almost done writing.  Everything that is missing is
+//   // the termination string for the ship file.  This termination string
+//   // is needed later for the ship loading functions to find the end of
+//   // the data and to be able to terminate the long file-string with a
+//   // null character at the right position.
+//   //
+//   fwrite( END_OF_SHIP_DATA_STRING , strlen( END_OF_SHIP_DATA_STRING ) , sizeof(char) , ShipFile );
+//   fwrite( "\n\n  ", strlen( "\n\n  " ) , sizeof(char) , ShipFile );
+// 
+// 
+//   DebugPrintf (2, "\nint SaveShip(char *shipname): now closing ship file...");
+// 
+//   if( fclose(ShipFile) == EOF)
+//     {
+//       printf("\n\nClosing of ship file failed in SaveShip...\n\nTerminating\n\n");
+//       Terminate(ERR);
+//       return ERR;
+//     }
+// 
+//   DebugPrintf (2, "\nint SaveShip(char *shipname): end of function reached.");
+// 
+//   return OK;
+// } /* SaveShip */
 
 
 /*@Function============================================================

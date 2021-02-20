@@ -77,7 +77,8 @@ static mut QUIT_MENU: bool = false;
 pub static mut quit_LevelEditor: bool = false;
 
 // const FILENAME_LEN: u8 = 128;
-const SHIP_EXT: &CStr = cstr!(".shp");
+const SHIP_EXT_C: &CStr = cstr!(".shp");
+pub const SHIP_EXT: &str = ".shp";
 // const ELEVEXT: &CStr = cstr!(".elv");
 // const CREWEXT: &CStr = cstr!(".crw");
 
@@ -1504,7 +1505,7 @@ pub unsafe extern "C" fn handle_LE_SaveShip(action: MenuAction) -> *const c_char
         FNAME.len() - 1,
         cstr!("%s%s").as_ptr() as *mut c_char,
         SHIPNAME.as_ptr() as *mut c_char,
-        SHIP_EXT.as_ptr() as *mut c_char,
+        SHIP_EXT_C.as_ptr() as *mut c_char,
     );
 
     if action == MenuAction::INFO {

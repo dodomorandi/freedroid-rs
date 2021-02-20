@@ -1,20 +1,23 @@
 use crate::{
     curShip,
-    defs::{Direction, MapTile, MAX_REFRESHES_ON_LEVEL},
-    misc::Frame_Time,
+    defs::{self, Direction, MapTile, MAX_REFRESHES_ON_LEVEL},
+    menu::SHIP_EXT,
+    misc::{Frame_Time, Terminate},
     structs::{Finepoint, Level},
     CurLevel, Me,
 };
 
-use log::trace;
+use log::{error, trace};
 use std::{
     convert::{TryFrom, TryInto},
+    ffi::CStr,
+    ops::Not,
     os::raw::{c_char, c_float, c_int, c_uchar, c_void},
 };
 
 extern "C" {
-    pub fn SaveShip(shipname: *const c_char) -> c_int;
     pub fn MoveLevelDoors();
+    pub fn StructToMem(level: *mut Level) -> *mut c_char;
 
     pub static ColorNames: [*const c_char; 7];
     pub static numLevelColors: c_int;
@@ -380,4 +383,119 @@ pub enum ColorNames {
     Blue,
     Greenblue,
     Dark,
+}
+
+/// Saves ship-data to disk
+#[no_mangle]
+pub unsafe extern "C" fn SaveShip(shipname: *const c_char) -> c_int {
+    use std::{fs::File, io::Write, path::PathBuf};
+
+    trace!("SaveShip(): real function call confirmed.");
+
+    let filename = PathBuf::from(format!(
+        "{}{}",
+        CStr::from_ptr(shipname).to_str().unwrap(),
+        SHIP_EXT
+    ));
+
+    /* count the levels */
+    let level_anz = curShip
+        .AllLevels
+        .iter()
+        .take_while(|level| level.is_null().not())
+        .count();
+
+    trace!("SaveShip(): now opening the ship file...");
+
+    let mut ship_file = match File::create(filename) {
+        Ok(file) => file,
+        Err(err) => {
+            error!("Error opening ship file: {}. Terminating", err);
+            Terminate(defs::ERR.into());
+        }
+    };
+
+    let result = (|| -> Result<(), std::io::Error> {
+        //--------------------
+        // Now that the file is opend for writing, we can start writing.  And the first thing
+        // we will write to the file will be a fine header, indicating what this file is about
+        // and things like that...
+        //
+        const MAP_HEADER_STRING: &str = "\n\
+----------------------------------------------------------------------\n\
+This file was generated using the Freedroid level editor.\n\
+Please feel free to make any modifications you like, but in order for you\n\
+to have an easier time, it is recommended that you use the Freedroid level\n\
+editor for this purpose.  If you have created some good new maps, please \n\
+send a short notice (not too large files attached) to the freedroid project.\n\
+\n\
+freedroid-discussion@lists.sourceforge.net\n\
+----------------------------------------------------------------------\n\
+\n";
+
+        ship_file.write_all(MAP_HEADER_STRING.as_bytes())?;
+
+        const AREA_NAME_STRING: &str = "Area name=\"";
+        ship_file.write_all(AREA_NAME_STRING.as_bytes())?;
+        ship_file.write_all(CStr::from_ptr(curShip.AreaName.as_ptr()).to_bytes())?;
+        ship_file.write_all(b"\"\n\n  ")?;
+
+        /* Save all Levels */
+
+        trace!("SaveShip(): now saving levels...");
+
+        for i in 0..i32::try_from(level_anz).unwrap() {
+            let mut level_iter = curShip
+                .AllLevels
+                .iter()
+                .copied()
+                .take_while(|level| level.is_null().not())
+                .filter(|&level| (*level).levelnum == i);
+
+            let level = match level_iter.next() {
+                Some(level) => level,
+                None => {
+                    error!("Missing Levelnumber error in SaveShip.");
+                    Terminate(defs::ERR.into());
+                }
+            };
+
+            if level_iter.next().is_some() {
+                error!("Identical Levelnumber Error in SaveShip.");
+                Terminate(defs::ERR.into());
+            }
+
+            //--------------------
+            // Now comes the real saving part FOR ONE LEVEL.  First THE LEVEL is packed into a string and
+            // then this string is wirtten to the file.  easy. simple.
+            let level_mem = StructToMem(level);
+            ship_file.write_all(CStr::from_ptr(level_mem).to_bytes())?;
+
+            libc::free(level_mem as *mut c_void);
+        }
+
+        //--------------------
+        // Now we are almost done writing.  Everything that is missing is
+        // the termination string for the ship file.  This termination string
+        // is needed later for the ship loading functions to find the end of
+        // the data and to be able to terminate the long file-string with a
+        // null character at the right position.
+        //
+        const END_OF_SHIP_DATA_STRING: &str = "*** End of Ship Data ***";
+        writeln!(ship_file, "{}\n", END_OF_SHIP_DATA_STRING)?;
+
+        trace!("SaveShip(): now flushing ship file...");
+        ship_file.flush()?;
+
+        trace!("SaveShip(): end of function reached.");
+        Ok(())
+    })();
+
+    match result {
+        Ok(()) => defs::OK.into(),
+        Err(err) => {
+            error!("Error writing to ship file: {}. Terminating", err);
+            Terminate(defs::ERR.into());
+        }
+    }
 }
