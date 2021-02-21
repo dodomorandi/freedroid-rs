@@ -307,98 +307,98 @@ LoadShip (char *filename)
 @Ret: 	char *: pointer to Map in a memory field
 @Int:
 * $Function----------------------------------------------------------*/
-char *StructToMem(Level Lev)
-{
-  char *LevelMem;
-  int i, j;
-  int MemAmount=0;		/* the size of the level-data */
-  int xlen = Lev->xlen, ylen = Lev->ylen;
-  int anz_wp;		/* number of Waypoints */
-  char linebuf[500];		/* Buffer */
-  waypoint *this_wp;
-
-  anz_wp = Lev->num_waypoints;
-
-  /* estimate the amount of memory needed */
-  MemAmount = (xlen+1) * ylen; 	/* Map-memory */
-  MemAmount += anz_wp * MAX_WP_CONNECTIONS * 4;
-  MemAmount += 50000;		/* Puffer fuer Dimensionen, mark-strings .. */
-
-  /* allocate some memory */
-  if( (LevelMem = (char*)MyMalloc(MemAmount)) == NULL) {
-    DebugPrintf(1, "\n\nError in StructToMem:  Could not allocate memory...\n\nTerminating...\n\n");
-    Terminate(ERR);
-  }
-
-  // Write the data to memory:
-  // Here the levelnumber and general information about the level is written
-  sprintf(linebuf, "Levelnumber: %d\nxlen of this level: %d\nylen of this level: %d\ncolor of this level: %d\n",
-	  Lev->levelnum, Lev->xlen, Lev->ylen, Lev->color);
-  strcpy(LevelMem, linebuf);
-  strcat(LevelMem, LEVEL_NAME_STRING );
-  strcat(LevelMem, Lev->Levelname );
-  strcat(LevelMem, "\n" );
-  strcat(LevelMem, LEVEL_ENTER_COMMENT_STRING );
-  strcat(LevelMem, Lev->Level_Enter_Comment );
-  strcat(LevelMem, "\n" );
-  strcat(LevelMem, BACKGROUND_SONG_NAME_STRING );
-  strcat(LevelMem, Lev->Background_Song_Name );
-  // strcat(LevelMem, Decknames[Lev->levelnum] );
-  strcat(LevelMem, "\n" );
-
-  // Now the beginning of the actual map data is marked:
-  strcat(LevelMem, MAP_BEGIN_STRING);
-  strcat(LevelMem, "\n");
-
-  // Now in the loop each line of map data should be saved as a whole
-  for( i = 0 ; i < ylen ; i++ ) {
-
-    ResetLevelMap (Lev); // make sure all doors are closed
-    for (j=0; j<xlen; j++)
-      {
-	sprintf (linebuf, "%2d ", Lev->map[i][j]);
-	strcat (LevelMem, linebuf);
-      }
-    strcat(LevelMem, "\n");
-  }
-
-  // --------------------
-  // The next thing we must do is write the waypoints of this level
-
-  strcat(LevelMem, WP_BEGIN_STRING);
-  strcat(LevelMem, "\n");
-
-  for(i=0; i< Lev->num_waypoints ; i++)
-    {
-      sprintf(linebuf, "Nr.=%3d x=%4d y=%4d", i, Lev->AllWaypoints[i].x , Lev->AllWaypoints[i].y );
-      strcat( LevelMem, linebuf );
-      strcat( LevelMem, "\t ");
-      strcat (LevelMem, CONNECTION_STRING);
-
-      this_wp = &Lev->AllWaypoints[i];
-      for( j=0; j < this_wp->num_connections; j++)
-	{
-	  sprintf(linebuf, "%2d ", this_wp->connections[j]);
-	  strcat(LevelMem, linebuf);
-	} /* for connections */
-      strcat(LevelMem, "\n");
-    } /* for waypoints */
-
-  strcat(LevelMem, LEVEL_END_STRING);
-  strcat(LevelMem, "\n----------------------------------------------------------------------\n");
-
-  /* FERTIG:   hat die Memory - Schaetzung gestimmt ?? */
-  /* wenn nicht: :-(  */
-  if( strlen(LevelMem) >= MemAmount)
-    {
-      DebugPrintf(0, "\n\nError in StructToMem:  Estimate of memory was wrong...\nTerminating...\n");
-      Terminate(ERR);
-    }
-
-  /* all ok : */
-  return (LevelMem);
-
-} /* Struct to Mem */
+// char *StructToMem(Level Lev)
+// {
+//   char *LevelMem;
+//   int i, j;
+//   int MemAmount=0;		/* the size of the level-data */
+//   int xlen = Lev->xlen, ylen = Lev->ylen;
+//   int anz_wp;		/* number of Waypoints */
+//   char linebuf[500];		/* Buffer */
+//   waypoint *this_wp;
+// 
+//   anz_wp = Lev->num_waypoints;
+// 
+//   /* estimate the amount of memory needed */
+//   MemAmount = (xlen+1) * ylen; 	/* Map-memory */
+//   MemAmount += anz_wp * MAX_WP_CONNECTIONS * 4;
+//   MemAmount += 50000;		/* Puffer fuer Dimensionen, mark-strings .. */
+// 
+//   /* allocate some memory */
+//   if( (LevelMem = (char*)MyMalloc(MemAmount)) == NULL) {
+//     DebugPrintf(1, "\n\nError in StructToMem:  Could not allocate memory...\n\nTerminating...\n\n");
+//     Terminate(ERR);
+//   }
+// 
+//   // Write the data to memory:
+//   // Here the levelnumber and general information about the level is written
+//   sprintf(linebuf, "Levelnumber: %d\nxlen of this level: %d\nylen of this level: %d\ncolor of this level: %d\n",
+// 	  Lev->levelnum, Lev->xlen, Lev->ylen, Lev->color);
+//   strcpy(LevelMem, linebuf);
+//   strcat(LevelMem, LEVEL_NAME_STRING );
+//   strcat(LevelMem, Lev->Levelname );
+//   strcat(LevelMem, "\n" );
+//   strcat(LevelMem, LEVEL_ENTER_COMMENT_STRING );
+//   strcat(LevelMem, Lev->Level_Enter_Comment );
+//   strcat(LevelMem, "\n" );
+//   strcat(LevelMem, BACKGROUND_SONG_NAME_STRING );
+//   strcat(LevelMem, Lev->Background_Song_Name );
+//   // strcat(LevelMem, Decknames[Lev->levelnum] );
+//   strcat(LevelMem, "\n" );
+// 
+//   // Now the beginning of the actual map data is marked:
+//   strcat(LevelMem, MAP_BEGIN_STRING);
+//   strcat(LevelMem, "\n");
+// 
+//   // Now in the loop each line of map data should be saved as a whole
+//   for( i = 0 ; i < ylen ; i++ ) {
+// 
+//     ResetLevelMap (Lev); // make sure all doors are closed
+//     for (j=0; j<xlen; j++)
+//       {
+// 	sprintf (linebuf, "%2d ", Lev->map[i][j]);
+// 	strcat (LevelMem, linebuf);
+//       }
+//     strcat(LevelMem, "\n");
+//   }
+// 
+//   // --------------------
+//   // The next thing we must do is write the waypoints of this level
+// 
+//   strcat(LevelMem, WP_BEGIN_STRING);
+//   strcat(LevelMem, "\n");
+// 
+//   for(i=0; i< Lev->num_waypoints ; i++)
+//     {
+//       sprintf(linebuf, "Nr.=%3d x=%4d y=%4d", i, Lev->AllWaypoints[i].x , Lev->AllWaypoints[i].y );
+//       strcat( LevelMem, linebuf );
+//       strcat( LevelMem, "\t ");
+//       strcat (LevelMem, CONNECTION_STRING);
+// 
+//       this_wp = &Lev->AllWaypoints[i];
+//       for( j=0; j < this_wp->num_connections; j++)
+// 	{
+// 	  sprintf(linebuf, "%2d ", this_wp->connections[j]);
+// 	  strcat(LevelMem, linebuf);
+// 	} /* for connections */
+//       strcat(LevelMem, "\n");
+//     } /* for waypoints */
+// 
+//   strcat(LevelMem, LEVEL_END_STRING);
+//   strcat(LevelMem, "\n----------------------------------------------------------------------\n");
+// 
+//   /* FERTIG:   hat die Memory - Schaetzung gestimmt ?? */
+//   /* wenn nicht: :-(  */
+//   if( strlen(LevelMem) >= MemAmount)
+//     {
+//       DebugPrintf(0, "\n\nError in StructToMem:  Estimate of memory was wrong...\nTerminating...\n");
+//       Terminate(ERR);
+//     }
+// 
+//   /* all ok : */
+//   return (LevelMem);
+// 
+// } /* Struct to Mem */
 
 /*@Function============================================================
 @Desc: int SaveShip(void): saves ship-data to disk

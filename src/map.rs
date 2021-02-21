@@ -3,13 +3,13 @@ use crate::{
     defs::{self, Direction, MapTile, Status, MAX_REFRESHES_ON_LEVEL},
     global::{LevelDoorsNotMovedTime, Time_For_Each_Phase_Of_Door_Movement},
     menu::SHIP_EXT,
-    misc::{Frame_Time, Terminate},
+    misc::{Frame_Time, MyMalloc, Terminate},
     structs::{Finepoint, Level},
     vars::Block_Rect,
     AllEnemys, CurLevel, Me, NumEnemys,
 };
 
-use defs::MAX_DOORS_ON_LEVEL;
+use defs::{MAX_DOORS_ON_LEVEL, MAX_WP_CONNECTIONS};
 use log::{error, trace};
 use std::{
     convert::{TryFrom, TryInto},
@@ -19,7 +19,7 @@ use std::{
 };
 
 extern "C" {
-    pub fn StructToMem(level: *mut Level) -> *mut c_char;
+    fn ResetLevelMap(level: *mut Level);
 
     pub static ColorNames: [*const c_char; 7];
     pub static numLevelColors: c_int;
@@ -36,6 +36,15 @@ const V_RANDSPACE: f32 = WALLPASS;
 const V_RANDBREITE: f32 = 5_f32 / 64.;
 const H_RANDSPACE: f32 = WALLPASS;
 const H_RANDBREITE: f32 = 5_f32 / 64.;
+
+const AREA_NAME_STRING: &str = "Area name=\"";
+const LEVEL_NAME_STRING: &str = "Name of this level=";
+const LEVEL_ENTER_COMMENT_STRING: &str = "Comment of the Influencer on entering this level=\"";
+const BACKGROUND_SONG_NAME_STRING: &str = "Name of background song for this level=";
+const MAP_BEGIN_STRING: &str = "begin_map";
+const WP_BEGIN_STRING: &str = "begin_waypoints";
+const LEVEL_END_STRING: &str = "end_level";
+const CONNECTION_STRING: &str = "connections: ";
 
 /// Determines wether object on x/y is visible to the 001 or not
 #[no_mangle]
@@ -587,4 +596,98 @@ pub unsafe extern "C" fn MoveLevelDoors() {
             }
         }
     }
+}
+
+/// Returns a pointer to Map in a memory field
+pub unsafe extern "C" fn StructToMem(level: *mut Level) -> *mut c_char {
+    use std::io::Write;
+
+    let level = &mut *level;
+    let xlen = level.xlen;
+    let ylen = level.ylen;
+
+    let anz_wp = usize::try_from(level.num_waypoints).unwrap();
+
+    /* estimate the amount of memory needed */
+    let mem_amount = usize::try_from(xlen + 1).unwrap() * usize::try_from(ylen).unwrap()
+        + anz_wp * MAX_WP_CONNECTIONS * 4
+        + 50000; /* Map-memory; Puffer fuer Dimensionen, mark-strings .. */
+
+    /* allocate some memory */
+    let level_mem = MyMalloc(i64::try_from(mem_amount).unwrap()) as *mut u8;
+    if level_mem.is_null() {
+        error!("could not allocate memory, terminating.");
+        Terminate(defs::ERR.into());
+    }
+    let mut level_cursor =
+        std::io::Cursor::new(std::slice::from_raw_parts_mut(level_mem, mem_amount));
+
+    // Write the data to memory:
+    // Here the levelnumber and general information about the level is written
+    writeln!(level_cursor, "Levelnumber: {}", level.levelnum).unwrap();
+    writeln!(level_cursor, "xlen of this level: {}", level.xlen).unwrap();
+    writeln!(level_cursor, "ylen of this level: {}", level.ylen).unwrap();
+    writeln!(level_cursor, "color of this level: {}", level.color).unwrap();
+    writeln!(
+        level_cursor,
+        "{}{}",
+        LEVEL_NAME_STRING,
+        CStr::from_ptr(level.Levelname).to_str().unwrap()
+    )
+    .unwrap();
+    writeln!(
+        level_cursor,
+        "{}{}",
+        LEVEL_ENTER_COMMENT_STRING,
+        CStr::from_ptr(level.Level_Enter_Comment).to_str().unwrap()
+    )
+    .unwrap();
+    writeln!(
+        level_cursor,
+        "{}{}",
+        BACKGROUND_SONG_NAME_STRING,
+        CStr::from_ptr(level.Background_Song_Name).to_str().unwrap()
+    )
+    .unwrap();
+
+    // Now the beginning of the actual map data is marked:
+    writeln!(level_cursor, "{}", MAP_BEGIN_STRING).unwrap();
+
+    // Now in the loop each line of map data should be saved as a whole
+    for i in 0..usize::try_from(ylen).unwrap() {
+        ResetLevelMap(level); // make sure all doors are closed
+        for j in 0..usize::try_from(xlen).unwrap() {
+            write!(level_cursor, "{:02} ", *level.map[i].add(j)).unwrap();
+        }
+        writeln!(level_cursor).unwrap();
+    }
+
+    // --------------------
+    // The next thing we must do is write the waypoints of this level
+
+    writeln!(level_cursor, "{}", WP_BEGIN_STRING).unwrap();
+
+    for i in 0..usize::try_from(level.num_waypoints).unwrap() {
+        write!(
+            level_cursor,
+            "Nr.={:3} x={:4} y={:4}\t {}",
+            i, level.AllWaypoints[i].x, level.AllWaypoints[i].y, CONNECTION_STRING
+        )
+        .unwrap();
+
+        let this_wp = &level.AllWaypoints[i];
+        for j in 0..usize::try_from(this_wp.num_connections).unwrap() {
+            write!(level_cursor, "{:2} ", this_wp.connections[j]).unwrap();
+        }
+        writeln!(level_cursor).unwrap();
+    }
+
+    writeln!(level_cursor, "{}", LEVEL_END_STRING).unwrap();
+    writeln!(
+        level_cursor,
+        "----------------------------------------------------------------------"
+    )
+    .unwrap();
+
+    level_mem as *mut c_char
 }
