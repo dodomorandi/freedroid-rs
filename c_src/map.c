@@ -874,58 +874,58 @@ IsWallBlock (int block)
  * close all doors and set refreshes to first phase for "canonical map"
  *
  ----------------------------------------------------------------------*/
-void
-ResetLevelMap (Level Lev)
-{
-  int col;
-  int i;
-
-  // Now in the game and in the level editor, it might have happend that some open
-  // doors occur.  The make life easier for the saving routine, these doors should
-  // be closed first.
-
-  for (col=0; col < Lev->xlen; col++)
-    {
-      for(i=0; i< Lev->ylen; i++)
-	{
-	  switch ( Lev->map[i][col] )
-	    {
-	    case V_ZUTUERE:
-	    case V_HALBTUERE1:
-	    case V_HALBTUERE2:
-	    case V_HALBTUERE3:
-	    case V_GANZTUERE:
-	      Lev->map[i][col]=V_ZUTUERE;
-	      break;
-	    case H_ZUTUERE:
-	    case H_HALBTUERE1:
-	    case H_HALBTUERE2:
-	    case H_HALBTUERE3:
-	    case H_GANZTUERE:
-	      Lev->map[i][col]=H_ZUTUERE;
-	      break;
-	    case REFRESH1:
-	    case REFRESH2:
-	    case REFRESH3:
-	    case REFRESH4:
-	      Lev->map[i][col]=REFRESH1;
-	      break;
-
-	    case ALERT_GREEN:
-	    case ALERT_YELLOW:
-	    case ALERT_AMBER:
-	    case ALERT_RED:
-	      Lev->map[i][col] = ALERT_GREEN;
-	      break;
-	    default:
-	      break;
-	    }
-	}
-    }
-
-  return;
-
-} // ResetLevelMap
+// void
+// ResetLevelMap (Level Lev)
+// {
+//   int col;
+//   int i;
+// 
+//   // Now in the game and in the level editor, it might have happend that some open
+//   // doors occur.  The make life easier for the saving routine, these doors should
+//   // be closed first.
+// 
+//   for (col=0; col < Lev->xlen; col++)
+//     {
+//       for(i=0; i< Lev->ylen; i++)
+// 	{
+// 	  switch ( Lev->map[i][col] )
+// 	    {
+// 	    case V_ZUTUERE:
+// 	    case V_HALBTUERE1:
+// 	    case V_HALBTUERE2:
+// 	    case V_HALBTUERE3:
+// 	    case V_GANZTUERE:
+// 	      Lev->map[i][col]=V_ZUTUERE;
+// 	      break;
+// 	    case H_ZUTUERE:
+// 	    case H_HALBTUERE1:
+// 	    case H_HALBTUERE2:
+// 	    case H_HALBTUERE3:
+// 	    case H_GANZTUERE:
+// 	      Lev->map[i][col]=H_ZUTUERE;
+// 	      break;
+// 	    case REFRESH1:
+// 	    case REFRESH2:
+// 	    case REFRESH3:
+// 	    case REFRESH4:
+// 	      Lev->map[i][col]=REFRESH1;
+// 	      break;
+// 
+// 	    case ALERT_GREEN:
+// 	    case ALERT_YELLOW:
+// 	    case ALERT_AMBER:
+// 	    case ALERT_RED:
+// 	      Lev->map[i][col] = ALERT_GREEN;
+// 	      break;
+// 	    default:
+// 	      break;
+// 	    }
+// 	}
+//     }
+// 
+//   return;
+// 
+// } // ResetLevelMap
 
 
 

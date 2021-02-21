@@ -19,8 +19,6 @@ use std::{
 };
 
 extern "C" {
-    fn ResetLevelMap(level: *mut Level);
-
     pub static ColorNames: [*const c_char; 7];
     pub static numLevelColors: c_int;
 }
@@ -690,4 +688,30 @@ pub unsafe extern "C" fn StructToMem(level: *mut Level) -> *mut c_char {
     .unwrap();
 
     level_mem as *mut c_char
+}
+
+#[no_mangle]
+unsafe extern "C" fn ResetLevelMap(level: &mut Level) {
+    // Now in the game and in the level editor, it might have happend that some open
+    // doors occur.  The make life easier for the saving routine, these doors should
+    // be closed first.
+
+    use MapTile::*;
+    level.map[0..usize::try_from(level.ylen).unwrap()]
+        .iter()
+        .copied()
+        .flat_map(|row| {
+            std::slice::from_raw_parts_mut(row as *mut u8, usize::try_from(level.xlen).unwrap())
+        })
+        .for_each(|tile| match MapTile::try_from(*tile).unwrap() {
+            VZutuere | VHalbtuere1 | VHalbtuere2 | VHalbtuere3 | VGanztuere => {
+                *tile = VZutuere as u8
+            }
+            HZutuere | HHalbtuere1 | HHalbtuere2 | HHalbtuere3 | HGanztuere => {
+                *tile = HZutuere as u8
+            }
+            Refresh1 | Refresh2 | Refresh3 | Refresh4 => *tile = Refresh1 as u8,
+            AlertGreen | AlertYellow | AlertAmber | AlertRed => *tile = AlertGreen as u8,
+            _ => {}
+        });
 }
