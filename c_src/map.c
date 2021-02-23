@@ -1352,43 +1352,43 @@ der Druid von einer Tuer "weggestossen" wird
 Direction:  Druid in Richtung Direction wegschubsen
 CENTER:		Position passable
 * $Function----------------------------------------------------------*/
-int
-DruidPassable (float x, float y)
-{
-  finepoint testpos[DIRECTIONS + 1];
-  int ret = -1;
-  int i;
-
-  /* get 8 Check-Points on the druidsurface */
-  testpos[OBEN].x = x;
-  testpos[OBEN].y = y - Droid_Radius;
-  testpos[RECHTSOBEN].x = x + Droid_Radius;
-  testpos[RECHTSOBEN].y = y - Droid_Radius;
-  testpos[RECHTS].x = x + Droid_Radius;
-  testpos[RECHTS].y = y;
-  testpos[RECHTSUNTEN].x = x + Droid_Radius;
-  testpos[RECHTSUNTEN].y = y + Droid_Radius;
-  testpos[UNTEN].x = x;
-  testpos[UNTEN].y = y + Droid_Radius;
-  testpos[LINKSUNTEN].x = x - Droid_Radius;
-  testpos[LINKSUNTEN].y = y + Droid_Radius;
-  testpos[LINKS].x = x - Droid_Radius;
-  testpos[LINKS].y = y;
-  testpos[LINKSOBEN].x = x - Droid_Radius;
-  testpos[LINKSOBEN].y = y - Droid_Radius;
-
-  for (i = 0; i < DIRECTIONS; i++)
-    {
-
-      ret = IsPassable (testpos[i].x, testpos[i].y, i);
-
-      if (ret != CENTER)
-	break;
-
-    }				/* for */
-
-  return ret;
-}				// int DruidPassable(int x, int y)
+// int
+// DruidPassable (float x, float y)
+// {
+//   finepoint testpos[DIRECTIONS + 1];
+//   int ret = -1;
+//   int i;
+// 
+//   /* get 8 Check-Points on the druidsurface */
+//   testpos[OBEN].x = x;
+//   testpos[OBEN].y = y - Droid_Radius;
+//   testpos[RECHTSOBEN].x = x + Droid_Radius;
+//   testpos[RECHTSOBEN].y = y - Droid_Radius;
+//   testpos[RECHTS].x = x + Droid_Radius;
+//   testpos[RECHTS].y = y;
+//   testpos[RECHTSUNTEN].x = x + Droid_Radius;
+//   testpos[RECHTSUNTEN].y = y + Droid_Radius;
+//   testpos[UNTEN].x = x;
+//   testpos[UNTEN].y = y + Droid_Radius;
+//   testpos[LINKSUNTEN].x = x - Droid_Radius;
+//   testpos[LINKSUNTEN].y = y + Droid_Radius;
+//   testpos[LINKS].x = x - Droid_Radius;
+//   testpos[LINKS].y = y;
+//   testpos[LINKSOBEN].x = x - Droid_Radius;
+//   testpos[LINKSOBEN].y = y - Droid_Radius;
+// 
+//   for (i = 0; i < DIRECTIONS; i++)
+//     {
+// 
+//       ret = IsPassable (testpos[i].x, testpos[i].y, i);
+// 
+//       if (ret != CENTER)
+// 	break;
+// 
+//     }				/* for */
+// 
+//   return ret;
+// }				// int DruidPassable(int x, int y)
 
 
 /*@Function============================================================

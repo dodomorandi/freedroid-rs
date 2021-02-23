@@ -1,7 +1,7 @@
 use crate::{
     curShip,
-    defs::{self, Direction, MapTile, Status, MAX_REFRESHES_ON_LEVEL},
-    global::{LevelDoorsNotMovedTime, Time_For_Each_Phase_Of_Door_Movement},
+    defs::{self, Direction, MapTile, Status, DIRECTIONS, MAX_REFRESHES_ON_LEVEL},
+    global::{Droid_Radius, LevelDoorsNotMovedTime, Time_For_Each_Phase_Of_Door_Movement},
     menu::SHIP_EXT,
     misc::{Frame_Time, MyMalloc, Terminate},
     structs::{Finepoint, Level},
@@ -714,4 +714,55 @@ unsafe extern "C" fn ResetLevelMap(level: &mut Level) {
             AlertGreen | AlertYellow | AlertAmber | AlertRed => *tile = AlertGreen as u8,
             _ => {}
         });
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn DruidPassable(x: c_float, y: c_float) -> c_int {
+    let testpos: [Finepoint; DIRECTIONS] = [
+        Finepoint {
+            x,
+            y: y - Droid_Radius,
+        },
+        Finepoint {
+            x: x + Droid_Radius,
+            y: y - Droid_Radius,
+        },
+        Finepoint {
+            x: x + Droid_Radius,
+            y,
+        },
+        Finepoint {
+            x: x + Droid_Radius,
+            y: y + Droid_Radius,
+        },
+        Finepoint {
+            x,
+            y: y + Droid_Radius,
+        },
+        Finepoint {
+            x: x - Droid_Radius,
+            y: y + Droid_Radius,
+        },
+        Finepoint {
+            x: x - Droid_Radius,
+            y,
+        },
+        Finepoint {
+            x: x - Droid_Radius,
+            y: y - Droid_Radius,
+        },
+    ];
+
+    testpos
+        .iter()
+        .enumerate()
+        .map(|(direction_index, test_pos)| {
+            IsPassable(
+                test_pos.x,
+                test_pos.y,
+                c_int::try_from(direction_index).unwrap(),
+            )
+        })
+        .find(|&is_passable| is_passable != Direction::Center as c_int)
+        .unwrap_or(Direction::Center as c_int)
 }
