@@ -1,16 +1,21 @@
 use crate::{
     curShip,
-    defs::{self, Direction, MapTile, Status, DIRECTIONS, MAX_REFRESHES_ON_LEVEL},
-    global::{Droid_Radius, LevelDoorsNotMovedTime, Time_For_Each_Phase_Of_Door_Movement},
+    defs::{
+        self, Direction, MapTile, Status, DIRECTIONS, MAX_ENEMYS_ON_SHIP, MAX_REFRESHES_ON_LEVEL,
+    },
+    global::{
+        Droid_Radius, Druidmap, LevelDoorsNotMovedTime, Time_For_Each_Phase_Of_Door_Movement,
+    },
     menu::SHIP_EXT,
-    misc::{Frame_Time, MyMalloc, Terminate},
+    misc::{Frame_Time, LocateStringInData, MyMalloc, MyRandom, ReadValueFromString, Terminate},
     structs::{Finepoint, Level},
     vars::Block_Rect,
-    AllEnemys, CurLevel, Me, NumEnemys,
+    AllEnemys, CurLevel, Me, NumEnemys, Number_Of_Droid_Types,
 };
 
+use cstr::cstr;
 use defs::{MAX_DOORS_ON_LEVEL, MAX_WP_CONNECTIONS};
-use log::{error, trace};
+use log::{error, info, trace};
 use std::{
     convert::{TryFrom, TryInto},
     ffi::CStr,
@@ -765,4 +770,136 @@ pub unsafe extern "C" fn DruidPassable(x: c_float, y: c_float) -> c_int {
         })
         .find(|&is_passable| is_passable != Direction::Center as c_int)
         .unwrap_or(Direction::Center as c_int)
+}
+
+/// This function receives a pointer to the already read in crew section
+/// in a already read in droids file and decodes all the contents of that
+/// droid section to fill the AllEnemys array with droid types accoriding
+/// to the specifications made in the file.
+#[no_mangle]
+pub unsafe extern "C" fn GetThisLevelsDroids(section_pointer: *mut c_char) {
+    const DROIDS_LEVEL_INDICATION_STRING: &CStr = cstr!("Level=");
+    const DROIDS_LEVEL_END_INDICATION_STRING: &CStr = cstr!("** End of this levels droid data **");
+    const DROIDS_MAXRAND_INDICATION_STRING: &CStr = cstr!("Maximum number of Random Droids=");
+    const DROIDS_MINRAND_INDICATION_STRING: &CStr = cstr!("Minimum number of Random Droids=");
+    const ALLOWED_TYPE_INDICATION_STRING: &CStr =
+        cstr!("Allowed Type of Random Droid for this level: ");
+
+    let end_of_this_level_data = LocateStringInData(
+        section_pointer,
+        DROIDS_LEVEL_END_INDICATION_STRING.as_ptr() as *mut c_char,
+    );
+    *end_of_this_level_data = 0;
+
+    // Now we read in the level number for this level
+    let mut our_level_number: c_int = 0;
+    ReadValueFromString(
+        section_pointer,
+        DROIDS_LEVEL_INDICATION_STRING.as_ptr() as *mut c_char,
+        cstr!("%d").as_ptr() as *mut c_char,
+        &mut our_level_number as *mut c_int as *mut c_void,
+    );
+
+    // Now we read in the maximal number of random droids for this level
+    let mut max_rand: c_int = 0;
+    ReadValueFromString(
+        section_pointer,
+        DROIDS_MAXRAND_INDICATION_STRING.as_ptr() as *mut c_char,
+        cstr!("%d").as_ptr() as *mut c_char,
+        &mut max_rand as *mut c_int as *mut c_void,
+    );
+
+    // Now we read in the minimal number of random droids for this level
+    let mut min_rand: c_int = 0;
+    ReadValueFromString(
+        section_pointer,
+        DROIDS_MINRAND_INDICATION_STRING.as_ptr() as *mut c_char,
+        cstr!("%d").as_ptr() as *mut c_char,
+        &mut min_rand as *mut c_int as *mut c_void,
+    );
+
+    let mut different_random_types = 0;
+    let mut search_pointer = libc::strstr(
+        section_pointer,
+        ALLOWED_TYPE_INDICATION_STRING.as_ptr() as *mut c_char,
+    );
+    let mut type_indication_string: [c_char; 1000] = [0; 1000];
+    let mut list_of_types_allowed: [c_int; 1000] = [0; 1000];
+    while search_pointer.is_null().not() {
+        search_pointer = search_pointer.add(ALLOWED_TYPE_INDICATION_STRING.to_bytes().len());
+        libc::strncpy(type_indication_string.as_mut_ptr(), search_pointer, 3); // Every type is 3 characters long
+        type_indication_string[3] = 0;
+        // Now that we have got a type indication string, we only need to translate it
+        // into a number corresponding to that droid in the droid list
+        let mut list_index = 0;
+        while list_index < Number_Of_Droid_Types {
+            if libc::strcmp(
+                (*Druidmap.add(usize::try_from(list_index).unwrap()))
+                    .druidname
+                    .as_ptr(),
+                type_indication_string.as_ptr(),
+            ) == 0
+            {
+                break;
+            }
+            list_index += 1;
+        }
+        if list_index >= Number_Of_Droid_Types {
+            error!(
+                "unknown droid type: {} found in data file for level {}",
+                CStr::from_ptr(type_indication_string.as_ptr()).to_string_lossy(),
+                our_level_number,
+            );
+            Terminate(defs::ERR.into());
+        } else {
+            info!(
+                "Type indication string {} translated to type Nr.{}.",
+                CStr::from_ptr(type_indication_string.as_ptr()).to_string_lossy(),
+                list_index,
+            );
+        }
+        list_of_types_allowed[different_random_types] = list_index;
+        different_random_types += 1;
+
+        search_pointer = libc::strstr(
+            search_pointer,
+            ALLOWED_TYPE_INDICATION_STRING.as_ptr() as *mut c_char,
+        )
+    }
+    info!(
+        "Found {} different allowed random types for this level. ",
+        different_random_types,
+    );
+
+    //--------------------
+    // At this point, the List "ListOfTypesAllowed" has been filled with the NUMBERS of
+    // the allowed types.  The number of different allowed types found is also available.
+    // That means that now we can add the apropriate droid types into the list of existing
+    // droids in that mission.
+
+    let mut real_number_of_random_droids = MyRandom(max_rand - min_rand) + min_rand;
+
+    while real_number_of_random_droids > 0 {
+        real_number_of_random_droids -= 1;
+
+        let mut free_all_enemys_position = 0;
+        while free_all_enemys_position < MAX_ENEMYS_ON_SHIP {
+            if AllEnemys[free_all_enemys_position].status == Status::Out as c_int {
+                break;
+            }
+            free_all_enemys_position += 1;
+        }
+
+        if free_all_enemys_position == MAX_ENEMYS_ON_SHIP {
+            error!("No more free position to fill random droids into in GetCrew...Terminating....");
+            Terminate(defs::ERR.into());
+        }
+
+        AllEnemys[free_all_enemys_position].ty = list_of_types_allowed[usize::try_from(MyRandom(
+            c_int::try_from(different_random_types).unwrap() - 1,
+        ))
+        .unwrap()];
+        AllEnemys[free_all_enemys_position].levelnum = our_level_number;
+        AllEnemys[free_all_enemys_position].status = Status::Mobile as c_int;
+    }
 }

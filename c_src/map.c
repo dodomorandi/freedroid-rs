@@ -1161,97 +1161,97 @@ droid section to fill the AllEnemys array with droid types accoriding
 to the specifications made in the file.
 ----------------------------------------------------------------------
 */
-void
-GetThisLevelsDroids( char* SectionPointer )
-{
-  int OurLevelNumber;
-  char* SearchPointer;
-  char* EndOfThisLevelData;
-  int MaxRand;
-  int MinRand;
-  int RealNumberOfRandomDroids;
-  int DifferentRandomTypes;
-  int ListIndex;
-  char TypeIndicationString[1000];
-  int ListOfTypesAllowed[1000];
-  int FreeAllEnemysPosition;
-
-#define DROIDS_LEVEL_INDICATION_STRING "Level="
-#define DROIDS_LEVEL_END_INDICATION_STRING "** End of this levels droid data **"
-#define DROIDS_MAXRAND_INDICATION_STRING "Maximum number of Random Droids="
-#define DROIDS_MINRAND_INDICATION_STRING "Minimum number of Random Droids="
-#define ALLOWED_TYPE_INDICATION_STRING "Allowed Type of Random Droid for this level: "
-
-  // printf("\nReceived another levels droid section for decoding. It reads: %s " , SectionPointer );
-
-  EndOfThisLevelData = LocateStringInData ( SectionPointer , DROIDS_LEVEL_END_INDICATION_STRING );
-  EndOfThisLevelData[0]=0;
-
-  // Now we read in the level number for this level
-  ReadValueFromString (SectionPointer, DROIDS_LEVEL_INDICATION_STRING, "%d", &OurLevelNumber);
-
-  // Now we read in the maximal number of random droids for this level
-  ReadValueFromString (SectionPointer, DROIDS_MAXRAND_INDICATION_STRING, "%d", &MaxRand);
-
-  // Now we read in the minimal number of random droids for this level
-  ReadValueFromString (SectionPointer, DROIDS_MINRAND_INDICATION_STRING, "%d", &MinRand);
-
-  DifferentRandomTypes=0;
-  SearchPointer = SectionPointer;
-  while ( ( SearchPointer = strstr ( SearchPointer , ALLOWED_TYPE_INDICATION_STRING)) != NULL)
-    {
-      SearchPointer += strlen ( ALLOWED_TYPE_INDICATION_STRING );
-      strncpy( TypeIndicationString , SearchPointer , 3 ); // Every type is 3 characters long
-      TypeIndicationString[3]=0;
-      // Now that we have got a type indication string, we only need to translate it
-      // into a number corresponding to that droid in the droid list
-      for ( ListIndex = 0 ; ListIndex < Number_Of_Droid_Types ; ListIndex++ )
-	{
-	  if ( !strcmp( Druidmap[ListIndex].druidname , TypeIndicationString ) ) break ;
-	}
-      if ( ListIndex >= Number_Of_Droid_Types )
-	{
-	  DebugPrintf (0, "ERROR: unknown droid type: %s found in data file for level %d\n",
-		       TypeIndicationString , OurLevelNumber);
-	  Terminate(ERR);
-	}
-      else
-	DebugPrintf( 1 , "\nType indication string %s translated to type Nr.%d." ,
-		     TypeIndicationString , ListIndex );
-      ListOfTypesAllowed[DifferentRandomTypes]=ListIndex;
-      DifferentRandomTypes++;
-    }
-  DebugPrintf( 1 , "\nFound %d different allowed random types for this level. " , DifferentRandomTypes );
-
-  //--------------------
-  // At this point, the List "ListOfTypesAllowed" has been filled with the NUMBERS of
-  // the allowed types.  The number of different allowed types found is also available.
-  // That means that now we can add the apropriate droid types into the list of existing
-  // droids in that mission.
-
-  RealNumberOfRandomDroids = MyRandom ( MaxRand - MinRand) + MinRand;
-
-  while ( RealNumberOfRandomDroids-- )
-    {
-      for ( FreeAllEnemysPosition=0 ; FreeAllEnemysPosition < MAX_ENEMYS_ON_SHIP ; FreeAllEnemysPosition++ )
-	{
-	  if ( AllEnemys[ FreeAllEnemysPosition ].status == OUT ) break;
-	}
-      if ( FreeAllEnemysPosition == MAX_ENEMYS_ON_SHIP )
-	{
-	  printf("\n\n No more free position to fill random droids into in GetCrew...Terminating....");
-	  Terminate(ERR);
-	}
-
-      AllEnemys[ FreeAllEnemysPosition ].type = ListOfTypesAllowed[MyRandom (DifferentRandomTypes-1)];
-      AllEnemys[ FreeAllEnemysPosition ].levelnum = OurLevelNumber;
-      AllEnemys[ FreeAllEnemysPosition ].status = MOBILE;
-
-    }  // while (enemy-limit of this level not reached)
-
-
-  return;
-}
+// void
+// GetThisLevelsDroids( char* SectionPointer )
+// {
+//   int OurLevelNumber;
+//   char* SearchPointer;
+//   char* EndOfThisLevelData;
+//   int MaxRand;
+//   int MinRand;
+//   int RealNumberOfRandomDroids;
+//   int DifferentRandomTypes;
+//   int ListIndex;
+//   char TypeIndicationString[1000];
+//   int ListOfTypesAllowed[1000];
+//   int FreeAllEnemysPosition;
+// 
+// #define DROIDS_LEVEL_INDICATION_STRING "Level="
+// #define DROIDS_LEVEL_END_INDICATION_STRING "** End of this levels droid data **"
+// #define DROIDS_MAXRAND_INDICATION_STRING "Maximum number of Random Droids="
+// #define DROIDS_MINRAND_INDICATION_STRING "Minimum number of Random Droids="
+// #define ALLOWED_TYPE_INDICATION_STRING "Allowed Type of Random Droid for this level: "
+// 
+//   // printf("\nReceived another levels droid section for decoding. It reads: %s " , SectionPointer );
+// 
+//   EndOfThisLevelData = LocateStringInData ( SectionPointer , DROIDS_LEVEL_END_INDICATION_STRING );
+//   EndOfThisLevelData[0]=0;
+// 
+//   // Now we read in the level number for this level
+//   ReadValueFromString (SectionPointer, DROIDS_LEVEL_INDICATION_STRING, "%d", &OurLevelNumber);
+// 
+//   // Now we read in the maximal number of random droids for this level
+//   ReadValueFromString (SectionPointer, DROIDS_MAXRAND_INDICATION_STRING, "%d", &MaxRand);
+// 
+//   // Now we read in the minimal number of random droids for this level
+//   ReadValueFromString (SectionPointer, DROIDS_MINRAND_INDICATION_STRING, "%d", &MinRand);
+// 
+//   DifferentRandomTypes=0;
+//   SearchPointer = SectionPointer;
+//   while ( ( SearchPointer = strstr ( SearchPointer , ALLOWED_TYPE_INDICATION_STRING)) != NULL)
+//     {
+//       SearchPointer += strlen ( ALLOWED_TYPE_INDICATION_STRING );
+//       strncpy( TypeIndicationString , SearchPointer , 3 ); // Every type is 3 characters long
+//       TypeIndicationString[3]=0;
+//       // Now that we have got a type indication string, we only need to translate it
+//       // into a number corresponding to that droid in the droid list
+//       for ( ListIndex = 0 ; ListIndex < Number_Of_Droid_Types ; ListIndex++ )
+// 	{
+// 	  if ( !strcmp( Druidmap[ListIndex].druidname , TypeIndicationString ) ) break ;
+// 	}
+//       if ( ListIndex >= Number_Of_Droid_Types )
+// 	{
+// 	  DebugPrintf (0, "ERROR: unknown droid type: %s found in data file for level %d\n",
+// 		       TypeIndicationString , OurLevelNumber);
+// 	  Terminate(ERR);
+// 	}
+//       else
+// 	DebugPrintf( 1 , "\nType indication string %s translated to type Nr.%d." ,
+// 		     TypeIndicationString , ListIndex );
+//       ListOfTypesAllowed[DifferentRandomTypes]=ListIndex;
+//       DifferentRandomTypes++;
+//     }
+//   DebugPrintf( 1 , "\nFound %d different allowed random types for this level. " , DifferentRandomTypes );
+// 
+//   //--------------------
+//   // At this point, the List "ListOfTypesAllowed" has been filled with the NUMBERS of
+//   // the allowed types.  The number of different allowed types found is also available.
+//   // That means that now we can add the apropriate droid types into the list of existing
+//   // droids in that mission.
+// 
+//   RealNumberOfRandomDroids = MyRandom ( MaxRand - MinRand) + MinRand;
+// 
+//   while ( RealNumberOfRandomDroids-- )
+//     {
+//       for ( FreeAllEnemysPosition=0 ; FreeAllEnemysPosition < MAX_ENEMYS_ON_SHIP ; FreeAllEnemysPosition++ )
+// 	{
+// 	  if ( AllEnemys[ FreeAllEnemysPosition ].status == OUT ) break;
+// 	}
+//       if ( FreeAllEnemysPosition == MAX_ENEMYS_ON_SHIP )
+// 	{
+// 	  printf("\n\n No more free position to fill random droids into in GetCrew...Terminating....");
+// 	  Terminate(ERR);
+// 	}
+// 
+//       AllEnemys[ FreeAllEnemysPosition ].type = ListOfTypesAllowed[MyRandom (DifferentRandomTypes-1)];
+//       AllEnemys[ FreeAllEnemysPosition ].levelnum = OurLevelNumber;
+//       AllEnemys[ FreeAllEnemysPosition ].status = MOBILE;
+// 
+//     }  // while (enemy-limit of this level not reached)
+// 
+// 
+//   return;
+// }
 
 
 /*@Function============================================================
