@@ -5,4 +5,5 @@ extern "C" {
     pub fn ShuffleEnemys();
     pub fn ClassOfDruid(druid_type: c_int) -> c_int;
     pub fn MoveEnemys();
+    pub fn ClearEnemys();
 }

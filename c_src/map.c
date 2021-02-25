@@ -1086,72 +1086,72 @@ GetLiftConnections (char *filename)
  * @Ret: OK or ERR
  *
  *-----------------------------------------------------------------*/
-int
-GetCrew (char *filename)
-{
-  char *fpath;
-  char *MainDroidsFilePointer;
-  char *DroidSectionPointer;
-  char *EndOfThisDroidSectionPointer;
-  int i, type;
-
-#define START_OF_DROID_DATA_STRING "*** Beginning of Droid Data ***"
-#define END_OF_DROID_DATA_STRING "*** End of Droid Data ***"
-#define DROIDS_LEVEL_DESCRIPTION_START_STRING "** Beginning of new Level **"
-#define DROIDS_LEVEL_DESCRIPTION_END_STRING "** End of this levels droid data **"
-
-  /* Clear Enemy - Array */
-  ClearEnemys ();
-
-  //--------------------
-  //Now its time to start decoding the droids file.
-  //For that, we must get it into memory first.
-  //The procedure is the same as with LoadShip
-  //
-  fpath = find_file (filename, MAP_DIR, NO_THEME, CRITICAL);
-
-  MainDroidsFilePointer = ReadAndMallocAndTerminateFile( fpath , END_OF_DROID_DATA_STRING ) ;
-
-  //--------------------
-  // The Droid crew file for this map is now completely read into memory
-  // It's now time to decode the file and to fill the array of enemys with
-  // new droids of the given types.
-  //
-  DroidSectionPointer=MainDroidsFilePointer;
-  while ( ( DroidSectionPointer = strstr ( DroidSectionPointer, DROIDS_LEVEL_DESCRIPTION_START_STRING )) != NULL )
-    {
-      DroidSectionPointer+=strlen( DROIDS_LEVEL_DESCRIPTION_START_STRING );
-      DebugPrintf (2, "\nFound another levels droids description starting point entry!");
-      EndOfThisDroidSectionPointer = strstr ( DroidSectionPointer , DROIDS_LEVEL_DESCRIPTION_END_STRING ) ;
-      if ( EndOfThisDroidSectionPointer == NULL )
-	{
-	  printf("\nGetCrew:  Unterminated droid section encountered!!\n\nTerminating....");
-	  Terminate(ERR);
-	}
-      // EndOfThisDroidSectionPointer[0]=0;
-      GetThisLevelsDroids( DroidSectionPointer );
-      DroidSectionPointer = EndOfThisDroidSectionPointer+2; // Move past the inserted String terminator
-    }
-
-
-  //--------------------
-  // Now that the correct crew types have been filled into the
-  // right structure, it's time to set the energy of the corresponding
-  // droids to "full" which means to the maximum of each type.
-  //
-  NumEnemys = 0;
-  for (i = 0; i < MAX_ENEMYS_ON_SHIP; i++)
-    {
-      type = AllEnemys[i].type;
-      if ( type == (-1) ) continue;  // Do nothing to unused entries
-      AllEnemys[i].energy = Druidmap[type].maxenergy;
-      AllEnemys[i].status = MOBILE;
-      NumEnemys++;
-    }
-
-  free ( MainDroidsFilePointer );
-  return (OK);
-} /* GetCrew () */
+// int
+// GetCrew (char *filename)
+// {
+//   char *fpath;
+//   char *MainDroidsFilePointer;
+//   char *DroidSectionPointer;
+//   char *EndOfThisDroidSectionPointer;
+//   int i, type;
+// 
+// #define START_OF_DROID_DATA_STRING "*** Beginning of Droid Data ***"
+// #define END_OF_DROID_DATA_STRING "*** End of Droid Data ***"
+// #define DROIDS_LEVEL_DESCRIPTION_START_STRING "** Beginning of new Level **"
+// #define DROIDS_LEVEL_DESCRIPTION_END_STRING "** End of this levels droid data **"
+// 
+//   /* Clear Enemy - Array */
+//   ClearEnemys ();
+// 
+//   //--------------------
+//   //Now its time to start decoding the droids file.
+//   //For that, we must get it into memory first.
+//   //The procedure is the same as with LoadShip
+//   //
+//   fpath = find_file (filename, MAP_DIR, NO_THEME, CRITICAL);
+// 
+//   MainDroidsFilePointer = ReadAndMallocAndTerminateFile( fpath , END_OF_DROID_DATA_STRING ) ;
+// 
+//   //--------------------
+//   // The Droid crew file for this map is now completely read into memory
+//   // It's now time to decode the file and to fill the array of enemys with
+//   // new droids of the given types.
+//   //
+//   DroidSectionPointer=MainDroidsFilePointer;
+//   while ( ( DroidSectionPointer = strstr ( DroidSectionPointer, DROIDS_LEVEL_DESCRIPTION_START_STRING )) != NULL )
+//     {
+//       DroidSectionPointer+=strlen( DROIDS_LEVEL_DESCRIPTION_START_STRING );
+//       DebugPrintf (2, "\nFound another levels droids description starting point entry!");
+//       EndOfThisDroidSectionPointer = strstr ( DroidSectionPointer , DROIDS_LEVEL_DESCRIPTION_END_STRING ) ;
+//       if ( EndOfThisDroidSectionPointer == NULL )
+// 	{
+// 	  printf("\nGetCrew:  Unterminated droid section encountered!!\n\nTerminating....");
+// 	  Terminate(ERR);
+// 	}
+//       // EndOfThisDroidSectionPointer[0]=0;
+//       GetThisLevelsDroids( DroidSectionPointer );
+//       DroidSectionPointer = EndOfThisDroidSectionPointer+2; // Move past the inserted String terminator
+//     }
+// 
+// 
+//   //--------------------
+//   // Now that the correct crew types have been filled into the
+//   // right structure, it's time to set the energy of the corresponding
+//   // droids to "full" which means to the maximum of each type.
+//   //
+//   NumEnemys = 0;
+//   for (i = 0; i < MAX_ENEMYS_ON_SHIP; i++)
+//     {
+//       type = AllEnemys[i].type;
+//       if ( type == (-1) ) continue;  // Do nothing to unused entries
+//       AllEnemys[i].energy = Druidmap[type].maxenergy;
+//       AllEnemys[i].status = MOBILE;
+//       NumEnemys++;
+//     }
+// 
+//   free ( MainDroidsFilePointer );
+//   return (OK);
+// } /* GetCrew () */
 
 /*
 ----------------------------------------------------------------------

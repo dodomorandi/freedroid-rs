@@ -1,13 +1,18 @@
 use crate::{
     curShip,
     defs::{
-        self, Direction, MapTile, Status, DIRECTIONS, MAX_ENEMYS_ON_SHIP, MAX_REFRESHES_ON_LEVEL,
+        self, Criticality, Direction, MapTile, Status, Themed, DIRECTIONS, MAP_DIR_C,
+        MAX_ENEMYS_ON_SHIP, MAX_REFRESHES_ON_LEVEL,
     },
+    enemy::ClearEnemys,
     global::{
         Droid_Radius, Druidmap, LevelDoorsNotMovedTime, Time_For_Each_Phase_Of_Door_Movement,
     },
     menu::SHIP_EXT,
-    misc::{Frame_Time, LocateStringInData, MyMalloc, MyRandom, ReadValueFromString, Terminate},
+    misc::{
+        find_file, Frame_Time, LocateStringInData, MyMalloc, MyRandom,
+        ReadAndMallocAndTerminateFile, ReadValueFromString, Terminate,
+    },
     structs::{Finepoint, Level},
     vars::Block_Rect,
     AllEnemys, CurLevel, Me, NumEnemys, Number_Of_Droid_Types,
@@ -902,4 +907,75 @@ pub unsafe extern "C" fn GetThisLevelsDroids(section_pointer: *mut c_char) {
         AllEnemys[free_all_enemys_position].levelnum = our_level_number;
         AllEnemys[free_all_enemys_position].status = Status::Mobile as c_int;
     }
+}
+
+/// This function initializes all enemys
+#[no_mangle]
+pub unsafe extern "C" fn GetCrew(filename: *mut c_char) -> c_int {
+    const END_OF_DROID_DATA_STRING: &CStr = cstr!("*** End of Droid Data ***");
+    const DROIDS_LEVEL_DESCRIPTION_START_STRING: &CStr = cstr!("** Beginning of new Level **");
+    const DROIDS_LEVEL_DESCRIPTION_END_STRING: &CStr = cstr!("** End of this levels droid data **");
+
+    /* Clear Enemy - Array */
+    ClearEnemys();
+
+    //Now its time to start decoding the droids file.
+    //For that, we must get it into memory first.
+    //The procedure is the same as with LoadShip
+    let fpath = find_file(
+        filename,
+        MAP_DIR_C.as_ptr() as *mut c_char,
+        Themed::NoTheme as c_int,
+        Criticality::Critical as c_int,
+    );
+
+    let main_droids_file_pointer =
+        ReadAndMallocAndTerminateFile(fpath, END_OF_DROID_DATA_STRING.as_ptr() as *mut c_char);
+
+    // The Droid crew file for this map is now completely read into memory
+    // It's now time to decode the file and to fill the array of enemys with
+    // new droids of the given types.
+    let mut droid_section_pointer = libc::strstr(
+        main_droids_file_pointer,
+        DROIDS_LEVEL_DESCRIPTION_START_STRING.as_ptr() as *mut c_char,
+    );
+    while droid_section_pointer.is_null().not() {
+        droid_section_pointer = droid_section_pointer.add(libc::strlen(
+            DROIDS_LEVEL_DESCRIPTION_START_STRING.as_ptr() as *mut c_char,
+        ));
+        info!("Found another levels droids description starting point entry!");
+        let end_of_this_droid_section_pointer = libc::strstr(
+            droid_section_pointer,
+            DROIDS_LEVEL_DESCRIPTION_END_STRING.as_ptr() as *mut c_char,
+        );
+        if end_of_this_droid_section_pointer.is_null() {
+            error!("GetCrew: Unterminated droid section encountered!! Terminating.");
+            Terminate(defs::ERR.into());
+        }
+        GetThisLevelsDroids(droid_section_pointer);
+        droid_section_pointer = end_of_this_droid_section_pointer.add(2); // Move past the inserted String terminator
+
+        droid_section_pointer = libc::strstr(
+            droid_section_pointer,
+            DROIDS_LEVEL_DESCRIPTION_START_STRING.as_ptr() as *mut c_char,
+        );
+    }
+
+    // Now that the correct crew types have been filled into the
+    // right structure, it's time to set the energy of the corresponding
+    // droids to "full" which means to the maximum of each type.
+    NumEnemys = 0;
+    for enemy in &mut AllEnemys {
+        let ty = enemy.ty;
+        if ty == -1 {
+            // Do nothing to unused entries
+            continue;
+        }
+        enemy.energy = (*Druidmap.add(usize::try_from(ty).unwrap())).maxenergy;
+        enemy.status = Status::Mobile as c_int;
+        NumEnemys += 1;
+    }
+
+    libc::free(main_droids_file_pointer as *mut c_void);
+    defs::OK.into()
 }
