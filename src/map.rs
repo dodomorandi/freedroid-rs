@@ -219,7 +219,7 @@ pub unsafe extern "C" fn IsPassable(x: c_float, y: c_float, check_pos: c_int) ->
         }
 
         HWall => {
-            if fy < WALLPASS || fy > 1. - WALLPASS {
+            if (WALLPASS..=1. - WALLPASS).contains(&fy).not() {
                 Center as c_int
             } else {
                 -1
@@ -227,7 +227,7 @@ pub unsafe extern "C" fn IsPassable(x: c_float, y: c_float, check_pos: c_int) ->
         }
 
         VWall => {
-            if fx < WALLPASS || fx > 1. - WALLPASS {
+            if (WALLPASS..=1. - WALLPASS).contains(&fx).not() {
                 Center as c_int
             } else {
                 -1
@@ -267,7 +267,9 @@ pub unsafe extern "C" fn IsPassable(x: c_float, y: c_float, check_pos: c_int) ->
         }
 
         TO => {
-            if fy < WALLPASS || (fy > 1. - WALLPASS && (fx < WALLPASS || fx > 1. - WALLPASS)) {
+            if fy < WALLPASS
+                || (fy > 1. - WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fx).not())
+            {
                 Center as c_int
             } else {
                 -1
@@ -275,7 +277,9 @@ pub unsafe extern "C" fn IsPassable(x: c_float, y: c_float, check_pos: c_int) ->
         }
 
         TR => {
-            if fx > 1. - WALLPASS || (fx < WALLPASS && (fy < WALLPASS || fy > 1. - WALLPASS)) {
+            if fx > 1. - WALLPASS
+                || (fx < WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fy).not())
+            {
                 Center as c_int
             } else {
                 -1
@@ -283,7 +287,9 @@ pub unsafe extern "C" fn IsPassable(x: c_float, y: c_float, check_pos: c_int) ->
         }
 
         TU => {
-            if fy > 1. - WALLPASS || (fy < WALLPASS && (fx < WALLPASS || fx > 1. - WALLPASS)) {
+            if fy > 1. - WALLPASS
+                || (fy < WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fx).not())
+            {
                 Center as c_int
             } else {
                 -1
@@ -291,7 +297,9 @@ pub unsafe extern "C" fn IsPassable(x: c_float, y: c_float, check_pos: c_int) ->
         }
 
         TL => {
-            if fx < WALLPASS || (fx > 1. - WALLPASS && (fy < WALLPASS || fy > 1. - WALLPASS)) {
+            if fx < WALLPASS
+                || (fx > 1. - WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fy).not())
+            {
                 Center as c_int
             } else {
                 -1
@@ -304,8 +312,8 @@ pub unsafe extern "C" fn IsPassable(x: c_float, y: c_float, check_pos: c_int) ->
         HHalbtuere1 | HZutuere if (check_pos.try_into() == Ok(Light)) => -1,
 
         HGanztuere | HHalbtuere3 | HHalbtuere2 | HHalbtuere1 | HZutuere => {
-            if (fx < H_RANDBREITE || fx > 1. - H_RANDBREITE)
-                && (fy >= H_RANDSPACE && fy <= 1. - H_RANDSPACE)
+            if (H_RANDBREITE..=1. - H_RANDBREITE).contains(&fx).not()
+                && (H_RANDSPACE..=1. - H_RANDSPACE).contains(&fy)
             {
                 let check_pos = match check_pos.try_into() {
                     Ok(check_pos) => check_pos,
@@ -350,8 +358,8 @@ pub unsafe extern "C" fn IsPassable(x: c_float, y: c_float, check_pos: c_int) ->
 
         VHalbtuere1 | VZutuere if (check_pos.try_into() == Ok(Light)) => -1,
         VGanztuere | VHalbtuere3 | VHalbtuere2 | VHalbtuere1 | VZutuere => {
-            if (fy < V_RANDBREITE || fy > 1. - V_RANDBREITE)
-                && (fx >= V_RANDSPACE && fx <= 1. - V_RANDSPACE)
+            if (V_RANDBREITE..=1. - V_RANDBREITE).contains(&fy).not()
+                && (V_RANDSPACE..=1. - V_RANDSPACE).contains(&fx)
             {
                 let check_pos = match check_pos.try_into() {
                     Ok(check_pos) => check_pos,
@@ -607,6 +615,7 @@ pub unsafe extern "C" fn MoveLevelDoors() {
 }
 
 /// Returns a pointer to Map in a memory field
+#[no_mangle]
 pub unsafe extern "C" fn StructToMem(level: *mut Level) -> *mut c_char {
     use std::io::Write;
 
