@@ -13,7 +13,7 @@ use crate::{
         find_file, Frame_Time, LocateStringInData, MyMalloc, MyRandom,
         ReadAndMallocAndTerminateFile, ReadValueFromString, Terminate,
     },
-    structs::{Finepoint, Level},
+    structs::{Finepoint, GrobPoint, Level},
     vars::Block_Rect,
     AllEnemys, CurLevel, Me, NumEnemys, Number_Of_Droid_Types,
 };
@@ -31,6 +31,9 @@ use std::{
 extern "C" {
     pub static ColorNames: [*const c_char; 7];
     pub static numLevelColors: c_int;
+
+    pub fn GetRefreshes(level: *mut Level) -> c_int;
+    pub fn GetAlerts(level: *mut Level) -> c_void;
 }
 
 const WALLPASS: f32 = 4_f32 / 64.;
@@ -987,4 +990,286 @@ pub unsafe extern "C" fn GetCrew(filename: *mut c_char) -> c_int {
 
     libc::free(main_droids_file_pointer as *mut c_void);
     defs::OK.into()
+}
+
+/// loads lift-connctions to cur-ship struct
+#[no_mangle]
+pub unsafe extern "C" fn GetLiftConnections(filename: *mut c_char) -> c_int {
+    const END_OF_LIFT_DATA_STRING: &CStr = cstr!("*** End of elevator specification file ***");
+    const START_OF_LIFT_DATA_STRING: &CStr = cstr!("*** Beginning of Lift Data ***");
+    const START_OF_LIFT_RECTANGLE_DATA_STRING: &CStr =
+        cstr!("*** Beginning of elevator rectangles ***");
+    const END_OF_LIFT_CONNECTION_DATA_STRING: &CStr = cstr!("*** End of Lift Connection Data ***");
+
+    /* Now get the lift-connection data from "FILE.elv" file */
+    let fpath = find_file(
+        filename,
+        MAP_DIR_C.as_ptr() as *mut c_char,
+        Themed::NoTheme as c_int,
+        Criticality::Critical as c_int,
+    );
+
+    let data =
+        ReadAndMallocAndTerminateFile(fpath, END_OF_LIFT_DATA_STRING.as_ptr() as *mut c_char);
+
+    // At first we read in the rectangles that define where the colums of the
+    // lift are, so that we can highlight them later.
+    let mut entry_pointer = libc::strstr(
+        LocateStringInData(
+            data,
+            START_OF_LIFT_RECTANGLE_DATA_STRING.as_ptr() as *mut c_char,
+        ),
+        cstr!("Elevator Number=").as_ptr() as *mut c_char,
+    );
+    curShip.num_lift_rows = 0;
+    while entry_pointer.is_null().not() {
+        let mut elevator_index: c_int = 0;
+        ReadValueFromString(
+            entry_pointer,
+            cstr!("Elevator Number=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut elevator_index as *mut _ as *mut c_void,
+        );
+        entry_pointer = entry_pointer.add(1);
+
+        let mut x: c_int = 0;
+        let mut y: c_int = 0;
+        let mut w: c_int = 0;
+        let mut h: c_int = 0;
+        ReadValueFromString(
+            entry_pointer,
+            cstr!("ElRowX=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut x as *mut _ as *mut c_void,
+        );
+        ReadValueFromString(
+            entry_pointer,
+            cstr!("ElRowY=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut y as *mut _ as *mut c_void,
+        );
+        ReadValueFromString(
+            entry_pointer,
+            cstr!("ElRowW=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut w as *mut _ as *mut c_void,
+        );
+        ReadValueFromString(
+            entry_pointer,
+            cstr!("ElRowH=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut h as *mut _ as *mut c_void,
+        );
+
+        let rect = &mut curShip.LiftRow_Rect[usize::try_from(elevator_index).unwrap()];
+        rect.x = x.try_into().unwrap();
+        rect.y = y.try_into().unwrap();
+        rect.w = w.try_into().unwrap();
+        rect.h = h.try_into().unwrap();
+
+        curShip.num_lift_rows += 1;
+        entry_pointer = libc::strstr(
+            entry_pointer,
+            cstr!("Elevator Number=").as_ptr() as *mut c_char,
+        );
+    }
+
+    //--------------------
+    // Now we read in the rectangles that define where the decks of the
+    // current area system are, so that we can highlight them later in the
+    // elevator and console functions.
+    //
+    curShip.num_level_rects.fill(0); // this initializes zeros for the number
+
+    entry_pointer = libc::strstr(data, cstr!("DeckNr=").as_ptr() as *mut c_char);
+    while entry_pointer.is_null().not() {
+        let mut deck_index: c_int = 0;
+        let mut rect_index: c_int = 0;
+        ReadValueFromString(
+            entry_pointer,
+            cstr!("DeckNr=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut deck_index as *mut _ as *mut c_void,
+        );
+        ReadValueFromString(
+            entry_pointer,
+            cstr!("RectNumber=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut rect_index as *mut _ as *mut c_void,
+        );
+        entry_pointer = entry_pointer.add(1); // to prevent doubly taking this entry
+
+        curShip.num_level_rects[usize::try_from(deck_index).unwrap()] += 1; // count the number of rects for this deck one up
+
+        let mut x: c_int = 0;
+        let mut y: c_int = 0;
+        let mut w: c_int = 0;
+        let mut h: c_int = 0;
+        ReadValueFromString(
+            entry_pointer,
+            cstr!("DeckX=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut x as *mut _ as *mut c_void,
+        );
+        ReadValueFromString(
+            entry_pointer,
+            cstr!("DeckY=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut y as *mut _ as *mut c_void,
+        );
+        ReadValueFromString(
+            entry_pointer,
+            cstr!("DeckW=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut w as *mut _ as *mut c_void,
+        );
+        ReadValueFromString(
+            entry_pointer,
+            cstr!("DeckH=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut h as *mut _ as *mut c_void,
+        );
+
+        let rect = &mut curShip.Level_Rects[usize::try_from(deck_index).unwrap()]
+            [usize::try_from(rect_index).unwrap()];
+        rect.x = x.try_into().unwrap();
+        rect.y = y.try_into().unwrap();
+        rect.w = w.try_into().unwrap();
+        rect.h = h.try_into().unwrap();
+        entry_pointer = libc::strstr(entry_pointer, cstr!("DeckNr=").as_ptr() as *mut c_char);
+    }
+
+    entry_pointer = libc::strstr(data, START_OF_LIFT_DATA_STRING.as_ptr() as *mut c_char);
+    if entry_pointer.is_null() {
+        error!("START OF LIFT DATA STRING NOT FOUND!  Terminating...");
+        Terminate(defs::ERR.into());
+    }
+
+    entry_pointer = libc::strstr(data, cstr!("Label=").as_ptr() as *mut c_char);
+    let mut label: c_int = 0;
+    while entry_pointer.is_null().not() {
+        ReadValueFromString(
+            entry_pointer,
+            cstr!("Label=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut label as *mut _ as *mut c_void,
+        );
+        let cur_lift = &mut curShip.AllLifts[usize::try_from(label).unwrap()];
+        entry_pointer = entry_pointer.add(1); // to avoid doubly taking this entry
+
+        ReadValueFromString(
+            entry_pointer,
+            cstr!("Deck=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut cur_lift.level as *mut _ as *mut c_void,
+        );
+        ReadValueFromString(
+            entry_pointer,
+            cstr!("PosX=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut cur_lift.x as *mut _ as *mut c_void,
+        );
+        ReadValueFromString(
+            entry_pointer,
+            cstr!("PosY=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut cur_lift.y as *mut _ as *mut c_void,
+        );
+        ReadValueFromString(
+            entry_pointer,
+            cstr!("LevelUp=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut cur_lift.up as *mut _ as *mut c_void,
+        );
+        ReadValueFromString(
+            entry_pointer,
+            cstr!("LevelDown=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut cur_lift.down as *mut _ as *mut c_void,
+        );
+        ReadValueFromString(
+            entry_pointer,
+            cstr!("LiftRow=").as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut cur_lift.lift_row as *mut _ as *mut c_void,
+        );
+
+        entry_pointer = libc::strstr(entry_pointer, cstr!("Label=").as_ptr() as *mut c_char);
+    }
+
+    curShip.num_lifts = label;
+
+    libc::free(data as *mut c_void);
+    defs::OK.into()
+}
+
+/// initialize doors, refreshes and lifts for the given level-data
+#[no_mangle]
+pub unsafe extern "C" fn InterpretMap(level: &mut Level) -> c_int {
+    /* Get Doors Array */
+    GetDoors(level);
+
+    // Get Refreshes
+    GetRefreshes(level);
+
+    // Get Alerts
+    GetAlerts(level);
+
+    defs::OK.into()
+}
+
+/// initializes the Doors array of the given level structure
+/// Of course the level data must be in the structure already!!
+/// Returns the number of doors found or ERR
+#[no_mangle]
+pub unsafe extern "C" fn GetDoors(level: &mut Level) -> c_int {
+    let mut curdoor = 0;
+
+    let xlen = level.xlen;
+    let ylen = level.ylen;
+
+    /* init Doors- Array to 0 */
+    level.doors.fill(GrobPoint { x: -1, y: -1 });
+
+    /* now find the doors */
+    for line in 0..i8::try_from(ylen).unwrap() {
+        for col in 0..i8::try_from(xlen).unwrap() {
+            let brick = *level.map[usize::try_from(line).unwrap()].add(col.try_into().unwrap());
+            if brick == MapTile::VZutuere as i8 || brick == MapTile::HZutuere as i8 {
+                level.doors[curdoor].x = col;
+                level.doors[curdoor].y = line;
+                curdoor += 1;
+
+                if curdoor > MAX_DOORS_ON_LEVEL {
+                    error!(
+                        "\n\
+\n\
+----------------------------------------------------------------------\n\
+Freedroid has encountered a problem:\n\
+The number of doors found in level {} seems to be greater than the number\n\
+of doors currently allowed in a freedroid map.\n\
+\n\
+The constant for the maximum number of doors currently is set to {} in the\n\
+freedroid defs.h file.  You can enlarge the constant there, then start make\n\
+and make install again, and the map will be loaded without complaint.\n\
+\n\
+The constant in defs.h is names 'MAX_DOORS_ON_LEVEL'.  If you received this \n\
+message, please also tell the developers of the freedroid project, that they\n\
+should enlarge the constant in all future versions as well.\n\
+\n\
+Thanks a lot.\n\
+\n\
+But for now Freedroid will terminate to draw attention to this small map problem.\n\
+Sorry...\n\
+----------------------------------------------------------------------\n\
+\n",
+                        level.levelnum, MAX_DOORS_ON_LEVEL
+                    );
+                    Terminate(defs::ERR.into());
+                }
+            }
+        }
+    }
+
+    curdoor.try_into().unwrap()
 }

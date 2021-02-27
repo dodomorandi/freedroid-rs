@@ -675,65 +675,65 @@ Of course the level data must be in the structure already!!
 
 @Ret: Number of doors found or ERR
 * $Function----------------------------------------------------------*/
-int
-GetDoors (Level Lev)
-{
-  int i, line, col;
-  int xlen, ylen;
-  int curdoor = 0;
-  char brick;
-
-  xlen = Lev->xlen;
-  ylen = Lev->ylen;
-
-  /* init Doors- Array to 0 */
-  for (i = 0; i < MAX_DOORS_ON_LEVEL; i++)
-    Lev->doors[i].x = Lev->doors[i].y = -1;
-
-  /* now find the doors */
-  for (line = 0; line < ylen; line++)
-    {
-      for (col = 0; col < xlen; col++)
-	{
-	  brick = Lev->map[line][col];
-	  // if (brick == '=' || brick == '"')
-	  if ( brick == V_ZUTUERE || brick == H_ZUTUERE )
-	    {
-	      Lev->doors[curdoor].x = col;
-	      Lev->doors[curdoor++].y = line;
-
-	      if (curdoor > MAX_DOORS_ON_LEVEL)
-		{
-      fprintf(stderr, "\n\
-\n\
-----------------------------------------------------------------------\n\
-Freedroid has encountered a problem:\n\
-The number of doors found in level %d seems to be greater than the number\n\
-of doors currently allowed in a freedroid map.\n\
-\n\
-The constant for the maximum number of doors currently is set to %d in the\n\
-freedroid defs.h file.  You can enlarge the constant there, then start make\n\
-and make install again, and the map will be loaded without complaint.\n\
-\n\
-The constant in defs.h is names 'MAX_DOORS_ON_LEVEL'.  If you received this \n\
-message, please also tell the developers of the freedroid project, that they\n\
-should enlarge the constant in all future versions as well.\n\
-\n\
-Thanks a lot.\n\
-\n\
-But for now Freedroid will terminate to draw attention to this small map problem.\n\
-Sorry...\n\
-----------------------------------------------------------------------\n\
-\n" , Lev->levelnum , MAX_DOORS_ON_LEVEL );
-		  Terminate(ERR);
-		}
-
-	    }			/* if */
-	}			/* for */
-    }				/* for */
-
-  return curdoor;
-}				/* GetDoors */
+// int
+// GetDoors (Level Lev)
+// {
+//   int i, line, col;
+//   int xlen, ylen;
+//   int curdoor = 0;
+//   char brick;
+// 
+//   xlen = Lev->xlen;
+//   ylen = Lev->ylen;
+// 
+//   /* init Doors- Array to 0 */
+//   for (i = 0; i < MAX_DOORS_ON_LEVEL; i++)
+//     Lev->doors[i].x = Lev->doors[i].y = -1;
+// 
+//   /* now find the doors */
+//   for (line = 0; line < ylen; line++)
+//     {
+//       for (col = 0; col < xlen; col++)
+// 	{
+// 	  brick = Lev->map[line][col];
+// 	  // if (brick == '=' || brick == '"')
+// 	  if ( brick == V_ZUTUERE || brick == H_ZUTUERE )
+// 	    {
+// 	      Lev->doors[curdoor].x = col;
+// 	      Lev->doors[curdoor++].y = line;
+// 
+// 	      if (curdoor > MAX_DOORS_ON_LEVEL)
+// 		{
+//       fprintf(stderr, "\n\
+// \n\
+// ----------------------------------------------------------------------\n\
+// Freedroid has encountered a problem:\n\
+// The number of doors found in level %d seems to be greater than the number\n\
+// of doors currently allowed in a freedroid map.\n\
+// \n\
+// The constant for the maximum number of doors currently is set to %d in the\n\
+// freedroid defs.h file.  You can enlarge the constant there, then start make\n\
+// and make install again, and the map will be loaded without complaint.\n\
+// \n\
+// The constant in defs.h is names 'MAX_DOORS_ON_LEVEL'.  If you received this \n\
+// message, please also tell the developers of the freedroid project, that they\n\
+// should enlarge the constant in all future versions as well.\n\
+// \n\
+// Thanks a lot.\n\
+// \n\
+// But for now Freedroid will terminate to draw attention to this small map problem.\n\
+// Sorry...\n\
+// ----------------------------------------------------------------------\n\
+// \n" , Lev->levelnum , MAX_DOORS_ON_LEVEL );
+// 		  Terminate(ERR);
+// 		}
+// 
+// 	    }			/* if */
+// 	}			/* for */
+//     }				/* for */
+// 
+//   return curdoor;
+// }				/* GetDoors */
 
 /*@Function============================================================
 @Desc: This function initialized the array of Refreshes for animation
@@ -935,20 +935,20 @@ IsWallBlock (int block)
  * @Ret: OK | ERR
  *
  *-----------------------------------------------------------------*/
-int
-InterpretMap (Level Lev)
-{
-  /* Get Doors Array */
-  GetDoors ( Lev );
-
-  // Get Refreshes
-  GetRefreshes ( Lev );
-
-  // Get Alerts
-  GetAlerts (Lev);
-
-  return(OK);
-}
+// int
+// InterpretMap (Level Lev)
+// {
+//   /* Get Doors Array */
+//   GetDoors ( Lev );
+// 
+//   // Get Refreshes
+//   GetRefreshes ( Lev );
+// 
+//   // Get Alerts
+//   GetAlerts (Lev);
+// 
+//   return(OK);
+// }
 
 
 /*@Function============================================================
