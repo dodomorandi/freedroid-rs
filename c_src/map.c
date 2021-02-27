@@ -958,126 +958,126 @@ InterpretMap (Level Lev)
 @Ret: 	OK | ERR
 @Int:
 * $Function----------------------------------------------------------*/
-int
-GetLiftConnections (char *filename)
-{
-  char *fpath;
-  char *Data;
-  char *EntryPointer;
-  int i;
-  int Label;
-  int DeckIndex;
-  int RectIndex;
-  int ElevatorIndex;
-  Lift CurLift;
-
-  int x,y,w,h;
-
-#define END_OF_LIFT_DATA_STRING "*** End of elevator specification file ***"
-#define START_OF_LIFT_DATA_STRING "*** Beginning of Lift Data ***"
-#define START_OF_LIFT_RECTANGLE_DATA_STRING "*** Beginning of elevator rectangles ***"
-#define END_OF_LIFT_CONNECTION_DATA_STRING "*** End of Lift Connection Data ***"
-
-
-
-  /* Now get the lift-connection data from "FILE.elv" file */
-
-  fpath = find_file (filename, MAP_DIR, NO_THEME, CRITICAL);
-
-  Data = ReadAndMallocAndTerminateFile( fpath , END_OF_LIFT_DATA_STRING ) ;
-
-  /*
-  if ( (EntryPointer = strstr( Data , START_OF_LIFT_RECTANGLE_DATA_STRING ) ) == NULL )
-    {
-      DebugPrintf ( 0 , "\nERROR!  START OF LIFT RECTANGLE DATA STRING NOT FOUND!  Terminating...");
-      Terminate(ERR);
-    }
-  */
-
-  EntryPointer = LocateStringInData ( Data , START_OF_LIFT_RECTANGLE_DATA_STRING );
-
-  //--------------------
-  // At first we read in the rectangles that define where the colums of the
-  // lift are, so that we can highlight them later.
-  //
-
-  curShip.num_lift_rows = 0;
-  while ( ( EntryPointer = strstr( EntryPointer , "Elevator Number=" ) ) != NULL )
-    {
-      ReadValueFromString (EntryPointer, "Elevator Number=", "%d", &ElevatorIndex);
-      EntryPointer ++;
-
-      ReadValueFromString (EntryPointer, "ElRowX=", "%d", &x);
-      ReadValueFromString (EntryPointer, "ElRowY=", "%d", &y);
-      ReadValueFromString (EntryPointer, "ElRowW=", "%d", &w);
-      ReadValueFromString (EntryPointer, "ElRowH=", "%d", &h);
-
-      curShip.LiftRow_Rect[ElevatorIndex].x = x;
-      curShip.LiftRow_Rect[ElevatorIndex].y = y;
-      curShip.LiftRow_Rect[ElevatorIndex].w = w;
-      curShip.LiftRow_Rect[ElevatorIndex].h = h;
-
-      curShip.num_lift_rows ++;
-    }
-
-  //--------------------
-  // Now we read in the rectangles that define where the decks of the
-  // current area system are, so that we can highlight them later in the
-  // elevator and console functions.
-  //
-  for ( i = 0 ; i < MAX_LEVELS ; i++ )   curShip.num_level_rects[i] = 0; // this initializes zeros for the number
-
-  EntryPointer = Data ;
-
-  while ( ( EntryPointer = strstr( EntryPointer , "DeckNr=" ) ) != NULL )
-    {
-      ReadValueFromString (EntryPointer, "DeckNr=", "%d", &DeckIndex);
-      ReadValueFromString (EntryPointer, "RectNumber=", "%d", &RectIndex);
-      EntryPointer ++;  // to prevent doubly taking this entry
-
-      curShip.num_level_rects[ DeckIndex ] ++; // count the number of rects for this deck one up
-
-      ReadValueFromString (EntryPointer, "DeckX=", "%d", &x);
-      ReadValueFromString (EntryPointer, "DeckY=", "%d", &y);
-      ReadValueFromString (EntryPointer, "DeckW=", "%d", &w);
-      ReadValueFromString (EntryPointer, "DeckH=", "%d", &h);
-
-      curShip.Level_Rects[DeckIndex][RectIndex].x = x;
-      curShip.Level_Rects[DeckIndex][RectIndex].y = y;
-      curShip.Level_Rects[DeckIndex][RectIndex].w = w;
-      curShip.Level_Rects[DeckIndex][RectIndex].h = h;
-    }
-
-  //--------------------
-  //
-  //
-  if ( (EntryPointer = strstr( Data , START_OF_LIFT_DATA_STRING ) ) == NULL )
-    {
-      DebugPrintf ( 0 , "\nERROR!  START OF LIFT DATA STRING NOT FOUND!  Terminating...");
-      Terminate(ERR);
-    }
-
-  EntryPointer = Data;
-
-  while ( ( EntryPointer = strstr( EntryPointer , "Label=" ) ) != NULL )
-    {
-      ReadValueFromString (EntryPointer, "Label=", "%d", &Label);
-      CurLift = &(curShip.AllLifts[Label]);
-      EntryPointer++; // to avoid doubly taking this entry
-
-      ReadValueFromString (EntryPointer, "Deck=", "%d", &(CurLift->level));
-      ReadValueFromString (EntryPointer, "PosX=", "%d", &(CurLift->x));
-      ReadValueFromString (EntryPointer, "PosY=", "%d", &(CurLift->y));
-      ReadValueFromString (EntryPointer, "LevelUp=", "%d", &(CurLift->up));
-      ReadValueFromString (EntryPointer, "LevelDown=", "%d", &(CurLift->down));
-      ReadValueFromString (EntryPointer, "LiftRow=", "%d", &(CurLift->lift_row));
-    }
-
-  curShip.num_lifts = Label;
-
-  free ( Data );
-  return OK;
-}; // int GetLiftConnections(char *shipname)
+// int
+// GetLiftConnections (char *filename)
+// {
+//   char *fpath;
+//   char *Data;
+//   char *EntryPointer;
+//   int i;
+//   int Label;
+//   int DeckIndex;
+//   int RectIndex;
+//   int ElevatorIndex;
+//   Lift CurLift;
+// 
+//   int x,y,w,h;
+// 
+// #define END_OF_LIFT_DATA_STRING "*** End of elevator specification file ***"
+// #define START_OF_LIFT_DATA_STRING "*** Beginning of Lift Data ***"
+// #define START_OF_LIFT_RECTANGLE_DATA_STRING "*** Beginning of elevator rectangles ***"
+// #define END_OF_LIFT_CONNECTION_DATA_STRING "*** End of Lift Connection Data ***"
+// 
+// 
+// 
+//   /* Now get the lift-connection data from "FILE.elv" file */
+// 
+//   fpath = find_file (filename, MAP_DIR, NO_THEME, CRITICAL);
+// 
+//   Data = ReadAndMallocAndTerminateFile( fpath , END_OF_LIFT_DATA_STRING ) ;
+// 
+//   /*
+//   if ( (EntryPointer = strstr( Data , START_OF_LIFT_RECTANGLE_DATA_STRING ) ) == NULL )
+//     {
+//       DebugPrintf ( 0 , "\nERROR!  START OF LIFT RECTANGLE DATA STRING NOT FOUND!  Terminating...");
+//       Terminate(ERR);
+//     }
+//   */
+// 
+//   EntryPointer = LocateStringInData ( Data , START_OF_LIFT_RECTANGLE_DATA_STRING );
+// 
+//   //--------------------
+//   // At first we read in the rectangles that define where the colums of the
+//   // lift are, so that we can highlight them later.
+//   //
+// 
+//   curShip.num_lift_rows = 0;
+//   while ( ( EntryPointer = strstr( EntryPointer , "Elevator Number=" ) ) != NULL )
+//     {
+//       ReadValueFromString (EntryPointer, "Elevator Number=", "%d", &ElevatorIndex);
+//       EntryPointer ++;
+// 
+//       ReadValueFromString (EntryPointer, "ElRowX=", "%d", &x);
+//       ReadValueFromString (EntryPointer, "ElRowY=", "%d", &y);
+//       ReadValueFromString (EntryPointer, "ElRowW=", "%d", &w);
+//       ReadValueFromString (EntryPointer, "ElRowH=", "%d", &h);
+// 
+//       curShip.LiftRow_Rect[ElevatorIndex].x = x;
+//       curShip.LiftRow_Rect[ElevatorIndex].y = y;
+//       curShip.LiftRow_Rect[ElevatorIndex].w = w;
+//       curShip.LiftRow_Rect[ElevatorIndex].h = h;
+// 
+//       curShip.num_lift_rows ++;
+//     }
+// 
+//   //--------------------
+//   // Now we read in the rectangles that define where the decks of the
+//   // current area system are, so that we can highlight them later in the
+//   // elevator and console functions.
+//   //
+//   for ( i = 0 ; i < MAX_LEVELS ; i++ )   curShip.num_level_rects[i] = 0; // this initializes zeros for the number
+// 
+//   EntryPointer = Data ;
+// 
+//   while ( ( EntryPointer = strstr( EntryPointer , "DeckNr=" ) ) != NULL )
+//     {
+//       ReadValueFromString (EntryPointer, "DeckNr=", "%d", &DeckIndex);
+//       ReadValueFromString (EntryPointer, "RectNumber=", "%d", &RectIndex);
+//       EntryPointer ++;  // to prevent doubly taking this entry
+// 
+//       curShip.num_level_rects[ DeckIndex ] ++; // count the number of rects for this deck one up
+// 
+//       ReadValueFromString (EntryPointer, "DeckX=", "%d", &x);
+//       ReadValueFromString (EntryPointer, "DeckY=", "%d", &y);
+//       ReadValueFromString (EntryPointer, "DeckW=", "%d", &w);
+//       ReadValueFromString (EntryPointer, "DeckH=", "%d", &h);
+// 
+//       curShip.Level_Rects[DeckIndex][RectIndex].x = x;
+//       curShip.Level_Rects[DeckIndex][RectIndex].y = y;
+//       curShip.Level_Rects[DeckIndex][RectIndex].w = w;
+//       curShip.Level_Rects[DeckIndex][RectIndex].h = h;
+//     }
+// 
+//   //--------------------
+//   //
+//   //
+//   if ( (EntryPointer = strstr( Data , START_OF_LIFT_DATA_STRING ) ) == NULL )
+//     {
+//       DebugPrintf ( 0 , "\nERROR!  START OF LIFT DATA STRING NOT FOUND!  Terminating...");
+//       Terminate(ERR);
+//     }
+// 
+//   EntryPointer = Data;
+// 
+//   while ( ( EntryPointer = strstr( EntryPointer , "Label=" ) ) != NULL )
+//     {
+//       ReadValueFromString (EntryPointer, "Label=", "%d", &Label);
+//       CurLift = &(curShip.AllLifts[Label]);
+//       EntryPointer++; // to avoid doubly taking this entry
+// 
+//       ReadValueFromString (EntryPointer, "Deck=", "%d", &(CurLift->level));
+//       ReadValueFromString (EntryPointer, "PosX=", "%d", &(CurLift->x));
+//       ReadValueFromString (EntryPointer, "PosY=", "%d", &(CurLift->y));
+//       ReadValueFromString (EntryPointer, "LevelUp=", "%d", &(CurLift->up));
+//       ReadValueFromString (EntryPointer, "LevelDown=", "%d", &(CurLift->down));
+//       ReadValueFromString (EntryPointer, "LiftRow=", "%d", &(CurLift->lift_row));
+//     }
+// 
+//   curShip.num_lifts = Label;
+// 
+//   free ( Data );
+//   return OK;
+// }; // int GetLiftConnections(char *shipname)
 
 /*-----------------------------------------------------------------
  * @Desc: This function initializes all enemys
