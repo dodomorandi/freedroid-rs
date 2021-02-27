@@ -32,7 +32,6 @@ extern "C" {
     pub static ColorNames: [*const c_char; 7];
     pub static numLevelColors: c_int;
 
-    pub fn GetRefreshes(level: *mut Level) -> c_int;
     pub fn GetAlerts(level: *mut Level) -> c_void;
 }
 
@@ -1272,4 +1271,58 @@ Sorry...\n\
     }
 
     curdoor.try_into().unwrap()
+}
+
+/// This function initialized the array of Refreshes for animation
+/// within the level
+/// Returns the number of refreshes found or ERR
+#[no_mangle]
+pub unsafe extern "C" fn GetRefreshes(level: &mut Level) -> c_int {
+    let xlen = level.xlen;
+    let ylen = level.ylen;
+
+    /* init refreshes array to -1 */
+    level.refreshes.fill(GrobPoint { x: -1, y: -1 });
+
+    let mut curref = 0;
+    /* now find all the refreshes */
+    for row in 0..u8::try_from(ylen).unwrap() {
+        for col in 0..u8::try_from(xlen).unwrap() {
+            if *level.map[usize::from(row)].add(col.into()) == MapTile::Refresh1 as i8 {
+                level.refreshes[curref].x = col.try_into().unwrap();
+                level.refreshes[curref].y = row.try_into().unwrap();
+                curref += 1;
+
+                if curref > MAX_REFRESHES_ON_LEVEL {
+                    error!(
+                        "\n\
+                        \n\
+----------------------------------------------------------------------\n\
+Freedroid has encountered a problem:\n\
+The number of refreshes found in level {} seems to be greater than the number\n\
+of refreshes currently allowed in a freedroid map.\n\
+\n\
+The constant for the maximum number of refreshes currently is set to {} in the\n\
+freedroid defs.h file.  You can enlarge the constant there, then start make\n\
+and make install again, and the map will be loaded without complaint.\n\
+\n\
+The constant in defs.h is names 'MAX_REFRESHES_ON_LEVEL'.  If you received this \n\
+message, please also tell the developers of the freedroid project, that they\n\
+should enlarge the constant in all future versions as well.\n\
+\n\
+Thanks a lot.\n\
+\n\
+But for now Freedroid will terminate to draw attention to this small map problem.\n\
+Sorry...\n\
+----------------------------------------------------------------------\n\
+\n",
+                        level.levelnum, MAX_REFRESHES_ON_LEVEL
+                    );
+                    Terminate(defs::ERR.into());
+                }
+            }
+        }
+    }
+
+    curref.try_into().unwrap()
 }

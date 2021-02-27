@@ -741,59 +741,59 @@ Of course the level data must be in the structure already!!
 
 @Ret: Number of refreshes found or ERR
 * $Function----------------------------------------------------------*/
-int
-GetRefreshes (Level Lev)
-{
-  int i, row, col;
-  int xlen, ylen;
-  int curref = 0;
-
-  xlen = Lev->xlen;
-  ylen = Lev->ylen;
-
-  /* init refreshes array to -1 */
-  for (i = 0; i < MAX_REFRESHES_ON_LEVEL; i++)
-    Lev->refreshes[i].x = Lev->refreshes[i].y = -1;
-
-  /* now find all the refreshes */
-  for (row = 0; row < ylen; row++)
-    for (col = 0; col < xlen; col++)
-      {
-	if (Lev->map[row][col] == REFRESH1 )
-	  {
-	    Lev->refreshes[curref].x = col;
-	    Lev->refreshes[curref++].y = row;
-
-	    if (curref > MAX_REFRESHES_ON_LEVEL)
-	      {
-		fprintf(stderr, "\n\
-\n\
-----------------------------------------------------------------------\n\
-Freedroid has encountered a problem:\n\
-The number of refreshes found in level %d seems to be greater than the number\n\
-of refreshes currently allowed in a freedroid map.\n\
-\n\
-The constant for the maximum number of refreshes currently is set to %d in the\n\
-freedroid defs.h file.  You can enlarge the constant there, then start make\n\
-and make install again, and the map will be loaded without complaint.\n\
-\n\
-The constant in defs.h is names 'MAX_REFRESHES_ON_LEVEL'.  If you received this \n\
-message, please also tell the developers of the freedroid project, that they\n\
-should enlarge the constant in all future versions as well.\n\
-\n\
-Thanks a lot.\n\
-\n\
-But for now Freedroid will terminate to draw attention to this small map problem.\n\
-Sorry...\n\
-----------------------------------------------------------------------\n\
-\n" , Lev->levelnum , MAX_REFRESHES_ON_LEVEL );
-		Terminate(ERR);
-		return ERR;
-	      }
-	  }			/* if */
-      }				/* for */
-  return curref;
-}				// int GetRefreshed(Level lev)
+// int
+// GetRefreshes (Level Lev)
+// {
+//   int i, row, col;
+//   int xlen, ylen;
+//   int curref = 0;
+// 
+//   xlen = Lev->xlen;
+//   ylen = Lev->ylen;
+// 
+//   /* init refreshes array to -1 */
+//   for (i = 0; i < MAX_REFRESHES_ON_LEVEL; i++)
+//     Lev->refreshes[i].x = Lev->refreshes[i].y = -1;
+// 
+//   /* now find all the refreshes */
+//   for (row = 0; row < ylen; row++)
+//     for (col = 0; col < xlen; col++)
+//       {
+// 	if (Lev->map[row][col] == REFRESH1 )
+// 	  {
+// 	    Lev->refreshes[curref].x = col;
+// 	    Lev->refreshes[curref++].y = row;
+// 
+// 	    if (curref > MAX_REFRESHES_ON_LEVEL)
+// 	      {
+// 		fprintf(stderr, "\n\
+// \n\
+// ----------------------------------------------------------------------\n\
+// Freedroid has encountered a problem:\n\
+// The number of refreshes found in level %d seems to be greater than the number\n\
+// of refreshes currently allowed in a freedroid map.\n\
+// \n\
+// The constant for the maximum number of refreshes currently is set to %d in the\n\
+// freedroid defs.h file.  You can enlarge the constant there, then start make\n\
+// and make install again, and the map will be loaded without complaint.\n\
+// \n\
+// The constant in defs.h is names 'MAX_REFRESHES_ON_LEVEL'.  If you received this \n\
+// message, please also tell the developers of the freedroid project, that they\n\
+// should enlarge the constant in all future versions as well.\n\
+// \n\
+// Thanks a lot.\n\
+// \n\
+// But for now Freedroid will terminate to draw attention to this small map problem.\n\
+// Sorry...\n\
+// ----------------------------------------------------------------------\n\
+// \n" , Lev->levelnum , MAX_REFRESHES_ON_LEVEL );
+// 		Terminate(ERR);
+// 		return ERR;
+// 	      }
+// 	  }			/* if */
+//       }				/* for */
+//   return curref;
+// }				// int GetRefreshed(Level lev)
 
 
 //----------------------------------------------------------------------
