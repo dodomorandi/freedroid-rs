@@ -799,43 +799,43 @@ Of course the level data must be in the structure already!!
 //----------------------------------------------------------------------
 // Find all alerts on this level and initialize their position-array
 //----------------------------------------------------------------------
-void
-GetAlerts (Level Lev)
-{
-  int i, row, col;
-  int xlen, ylen;
-  int curref = 0;
-
-  xlen = Lev->xlen;
-  ylen = Lev->ylen;
-
-  // init alert array to -1
-  for (i = 0; i < MAX_ALERTS_ON_LEVEL; i++)
-    Lev->alerts[i].x = Lev->alerts[i].y = -1;
-
-  // now find all the alerts
-  for (row = 0; row < ylen; row++)
-    for (col = 0; col < xlen; col++)
-      {
-	if (Lev->map[row][col] == ALERT_GREEN)
-	  {
-	    Lev->alerts[curref].x = col;
-	    Lev->alerts[curref++].y = row;
-
-	    if (curref > MAX_ALERTS_ON_LEVEL)
-	      {
-		DebugPrintf(0, "WARNING: more alert-tiles found on level %d than allowed (%d)!!",
-			    Lev->levelnum, MAX_ALERTS_ON_LEVEL);
-		DebugPrintf(0, "Remaining Alerts will be inactive... \n");
-		break;
-	      }
-	  }    // if alert found
-
-      }	// for cols
-
-  return;
-
-} // int GetAlerts()
+// void
+// GetAlerts (Level Lev)
+// {
+//   int i, row, col;
+//   int xlen, ylen;
+//   int curref = 0;
+// 
+//   xlen = Lev->xlen;
+//   ylen = Lev->ylen;
+// 
+//   // init alert array to -1
+//   for (i = 0; i < MAX_ALERTS_ON_LEVEL; i++)
+//     Lev->alerts[i].x = Lev->alerts[i].y = -1;
+// 
+//   // now find all the alerts
+//   for (row = 0; row < ylen; row++)
+//     for (col = 0; col < xlen; col++)
+//       {
+// 	if (Lev->map[row][col] == ALERT_GREEN)
+// 	  {
+// 	    Lev->alerts[curref].x = col;
+// 	    Lev->alerts[curref++].y = row;
+// 
+// 	    if (curref > MAX_ALERTS_ON_LEVEL)
+// 	      {
+// 		DebugPrintf(0, "WARNING: more alert-tiles found on level %d than allowed (%d)!!",
+// 			    Lev->levelnum, MAX_ALERTS_ON_LEVEL);
+// 		DebugPrintf(0, "Remaining Alerts will be inactive... \n");
+// 		break;
+// 	      }
+// 	  }    // if alert found
+// 
+//       }	// for cols
+// 
+//   return;
+// 
+// } // int GetAlerts()
 
 
 

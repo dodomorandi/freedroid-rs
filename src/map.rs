@@ -2,7 +2,7 @@ use crate::{
     curShip,
     defs::{
         self, Criticality, Direction, MapTile, Status, Themed, DIRECTIONS, MAP_DIR_C,
-        MAX_ENEMYS_ON_SHIP, MAX_REFRESHES_ON_LEVEL,
+        MAX_ALERTS_ON_LEVEL, MAX_ENEMYS_ON_SHIP, MAX_REFRESHES_ON_LEVEL,
     },
     enemy::ClearEnemys,
     global::{
@@ -20,7 +20,7 @@ use crate::{
 
 use cstr::cstr;
 use defs::{MAX_DOORS_ON_LEVEL, MAX_WP_CONNECTIONS};
-use log::{error, info, trace};
+use log::{error, info, trace, warn};
 use std::{
     convert::{TryFrom, TryInto},
     ffi::CStr,
@@ -31,8 +31,6 @@ use std::{
 extern "C" {
     pub static ColorNames: [*const c_char; 7];
     pub static numLevelColors: c_int;
-
-    pub fn GetAlerts(level: *mut Level) -> c_void;
 }
 
 const WALLPASS: f32 = 4_f32 / 64.;
@@ -1325,4 +1323,35 @@ Sorry...\n\
     }
 
     curref.try_into().unwrap()
+}
+
+/// Find all alerts on this level and initialize their position-array
+#[no_mangle]
+pub unsafe extern "C" fn GetAlerts(level: &mut Level) {
+    let xlen = level.xlen;
+    let ylen = level.ylen;
+
+    // init alert array to -1
+    level.alerts.fill(GrobPoint { x: -1, y: -1 });
+
+    // now find all the alerts
+    let mut curref = 0;
+    for row in 0..u8::try_from(ylen).unwrap() {
+        for col in 0..u8::try_from(xlen).unwrap() {
+            if *level.map[usize::from(row)].add(col.into()) == MapTile::AlertGreen as i8 {
+                level.alerts[curref].x = col.try_into().unwrap();
+                level.alerts[curref].y = row.try_into().unwrap();
+                curref += 1;
+
+                if curref > MAX_ALERTS_ON_LEVEL {
+                    warn!(
+                        "more alert-tiles found on level {} than allowed ({})!!",
+                        level.levelnum, MAX_ALERTS_ON_LEVEL
+                    );
+                    warn!("remaining Alerts will be inactive...");
+                    break;
+                }
+            }
+        }
+    }
 }
