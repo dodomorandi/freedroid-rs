@@ -107,7 +107,7 @@ static mut curShip: Ship = Ship {
         lift_row: 0,
     }; MAX_LIFTS],
     LiftRow_Rect: [RECT_ZERO; MAX_LIFT_ROWS], /* the lift-row rectangles */
-    Level_Rects: [[RECT_ZERO; MAX_LEVELS]; MAX_LEVEL_RECTS], /* level rectangles */
+    Level_Rects: [[RECT_ZERO; MAX_LEVEL_RECTS]; MAX_LEVELS], /* level rectangles */
     num_level_rects: [0; MAX_LEVELS],         /* how many rects has a level */
 }; /* the current ship-data */
 

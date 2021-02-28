@@ -992,6 +992,24 @@ pub unsafe extern "C" fn GetCrew(filename: *mut c_char) -> c_int {
 /// loads lift-connctions to cur-ship struct
 #[no_mangle]
 pub unsafe extern "C" fn GetLiftConnections(filename: *mut c_char) -> c_int {
+    macro_rules! read_int_from_string_into {
+        ($ptr:expr, $str:tt, $value:expr) => {
+            ReadValueFromString(
+                $ptr,
+                cstr!($str).as_ptr() as *mut c_char,
+                cstr!("%d").as_ptr() as *mut c_char,
+                &mut $value as *mut _ as *mut c_void,
+            );
+        };
+    }
+
+    macro_rules! read_int_from_string {
+        ($ptr:expr, $str:tt, $value:ident) => {
+            let mut $value: c_int = 0;
+            read_int_from_string_into!($ptr, $str, $value);
+        };
+    }
+
     const END_OF_LIFT_DATA_STRING: &CStr = cstr!("*** End of elevator specification file ***");
     const START_OF_LIFT_DATA_STRING: &CStr = cstr!("*** Beginning of Lift Data ***");
     const START_OF_LIFT_RECTANGLE_DATA_STRING: &CStr =
@@ -1011,52 +1029,25 @@ pub unsafe extern "C" fn GetLiftConnections(filename: *mut c_char) -> c_int {
 
     // At first we read in the rectangles that define where the colums of the
     // lift are, so that we can highlight them later.
-    let mut entry_pointer = libc::strstr(
-        LocateStringInData(
-            data,
-            START_OF_LIFT_RECTANGLE_DATA_STRING.as_ptr() as *mut c_char,
-        ),
-        cstr!("Elevator Number=").as_ptr() as *mut c_char,
-    );
     curShip.num_lift_rows = 0;
-    while entry_pointer.is_null().not() {
-        let mut elevator_index: c_int = 0;
-        ReadValueFromString(
+    let mut entry_pointer = LocateStringInData(
+        data,
+        START_OF_LIFT_RECTANGLE_DATA_STRING.as_ptr() as *mut c_char,
+    );
+    while {
+        entry_pointer = libc::strstr(
             entry_pointer,
             cstr!("Elevator Number=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut elevator_index as *mut _ as *mut c_void,
         );
+        entry_pointer.is_null().not()
+    } {
+        read_int_from_string!(entry_pointer, "Elevator Number=", elevator_index);
         entry_pointer = entry_pointer.add(1);
 
-        let mut x: c_int = 0;
-        let mut y: c_int = 0;
-        let mut w: c_int = 0;
-        let mut h: c_int = 0;
-        ReadValueFromString(
-            entry_pointer,
-            cstr!("ElRowX=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut x as *mut _ as *mut c_void,
-        );
-        ReadValueFromString(
-            entry_pointer,
-            cstr!("ElRowY=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut y as *mut _ as *mut c_void,
-        );
-        ReadValueFromString(
-            entry_pointer,
-            cstr!("ElRowW=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut w as *mut _ as *mut c_void,
-        );
-        ReadValueFromString(
-            entry_pointer,
-            cstr!("ElRowH=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut h as *mut _ as *mut c_void,
-        );
+        read_int_from_string!(entry_pointer, "ElRowX=", x);
+        read_int_from_string!(entry_pointer, "ElRowY=", y);
+        read_int_from_string!(entry_pointer, "ElRowW=", w);
+        read_int_from_string!(entry_pointer, "ElRowH=", h);
 
         let rect = &mut curShip.LiftRow_Rect[usize::try_from(elevator_index).unwrap()];
         rect.x = x.try_into().unwrap();
@@ -1065,10 +1056,6 @@ pub unsafe extern "C" fn GetLiftConnections(filename: *mut c_char) -> c_int {
         rect.h = h.try_into().unwrap();
 
         curShip.num_lift_rows += 1;
-        entry_pointer = libc::strstr(
-            entry_pointer,
-            cstr!("Elevator Number=").as_ptr() as *mut c_char,
-        );
     }
 
     //--------------------
@@ -1077,55 +1064,22 @@ pub unsafe extern "C" fn GetLiftConnections(filename: *mut c_char) -> c_int {
     // elevator and console functions.
     //
     curShip.num_level_rects.fill(0); // this initializes zeros for the number
+    entry_pointer = data;
 
-    entry_pointer = libc::strstr(data, cstr!("DeckNr=").as_ptr() as *mut c_char);
-    while entry_pointer.is_null().not() {
-        let mut deck_index: c_int = 0;
-        let mut rect_index: c_int = 0;
-        ReadValueFromString(
-            entry_pointer,
-            cstr!("DeckNr=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut deck_index as *mut _ as *mut c_void,
-        );
-        ReadValueFromString(
-            entry_pointer,
-            cstr!("RectNumber=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut rect_index as *mut _ as *mut c_void,
-        );
+    while {
+        entry_pointer = libc::strstr(entry_pointer, cstr!("DeckNr=").as_ptr() as *mut c_char);
+        entry_pointer.is_null().not()
+    } {
+        read_int_from_string!(entry_pointer, "DeckNr=", deck_index);
+        read_int_from_string!(entry_pointer, "RectNumber=", rect_index);
         entry_pointer = entry_pointer.add(1); // to prevent doubly taking this entry
 
         curShip.num_level_rects[usize::try_from(deck_index).unwrap()] += 1; // count the number of rects for this deck one up
 
-        let mut x: c_int = 0;
-        let mut y: c_int = 0;
-        let mut w: c_int = 0;
-        let mut h: c_int = 0;
-        ReadValueFromString(
-            entry_pointer,
-            cstr!("DeckX=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut x as *mut _ as *mut c_void,
-        );
-        ReadValueFromString(
-            entry_pointer,
-            cstr!("DeckY=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut y as *mut _ as *mut c_void,
-        );
-        ReadValueFromString(
-            entry_pointer,
-            cstr!("DeckW=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut w as *mut _ as *mut c_void,
-        );
-        ReadValueFromString(
-            entry_pointer,
-            cstr!("DeckH=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut h as *mut _ as *mut c_void,
-        );
+        read_int_from_string!(entry_pointer, "DeckX=", x);
+        read_int_from_string!(entry_pointer, "DeckY=", y);
+        read_int_from_string!(entry_pointer, "DeckW=", w);
+        read_int_from_string!(entry_pointer, "DeckH=", h);
 
         let rect = &mut curShip.Level_Rects[usize::try_from(deck_index).unwrap()]
             [usize::try_from(rect_index).unwrap()];
@@ -1133,7 +1087,6 @@ pub unsafe extern "C" fn GetLiftConnections(filename: *mut c_char) -> c_int {
         rect.y = y.try_into().unwrap();
         rect.w = w.try_into().unwrap();
         rect.h = h.try_into().unwrap();
-        entry_pointer = libc::strstr(entry_pointer, cstr!("DeckNr=").as_ptr() as *mut c_char);
     }
 
     entry_pointer = libc::strstr(data, START_OF_LIFT_DATA_STRING.as_ptr() as *mut c_char);
@@ -1142,56 +1095,22 @@ pub unsafe extern "C" fn GetLiftConnections(filename: *mut c_char) -> c_int {
         Terminate(defs::ERR.into());
     }
 
-    entry_pointer = libc::strstr(data, cstr!("Label=").as_ptr() as *mut c_char);
     let mut label: c_int = 0;
-    while entry_pointer.is_null().not() {
-        ReadValueFromString(
-            entry_pointer,
-            cstr!("Label=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut label as *mut _ as *mut c_void,
-        );
+    entry_pointer = data;
+    while {
+        entry_pointer = libc::strstr(entry_pointer, cstr!("Label=").as_ptr() as *mut c_char);
+        entry_pointer.is_null().not()
+    } {
+        read_int_from_string_into!(entry_pointer, "Label=", label);
         let cur_lift = &mut curShip.AllLifts[usize::try_from(label).unwrap()];
         entry_pointer = entry_pointer.add(1); // to avoid doubly taking this entry
 
-        ReadValueFromString(
-            entry_pointer,
-            cstr!("Deck=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut cur_lift.level as *mut _ as *mut c_void,
-        );
-        ReadValueFromString(
-            entry_pointer,
-            cstr!("PosX=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut cur_lift.x as *mut _ as *mut c_void,
-        );
-        ReadValueFromString(
-            entry_pointer,
-            cstr!("PosY=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut cur_lift.y as *mut _ as *mut c_void,
-        );
-        ReadValueFromString(
-            entry_pointer,
-            cstr!("LevelUp=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut cur_lift.up as *mut _ as *mut c_void,
-        );
-        ReadValueFromString(
-            entry_pointer,
-            cstr!("LevelDown=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut cur_lift.down as *mut _ as *mut c_void,
-        );
-        ReadValueFromString(
-            entry_pointer,
-            cstr!("LiftRow=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut cur_lift.lift_row as *mut _ as *mut c_void,
-        );
-
-        entry_pointer = libc::strstr(entry_pointer, cstr!("Label=").as_ptr() as *mut c_char);
+        read_int_from_string_into!(entry_pointer, "Deck=", cur_lift.level);
+        read_int_from_string_into!(entry_pointer, "PosX=", cur_lift.x);
+        read_int_from_string_into!(entry_pointer, "PosY=", cur_lift.y);
+        read_int_from_string_into!(entry_pointer, "LevelUp=", cur_lift.up);
+        read_int_from_string_into!(entry_pointer, "LevelDown=", cur_lift.down);
+        read_int_from_string_into!(entry_pointer, "LiftRow=", cur_lift.lift_row);
     }
 
     curShip.num_lifts = label;

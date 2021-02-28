@@ -275,7 +275,7 @@ pub struct Ship {
     pub AllLevels: [*mut Level; MAX_LEVELS],
     pub AllLifts: [Lift; MAX_LIFTS],
     pub LiftRow_Rect: [SDL_Rect; MAX_LIFT_ROWS], /* the lift-row rectangles */
-    pub Level_Rects: [[SDL_Rect; MAX_LEVELS]; MAX_LEVEL_RECTS], /* level rectangles */
+    pub Level_Rects: [[SDL_Rect; MAX_LEVEL_RECTS]; MAX_LEVELS], /* level rectangles */
     pub num_level_rects: [i32; MAX_LEVELS],      /* how many rects has a level */
 }
 
