@@ -1274,3 +1274,31 @@ pub unsafe extern "C" fn GetAlerts(level: &mut Level) {
         }
     }
 }
+
+/// Returns TRUE (1) for blocks classified as "Walls",
+/// 0 otherwise
+#[no_mangle]
+pub unsafe extern "C" fn IsWallBlock(block: c_int) -> c_int {
+    use MapTile::*;
+    MapTile::try_from(block)
+        .map(|tile| {
+            matches!(
+                tile,
+                Kreuz
+                    | HWall
+                    | VWall
+                    | HZutuere
+                    | VZutuere
+                    | EckLu
+                    | TU
+                    | EckRu
+                    | TL
+                    | TR
+                    | EckLo
+                    | TO
+                    | EckRo
+            )
+        })
+        .unwrap_or(false)
+        .into()
+}

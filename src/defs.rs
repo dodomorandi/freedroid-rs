@@ -19,8 +19,7 @@ use sdl::{
     sdl::Rect,
     video::ll::{SDL_FreeSurface, SDL_Surface},
 };
-use static_assertions::const_assert;
-use std::{convert::TryFrom, ffi::CStr, mem, os::raw::c_int};
+use std::{convert::TryFrom, ffi::CStr, os::raw::c_int};
 
 pub const MAX_THEMES: usize = 100;
 
@@ -618,9 +617,6 @@ pub enum Direction {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct InvalidDirection;
 
-const_assert!(Direction::Oben as u8 == 0);
-const_assert!(Direction::Light as u8 == 9);
-
 macro_rules! direction_try_from {
     () => {};
 
@@ -629,11 +625,20 @@ macro_rules! direction_try_from {
             type Error = InvalidDirection;
 
             fn try_from(value: $ty) -> Result<Self, Self::Error> {
-                if value >= 0 && value <= 9 {
-                    Ok(unsafe { mem::transmute(value as i32) })
-                } else {
-                    Err(InvalidDirection)
-                }
+                use Direction::*;
+                Ok(match value {
+                    0 => Oben,
+                    1 => Rechtsoben,
+                    2 => Rechts,
+                    3 => Rechtsunten,
+                    4 => Unten,
+                    5 => Linksunten,
+                    6 => Links,
+                    7 => Linksoben,
+                    8 => Center,
+                    9 => Light,
+                    _ => return Err(InvalidDirection),
+                })
             }
         }
 
@@ -824,18 +829,72 @@ pub enum MapTile {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct InvalidFrameType;
+pub struct InvalidMapTile;
 
-impl TryFrom<u8> for MapTile {
-    type Error = InvalidFrameType;
+macro_rules! impl_try_from_map_tile {
+    () => {};
 
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        const_assert!(MapTile::Floor as u8 == 0);
-        const_assert!(MapTile::NumMapTiles as u8 == 44);
-        if value < 44 {
-            Ok(unsafe { mem::transmute(value as i32) })
-        } else {
-            Err(InvalidFrameType)
+    ($ty:ty $(, $rest:ty)* $(,)*) => {
+        impl TryFrom<$ty> for MapTile {
+            type Error = InvalidMapTile;
+
+            fn try_from(value: $ty) -> Result<Self, Self::Error> {
+                use MapTile::*;
+                Ok(match value {
+                    0 => Floor,
+                    1 => EckLu,
+                    2 => TU,
+                    3 => EckRu,
+                    4 => TL,
+                    5 => Kreuz,
+                    6 => TR,
+                    7 => EckLo,
+                    8 => TO,
+                    9 => EckRo,
+                    10 => HWall,
+                    11 => VWall,
+                    12 => Invisible,
+                    13 => Block1,
+                    14 => Block2,
+                    15 => Block3,
+                    16 => Block4,
+                    17 => Block5,
+                    18 => HZutuere,
+                    19 => HHalbtuere1,
+                    20 => HHalbtuere2,
+                    21 => HHalbtuere3,
+                    22 => HGanztuere,
+                    23 => KonsoleL,
+                    24 => KonsoleR,
+                    25 => KonsoleO,
+                    26 => KonsoleU,
+                    27 => VZutuere,
+                    28 => VHalbtuere1,
+                    29 => VHalbtuere2,
+                    30 => VHalbtuere3,
+                    31 => VGanztuere,
+                    32 => Lift,
+                    33 => Void,
+                    34 => Refresh1,
+                    35 => Refresh2,
+                    36 => Refresh3,
+                    37 => Refresh4,
+                    38 => AlertGreen,
+                    39 => AlertYellow,
+                    40 => AlertAmber,
+                    41 => AlertRed,
+                    42 => Unused2,
+                    43 => FineGrid,
+                    44 => NumMapTiles,
+                    _ => return Err(InvalidMapTile),
+                })
+            }
         }
-    }
+
+        $(
+            impl_try_from_map_tile!($rest);
+        )*
+    };
 }
+
+impl_try_from_map_tile!(i8, u8, c_int);

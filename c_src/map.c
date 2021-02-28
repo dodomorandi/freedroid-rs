@@ -846,29 +846,29 @@ Of course the level data must be in the structure already!!
   IsWallBlock():  Returns TRUE (1) for blocks classified as "Walls",
   		  0 otherwise
  ======================================================================*/
-int
-IsWallBlock (int block)
-{
-  switch (block)
-    {
-    case KREUZ:
-    case H_WALL:
-    case V_WALL:
-    case H_ZUTUERE:
-    case V_ZUTUERE:
-    case ECK_LU:
-    case T_U:
-    case ECK_RU:
-    case T_L:
-    case T_R:
-    case ECK_LO:
-    case T_O:
-    case ECK_RO:
-      return (TRUE);
-    default:
-      return (FALSE);
-    }				// switch
-}				// IsWallBlock()
+// int
+// IsWallBlock (int block)
+// {
+//   switch (block)
+//     {
+//     case KREUZ:
+//     case H_WALL:
+//     case V_WALL:
+//     case H_ZUTUERE:
+//     case V_ZUTUERE:
+//     case ECK_LU:
+//     case T_U:
+//     case ECK_RU:
+//     case T_L:
+//     case T_R:
+//     case ECK_LO:
+//     case T_O:
+//     case ECK_RO:
+//       return (TRUE);
+//     default:
+//       return (FALSE);
+//     }				// switch
+// }				// IsWallBlock()
 
 /*----------------------------------------------------------------------
  * close all doors and set refreshes to first phase for "canonical map"
