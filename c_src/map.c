@@ -540,132 +540,132 @@ LoadShip (char *filename)
  *
  *	@Ret:  Level or NULL
 * $Function----------------------------------------------------------*/
-Level
-LevelToStruct (char *data)
-{
-  Level loadlevel;
-  char *map_begin, *wp_begin, *level_end;
-  char *this_line, *next_line;
-  char *pos;
-  int i;
-  int nr, x, y;
-  int k;
-  int connection;
-  char* DataPointer;
-  int res;
-  int tmp;
-
-  /* Get the memory for one level */
-  loadlevel = (Level) MyMalloc (sizeof (level));
-
-  loadlevel->empty = FALSE;
-
-  DebugPrintf (2, "\n-----------------------------------------------------------------");
-  DebugPrintf (2, "\nStarting to process information for another level:\n");
-
-  /* Read Header Data: levelnum and x/ylen */
-  DataPointer = strstr( data , "Levelnumber:" );
-  if ( DataPointer == NULL )
-    {
-      DebugPrintf( 0 , "No Levelnumber entry found! Terminating! ");
-      Terminate(ERR);
-    }
-  sscanf ( DataPointer , "Levelnumber: %u \n xlen of this level: %u \n ylen of this level: %u \n color of this level: %u",
-	  &(loadlevel->levelnum), &(loadlevel->xlen),
-	  &(loadlevel->ylen), &(loadlevel->color));
-
-  DebugPrintf( 2 , "\nLevelnumber : %d ", loadlevel->levelnum );
-  DebugPrintf( 2 , "\nxlen of this level: %d ", loadlevel->xlen );
-  DebugPrintf( 2 , "\nylen of this level: %d ", loadlevel->ylen );
-  DebugPrintf( 2 , "\ncolor of this level: %d ", loadlevel->ylen );
-
-  loadlevel->Levelname = ReadAndMallocStringFromData ( data , LEVEL_NAME_STRING , "\n" );
-  loadlevel->Background_Song_Name = ReadAndMallocStringFromData ( data , BACKGROUND_SONG_NAME_STRING , "\n" );
-  loadlevel->Level_Enter_Comment = ReadAndMallocStringFromData ( data , LEVEL_ENTER_COMMENT_STRING , "\n" );
-
-  // find the map data
-  if ((map_begin = strstr (data, MAP_BEGIN_STRING)) == NULL)
-    return(NULL);
-
-  /* set position to Waypoint-Data */
-  if ((wp_begin = strstr (data, WP_BEGIN_STRING)) == NULL)
-    return(NULL);
-
-  // find end of level-data
-  if ((level_end = strstr (data, LEVEL_END_STRING)) == NULL)
-    return(NULL);
-
-  /* now scan the map */
-  next_line = map_begin;
-  this_line = strtok (next_line, "\n");
-
-  /* read MapData */
-  for (i = 0; i < loadlevel->ylen; i++)
-    {
-      if ((this_line = strtok (NULL, "\n")) == NULL)
-	return(NULL);
-      loadlevel->map[i] = MyMalloc( loadlevel->xlen * sizeof( loadlevel->map[0][0] ) );
-      pos = this_line;
-      pos += strspn (pos, WHITE_SPACE);  // skip initial whitespace
-
-      for (k=0; k < loadlevel->xlen; k++)
-	{
-	  if (*pos == '\0')
-	    return (NULL);
-	  res = sscanf (pos, "%d", &tmp);
-          *(loadlevel->map[i]+k) = (char)tmp;
-	  if ( (res == 0) || (res == EOF) )
-	    return (NULL);
-	  pos += strcspn (pos, WHITE_SPACE);  // skip last token
-	  pos += strspn (pos, WHITE_SPACE);   // skip initial whitespace of next one
-
-	}
-    }
-
-  /* Get Waypoints */
-  next_line = wp_begin;
-  this_line = strtok (next_line, "\n");
-
-  for (i=0; i<MAXWAYPOINTS ; i++)
-    {
-      if ( (this_line = strtok (NULL, "\n")) == NULL)
-	return (NULL);
-      if (this_line == level_end)
-	{
-	  loadlevel->num_waypoints = i;
-	  break;
-	}
-
-      sscanf( this_line , "Nr.=%d \t x=%d \t y=%d" , &nr , &x , &y );
-
-      loadlevel->AllWaypoints[i].x=x;
-      loadlevel->AllWaypoints[i].y=y;
-
-      pos = strstr (this_line, CONNECTION_STRING);
-      pos += strlen (CONNECTION_STRING);	// skip connection-string
-      pos += strspn (pos, WHITE_SPACE); 		// skip initial whitespace
-
-      for ( k=0 ; k<MAX_WP_CONNECTIONS ; k++ )
-	{
-	  if (*pos == '\0')
-	    break;
-	  res = sscanf( pos , "%d" , &connection );
-	  if ( (connection == -1) || (res == 0) || (res == EOF) )
-	    break;
-	  loadlevel->AllWaypoints[i].connections[k]=connection;
-
-	  pos += strcspn (pos, WHITE_SPACE); // skip last token
-	  pos += strspn (pos, WHITE_SPACE);  // skip initial whitespace for next one
-
-	} // for k < MAX_WP_CONNECTIONS
-
-      loadlevel->AllWaypoints[i].num_connections = k;
-
-    } // for i < MAXWAYPOINTS
-
-  return (loadlevel);
-
-} /* LevelToStruct */
+// Level
+// LevelToStruct (char *data)
+// {
+//   Level loadlevel;
+//   char *map_begin, *wp_begin, *level_end;
+//   char *this_line, *next_line;
+//   char *pos;
+//   int i;
+//   int nr, x, y;
+//   int k;
+//   int connection;
+//   char* DataPointer;
+//   int res;
+//   int tmp;
+// 
+//   /* Get the memory for one level */
+//   loadlevel = (Level) MyMalloc (sizeof (level));
+// 
+//   loadlevel->empty = FALSE;
+// 
+//   DebugPrintf (2, "\n-----------------------------------------------------------------");
+//   DebugPrintf (2, "\nStarting to process information for another level:\n");
+// 
+//   /* Read Header Data: levelnum and x/ylen */
+//   DataPointer = strstr( data , "Levelnumber:" );
+//   if ( DataPointer == NULL )
+//     {
+//       DebugPrintf( 0 , "No Levelnumber entry found! Terminating! ");
+//       Terminate(ERR);
+//     }
+//   sscanf ( DataPointer , "Levelnumber: %u \n xlen of this level: %u \n ylen of this level: %u \n color of this level: %u",
+// 	  &(loadlevel->levelnum), &(loadlevel->xlen),
+// 	  &(loadlevel->ylen), &(loadlevel->color));
+// 
+//   DebugPrintf( 2 , "\nLevelnumber : %d ", loadlevel->levelnum );
+//   DebugPrintf( 2 , "\nxlen of this level: %d ", loadlevel->xlen );
+//   DebugPrintf( 2 , "\nylen of this level: %d ", loadlevel->ylen );
+//   DebugPrintf( 2 , "\ncolor of this level: %d ", loadlevel->ylen );
+// 
+//   loadlevel->Levelname = ReadAndMallocStringFromData ( data , LEVEL_NAME_STRING , "\n" );
+//   loadlevel->Background_Song_Name = ReadAndMallocStringFromData ( data , BACKGROUND_SONG_NAME_STRING , "\n" );
+//   loadlevel->Level_Enter_Comment = ReadAndMallocStringFromData ( data , LEVEL_ENTER_COMMENT_STRING , "\n" );
+// 
+//   // find the map data
+//   if ((map_begin = strstr (data, MAP_BEGIN_STRING)) == NULL)
+//     return(NULL);
+// 
+//   /* set position to Waypoint-Data */
+//   if ((wp_begin = strstr (data, WP_BEGIN_STRING)) == NULL)
+//     return(NULL);
+// 
+//   // find end of level-data
+//   if ((level_end = strstr (data, LEVEL_END_STRING)) == NULL)
+//     return(NULL);
+// 
+//   /* now scan the map */
+//   next_line = map_begin;
+//   this_line = strtok (next_line, "\n");
+// 
+//   /* read MapData */
+//   for (i = 0; i < loadlevel->ylen; i++)
+//     {
+//       if ((this_line = strtok (NULL, "\n")) == NULL)
+// 	return(NULL);
+//       loadlevel->map[i] = MyMalloc( loadlevel->xlen * sizeof( loadlevel->map[0][0] ) );
+//       pos = this_line;
+//       pos += strspn (pos, WHITE_SPACE);  // skip initial whitespace
+// 
+//       for (k=0; k < loadlevel->xlen; k++)
+// 	{
+// 	  if (*pos == '\0')
+// 	    return (NULL);
+// 	  res = sscanf (pos, "%d", &tmp);
+//           *(loadlevel->map[i]+k) = (char)tmp;
+// 	  if ( (res == 0) || (res == EOF) )
+// 	    return (NULL);
+// 	  pos += strcspn (pos, WHITE_SPACE);  // skip last token
+// 	  pos += strspn (pos, WHITE_SPACE);   // skip initial whitespace of next one
+// 
+// 	}
+//     }
+// 
+//   /* Get Waypoints */
+//   next_line = wp_begin;
+//   this_line = strtok (next_line, "\n");
+// 
+//   for (i=0; i<MAXWAYPOINTS ; i++)
+//     {
+//       if ( (this_line = strtok (NULL, "\n")) == NULL)
+// 	return (NULL);
+//       if (this_line == level_end)
+// 	{
+// 	  loadlevel->num_waypoints = i;
+// 	  break;
+// 	}
+// 
+//       sscanf( this_line , "Nr.=%d \t x=%d \t y=%d" , &nr , &x , &y );
+// 
+//       loadlevel->AllWaypoints[i].x=x;
+//       loadlevel->AllWaypoints[i].y=y;
+// 
+//       pos = strstr (this_line, CONNECTION_STRING);
+//       pos += strlen (CONNECTION_STRING);	// skip connection-string
+//       pos += strspn (pos, WHITE_SPACE); 		// skip initial whitespace
+// 
+//       for ( k=0 ; k<MAX_WP_CONNECTIONS ; k++ )
+// 	{
+// 	  if (*pos == '\0')
+// 	    break;
+// 	  res = sscanf( pos , "%d" , &connection );
+// 	  if ( (connection == -1) || (res == 0) || (res == EOF) )
+// 	    break;
+// 	  loadlevel->AllWaypoints[i].connections[k]=connection;
+// 
+// 	  pos += strcspn (pos, WHITE_SPACE); // skip last token
+// 	  pos += strspn (pos, WHITE_SPACE);  // skip initial whitespace for next one
+// 
+// 	} // for k < MAX_WP_CONNECTIONS
+// 
+//       loadlevel->AllWaypoints[i].num_connections = k;
+// 
+//     } // for i < MAXWAYPOINTS
+// 
+//   return (loadlevel);
+// 
+// } /* LevelToStruct */
 
 
 

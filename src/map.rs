@@ -1,7 +1,7 @@
 use crate::{
     curShip,
     defs::{
-        self, Criticality, Direction, MapTile, Status, Themed, DIRECTIONS, MAP_DIR_C,
+        self, Criticality, Direction, MapTile, Status, Themed, DIRECTIONS, MAP_DIR_C, MAXWAYPOINTS,
         MAX_ALERTS_ON_LEVEL, MAX_ENEMYS_ON_SHIP, MAX_REFRESHES_ON_LEVEL,
     },
     enemy::ClearEnemys,
@@ -11,7 +11,7 @@ use crate::{
     menu::SHIP_EXT,
     misc::{
         find_file, Frame_Time, LocateStringInData, MyMalloc, MyRandom,
-        ReadAndMallocAndTerminateFile, ReadValueFromString, Terminate,
+        ReadAndMallocAndTerminateFile, ReadAndMallocStringFromData, ReadValueFromString, Terminate,
     },
     structs::{Finepoint, GrobPoint, Level},
     vars::Block_Rect,
@@ -26,12 +26,15 @@ use std::{
     ffi::CStr,
     ops::Not,
     os::raw::{c_char, c_float, c_int, c_uchar, c_void},
+    ptr::null_mut,
 };
 
 extern "C" {
     pub static ColorNames: [*const c_char; 7];
     pub static numLevelColors: c_int;
 }
+
+const WHITE_SPACE: &CStr = cstr!(" \t");
 
 const WALLPASS: f32 = 4_f32 / 64.;
 
@@ -47,12 +50,20 @@ const H_RANDBREITE: f32 = 5_f32 / 64.;
 
 const AREA_NAME_STRING: &str = "Area name=\"";
 const LEVEL_NAME_STRING: &str = "Name of this level=";
+const LEVEL_NAME_STRING_C: &CStr = cstr!("Name of this level=");
 const LEVEL_ENTER_COMMENT_STRING: &str = "Comment of the Influencer on entering this level=\"";
+const LEVEL_ENTER_COMMENT_STRING_C: &CStr =
+    cstr!("Comment of the Influencer on entering this level=\"");
 const BACKGROUND_SONG_NAME_STRING: &str = "Name of background song for this level=";
+const BACKGROUND_SONG_NAME_STRING_C: &CStr = cstr!("Name of background song for this level=");
 const MAP_BEGIN_STRING: &str = "begin_map";
+const MAP_BEGIN_STRING_C: &CStr = cstr!("begin_map");
 const WP_BEGIN_STRING: &str = "begin_waypoints";
+const WP_BEGIN_STRING_C: &CStr = cstr!("begin_waypoints");
 const LEVEL_END_STRING: &str = "end_level";
+const LEVEL_END_STRING_C: &CStr = cstr!("end_level");
 const CONNECTION_STRING: &str = "connections: ";
+const CONNECTION_STRING_C: &CStr = cstr!("connections: ");
 
 /// Determines wether object on x/y is visible to the 001 or not
 #[no_mangle]
@@ -1301,4 +1312,166 @@ pub unsafe extern "C" fn IsWallBlock(block: c_int) -> c_int {
         })
         .unwrap_or(false)
         .into()
+}
+
+/// This function is for LOADING map data!
+/// This function extracts the data from *data and writes them
+/// into a Level-struct:
+///
+/// Doors and Waypoints Arrays are initialized too
+#[no_mangle]
+pub unsafe extern "C" fn LevelToStruct(data: *mut c_char) -> *mut Level {
+    /* Get the memory for one level */
+    let loadlevel_ptr = MyMalloc(std::mem::size_of::<Level>().try_into().unwrap()) as *mut Level;
+    let loadlevel = &mut *loadlevel_ptr;
+
+    loadlevel.empty = false.into();
+
+    info!("Starting to process information for another level:");
+
+    /* Read Header Data: levelnum and x/ylen */
+    let data_pointer = libc::strstr(data, cstr!("Levelnumber:").as_ptr() as *mut c_char);
+    if data_pointer.is_null() {
+        error!("No Levelnumber entry found! Terminating! ");
+        Terminate(defs::ERR.into());
+    }
+    libc::sscanf(
+        data_pointer,
+        cstr!(
+            "Levelnumber: %u \n xlen of this level: %u \n ylen of this level: %u \n color of this \
+             level: %u"
+        )
+        .as_ptr(),
+        &mut (loadlevel.levelnum) as *mut _ as *mut c_void,
+        &mut (loadlevel.xlen) as *mut _ as *mut c_void,
+        &mut (loadlevel.ylen) as *mut _ as *mut c_void,
+        &mut (loadlevel.color) as *mut _ as *mut c_void,
+    );
+
+    info!("Levelnumber : {} ", loadlevel.levelnum);
+    info!("xlen of this level: {} ", loadlevel.xlen);
+    info!("ylen of this level: {} ", loadlevel.ylen);
+    info!("color of this level: {} ", loadlevel.ylen);
+
+    loadlevel.Levelname = ReadAndMallocStringFromData(
+        data,
+        LEVEL_NAME_STRING_C.as_ptr() as *mut c_char,
+        cstr!("\n").as_ptr() as *mut c_char,
+    );
+    loadlevel.Background_Song_Name = ReadAndMallocStringFromData(
+        data,
+        BACKGROUND_SONG_NAME_STRING_C.as_ptr() as *mut c_char,
+        cstr!("\n").as_ptr() as *mut c_char,
+    );
+    loadlevel.Level_Enter_Comment = ReadAndMallocStringFromData(
+        data,
+        LEVEL_ENTER_COMMENT_STRING_C.as_ptr() as *mut c_char,
+        cstr!("\n").as_ptr() as *mut c_char,
+    );
+
+    // find the map data
+    let map_begin = libc::strstr(data, MAP_BEGIN_STRING_C.as_ptr());
+    if map_begin.is_null() {
+        return null_mut();
+    }
+
+    /* set position to Waypoint-Data */
+    let wp_begin = libc::strstr(data, WP_BEGIN_STRING_C.as_ptr());
+    if wp_begin.is_null() {
+        return null_mut();
+    }
+
+    // find end of level-data
+    let level_end = libc::strstr(data, LEVEL_END_STRING_C.as_ptr());
+    if level_end.is_null() {
+        return null_mut();
+    }
+
+    /* now scan the map */
+    let mut next_line = map_begin;
+    libc::strtok(next_line, cstr!("\n").as_ptr());
+
+    /* read MapData */
+    for i in 0..usize::try_from(loadlevel.ylen).unwrap() {
+        let this_line = libc::strtok(null_mut(), cstr!("\n").as_ptr());
+        if this_line.is_null() {
+            return null_mut();
+        }
+        loadlevel.map[i] = MyMalloc(loadlevel.xlen.try_into().unwrap()) as *mut c_char;
+        let mut pos = this_line;
+        pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace
+
+        for k in 0..usize::try_from(loadlevel.xlen).unwrap() {
+            if *pos == 0 {
+                return null_mut();
+            }
+            let mut tmp: c_int = 0;
+            let res = libc::sscanf(pos, cstr!("%d").as_ptr(), &mut tmp as *mut _ as *mut c_void);
+            *(loadlevel.map[i].add(k)) = tmp as c_char;
+            if res == 0 || res == libc::EOF {
+                return null_mut();
+            }
+            pos = pos.add(libc::strcspn(pos, WHITE_SPACE.as_ptr())); // skip last token
+            pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace of next one
+        }
+    }
+
+    /* Get Waypoints */
+    next_line = wp_begin;
+    libc::strtok(next_line, cstr!("\n").as_ptr());
+
+    for i in 0..MAXWAYPOINTS {
+        let this_line = libc::strtok(null_mut(), cstr!("\n").as_ptr());
+        if this_line.is_null() {
+            return null_mut();
+        }
+        if this_line == level_end {
+            loadlevel.num_waypoints = i.try_into().unwrap();
+            break;
+        }
+
+        let mut nr: c_int = 0;
+        let mut x: c_int = 0;
+        let mut y: c_int = 0;
+        libc::sscanf(
+            this_line,
+            cstr!("Nr.=%d \t x=%d \t y=%d").as_ptr(),
+            &mut nr as *mut _ as *mut c_void,
+            &mut x as *mut _ as *mut c_void,
+            &mut y as *mut _ as *mut c_void,
+        );
+
+        loadlevel.AllWaypoints[i].x = x.try_into().unwrap();
+        loadlevel.AllWaypoints[i].y = y.try_into().unwrap();
+
+        let mut pos = libc::strstr(this_line, CONNECTION_STRING_C.as_ptr());
+        pos = pos.add(libc::strlen(CONNECTION_STRING_C.as_ptr())); // skip connection-string
+        pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace
+
+        let mut k = 0;
+        while k < MAX_WP_CONNECTIONS {
+            if *pos == 0 {
+                break;
+            }
+            let mut connection: c_int = 0;
+            let res = libc::sscanf(
+                pos,
+                cstr!("%d").as_ptr(),
+                &mut connection as *mut _ as *mut c_void,
+            );
+            if connection == -1 || res == 0 || res == libc::EOF {
+                break;
+            }
+            loadlevel.AllWaypoints[i].connections[k] = connection;
+
+            pos = pos.add(libc::strcspn(pos, WHITE_SPACE.as_ptr())); // skip last token
+            pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace for next one
+
+            k += 1;
+        }
+
+        loadlevel.AllWaypoints[i].num_connections = k.try_into().unwrap();
+    }
+
+    loadlevel_ptr
 }
