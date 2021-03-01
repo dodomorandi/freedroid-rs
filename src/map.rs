@@ -6,13 +6,16 @@ use crate::{
     },
     enemy::ClearEnemys,
     global::{
-        Droid_Radius, Druidmap, LevelDoorsNotMovedTime, Time_For_Each_Phase_Of_Door_Movement,
+        Droid_Radius, Druidmap, GameConfig, LevelDoorsNotMovedTime,
+        Time_For_Each_Phase_Of_Door_Movement,
     },
+    influencer::RefreshInfluencer,
     menu::SHIP_EXT,
     misc::{
         find_file, Frame_Time, LocateStringInData, MyMalloc, MyRandom,
         ReadAndMallocAndTerminateFile, ReadAndMallocStringFromData, ReadValueFromString, Terminate,
     },
+    ship::{EnterKonsole, EnterLift},
     structs::{Finepoint, GrobPoint, Level},
     vars::Block_Rect,
     AllEnemys, CurLevel, Me, NumEnemys, Number_Of_Droid_Types,
@@ -1546,4 +1549,45 @@ pub unsafe extern "C" fn LoadShip(filename: *mut c_char) -> c_int {
     libc::free(ship_data as *mut c_void);
 
     defs::OK.into()
+}
+
+/// ActSpecialField: checks Influencer on SpecialFields like
+/// Lifts and Konsoles and acts on it
+#[no_mangle]
+pub unsafe extern "C" fn ActSpecialField(x: c_float, y: c_float) {
+    let map_tile = GetMapBrick(&*CurLevel, x, y);
+
+    let myspeed2 = Me.speed.x * Me.speed.x + Me.speed.y * Me.speed.y;
+
+    if let Ok(map_tile) = MapTile::try_from(map_tile) {
+        use MapTile::*;
+        match map_tile {
+            Lift => {
+                if myspeed2 <= 1.0
+                    && (Me.status == Status::Activate as c_int
+                        || (GameConfig.TakeoverActivates != 0
+                            && Me.status == Status::Transfermode as c_int))
+                {
+                    let cx = x.round() - x;
+                    let cy = y.round() - y;
+
+                    if cx * cx + cy * cy < Droid_Radius * Droid_Radius {
+                        EnterLift();
+                    }
+                }
+            }
+
+            KonsoleR | KonsoleL | KonsoleO | KonsoleU => {
+                if myspeed2 <= 1.0
+                    && (Me.status == Status::Activate as c_int
+                        || (GameConfig.TakeoverActivates != 0
+                            && Me.status == Status::Transfermode as c_int))
+                {
+                    EnterKonsole();
+                }
+            }
+            Refresh1 | Refresh2 | Refresh3 | Refresh4 => RefreshInfluencer(),
+            _ => {}
+        }
+    }
 }

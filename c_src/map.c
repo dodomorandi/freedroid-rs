@@ -124,65 +124,65 @@ Lifts and Konsoles and acts on it
 @Ret: void
 @Int:
 * $Function----------------------------------------------------------*/
-void
-ActSpecialField (float x, float y)
-{
-  unsigned char MapBrick;
-  float cx, cy;			/* tmp: NullPunkt im Blockzentrum */
-  float myspeed2;
-
-  DebugPrintf (2, "\nvoid ActSpecialField(int x, int y):  Real function call confirmed.");
-
-  MapBrick = GetMapBrick (CurLevel, x, y);
-
-  myspeed2 = Me.speed.x*Me.speed.x + Me.speed.y*Me.speed.y;
-
-  switch (MapBrick)
-    {
-    case LIFT:
-      if ( myspeed2 > 1.0 )
-	break;
-
-      if ( (Me.status == ACTIVATE) || (GameConfig.TakeoverActivates && (Me.status==TRANSFERMODE)) )
-	{
-	  cx = rintf(x) - x ;
-	  cy = rintf(y) - y ;
-
-	  /* Lift nur betreten, wenn ca. im Zentrum */
-	  if ((cx * cx + cy * cy) < Droid_Radius * Droid_Radius)
-	    EnterLift ();
-	}
-
-      break;
-
-    case KONSOLE_R:
-    case KONSOLE_L:
-    case KONSOLE_O:
-    case KONSOLE_U:
-      if (myspeed2 > 1.0)
-	break;
-      if ( (Me.status == ACTIVATE) || (GameConfig.TakeoverActivates && (Me.status==TRANSFERMODE)))
-	{
-	  EnterKonsole ();
-	  DebugPrintf (2, "\nvoid ActSpecialField(int x, int y):  Back from EnterKonsole().\n");
-	}
-      break;
-
-
-    case REFRESH1:
-    case REFRESH2:
-    case REFRESH3:
-    case REFRESH4:
-      RefreshInfluencer ();
-      break;
-
-    default:
-      break;
-    }				/* switch */
-
-  DebugPrintf (2, "\nvoid ActSpecialField(int x, int y):  end of function reached.");
-
-} /* ActSpecialField */
+// void
+// ActSpecialField (float x, float y)
+// {
+//   unsigned char MapBrick;
+//   float cx, cy;			/* tmp: NullPunkt im Blockzentrum */
+//   float myspeed2;
+// 
+//   DebugPrintf (2, "\nvoid ActSpecialField(int x, int y):  Real function call confirmed.");
+// 
+//   MapBrick = GetMapBrick (CurLevel, x, y);
+// 
+//   myspeed2 = Me.speed.x*Me.speed.x + Me.speed.y*Me.speed.y;
+// 
+//   switch (MapBrick)
+//     {
+//     case LIFT:
+//       if ( myspeed2 > 1.0 )
+// 	break;
+// 
+//       if ( (Me.status == ACTIVATE) || (GameConfig.TakeoverActivates && (Me.status==TRANSFERMODE)) )
+// 	{
+// 	  cx = rintf(x) - x ;
+// 	  cy = rintf(y) - y ;
+// 
+// 	  /* Lift nur betreten, wenn ca. im Zentrum */
+// 	  if ((cx * cx + cy * cy) < Droid_Radius * Droid_Radius)
+// 	    EnterLift ();
+// 	}
+// 
+//       break;
+// 
+//     case KONSOLE_R:
+//     case KONSOLE_L:
+//     case KONSOLE_O:
+//     case KONSOLE_U:
+//       if (myspeed2 > 1.0)
+// 	break;
+//       if ( (Me.status == ACTIVATE) || (GameConfig.TakeoverActivates && (Me.status==TRANSFERMODE)))
+// 	{
+// 	  EnterKonsole ();
+// 	  DebugPrintf (2, "\nvoid ActSpecialField(int x, int y):  Back from EnterKonsole().\n");
+// 	}
+//       break;
+// 
+// 
+//     case REFRESH1:
+//     case REFRESH2:
+//     case REFRESH3:
+//     case REFRESH4:
+//       RefreshInfluencer ();
+//       break;
+// 
+//     default:
+//       break;
+//     }				/* switch */
+// 
+//   DebugPrintf (2, "\nvoid ActSpecialField(int x, int y):  end of function reached.");
+// 
+// } /* ActSpecialField */
 
 /*@Function============================================================
 @Desc: 	AnimateRefresh():

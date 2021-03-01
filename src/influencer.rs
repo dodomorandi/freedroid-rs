@@ -3,4 +3,5 @@ extern "C" {
     pub fn CheckInfluenceEnemyCollision();
     pub fn CheckInfluenceWallCollisions();
     pub fn MoveInfluence();
+    pub fn RefreshInfluencer();
 }
