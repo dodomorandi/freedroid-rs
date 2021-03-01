@@ -33,7 +33,7 @@ use crate::{
         KeyIsPressedR, SDL_Delay, WheelDownPressed, WheelUpPressed,
     },
     level_editor::LevelEditor,
-    map::{numLevelColors, ColorNames, SaveShip},
+    map::{SaveShip, COLOR_NAMES},
     misc::{
         find_file, Activate_Conservative_Frame_Computation, Armageddon, MyMalloc, Teleport,
         Terminate,
@@ -1630,9 +1630,15 @@ pub unsafe extern "C" fn handle_LE_LevelNumber(action: MenuAction) -> *const c_c
 pub unsafe extern "C" fn handle_LE_Color(action: MenuAction) -> *const c_char {
     let cur_level = &mut *CurLevel;
     if action == MenuAction::INFO {
-        return ColorNames[usize::try_from(cur_level.color).unwrap()];
+        return COLOR_NAMES[usize::try_from(cur_level.color).unwrap()].as_ptr();
     }
-    menuChangeInt(action, &mut cur_level.color, 1, 0, numLevelColors - 1);
+    menuChangeInt(
+        action,
+        &mut cur_level.color,
+        1,
+        0,
+        c_int::try_from(COLOR_NAMES.len()).unwrap() - 1,
+    );
     Switch_Background_Music_To(BYCOLOR.as_ptr());
     InitiateMenu(false);
 

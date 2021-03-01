@@ -32,10 +32,15 @@ use std::{
     ptr::null_mut,
 };
 
-extern "C" {
-    pub static ColorNames: [*const c_char; 7];
-    pub static numLevelColors: c_int;
-}
+pub const COLOR_NAMES: [&CStr; 7] = [
+    cstr!("Red"),
+    cstr!("Yellow"),
+    cstr!("Green"),
+    cstr!("Gray"),
+    cstr!("Blue"),
+    cstr!("Turquoise"),
+    cstr!("Dark"),
+];
 
 const WHITE_SPACE: &CStr = cstr!(" \t");
 
