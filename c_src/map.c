@@ -237,69 +237,69 @@ ActSpecialField (float x, float y)
 @Ret: OK | ERR
 @Int:
 * $Function----------------------------------------------------------*/
-int
-LoadShip (char *filename)
-{
-  char *fpath;
-  char *ShipData;
-  char *endpt;				/* Pointer to end-strings */
-  char *LevelStart[MAX_LEVELS];		/* Pointer to a level-start */
-  int level_anz;
-  char *Buffer;
-  int i;
-
-  FreeShipMemory();	// clear vestiges of previous ship data, if any
-
-  /* Read the whole ship-data to memory */
-#define END_OF_SHIP_DATA_STRING "*** End of Ship Data ***"
-  fpath = find_file (filename, MAP_DIR, NO_THEME, CRITICAL);
-  ShipData = ReadAndMallocAndTerminateFile( fpath , END_OF_SHIP_DATA_STRING ) ;
-
-  //--------------------
-  // Now we read the Area-name from the loaded data
-  //
-  Buffer = ReadAndMallocStringFromData (ShipData, AREA_NAME_STRING, "\"");
-  strncpy (curShip.AreaName, Buffer, 99);
-  curShip.AreaName[99]='\0';
-  free (Buffer);
-
-  //--------------------
-  // Now we count the number of levels and remember their start-addresses.
-  // This is done by searching for the LEVEL_END_STRING again and again
-  // until it is no longer found in the ship file.  good.
-  //
-
-  level_anz = 0;
-  endpt = ShipData;
-  LevelStart[level_anz] = ShipData;
-
-  while ((endpt = strstr (endpt, LEVEL_END_STRING)) != NULL)
-    {
-      endpt += strlen (LEVEL_END_STRING);
-      level_anz++;
-      LevelStart[level_anz] = endpt + 1;
-    }
-
-  /* init the level-structs */
-  curShip.num_levels = level_anz;
-
-  for (i = 0; i < curShip.num_levels; i++)
-    {
-      curShip.AllLevels[i] = LevelToStruct (LevelStart[i]);
-
-      if (curShip.AllLevels[i] == NULL)
-	{
-	  DebugPrintf (0, "ERROR: reading of level %d failed\n", i);
-	  return (ERR);
-	}
-      InterpretMap (curShip.AllLevels[i]); // initialize doors, refreshes and lifts
-    }
-
-  free (ShipData);
-
-  return OK;
-
-} /* LoadShip () */
+// int
+// LoadShip (char *filename)
+// {
+//   char *fpath;
+//   char *ShipData;
+//   char *endpt;				/* Pointer to end-strings */
+//   char *LevelStart[MAX_LEVELS];		/* Pointer to a level-start */
+//   int level_anz;
+//   char *Buffer;
+//   int i;
+// 
+//   FreeShipMemory();	// clear vestiges of previous ship data, if any
+// 
+//   /* Read the whole ship-data to memory */
+// #define END_OF_SHIP_DATA_STRING "*** End of Ship Data ***"
+//   fpath = find_file (filename, MAP_DIR, NO_THEME, CRITICAL);
+//   ShipData = ReadAndMallocAndTerminateFile( fpath , END_OF_SHIP_DATA_STRING ) ;
+// 
+//   //--------------------
+//   // Now we read the Area-name from the loaded data
+//   //
+//   Buffer = ReadAndMallocStringFromData (ShipData, AREA_NAME_STRING, "\"");
+//   strncpy (curShip.AreaName, Buffer, 99);
+//   curShip.AreaName[99]='\0';
+//   free (Buffer);
+// 
+//   //--------------------
+//   // Now we count the number of levels and remember their start-addresses.
+//   // This is done by searching for the LEVEL_END_STRING again and again
+//   // until it is no longer found in the ship file.  good.
+//   //
+// 
+//   level_anz = 0;
+//   endpt = ShipData;
+//   LevelStart[level_anz] = ShipData;
+// 
+//   while ((endpt = strstr (endpt, LEVEL_END_STRING)) != NULL)
+//     {
+//       endpt += strlen (LEVEL_END_STRING);
+//       level_anz++;
+//       LevelStart[level_anz] = endpt + 1;
+//     }
+// 
+//   /* init the level-structs */
+//   curShip.num_levels = level_anz;
+// 
+//   for (i = 0; i < curShip.num_levels; i++)
+//     {
+//       curShip.AllLevels[i] = LevelToStruct (LevelStart[i]);
+// 
+//       if (curShip.AllLevels[i] == NULL)
+// 	{
+// 	  DebugPrintf (0, "ERROR: reading of level %d failed\n", i);
+// 	  return (ERR);
+// 	}
+//       InterpretMap (curShip.AllLevels[i]); // initialize doors, refreshes and lifts
+//     }
+// 
+//   free (ShipData);
+// 
+//   return OK;
+// 
+// } /* LoadShip () */
 
 /*@Function============================================================
 @Desc: char *StructToMem(Level Lev):

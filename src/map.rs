@@ -2,7 +2,7 @@ use crate::{
     curShip,
     defs::{
         self, Criticality, Direction, MapTile, Status, Themed, DIRECTIONS, MAP_DIR_C, MAXWAYPOINTS,
-        MAX_ALERTS_ON_LEVEL, MAX_ENEMYS_ON_SHIP, MAX_REFRESHES_ON_LEVEL,
+        MAX_ALERTS_ON_LEVEL, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_REFRESHES_ON_LEVEL,
     },
     enemy::ClearEnemys,
     global::{
@@ -49,6 +49,7 @@ const H_RANDSPACE: f32 = WALLPASS;
 const H_RANDBREITE: f32 = 5_f32 / 64.;
 
 const AREA_NAME_STRING: &str = "Area name=\"";
+const AREA_NAME_STRING_C: &CStr = cstr!("Area name=\"");
 const LEVEL_NAME_STRING: &str = "Name of this level=";
 const LEVEL_NAME_STRING_C: &CStr = cstr!("Name of this level=");
 const LEVEL_ENTER_COMMENT_STRING: &str = "Comment of the Influencer on entering this level=\"";
@@ -1474,4 +1475,75 @@ pub unsafe extern "C" fn LevelToStruct(data: *mut c_char) -> *mut Level {
     }
 
     loadlevel_ptr
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn LoadShip(filename: *mut c_char) -> c_int {
+    let mut level_start: [*mut c_char; MAX_LEVELS] = [null_mut(); MAX_LEVELS];
+    FreeShipMemory(); // clear vestiges of previous ship data, if any
+
+    /* Read the whole ship-data to memory */
+    const END_OF_SHIP_DATA_STRING: &CStr = cstr!("*** End of Ship Data ***");
+    let fpath = find_file(
+        filename,
+        MAP_DIR_C.as_ptr() as *mut c_char,
+        Themed::NoTheme as c_int,
+        Criticality::Critical as c_int,
+    );
+    let ship_data =
+        ReadAndMallocAndTerminateFile(fpath, END_OF_SHIP_DATA_STRING.as_ptr() as *mut c_char);
+
+    // Now we read the Area-name from the loaded data
+    let buffer = ReadAndMallocStringFromData(
+        ship_data,
+        AREA_NAME_STRING_C.as_ptr() as *mut c_char,
+        cstr!("\"").as_ptr() as *mut c_char,
+    );
+    libc::strncpy(curShip.AreaName.as_mut_ptr(), buffer, 99);
+    curShip.AreaName[99] = 0;
+    libc::free(buffer as *mut c_void);
+
+    // Now we count the number of levels and remember their start-addresses.
+    // This is done by searching for the LEVEL_END_STRING again and again
+    // until it is no longer found in the ship file.  good.
+
+    let mut level_anz = 0;
+    let mut endpt = ship_data;
+    level_start[level_anz] = ship_data;
+
+    while {
+        endpt = libc::strstr(endpt, LEVEL_END_STRING_C.as_ptr());
+        endpt.is_null().not()
+    } {
+        endpt = endpt.add(libc::strlen(LEVEL_END_STRING_C.as_ptr()));
+        level_anz += 1;
+        level_start[level_anz] = endpt.add(1);
+    }
+
+    /* init the level-structs */
+    curShip.num_levels = level_anz.try_into().unwrap();
+
+    let result = curShip
+        .AllLevels
+        .iter_mut()
+        .zip(level_start.iter().copied())
+        .enumerate()
+        .take(level_anz)
+        .try_for_each(|(index, (level, start))| {
+            *level = LevelToStruct(start);
+
+            if level.is_null() {
+                error!("reading of level {} failed", index);
+                return None;
+            }
+            InterpretMap(&mut **level); // initialize doors, refreshes and lifts
+            Some(())
+        });
+    if result.is_none() {
+        return defs::ERR.into();
+    }
+
+    libc::free(ship_data as *mut c_void);
+
+    defs::OK.into()
 }
