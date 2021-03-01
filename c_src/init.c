@@ -1347,51 +1347,51 @@ FreeDruidmap ( void )
   return;
 }
 
-void
-FreeGameMem ( void )
-{
-  int i, j;
-
-  // free bullet map
-  if ( Bulletmap != NULL )
-    {
-      int num_pics = sizeof(Bulletmap[0].SurfacePointer)/sizeof(Bulletmap[0].SurfacePointer[0]);
-      for ( i = 0; i < Number_Of_Bullet_Types; i ++ ) {
-        for ( j = 0; j < num_pics; j ++ ) {
-          SDL_FreeSurface ( Bulletmap[i].SurfacePointer[j] );
-        }
-      }
-      free ( Bulletmap );
-      Bulletmap = NULL;
-    }
-
-  // free blast map
-  int num_blasttypes  = sizeof(Blastmap)/sizeof(Blastmap[0]);
-  int num_blastphases = sizeof(Blastmap[0].SurfacePointer)/sizeof(Blastmap[0].SurfacePointer[0]);
-  for ( i = 0; i < num_blasttypes; i ++ ) {
-    for ( j = 0; j < num_blastphases; j ++ ) {
-      SDL_FreeSurface ( Blastmap[i].SurfacePointer[j] );
-      Blastmap[i].SurfacePointer[j] = NULL;
-    }
-  }
-
-  // free droid map
-  FreeDruidmap();
-
-  // free highscores list
-  if ( Highscores != NULL ) {
-    for ( i = 0; i < num_highscores; i ++ ) {
-      free ( Highscores[i] );
-    }
-    free ( Highscores );
-    Highscores = NULL;
-  }
-
-  // free constant text blobs
-  free ( DebriefingText );
-  DebriefingText = NULL;
-
-  return;
-}
+// void
+// FreeGameMem ( void )
+// {
+//   int i, j;
+// 
+//   // free bullet map
+//   if ( Bulletmap != NULL )
+//     {
+//       int num_pics = sizeof(Bulletmap[0].SurfacePointer)/sizeof(Bulletmap[0].SurfacePointer[0]);
+//       for ( i = 0; i < Number_Of_Bullet_Types; i ++ ) {
+//         for ( j = 0; j < num_pics; j ++ ) {
+//           SDL_FreeSurface ( Bulletmap[i].SurfacePointer[j] );
+//         }
+//       }
+//       free ( Bulletmap );
+//       Bulletmap = NULL;
+//     }
+// 
+//   // free blast map
+//   int num_blasttypes  = sizeof(Blastmap)/sizeof(Blastmap[0]);
+//   int num_blastphases = sizeof(Blastmap[0].SurfacePointer)/sizeof(Blastmap[0].SurfacePointer[0]);
+//   for ( i = 0; i < num_blasttypes; i ++ ) {
+//     for ( j = 0; j < num_blastphases; j ++ ) {
+//       SDL_FreeSurface ( Blastmap[i].SurfacePointer[j] );
+//       Blastmap[i].SurfacePointer[j] = NULL;
+//     }
+//   }
+// 
+//   // free droid map
+//   FreeDruidmap();
+// 
+//   // free highscores list
+//   if ( Highscores != NULL ) {
+//     for ( i = 0; i < num_highscores; i ++ ) {
+//       free ( Highscores[i] );
+//     }
+//     free ( Highscores );
+//     Highscores = NULL;
+//   }
+// 
+//   // free constant text blobs
+//   free ( DebriefingText );
+//   DebriefingText = NULL;
+// 
+//   return;
+// }
 
 #undef _init_c
