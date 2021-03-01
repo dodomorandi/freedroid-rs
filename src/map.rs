@@ -1591,3 +1591,41 @@ pub unsafe extern "C" fn ActSpecialField(x: c_float, y: c_float) {
         }
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn GetCurrentLift() -> c_int {
+    let curlev = (*CurLevel).levelnum;
+
+    let gx = Me.pos.x.round() as c_int;
+    let gy = Me.pos.y.round() as c_int;
+
+    info!("curlev={} gx={} gy={}", curlev, gx, gy);
+    info!("List of elevators:");
+    for i in 0..usize::try_from(curShip.num_lifts).unwrap() + 1 {
+        info!(
+            "Index={} level={} gx={} gy={}",
+            i, curShip.AllLifts[i].level, curShip.AllLifts[i].x, curShip.AllLifts[i].y
+        );
+    }
+
+    let mut i = 0;
+    while i < usize::try_from(curShip.num_lifts).unwrap() + 1
+    // we check for one more than present, so the last reached
+    // will really mean: NONE FOUND.
+    {
+        if curShip.AllLifts[i].level != curlev {
+            i += 1;
+            continue;
+        }
+        if curShip.AllLifts[i].x == gx && curShip.AllLifts[i].y == gy {
+            break;
+        }
+    }
+
+    if i == usize::try_from(curShip.num_lifts).unwrap() + 1 {
+        // none found
+        -1
+    } else {
+        i.try_into().unwrap()
+    }
+}
