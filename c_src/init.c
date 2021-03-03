@@ -1145,25 +1145,25 @@ ThouArtDefeated (void)
  * mission.  If not it returns, if yes the Debriefing is
  * started.
  ----------------------------------------------------------------------*/
-void
-CheckIfMissionIsComplete (void)
-{
-  int i;
-
-  for ( i=0 ; i < NumEnemys ; i++ )
-    if ( (AllEnemys[i].status != OUT) && (AllEnemys[i].status != TERMINATED) )
-      return;
-
-  // mission complete: all droids have been killed
-  RealScore += MISSION_COMPLETE_BONUS;
-
-  ThouArtVictorious();
-
-  //  UpdateHighscores();
-
-  GameOver = TRUE;
-
-} // void CheckIfMissionIsComplete
+// void
+// CheckIfMissionIsComplete (void)
+// {
+//   int i;
+// 
+//   for ( i=0 ; i < NumEnemys ; i++ )
+//     if ( (AllEnemys[i].status != OUT) && (AllEnemys[i].status != TERMINATED) )
+//       return;
+// 
+//   // mission complete: all droids have been killed
+//   RealScore += MISSION_COMPLETE_BONUS;
+// 
+//   ThouArtVictorious();
+// 
+//   //  UpdateHighscores();
+// 
+//   GameOver = TRUE;
+// 
+// } // void CheckIfMissionIsComplete
 
 // ----------------------------------------------------------------------
 // find all themes and put them in AllThemes

@@ -1,19 +1,19 @@
 use crate::{
     b_font::{Para_BFont, SetCurrentFont},
-    defs::{Criticality, Themed, GRAPHICS_DIR_C, TITLE_PIC_FILE_C},
+    defs::{Criticality, Status, Themed, GRAPHICS_DIR_C, TITLE_PIC_FILE_C},
     global::{num_highscores, Blastmap, Bulletmap, Druidmap, Highscores},
     graphics::{ne_screen, DisplayImage, MakeGridOnScreen, Number_Of_Bullet_Types},
     input::wait_for_key_pressed,
     misc::find_file,
     text::DisplayText,
     vars::{Full_User_Rect, Screen_Rect},
-    Number_Of_Droid_Types,
+    AllEnemys, GameOver, NumEnemys, Number_Of_Droid_Types, RealScore,
 };
 
 use cstr::cstr;
 use sdl::video::ll::{SDL_Flip, SDL_FreeSurface, SDL_SetClipRect};
 use std::{
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     ops::Not,
     os::raw::{c_char, c_int, c_void},
     ptr::null_mut,
@@ -22,10 +22,12 @@ use std::{
 extern "C" {
     pub fn InitFreedroid(argc: c_int, argv: *mut *const c_char);
     pub fn InitNewMission(mission_name: *mut c_char);
-    pub fn CheckIfMissionIsComplete();
+    pub fn ThouArtVictorious();
 
     static mut DebriefingText: *mut c_char;
 }
+
+const MISSION_COMPLETE_BONUS: f32 = 1000.;
 
 #[no_mangle]
 pub unsafe extern "C" fn FreeGameMem() {
@@ -117,4 +119,20 @@ pub unsafe extern "C" fn Win32Disclaimer() {
     SDL_Flip(ne_screen);
 
     wait_for_key_pressed();
+}
+
+/// This function checks, if the influencer has succeeded in his given
+/// mission.  If not it returns, if yes the Debriefing is started.
+#[no_mangle]
+pub unsafe extern "C" fn CheckIfMissionIsComplete() {
+    for enemy in AllEnemys.iter().take(NumEnemys.try_into().unwrap()) {
+        if enemy.status != Status::Out as c_int && enemy.status != Status::Terminated as c_int {
+            return;
+        }
+    }
+
+    // mission complete: all droids have been killed
+    RealScore += MISSION_COMPLETE_BONUS;
+    ThouArtVictorious();
+    GameOver = true.into();
 }
