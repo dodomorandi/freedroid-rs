@@ -2,21 +2,29 @@ use crate::{
     b_font::{Para_BFont, SetCurrentFont},
     bullet::{ExplodeBlasts, MoveBullets},
     defs::{
-        AssembleCombatWindowFlags, Criticality, DisplayBannerFlags, Status, Themed, GRAPHICS_DIR_C,
-        TITLE_PIC_FILE_C, WAIT_AFTER_KILLED,
+        self, scale_rect, AssembleCombatWindowFlags, Criticality, DisplayBannerFlags, Status,
+        Themed, GRAPHICS_DIR_C, TITLE_PIC_FILE_C, WAIT_AFTER_KILLED,
     },
-    global::{num_highscores, Blastmap, Bulletmap, Druidmap, Highscores},
-    graphics::{ne_screen, DisplayImage, MakeGridOnScreen, Number_Of_Bullet_Types},
-    input::{wait_for_all_keys_released, wait_for_key_pressed},
-    misc::find_file,
-    sound::Switch_Background_Music_To,
+    global::{
+        num_highscores, Blastmap, Bulletmap, CurrentCombatScaleFactor, Druidmap, GameConfig,
+        Highscores, SkipAFewFrames,
+    },
+    graphics::{
+        ne_screen, DisplayImage, InitPictures, Init_Video, Load_Fonts, MakeGridOnScreen,
+        Number_Of_Bullet_Types,
+    },
+    highscore::InitHighscores,
+    input::{wait_for_all_keys_released, wait_for_key_pressed, Init_Joy},
+    misc::{find_file, init_progress, update_progress, Terminate},
+    sound::{Init_Audio, Switch_Background_Music_To},
     text::{DisplayText, ScrollText},
-    vars::{Full_User_Rect, Screen_Rect},
+    vars::{Classic_User_Rect, Full_User_Rect, Screen_Rect, User_Rect},
     view::{Assemble_Combat_Picture, DisplayBanner},
-    AllEnemys, GameOver, Me, NumEnemys, Number_Of_Droid_Types, RealScore, ShowScore,
+    AllBullets, AllEnemys, GameOver, Me, NumEnemys, Number_Of_Droid_Types, RealScore, ShowScore,
 };
 
 use cstr::cstr;
+use log::error;
 use sdl::{
     event::ll::SDL_DISABLE,
     ll::SDL_GetTicks,
@@ -26,13 +34,16 @@ use sdl::{
 use std::{
     convert::{TryFrom, TryInto},
     ops::Not,
-    os::raw::{c_char, c_int, c_long, c_void},
+    os::raw::{c_char, c_int, c_long, c_uint, c_void},
     ptr::null_mut,
 };
 
 extern "C" {
-    pub fn InitFreedroid(argc: c_int, argv: *mut *const c_char);
     pub fn InitNewMission(mission_name: *mut c_char);
+    pub fn LoadGameConfig();
+    pub fn parse_command_line(argc: c_int, argv: *mut *const c_char);
+    pub fn FindAllThemes();
+    pub fn Init_Game_Data(data_filename: *mut c_char);
 
     static mut DebriefingText: *mut c_char;
     static mut DebriefingSong: [c_char; 500];
@@ -183,4 +194,116 @@ pub unsafe extern "C" fn ThouArtVictorious() {
     ScrollText(DebriefingText, &mut rect, 6);
 
     wait_for_all_keys_released();
+}
+
+/// This function initializes the whole Freedroid game.
+///
+/// This must not be confused with initnewgame, which
+/// only initializes a new mission for the game.
+#[no_mangle]
+pub unsafe extern "C" fn InitFreedroid(argc: c_int, argv: *mut *const c_char) {
+    Bulletmap = null_mut(); // That will cause the memory to be allocated later
+
+    for bullet in &mut AllBullets {
+        bullet.Surfaces_were_generated = false.into();
+    }
+
+    SkipAFewFrames = false.into();
+    Me.TextVisibleTime = 0.;
+    Me.TextToBeDisplayed = null_mut();
+
+    // these are the hardcoded game-defaults, they can be overloaded by the config-file if present
+    GameConfig.Current_BG_Music_Volume = 0.3;
+    GameConfig.Current_Sound_FX_Volume = 0.5;
+
+    GameConfig.WantedTextVisibleTime = 3.;
+    GameConfig.Droid_Talk = false.into();
+
+    GameConfig.Draw_Framerate = false.into();
+    GameConfig.Draw_Energy = false.into();
+    GameConfig.Draw_DeathCount = false.into();
+    GameConfig.Draw_Position = false.into();
+
+    std::ptr::copy_nonoverlapping(
+        b"classic\0".as_ptr(),
+        GameConfig.Theme_Name.as_mut_ptr() as *mut u8,
+        b"classic\0".len(),
+    );
+    GameConfig.FullUserRect = true.into();
+    GameConfig.UseFullscreen = false.into();
+    GameConfig.TakeoverActivates = true.into();
+    GameConfig.FireHoldTakeover = true.into();
+    GameConfig.ShowDecals = false.into();
+    GameConfig.AllMapVisible = true.into(); // classic setting: map always visible
+
+    let scale = if cfg!(feature = "gcw0") {
+        0.5 // Default for 320x200 device (GCW0)
+    } else {
+        1.0 // overall scaling of _all_ graphics (e.g. for 320x200 displays)
+    };
+    GameConfig.scale = scale;
+
+    GameConfig.HogCPU = false.into(); // default to being nice
+    GameConfig.emptyLevelSpeedup = 1.0; // speed up *time* in empty levels (ie also energy-loss rate)
+
+    // now load saved options from the config-file
+    LoadGameConfig();
+
+    // call this _after_ default settings and LoadGameConfig() ==> cmdline has highest priority!
+    parse_command_line(argc, argv);
+
+    User_Rect = if GameConfig.FullUserRect != 0 {
+        Full_User_Rect
+    } else {
+        Classic_User_Rect
+    };
+
+    scale_rect(&mut Screen_Rect, GameConfig.scale); // make sure we open a window of the right (rescaled) size!
+    Init_Video();
+
+    DisplayImage(find_file(
+        TITLE_PIC_FILE_C.as_ptr() as *mut c_char,
+        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        Themed::NoTheme as c_int,
+        Criticality::Critical as c_int,
+    )); // show title pic
+    SDL_Flip(ne_screen);
+
+    Load_Fonts(); // we need this for progress-meter!
+
+    init_progress(cstr!("Loading Freedroid").as_ptr() as *mut c_char);
+
+    FindAllThemes(); // put all found themes into a list: AllThemes[]
+
+    update_progress(5);
+
+    Init_Audio();
+
+    Init_Joy();
+
+    Init_Game_Data(cstr!("freedroid.ruleset").as_ptr() as *mut c_char); // load the default ruleset. This can be */
+                                                                        // overwritten from the mission file.
+
+    update_progress(10);
+
+    // The default should be, that no rescaling of the
+    // combat window at all is done.
+    CurrentCombatScaleFactor = 1.;
+
+    /*
+     * Initialise random-number generator in order to make
+     * level-start etc really different at each program start
+     */
+    libc::srand(SDL_GetTicks() as c_uint);
+
+    /* initialize/load the highscore list */
+    InitHighscores();
+
+    /* Now fill the pictures correctly to the structs */
+    if InitPictures() == 0 {
+        error!("Error in InitPictures reported back...");
+        Terminate(defs::ERR.into());
+    }
+
+    update_progress(100); // finished init
 }

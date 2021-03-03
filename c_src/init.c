@@ -844,107 +844,107 @@ InitNewMission ( char *MissionName )
  *
  *
  *-----------------------------------------------------------------*/
-void
-
-InitFreedroid (int argc, char *const argv[])
-{
-  int i;
-
-  Bulletmap=NULL;  // That will cause the memory to be allocated later
-
-  for ( i = 0 ; i < MAXBULLETS ; i++ )
-    AllBullets[i].Surfaces_were_generated = FALSE;
-
-  SkipAFewFrames = FALSE;
-  Me.TextVisibleTime = 0;
-  Me.TextToBeDisplayed = NULL;
-
-  // these are the hardcoded game-defaults, they can be overloaded by the config-file if present
-  GameConfig.Current_BG_Music_Volume=0.3;
-  GameConfig.Current_Sound_FX_Volume=0.5;
-
-  GameConfig.WantedTextVisibleTime = 3;
-  GameConfig.Droid_Talk = FALSE;
-
-  GameConfig.Draw_Framerate = FALSE;
-  GameConfig.Draw_Energy = FALSE;
-  GameConfig.Draw_DeathCount = FALSE;
-  GameConfig.Draw_Position = FALSE;
-
-  sprintf (GameConfig.Theme_Name, "classic");
-  GameConfig.FullUserRect = TRUE;
-  GameConfig.UseFullscreen = FALSE;
-  GameConfig.TakeoverActivates = TRUE;
-  GameConfig.FireHoldTakeover = TRUE;
-  GameConfig.ShowDecals = FALSE;
-  GameConfig.AllMapVisible = TRUE;    // classic setting: map always visible
-#ifdef GCW0
-  GameConfig.scale = 0.5;  	 // Default for 320x200 device (GCW0)
-#else
-  GameConfig.scale = 1.0;  	 // overall scaling of _all_ graphics (e.g. for 320x200 displays)
-#endif
-  GameConfig.HogCPU = FALSE;	// default to being nice
-  GameConfig.emptyLevelSpeedup = 1.0;	// speed up *time* in empty levels (ie also energy-loss rate)
-
-  // now load saved options from the config-file
-  LoadGameConfig ();
-
-  // call this _after_ default settings and LoadGameConfig() ==> cmdline has highest priority!
-  parse_command_line (argc, argv);
-
-  if (GameConfig.FullUserRect)
-    Copy_Rect(Full_User_Rect, User_Rect);
-  else
-    Copy_Rect(Classic_User_Rect, User_Rect);
-
-
-  ScaleRect (Screen_Rect, GameConfig.scale);   // make sure we open a window of the right (rescaled) size!
-  Init_Video ();
-
-  DisplayImage (find_file (TITLE_PIC_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL)); // show title pic
-  SDL_Flip(ne_screen);
-
-  Load_Fonts (); // we need this for progress-meter!
-
-  init_progress ("Loading Freedroid");
-
-  FindAllThemes ();  // put all found themes into a list: AllThemes[]
-
-  update_progress (5);
-
-  Init_Audio ();
-
-  Init_Joy ();
-
-  Init_Game_Data("freedroid.ruleset");  // load the default ruleset. This can be */
-			       // overwritten from the mission file.
-
-  update_progress (10);
-
-  // The default should be, that no rescaling of the
-  // combat window at all is done.
-  CurrentCombatScaleFactor = 1;
-
-  /*
-   * Initialise random-number generator in order to make
-   * level-start etc really different at each program start
-   */
-  srand((unsigned int)SDL_GetTicks() );
-
-  /* initialize/load the highscore list */
-  InitHighscores ();
-
-  /* Now fill the pictures correctly to the structs */
-  if (!InitPictures ())
-    {
-      DebugPrintf (1, "\n Error in InitPictures reported back...\n");
-      Terminate(ERR);
-    }
-
-  update_progress (100); // finished init
-
-  return;
-} /* InitFreedroid() */
+// void
+// 
+// InitFreedroid (int argc, char *const argv[])
+// {
+//   int i;
+// 
+//   Bulletmap=NULL;  // That will cause the memory to be allocated later
+// 
+//   for ( i = 0 ; i < MAXBULLETS ; i++ )
+//     AllBullets[i].Surfaces_were_generated = FALSE;
+// 
+//   SkipAFewFrames = FALSE;
+//   Me.TextVisibleTime = 0;
+//   Me.TextToBeDisplayed = NULL;
+// 
+//   // these are the hardcoded game-defaults, they can be overloaded by the config-file if present
+//   GameConfig.Current_BG_Music_Volume=0.3;
+//   GameConfig.Current_Sound_FX_Volume=0.5;
+// 
+//   GameConfig.WantedTextVisibleTime = 3;
+//   GameConfig.Droid_Talk = FALSE;
+// 
+//   GameConfig.Draw_Framerate = FALSE;
+//   GameConfig.Draw_Energy = FALSE;
+//   GameConfig.Draw_DeathCount = FALSE;
+//   GameConfig.Draw_Position = FALSE;
+// 
+//   sprintf (GameConfig.Theme_Name, "classic");
+//   GameConfig.FullUserRect = TRUE;
+//   GameConfig.UseFullscreen = FALSE;
+//   GameConfig.TakeoverActivates = TRUE;
+//   GameConfig.FireHoldTakeover = TRUE;
+//   GameConfig.ShowDecals = FALSE;
+//   GameConfig.AllMapVisible = TRUE;    // classic setting: map always visible
+// #ifdef GCW0
+//   GameConfig.scale = 0.5;  	 // Default for 320x200 device (GCW0)
+// #else
+//   GameConfig.scale = 1.0;  	 // overall scaling of _all_ graphics (e.g. for 320x200 displays)
+// #endif
+//   GameConfig.HogCPU = FALSE;	// default to being nice
+//   GameConfig.emptyLevelSpeedup = 1.0;	// speed up *time* in empty levels (ie also energy-loss rate)
+// 
+//   // now load saved options from the config-file
+//   LoadGameConfig ();
+// 
+//   // call this _after_ default settings and LoadGameConfig() ==> cmdline has highest priority!
+//   parse_command_line (argc, argv);
+// 
+//   if (GameConfig.FullUserRect)
+//     Copy_Rect(Full_User_Rect, User_Rect);
+//   else
+//     Copy_Rect(Classic_User_Rect, User_Rect);
+// 
+// 
+//   ScaleRect (Screen_Rect, GameConfig.scale);   // make sure we open a window of the right (rescaled) size!
+//   Init_Video ();
+// 
+//   DisplayImage (find_file (TITLE_PIC_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL)); // show title pic
+//   SDL_Flip(ne_screen);
+// 
+//   Load_Fonts (); // we need this for progress-meter!
+// 
+//   init_progress ("Loading Freedroid");
+// 
+//   FindAllThemes ();  // put all found themes into a list: AllThemes[]
+// 
+//   update_progress (5);
+// 
+//   Init_Audio ();
+// 
+//   Init_Joy ();
+// 
+//   Init_Game_Data("freedroid.ruleset");  // load the default ruleset. This can be */
+// 			       // overwritten from the mission file.
+// 
+//   update_progress (10);
+// 
+//   // The default should be, that no rescaling of the
+//   // combat window at all is done.
+//   CurrentCombatScaleFactor = 1;
+// 
+//   /*
+//    * Initialise random-number generator in order to make
+//    * level-start etc really different at each program start
+//    */
+//   srand((unsigned int)SDL_GetTicks() );
+// 
+//   /* initialize/load the highscore list */
+//   InitHighscores ();
+// 
+//   /* Now fill the pictures correctly to the structs */
+//   if (!InitPictures ())
+//     {
+//       DebugPrintf (1, "\n Error in InitPictures reported back...\n");
+//       Terminate(ERR);
+//     }
+// 
+//   update_progress (100); // finished init
+// 
+//   return;
+// } /* InitFreedroid() */
 
 /*-----------------------------------------------------------------
  * @Desc: This function does the mission briefing.  It assumes,
