@@ -486,95 +486,95 @@ http://sourceforge.net/projects/freedroid/\n\n";
  *  parse command line arguments and set global switches
  *  exit on error, so we don't need to return success status
  * -----------------------------------------------------------------*/
-void
-parse_command_line (int argc, char *const argv[])
-{
-  int c;
-
-  static struct option long_options[] = {
-    {"version", 	0, 0, 'v'},
-    {"help", 		0, 0, 'h'},
-    {"nosound", 	0, 0, 'q'},
-    {"sound", 		0, 0, 's'},
-    {"debug", 		2, 0, 'd'},
-    {"window",  	0, 0, 'w'},
-    {"fullscreen",	0, 0, 'f'},
-    {"sensitivity",	1, 0, 'j'},
-    {"scale",		1, 0, 'r'},
-    { 0, 		0, 0,  0}
-  };
-
-  //   sound_on=TRUE;
-
-  while (1)
-    {
-      c = getopt_long (argc, argv, "vqst:h?d::wfj:r:", long_options, NULL);
-      if (c == -1)
-	break;
-
-      switch (c)
-	{
-	  /* version statement -v or --version
-	   * following gnu-coding standards for command line interfaces */
-	case 'v':
-	  printf ("\n%s %s  \n", PACKAGE, VERSION);
-          fputs (copyright, stdout);
-	  exit (0);
-	  break;
-
-	case 'h':
-	case '?':
-          fputs (usage_string, stdout);
-	  exit (0);
-	  break;
-
-	case 'q':
-	  sound_on = FALSE;
-	  break;
-
-	case 's':
-	  sound_on = TRUE;
-	  break;
-
-	case 'j':
-	  joy_sensitivity = atoi (optarg);
-	  if (joy_sensitivity < 0 || joy_sensitivity > 32)
-	    {
-	      printf ("\nJoystick sensitivity must lie in the range [0;32]\n");
-	      Terminate(ERR);
-	    }
-	  break;
-
-	case 'd':
-	  if (!optarg)
-	    debug_level = 1;
-	  else
-	    debug_level = atoi (optarg);
-	  break;
-
-	case 'r':
-	  GameConfig.scale = (float)atof (optarg);
-	  if (GameConfig.scale <= 0)
-	    {
-	      DebugPrintf (0, "ERROR: illegal scale entered, needs to be >0: %s\n", optarg);
-	      Terminate (ERR);
-	    }
-	  DebugPrintf (1, "Graphics scale set to %f\n", GameConfig.scale);
-	  break;
-
-	case 'f':
-	  GameConfig.UseFullscreen = TRUE;
-	  break;
-	case 'w':
-	  GameConfig.UseFullscreen = FALSE;
-	  break;
-
-	default:
-	  printf ("\nOption %c not implemented yet! Ignored.", c);
-	  break;
-	}			/* switch(c) */
-    }				/* while(1) */
-}				/* parse_command_line */
+// void
+// parse_command_line (int argc, char *const argv[])
+// {
+//   int c;
+// 
+//   static struct option long_options[] = {
+//     {"version", 	0, 0, 'v'},
+//     {"help", 		0, 0, 'h'},
+//     {"nosound", 	0, 0, 'q'},
+//     {"sound", 		0, 0, 's'},
+//     {"debug", 		2, 0, 'd'},
+//     {"window",  	0, 0, 'w'},
+//     {"fullscreen",	0, 0, 'f'},
+//     {"sensitivity",	1, 0, 'j'},
+//     {"scale",		1, 0, 'r'},
+//     { 0, 		0, 0,  0}
+//   };
+// 
+//   //   sound_on=TRUE;
+// 
+//   while (1)
+//     {
+//       c = getopt_long (argc, argv, "vqst:h?d::wfj:r:", long_options, NULL);
+//       if (c == -1)
+// 	break;
+// 
+//       switch (c)
+// 	{
+// 	  /* version statement -v or --version
+// 	   * following gnu-coding standards for command line interfaces */
+// 	case 'v':
+// 	  printf ("\n%s %s  \n", PACKAGE, VERSION);
+//           fputs (copyright, stdout);
+// 	  exit (0);
+// 	  break;
+// 
+// 	case 'h':
+// 	case '?':
+//           fputs (usage_string, stdout);
+// 	  exit (0);
+// 	  break;
+// 
+// 	case 'q':
+// 	  sound_on = FALSE;
+// 	  break;
+// 
+// 	case 's':
+// 	  sound_on = TRUE;
+// 	  break;
+// 
+// 	case 'j':
+// 	  joy_sensitivity = atoi (optarg);
+// 	  if (joy_sensitivity < 0 || joy_sensitivity > 32)
+// 	    {
+// 	      printf ("\nJoystick sensitivity must lie in the range [0;32]\n");
+// 	      Terminate(ERR);
+// 	    }
+// 	  break;
+// 
+// 	case 'd':
+// 	  if (!optarg)
+// 	    debug_level = 1;
+// 	  else
+// 	    debug_level = atoi (optarg);
+// 	  break;
+// 
+// 	case 'r':
+// 	  GameConfig.scale = (float)atof (optarg);
+// 	  if (GameConfig.scale <= 0)
+// 	    {
+// 	      DebugPrintf (0, "ERROR: illegal scale entered, needs to be >0: %s\n", optarg);
+// 	      Terminate (ERR);
+// 	    }
+// 	  DebugPrintf (1, "Graphics scale set to %f\n", GameConfig.scale);
+// 	  break;
+// 
+// 	case 'f':
+// 	  GameConfig.UseFullscreen = TRUE;
+// 	  break;
+// 	case 'w':
+// 	  GameConfig.UseFullscreen = FALSE;
+// 	  break;
+// 
+// 	default:
+// 	  printf ("\nOption %c not implemented yet! Ignored.", c);
+// 	  break;
+// 	}			/* switch(c) */
+//     }				/* while(1) */
+// }				/* parse_command_line */
 
 
 /*-----------------------------------------------------------------

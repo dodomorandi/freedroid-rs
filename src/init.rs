@@ -1,6 +1,7 @@
 use crate::{
     b_font::{Para_BFont, SetCurrentFont},
     bullet::{ExplodeBlasts, MoveBullets},
+    debug_level,
     defs::{
         self, scale_rect, AssembleCombatWindowFlags, Criticality, DisplayBannerFlags, Status,
         Themed, GRAPHICS_DIR_C, TITLE_PIC_FILE_C, WAIT_AFTER_KILLED,
@@ -17,14 +18,16 @@ use crate::{
     input::{wait_for_all_keys_released, wait_for_key_pressed, Init_Joy},
     misc::{find_file, init_progress, update_progress, Terminate},
     sound::{Init_Audio, Switch_Background_Music_To},
+    sound_on,
     text::{DisplayText, ScrollText},
     vars::{Classic_User_Rect, Full_User_Rect, Screen_Rect, User_Rect},
     view::{Assemble_Combat_Picture, DisplayBanner},
     AllBullets, AllEnemys, GameOver, Me, NumEnemys, Number_Of_Droid_Types, RealScore, ShowScore,
 };
 
+use clap::{crate_version, Clap};
 use cstr::cstr;
-use log::error;
+use log::{error, info};
 use sdl::{
     event::ll::SDL_DISABLE,
     ll::SDL_GetTicks,
@@ -41,7 +44,6 @@ use std::{
 extern "C" {
     pub fn InitNewMission(mission_name: *mut c_char);
     pub fn LoadGameConfig();
-    pub fn parse_command_line(argc: c_int, argv: *mut *const c_char);
     pub fn FindAllThemes();
     pub fn Init_Game_Data(data_filename: *mut c_char);
 
@@ -50,6 +52,11 @@ extern "C" {
 }
 
 const MISSION_COMPLETE_BONUS: f32 = 1000.;
+const COPYRIGHT: &str = "\nCopyright (C) 2003-2018 Johannes Prix, Reinhard Prix\n\
+Freedroid comes with NO WARRANTY to the extent permitted by law.\n\
+You may redistribute copies of Freedroid under the terms of the\n\
+GNU General Public License.\n\
+For more information about these matters, see the file named COPYING.";
 
 #[no_mangle]
 pub unsafe extern "C" fn FreeGameMem() {
@@ -250,7 +257,7 @@ pub unsafe extern "C" fn InitFreedroid(argc: c_int, argv: *mut *const c_char) {
     LoadGameConfig();
 
     // call this _after_ default settings and LoadGameConfig() ==> cmdline has highest priority!
-    parse_command_line(argc, argv);
+    parse_command_line();
 
     User_Rect = if GameConfig.FullUserRect != 0 {
         Full_User_Rect
@@ -306,4 +313,70 @@ pub unsafe extern "C" fn InitFreedroid(argc: c_int, argv: *mut *const c_char) {
     }
 
     update_progress(100); // finished init
+}
+
+#[derive(Clap)]
+#[clap(version = crate_version!(), long_version = COPYRIGHT)]
+struct Opt {
+    #[clap(short, long)]
+    _version: bool,
+
+    #[clap(short, long, conflicts_with = "nosound")]
+    sound: bool,
+
+    #[clap(short = 'q', long, conflicts_with = "sound")]
+    nosound: bool,
+
+    #[clap(short, long, parse(from_occurrences))]
+    debug: u8,
+
+    #[clap(short, long, conflicts_with = "fullscreen")]
+    window: bool,
+
+    #[clap(short, long, conflicts_with = "window")]
+    fullscreen: bool,
+
+    #[clap(short = 'j', long)]
+    sensitivity: Option<u8>,
+
+    #[clap(short = 'r', long)]
+    scale: Option<f32>,
+}
+
+/// parse command line arguments and set global switches
+/// exit on error, so we don't need to return success status
+unsafe fn parse_command_line() {
+    let opt = Opt::parse();
+
+    if opt.nosound {
+        sound_on = false.into();
+    } else if opt.sound {
+        sound_on = true.into();
+    }
+
+    if let Some(sensitivity) = opt.sensitivity {
+        if sensitivity > 32 {
+            println!("\nJoystick sensitivity must lie in the range [0;32]");
+            Terminate(defs::ERR.into());
+        }
+    }
+
+    if opt.debug > 0 {
+        debug_level = opt.debug.into();
+    }
+
+    if let Some(scale) = opt.scale {
+        if scale <= 0. {
+            error!("illegal scale entered, needs to be >0: {}", scale);
+            Terminate(defs::ERR.into());
+        }
+        GameConfig.scale = scale;
+        info!("Graphics scale set to {}", scale);
+    }
+
+    if opt.fullscreen {
+        GameConfig.UseFullscreen = true.into();
+    } else if opt.window {
+        GameConfig.UseFullscreen = false.into();
+    }
 }
