@@ -1306,30 +1306,30 @@ FindAllThemes (void)
 /*----------------------------------------------------------------------
  * put some ideology message for our poor friends enslaved by M$-Win32 ;)
  *----------------------------------------------------------------------*/
-void
-Win32Disclaimer (void)
-{
-  SDL_Rect rect;
-
-  SDL_SetClipRect ( ne_screen, NULL );
-  DisplayImage (find_file (TITLE_PIC_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL)); // show title pic
-  MakeGridOnScreen( (SDL_Rect*) &Screen_Rect );
-
-  SetCurrentFont( Para_BFont );
-
-  Copy_Rect(Full_User_Rect, rect);
-  rect.x += 10;
-  rect.w -= 10; //leave some border
-  DisplayText ("Windows disclaimer:\n\nThis program is 100% Free (as in Freedom), licenced under the GPL.\n\
-It is developed on a free operating system (GNU/Linux) using exclusively free tools. \
-For more information about Free Software see the GPL licence (in the file COPYING)\n\
-or visit http://www.gnu.org.\n\n\n Press fire to play.", rect.x, rect.y, &rect);
-  SDL_Flip (ne_screen);
-
-  wait_for_key_pressed();
-
-  return;
-}
+// void
+// Win32Disclaimer (void)
+// {
+//   SDL_Rect rect;
+// 
+//   SDL_SetClipRect ( ne_screen, NULL );
+//   DisplayImage (find_file (TITLE_PIC_FILE, GRAPHICS_DIR, NO_THEME, CRITICAL)); // show title pic
+//   MakeGridOnScreen( (SDL_Rect*) &Screen_Rect );
+// 
+//   SetCurrentFont( Para_BFont );
+// 
+//   Copy_Rect(Full_User_Rect, rect);
+//   rect.x += 10;
+//   rect.w -= 10; //leave some border
+//   DisplayText ("Windows disclaimer:\n\nThis program is 100% Free (as in Freedom), licenced under the GPL.\n\
+// It is developed on a free operating system (GNU/Linux) using exclusively free tools. \
+// For more information about Free Software see the GPL licence (in the file COPYING)\n\
+// or visit http://www.gnu.org.\n\n\n Press fire to play.", rect.x, rect.y, &rect);
+//   SDL_Flip (ne_screen);
+// 
+//   wait_for_key_pressed();
+// 
+//   return;
+// }
 
 // void
 // FreeDruidmap ( void )

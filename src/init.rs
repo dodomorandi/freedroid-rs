@@ -1,10 +1,17 @@
 use crate::{
+    b_font::{Para_BFont, SetCurrentFont},
+    defs::{Criticality, Themed, GRAPHICS_DIR_C, TITLE_PIC_FILE_C},
     global::{num_highscores, Blastmap, Bulletmap, Druidmap, Highscores},
-    graphics::Number_Of_Bullet_Types,
+    graphics::{ne_screen, DisplayImage, MakeGridOnScreen, Number_Of_Bullet_Types},
+    input::wait_for_key_pressed,
+    misc::find_file,
+    text::DisplayText,
+    vars::{Full_User_Rect, Screen_Rect},
     Number_Of_Droid_Types,
 };
 
-use sdl::video::ll::SDL_FreeSurface;
+use cstr::cstr;
+use sdl::video::ll::{SDL_Flip, SDL_FreeSurface, SDL_SetClipRect};
 use std::{
     convert::TryFrom,
     ops::Not,
@@ -77,4 +84,37 @@ pub unsafe extern "C" fn FreeDruidmap() {
 
     libc::free(Druidmap as *mut c_void);
     Druidmap = null_mut();
+}
+
+/// put some ideology message for our poor friends enslaved by M$-Win32 ;)
+#[no_mangle]
+pub unsafe extern "C" fn Win32Disclaimer() {
+    SDL_SetClipRect(ne_screen, null_mut());
+    DisplayImage(find_file(
+        TITLE_PIC_FILE_C.as_ptr() as *mut c_char,
+        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        Themed::NoTheme as c_int,
+        Criticality::Critical as c_int,
+    )); // show title pic
+    MakeGridOnScreen(Some(&Screen_Rect));
+
+    SetCurrentFont(Para_BFont);
+
+    let mut rect = Full_User_Rect;
+    rect.x += 10;
+    rect.w -= 10; //leave some border
+    DisplayText(
+        cstr!(
+        "Windows disclaimer:\n\nThis program is 100% Free (as in Freedom), licenced under the GPL.\
+         \nIt is developed on a free operating system (GNU/Linux) using exclusively free tools. \
+         For more information about Free Software see the GPL licence (in the file COPYING)\n\
+         or visit http://www.gnu.org.\n\n\n Press fire to play.")
+        .as_ptr(),
+        rect.x.into(),
+        rect.y.into(),
+        &rect,
+    );
+    SDL_Flip(ne_screen);
+
+    wait_for_key_pressed();
 }
