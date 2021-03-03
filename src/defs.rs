@@ -584,7 +584,7 @@ pub const DROID_PHASES: usize = ENEMYPHASES;
 
 pub const WAIT_LEVELEMPTY: f64 = 0.5; /* warte bevor Graufaerben (in seconds)*/
 pub const SLOWMO_FACTOR: f64 = 0.33; // slow-motion effect on last blast when level is going empty
-pub const WAIT_AFTER_KILLED: usize = 2000; // time (in ms) to wait and still display pictures after the destruction of
+pub const WAIT_AFTER_KILLED: u32 = 2000; // time (in ms) to wait and still display pictures after the destruction of
 pub const SHOW_WAIT: u32 = 3500; // std amount of time to show something
                                  // the players droid.  This is now measured in seconds and can be a float
 pub const WAIT_SHIPEMPTY: usize = 20;

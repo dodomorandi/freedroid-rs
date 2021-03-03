@@ -1019,45 +1019,45 @@ Title ( char *MissionBriefingPointer )
 
 /*----------------------------------------------------------------------*/
 /* $Function----------------------------------------------------------*/
-void
-ThouArtVictorious(void)
-{
-  SDL_Rect rect;
-  Uint32 now;
-
-  Switch_Background_Music_To ( DebriefingSong );
-
-  SDL_ShowCursor (SDL_DISABLE);
-
-  ShowScore = (long)RealScore;
-  Me.status = VICTORY;
-  DisplayBanner (NULL, NULL,  BANNER_FORCE_UPDATE );
-
-  wait_for_all_keys_released();
-
-  now=SDL_GetTicks();
-
-  while ( (SDL_GetTicks() - now < WAIT_AFTER_KILLED) )
-    {
-      DisplayBanner (NULL, NULL,  0 );
-      ExplodeBlasts ();
-      MoveBullets ();
-      Assemble_Combat_Picture ( DO_SCREEN_UPDATE );
-    }
-
-  Copy_Rect(Full_User_Rect, rect);
-  SDL_SetClipRect ( ne_screen, NULL );
-  MakeGridOnScreen (&rect);
-  SDL_Flip(ne_screen);
-  rect.x += 10;
-  rect.w -= 20;  //leave some border
-  SetCurrentFont( Para_BFont);
-  ScrollText (DebriefingText , &rect , 6 );
-
-  wait_for_all_keys_released();
-
-  return;
-}
+// void
+// ThouArtVictorious(void)
+// {
+//   SDL_Rect rect;
+//   Uint32 now;
+// 
+//   Switch_Background_Music_To ( DebriefingSong );
+// 
+//   SDL_ShowCursor (SDL_DISABLE);
+// 
+//   ShowScore = (long)RealScore;
+//   Me.status = VICTORY;
+//   DisplayBanner (NULL, NULL,  BANNER_FORCE_UPDATE );
+// 
+//   wait_for_all_keys_released();
+// 
+//   now=SDL_GetTicks();
+// 
+//   while ( (SDL_GetTicks() - now < WAIT_AFTER_KILLED) )
+//     {
+//       DisplayBanner (NULL, NULL,  0 );
+//       ExplodeBlasts ();
+//       MoveBullets ();
+//       Assemble_Combat_Picture ( DO_SCREEN_UPDATE );
+//     }
+// 
+//   Copy_Rect(Full_User_Rect, rect);
+//   SDL_SetClipRect ( ne_screen, NULL );
+//   MakeGridOnScreen (&rect);
+//   SDL_Flip(ne_screen);
+//   rect.x += 10;
+//   rect.w -= 20;  //leave some border
+//   SetCurrentFont( Para_BFont);
+//   ScrollText (DebriefingText , &rect , 6 );
+// 
+//   wait_for_all_keys_released();
+// 
+//   return;
+// }
 
 /*@Function============================================================
 @Desc: Show end-screen

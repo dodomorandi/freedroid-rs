@@ -1,30 +1,41 @@
 use crate::{
     b_font::{Para_BFont, SetCurrentFont},
-    defs::{Criticality, Status, Themed, GRAPHICS_DIR_C, TITLE_PIC_FILE_C},
+    bullet::{ExplodeBlasts, MoveBullets},
+    defs::{
+        AssembleCombatWindowFlags, Criticality, DisplayBannerFlags, Status, Themed, GRAPHICS_DIR_C,
+        TITLE_PIC_FILE_C, WAIT_AFTER_KILLED,
+    },
     global::{num_highscores, Blastmap, Bulletmap, Druidmap, Highscores},
     graphics::{ne_screen, DisplayImage, MakeGridOnScreen, Number_Of_Bullet_Types},
-    input::wait_for_key_pressed,
+    input::{wait_for_all_keys_released, wait_for_key_pressed},
     misc::find_file,
-    text::DisplayText,
+    sound::Switch_Background_Music_To,
+    text::{DisplayText, ScrollText},
     vars::{Full_User_Rect, Screen_Rect},
-    AllEnemys, GameOver, NumEnemys, Number_Of_Droid_Types, RealScore,
+    view::{Assemble_Combat_Picture, DisplayBanner},
+    AllEnemys, GameOver, Me, NumEnemys, Number_Of_Droid_Types, RealScore, ShowScore,
 };
 
 use cstr::cstr;
-use sdl::video::ll::{SDL_Flip, SDL_FreeSurface, SDL_SetClipRect};
+use sdl::{
+    event::ll::SDL_DISABLE,
+    ll::SDL_GetTicks,
+    mouse::ll::SDL_ShowCursor,
+    video::ll::{SDL_Flip, SDL_FreeSurface, SDL_SetClipRect},
+};
 use std::{
     convert::{TryFrom, TryInto},
     ops::Not,
-    os::raw::{c_char, c_int, c_void},
+    os::raw::{c_char, c_int, c_long, c_void},
     ptr::null_mut,
 };
 
 extern "C" {
     pub fn InitFreedroid(argc: c_int, argv: *mut *const c_char);
     pub fn InitNewMission(mission_name: *mut c_char);
-    pub fn ThouArtVictorious();
 
     static mut DebriefingText: *mut c_char;
+    static mut DebriefingSong: [c_char; 500];
 }
 
 const MISSION_COMPLETE_BONUS: f32 = 1000.;
@@ -135,4 +146,41 @@ pub unsafe extern "C" fn CheckIfMissionIsComplete() {
     RealScore += MISSION_COMPLETE_BONUS;
     ThouArtVictorious();
     GameOver = true.into();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ThouArtVictorious() {
+    Switch_Background_Music_To(DebriefingSong.as_ptr());
+
+    SDL_ShowCursor(SDL_DISABLE);
+
+    ShowScore = RealScore as c_long;
+    Me.status = Status::Victory as c_int;
+    DisplayBanner(
+        null_mut(),
+        null_mut(),
+        DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+    );
+
+    wait_for_all_keys_released();
+
+    let now = SDL_GetTicks();
+
+    while SDL_GetTicks() - now < WAIT_AFTER_KILLED {
+        DisplayBanner(null_mut(), null_mut(), 0);
+        ExplodeBlasts();
+        MoveBullets();
+        Assemble_Combat_Picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+    }
+
+    let mut rect = Full_User_Rect;
+    SDL_SetClipRect(ne_screen, null_mut());
+    MakeGridOnScreen(Some(&rect));
+    SDL_Flip(ne_screen);
+    rect.x += 10;
+    rect.w -= 20; //leave some border
+    SetCurrentFont(Para_BFont);
+    ScrollText(DebriefingText, &mut rect, 6);
+
+    wait_for_all_keys_released();
 }
