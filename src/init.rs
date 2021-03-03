@@ -1,6 +1,7 @@
 use crate::{
-    global::{num_highscores, Blastmap, Bulletmap, Highscores},
+    global::{num_highscores, Blastmap, Bulletmap, Druidmap, Highscores},
     graphics::Number_Of_Bullet_Types,
+    Number_Of_Droid_Types,
 };
 
 use sdl::video::ll::SDL_FreeSurface;
@@ -15,7 +16,6 @@ extern "C" {
     pub fn InitFreedroid(argc: c_int, argv: *mut *const c_char);
     pub fn InitNewMission(mission_name: *mut c_char);
     pub fn CheckIfMissionIsComplete();
-    pub fn FreeDruidmap();
 
     static mut DebriefingText: *mut c_char;
 }
@@ -62,4 +62,19 @@ pub unsafe extern "C" fn FreeGameMem() {
     // free constant text blobs
     libc::free(DebriefingText as *mut c_void);
     DebriefingText = null_mut();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn FreeDruidmap() {
+    if Druidmap.is_null() {
+        return;
+    }
+    let droid_map =
+        std::slice::from_raw_parts(Druidmap, usize::try_from(Number_Of_Droid_Types).unwrap());
+    for droid in droid_map {
+        libc::free(droid.notes as *mut c_void);
+    }
+
+    libc::free(Druidmap as *mut c_void);
+    Druidmap = null_mut();
 }

@@ -1331,21 +1331,21 @@ or visit http://www.gnu.org.\n\n\n Press fire to play.", rect.x, rect.y, &rect);
   return;
 }
 
-void
-FreeDruidmap ( void )
-{
-  if ( Druidmap == NULL ) {
-    return;
-  }
-  int i;
-  for (i=0; i < Number_Of_Droid_Types; i++) {
-    free (Druidmap[i].notes);
-  }
-  free(Druidmap);
-  Druidmap = NULL;
-
-  return;
-}
+// void
+// FreeDruidmap ( void )
+// {
+//   if ( Druidmap == NULL ) {
+//     return;
+//   }
+//   int i;
+//   for (i=0; i < Number_Of_Droid_Types; i++) {
+//     free (Druidmap[i].notes);
+//   }
+//   free(Druidmap);
+//   Druidmap = NULL;
+// 
+//   return;
+// }
 
 // void
 // FreeGameMem ( void )
