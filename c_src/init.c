@@ -1168,140 +1168,140 @@ ThouArtDefeated (void)
 // ----------------------------------------------------------------------
 // find all themes and put them in AllThemes
 // ----------------------------------------------------------------------
-void
-FindAllThemes (void)
-{
-  int i, location;
-  char dname[500], tname[100], fpath[500];
-  DIR *dir;
-  struct stat buf;
-  struct dirent *entry;
-  char *pos;
-  int len;
-  FILE *fp;
-  classic_theme_index = 0;	// default: override when we actually find 'classic' theme
-
-  // just to make sure...
-  AllThemes.num_themes = 0;
-  for (i=0; i< MAX_THEMES; i++)
-    {
-      if (AllThemes.theme_name[i]) free(AllThemes.theme_name[i]);
-      AllThemes.theme_name[i] = NULL;
-    }
-
-  for (location=0; location < 2; location++)
-    {
-      if (location == 0)
-	strcpy (dname, FD_DATADIR);   /* first scan FD_DATADIR */
-      if (location == 1)
-	strcpy (dname, LOCAL_DATADIR); /* then the local fallback */
-
-      strcat (dname, "/graphics");
-
-      if ( (dir = opendir(dname)) == NULL)
-	{
-	  DebugPrintf (1, "WARNING: can't open data-directory %s...\n", dname);
-	  continue;
-	}
-
-      while ( (entry = readdir (dir)) != NULL )
-	{
-	  strcpy (fpath, dname);
-	  strcat (fpath, "/");
-	  strcat (fpath, entry->d_name);
-
-	  if ( stat(fpath, &buf) != 0 ) // error stat'ing the file
-	    {
-	      DebugPrintf (1, "WARNING: could non stat %s!\n", fpath);
-	      continue;
-	    }
-	  if ( ! S_ISDIR( buf.st_mode ) )  // is it a directory
-	    continue;
-
-	  if ( (pos = strstr (entry->d_name, "_theme")) == NULL)   // does its name contain "_theme"
-	    continue;
-	  if ( *(pos+strlen("_theme")) != 0 )           // is it *_theme ?
-	    continue;
-
-	  // yes!! -> found a possible theme-dir
-	  len = strlen(entry->d_name)-strlen("_theme");
-	  if (len >= 100)
-	    {
-	      DebugPrintf (0, "WARNING: theme-name of '%s' longer than allowed 100 chars... discarded!\n",
-			   entry->d_name);
-	      continue;
-	    }
-	  strncpy (tname, entry->d_name, len);
-	  tname[len]= '\0';  // null-terminate!
-	  DebugPrintf (1, "Hmm, seems we found a new theme: %s\n", tname);
-	  // check readabiltiy of "config.theme"
-	  sprintf (fpath, "%s/%s_theme/config.theme", dname, tname);
-	  if ( (fp = fopen (fpath, "r")) != NULL)
-	    { // config.theme is readable
-	      fclose(fp);
-	      DebugPrintf (1, "..and config.theme seems readable ... good! \n");
-	      // last check: is this theme already in the list??
-	      for (i=0; i< AllThemes.num_themes; i++)
-		if ( strcmp(tname, AllThemes.theme_name[i])== 0)
-		  break;
-	      if ( i < AllThemes.num_themes )
-		{ // found it in the list already
-		  DebugPrintf (1, "Theme '%s' is already listed ... \n", tname);
-		  continue;
-		}
-	      else
-		{ // not yet listed --> we found a new theme!
-		  DebugPrintf (0, "Found new graphics-theme: %s \n", tname);
-                  if ( strcmp(tname, "classic") == 0 )
-                    classic_theme_index = AllThemes.num_themes;
-		  AllThemes.theme_name[AllThemes.num_themes] = MyMalloc (strlen(tname)+1);
-		  strcpy (AllThemes.theme_name[AllThemes.num_themes], tname);
-		  AllThemes.num_themes ++;
-		}
-	    }
-	  else
-	    { // config.theme not readable
-	      DebugPrintf (0, "WARNING: config.theme of theme '%s' not readable -> discarded!\n", tname);
-	      continue;
-	    }
-
-	} // while more directory entries
-
-      closedir (dir);
-
-    } /* for all data-dir locations */
-
-  // now have a look at what we found:
-  if (AllThemes.num_themes == 0)
-    {
-      DebugPrintf (0, "ERROR: no valid graphic-themes found!! \n");
-      DebugPrintf (0, "You need to install at least one to run Freedroid!!\n");
-      Terminate (ERR);
-    }
-
-  for (i=0; i< AllThemes.num_themes; i++)
-    {
-      if ( strcmp (AllThemes.theme_name[i], GameConfig.Theme_Name) == 0)
-        {
-          DebugPrintf (0, "Found selected theme %s from GameConfig.\n", GameConfig.Theme_Name);
-          break;
-        }
-    }
-
-  if (i >= AllThemes.num_themes)
-    {
-      DebugPrintf (0, "WARNING: selected theme %s not valid! Using classic theme.\n", GameConfig.Theme_Name);
-      strcpy (GameConfig.Theme_Name, AllThemes.theme_name[classic_theme_index]);
-      AllThemes.cur_tnum = classic_theme_index;
-    }
-  else
-    AllThemes.cur_tnum = i;
-
-  DebugPrintf (0, "Game starts using theme: %s\n", GameConfig.Theme_Name);
-
-  return;
-
-} // FindAllThemes
+// void
+// FindAllThemes (void)
+// {
+//   int i, location;
+//   char dname[500], tname[100], fpath[500];
+//   DIR *dir;
+//   struct stat buf;
+//   struct dirent *entry;
+//   char *pos;
+//   int len;
+//   FILE *fp;
+//   classic_theme_index = 0;	// default: override when we actually find 'classic' theme
+// 
+//   // just to make sure...
+//   AllThemes.num_themes = 0;
+//   for (i=0; i< MAX_THEMES; i++)
+//     {
+//       if (AllThemes.theme_name[i]) free(AllThemes.theme_name[i]);
+//       AllThemes.theme_name[i] = NULL;
+//     }
+// 
+//   for (location=0; location < 2; location++)
+//     {
+//       if (location == 0)
+// 	strcpy (dname, FD_DATADIR);   /* first scan FD_DATADIR */
+//       if (location == 1)
+// 	strcpy (dname, LOCAL_DATADIR); /* then the local fallback */
+// 
+//       strcat (dname, "/graphics");
+// 
+//       if ( (dir = opendir(dname)) == NULL)
+// 	{
+// 	  DebugPrintf (1, "WARNING: can't open data-directory %s...\n", dname);
+// 	  continue;
+// 	}
+// 
+//       while ( (entry = readdir (dir)) != NULL )
+// 	{
+// 	  strcpy (fpath, dname);
+// 	  strcat (fpath, "/");
+// 	  strcat (fpath, entry->d_name);
+// 
+// 	  if ( stat(fpath, &buf) != 0 ) // error stat'ing the file
+// 	    {
+// 	      DebugPrintf (1, "WARNING: could non stat %s!\n", fpath);
+// 	      continue;
+// 	    }
+// 	  if ( ! S_ISDIR( buf.st_mode ) )  // is it a directory
+// 	    continue;
+// 
+// 	  if ( (pos = strstr (entry->d_name, "_theme")) == NULL)   // does its name contain "_theme"
+// 	    continue;
+// 	  if ( *(pos+strlen("_theme")) != 0 )           // is it *_theme ?
+// 	    continue;
+// 
+// 	  // yes!! -> found a possible theme-dir
+// 	  len = strlen(entry->d_name)-strlen("_theme");
+// 	  if (len >= 100)
+// 	    {
+// 	      DebugPrintf (0, "WARNING: theme-name of '%s' longer than allowed 100 chars... discarded!\n",
+// 			   entry->d_name);
+// 	      continue;
+// 	    }
+// 	  strncpy (tname, entry->d_name, len);
+// 	  tname[len]= '\0';  // null-terminate!
+// 	  DebugPrintf (1, "Hmm, seems we found a new theme: %s\n", tname);
+// 	  // check readabiltiy of "config.theme"
+// 	  sprintf (fpath, "%s/%s_theme/config.theme", dname, tname);
+// 	  if ( (fp = fopen (fpath, "r")) != NULL)
+// 	    { // config.theme is readable
+// 	      fclose(fp);
+// 	      DebugPrintf (1, "..and config.theme seems readable ... good! \n");
+// 	      // last check: is this theme already in the list??
+// 	      for (i=0; i< AllThemes.num_themes; i++)
+// 		if ( strcmp(tname, AllThemes.theme_name[i])== 0)
+// 		  break;
+// 	      if ( i < AllThemes.num_themes )
+// 		{ // found it in the list already
+// 		  DebugPrintf (1, "Theme '%s' is already listed ... \n", tname);
+// 		  continue;
+// 		}
+// 	      else
+// 		{ // not yet listed --> we found a new theme!
+// 		  DebugPrintf (0, "Found new graphics-theme: %s \n", tname);
+//                   if ( strcmp(tname, "classic") == 0 )
+//                     classic_theme_index = AllThemes.num_themes;
+// 		  AllThemes.theme_name[AllThemes.num_themes] = MyMalloc (strlen(tname)+1);
+// 		  strcpy (AllThemes.theme_name[AllThemes.num_themes], tname);
+// 		  AllThemes.num_themes ++;
+// 		}
+// 	    }
+// 	  else
+// 	    { // config.theme not readable
+// 	      DebugPrintf (0, "WARNING: config.theme of theme '%s' not readable -> discarded!\n", tname);
+// 	      continue;
+// 	    }
+// 
+// 	} // while more directory entries
+// 
+//       closedir (dir);
+// 
+//     } /* for all data-dir locations */
+// 
+//   // now have a look at what we found:
+//   if (AllThemes.num_themes == 0)
+//     {
+//       DebugPrintf (0, "ERROR: no valid graphic-themes found!! \n");
+//       DebugPrintf (0, "You need to install at least one to run Freedroid!!\n");
+//       Terminate (ERR);
+//     }
+// 
+//   for (i=0; i< AllThemes.num_themes; i++)
+//     {
+//       if ( strcmp (AllThemes.theme_name[i], GameConfig.Theme_Name) == 0)
+//         {
+//           DebugPrintf (0, "Found selected theme %s from GameConfig.\n", GameConfig.Theme_Name);
+//           break;
+//         }
+//     }
+// 
+//   if (i >= AllThemes.num_themes)
+//     {
+//       DebugPrintf (0, "WARNING: selected theme %s not valid! Using classic theme.\n", GameConfig.Theme_Name);
+//       strcpy (GameConfig.Theme_Name, AllThemes.theme_name[classic_theme_index]);
+//       AllThemes.cur_tnum = classic_theme_index;
+//     }
+//   else
+//     AllThemes.cur_tnum = i;
+// 
+//   DebugPrintf (0, "Game starts using theme: %s\n", GameConfig.Theme_Name);
+// 
+//   return;
+// 
+// } // FindAllThemes
 
 /*----------------------------------------------------------------------
  * put some ideology message for our poor friends enslaved by M$-Win32 ;)

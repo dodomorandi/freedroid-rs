@@ -4,19 +4,19 @@ use crate::{
     debug_level,
     defs::{
         self, scale_rect, AssembleCombatWindowFlags, Criticality, DisplayBannerFlags, Status,
-        Themed, GRAPHICS_DIR_C, TITLE_PIC_FILE_C, WAIT_AFTER_KILLED,
+        Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, TITLE_PIC_FILE_C, WAIT_AFTER_KILLED,
     },
     global::{
         num_highscores, Blastmap, Bulletmap, CurrentCombatScaleFactor, Druidmap, GameConfig,
         Highscores, SkipAFewFrames,
     },
     graphics::{
-        ne_screen, DisplayImage, InitPictures, Init_Video, Load_Fonts, MakeGridOnScreen,
+        ne_screen, AllThemes, DisplayImage, InitPictures, Init_Video, Load_Fonts, MakeGridOnScreen,
         Number_Of_Bullet_Types,
     },
     highscore::InitHighscores,
     input::{wait_for_all_keys_released, wait_for_key_pressed, Init_Joy},
-    misc::{find_file, init_progress, update_progress, Terminate},
+    misc::{find_file, init_progress, update_progress, MyMalloc, Terminate},
     sound::{Init_Audio, Switch_Background_Music_To},
     sound_on,
     text::{DisplayText, ScrollText},
@@ -27,7 +27,7 @@ use crate::{
 
 use clap::{crate_version, Clap};
 use cstr::cstr;
-use log::{error, info};
+use log::{error, info, warn};
 use sdl::{
     event::ll::SDL_DISABLE,
     ll::SDL_GetTicks,
@@ -36,15 +36,16 @@ use sdl::{
 };
 use std::{
     convert::{TryFrom, TryInto},
+    ffi::CStr,
     ops::Not,
     os::raw::{c_char, c_int, c_long, c_uint, c_void},
+    path::Path,
     ptr::null_mut,
 };
 
 extern "C" {
     pub fn InitNewMission(mission_name: *mut c_char);
     pub fn LoadGameConfig();
-    pub fn FindAllThemes();
     pub fn Init_Game_Data(data_filename: *mut c_char);
 
     static mut DebriefingText: *mut c_char;
@@ -379,4 +380,178 @@ unsafe fn parse_command_line() {
     } else if opt.window {
         GameConfig.UseFullscreen = false.into();
     }
+}
+
+/// find all themes and put them in AllThemes
+#[no_mangle]
+pub unsafe extern "C" fn FindAllThemes() {
+    use std::fs;
+
+    let mut classic_theme_index: usize = 0; // default: override when we actually find 'classic' theme
+
+    // just to make sure...
+    AllThemes.num_themes = 0;
+    AllThemes
+        .theme_name
+        .iter_mut()
+        .filter(|name| name.is_null().not())
+        .for_each(|name| {
+            libc::free(*name as *mut c_void);
+            *name = null_mut();
+        });
+
+    let mut add_theme_from_dir = |dir_name: &Path| {
+        let dir_name = dir_name.join("graphics");
+        let read_dir = match fs::read_dir(&dir_name) {
+            Ok(read_dir) => read_dir,
+            Err(err) => {
+                warn!("can't open data-directory {}: {}.", dir_name.display(), err);
+                return;
+            }
+        };
+
+        for entry in read_dir {
+            {
+                let entry = match entry {
+                    Ok(entry) => entry,
+                    Err(err) => {
+                        warn!(
+                            "cannot get next entry from dir {}: {}",
+                            dir_name.display(),
+                            err
+                        );
+                        continue;
+                    }
+                };
+
+                let file_type = match entry.file_type() {
+                    Ok(file_type) => file_type,
+                    Err(err) => {
+                        error!(
+                            "could not get file type for {}: {}",
+                            entry.path().display(),
+                            err
+                        );
+                        continue;
+                    }
+                };
+
+                if file_type.is_dir().not() {
+                    continue;
+                }
+
+                let theme_name = entry.file_name();
+                let theme_name = match theme_name
+                    .to_str()
+                    .and_then(|name| name.strip_suffix("_theme"))
+                {
+                    Some(theme_name) => theme_name,
+                    None => continue,
+                };
+
+                let theme_path = entry.path();
+                if theme_name.len() >= 100 {
+                    warn!(
+                        "theme-name of '{}' longer than allowed 100 chars... discarded!",
+                        theme_path.display()
+                    );
+                    continue;
+                }
+
+                info!("Found a new theme: {}", theme_name);
+                // check readabiltiy of "config.theme"
+                let config_path = theme_path.join(Path::new("config.theme"));
+
+                match fs::File::open(config_path) {
+                    Ok(_) => {
+                        info!("The theme file is readable");
+                        // last check: is this theme already in the list??
+
+                        let theme_exists = AllThemes
+                            .theme_name
+                            .iter()
+                            .copied()
+                            .filter(|theme| theme.is_null().not())
+                            .filter_map(|theme| {
+                                CStr::from_ptr(theme as *const c_char).to_str().ok()
+                            })
+                            .any(|theme| theme == theme_name);
+
+                        if theme_exists {
+                            info!("Theme '{}' is already listed", theme_name);
+                            continue;
+                        } else {
+                            info!("Found new graphics-theme: {}", theme_name);
+                            if theme_name == "classic" {
+                                classic_theme_index = AllThemes.num_themes.try_into().unwrap();
+                            }
+                            let new_theme = &mut AllThemes.theme_name
+                                [usize::try_from(AllThemes.num_themes).unwrap()];
+                            *new_theme =
+                                MyMalloc((theme_name.len() + 1).try_into().unwrap()) as *mut u8;
+                            std::ptr::copy_nonoverlapping(
+                                theme_name.as_ptr(),
+                                *new_theme,
+                                theme_name.len(),
+                            );
+                            *new_theme.add(theme_name.len()) = b'\0';
+
+                            AllThemes.num_themes += 1;
+                        }
+                    }
+                    Err(err) => {
+                        warn!(
+                            "config.theme of theme '{}' not readable: {}. Discarded.",
+                            theme_name, err
+                        );
+                        continue;
+                    }
+                }
+            }
+        }
+    };
+
+    add_theme_from_dir(Path::new(FD_DATADIR));
+    add_theme_from_dir(Path::new(LOCAL_DATADIR));
+
+    // now have a look at what we found:
+    if AllThemes.num_themes == 0 {
+        error!("no valid graphic-themes found!!");
+        error!("You need to install at least one to run Freedroid!!");
+        Terminate(defs::ERR.into());
+    }
+
+    let selected_theme_index = AllThemes.theme_name
+        [..usize::try_from(AllThemes.num_themes).unwrap()]
+        .iter()
+        .copied()
+        .position(|theme_name| {
+            libc::strcmp(theme_name as *const _, GameConfig.Theme_Name.as_mut_ptr()) == 0
+        });
+
+    match selected_theme_index {
+        Some(index) => {
+            info!(
+                "Found selected theme {} from GameConfig.",
+                CStr::from_ptr(GameConfig.Theme_Name.as_ptr()).to_string_lossy(),
+            );
+            AllThemes.cur_tnum = index.try_into().unwrap();
+        }
+        None => {
+            warn!(
+                "selected theme {} not valid! Using classic theme.",
+                CStr::from_ptr(GameConfig.Theme_Name.as_ptr()).to_string_lossy(),
+            );
+            libc::strcpy(
+                GameConfig.Theme_Name.as_mut_ptr(),
+                AllThemes.theme_name[classic_theme_index] as *const _,
+            );
+            AllThemes.cur_tnum = classic_theme_index.try_into().unwrap();
+        }
+    }
+
+    info!(
+        "Game starts using theme: {}",
+        CStr::from_ptr(GameConfig.Theme_Name.as_ptr()).to_string_lossy()
+    );
 }
