@@ -583,257 +583,257 @@ http://sourceforge.net/projects/freedroid/\n\n";
  * @Ret:
  *
  *-----------------------------------------------------------------*/
-void
-InitNewMission ( char *MissionName )
-{
-  char *fpath;
-  int i;
-  char *MainMissionPointer;
-  char *BriefingSectionPointer;
-  char *StartPointPointer;
-  char Buffer[500];
-  int NumberOfStartPoints=0;
-  int RealStartPoint=0;
-  int StartingLevel=0;
-  int StartingXPos=0;
-  int StartingYPos=0;
-  BFont_Info *oldfont;
-
-#define END_OF_MISSION_DATA_STRING "*** End of Mission File ***"
-#define MISSION_BRIEFING_BEGIN_STRING "** Start of Mission Briefing Text Section **"
-#define MISSION_ENDTITLE_SONG_NAME_STRING "Song name to play in the end title if the mission is completed: "
-#define SHIPNAME_INDICATION_STRING "Ship file to use for this mission: "
-#define ELEVATORNAME_INDICATION_STRING "Lift file to use for this mission: "
-#define CREWNAME_INDICATION_STRING "Crew file to use for this mission: "
-#define GAMEDATANAME_INDICATION_STRING "Physics ('game.dat') file to use for this mission: "
-#define MISSION_ENDTITLE_BEGIN_STRING "** Beginning of End Title Text Section **"
-#define MISSION_ENDTITLE_END_STRING "** End of End Title Text Section **"
-#define MISSION_START_POINT_STRING "Possible Start Point : "
-
-  //--------------------
-  // We store the mission name in case the influ
-  // gets destroyed so we know where to continue in
-  // case the player doesn't want to return to the very beginning
-  // but just to replay this mission.
-  //
-  strcpy( Previous_Mission_Name , MissionName );
-
-  DebugPrintf (2, "\nvoid InitNewMission( char *MissionName ): real function call confirmed...");
-  DebugPrintf (2, "\nA new mission is being initialized from file %s.\n" , MissionName );
-
-  //--------------------
-  //At first we do the things that must be done for all
-  //missions, regardless of mission file given
-  Activate_Conservative_Frame_Computation();
-  LastGotIntoBlastSound = 2;
-  LastRefreshSound = 2;
-  ThisMessageTime = 0;
-  LevelDoorsNotMovedTime = 0.0;
-  DeathCount = 0;
-  set_time_factor ( 1.0 );
-
-  /* Delete all bullets and blasts */
-  for (i = 0; i < MAXBULLETS; i++)
-    {
-      DeleteBullet ( i );
-      // AllBullets[i].type = OUT;
-      // AllBullets[i].mine = FALSE;
-    }
-  DebugPrintf (2, "\nvoid InitNewMission( ... ): All bullets have been deleted...");
-  for (i = 0; i < MAXBLASTS; i++)
-    {
-      AllBlasts[i].phase = OUT;
-      AllBlasts[i].type = OUT;
-    }
-  DebugPrintf (2, "\nvoid InitNewMission( ... ): All blasts have been deleted...");
-  for (i=0; i < MAX_ENEMYS_ON_SHIP; i++)
-    {
-      AllEnemys[i].type = OUT;
-      AllEnemys[i].energy = -1;
-    }
-  DebugPrintf (2, "\nvoid InitNewMission( ... ): All enemys have been deleted...");
-
-  //--------------------
-  //Now its time to start decoding the mission file.
-  //For that, we must get it into memory first.
-  //The procedure is the same as with LoadShip
-
-  oldfont = GetCurrentFont ();
-
-  SetCurrentFont (Font0_BFont);
-  //  printf_SDL (ne_screen, User_Rect.x + 50, -1, "Loading mission data ");
-
-  /* Read the whole mission data to memory */
-  fpath = find_file (MissionName, MAP_DIR, NO_THEME, CRITICAL);
-
-  MainMissionPointer = ReadAndMallocAndTerminateFile( fpath , END_OF_MISSION_DATA_STRING ) ;
-
-  //--------------------
-  // Now the mission file is read into memory.  That means we can start to decode the details given
-  // in the body of the mission file.
-
-  //--------------------
-  // First we extract the game physics file name from the
-  // mission file and load the game data.
-  //
-  ReadValueFromString (MainMissionPointer, GAMEDATANAME_INDICATION_STRING, "%s", Buffer);
-
-  Init_Game_Data (Buffer);
-
-  //--------------------
-  // Now its time to get the shipname from the mission file and
-  // read the ship file into the right memory structures
-  //
-  ReadValueFromString ( MainMissionPointer, SHIPNAME_INDICATION_STRING, "%s", Buffer);
-
-  if ( LoadShip (Buffer) == ERR )
-    {
-      DebugPrintf (0, "Error in LoadShip\n");
-      Terminate (ERR);
-    }
-  //--------------------
-  // Now its time to get the elevator file name from the mission file and
-  // read the elevator file into the right memory structures
-  //
-  ReadValueFromString (MainMissionPointer, ELEVATORNAME_INDICATION_STRING, "%s", Buffer);
-
-  if (GetLiftConnections (Buffer) == ERR)
-    {
-      DebugPrintf (1, "\nError in GetLiftConnections ");
-      Terminate (ERR);
-    }
-  //  printf_SDL (ne_screen, -1, -1, ".");
-  //--------------------
-  // We also load the comment for the influencer to say at the beginning of the mission
-  //
-
-  // NO! these strings are allocated elsewhere or even static, so free'ing them
-  // here would SegFault eventually!
-  //  if (Me.TextToBeDisplayed) free (Me.TextToBeDisplayed);
-
-  Me.TextToBeDisplayed = "Ok. I'm on board.  Let's get to work.";	// taken from Paradroid.mission
-  Me.TextVisibleTime = 0;
-
-
-  //--------------------
-  // Now its time to get the crew file name from the mission file and
-  // assemble an appropriate crew out of it
-  //
-  ReadValueFromString (MainMissionPointer, CREWNAME_INDICATION_STRING, "%s", Buffer);
-
-  /* initialize enemys according to crew file */
-  // WARNING!! THIS REQUIRES THE freedroid.ruleset FILE TO BE READ ALREADY, BECAUSE
-  // ROBOT SPECIFICATIONS ARE ALREADY REQUIRED HERE!!!!!
-  if (GetCrew (Buffer) == ERR)
-    {
-      DebugPrintf (1, "\nInitNewGame(): ERROR: Initialization of enemys failed...");
-      Terminate (-1);
-    }
-
-  //--------------------
-  // Now its time to get the debriefing text from the mission file so that it
-  // can be used, if the mission is completed and also the end title music name
-  // must be read in as well
-  ReadValueFromString (MainMissionPointer, MISSION_ENDTITLE_SONG_NAME_STRING, "%s", DebriefingSong);
-
-  if (DebriefingText) free(DebriefingText);
-  DebriefingText =
-    ReadAndMallocStringFromData (MainMissionPointer, MISSION_ENDTITLE_BEGIN_STRING, MISSION_ENDTITLE_END_STRING);
-
-  //--------------------
-  // Now we read all the possible starting points for the
-  // current mission file, so that we know where to place the
-  // influencer at the beginning of the mission.
-
-  NumberOfStartPoints = CountStringOccurences ( MainMissionPointer , MISSION_START_POINT_STRING );
-
-  if ( NumberOfStartPoints == 0 )
-    {
-      DebugPrintf ( 0 , "\n\nERROR! NOT EVEN ONE SINGLE STARTING POINT ENTRY FOUND!  TERMINATING!");
-      Terminate( ERR );
-    }
-  DebugPrintf (1, "\nFound %d different starting points for the mission in the mission file.",
-	       NumberOfStartPoints );
-
-
-  // Now that we know how many different starting points there are, we can randomly select
-  // one of them and read then in this one starting point into the right structures...
-  RealStartPoint = MyRandom ( NumberOfStartPoints -1 ) + 1;
-  StartPointPointer=MainMissionPointer;
-  for ( i=0 ; i<RealStartPoint; i++ )
-    {
-      StartPointPointer = strstr ( StartPointPointer , MISSION_START_POINT_STRING );
-      StartPointPointer += strlen ( MISSION_START_POINT_STRING );
-    }
-  StartPointPointer = strstr( StartPointPointer , "Level=" ) + strlen( "Level=" );
-  sscanf( StartPointPointer , "%d" , &StartingLevel );
-  CurLevel = curShip.AllLevels[ StartingLevel ];
-  StartPointPointer = strstr( StartPointPointer , "XPos=" ) + strlen( "XPos=" );
-  sscanf( StartPointPointer , "%d" , &StartingXPos );
-  Me.pos.x=StartingXPos;
-  StartPointPointer = strstr( StartPointPointer , "YPos=" ) + strlen( "YPos=" );
-  sscanf( StartPointPointer , "%d" , &StartingYPos );
-  Me.pos.y=StartingYPos;
-  DebugPrintf ( 1 , "\nFinal starting position: Level=%d XPos=%d YPos=%d." ,
-		StartingLevel, StartingXPos, StartingYPos );
-
-
-  /* Reactivate the light on alle Levels, that might have been dark */
-  for (i = 0; i < curShip.num_levels; i++)
-    curShip.AllLevels[i]->empty = FALSE;
-
-  DebugPrintf (2, "\nvoid InitNewMission( ... ): All levels have been set to 'active'...");
-
-
-  //--------------------
-  // At this point the position history can be initialized
-  //
-  InitInfluPositionHistory();
-  //  printf_SDL (ne_screen, -1, -1, ".");
-
-
-  //  printf_SDL (ne_screen, -1, -1, " ok\n");
-  SetCurrentFont (oldfont);
-  //--------------------
-  // We start with doing the briefing things...
-  // Now we search for the beginning of the mission briefing big section NOT subsection.
-  // We display the title and explanation of controls and such...
-  BriefingSectionPointer = LocateStringInData ( MainMissionPointer , MISSION_BRIEFING_BEGIN_STRING );
-  Title ( BriefingSectionPointer );
-
-  /* Den Banner fuer das Spiel anzeigen */
-  ClearGraphMem();
-  DisplayBanner (NULL, NULL,  BANNER_FORCE_UPDATE );
-
-  // Switch_Background_Music_To (COMBAT_BACKGROUND_MUSIC_SOUND);
-  Switch_Background_Music_To ( CurLevel->Background_Song_Name );
-
-  for (i = 0; i < curShip.num_levels; i++)
-    {
-      CurLevel = curShip.AllLevels[i];
-      ShuffleEnemys ();
-    }
-  CurLevel = curShip.AllLevels[ StartingLevel ];
-
-  // Now that the briefing and all that is done,
-  // the influence structure can be initialized for
-  // the new mission:
-  Me.type = DRUID001;
-  Me.speed.x = 0;
-  Me.speed.y = 0;
-  Me.energy = Druidmap[DRUID001].maxenergy;
-  Me.health = Me.energy;	/* start with max. health */
-  Me.status = MOBILE;
-  Me.phase = 0;
-  Me.timer = 0.0;  // set clock to 0
-
-  DebugPrintf (1, "done."); // this matches the printf at the beginning of this function
-
-  free (MainMissionPointer);
-
-  return;
-
-} /* InitNewGame */
+// void
+// InitNewMission ( char *MissionName )
+// {
+//   char *fpath;
+//   int i;
+//   char *MainMissionPointer;
+//   char *BriefingSectionPointer;
+//   char *StartPointPointer;
+//   char Buffer[500];
+//   int NumberOfStartPoints=0;
+//   int RealStartPoint=0;
+//   int StartingLevel=0;
+//   int StartingXPos=0;
+//   int StartingYPos=0;
+//   BFont_Info *oldfont;
+// 
+// #define END_OF_MISSION_DATA_STRING "*** End of Mission File ***"
+// #define MISSION_BRIEFING_BEGIN_STRING "** Start of Mission Briefing Text Section **"
+// #define MISSION_ENDTITLE_SONG_NAME_STRING "Song name to play in the end title if the mission is completed: "
+// #define SHIPNAME_INDICATION_STRING "Ship file to use for this mission: "
+// #define ELEVATORNAME_INDICATION_STRING "Lift file to use for this mission: "
+// #define CREWNAME_INDICATION_STRING "Crew file to use for this mission: "
+// #define GAMEDATANAME_INDICATION_STRING "Physics ('game.dat') file to use for this mission: "
+// #define MISSION_ENDTITLE_BEGIN_STRING "** Beginning of End Title Text Section **"
+// #define MISSION_ENDTITLE_END_STRING "** End of End Title Text Section **"
+// #define MISSION_START_POINT_STRING "Possible Start Point : "
+// 
+//   //--------------------
+//   // We store the mission name in case the influ
+//   // gets destroyed so we know where to continue in
+//   // case the player doesn't want to return to the very beginning
+//   // but just to replay this mission.
+//   //
+//   strcpy( Previous_Mission_Name , MissionName );
+// 
+//   DebugPrintf (2, "\nvoid InitNewMission( char *MissionName ): real function call confirmed...");
+//   DebugPrintf (2, "\nA new mission is being initialized from file %s.\n" , MissionName );
+// 
+//   //--------------------
+//   //At first we do the things that must be done for all
+//   //missions, regardless of mission file given
+//   Activate_Conservative_Frame_Computation();
+//   LastGotIntoBlastSound = 2;
+//   LastRefreshSound = 2;
+//   ThisMessageTime = 0;
+//   LevelDoorsNotMovedTime = 0.0;
+//   DeathCount = 0;
+//   set_time_factor ( 1.0 );
+// 
+//   /* Delete all bullets and blasts */
+//   for (i = 0; i < MAXBULLETS; i++)
+//     {
+//       DeleteBullet ( i );
+//       // AllBullets[i].type = OUT;
+//       // AllBullets[i].mine = FALSE;
+//     }
+//   DebugPrintf (2, "\nvoid InitNewMission( ... ): All bullets have been deleted...");
+//   for (i = 0; i < MAXBLASTS; i++)
+//     {
+//       AllBlasts[i].phase = OUT;
+//       AllBlasts[i].type = OUT;
+//     }
+//   DebugPrintf (2, "\nvoid InitNewMission( ... ): All blasts have been deleted...");
+//   for (i=0; i < MAX_ENEMYS_ON_SHIP; i++)
+//     {
+//       AllEnemys[i].type = OUT;
+//       AllEnemys[i].energy = -1;
+//     }
+//   DebugPrintf (2, "\nvoid InitNewMission( ... ): All enemys have been deleted...");
+// 
+//   //--------------------
+//   //Now its time to start decoding the mission file.
+//   //For that, we must get it into memory first.
+//   //The procedure is the same as with LoadShip
+// 
+//   oldfont = GetCurrentFont ();
+// 
+//   SetCurrentFont (Font0_BFont);
+//   //  printf_SDL (ne_screen, User_Rect.x + 50, -1, "Loading mission data ");
+// 
+//   /* Read the whole mission data to memory */
+//   fpath = find_file (MissionName, MAP_DIR, NO_THEME, CRITICAL);
+// 
+//   MainMissionPointer = ReadAndMallocAndTerminateFile( fpath , END_OF_MISSION_DATA_STRING ) ;
+// 
+//   //--------------------
+//   // Now the mission file is read into memory.  That means we can start to decode the details given
+//   // in the body of the mission file.
+// 
+//   //--------------------
+//   // First we extract the game physics file name from the
+//   // mission file and load the game data.
+//   //
+//   ReadValueFromString (MainMissionPointer, GAMEDATANAME_INDICATION_STRING, "%s", Buffer);
+// 
+//   Init_Game_Data (Buffer);
+// 
+//   //--------------------
+//   // Now its time to get the shipname from the mission file and
+//   // read the ship file into the right memory structures
+//   //
+//   ReadValueFromString ( MainMissionPointer, SHIPNAME_INDICATION_STRING, "%s", Buffer);
+// 
+//   if ( LoadShip (Buffer) == ERR )
+//     {
+//       DebugPrintf (0, "Error in LoadShip\n");
+//       Terminate (ERR);
+//     }
+//   //--------------------
+//   // Now its time to get the elevator file name from the mission file and
+//   // read the elevator file into the right memory structures
+//   //
+//   ReadValueFromString (MainMissionPointer, ELEVATORNAME_INDICATION_STRING, "%s", Buffer);
+// 
+//   if (GetLiftConnections (Buffer) == ERR)
+//     {
+//       DebugPrintf (1, "\nError in GetLiftConnections ");
+//       Terminate (ERR);
+//     }
+//   //  printf_SDL (ne_screen, -1, -1, ".");
+//   //--------------------
+//   // We also load the comment for the influencer to say at the beginning of the mission
+//   //
+// 
+//   // NO! these strings are allocated elsewhere or even static, so free'ing them
+//   // here would SegFault eventually!
+//   //  if (Me.TextToBeDisplayed) free (Me.TextToBeDisplayed);
+// 
+//   Me.TextToBeDisplayed = "Ok. I'm on board.  Let's get to work.";	// taken from Paradroid.mission
+//   Me.TextVisibleTime = 0;
+// 
+// 
+//   //--------------------
+//   // Now its time to get the crew file name from the mission file and
+//   // assemble an appropriate crew out of it
+//   //
+//   ReadValueFromString (MainMissionPointer, CREWNAME_INDICATION_STRING, "%s", Buffer);
+// 
+//   /* initialize enemys according to crew file */
+//   // WARNING!! THIS REQUIRES THE freedroid.ruleset FILE TO BE READ ALREADY, BECAUSE
+//   // ROBOT SPECIFICATIONS ARE ALREADY REQUIRED HERE!!!!!
+//   if (GetCrew (Buffer) == ERR)
+//     {
+//       DebugPrintf (1, "\nInitNewGame(): ERROR: Initialization of enemys failed...");
+//       Terminate (-1);
+//     }
+// 
+//   //--------------------
+//   // Now its time to get the debriefing text from the mission file so that it
+//   // can be used, if the mission is completed and also the end title music name
+//   // must be read in as well
+//   ReadValueFromString (MainMissionPointer, MISSION_ENDTITLE_SONG_NAME_STRING, "%s", DebriefingSong);
+// 
+//   if (DebriefingText) free(DebriefingText);
+//   DebriefingText =
+//     ReadAndMallocStringFromData (MainMissionPointer, MISSION_ENDTITLE_BEGIN_STRING, MISSION_ENDTITLE_END_STRING);
+// 
+//   //--------------------
+//   // Now we read all the possible starting points for the
+//   // current mission file, so that we know where to place the
+//   // influencer at the beginning of the mission.
+// 
+//   NumberOfStartPoints = CountStringOccurences ( MainMissionPointer , MISSION_START_POINT_STRING );
+// 
+//   if ( NumberOfStartPoints == 0 )
+//     {
+//       DebugPrintf ( 0 , "\n\nERROR! NOT EVEN ONE SINGLE STARTING POINT ENTRY FOUND!  TERMINATING!");
+//       Terminate( ERR );
+//     }
+//   DebugPrintf (1, "\nFound %d different starting points for the mission in the mission file.",
+// 	       NumberOfStartPoints );
+// 
+// 
+//   // Now that we know how many different starting points there are, we can randomly select
+//   // one of them and read then in this one starting point into the right structures...
+//   RealStartPoint = MyRandom ( NumberOfStartPoints -1 ) + 1;
+//   StartPointPointer=MainMissionPointer;
+//   for ( i=0 ; i<RealStartPoint; i++ )
+//     {
+//       StartPointPointer = strstr ( StartPointPointer , MISSION_START_POINT_STRING );
+//       StartPointPointer += strlen ( MISSION_START_POINT_STRING );
+//     }
+//   StartPointPointer = strstr( StartPointPointer , "Level=" ) + strlen( "Level=" );
+//   sscanf( StartPointPointer , "%d" , &StartingLevel );
+//   CurLevel = curShip.AllLevels[ StartingLevel ];
+//   StartPointPointer = strstr( StartPointPointer , "XPos=" ) + strlen( "XPos=" );
+//   sscanf( StartPointPointer , "%d" , &StartingXPos );
+//   Me.pos.x=StartingXPos;
+//   StartPointPointer = strstr( StartPointPointer , "YPos=" ) + strlen( "YPos=" );
+//   sscanf( StartPointPointer , "%d" , &StartingYPos );
+//   Me.pos.y=StartingYPos;
+//   DebugPrintf ( 1 , "\nFinal starting position: Level=%d XPos=%d YPos=%d." ,
+// 		StartingLevel, StartingXPos, StartingYPos );
+// 
+// 
+//   /* Reactivate the light on alle Levels, that might have been dark */
+//   for (i = 0; i < curShip.num_levels; i++)
+//     curShip.AllLevels[i]->empty = FALSE;
+// 
+//   DebugPrintf (2, "\nvoid InitNewMission( ... ): All levels have been set to 'active'...");
+// 
+// 
+//   //--------------------
+//   // At this point the position history can be initialized
+//   //
+//   InitInfluPositionHistory();
+//   //  printf_SDL (ne_screen, -1, -1, ".");
+// 
+// 
+//   //  printf_SDL (ne_screen, -1, -1, " ok\n");
+//   SetCurrentFont (oldfont);
+//   //--------------------
+//   // We start with doing the briefing things...
+//   // Now we search for the beginning of the mission briefing big section NOT subsection.
+//   // We display the title and explanation of controls and such...
+//   BriefingSectionPointer = LocateStringInData ( MainMissionPointer , MISSION_BRIEFING_BEGIN_STRING );
+//   Title ( BriefingSectionPointer );
+// 
+//   /* Den Banner fuer das Spiel anzeigen */
+//   ClearGraphMem();
+//   DisplayBanner (NULL, NULL,  BANNER_FORCE_UPDATE );
+// 
+//   // Switch_Background_Music_To (COMBAT_BACKGROUND_MUSIC_SOUND);
+//   Switch_Background_Music_To ( CurLevel->Background_Song_Name );
+// 
+//   for (i = 0; i < curShip.num_levels; i++)
+//     {
+//       CurLevel = curShip.AllLevels[i];
+//       ShuffleEnemys ();
+//     }
+//   CurLevel = curShip.AllLevels[ StartingLevel ];
+// 
+//   // Now that the briefing and all that is done,
+//   // the influence structure can be initialized for
+//   // the new mission:
+//   Me.type = DRUID001;
+//   Me.speed.x = 0;
+//   Me.speed.y = 0;
+//   Me.energy = Druidmap[DRUID001].maxenergy;
+//   Me.health = Me.energy;	/* start with max. health */
+//   Me.status = MOBILE;
+//   Me.phase = 0;
+//   Me.timer = 0.0;  // set clock to 0
+// 
+//   DebugPrintf (1, "done."); // this matches the printf at the beginning of this function
+// 
+//   free (MainMissionPointer);
+// 
+//   return;
+// 
+// } /* InitNewGame */
 
 /*-----------------------------------------------------------------
  * @Desc: This function initializes the whole Freedroid game.

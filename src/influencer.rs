@@ -4,4 +4,5 @@ extern "C" {
     pub fn CheckInfluenceWallCollisions();
     pub fn MoveInfluence();
     pub fn RefreshInfluencer();
+    pub fn InitInfluPositionHistory();
 }
