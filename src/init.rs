@@ -57,7 +57,6 @@ use std::{
 extern "C" {
     pub fn LoadGameConfig();
     pub fn Init_Game_Data(data_filename: *mut c_char);
-    pub fn Title(mission_briefing_pointer: *mut c_char);
 
     static mut DebriefingText: *mut c_char;
     static mut DebriefingSong: [c_char; 500];
@@ -864,4 +863,98 @@ pub unsafe extern "C" fn InitNewMission(mission_name: *mut c_char) {
     info!("done."); // this matches the printf at the beginning of this function
 
     libc::free(main_mission_pointer as *mut c_void);
+}
+
+///  This function does the mission briefing.  It assumes,
+///  that a mission file has already been successfully loaded into
+///  memory.  The briefing texts will be extracted and displayed in
+///  scrolling font.
+#[no_mangle]
+pub unsafe extern "C" fn Title(mission_briefing_pointer: *mut c_char) {
+    const BRIEFING_TITLE_PICTURE_STRING: &CStr =
+        cstr!("The title picture in the graphics subdirectory for this mission is : ");
+    const BRIEFING_TITLE_SONG_STRING: &CStr =
+        cstr!("The title song in the sound subdirectory for this mission is : ");
+    const NEXT_BRIEFING_SUBSECTION_START_STRING: &CStr =
+        cstr!("* New Mission Briefing Text Subsection *");
+    const END_OF_BRIEFING_SUBSECTION_STRING: &CStr =
+        cstr!("* End of Mission Briefing Text Subsection *");
+
+    let mut buffer: [c_char; 500] = [0; 500];
+    ReadValueFromString(
+        mission_briefing_pointer,
+        BRIEFING_TITLE_SONG_STRING.as_ptr() as *mut c_char,
+        cstr!("%s").as_ptr() as *mut c_char,
+        buffer.as_mut_ptr() as *mut c_void,
+    );
+    Switch_Background_Music_To(buffer.as_mut_ptr());
+
+    SDL_SetClipRect(ne_screen, null_mut());
+    ReadValueFromString(
+        mission_briefing_pointer,
+        BRIEFING_TITLE_PICTURE_STRING.as_ptr() as *mut c_char,
+        cstr!("%s").as_ptr() as *mut c_char,
+        buffer.as_mut_ptr() as *mut c_void,
+    );
+    DisplayImage(find_file(
+        buffer.as_mut_ptr(),
+        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        Themed::NoTheme as c_int,
+        Criticality::Critical as c_int,
+    ));
+    MakeGridOnScreen(Some(&Screen_Rect));
+    Me.status = Status::Briefing as c_int;
+    //  SDL_Flip (ne_screen);
+
+    SetCurrentFont(Para_BFont);
+
+    DisplayBanner(
+        null_mut(),
+        null_mut(),
+        DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+    );
+
+    // Next we display all the subsections of the briefing section
+    // with scrolling font
+    let mut next_subsection_start_pointer = mission_briefing_pointer;
+    let mut prepared_briefing_text = null_mut();
+    loop {
+        next_subsection_start_pointer = libc::strstr(
+            next_subsection_start_pointer,
+            NEXT_BRIEFING_SUBSECTION_START_STRING.as_ptr(),
+        );
+        if next_subsection_start_pointer.is_null() {
+            break;
+        }
+
+        next_subsection_start_pointer = next_subsection_start_pointer
+            .add(libc::strlen(NEXT_BRIEFING_SUBSECTION_START_STRING.as_ptr()));
+        let termination_pointer = libc::strstr(
+            next_subsection_start_pointer,
+            END_OF_BRIEFING_SUBSECTION_STRING.as_ptr(),
+        );
+        if termination_pointer.is_null() {
+            error!("Title: Unterminated Subsection in Mission briefing....Terminating...");
+            Terminate(defs::ERR.into());
+        }
+        let this_text_length = termination_pointer.offset_from(next_subsection_start_pointer);
+        libc::free(prepared_briefing_text as *mut c_void);
+        prepared_briefing_text =
+            MyMalloc(c_long::try_from(this_text_length).unwrap() + 10) as *mut c_char;
+        libc::strncpy(
+            prepared_briefing_text,
+            next_subsection_start_pointer,
+            this_text_length.try_into().unwrap(),
+        );
+        *prepared_briefing_text.offset(this_text_length) = 0;
+
+        let mut rect = Full_User_Rect;
+        rect.x += 10;
+        rect.w -= 10; //leave some border
+        if ScrollText(prepared_briefing_text, &mut rect, 0) == 1 {
+            break; // User pressed 'fire'
+        }
+    }
+
+    libc::free(prepared_briefing_text as *mut c_void);
 }

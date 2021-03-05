@@ -953,69 +953,69 @@ http://sourceforge.net/projects/freedroid/\n\n";
  *  scrolling font.
  *
  *-----------------------------------------------------------------*/
-void
-Title ( char *MissionBriefingPointer )
-{
-  char* NextSubsectionStartPointer;
-  char* PreparedBriefingText = NULL;
-  char* TerminationPointer;
-  char Buffer[500];
-  int ThisTextLength;
-  SDL_Rect rect;
-#define BRIEFING_TITLE_PICTURE_STRING "The title picture in the graphics subdirectory for this mission is : "
-#define BRIEFING_TITLE_SONG_STRING "The title song in the sound subdirectory for this mission is : "
-#define NEXT_BRIEFING_SUBSECTION_START_STRING "* New Mission Briefing Text Subsection *"
-#define END_OF_BRIEFING_SUBSECTION_STRING "* End of Mission Briefing Text Subsection *"
-
-  ReadValueFromString (MissionBriefingPointer, BRIEFING_TITLE_SONG_STRING, "%s", Buffer);
-  Switch_Background_Music_To (Buffer);
-
-  SDL_SetClipRect ( ne_screen, NULL );
-  ReadValueFromString (MissionBriefingPointer, BRIEFING_TITLE_PICTURE_STRING, "%s", Buffer);
-  DisplayImage ( find_file(Buffer, GRAPHICS_DIR, NO_THEME, CRITICAL) );
-  MakeGridOnScreen( (SDL_Rect*) &Screen_Rect );
-  Me.status=BRIEFING;
-  //  SDL_Flip (ne_screen);
-
-  SetCurrentFont( Para_BFont );
-
-  DisplayBanner (NULL, NULL,  BANNER_FORCE_UPDATE );
-
-  // Next we display all the subsections of the briefing section
-  // with scrolling font
-  NextSubsectionStartPointer = MissionBriefingPointer;
-  while (1)
-    {
-      NextSubsectionStartPointer = strstr (NextSubsectionStartPointer,
-					   NEXT_BRIEFING_SUBSECTION_START_STRING);
-      if (NextSubsectionStartPointer == NULL)
-	break;
-
-      NextSubsectionStartPointer += strlen ( NEXT_BRIEFING_SUBSECTION_START_STRING );
-      if ( (TerminationPointer=strstr ( NextSubsectionStartPointer, END_OF_BRIEFING_SUBSECTION_STRING)) == NULL)
-	{
-	  DebugPrintf (1, "\n\nvoid Title(...): Unterminated Subsection in Mission briefing....Terminating...");
-	  Terminate(ERR);
-	}
-      ThisTextLength=TerminationPointer-NextSubsectionStartPointer;
-      free ( PreparedBriefingText );
-      PreparedBriefingText = MyMalloc (ThisTextLength + 10);
-      strncpy ( PreparedBriefingText , NextSubsectionStartPointer , ThisTextLength );
-      PreparedBriefingText[ThisTextLength]=0;
-
-      Copy_Rect(Full_User_Rect, rect);
-      rect.x += 10;
-      rect.w -= 10; //leave some border
-      if (ScrollText ( PreparedBriefingText, &rect , 0 ) == 1) {
-	break;  // User pressed 'fire'
-      }
-    } // while(1)
-
-  free ( PreparedBriefingText );
-  PreparedBriefingText = NULL;
-  return;
-
-} /* Title() */
+// void
+// Title ( char *MissionBriefingPointer )
+// {
+//   char* NextSubsectionStartPointer;
+//   char* PreparedBriefingText = NULL;
+//   char* TerminationPointer;
+//   char Buffer[500];
+//   int ThisTextLength;
+//   SDL_Rect rect;
+// #define BRIEFING_TITLE_PICTURE_STRING "The title picture in the graphics subdirectory for this mission is : "
+// #define BRIEFING_TITLE_SONG_STRING "The title song in the sound subdirectory for this mission is : "
+// #define NEXT_BRIEFING_SUBSECTION_START_STRING "* New Mission Briefing Text Subsection *"
+// #define END_OF_BRIEFING_SUBSECTION_STRING "* End of Mission Briefing Text Subsection *"
+// 
+//   ReadValueFromString (MissionBriefingPointer, BRIEFING_TITLE_SONG_STRING, "%s", Buffer);
+//   Switch_Background_Music_To (Buffer);
+// 
+//   SDL_SetClipRect ( ne_screen, NULL );
+//   ReadValueFromString (MissionBriefingPointer, BRIEFING_TITLE_PICTURE_STRING, "%s", Buffer);
+//   DisplayImage ( find_file(Buffer, GRAPHICS_DIR, NO_THEME, CRITICAL) );
+//   MakeGridOnScreen( (SDL_Rect*) &Screen_Rect );
+//   Me.status=BRIEFING;
+//   //  SDL_Flip (ne_screen);
+// 
+//   SetCurrentFont( Para_BFont );
+// 
+//   DisplayBanner (NULL, NULL,  BANNER_FORCE_UPDATE );
+// 
+//   // Next we display all the subsections of the briefing section
+//   // with scrolling font
+//   NextSubsectionStartPointer = MissionBriefingPointer;
+//   while (1)
+//     {
+//       NextSubsectionStartPointer = strstr (NextSubsectionStartPointer,
+// 					   NEXT_BRIEFING_SUBSECTION_START_STRING);
+//       if (NextSubsectionStartPointer == NULL)
+// 	break;
+// 
+//       NextSubsectionStartPointer += strlen ( NEXT_BRIEFING_SUBSECTION_START_STRING );
+//       if ( (TerminationPointer=strstr ( NextSubsectionStartPointer, END_OF_BRIEFING_SUBSECTION_STRING)) == NULL)
+// 	{
+// 	  DebugPrintf (1, "\n\nvoid Title(...): Unterminated Subsection in Mission briefing....Terminating...");
+// 	  Terminate(ERR);
+// 	}
+//       ThisTextLength=TerminationPointer-NextSubsectionStartPointer;
+//       free ( PreparedBriefingText );
+//       PreparedBriefingText = MyMalloc (ThisTextLength + 10);
+//       strncpy ( PreparedBriefingText , NextSubsectionStartPointer , ThisTextLength );
+//       PreparedBriefingText[ThisTextLength]=0;
+// 
+//       Copy_Rect(Full_User_Rect, rect);
+//       rect.x += 10;
+//       rect.w -= 10; //leave some border
+//       if (ScrollText ( PreparedBriefingText, &rect , 0 ) == 1) {
+// 	break;  // User pressed 'fire'
+//       }
+//     } // while(1)
+// 
+//   free ( PreparedBriefingText );
+//   PreparedBriefingText = NULL;
+//   return;
+// 
+// } /* Title() */
 
 /*----------------------------------------------------------------------*/
 /* $Function----------------------------------------------------------*/
