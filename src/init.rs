@@ -28,7 +28,7 @@ use crate::{
     },
     sound::{Init_Audio, Switch_Background_Music_To},
     sound_on,
-    structs::DruidSpec,
+    structs::{BulletSpec, DruidSpec},
     text::{DisplayText, ScrollText},
     vars::{Classic_User_Rect, Full_User_Rect, Screen_Rect, User_Rect},
     view::{Assemble_Combat_Picture, DisplayBanner},
@@ -58,7 +58,6 @@ use std::{
 extern "C" {
     pub fn LoadGameConfig();
     pub fn Get_General_Game_Constants(data: *mut c_char);
-    pub fn Get_Bullet_Data(data_pointer: *mut c_void);
 
     static mut DebriefingText: *mut c_char;
     static mut DebriefingSong: [c_char; 500];
@@ -1295,5 +1294,151 @@ pub unsafe extern "C" fn Get_Robot_Data(data_pointer: *mut c_void) {
         droid.lose_health *= energyloss_calibrator;
         droid.aggression = (droid.aggression as f32 * aggression_calibrator) as c_int;
         droid.score = (droid.score as f32 * score_calibrator) as c_int;
+    }
+}
+
+/// This function reads in all the bullet data from the freedroid.ruleset file,
+/// but IT DOES NOT LOAD THE FILE, IT ASSUMES IT IS ALREADY LOADED and
+/// it only receives a pointer to the start of the bullet section from
+/// the calling function.
+pub unsafe extern "C" fn Get_Bullet_Data(data_pointer: *mut c_void) {
+    // const BULLET_SECTION_BEGIN_STRING: &CStr = cstr!("*** Start of Bullet Data Section: ***");
+    // const BULLET_SECTION_END_STRING: &CStr = cstr!("*** End of Bullet Data Section: ***");
+    const NEW_BULLET_TYPE_BEGIN_STRING: &CStr =
+        cstr!("** Start of new bullet specification subsection **");
+
+    const BULLET_RECHARGE_TIME_BEGIN_STRING: &CStr =
+        cstr!("Time is takes to recharge this bullet/weapon in seconds :");
+    const BULLET_SPEED_BEGIN_STRING: &CStr = cstr!("Flying speed of this bullet type :");
+    const BULLET_DAMAGE_BEGIN_STRING: &CStr = cstr!("Damage cause by a hit of this bullet type :");
+    // #define BULLET_NUMBER_OF_PHASES_BEGIN_STRING "Number of different phases that were designed for this bullet type :"
+    // const BULLET_ONE_SHOT_ONLY_AT_A_TIME: &CStr =
+    //     cstr!("Cannot fire until previous bullet has been deleted : ");
+    const BULLET_BLAST_TYPE_CAUSED_BEGIN_STRING: &CStr =
+        cstr!("Type of blast this bullet causes when crashing e.g. against a wall :");
+
+    const BULLET_SPEED_CALIBRATOR_STRING: &CStr =
+        cstr!("Common factor for all bullet's speed values: ");
+    const BULLET_DAMAGE_CALIBRATOR_STRING: &CStr =
+        cstr!("Common factor for all bullet's damage values: ");
+
+    info!("Starting to read bullet data...");
+    //--------------------
+    // At first, we must allocate memory for the droid specifications.
+    // How much?  That depends on the number of droids defined in freedroid.ruleset.
+    // So we have to count those first.  ok.  lets do it.
+
+    Number_Of_Bullet_Types = CountStringOccurences(
+        data_pointer as *mut c_char,
+        NEW_BULLET_TYPE_BEGIN_STRING.as_ptr() as *mut c_char,
+    );
+
+    // Now that we know how many bullets are defined in freedroid.ruleset, we can allocate
+    // a fitting amount of memory, but of course only if the memory hasn't been allocated
+    // aready!!!
+    //
+    // If we would do that in any case, every Init_Game_Data call would destroy the loaded
+    // image files AND MOST LIKELY CAUSE A SEGFAULT!!!
+    //
+    if Bulletmap.is_null() {
+        let mem =
+            usize::try_from(Number_Of_Bullet_Types).unwrap() * std::mem::size_of::<BulletSpec>();
+        Bulletmap = MyMalloc(mem.try_into().unwrap()) as *mut BulletSpec;
+        std::ptr::write_bytes(
+            Bulletmap,
+            0,
+            usize::try_from(Number_Of_Bullet_Types).unwrap(),
+        );
+        info!(
+            "We have counted {} different bullet types in the game data file.",
+            Number_Of_Bullet_Types
+        );
+        info!("MEMORY HAS BEEN ALLOCATED. THE READING CAN BEGIN.");
+    }
+
+    //--------------------
+    // Now we start to read the values for each bullet type:
+    //
+    let mut bullet_pointer = data_pointer as *mut c_char;
+    let mut bullet_index = 0;
+    while {
+        bullet_pointer = libc::strstr(bullet_pointer, NEW_BULLET_TYPE_BEGIN_STRING.as_ptr());
+        bullet_pointer.is_null().not()
+    } {
+        info!("Found another Bullet specification entry!  Lets add that to the others!");
+        bullet_pointer = bullet_pointer.add(1); // to avoid doubly taking this entry
+
+        // Now we read in the recharging time for this bullettype(=weapontype)
+        ReadValueFromString(
+            bullet_pointer,
+            BULLET_RECHARGE_TIME_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%f").as_ptr() as *mut c_char,
+            &mut (*Bulletmap.add(bullet_index)).recharging_time as *mut _ as *mut c_void,
+        );
+
+        // Now we read in the maximal speed this type of bullet can go.
+        ReadValueFromString(
+            bullet_pointer,
+            BULLET_SPEED_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%f").as_ptr() as *mut c_char,
+            &mut (*Bulletmap.add(bullet_index)).speed as *mut _ as *mut c_void,
+        );
+
+        // Now we read in the damage this bullet can do
+        ReadValueFromString(
+            bullet_pointer,
+            BULLET_DAMAGE_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut (*Bulletmap.add(bullet_index)).damage as *mut _ as *mut c_void,
+        );
+
+        // Now we read in the number of phases that are designed for this bullet type
+        // THIS IS NOW SPECIFIED IN THE THEME CONFIG FILE
+        // ReadValueFromString( BulletPointer ,  BULLET_NUMBER_OF_PHASES_BEGIN_STRING , "%d" ,
+        // &(*Bulletmap.add(BulletIndex)).phases , EndOfBulletData );
+
+        // Now we read in the type of blast this bullet will cause when crashing e.g. against the wall
+        ReadValueFromString(
+            bullet_pointer,
+            BULLET_BLAST_TYPE_CAUSED_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut (*Bulletmap.add(bullet_index)).blast as *mut _ as *mut c_void,
+        );
+
+        bullet_index += 1;
+    }
+
+    //--------------------
+    // Now that the detailed values for the bullets have been read in,
+    // we now read in the general calibration contants and after that
+    // the start to apply them right now, so they also take effect.
+
+    info!("Starting to read bullet calibration section");
+    let mut bullet_speed_calibrator = 0f32;
+    let mut bullet_damage_calibrator = 0f32;
+
+    // Now we read in the speed calibration factor for all bullets
+    ReadValueFromString(
+        data_pointer as *mut c_char,
+        BULLET_SPEED_CALIBRATOR_STRING.as_ptr() as *mut c_char,
+        cstr!("%f").as_ptr() as *mut c_char,
+        &mut bullet_speed_calibrator as *mut _ as *mut c_void,
+    );
+
+    // Now we read in the damage calibration factor for all bullets
+    ReadValueFromString(
+        data_pointer as *mut c_char,
+        BULLET_DAMAGE_CALIBRATOR_STRING.as_ptr() as *mut c_char,
+        cstr!("%f").as_ptr() as *mut c_char,
+        &mut bullet_damage_calibrator as *mut _ as *mut c_void,
+    );
+
+    // Now that all the calibrations factors have been read in, we can start to
+    // apply them to all the bullet types
+    for bullet in
+        std::slice::from_raw_parts_mut(Bulletmap, usize::try_from(Number_Of_Bullet_Types).unwrap())
+    {
+        bullet.speed *= bullet_speed_calibrator;
+        bullet.damage = (bullet.damage as f32 * bullet_damage_calibrator) as c_int;
     }
 }

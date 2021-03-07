@@ -111,118 +111,118 @@ Get_General_Game_Constants (char *data)
  *
  ----------------------------------------------------------------------*/
 
-void
-Get_Bullet_Data ( char* DataPointer )
-{
-  char *BulletPointer;
-  int i;
-  int BulletIndex=0;
-
-  float bullet_speed_calibrator;
-  float bullet_damage_calibrator;
-
-#define BULLET_SECTION_BEGIN_STRING "*** Start of Bullet Data Section: ***"
-#define BULLET_SECTION_END_STRING "*** End of Bullet Data Section: ***"
-#define NEW_BULLET_TYPE_BEGIN_STRING "** Start of new bullet specification subsection **"
-
-#define BULLET_RECHARGE_TIME_BEGIN_STRING "Time is takes to recharge this bullet/weapon in seconds :"
-#define BULLET_SPEED_BEGIN_STRING "Flying speed of this bullet type :"
-#define BULLET_DAMAGE_BEGIN_STRING "Damage cause by a hit of this bullet type :"
-  // #define BULLET_NUMBER_OF_PHASES_BEGIN_STRING "Number of different phases that were designed for this bullet type :"
-#define BULLET_ONE_SHOT_ONLY_AT_A_TIME "Cannot fire until previous bullet has been deleted : "
-#define BULLET_BLAST_TYPE_CAUSED_BEGIN_STRING "Type of blast this bullet causes when crashing e.g. against a wall :"
-
-#define BULLET_SPEED_CALIBRATOR_STRING "Common factor for all bullet's speed values: "
-#define BULLET_DAMAGE_CALIBRATOR_STRING "Common factor for all bullet's damage values: "
-
-  BulletPointer = LocateStringInData ( DataPointer , BULLET_SECTION_BEGIN_STRING );
-  DebugPrintf (2, "\n\nStarting to read bullet data...\n\n");
-  //--------------------
-  // At first, we must allocate memory for the droid specifications.
-  // How much?  That depends on the number of droids defined in freedroid.ruleset.
-  // So we have to count those first.  ok.  lets do it.
-
-  Number_Of_Bullet_Types = CountStringOccurences ( DataPointer , NEW_BULLET_TYPE_BEGIN_STRING ) ;
-
-  // Now that we know how many bullets are defined in freedroid.ruleset, we can allocate
-  // a fitting amount of memory, but of course only if the memory hasn't been allocated
-  // aready!!!
-  //
-  // If we would do that in any case, every Init_Game_Data call would destroy the loaded
-  // image files AND MOST LIKELY CAUSE A SEGFAULT!!!
-  //
-  if ( Bulletmap == NULL )
-    {
-      size_t mem = Number_Of_Bullet_Types * sizeof(Bulletmap[0]);
-      Bulletmap = MyMalloc ( mem );
-      memset ( Bulletmap, 0, mem );
-      DebugPrintf (1, "\nWe have counted %d different bullet types in the game data file." ,
-		   Number_Of_Bullet_Types );
-      DebugPrintf (1, "\nMEMORY HAS BEEN ALLOCATED.\nTHE READING CAN BEGIN.\n" );
-      // getchar();
-    }
-
-  //--------------------
-  // Now we start to read the values for each bullet type:
-  //
-  BulletPointer=DataPointer;
-
-  while ( (BulletPointer = strstr ( BulletPointer, NEW_BULLET_TYPE_BEGIN_STRING )) != NULL)
-    {
-      DebugPrintf (1, "\n\nFound another Bullet specification entry!  Lets add that to the others!");
-      BulletPointer ++; // to avoid doubly taking this entry
-
-      // Now we read in the recharging time for this bullettype(=weapontype)
-      ReadValueFromString( BulletPointer ,  BULLET_RECHARGE_TIME_BEGIN_STRING , "%f" ,
-			   &Bulletmap[BulletIndex].recharging_time);
-
-      // Now we read in the maximal speed this type of bullet can go.
-      ReadValueFromString( BulletPointer ,  BULLET_SPEED_BEGIN_STRING , "%f" ,
-			   &Bulletmap[BulletIndex].speed);
-
-      // Now we read in the damage this bullet can do
-      ReadValueFromString( BulletPointer ,  BULLET_DAMAGE_BEGIN_STRING , "%d" ,
-			   &Bulletmap[BulletIndex].damage);
-
-      // Now we read in the number of phases that are designed for this bullet type
-      // THIS IS NOW SPECIFIED IN THE THEME CONFIG FILE
-      // ReadValueFromString( BulletPointer ,  BULLET_NUMBER_OF_PHASES_BEGIN_STRING , "%d" ,
-      // &Bulletmap[BulletIndex].phases , EndOfBulletData );
-
-      // Now we read in the type of blast this bullet will cause when crashing e.g. against the wall
-      ReadValueFromString( BulletPointer ,  BULLET_BLAST_TYPE_CAUSED_BEGIN_STRING , "%d" ,
-			   &Bulletmap[BulletIndex].blast);
-
-      BulletIndex++;
-    }
-
-  //--------------------
-  // Now that the detailed values for the bullets have been read in,
-  // we now read in the general calibration contants and after that
-  // the start to apply them right now, so they also take effect.
-
-  DebugPrintf (1, "\n\nStarting to read bullet calibration section\n\n");
-
-  // Now we read in the speed calibration factor for all bullets
-  ReadValueFromString( DataPointer ,  BULLET_SPEED_CALIBRATOR_STRING , "%f" ,
-		       &bullet_speed_calibrator);
-
-  // Now we read in the damage calibration factor for all bullets
-  ReadValueFromString( DataPointer ,  BULLET_DAMAGE_CALIBRATOR_STRING , "%f" ,
-		       &bullet_damage_calibrator);
-
-  //--------------------
-  // Now that all the calibrations factors have been read in, we can start to
-  // apply them to all the bullet types
-  //
-  for ( i = 0 ; i < Number_Of_Bullet_Types ; i++ )
-    {
-      Bulletmap[i].speed *= bullet_speed_calibrator;
-      Bulletmap[i].damage *= bullet_damage_calibrator;
-    }
-
-  DebugPrintf (1, "\nEnd of Get_Bullet_Data ( char* DataPointer ) reached.");
-} // void Get_Bullet_Data ( char* DataPointer );
+// void
+// Get_Bullet_Data ( char* DataPointer )
+// {
+//   char *BulletPointer;
+//   int i;
+//   int BulletIndex=0;
+// 
+//   float bullet_speed_calibrator;
+//   float bullet_damage_calibrator;
+// 
+// #define BULLET_SECTION_BEGIN_STRING "*** Start of Bullet Data Section: ***"
+// #define BULLET_SECTION_END_STRING "*** End of Bullet Data Section: ***"
+// #define NEW_BULLET_TYPE_BEGIN_STRING "** Start of new bullet specification subsection **"
+// 
+// #define BULLET_RECHARGE_TIME_BEGIN_STRING "Time is takes to recharge this bullet/weapon in seconds :"
+// #define BULLET_SPEED_BEGIN_STRING "Flying speed of this bullet type :"
+// #define BULLET_DAMAGE_BEGIN_STRING "Damage cause by a hit of this bullet type :"
+//   // #define BULLET_NUMBER_OF_PHASES_BEGIN_STRING "Number of different phases that were designed for this bullet type :"
+// #define BULLET_ONE_SHOT_ONLY_AT_A_TIME "Cannot fire until previous bullet has been deleted : "
+// #define BULLET_BLAST_TYPE_CAUSED_BEGIN_STRING "Type of blast this bullet causes when crashing e.g. against a wall :"
+// 
+// #define BULLET_SPEED_CALIBRATOR_STRING "Common factor for all bullet's speed values: "
+// #define BULLET_DAMAGE_CALIBRATOR_STRING "Common factor for all bullet's damage values: "
+// 
+//   BulletPointer = LocateStringInData ( DataPointer , BULLET_SECTION_BEGIN_STRING );
+//   DebugPrintf (2, "\n\nStarting to read bullet data...\n\n");
+//   //--------------------
+//   // At first, we must allocate memory for the droid specifications.
+//   // How much?  That depends on the number of droids defined in freedroid.ruleset.
+//   // So we have to count those first.  ok.  lets do it.
+// 
+//   Number_Of_Bullet_Types = CountStringOccurences ( DataPointer , NEW_BULLET_TYPE_BEGIN_STRING ) ;
+// 
+//   // Now that we know how many bullets are defined in freedroid.ruleset, we can allocate
+//   // a fitting amount of memory, but of course only if the memory hasn't been allocated
+//   // aready!!!
+//   //
+//   // If we would do that in any case, every Init_Game_Data call would destroy the loaded
+//   // image files AND MOST LIKELY CAUSE A SEGFAULT!!!
+//   //
+//   if ( Bulletmap == NULL )
+//     {
+//       size_t mem = Number_Of_Bullet_Types * sizeof(Bulletmap[0]);
+//       Bulletmap = MyMalloc ( mem );
+//       memset ( Bulletmap, 0, mem );
+//       DebugPrintf (1, "\nWe have counted %d different bullet types in the game data file." ,
+// 		   Number_Of_Bullet_Types );
+//       DebugPrintf (1, "\nMEMORY HAS BEEN ALLOCATED.\nTHE READING CAN BEGIN.\n" );
+//       // getchar();
+//     }
+// 
+//   //--------------------
+//   // Now we start to read the values for each bullet type:
+//   //
+//   BulletPointer=DataPointer;
+// 
+//   while ( (BulletPointer = strstr ( BulletPointer, NEW_BULLET_TYPE_BEGIN_STRING )) != NULL)
+//     {
+//       DebugPrintf (1, "\n\nFound another Bullet specification entry!  Lets add that to the others!");
+//       BulletPointer ++; // to avoid doubly taking this entry
+// 
+//       // Now we read in the recharging time for this bullettype(=weapontype)
+//       ReadValueFromString( BulletPointer ,  BULLET_RECHARGE_TIME_BEGIN_STRING , "%f" ,
+// 			   &Bulletmap[BulletIndex].recharging_time);
+// 
+//       // Now we read in the maximal speed this type of bullet can go.
+//       ReadValueFromString( BulletPointer ,  BULLET_SPEED_BEGIN_STRING , "%f" ,
+// 			   &Bulletmap[BulletIndex].speed);
+// 
+//       // Now we read in the damage this bullet can do
+//       ReadValueFromString( BulletPointer ,  BULLET_DAMAGE_BEGIN_STRING , "%d" ,
+// 			   &Bulletmap[BulletIndex].damage);
+// 
+//       // Now we read in the number of phases that are designed for this bullet type
+//       // THIS IS NOW SPECIFIED IN THE THEME CONFIG FILE
+//       // ReadValueFromString( BulletPointer ,  BULLET_NUMBER_OF_PHASES_BEGIN_STRING , "%d" ,
+//       // &Bulletmap[BulletIndex].phases , EndOfBulletData );
+// 
+//       // Now we read in the type of blast this bullet will cause when crashing e.g. against the wall
+//       ReadValueFromString( BulletPointer ,  BULLET_BLAST_TYPE_CAUSED_BEGIN_STRING , "%d" ,
+// 			   &Bulletmap[BulletIndex].blast);
+// 
+//       BulletIndex++;
+//     }
+// 
+//   //--------------------
+//   // Now that the detailed values for the bullets have been read in,
+//   // we now read in the general calibration contants and after that
+//   // the start to apply them right now, so they also take effect.
+// 
+//   DebugPrintf (1, "\n\nStarting to read bullet calibration section\n\n");
+// 
+//   // Now we read in the speed calibration factor for all bullets
+//   ReadValueFromString( DataPointer ,  BULLET_SPEED_CALIBRATOR_STRING , "%f" ,
+// 		       &bullet_speed_calibrator);
+// 
+//   // Now we read in the damage calibration factor for all bullets
+//   ReadValueFromString( DataPointer ,  BULLET_DAMAGE_CALIBRATOR_STRING , "%f" ,
+// 		       &bullet_damage_calibrator);
+// 
+//   //--------------------
+//   // Now that all the calibrations factors have been read in, we can start to
+//   // apply them to all the bullet types
+//   //
+//   for ( i = 0 ; i < Number_Of_Bullet_Types ; i++ )
+//     {
+//       Bulletmap[i].speed *= bullet_speed_calibrator;
+//       Bulletmap[i].damage *= bullet_damage_calibrator;
+//     }
+// 
+//   DebugPrintf (1, "\nEnd of Get_Bullet_Data ( char* DataPointer ) reached.");
+// } // void Get_Bullet_Data ( char* DataPointer );
 
 
 /*@Function============================================================
