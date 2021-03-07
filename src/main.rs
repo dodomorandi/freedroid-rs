@@ -216,15 +216,12 @@ static mut FPSover1: f32 = 0.;
 fn main() {
     env_logger::init();
 
-    let args: Vec<_> = env::args().map(|arg| CString::new(arg).unwrap()).collect();
-    let mut c_args: Vec<_> = args.iter().map(|arg| arg.as_ptr()).collect();
-
     unsafe {
         joy_sensitivity = 1;
 
         init_keystr();
 
-        InitFreedroid(c_args.len() as c_int, c_args.as_mut_ptr()); // Initialisation of global variables and arrays
+        InitFreedroid(); // Initialisation of global variables and arrays
 
         SDL_ShowCursor(SDL_DISABLE);
 

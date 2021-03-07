@@ -63,11 +63,11 @@ use std::{
 
 extern "C" {
     pub fn Mix_HaltMusic() -> c_int;
-
-    static mut DebriefingText: *mut c_char;
-    static mut DebriefingSong: [c_char; 500];
-    static mut Previous_Mission_Name: [c_char; 500];
 }
+
+static mut DEBRIEFING_TEXT: *mut c_char = null_mut();
+static mut DEBRIEFING_SONG: [c_char; 500] = [0; 500];
+static mut PREVIOUS_MISSION_NAME: [c_char; 500] = [0; 500];
 
 const MISSION_COMPLETE_BONUS: f32 = 1000.;
 const COPYRIGHT: &str = "\nCopyright (C) 2003-2018 Johannes Prix, Reinhard Prix\n\
@@ -116,8 +116,8 @@ pub unsafe extern "C" fn FreeGameMem() {
     }
 
     // free constant text blobs
-    libc::free(DebriefingText as *mut c_void);
-    DebriefingText = null_mut();
+    libc::free(DEBRIEFING_TEXT as *mut c_void);
+    DEBRIEFING_TEXT = null_mut();
 }
 
 #[no_mangle]
@@ -186,7 +186,7 @@ pub unsafe extern "C" fn CheckIfMissionIsComplete() {
 
 #[no_mangle]
 pub unsafe extern "C" fn ThouArtVictorious() {
-    Switch_Background_Music_To(DebriefingSong.as_ptr());
+    Switch_Background_Music_To(DEBRIEFING_SONG.as_ptr());
 
     SDL_ShowCursor(SDL_DISABLE);
 
@@ -216,7 +216,7 @@ pub unsafe extern "C" fn ThouArtVictorious() {
     rect.x += 10;
     rect.w -= 20; //leave some border
     SetCurrentFont(Para_BFont);
-    ScrollText(DebriefingText, &mut rect, 6);
+    ScrollText(DEBRIEFING_TEXT, &mut rect, 6);
 
     wait_for_all_keys_released();
 }
@@ -226,7 +226,7 @@ pub unsafe extern "C" fn ThouArtVictorious() {
 /// This must not be confused with initnewgame, which
 /// only initializes a new mission for the game.
 #[no_mangle]
-pub unsafe extern "C" fn InitFreedroid(argc: c_int, argv: *mut *const c_char) {
+pub unsafe extern "C" fn InitFreedroid() {
     Bulletmap = null_mut(); // That will cause the memory to be allocated later
 
     for bullet in &mut AllBullets {
@@ -593,7 +593,7 @@ pub unsafe extern "C" fn InitNewMission(mission_name: *mut c_char) {
     // gets destroyed so we know where to continue in
     // case the player doesn't want to return to the very beginning
     // but just to replay this mission.
-    libc::strcpy(Previous_Mission_Name.as_mut_ptr(), mission_name);
+    libc::strcpy(PREVIOUS_MISSION_NAME.as_mut_ptr(), mission_name);
 
     info!(
         "A new mission is being initialized from file {}.",
@@ -734,13 +734,13 @@ pub unsafe extern "C" fn InitNewMission(mission_name: *mut c_char) {
         main_mission_pointer,
         MISSION_ENDTITLE_SONG_NAME_STRING.as_ptr() as *mut c_char,
         cstr!("%s").as_ptr() as *mut c_char,
-        DebriefingSong.as_mut_ptr() as *mut c_void,
+        DEBRIEFING_SONG.as_mut_ptr() as *mut c_void,
     );
 
-    if DebriefingText.is_null().not() {
-        libc::free(DebriefingText as *mut c_void);
+    if DEBRIEFING_TEXT.is_null().not() {
+        libc::free(DEBRIEFING_TEXT as *mut c_void);
     }
-    DebriefingText = ReadAndMallocStringFromData(
+    DEBRIEFING_TEXT = ReadAndMallocStringFromData(
         main_mission_pointer,
         MISSION_ENDTITLE_BEGIN_STRING.as_ptr() as *mut c_char,
         MISSION_ENDTITLE_END_STRING.as_ptr() as *mut c_char,
@@ -1306,6 +1306,7 @@ pub unsafe extern "C" fn Get_Robot_Data(data_pointer: *mut c_void) {
 /// but IT DOES NOT LOAD THE FILE, IT ASSUMES IT IS ALREADY LOADED and
 /// it only receives a pointer to the start of the bullet section from
 /// the calling function.
+#[no_mangle]
 pub unsafe extern "C" fn Get_Bullet_Data(data_pointer: *mut c_void) {
     // const BULLET_SECTION_BEGIN_STRING: &CStr = cstr!("*** Start of Bullet Data Section: ***");
     // const BULLET_SECTION_END_STRING: &CStr = cstr!("*** End of Bullet Data Section: ***");
