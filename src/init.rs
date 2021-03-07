@@ -1,37 +1,40 @@
 use crate::{
-    b_font::{GetCurrentFont, Para_BFont, SetCurrentFont},
+    b_font::{FontHeight, GetCurrentFont, Para_BFont, SetCurrentFont},
     bullet::{DeleteBullet, ExplodeBlasts, MoveBullets},
     curShip, debug_level,
     defs::{
-        self, scale_rect, AssembleCombatWindowFlags, Criticality, DisplayBannerFlags, Droid,
-        Status, Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAP_DIR_C, MAXBULLETS,
-        TITLE_PIC_FILE_C, WAIT_AFTER_KILLED,
+        self, get_user_center, scale_rect, AssembleCombatWindowFlags, Criticality,
+        DisplayBannerFlags, Droid, Status, Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR,
+        MAP_DIR_C, MAXBULLETS, SHOW_WAIT, SLOWMO_FACTOR, TITLE_PIC_FILE_C, WAIT_AFTER_KILLED,
     },
-    enemy::ShuffleEnemys,
+    enemy::{MoveEnemys, ShuffleEnemys},
     global::{
         collision_lose_energy_calibrator, num_highscores, Blast_Damage_Per_Second, Blast_Radius,
         Blastmap, Bulletmap, CurrentCombatScaleFactor, Droid_Radius, Druidmap, Font0_BFont,
         GameConfig, Highscores, SkipAFewFrames, Time_For_Each_Phase_Of_Door_Movement,
     },
     graphics::{
-        ne_screen, AllThemes, ClearGraphMem, DisplayImage, InitPictures, Init_Video, Load_Fonts,
-        MakeGridOnScreen, Number_Of_Bullet_Types,
+        ne_screen, pic999, white_noise, AllThemes, ClearGraphMem, DisplayImage, InitPictures,
+        Init_Video, Load_Fonts, MakeGridOnScreen, Number_Of_Bullet_Types,
     },
-    highscore::InitHighscores,
-    influencer::InitInfluPositionHistory,
-    input::{wait_for_all_keys_released, wait_for_key_pressed, Init_Joy},
+    highscore::{InitHighscores, UpdateHighscores},
+    influencer::{ExplodeInfluencer, InitInfluPositionHistory},
+    input::{
+        any_key_just_pressed, wait_for_all_keys_released, wait_for_key_pressed, Init_Joy, SDL_Delay,
+    },
     map::{GetCrew, GetLiftConnections, LoadShip},
     misc::{
         find_file, init_progress, set_time_factor, update_progress,
-        Activate_Conservative_Frame_Computation, CountStringOccurences, LocateStringInData,
-        MyMalloc, MyRandom, ReadAndMallocAndTerminateFile, ReadAndMallocStringFromData,
-        ReadValueFromString, Terminate,
+        Activate_Conservative_Frame_Computation, ComputeFPSForThisFrame, CountStringOccurences,
+        LoadGameConfig, LocateStringInData, MyMalloc, MyRandom, ReadAndMallocAndTerminateFile,
+        ReadAndMallocStringFromData, ReadValueFromString, StartTakingTimeForFPSCalculation,
+        Terminate,
     },
-    sound::{Init_Audio, Switch_Background_Music_To},
+    sound::{Init_Audio, Switch_Background_Music_To, ThouArtDefeatedSound},
     sound_on,
     structs::{BulletSpec, DruidSpec},
-    text::{DisplayText, ScrollText},
-    vars::{Classic_User_Rect, Full_User_Rect, Screen_Rect, User_Rect},
+    text::{printf_SDL, DisplayText, ScrollText},
+    vars::{Classic_User_Rect, Full_User_Rect, Portrait_Rect, Screen_Rect, User_Rect},
     view::{Assemble_Combat_Picture, DisplayBanner},
     AlertBonusPerSec, AlertThreshold, AllBlasts, AllBullets, AllEnemys, CurLevel, DeathCount,
     DeathCountDrainSpeed, GameOver, LastGotIntoBlastSound, LastRefreshSound,
@@ -46,7 +49,8 @@ use sdl::{
     event::ll::SDL_DISABLE,
     ll::SDL_GetTicks,
     mouse::ll::SDL_ShowCursor,
-    video::ll::{SDL_Flip, SDL_FreeSurface, SDL_SetClipRect},
+    video::ll::{SDL_Flip, SDL_FreeSurface, SDL_SetClipRect, SDL_UpperBlit},
+    Rect,
 };
 use std::{
     convert::{TryFrom, TryInto},
@@ -58,7 +62,7 @@ use std::{
 };
 
 extern "C" {
-    pub fn LoadGameConfig();
+    pub fn Mix_HaltMusic() -> c_int;
 
     static mut DebriefingText: *mut c_char;
     static mut DebriefingSong: [c_char; 500];
@@ -1527,4 +1531,88 @@ pub unsafe extern "C" fn Get_General_Game_Constants(data: *mut c_char) {
         cstr!("%f").as_ptr() as *mut c_char,
         &mut Time_For_Each_Phase_Of_Door_Movement as *mut _ as *mut c_void,
     );
+}
+
+/// Show end-screen
+#[no_mangle]
+pub unsafe extern "C" fn ThouArtDefeated() {
+    Me.status = Status::Terminated as c_int;
+    SDL_ShowCursor(SDL_DISABLE);
+
+    ExplodeInfluencer();
+
+    wait_for_all_keys_released();
+
+    let mut now = SDL_GetTicks();
+
+    while (SDL_GetTicks() - now) < WAIT_AFTER_KILLED {
+        // add "slow motion effect" for final explosion
+        set_time_factor(SLOWMO_FACTOR);
+
+        StartTakingTimeForFPSCalculation();
+        DisplayBanner(null_mut(), null_mut(), 0);
+        ExplodeBlasts();
+        MoveBullets();
+        MoveEnemys();
+        Assemble_Combat_Picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+        ComputeFPSForThisFrame();
+        if any_key_just_pressed() != 0 {
+            break;
+        }
+    }
+    set_time_factor(1.0);
+
+    Mix_HaltMusic();
+
+    // important!!: don't forget to stop fps calculation here (bugfix: enemy piles after gameOver)
+    Activate_Conservative_Frame_Computation();
+
+    white_noise(
+        ne_screen,
+        &mut User_Rect,
+        WAIT_AFTER_KILLED.try_into().unwrap(),
+    );
+
+    Assemble_Combat_Picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+    MakeGridOnScreen(Some(&User_Rect));
+
+    let mut dst = Rect {
+        x: get_user_center().x - i16::try_from(Portrait_Rect.w / 2).unwrap(),
+        y: get_user_center().y - i16::try_from(Portrait_Rect.h / 2).unwrap(),
+        w: Portrait_Rect.w,
+        h: Portrait_Rect.h,
+    };
+    SDL_UpperBlit(pic999, null_mut(), ne_screen, &mut dst);
+    ThouArtDefeatedSound();
+
+    SetCurrentFont(Para_BFont);
+    let h = FontHeight(&*Para_BFont);
+    DisplayText(
+        cstr!("Transmission").as_ptr() as *mut c_char,
+        i32::from(dst.x) - h,
+        i32::from(dst.y) - h,
+        &User_Rect,
+    );
+    DisplayText(
+        cstr!("Terminated").as_ptr() as *mut c_char,
+        i32::from(dst.x) - h,
+        i32::from(dst.y) + i32::from(dst.h),
+        &User_Rect,
+    );
+    printf_SDL(ne_screen, -1, -1, cstr!("\n").as_ptr() as *mut c_char);
+    SDL_Flip(ne_screen);
+
+    now = SDL_GetTicks();
+
+    wait_for_all_keys_released();
+    while SDL_GetTicks() - now < SHOW_WAIT {
+        SDL_Delay(1);
+        if any_key_just_pressed() != 0 {
+            break;
+        }
+    }
+
+    UpdateHighscores();
+
+    GameOver = true.into();
 }

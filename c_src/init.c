@@ -1065,80 +1065,80 @@ http://sourceforge.net/projects/freedroid/\n\n";
 @Ret:
 @Int:
 * $Function----------------------------------------------------------*/
-void
-ThouArtDefeated (void)
-{
-  Uint32 now, delay;
-  SDL_Rect dst;
-  int h;
-
-  Me.status = TERMINATED;
-  SDL_ShowCursor (SDL_DISABLE);
-
-  ExplodeInfluencer ();
-
-  wait_for_all_keys_released();
-
-  now = SDL_GetTicks();
-
-  while ( (delay=SDL_GetTicks() - now) < WAIT_AFTER_KILLED)
-    {
-      // add "slow motion effect" for final explosion
-      set_time_factor ( SLOWMO_FACTOR );
-
-      StartTakingTimeForFPSCalculation();
-      DisplayBanner (NULL, NULL,  0 );
-      ExplodeBlasts ();
-      MoveBullets ();
-      MoveEnemys ();
-      Assemble_Combat_Picture ( DO_SCREEN_UPDATE );
-      ComputeFPSForThisFrame ();
-      if ( any_key_just_pressed() ) {
-        break;
-      }
-    }
-  set_time_factor ( 1.0 );
-
-#ifdef HAVE_LIBSDL_MIXER
-  Mix_HaltMusic ();
-#endif
-
-  // important!!: don't forget to stop fps calculation here (bugfix: enemy piles after gameOver)
-  Activate_Conservative_Frame_Computation ();
-
-  white_noise (ne_screen, &User_Rect, WAIT_AFTER_KILLED);
-
-  Assemble_Combat_Picture (DO_SCREEN_UPDATE);
-  MakeGridOnScreen (&User_Rect);
-
-  Set_Rect (dst, UserCenter_x - Portrait_Rect.w/2, UserCenter_y - Portrait_Rect.h/2,
-	    Portrait_Rect.w, Portrait_Rect.h);
-  SDL_BlitSurface (pic999, NULL, ne_screen, &dst);
-  ThouArtDefeatedSound ();
-
-  SetCurrentFont (Para_BFont);
-  h = FontHeight (Para_BFont);
-  DisplayText ("Transmission", dst.x - h, dst.y - h, &User_Rect);
-  DisplayText ("Terminated",  dst.x -h, dst.y + dst.h, &User_Rect);
-  printf_SDL(ne_screen, -1, -1, "\n");
-  SDL_Flip (ne_screen);
-
-  now = SDL_GetTicks ();
-
-  wait_for_all_keys_released();
-  while (SDL_GetTicks() - now < SHOW_WAIT) {
-    SDL_Delay(1);
-    if ( any_key_just_pressed() ) {
-      break;
-    }
-  }
-
-  UpdateHighscores ();
-
-  GameOver = TRUE;
-
-  return;
-} // void ThouArtDefeated(void)
+// void
+// ThouArtDefeated (void)
+// {
+//   Uint32 now, delay;
+//   SDL_Rect dst;
+//   int h;
+// 
+//   Me.status = TERMINATED;
+//   SDL_ShowCursor (SDL_DISABLE);
+// 
+//   ExplodeInfluencer ();
+// 
+//   wait_for_all_keys_released();
+// 
+//   now = SDL_GetTicks();
+// 
+//   while ( (delay=SDL_GetTicks() - now) < WAIT_AFTER_KILLED)
+//     {
+//       // add "slow motion effect" for final explosion
+//       set_time_factor ( SLOWMO_FACTOR );
+// 
+//       StartTakingTimeForFPSCalculation();
+//       DisplayBanner (NULL, NULL,  0 );
+//       ExplodeBlasts ();
+//       MoveBullets ();
+//       MoveEnemys ();
+//       Assemble_Combat_Picture ( DO_SCREEN_UPDATE );
+//       ComputeFPSForThisFrame ();
+//       if ( any_key_just_pressed() ) {
+//         break;
+//       }
+//     }
+//   set_time_factor ( 1.0 );
+// 
+// #ifdef HAVE_LIBSDL_MIXER
+//   Mix_HaltMusic ();
+// #endif
+// 
+//   // important!!: don't forget to stop fps calculation here (bugfix: enemy piles after gameOver)
+//   Activate_Conservative_Frame_Computation ();
+// 
+//   white_noise (ne_screen, &User_Rect, WAIT_AFTER_KILLED);
+// 
+//   Assemble_Combat_Picture (DO_SCREEN_UPDATE);
+//   MakeGridOnScreen (&User_Rect);
+// 
+//   Set_Rect (dst, UserCenter_x - Portrait_Rect.w/2, UserCenter_y - Portrait_Rect.h/2,
+// 	    Portrait_Rect.w, Portrait_Rect.h);
+//   SDL_BlitSurface (pic999, NULL, ne_screen, &dst);
+//   ThouArtDefeatedSound ();
+// 
+//   SetCurrentFont (Para_BFont);
+//   h = FontHeight (Para_BFont);
+//   DisplayText ("Transmission", dst.x - h, dst.y - h, &User_Rect);
+//   DisplayText ("Terminated",  dst.x -h, dst.y + dst.h, &User_Rect);
+//   printf_SDL(ne_screen, -1, -1, "\n");
+//   SDL_Flip (ne_screen);
+// 
+//   now = SDL_GetTicks ();
+// 
+//   wait_for_all_keys_released();
+//   while (SDL_GetTicks() - now < SHOW_WAIT) {
+//     SDL_Delay(1);
+//     if ( any_key_just_pressed() ) {
+//       break;
+//     }
+//   }
+// 
+//   UpdateHighscores ();
+// 
+//   GameOver = TRUE;
+// 
+//   return;
+// } // void ThouArtDefeated(void)
 
 /*----------------------------------------------------------------------
  * This function checks, if the influencer has succeeded in his given
