@@ -56,12 +56,13 @@ use std::{
 
 extern "C" {
     pub fn LoadGameConfig();
-    pub fn Init_Game_Data(data_filename: *mut c_char);
+    pub fn Get_General_Game_Constants(data: *mut c_char);
+    pub fn Get_Robot_Data(data_pointer: *mut c_void);
+    pub fn Get_Bullet_Data(data_pointer: *mut c_void);
 
     static mut DebriefingText: *mut c_char;
     static mut DebriefingSong: [c_char; 500];
     static mut Previous_Mission_Name: [c_char; 500];
-
 }
 
 const MISSION_COMPLETE_BONUS: f32 = 1000.;
@@ -957,4 +958,46 @@ pub unsafe extern "C" fn Title(mission_briefing_pointer: *mut c_char) {
     }
 
     libc::free(prepared_briefing_text as *mut c_void);
+}
+
+/// This function loads all the constant variables of the game from
+/// a dat file, that should be optimally human readable.
+#[no_mangle]
+pub unsafe extern "C" fn Init_Game_Data(data_filename: *mut c_char) {
+    const END_OF_GAME_DAT_STRING: &CStr = cstr!("*** End of game.dat File ***");
+
+    /* Read the whole game data to memory */
+    let fpath = find_file(
+        data_filename,
+        MAP_DIR_C.as_ptr() as *mut c_char,
+        Themed::NoTheme as c_int,
+        Criticality::Critical as c_int,
+    );
+
+    let data = ReadAndMallocAndTerminateFile(fpath, END_OF_GAME_DAT_STRING.as_ptr() as *mut c_char);
+
+    Get_General_Game_Constants(data);
+    Get_Robot_Data(data as *mut c_void);
+    Get_Bullet_Data(data as *mut c_void);
+
+    // Now we read in the total time amount for the blast animations
+    const BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING: &CStr =
+        cstr!("Time in seconds for the animation of blast one :");
+    const BLAST_TWO_TOTAL_AMOUNT_OF_TIME_STRING: &CStr =
+        cstr!("Time in seconds for the animation of blast one :");
+
+    ReadValueFromString(
+        data,
+        BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING.as_ptr() as *mut c_char,
+        cstr!("%f").as_ptr() as *mut c_char,
+        &mut Blastmap[0].total_animation_time as *mut f32 as *mut c_void,
+    );
+    ReadValueFromString(
+        data,
+        BLAST_TWO_TOTAL_AMOUNT_OF_TIME_STRING.as_ptr() as *mut c_char,
+        cstr!("%f").as_ptr() as *mut c_char,
+        &mut Blastmap[1].total_animation_time as *mut f32 as *mut c_void,
+    );
+
+    libc::free(data as *mut c_void);
 }

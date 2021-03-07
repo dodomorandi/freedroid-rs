@@ -426,41 +426,41 @@ Get_Robot_Data ( void* DataPointer )
 
 @Ret:
 * $Function----------------------------------------------------------*/
-void
-Init_Game_Data ( char * Datafilename )
-{
-  char *fpath;
-  char *Data;
-
-#define END_OF_GAME_DAT_STRING "*** End of game.dat File ***"
-
-  DebugPrintf (2, "\nint Init_Game_Data ( char* Datafilename ) called.");
-
-  /* Read the whole game data to memory */
-  fpath = find_file (Datafilename, MAP_DIR, NO_THEME, CRITICAL);
-
-  Data = ReadAndMallocAndTerminateFile( fpath , END_OF_GAME_DAT_STRING ) ;
-
-  Get_General_Game_Constants( Data );
-
-  Get_Robot_Data ( Data );
-
-  Get_Bullet_Data ( Data );
-
-  //--------------------
-  // Now we read in the total time amount for the blast animations
-#define BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING "Time in seconds for the animation of blast one :"
-#define BLAST_TWO_TOTAL_AMOUNT_OF_TIME_STRING "Time in seconds for the animation of blast one :"
-
-  ReadValueFromString (Data, BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING, "%f", &Blastmap[0].total_animation_time);
-  ReadValueFromString (Data, BLAST_TWO_TOTAL_AMOUNT_OF_TIME_STRING, "%f", &Blastmap[1].total_animation_time);
-
-
-  free ( Data );
-
-  return;
-
-} // int Init_Game_Data ( void )
+// void
+// Init_Game_Data ( char * Datafilename )
+// {
+//   char *fpath;
+//   char *Data;
+// 
+// #define END_OF_GAME_DAT_STRING "*** End of game.dat File ***"
+// 
+//   DebugPrintf (2, "\nint Init_Game_Data ( char* Datafilename ) called.");
+// 
+//   /* Read the whole game data to memory */
+//   fpath = find_file (Datafilename, MAP_DIR, NO_THEME, CRITICAL);
+// 
+//   Data = ReadAndMallocAndTerminateFile( fpath , END_OF_GAME_DAT_STRING ) ;
+// 
+//   Get_General_Game_Constants( Data );
+// 
+//   Get_Robot_Data ( Data );
+// 
+//   Get_Bullet_Data ( Data );
+// 
+//   //--------------------
+//   // Now we read in the total time amount for the blast animations
+// #define BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING "Time in seconds for the animation of blast one :"
+// #define BLAST_TWO_TOTAL_AMOUNT_OF_TIME_STRING "Time in seconds for the animation of blast one :"
+// 
+//   ReadValueFromString (Data, BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING, "%f", &Blastmap[0].total_animation_time);
+//   ReadValueFromString (Data, BLAST_TWO_TOTAL_AMOUNT_OF_TIME_STRING, "%f", &Blastmap[1].total_animation_time);
+// 
+// 
+//   free ( Data );
+// 
+//   return;
+// 
+// } // int Init_Game_Data ( void )
 
 
 char copyright[] = "\nCopyright (C) 2003-2018 Johannes Prix, Reinhard Prix\n\
