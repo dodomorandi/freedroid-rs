@@ -231,194 +231,194 @@ Get_Bullet_Data ( char* DataPointer )
 
 @Ret:
 * $Function----------------------------------------------------------*/
-void
-Get_Robot_Data ( void* DataPointer )
-{
-  int RobotIndex = 0;
-  char *RobotPointer;
-  int i;
-
-  float maxspeed_calibrator;
-  float acceleration_calibrator;
-  float maxenergy_calibrator;
-  float energyloss_calibrator;
-  float aggression_calibrator;
-  float score_calibrator;
-
-#define MAXSPEED_CALIBRATOR_STRING "Common factor for all droids maxspeed values: "
-#define ACCELERATION_CALIBRATOR_STRING "Common factor for all droids acceleration values: "
-#define MAXENERGY_CALIBRATOR_STRING "Common factor for all droids maximum energy values: "
-#define ENERGYLOSS_CALIBRATOR_STRING "Common factor for all droids energyloss values: "
-#define AGGRESSION_CALIBRATOR_STRING "Common factor for all droids aggression values: "
-#define SCORE_CALIBRATOR_STRING "Common factor for all droids score values: "
-
-
-#define ROBOT_SECTION_BEGIN_STRING "*** Start of Robot Data Section: ***"
-#define ROBOT_SECTION_END_STRING "*** End of Robot Data Section: ***"
-#define NEW_ROBOT_BEGIN_STRING "** Start of new Robot: **"
-#define DROIDNAME_BEGIN_STRING "Droidname: "
-#define MAXSPEED_BEGIN_STRING "Maximum speed of this droid: "
-#define CLASS_BEGIN_STRING "Class of this droid: "
-#define ACCELERATION_BEGIN_STRING "Maximum acceleration of this droid: "
-#define MAXENERGY_BEGIN_STRING "Maximum energy of this droid: "
-#define LOSEHEALTH_BEGIN_STRING "Rate of energyloss under influence control: "
-#define GUN_BEGIN_STRING "Weapon type this droid uses: "
-#define AGGRESSION_BEGIN_STRING "Aggression rate of this droid: "
-#define FLASHIMMUNE_BEGIN_STRING "Is this droid immune to disruptor blasts? "
-#define SCORE_BEGIN_STRING "Score gained for destroying one of this type: "
-#define HEIGHT_BEGIN_STRING "Height of this droid : "
-#define WEIGHT_BEGIN_STRING "Weight of this droid : "
-#define DRIVE_BEGIN_STRING "Drive of this droid : "
-#define BRAIN_BEGIN_STRING "Brain of this droid : "
-#define SENSOR1_BEGIN_STRING "Sensor 1 of this droid : "
-#define SENSOR2_BEGIN_STRING "Sensor 2 of this droid : "
-#define SENSOR3_BEGIN_STRING "Sensor 3 of this droid : "
-#define ADVANCED_FIGHTING_BEGIN_STRING "Advanced Fighting present in this droid : "
-#define GO_REQUEST_REINFORCEMENTS_BEGIN_STRING "Going to request reinforcements typical for this droid : "
-#define NOTES_BEGIN_STRING "Notes concerning this droid : "
-
-
-  RobotPointer = LocateStringInData ( DataPointer , ROBOT_SECTION_BEGIN_STRING );
-
-  DebugPrintf (2, "\n\nStarting to read robot calibration section\n\n");
-
-  // Now we read in the speed calibration factor for all droids
-  ReadValueFromString( RobotPointer , MAXSPEED_CALIBRATOR_STRING , "%f" ,
-		       &maxspeed_calibrator);
-
-  // Now we read in the acceleration calibration factor for all droids
-  ReadValueFromString( RobotPointer , ACCELERATION_CALIBRATOR_STRING , "%f" ,
-		       &acceleration_calibrator);
-
-  // Now we read in the maxenergy calibration factor for all droids
-  ReadValueFromString( RobotPointer , MAXENERGY_CALIBRATOR_STRING , "%f" ,
-		       &maxenergy_calibrator);
-
-  // Now we read in the energy_loss calibration factor for all droids
-  ReadValueFromString( RobotPointer , ENERGYLOSS_CALIBRATOR_STRING , "%f" ,
-		       &energyloss_calibrator);
-
-  // Now we read in the aggression calibration factor for all droids
-  ReadValueFromString( RobotPointer , AGGRESSION_CALIBRATOR_STRING , "%f" ,
-		       &aggression_calibrator);
-
-  // Now we read in the score calibration factor for all droids
-  ReadValueFromString( RobotPointer , SCORE_CALIBRATOR_STRING , "%f" ,
-		       &score_calibrator);
-
-  DebugPrintf ( 1 , "\n\nStarting to read Robot data...\n\n" );
-
-  // cleanup if previously allocated:
-  FreeDruidmap();
-
-  //--------------------
-  // At first, we must allocate memory for the droid specifications.
-  // How much?  That depends on the number of droids defined in freedroid.ruleset.
-  // So we have to count those first.  ok.  lets do it.
-  Number_Of_Droid_Types = CountStringOccurences ( DataPointer , NEW_ROBOT_BEGIN_STRING ) ;
-
-  // Now that we know how many robots are defined in freedroid.ruleset, we can allocate
-  // a fitting amount of memory.
-  size_t mem = Number_Of_Droid_Types * sizeof(Druidmap[0]);
-  Druidmap = MyMalloc ( mem );
-  DebugPrintf(1, "\nWe have counted %d different druid types in the game data file." , Number_Of_Droid_Types );
-  DebugPrintf (2, "\nMEMORY HAS BEEN ALLOCATED.\nTHE READING CAN BEGIN.\n" );
-
-  //--------------------
-  //Now we start to read the values for each robot:
-  //Of which parts is it composed, which stats does it have?
-  while ( (RobotPointer = strstr ( RobotPointer, NEW_ROBOT_BEGIN_STRING )) != NULL)
-    {
-      DebugPrintf (2, "\n\nFound another Robot specification entry!  Lets add that to the others!");
-      RobotPointer ++; // to avoid doubly taking this entry
-
-      // Now we read in the Name of this droid.  We consider as a name the rest of the
-      ReadValueFromString (RobotPointer, DROIDNAME_BEGIN_STRING, "%s", Druidmap[RobotIndex].druidname);
-
-      // Now we read in the maximal speed this droid can go.
-      ReadValueFromString( RobotPointer , MAXSPEED_BEGIN_STRING , "%f" ,
-			   &Druidmap[RobotIndex].maxspeed);
-
-      // Now we read in the class of this droid.
-      ReadValueFromString( RobotPointer , CLASS_BEGIN_STRING , "%d" ,
-			   &Druidmap[RobotIndex].class);
-
-      // Now we read in the maximal acceleration this droid can go.
-      ReadValueFromString( RobotPointer , ACCELERATION_BEGIN_STRING , "%f" ,
-			   &Druidmap[RobotIndex].accel);
-
-      // Now we read in the maximal energy this droid can store.
-      ReadValueFromString( RobotPointer , MAXENERGY_BEGIN_STRING , "%f" ,
-			   &Druidmap[RobotIndex].maxenergy);
-
-      // Now we read in the lose_health rate.
-      ReadValueFromString( RobotPointer , LOSEHEALTH_BEGIN_STRING , "%f" ,
-			   &Druidmap[RobotIndex].lose_health);
-
-      // Now we read in the class of this droid.
-      ReadValueFromString( RobotPointer , GUN_BEGIN_STRING , "%d" ,
-			   &Druidmap[RobotIndex].gun);
-
-      // Now we read in the aggression rate of this droid.
-      ReadValueFromString( RobotPointer , AGGRESSION_BEGIN_STRING , "%d" ,
-			   &Druidmap[RobotIndex].aggression);
-
-      // Now we read in the flash immunity of this droid.
-      ReadValueFromString( RobotPointer , FLASHIMMUNE_BEGIN_STRING , "%d" ,
-			   &Druidmap[RobotIndex].flashimmune);
-
-      // Now we score to be had for destroying one droid of this type
-      ReadValueFromString( RobotPointer , SCORE_BEGIN_STRING , "%d" ,
-			   &Druidmap[RobotIndex].score);
-
-      // Now we read in the height of this droid of this type
-      ReadValueFromString( RobotPointer , HEIGHT_BEGIN_STRING , "%f" ,
-			   &Druidmap[RobotIndex].height);
-
-      // Now we read in the weight of this droid type
-      ReadValueFromString( RobotPointer , WEIGHT_BEGIN_STRING , "%d" ,
-			   &Druidmap[RobotIndex].weight);
-
-      // Now we read in the drive of this droid of this type
-      ReadValueFromString( RobotPointer , DRIVE_BEGIN_STRING , "%d" ,
-			   &Druidmap[RobotIndex].drive);
-
-      // Now we read in the brain of this droid of this type
-      ReadValueFromString( RobotPointer , BRAIN_BEGIN_STRING , "%d" ,
-			   &Druidmap[RobotIndex].brain);
-
-      // Now we read in the sensor 1, 2 and 3 of this droid type
-      ReadValueFromString( RobotPointer , SENSOR1_BEGIN_STRING , "%d" ,
-			   &Druidmap[RobotIndex].sensor1);
-      ReadValueFromString( RobotPointer , SENSOR2_BEGIN_STRING , "%d" ,
-			   &Druidmap[RobotIndex].sensor2);
-      ReadValueFromString( RobotPointer , SENSOR3_BEGIN_STRING , "%d" ,
-			   &Druidmap[RobotIndex].sensor3);
-
-      // Now we read in the notes concerning this droid.  We consider as notes all the rest of the
-      // line after the NOTES_BEGIN_STRING until the "\n" is found.
-      Druidmap[RobotIndex].notes = ReadAndMallocStringFromData (RobotPointer, NOTES_BEGIN_STRING, "\n");
-
-      // Now we're potentially ready to process the next droid.  Therefore we proceed to
-      // the next number in the Droidmap array.
-      RobotIndex++;
-    }
-
-  DebugPrintf ( 1 , "\n\nThat must have been the last robot.  We're done reading the robot data.");
-  DebugPrintf ( 1 , "\n\nApplying the calibration factors to all droids...");
-
-  for ( i=0; i< Number_Of_Droid_Types ; i++ )
-    {
-      Druidmap[i].maxspeed *= maxspeed_calibrator;
-      Druidmap[i].accel *= acceleration_calibrator;
-      Druidmap[i].maxenergy *= maxenergy_calibrator;
-      Druidmap[i].lose_health *= energyloss_calibrator;
-      Druidmap[i].aggression *= aggression_calibrator;
-      Druidmap[i].score *= score_calibrator;
-    }
-
-
-} // int Get_Robot_Data ( void )
+// void
+// Get_Robot_Data ( void* DataPointer )
+// {
+//   int RobotIndex = 0;
+//   char *RobotPointer;
+//   int i;
+// 
+//   float maxspeed_calibrator;
+//   float acceleration_calibrator;
+//   float maxenergy_calibrator;
+//   float energyloss_calibrator;
+//   float aggression_calibrator;
+//   float score_calibrator;
+// 
+// #define MAXSPEED_CALIBRATOR_STRING "Common factor for all droids maxspeed values: "
+// #define ACCELERATION_CALIBRATOR_STRING "Common factor for all droids acceleration values: "
+// #define MAXENERGY_CALIBRATOR_STRING "Common factor for all droids maximum energy values: "
+// #define ENERGYLOSS_CALIBRATOR_STRING "Common factor for all droids energyloss values: "
+// #define AGGRESSION_CALIBRATOR_STRING "Common factor for all droids aggression values: "
+// #define SCORE_CALIBRATOR_STRING "Common factor for all droids score values: "
+// 
+// 
+// #define ROBOT_SECTION_BEGIN_STRING "*** Start of Robot Data Section: ***"
+// #define ROBOT_SECTION_END_STRING "*** End of Robot Data Section: ***"
+// #define NEW_ROBOT_BEGIN_STRING "** Start of new Robot: **"
+// #define DROIDNAME_BEGIN_STRING "Droidname: "
+// #define MAXSPEED_BEGIN_STRING "Maximum speed of this droid: "
+// #define CLASS_BEGIN_STRING "Class of this droid: "
+// #define ACCELERATION_BEGIN_STRING "Maximum acceleration of this droid: "
+// #define MAXENERGY_BEGIN_STRING "Maximum energy of this droid: "
+// #define LOSEHEALTH_BEGIN_STRING "Rate of energyloss under influence control: "
+// #define GUN_BEGIN_STRING "Weapon type this droid uses: "
+// #define AGGRESSION_BEGIN_STRING "Aggression rate of this droid: "
+// #define FLASHIMMUNE_BEGIN_STRING "Is this droid immune to disruptor blasts? "
+// #define SCORE_BEGIN_STRING "Score gained for destroying one of this type: "
+// #define HEIGHT_BEGIN_STRING "Height of this droid : "
+// #define WEIGHT_BEGIN_STRING "Weight of this droid : "
+// #define DRIVE_BEGIN_STRING "Drive of this droid : "
+// #define BRAIN_BEGIN_STRING "Brain of this droid : "
+// #define SENSOR1_BEGIN_STRING "Sensor 1 of this droid : "
+// #define SENSOR2_BEGIN_STRING "Sensor 2 of this droid : "
+// #define SENSOR3_BEGIN_STRING "Sensor 3 of this droid : "
+// #define ADVANCED_FIGHTING_BEGIN_STRING "Advanced Fighting present in this droid : "
+// #define GO_REQUEST_REINFORCEMENTS_BEGIN_STRING "Going to request reinforcements typical for this droid : "
+// #define NOTES_BEGIN_STRING "Notes concerning this droid : "
+// 
+// 
+//   RobotPointer = LocateStringInData ( DataPointer , ROBOT_SECTION_BEGIN_STRING );
+// 
+//   DebugPrintf (2, "\n\nStarting to read robot calibration section\n\n");
+// 
+//   // Now we read in the speed calibration factor for all droids
+//   ReadValueFromString( RobotPointer , MAXSPEED_CALIBRATOR_STRING , "%f" ,
+// 		       &maxspeed_calibrator);
+// 
+//   // Now we read in the acceleration calibration factor for all droids
+//   ReadValueFromString( RobotPointer , ACCELERATION_CALIBRATOR_STRING , "%f" ,
+// 		       &acceleration_calibrator);
+// 
+//   // Now we read in the maxenergy calibration factor for all droids
+//   ReadValueFromString( RobotPointer , MAXENERGY_CALIBRATOR_STRING , "%f" ,
+// 		       &maxenergy_calibrator);
+// 
+//   // Now we read in the energy_loss calibration factor for all droids
+//   ReadValueFromString( RobotPointer , ENERGYLOSS_CALIBRATOR_STRING , "%f" ,
+// 		       &energyloss_calibrator);
+// 
+//   // Now we read in the aggression calibration factor for all droids
+//   ReadValueFromString( RobotPointer , AGGRESSION_CALIBRATOR_STRING , "%f" ,
+// 		       &aggression_calibrator);
+// 
+//   // Now we read in the score calibration factor for all droids
+//   ReadValueFromString( RobotPointer , SCORE_CALIBRATOR_STRING , "%f" ,
+// 		       &score_calibrator);
+// 
+//   DebugPrintf ( 1 , "\n\nStarting to read Robot data...\n\n" );
+// 
+//   // cleanup if previously allocated:
+//   FreeDruidmap();
+// 
+//   //--------------------
+//   // At first, we must allocate memory for the droid specifications.
+//   // How much?  That depends on the number of droids defined in freedroid.ruleset.
+//   // So we have to count those first.  ok.  lets do it.
+//   Number_Of_Droid_Types = CountStringOccurences ( DataPointer , NEW_ROBOT_BEGIN_STRING ) ;
+// 
+//   // Now that we know how many robots are defined in freedroid.ruleset, we can allocate
+//   // a fitting amount of memory.
+//   size_t mem = Number_Of_Droid_Types * sizeof(Druidmap[0]);
+//   Druidmap = MyMalloc ( mem );
+//   DebugPrintf(1, "\nWe have counted %d different druid types in the game data file." , Number_Of_Droid_Types );
+//   DebugPrintf (2, "\nMEMORY HAS BEEN ALLOCATED.\nTHE READING CAN BEGIN.\n" );
+// 
+//   //--------------------
+//   //Now we start to read the values for each robot:
+//   //Of which parts is it composed, which stats does it have?
+//   while ( (RobotPointer = strstr ( RobotPointer, NEW_ROBOT_BEGIN_STRING )) != NULL)
+//     {
+//       DebugPrintf (2, "\n\nFound another Robot specification entry!  Lets add that to the others!");
+//       RobotPointer ++; // to avoid doubly taking this entry
+// 
+//       // Now we read in the Name of this droid.  We consider as a name the rest of the
+//       ReadValueFromString (RobotPointer, DROIDNAME_BEGIN_STRING, "%s", Druidmap[RobotIndex].druidname);
+// 
+//       // Now we read in the maximal speed this droid can go.
+//       ReadValueFromString( RobotPointer , MAXSPEED_BEGIN_STRING , "%f" ,
+// 			   &Druidmap[RobotIndex].maxspeed);
+// 
+//       // Now we read in the class of this droid.
+//       ReadValueFromString( RobotPointer , CLASS_BEGIN_STRING , "%d" ,
+// 			   &Druidmap[RobotIndex].class);
+// 
+//       // Now we read in the maximal acceleration this droid can go.
+//       ReadValueFromString( RobotPointer , ACCELERATION_BEGIN_STRING , "%f" ,
+// 			   &Druidmap[RobotIndex].accel);
+// 
+//       // Now we read in the maximal energy this droid can store.
+//       ReadValueFromString( RobotPointer , MAXENERGY_BEGIN_STRING , "%f" ,
+// 			   &Druidmap[RobotIndex].maxenergy);
+// 
+//       // Now we read in the lose_health rate.
+//       ReadValueFromString( RobotPointer , LOSEHEALTH_BEGIN_STRING , "%f" ,
+// 			   &Druidmap[RobotIndex].lose_health);
+// 
+//       // Now we read in the class of this droid.
+//       ReadValueFromString( RobotPointer , GUN_BEGIN_STRING , "%d" ,
+// 			   &Druidmap[RobotIndex].gun);
+// 
+//       // Now we read in the aggression rate of this droid.
+//       ReadValueFromString( RobotPointer , AGGRESSION_BEGIN_STRING , "%d" ,
+// 			   &Druidmap[RobotIndex].aggression);
+// 
+//       // Now we read in the flash immunity of this droid.
+//       ReadValueFromString( RobotPointer , FLASHIMMUNE_BEGIN_STRING , "%d" ,
+// 			   &Druidmap[RobotIndex].flashimmune);
+// 
+//       // Now we score to be had for destroying one droid of this type
+//       ReadValueFromString( RobotPointer , SCORE_BEGIN_STRING , "%d" ,
+// 			   &Druidmap[RobotIndex].score);
+// 
+//       // Now we read in the height of this droid of this type
+//       ReadValueFromString( RobotPointer , HEIGHT_BEGIN_STRING , "%f" ,
+// 			   &Druidmap[RobotIndex].height);
+// 
+//       // Now we read in the weight of this droid type
+//       ReadValueFromString( RobotPointer , WEIGHT_BEGIN_STRING , "%d" ,
+// 			   &Druidmap[RobotIndex].weight);
+// 
+//       // Now we read in the drive of this droid of this type
+//       ReadValueFromString( RobotPointer , DRIVE_BEGIN_STRING , "%d" ,
+// 			   &Druidmap[RobotIndex].drive);
+// 
+//       // Now we read in the brain of this droid of this type
+//       ReadValueFromString( RobotPointer , BRAIN_BEGIN_STRING , "%d" ,
+// 			   &Druidmap[RobotIndex].brain);
+// 
+//       // Now we read in the sensor 1, 2 and 3 of this droid type
+//       ReadValueFromString( RobotPointer , SENSOR1_BEGIN_STRING , "%d" ,
+// 			   &Druidmap[RobotIndex].sensor1);
+//       ReadValueFromString( RobotPointer , SENSOR2_BEGIN_STRING , "%d" ,
+// 			   &Druidmap[RobotIndex].sensor2);
+//       ReadValueFromString( RobotPointer , SENSOR3_BEGIN_STRING , "%d" ,
+// 			   &Druidmap[RobotIndex].sensor3);
+// 
+//       // Now we read in the notes concerning this droid.  We consider as notes all the rest of the
+//       // line after the NOTES_BEGIN_STRING until the "\n" is found.
+//       Druidmap[RobotIndex].notes = ReadAndMallocStringFromData (RobotPointer, NOTES_BEGIN_STRING, "\n");
+// 
+//       // Now we're potentially ready to process the next droid.  Therefore we proceed to
+//       // the next number in the Droidmap array.
+//       RobotIndex++;
+//     }
+// 
+//   DebugPrintf ( 1 , "\n\nThat must have been the last robot.  We're done reading the robot data.");
+//   DebugPrintf ( 1 , "\n\nApplying the calibration factors to all droids...");
+// 
+//   for ( i=0; i< Number_Of_Droid_Types ; i++ )
+//     {
+//       Druidmap[i].maxspeed *= maxspeed_calibrator;
+//       Druidmap[i].accel *= acceleration_calibrator;
+//       Druidmap[i].maxenergy *= maxenergy_calibrator;
+//       Druidmap[i].lose_health *= energyloss_calibrator;
+//       Druidmap[i].aggression *= aggression_calibrator;
+//       Druidmap[i].score *= score_calibrator;
+//     }
+// 
+// 
+// } // int Get_Robot_Data ( void )
 
 /*@Function============================================================
 @Desc: This function loads all the constant variables of the game from

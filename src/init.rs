@@ -28,6 +28,7 @@ use crate::{
     },
     sound::{Init_Audio, Switch_Background_Music_To},
     sound_on,
+    structs::DruidSpec,
     text::{DisplayText, ScrollText},
     vars::{Classic_User_Rect, Full_User_Rect, Screen_Rect, User_Rect},
     view::{Assemble_Combat_Picture, DisplayBanner},
@@ -57,7 +58,6 @@ use std::{
 extern "C" {
     pub fn LoadGameConfig();
     pub fn Get_General_Game_Constants(data: *mut c_char);
-    pub fn Get_Robot_Data(data_pointer: *mut c_void);
     pub fn Get_Bullet_Data(data_pointer: *mut c_void);
 
     static mut DebriefingText: *mut c_char;
@@ -1000,4 +1000,300 @@ pub unsafe extern "C" fn Init_Game_Data(data_filename: *mut c_char) {
     );
 
     libc::free(data as *mut c_void);
+}
+
+/// This function loads all the constant variables of the game from
+/// a dat file, that should be optimally human readable.
+#[no_mangle]
+pub unsafe extern "C" fn Get_Robot_Data(data_pointer: *mut c_void) {
+    const MAXSPEED_CALIBRATOR_STRING: &CStr =
+        cstr!("Common factor for all droids maxspeed values: ");
+    const ACCELERATION_CALIBRATOR_STRING: &CStr =
+        cstr!("Common factor for all droids acceleration values: ");
+    const MAXENERGY_CALIBRATOR_STRING: &CStr =
+        cstr!("Common factor for all droids maximum energy values: ");
+    const ENERGYLOSS_CALIBRATOR_STRING: &CStr =
+        cstr!("Common factor for all droids energyloss values: ");
+    const AGGRESSION_CALIBRATOR_STRING: &CStr =
+        cstr!("Common factor for all droids aggression values: ");
+    const SCORE_CALIBRATOR_STRING: &CStr = cstr!("Common factor for all droids score values: ");
+
+    const ROBOT_SECTION_BEGIN_STRING: &CStr = cstr!("*** Start of Robot Data Section: ***");
+    // const ROBOT_SECTION_END_STRING: &CStr = cstr!("*** End of Robot Data Section: ***");
+    const NEW_ROBOT_BEGIN_STRING: &CStr = cstr!("** Start of new Robot: **");
+    const DROIDNAME_BEGIN_STRING: &CStr = cstr!("Droidname: ");
+    const MAXSPEED_BEGIN_STRING: &CStr = cstr!("Maximum speed of this droid: ");
+    const CLASS_BEGIN_STRING: &CStr = cstr!("Class of this droid: ");
+    const ACCELERATION_BEGIN_STRING: &CStr = cstr!("Maximum acceleration of this droid: ");
+    const MAXENERGY_BEGIN_STRING: &CStr = cstr!("Maximum energy of this droid: ");
+    const LOSEHEALTH_BEGIN_STRING: &CStr = cstr!("Rate of energyloss under influence control: ");
+    const GUN_BEGIN_STRING: &CStr = cstr!("Weapon type this droid uses: ");
+    const AGGRESSION_BEGIN_STRING: &CStr = cstr!("Aggression rate of this droid: ");
+    const FLASHIMMUNE_BEGIN_STRING: &CStr = cstr!("Is this droid immune to disruptor blasts? ");
+    const SCORE_BEGIN_STRING: &CStr = cstr!("Score gained for destroying one of this type: ");
+    const HEIGHT_BEGIN_STRING: &CStr = cstr!("Height of this droid : ");
+    const WEIGHT_BEGIN_STRING: &CStr = cstr!("Weight of this droid : ");
+    const DRIVE_BEGIN_STRING: &CStr = cstr!("Drive of this droid : ");
+    const BRAIN_BEGIN_STRING: &CStr = cstr!("Brain of this droid : ");
+    const SENSOR1_BEGIN_STRING: &CStr = cstr!("Sensor 1 of this droid : ");
+    const SENSOR2_BEGIN_STRING: &CStr = cstr!("Sensor 2 of this droid : ");
+    const SENSOR3_BEGIN_STRING: &CStr = cstr!("Sensor 3 of this droid : ");
+    // const ADVANCED_FIGHTING_BEGIN_STRING: &CStr =
+    //     cstr!("Advanced Fighting present in this droid : ");
+    // const GO_REQUEST_REINFORCEMENTS_BEGIN_STRING: &CStr =
+    //     cstr!("Going to request reinforcements typical for this droid : ");
+    const NOTES_BEGIN_STRING: &CStr = cstr!("Notes concerning this droid : ");
+
+    let mut maxspeed_calibrator = 0f32;
+    let mut acceleration_calibrator = 0f32;
+    let mut maxenergy_calibrator = 0f32;
+    let mut energyloss_calibrator = 0f32;
+    let mut aggression_calibrator = 0f32;
+    let mut score_calibrator = 0f32;
+
+    let mut robot_pointer = LocateStringInData(
+        data_pointer as *mut c_char,
+        ROBOT_SECTION_BEGIN_STRING.as_ptr() as *mut c_char,
+    );
+
+    info!("Starting to read robot calibration section");
+
+    // Now we read in the speed calibration factor for all droids
+    ReadValueFromString(
+        robot_pointer,
+        MAXSPEED_CALIBRATOR_STRING.as_ptr() as *mut c_char,
+        cstr!("%f").as_ptr() as *mut c_char,
+        &mut maxspeed_calibrator as *mut _ as *mut c_void,
+    );
+
+    // Now we read in the acceleration calibration factor for all droids
+    ReadValueFromString(
+        robot_pointer,
+        ACCELERATION_CALIBRATOR_STRING.as_ptr() as *mut c_char,
+        cstr!("%f").as_ptr() as *mut c_char,
+        &mut acceleration_calibrator as *mut _ as *mut c_void,
+    );
+
+    // Now we read in the maxenergy calibration factor for all droids
+    ReadValueFromString(
+        robot_pointer,
+        MAXENERGY_CALIBRATOR_STRING.as_ptr() as *mut c_char,
+        cstr!("%f").as_ptr() as *mut c_char,
+        &mut maxenergy_calibrator as *mut _ as *mut c_void,
+    );
+
+    // Now we read in the energy_loss calibration factor for all droids
+    ReadValueFromString(
+        robot_pointer,
+        ENERGYLOSS_CALIBRATOR_STRING.as_ptr() as *mut c_char,
+        cstr!("%f").as_ptr() as *mut c_char,
+        &mut energyloss_calibrator as *mut _ as *mut c_void,
+    );
+
+    // Now we read in the aggression calibration factor for all droids
+    ReadValueFromString(
+        robot_pointer,
+        AGGRESSION_CALIBRATOR_STRING.as_ptr() as *mut c_char,
+        cstr!("%f").as_ptr() as *mut c_char,
+        &mut aggression_calibrator as *mut _ as *mut c_void,
+    );
+
+    // Now we read in the score calibration factor for all droids
+    ReadValueFromString(
+        robot_pointer,
+        SCORE_CALIBRATOR_STRING.as_ptr() as *mut c_char,
+        cstr!("%f").as_ptr() as *mut c_char,
+        &mut score_calibrator as *mut _ as *mut c_void,
+    );
+
+    info!("Starting to read Robot data...");
+
+    // cleanup if previously allocated:
+    FreeDruidmap();
+
+    // At first, we must allocate memory for the droid specifications.
+    // How much?  That depends on the number of droids defined in freedroid.ruleset.
+    // So we have to count those first.  ok.  lets do it.
+    Number_Of_Droid_Types = CountStringOccurences(
+        data_pointer as *mut c_char,
+        NEW_ROBOT_BEGIN_STRING.as_ptr() as *mut c_char,
+    );
+
+    // Now that we know how many robots are defined in freedroid.ruleset, we can allocate
+    // a fitting amount of memory.
+    let mem = usize::try_from(Number_Of_Droid_Types).unwrap() * std::mem::size_of::<DruidSpec>();
+    Druidmap = MyMalloc(mem.try_into().unwrap()) as *mut DruidSpec;
+    info!(
+        "We have counted {} different druid types in the game data file.",
+        Number_Of_Droid_Types,
+    );
+    info!("MEMORY HAS BEEN ALLOCATED. THE READING CAN BEGIN.");
+
+    //Now we start to read the values for each robot:
+    //Of which parts is it composed, which stats does it have?
+    let mut robot_index = 0;
+    while {
+        robot_pointer = libc::strstr(robot_pointer, NEW_ROBOT_BEGIN_STRING.as_ptr());
+        robot_pointer.is_null().not()
+    } {
+        info!("Found another Robot specification entry!  Lets add that to the others!");
+        robot_pointer = robot_pointer.add(1); // to avoid doubly taking this entry
+
+        // Now we read in the Name of this droid.  We consider as a name the rest of the
+        ReadValueFromString(
+            robot_pointer,
+            DROIDNAME_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%s").as_ptr() as *mut c_char,
+            &mut (*Druidmap.add(robot_index)).druidname as *mut _ as *mut c_void,
+        );
+
+        // Now we read in the maximal speed this droid can go.
+        ReadValueFromString(
+            robot_pointer,
+            MAXSPEED_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%f").as_ptr() as *mut c_char,
+            &mut (*Druidmap.add(robot_index)).maxspeed as *mut _ as *mut c_void,
+        );
+
+        // Now we read in the class of this droid.
+        ReadValueFromString(
+            robot_pointer,
+            CLASS_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut (*Druidmap.add(robot_index)).class as *mut _ as *mut c_void,
+        );
+
+        // Now we read in the maximal acceleration this droid can go.
+        ReadValueFromString(
+            robot_pointer,
+            ACCELERATION_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%f").as_ptr() as *mut c_char,
+            &mut (*Druidmap.add(robot_index)).accel as *mut _ as *mut c_void,
+        );
+
+        // Now we read in the maximal energy this droid can store.
+        ReadValueFromString(
+            robot_pointer,
+            MAXENERGY_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%f").as_ptr() as *mut c_char,
+            &mut (*Druidmap.add(robot_index)).maxenergy as *mut _ as *mut c_void,
+        );
+
+        // Now we read in the lose_health rate.
+        ReadValueFromString(
+            robot_pointer,
+            LOSEHEALTH_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%f").as_ptr() as *mut c_char,
+            &mut (*Druidmap.add(robot_index)).lose_health as *mut _ as *mut c_void,
+        );
+
+        // Now we read in the class of this droid.
+        ReadValueFromString(
+            robot_pointer,
+            GUN_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut (*Druidmap.add(robot_index)).gun as *mut _ as *mut c_void,
+        );
+
+        // Now we read in the aggression rate of this droid.
+        ReadValueFromString(
+            robot_pointer,
+            AGGRESSION_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut (*Druidmap.add(robot_index)).aggression as *mut _ as *mut c_void,
+        );
+
+        // Now we read in the flash immunity of this droid.
+        ReadValueFromString(
+            robot_pointer,
+            FLASHIMMUNE_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut (*Druidmap.add(robot_index)).flashimmune as *mut _ as *mut c_void,
+        );
+
+        // Now we score to be had for destroying one droid of this type
+        ReadValueFromString(
+            robot_pointer,
+            SCORE_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut (*Druidmap.add(robot_index)).score as *mut _ as *mut c_void,
+        );
+
+        // Now we read in the height of this droid of this type
+        ReadValueFromString(
+            robot_pointer,
+            HEIGHT_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%f").as_ptr() as *mut c_char,
+            &mut (*Druidmap.add(robot_index)).height as *mut _ as *mut c_void,
+        );
+
+        // Now we read in the weight of this droid type
+        ReadValueFromString(
+            robot_pointer,
+            WEIGHT_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut (*Druidmap.add(robot_index)).weight as *mut _ as *mut c_void,
+        );
+
+        // Now we read in the drive of this droid of this type
+        ReadValueFromString(
+            robot_pointer,
+            DRIVE_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut (*Druidmap.add(robot_index)).drive as *mut _ as *mut c_void,
+        );
+
+        // Now we read in the brain of this droid of this type
+        ReadValueFromString(
+            robot_pointer,
+            BRAIN_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut (*Druidmap.add(robot_index)).brain as *mut _ as *mut c_void,
+        );
+
+        // Now we read in the sensor 1, 2 and 3 of this droid type
+        ReadValueFromString(
+            robot_pointer,
+            SENSOR1_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut (*Druidmap.add(robot_index)).sensor1 as *mut _ as *mut c_void,
+        );
+        ReadValueFromString(
+            robot_pointer,
+            SENSOR2_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut (*Druidmap.add(robot_index)).sensor2 as *mut _ as *mut c_void,
+        );
+        ReadValueFromString(
+            robot_pointer,
+            SENSOR3_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut (*Druidmap.add(robot_index)).sensor3 as *mut _ as *mut c_void,
+        );
+
+        // Now we read in the notes concerning this droid.  We consider as notes all the rest of the
+        // line after the NOTES_BEGIN_STRING until the "\n" is found.
+        (*Druidmap.add(robot_index)).notes = ReadAndMallocStringFromData(
+            robot_pointer,
+            NOTES_BEGIN_STRING.as_ptr() as *mut c_char,
+            cstr!("\n").as_ptr() as *mut c_char,
+        );
+
+        // Now we're potentially ready to process the next droid.  Therefore we proceed to
+        // the next number in the Droidmap array.
+        robot_index += 1;
+    }
+
+    info!("That must have been the last robot.  We're done reading the robot data.");
+    info!("Applying the calibration factors to all droids...");
+
+    for droid in std::slice::from_raw_parts_mut(Druidmap, Number_Of_Droid_Types.try_into().unwrap())
+    {
+        droid.maxspeed *= maxspeed_calibrator;
+        droid.accel *= acceleration_calibrator;
+        droid.maxenergy *= maxenergy_calibrator;
+        droid.lose_health *= energyloss_calibrator;
+        droid.aggression = (droid.aggression as f32 * aggression_calibrator) as c_int;
+        droid.score = (droid.score as f32 * score_calibrator) as c_int;
+    }
 }
