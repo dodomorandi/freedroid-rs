@@ -9,8 +9,9 @@ use crate::{
     },
     enemy::ShuffleEnemys,
     global::{
-        num_highscores, Blastmap, Bulletmap, CurrentCombatScaleFactor, Druidmap, Font0_BFont,
-        GameConfig, Highscores, SkipAFewFrames,
+        collision_lose_energy_calibrator, num_highscores, Blast_Damage_Per_Second, Blast_Radius,
+        Blastmap, Bulletmap, CurrentCombatScaleFactor, Droid_Radius, Druidmap, Font0_BFont,
+        GameConfig, Highscores, SkipAFewFrames, Time_For_Each_Phase_Of_Door_Movement,
     },
     graphics::{
         ne_screen, AllThemes, ClearGraphMem, DisplayImage, InitPictures, Init_Video, Load_Fonts,
@@ -32,9 +33,10 @@ use crate::{
     text::{DisplayText, ScrollText},
     vars::{Classic_User_Rect, Full_User_Rect, Screen_Rect, User_Rect},
     view::{Assemble_Combat_Picture, DisplayBanner},
-    AllBlasts, AllBullets, AllEnemys, CurLevel, DeathCount, GameOver, LastGotIntoBlastSound,
-    LastRefreshSound, LevelDoorsNotMovedTime, Me, NumEnemys, Number_Of_Droid_Types, RealScore,
-    ShowScore, ThisMessageTime,
+    AlertBonusPerSec, AlertThreshold, AllBlasts, AllBullets, AllEnemys, CurLevel, DeathCount,
+    DeathCountDrainSpeed, GameOver, LastGotIntoBlastSound, LastRefreshSound,
+    LevelDoorsNotMovedTime, Me, NumEnemys, Number_Of_Droid_Types, RealScore, ShowScore,
+    ThisMessageTime,
 };
 
 use clap::{crate_version, Clap};
@@ -57,7 +59,6 @@ use std::{
 
 extern "C" {
     pub fn LoadGameConfig();
-    pub fn Get_General_Game_Constants(data: *mut c_char);
 
     static mut DebriefingText: *mut c_char;
     static mut DebriefingSong: [c_char; 500];
@@ -1441,4 +1442,89 @@ pub unsafe extern "C" fn Get_Bullet_Data(data_pointer: *mut c_void) {
         bullet.speed *= bullet_speed_calibrator;
         bullet.damage = (bullet.damage as f32 * bullet_damage_calibrator) as c_int;
     }
+}
+
+/// This function loads all the constant variables of the game from
+/// a dat file, that should be optimally human readable.
+#[no_mangle]
+pub unsafe extern "C" fn Get_General_Game_Constants(data: *mut c_char) {
+    // const CONSTANTS_SECTION_BEGIN_STRING: &CStr =
+    //     cstr!("*** Start of General Game Constants Section: ***");
+    // const CONSTANTS_SECTION_END_STRING: &CStr =
+    //     cstr!("*** End of General Game Constants Section: ***");
+    const COLLISION_LOSE_ENERGY_CALIBRATOR_STRING: &CStr =
+        cstr!("Energy-Loss-factor for Collisions of Influ with hostile robots=");
+    const BLAST_RADIUS_SPECIFICATION_STRING: &CStr =
+        cstr!("Radius of explosions (as far as damage is concerned) in multiples of tiles=");
+    const DROID_RADIUS_SPECIFICATION_STRING: &CStr = cstr!("Droid radius:");
+    const BLAST_DAMAGE_SPECIFICATION_STRING: &CStr =
+        cstr!("Amount of damage done by contact to a blast per second of time=");
+    const TIME_FOR_DOOR_MOVEMENT_SPECIFICATION_STRING: &CStr =
+        cstr!("Time for the doors to move by one subphase of their movement=");
+
+    const DEATHCOUNT_DRAIN_SPEED_STRING: &CStr = cstr!("Deathcount drain speed =");
+    const ALERT_THRESHOLD_STRING: &CStr = cstr!("First alert threshold =");
+    const ALERT_BONUS_PER_SEC_STRING: &CStr = cstr!("Alert bonus per second =");
+
+    info!("Starting to read contents of General Game Constants section");
+
+    // read in Alert-related parameters:
+    ReadValueFromString(
+        data,
+        DEATHCOUNT_DRAIN_SPEED_STRING.as_ptr() as *mut c_char,
+        cstr!("%f").as_ptr() as *mut c_char,
+        &mut DeathCountDrainSpeed as *mut _ as *mut c_void,
+    );
+    ReadValueFromString(
+        data,
+        ALERT_THRESHOLD_STRING.as_ptr() as *mut c_char,
+        cstr!("%d").as_ptr() as *mut c_char,
+        &mut AlertThreshold as *mut _ as *mut c_void,
+    );
+    ReadValueFromString(
+        data,
+        ALERT_BONUS_PER_SEC_STRING.as_ptr() as *mut c_char,
+        cstr!("%f").as_ptr() as *mut c_char,
+        &mut AlertBonusPerSec as *mut _ as *mut c_void,
+    );
+
+    // Now we read in the speed calibration factor for all bullets
+    ReadValueFromString(
+        data,
+        COLLISION_LOSE_ENERGY_CALIBRATOR_STRING.as_ptr() as *mut c_char,
+        cstr!("%f").as_ptr() as *mut c_char,
+        &mut collision_lose_energy_calibrator as *mut _ as *mut c_void,
+    );
+
+    // Now we read in the blast radius
+    ReadValueFromString(
+        data,
+        BLAST_RADIUS_SPECIFICATION_STRING.as_ptr() as *mut c_char,
+        cstr!("%f").as_ptr() as *mut c_char,
+        &mut Blast_Radius as *mut _ as *mut c_void,
+    );
+
+    // Now we read in the druid 'radius' in x direction
+    ReadValueFromString(
+        data,
+        DROID_RADIUS_SPECIFICATION_STRING.as_ptr() as *mut c_char,
+        cstr!("%f").as_ptr() as *mut c_char,
+        &mut Droid_Radius as *mut _ as *mut c_void,
+    );
+
+    // Now we read in the blast damage amount per 'second' of contact with the blast
+    ReadValueFromString(
+        data,
+        BLAST_DAMAGE_SPECIFICATION_STRING.as_ptr() as *mut c_char,
+        cstr!("%f").as_ptr() as *mut c_char,
+        &mut Blast_Damage_Per_Second as *mut _ as *mut c_void,
+    );
+
+    // Now we read in the time is takes for the door to move one phase
+    ReadValueFromString(
+        data,
+        TIME_FOR_DOOR_MOVEMENT_SPECIFICATION_STRING.as_ptr() as *mut c_char,
+        cstr!("%f").as_ptr() as *mut c_char,
+        &mut Time_For_Each_Phase_Of_Door_Movement as *mut _ as *mut c_void,
+    );
 }

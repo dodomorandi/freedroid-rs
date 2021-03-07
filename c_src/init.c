@@ -59,49 +59,49 @@ char Previous_Mission_Name[500];
 
 @Ret:
 * $Function----------------------------------------------------------*/
-void
-Get_General_Game_Constants (char *data)
-{
-#define CONSTANTS_SECTION_BEGIN_STRING "*** Start of General Game Constants Section: ***"
-#define CONSTANTS_SECTION_END_STRING "*** End of General Game Constants Section: ***"
-#define COLLISION_LOSE_ENERGY_CALIBRATOR_STRING "Energy-Loss-factor for Collisions of Influ with hostile robots="
-#define BLAST_RADIUS_SPECIFICATION_STRING "Radius of explosions (as far as damage is concerned) in multiples of tiles="
-#define DROID_RADIUS_SPECIFICATION_STRING "Droid radius:"
-#define BLAST_DAMAGE_SPECIFICATION_STRING "Amount of damage done by contact to a blast per second of time="
-#define TIME_FOR_DOOR_MOVEMENT_SPECIFICATION_STRING "Time for the doors to move by one subphase of their movement="
-
-#define DEATHCOUNT_DRAIN_SPEED_STRING "Deathcount drain speed ="
-#define ALERT_THRESHOLD_STRING "First alert threshold ="
-#define ALERT_BONUS_PER_SEC_STRING "Alert bonus per second ="
-
-  DebugPrintf ( 2 , "\n\nStarting to read contents of General Game Constants section\n\n");
-
-  // read in Alert-related parameters:
-  ReadValueFromString (data, DEATHCOUNT_DRAIN_SPEED_STRING, "%f", &DeathCountDrainSpeed);
-  ReadValueFromString (data, ALERT_THRESHOLD_STRING, "%d", &AlertThreshold);
-  ReadValueFromString (data, ALERT_BONUS_PER_SEC_STRING, "%f", &AlertBonusPerSec);
-
-  // Now we read in the speed calibration factor for all bullets
-  ReadValueFromString (data, COLLISION_LOSE_ENERGY_CALIBRATOR_STRING, "%f",
-		       &collision_lose_energy_calibrator);
-
-  // Now we read in the blast radius
-  ReadValueFromString( data , BLAST_RADIUS_SPECIFICATION_STRING , "%f" , &Blast_Radius);
-
-  // Now we read in the druid 'radius' in x direction
-  ReadValueFromString( data , DROID_RADIUS_SPECIFICATION_STRING , "%f" , &Droid_Radius);
-
-  // Now we read in the blast damage amount per 'second' of contact with the blast
-  ReadValueFromString( data ,  BLAST_DAMAGE_SPECIFICATION_STRING , "%f" , &Blast_Damage_Per_Second);
-
-  // Now we read in the time is takes for the door to move one phase
-  ReadValueFromString( data ,  TIME_FOR_DOOR_MOVEMENT_SPECIFICATION_STRING , "%f" ,
-		       &Time_For_Each_Phase_Of_Door_Movement);
-
-  DebugPrintf(2 , "\nvoid Get_General_Game_Constants ( void* data ): end of function reached." );
-
-  return;
-} // Get_General_Game_Constants ()
+// void
+// Get_General_Game_Constants (char *data)
+// {
+// #define CONSTANTS_SECTION_BEGIN_STRING "*** Start of General Game Constants Section: ***"
+// #define CONSTANTS_SECTION_END_STRING "*** End of General Game Constants Section: ***"
+// #define COLLISION_LOSE_ENERGY_CALIBRATOR_STRING "Energy-Loss-factor for Collisions of Influ with hostile robots="
+// #define BLAST_RADIUS_SPECIFICATION_STRING "Radius of explosions (as far as damage is concerned) in multiples of tiles="
+// #define DROID_RADIUS_SPECIFICATION_STRING "Droid radius:"
+// #define BLAST_DAMAGE_SPECIFICATION_STRING "Amount of damage done by contact to a blast per second of time="
+// #define TIME_FOR_DOOR_MOVEMENT_SPECIFICATION_STRING "Time for the doors to move by one subphase of their movement="
+// 
+// #define DEATHCOUNT_DRAIN_SPEED_STRING "Deathcount drain speed ="
+// #define ALERT_THRESHOLD_STRING "First alert threshold ="
+// #define ALERT_BONUS_PER_SEC_STRING "Alert bonus per second ="
+// 
+//   DebugPrintf ( 2 , "\n\nStarting to read contents of General Game Constants section\n\n");
+// 
+//   // read in Alert-related parameters:
+//   ReadValueFromString (data, DEATHCOUNT_DRAIN_SPEED_STRING, "%f", &DeathCountDrainSpeed);
+//   ReadValueFromString (data, ALERT_THRESHOLD_STRING, "%d", &AlertThreshold);
+//   ReadValueFromString (data, ALERT_BONUS_PER_SEC_STRING, "%f", &AlertBonusPerSec);
+// 
+//   // Now we read in the speed calibration factor for all bullets
+//   ReadValueFromString (data, COLLISION_LOSE_ENERGY_CALIBRATOR_STRING, "%f",
+// 		       &collision_lose_energy_calibrator);
+// 
+//   // Now we read in the blast radius
+//   ReadValueFromString( data , BLAST_RADIUS_SPECIFICATION_STRING , "%f" , &Blast_Radius);
+// 
+//   // Now we read in the druid 'radius' in x direction
+//   ReadValueFromString( data , DROID_RADIUS_SPECIFICATION_STRING , "%f" , &Droid_Radius);
+// 
+//   // Now we read in the blast damage amount per 'second' of contact with the blast
+//   ReadValueFromString( data ,  BLAST_DAMAGE_SPECIFICATION_STRING , "%f" , &Blast_Damage_Per_Second);
+// 
+//   // Now we read in the time is takes for the door to move one phase
+//   ReadValueFromString( data ,  TIME_FOR_DOOR_MOVEMENT_SPECIFICATION_STRING , "%f" ,
+// 		       &Time_For_Each_Phase_Of_Door_Movement);
+// 
+//   DebugPrintf(2 , "\nvoid Get_General_Game_Constants ( void* data ): end of function reached." );
+// 
+//   return;
+// } // Get_General_Game_Constants ()
 
 /*----------------------------------------------------------------------
  * This function reads in all the bullet data from the freedroid.ruleset file,
