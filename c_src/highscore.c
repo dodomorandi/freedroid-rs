@@ -215,54 +215,54 @@
  * This function is actually a submenu of the MainMenu.
  *
  *-----------------------------------------------------------------*/
-void
-ShowHighscores (void)
-{
-  int x0, x1, x2, x3;
-  int y0, height, len;
-  int i;
-  BFont_Info *prev_font;
-  char *fpath;
-
-  fpath = find_file (HS_BACKGROUND_FILE, GRAPHICS_DIR, NO_THEME, WARNONLY);
-  if(fpath) DisplayImage (fpath);
-  MakeGridOnScreen ( (SDL_Rect*) & Screen_Rect );
-  DisplayBanner( NULL , NULL , BANNER_FORCE_UPDATE );
-
-  prev_font = GetCurrentFont();
-  SetCurrentFont (Highscore_BFont);
-
-  len = CharWidth (GetCurrentFont(), '9');
-
-  x0 = Screen_Rect.w/8;
-  x1 = x0 + 2*len;
-  x2 = x1 + 11*len;
-  x3 = x2 + MAX_NAME_LEN*len;
-
-  height = FontHeight (GetCurrentFont());
-
-  y0 = Full_User_Rect.y + height;
-
-
-  CenteredPrintString (ne_screen, y0, "Top %d  scores\n", num_highscores);
-
-  for (i=0; i<num_highscores; i++)
-    {
-      PrintString (ne_screen, x0, y0 + (i+2)*height, "%d", i+1);
-      if (Highscores[i]->score >= 0)
-	PrintString (ne_screen, x1, y0 + (i+2)*height, "%s", Highscores[i]->date);
-      PrintString (ne_screen, x2, y0 + (i+2)*height,  "%s", Highscores[i]->name);
-      if (Highscores[i]->score >= 0)
-	PrintString (ne_screen, x3, y0 + (i+2)*height, "%ld", Highscores[i]->score);
-    }
-  SDL_Flip (ne_screen);
-
-  wait_for_key_pressed();
-
-  SetCurrentFont (prev_font);
-
-  return;
-} // ShowHighscores
+// void
+// ShowHighscores (void)
+// {
+//   int x0, x1, x2, x3;
+//   int y0, height, len;
+//   int i;
+//   BFont_Info *prev_font;
+//   char *fpath;
+// 
+//   fpath = find_file (HS_BACKGROUND_FILE, GRAPHICS_DIR, NO_THEME, WARNONLY);
+//   if(fpath) DisplayImage (fpath);
+//   MakeGridOnScreen ( (SDL_Rect*) & Screen_Rect );
+//   DisplayBanner( NULL , NULL , BANNER_FORCE_UPDATE );
+// 
+//   prev_font = GetCurrentFont();
+//   SetCurrentFont (Highscore_BFont);
+// 
+//   len = CharWidth (GetCurrentFont(), '9');
+// 
+//   x0 = Screen_Rect.w/8;
+//   x1 = x0 + 2*len;
+//   x2 = x1 + 11*len;
+//   x3 = x2 + MAX_NAME_LEN*len;
+// 
+//   height = FontHeight (GetCurrentFont());
+// 
+//   y0 = Full_User_Rect.y + height;
+// 
+// 
+//   CenteredPrintString (ne_screen, y0, "Top %d  scores\n", num_highscores);
+// 
+//   for (i=0; i<num_highscores; i++)
+//     {
+//       PrintString (ne_screen, x0, y0 + (i+2)*height, "%d", i+1);
+//       if (Highscores[i]->score >= 0)
+// 	PrintString (ne_screen, x1, y0 + (i+2)*height, "%s", Highscores[i]->date);
+//       PrintString (ne_screen, x2, y0 + (i+2)*height,  "%s", Highscores[i]->name);
+//       if (Highscores[i]->score >= 0)
+// 	PrintString (ne_screen, x3, y0 + (i+2)*height, "%ld", Highscores[i]->score);
+//     }
+//   SDL_Flip (ne_screen);
+// 
+//   wait_for_key_pressed();
+// 
+//   SetCurrentFont (prev_font);
+// 
+//   return;
+// } // ShowHighscores
 
 
 

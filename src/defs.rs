@@ -358,6 +358,7 @@ pub const COLLISION_STEPSIZE: f64 = 0.1;
  * Highscore related defines
  *************************************************************/
 pub const HS_BACKGROUND_FILE: &str = "transfer.jpg";
+pub const HS_BACKGROUND_FILE_C: &CStr = cstr!("transfer.jpg");
 pub const HS_EMPTY_ENTRY: &str = "--- empty ---";
 pub const MAX_NAME_LEN: usize = 15; /* max len of highscore name entry */
 pub const MAX_HIGHSCORES: usize = 10; /* only keep Top10 */

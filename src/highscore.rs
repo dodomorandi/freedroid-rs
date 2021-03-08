@@ -1,13 +1,21 @@
 #[cfg(target_os = "android")]
 use crate::input::wait_for_key_pressed;
 use crate::{
-    b_font::{FontHeight, GetCurrentFont, Highscore_BFont, Para_BFont, SetCurrentFont},
-    defs::{self, Status, DATE_LEN, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN},
+    b_font::{
+        CenteredPrintString, CharWidth, FontHeight, GetCurrentFont, Highscore_BFont, Para_BFont,
+        PrintString, SetCurrentFont,
+    },
+    defs::{
+        self, Criticality, DisplayBannerFlags, Status, Themed, DATE_LEN, GRAPHICS_DIR_C,
+        HS_BACKGROUND_FILE_C, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
+    },
     global::{num_highscores, Highscores},
-    graphics::{ne_screen, pic999, MakeGridOnScreen},
+    graphics::{ne_screen, pic999, DisplayImage, MakeGridOnScreen},
+    input::wait_for_key_pressed,
+    misc::find_file,
     text::{printf_SDL, DisplayText, GetString},
-    vars::{Me, Portrait_Rect, User_Rect},
-    view::Assemble_Combat_Picture,
+    vars::{Full_User_Rect, Me, Portrait_Rect, Screen_Rect, User_Rect},
+    view::{Assemble_Combat_Picture, DisplayBanner},
     ConfigDir, RealScore, ShowScore,
 };
 
@@ -15,19 +23,17 @@ use cstr::cstr;
 use log::{info, warn};
 use sdl::video::ll::{SDL_Flip, SDL_Rect, SDL_SetClipRect, SDL_UpperBlit};
 use std::{
+    convert::TryFrom,
     ffi::CStr,
     fmt,
     fs::File,
     io::{Read, Write},
     mem,
+    ops::Not,
     os::raw::{c_char, c_int, c_long, c_void},
     path::Path,
     ptr::null_mut,
 };
-
-extern "C" {
-    pub fn ShowHighscores();
-}
 
 #[repr(C)]
 pub struct HighscoreEntry {
@@ -299,4 +305,89 @@ pub extern "C" fn SaveHighscores() -> c_int {
 #[no_mangle]
 pub extern "C" fn UpdateHighscores() {
     update_highscores()
+}
+
+/// Display the high scores of the single player game.
+/// This function is actually a submenu of the MainMenu.
+#[no_mangle]
+pub unsafe extern "C" fn ShowHighscores() {
+    let fpath = find_file(
+        HS_BACKGROUND_FILE_C.as_ptr() as *mut c_char,
+        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        Themed::NoTheme as c_int,
+        Criticality::WarnOnly as c_int,
+    );
+    if fpath.is_null().not() {
+        DisplayImage(fpath);
+    }
+    MakeGridOnScreen(Some(&Screen_Rect));
+    DisplayBanner(
+        null_mut(),
+        null_mut(),
+        DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+    );
+
+    let prev_font = GetCurrentFont();
+    SetCurrentFont(Highscore_BFont);
+
+    let len = CharWidth(&*GetCurrentFont(), b'9'.into());
+
+    let x0 = i32::from(Screen_Rect.w) / 8;
+    let x1 = x0 + 2 * len;
+    let x2 = x1 + 11 * len;
+    let x3 = x2 + i32::try_from(MAX_NAME_LEN).unwrap() * len;
+
+    let height = FontHeight(&*GetCurrentFont());
+
+    let y0 = i32::from(Full_User_Rect.y) + height;
+
+    CenteredPrintString(
+        ne_screen,
+        y0,
+        cstr!("Top %d  scores\n").as_ptr() as *mut c_char,
+        num_highscores,
+    );
+
+    let highscores =
+        std::slice::from_raw_parts(Highscores, usize::try_from(num_highscores).unwrap());
+    for (i, highscore) in highscores.iter().copied().enumerate() {
+        let i = i32::try_from(i).unwrap();
+        PrintString(
+            ne_screen,
+            x0,
+            y0 + (i + 2) * height,
+            cstr!("%d").as_ptr() as *mut c_char,
+            i + 1,
+        );
+        if (*highscore).score >= 0 {
+            PrintString(
+                ne_screen,
+                x1,
+                y0 + (i + 2) * height,
+                cstr!("%s").as_ptr() as *mut c_char,
+                (*highscore).date.as_ptr(),
+            );
+        }
+        PrintString(
+            ne_screen,
+            x2,
+            y0 + (i + 2) * height,
+            cstr!("%s").as_ptr() as *mut c_char,
+            (*highscore).name.as_ptr(),
+        );
+        if (*highscore).score >= 0 {
+            PrintString(
+                ne_screen,
+                x3,
+                y0 + (i + 2) * height,
+                cstr!("%ld").as_ptr() as *mut c_char,
+                (*highscore).score,
+            );
+        }
+    }
+    SDL_Flip(ne_screen);
+
+    wait_for_key_pressed();
+
+    SetCurrentFont(prev_font);
 }
