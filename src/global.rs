@@ -17,8 +17,6 @@ extern "C" {
     /* (currently only 0 or !=0 is implemented) */
     pub static mut level_rect: [SDL_Rect; MAX_LEVELS]; /* rect's of levels in side-view */
     pub static mut liftrow_rect: [SDL_Rect; MAX_LIFT_ROWS]; /* the lift-row rect's in side-view*/
-    pub static mut Highscores: *mut *mut HighscoreEntry;
-    pub static mut num_highscores: i32; /* total number of entries in our list (fixed) */
 }
 
 pub const INFLUENCE_MODE_NAMES: [&CStr; 17] = [

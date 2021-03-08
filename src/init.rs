@@ -9,15 +9,15 @@ use crate::{
     },
     enemy::{MoveEnemys, ShuffleEnemys},
     global::{
-        collision_lose_energy_calibrator, num_highscores, Blast_Damage_Per_Second, Blast_Radius,
-        Blastmap, Bulletmap, CurrentCombatScaleFactor, Droid_Radius, Druidmap, Font0_BFont,
-        GameConfig, Highscores, SkipAFewFrames, Time_For_Each_Phase_Of_Door_Movement,
+        collision_lose_energy_calibrator, Blast_Damage_Per_Second, Blast_Radius, Blastmap,
+        Bulletmap, CurrentCombatScaleFactor, Droid_Radius, Druidmap, Font0_BFont, GameConfig,
+        SkipAFewFrames, Time_For_Each_Phase_Of_Door_Movement,
     },
     graphics::{
         ne_screen, pic999, white_noise, AllThemes, ClearGraphMem, DisplayImage, InitPictures,
         Init_Video, Load_Fonts, MakeGridOnScreen, Number_Of_Bullet_Types,
     },
-    highscore::{InitHighscores, UpdateHighscores},
+    highscore::{InitHighscores, UpdateHighscores, HIGHSCORES, NUM_HIGHSCORES},
     influencer::{ExplodeInfluencer, InitInfluPositionHistory},
     input::{
         any_key_just_pressed, wait_for_all_keys_released, wait_for_key_pressed, Init_Joy, SDL_Delay,
@@ -105,14 +105,14 @@ pub unsafe extern "C" fn FreeGameMem() {
     FreeDruidmap();
 
     // free highscores list
-    if Highscores.is_null().not() {
+    if HIGHSCORES.is_null().not() {
         let highscores =
-            std::slice::from_raw_parts(Highscores, usize::try_from(num_highscores).unwrap());
+            std::slice::from_raw_parts(HIGHSCORES, usize::try_from(NUM_HIGHSCORES).unwrap());
         for highscore in highscores {
             libc::free(*highscore as *mut c_void);
         }
-        libc::free(Highscores as *mut c_void);
-        Highscores = null_mut();
+        libc::free(HIGHSCORES as *mut c_void);
+        HIGHSCORES = null_mut();
     }
 
     // free constant text blobs

@@ -9,7 +9,6 @@ use crate::{
         self, Criticality, DisplayBannerFlags, Status, Themed, DATE_LEN, GRAPHICS_DIR_C,
         HS_BACKGROUND_FILE_C, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
     },
-    global::{num_highscores, Highscores},
     graphics::{ne_screen, pic999, DisplayImage, MakeGridOnScreen},
     input::wait_for_key_pressed,
     misc::find_file,
@@ -34,6 +33,9 @@ use std::{
     path::Path,
     ptr::null_mut,
 };
+
+pub static mut HIGHSCORES: *mut *mut HighscoreEntry = null_mut();
+pub static mut NUM_HIGHSCORES: i32 = 0; /* total number of entries in our list (fixed) */
 
 #[repr(C)]
 pub struct HighscoreEntry {
@@ -120,7 +122,7 @@ fn init_highscores(config_dir: Option<&Path>) {
         file
     });
 
-    unsafe { num_highscores = MAX_HIGHSCORES as _ };
+    unsafe { NUM_HIGHSCORES = MAX_HIGHSCORES as _ };
     let highscores: Box<_> = match file {
         Some(mut file) => (0..MAX_HIGHSCORES)
             .map(|_| {
@@ -136,12 +138,12 @@ fn init_highscores(config_dir: Option<&Path>) {
             })
             .collect(),
         None => std::iter::repeat_with(|| Box::new(HighscoreEntry::default()))
-            .take(MAX_HIGHSCORES.into())
+            .take(MAX_HIGHSCORES)
             .collect(),
     };
 
     unsafe {
-        Highscores = Box::into_raw(highscores) as *mut *mut HighscoreEntry;
+        HIGHSCORES = Box::into_raw(highscores) as *mut *mut HighscoreEntry;
     }
 }
 
@@ -158,10 +160,7 @@ fn save_highscores(config_dir: Option<&Path>) -> Result<(), ()> {
             };
 
             let highscores = unsafe {
-                std::slice::from_raw_parts(
-                    Highscores as *mut Box<HighscoreEntry>,
-                    MAX_HIGHSCORES.into(),
-                )
+                std::slice::from_raw_parts(HIGHSCORES as *mut Box<HighscoreEntry>, MAX_HIGHSCORES)
             };
             for entry in highscores.iter() {
                 let as_slice = unsafe {
@@ -200,10 +199,7 @@ fn update_highscores() {
     }
 
     let hightscores = unsafe {
-        std::slice::from_raw_parts_mut(
-            Highscores as *mut Box<HighscoreEntry>,
-            MAX_HIGHSCORES.into(),
-        )
+        std::slice::from_raw_parts_mut(HIGHSCORES as *mut Box<HighscoreEntry>, MAX_HIGHSCORES)
     };
     let entry_pos = match hightscores
         .iter()
@@ -345,11 +341,11 @@ pub unsafe extern "C" fn ShowHighscores() {
         ne_screen,
         y0,
         cstr!("Top %d  scores\n").as_ptr() as *mut c_char,
-        num_highscores,
+        NUM_HIGHSCORES,
     );
 
     let highscores =
-        std::slice::from_raw_parts(Highscores, usize::try_from(num_highscores).unwrap());
+        std::slice::from_raw_parts(HIGHSCORES, usize::try_from(NUM_HIGHSCORES).unwrap());
     for (i, highscore) in highscores.iter().copied().enumerate() {
         let i = i32::try_from(i).unwrap();
         PrintString(
