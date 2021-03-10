@@ -427,6 +427,24 @@ pub enum AlertNames {
     Last,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct InvalidAlertName;
+
+impl TryFrom<i32> for AlertNames {
+    type Error = InvalidAlertName;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        use AlertNames::*;
+        Ok(match value {
+            0 => Green,
+            1 => Yellow,
+            2 => Amber,
+            3 => Red,
+            _ => return Err(InvalidAlertName),
+        })
+    }
+}
+
 // **********************************************************************
 // Constants for Paths and names of Data-files
 // the root "FD_DATADIR" should be defined in the Makefile as $(pkgdatadir)

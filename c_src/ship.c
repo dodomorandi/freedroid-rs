@@ -929,59 +929,59 @@ show_droid_portrait (SDL_Rect dst, int droid_type, float cycle_time, int flags)
 // ----------------------------------------------------------------------
 // do all alert-related agitations: alert-sirens and alert-lights
 // ----------------------------------------------------------------------
-#define SIREN_WAIT 2.5
-#define BLINK_WAIT 0.2
-void
-AlertLevelWarning (void)
-{
-  static Uint32 last_siren = 0;
-  //  static Uint32 last_blink = 0;
-  int i, posx, posy;
-  int cur_alert = 0;
-
-
-  switch (AlertLevel)
-    {
-    case AL_GREEN:
-      break;
-    case AL_YELLOW:
-    case AL_AMBER:
-    case AL_RED:
-      if (SDL_GetTicks() - last_siren > SIREN_WAIT * 1000.0 / AlertLevel)  // higher alert-> faster sirens!
-	{
-	  Play_Sound (ALERT_SOUND);
-	  last_siren = SDL_GetTicks ();
-	}
-      break;
-    default:
-      DebugPrintf (0, "WARNING: illegal AlertLevel = %d > %d.. something's gone wrong!!\n",
-		   AlertLevel, AL_RED);
-      break;
-    }
-
-  // so much to the sirens, now make sure the alert-tiles are updated correctly:
-  posx = CurLevel->alerts[0].x;
-  posy = CurLevel->alerts[0].y;
-  if (posx == -1) return;  // no alerts here...
-
-
-  cur_alert = ALERT_GREEN + AlertLevel;
-
-  // check if alert-tiles are up-to-date
-  if (GetMapBrick(CurLevel, posx, posy) == cur_alert)
-    return; // ok
-
-  for (i=0; i< MAX_ALERTS_ON_LEVEL; i++)
-    {
-      posx = CurLevel->alerts[i].x;
-      posy = CurLevel->alerts[i].y;
-      if ( posx == -1) 	break;
-
-      CurLevel->map[posy][posx] = cur_alert;
-    }
-
-  return;
-}
+// #define SIREN_WAIT 2.5
+// #define BLINK_WAIT 0.2
+// void
+// AlertLevelWarning (void)
+// {
+//   static Uint32 last_siren = 0;
+//   //  static Uint32 last_blink = 0;
+//   int i, posx, posy;
+//   int cur_alert = 0;
+// 
+// 
+//   switch (AlertLevel)
+//     {
+//     case AL_GREEN:
+//       break;
+//     case AL_YELLOW:
+//     case AL_AMBER:
+//     case AL_RED:
+//       if (SDL_GetTicks() - last_siren > SIREN_WAIT * 1000.0 / AlertLevel)  // higher alert-> faster sirens!
+// 	{
+// 	  Play_Sound (ALERT_SOUND);
+// 	  last_siren = SDL_GetTicks ();
+// 	}
+//       break;
+//     default:
+//       DebugPrintf (0, "WARNING: illegal AlertLevel = %d > %d.. something's gone wrong!!\n",
+// 		   AlertLevel, AL_RED);
+//       break;
+//     }
+// 
+//   // so much to the sirens, now make sure the alert-tiles are updated correctly:
+//   posx = CurLevel->alerts[0].x;
+//   posy = CurLevel->alerts[0].y;
+//   if (posx == -1) return;  // no alerts here...
+// 
+// 
+//   cur_alert = ALERT_GREEN + AlertLevel;
+// 
+//   // check if alert-tiles are up-to-date
+//   if (GetMapBrick(CurLevel, posx, posy) == cur_alert)
+//     return; // ok
+// 
+//   for (i=0; i< MAX_ALERTS_ON_LEVEL; i++)
+//     {
+//       posx = CurLevel->alerts[i].x;
+//       posy = CurLevel->alerts[i].y;
+//       if ( posx == -1) 	break;
+// 
+//       CurLevel->map[posy][posx] = cur_alert;
+//     }
+// 
+//   return;
+// }
 
 // void
 // FreeDroidPics ( void )
