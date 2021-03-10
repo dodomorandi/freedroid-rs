@@ -63,8 +63,8 @@ SDL_Rect down_rect;
 SDL_Rect left_rect;
 SDL_Rect right_rect;
 
-static SDL_Surface *droid_background = NULL;
-static SDL_Surface *droid_pics = NULL;
+SDL_Surface *droid_background = NULL;
+SDL_Surface *droid_pics = NULL;
 
 /*-----------------------------------------------------------------
  * @Desc: does all the work when we enter a lift
@@ -983,12 +983,12 @@ AlertLevelWarning (void)
   return;
 }
 
-void
-FreeDroidPics ( void )
-{
-  SDL_FreeSurface ( droid_pics );
-  SDL_FreeSurface ( droid_background );
-  return;
-
-}
+// void
+// FreeDroidPics ( void )
+// {
+//   SDL_FreeSurface ( droid_pics );
+//   SDL_FreeSurface ( droid_background );
+//   return;
+// 
+// }
 #undef _ship_c
