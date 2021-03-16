@@ -695,123 +695,123 @@ GreatDruidShow (void)
  *  does update the screen: all if flags=0, text-rect if flags=UPDATE_ONLY
  *
  *------------------------------------------------------------*/
-void
-show_droid_info (int droidtype, int page, int flags)
-{
-  char InfoText[1000];
-  char DroidName[80];
-  bool show_arrows = FALSE;
-  int lineskip, lastline;
-
-  SDL_SetClipRect ( ne_screen , NULL );
-  SetCurrentFont( Para_BFont );
-
-  lineskip = FontHeight (GetCurrentFont()) * TEXT_STRETCH;
-  lastline = Cons_Header_Rect.y + Cons_Header_Rect.h;
-  Set_Rect(up_rect,   Cons_Header_Rect.x, lastline - 1.0*lineskip, 25, 13);
-  Set_Rect(down_rect, Cons_Header_Rect.x, lastline - 0.5*lineskip, 25, 13);
-  Set_Rect(left_rect, Cons_Header_Rect.x + Cons_Header_Rect.w - 1.5*lineskip, lastline - 0.9*lineskip,13,25);
-  Set_Rect(right_rect,Cons_Header_Rect.x + Cons_Header_Rect.w - 1.0*lineskip, lastline - 0.9*lineskip,13,25);
-
-  //  Fill_Rect (Cons_Header_Rect, Black);  // for debugging menu-rects...
-
-  sprintf (DroidName, "  Unit type %s - %s", Druidmap[droidtype].druidname,
-	   Classname[Druidmap[droidtype].class]);
-
-  switch (page)
-    {
-    case -3: // Title screen: intro unit
-      sprintf (InfoText, "This is the unit that you currently control. Prepare to board Robo-frighter \
-Paradroid to eliminate all rogue robots.");
-      break;
-    case -2: // Takeover: unit that you wish to control
-      sprintf (InfoText, "This is the unit that you wish to control.\n\n Prepare to takeover.");
-      break;
-    case -1: // Takeover: unit that you control
-      sprintf (InfoText, "This is the unit that you currently control.");
-      break;
-    case 0:
-      show_arrows = TRUE;
-      sprintf (InfoText, "\
-Entry : %02d\n\
-Class : %s\n\
-Height : %5.2f m\n\
-Weight: %d kg\n\
-Drive : %s \n\
-Brain : %s",   droidtype+1, Classes[Druidmap[droidtype].class],
-	       Druidmap[droidtype].height, Druidmap[droidtype].weight,
-	       Drivenames [ Druidmap[ droidtype].drive],
-	       Brainnames[ Druidmap[droidtype].brain ]);
-      break;
-    case 1:
-      show_arrows = TRUE;
-      sprintf( InfoText , "\
-Armament : %s\n\
-Sensors  1: %s\n\
-                    2: %s\n\
-                    3: %s",
-	       Weaponnames [ Druidmap[droidtype].gun],
-	       Sensornames[ Druidmap[droidtype].sensor1 ],
-	       Sensornames[ Druidmap[droidtype].sensor2 ],
-	       Sensornames[ Druidmap[droidtype].sensor3 ]);
-      break;
-    case 2:
-      show_arrows = TRUE;
-      sprintf (InfoText, "Notes: %s", Druidmap[droidtype].notes);
-      break;
-    default:
-      sprintf (InfoText, "ERROR: Page not implemented!! \nPlease report bug!");
-      break;
-    } /* switch (page) */
-
-
-
-  // if UPDATE_ONLY then the background has not been cleared, so we have do it
-  // it for each menu-rect:
-  if (flags & UPDATE_ONLY)
-    {
-      SDL_SetClipRect (ne_screen, &Cons_Text_Rect);
-      SDL_BlitSurface (console_bg_pic2, NULL, ne_screen, NULL);
-      SDL_SetClipRect (ne_screen, &Cons_Header_Rect);
-      SDL_BlitSurface (console_bg_pic2, NULL, ne_screen, NULL);
-      SDL_SetClipRect (ne_screen, NULL);
-    }
-  else // otherwise we just redraw the whole screen
-    {
-      SDL_BlitSurface (console_bg_pic2, NULL, ne_screen, NULL);
-      DisplayBanner (NULL, NULL,  BANNER_NO_SDL_UPDATE | BANNER_FORCE_UPDATE );
-    }
-
-  DisplayText (InfoText, Cons_Text_Rect.x, Cons_Text_Rect.y, &Cons_Text_Rect);
-
-  DisplayText (DroidName, Cons_Header_Rect.x + lineskip , lastline - 0.9*lineskip, NULL);
-
-  if (show_arrows)
-    {
-      if (Me.type >  droidtype)
-	SDL_BlitSurface ( arrow_up, NULL, ne_screen, &up_rect);
-
-      if (droidtype > 0)
-	SDL_BlitSurface ( arrow_down, NULL, ne_screen, &down_rect);
-
-      if (page > 0)
-	SDL_BlitSurface ( arrow_left, NULL, ne_screen, &left_rect);
-
-      if (page < 2)
-	SDL_BlitSurface ( arrow_right, NULL, ne_screen, &right_rect);
-    }
-
-  if (flags & UPDATE_ONLY)
-    {
-      SDL_UpdateRects (ne_screen, 1, &Cons_Header_Rect);
-      SDL_UpdateRects (ne_screen, 1, &Cons_Text_Rect);
-    }
-  else
-    SDL_Flip (ne_screen);
-
-  return;
-
-} /* show_droid_info */
+// void
+// show_droid_info (int droidtype, int page, int flags)
+// {
+//   char InfoText[1000];
+//   char DroidName[80];
+//   bool show_arrows = FALSE;
+//   int lineskip, lastline;
+// 
+//   SDL_SetClipRect ( ne_screen , NULL );
+//   SetCurrentFont( Para_BFont );
+// 
+//   lineskip = FontHeight (GetCurrentFont()) * TEXT_STRETCH;
+//   lastline = Cons_Header_Rect.y + Cons_Header_Rect.h;
+//   Set_Rect(up_rect,   Cons_Header_Rect.x, lastline - 1.0*lineskip, 25, 13);
+//   Set_Rect(down_rect, Cons_Header_Rect.x, lastline - 0.5*lineskip, 25, 13);
+//   Set_Rect(left_rect, Cons_Header_Rect.x + Cons_Header_Rect.w - 1.5*lineskip, lastline - 0.9*lineskip,13,25);
+//   Set_Rect(right_rect,Cons_Header_Rect.x + Cons_Header_Rect.w - 1.0*lineskip, lastline - 0.9*lineskip,13,25);
+// 
+//   //  Fill_Rect (Cons_Header_Rect, Black);  // for debugging menu-rects...
+// 
+//   sprintf (DroidName, "  Unit type %s - %s", Druidmap[droidtype].druidname,
+// 	   Classname[Druidmap[droidtype].class]);
+// 
+//   switch (page)
+//     {
+//     case -3: // Title screen: intro unit
+//       sprintf (InfoText, "This is the unit that you currently control. Prepare to board Robo-frighter \
+// Paradroid to eliminate all rogue robots.");
+//       break;
+//     case -2: // Takeover: unit that you wish to control
+//       sprintf (InfoText, "This is the unit that you wish to control.\n\n Prepare to takeover.");
+//       break;
+//     case -1: // Takeover: unit that you control
+//       sprintf (InfoText, "This is the unit that you currently control.");
+//       break;
+//     case 0:
+//       show_arrows = TRUE;
+//       sprintf (InfoText, "\
+// Entry : %02d\n\
+// Class : %s\n\
+// Height : %5.2f m\n\
+// Weight: %d kg\n\
+// Drive : %s \n\
+// Brain : %s",   droidtype+1, Classes[Druidmap[droidtype].class],
+// 	       Druidmap[droidtype].height, Druidmap[droidtype].weight,
+// 	       Drivenames [ Druidmap[ droidtype].drive],
+// 	       Brainnames[ Druidmap[droidtype].brain ]);
+//       break;
+//     case 1:
+//       show_arrows = TRUE;
+//       sprintf( InfoText , "\
+// Armament : %s\n\
+// Sensors  1: %s\n\
+//                     2: %s\n\
+//                     3: %s",
+// 	       Weaponnames [ Druidmap[droidtype].gun],
+// 	       Sensornames[ Druidmap[droidtype].sensor1 ],
+// 	       Sensornames[ Druidmap[droidtype].sensor2 ],
+// 	       Sensornames[ Druidmap[droidtype].sensor3 ]);
+//       break;
+//     case 2:
+//       show_arrows = TRUE;
+//       sprintf (InfoText, "Notes: %s", Druidmap[droidtype].notes);
+//       break;
+//     default:
+//       sprintf (InfoText, "ERROR: Page not implemented!! \nPlease report bug!");
+//       break;
+//     } /* switch (page) */
+// 
+// 
+// 
+//   // if UPDATE_ONLY then the background has not been cleared, so we have do it
+//   // it for each menu-rect:
+//   if (flags & UPDATE_ONLY)
+//     {
+//       SDL_SetClipRect (ne_screen, &Cons_Text_Rect);
+//       SDL_BlitSurface (console_bg_pic2, NULL, ne_screen, NULL);
+//       SDL_SetClipRect (ne_screen, &Cons_Header_Rect);
+//       SDL_BlitSurface (console_bg_pic2, NULL, ne_screen, NULL);
+//       SDL_SetClipRect (ne_screen, NULL);
+//     }
+//   else // otherwise we just redraw the whole screen
+//     {
+//       SDL_BlitSurface (console_bg_pic2, NULL, ne_screen, NULL);
+//       DisplayBanner (NULL, NULL,  BANNER_NO_SDL_UPDATE | BANNER_FORCE_UPDATE );
+//     }
+// 
+//   DisplayText (InfoText, Cons_Text_Rect.x, Cons_Text_Rect.y, &Cons_Text_Rect);
+// 
+//   DisplayText (DroidName, Cons_Header_Rect.x + lineskip , lastline - 0.9*lineskip, NULL);
+// 
+//   if (show_arrows)
+//     {
+//       if (Me.type >  droidtype)
+// 	SDL_BlitSurface ( arrow_up, NULL, ne_screen, &up_rect);
+// 
+//       if (droidtype > 0)
+// 	SDL_BlitSurface ( arrow_down, NULL, ne_screen, &down_rect);
+// 
+//       if (page > 0)
+// 	SDL_BlitSurface ( arrow_left, NULL, ne_screen, &left_rect);
+// 
+//       if (page < 2)
+// 	SDL_BlitSurface ( arrow_right, NULL, ne_screen, &right_rect);
+//     }
+// 
+//   if (flags & UPDATE_ONLY)
+//     {
+//       SDL_UpdateRects (ne_screen, 1, &Cons_Header_Rect);
+//       SDL_UpdateRects (ne_screen, 1, &Cons_Text_Rect);
+//     }
+//   else
+//     SDL_Flip (ne_screen);
+// 
+//   return;
+// 
+// } /* show_droid_info */
 
 
 //----------------------------------------------------------------------
