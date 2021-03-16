@@ -825,106 +825,106 @@ Sensors  1: %s\n\
 // if cycle_time == 0 : display static pic, using only first frame
 //
 //----------------------------------------------------------------------
-void
-show_droid_portrait (SDL_Rect dst, int droid_type, float cycle_time, int flags)
-{
-  static int frame_num = 0;
-  static int last_droid_type = -1;
-  static Uint32 last_frame_time = 0;
-  static SDL_Rect src_rect;
-  SDL_Surface *tmp;
-  Uint32 frame_duration;
-  bool need_new_frame = FALSE;
-  int num_frames;
-
-  SDL_SetClipRect (ne_screen, &dst);
-
-  if (!droid_background) // first call
-    {
-      tmp = SDL_CreateRGBSurface (0, dst.w, dst.h, vid_bpp, 0, 0, 0, 0);
-      droid_background = SDL_DisplayFormat (tmp);
-      SDL_FreeSurface (tmp);
-      SDL_BlitSurface (ne_screen, &dst, droid_background, NULL);
-      Copy_Rect (Portrait_Rect, src_rect);
-    }
-
-  if (flags & RESET)
-    {
-      SDL_BlitSurface (ne_screen, &dst, droid_background, NULL);
-      frame_num  = 0;
-      last_frame_time = SDL_GetTicks ();
-    }
-
-  if ( (droid_type != last_droid_type) || (droid_pics == NULL))
-    { // we need to unpack the droid-pics into our local storage
-      if (droid_pics) SDL_FreeSurface (droid_pics);
-      droid_pics = NULL;
-      tmp = IMG_Load_RW (packed_portraits[droid_type], 0);
-      // important: return seek-position to beginning of RWops for next operation to succeed!
-      SDL_RWseek (packed_portraits[droid_type], 0, SEEK_SET);
-      if (!tmp)
-	{
-	  DebugPrintf (0, "ERROR: failed to unpack droid-portraits of droid-type %d\n", droid_type);
-	  return; // ok, so no pic but we continue ;)
-	}
-      // now see if its a jpg, then we add some transparency by color-keying:
-      if (IMG_isJPG(packed_portraits[droid_type]))
-	{
-	  droid_pics = SDL_DisplayFormat (tmp);
-	} // else assume it's png ;)
-      else
-	{
-	  droid_pics = SDL_DisplayFormatAlpha (tmp);
-	}
-      SDL_FreeSurface (tmp);
-      SDL_RWseek (packed_portraits[droid_type], 0, SEEK_SET);
-
-
-      // do we have to scale the droid pics
-      if (GameConfig.scale != 1.0)
-	ScalePic (&droid_pics, GameConfig.scale);
-
-      last_droid_type = droid_type;
-    }
-
-  num_frames = droid_pics->w / Portrait_Rect.w;
-
-  // sanity check
-  if ( num_frames == 0)
-    {
-      DebugPrintf (0, "WARNING: Only one frame found. Width droid-pics=%d, Frame-width=%d\n",
-		   droid_pics->w, Portrait_Rect.w);
-      num_frames = 1;       // continue and hope for the best
-    }
-
-  frame_duration = SDL_GetTicks() - last_frame_time;
-
-  if (cycle_time && (frame_duration >  1000.0*cycle_time/num_frames) )
-    {
-      need_new_frame = TRUE;
-      frame_num ++;
-    }
-
-  if (frame_num >= num_frames)
-    frame_num = 0;
-
-  if ( (flags & (RESET|UPDATE)) || need_new_frame)
-    {
-      src_rect.x = frame_num*src_rect.w;
-
-      SDL_BlitSurface (droid_background, NULL, ne_screen, &dst);
-      SDL_BlitSurface (droid_pics, &src_rect, ne_screen, &dst);
-
-      SDL_UpdateRects (ne_screen, 1, &dst);
-
-      last_frame_time = SDL_GetTicks();
-    }
-
-  SDL_SetClipRect (ne_screen, NULL);
-
-  return;
-
-} // show_droid_portrait
+// void
+// show_droid_portrait (SDL_Rect dst, int droid_type, float cycle_time, int flags)
+// {
+//   static int frame_num = 0;
+//   static int last_droid_type = -1;
+//   static Uint32 last_frame_time = 0;
+//   static SDL_Rect src_rect;
+//   SDL_Surface *tmp;
+//   Uint32 frame_duration;
+//   bool need_new_frame = FALSE;
+//   int num_frames;
+// 
+//   SDL_SetClipRect (ne_screen, &dst);
+// 
+//   if (!droid_background) // first call
+//     {
+//       tmp = SDL_CreateRGBSurface (0, dst.w, dst.h, vid_bpp, 0, 0, 0, 0);
+//       droid_background = SDL_DisplayFormat (tmp);
+//       SDL_FreeSurface (tmp);
+//       SDL_BlitSurface (ne_screen, &dst, droid_background, NULL);
+//       Copy_Rect (Portrait_Rect, src_rect);
+//     }
+// 
+//   if (flags & RESET)
+//     {
+//       SDL_BlitSurface (ne_screen, &dst, droid_background, NULL);
+//       frame_num  = 0;
+//       last_frame_time = SDL_GetTicks ();
+//     }
+// 
+//   if ( (droid_type != last_droid_type) || (droid_pics == NULL))
+//     { // we need to unpack the droid-pics into our local storage
+//       if (droid_pics) SDL_FreeSurface (droid_pics);
+//       droid_pics = NULL;
+//       tmp = IMG_Load_RW (packed_portraits[droid_type], 0);
+//       // important: return seek-position to beginning of RWops for next operation to succeed!
+//       SDL_RWseek (packed_portraits[droid_type], 0, SEEK_SET);
+//       if (!tmp)
+// 	{
+// 	  DebugPrintf (0, "ERROR: failed to unpack droid-portraits of droid-type %d\n", droid_type);
+// 	  return; // ok, so no pic but we continue ;)
+// 	}
+//       // now see if its a jpg, then we add some transparency by color-keying:
+//       if (IMG_isJPG(packed_portraits[droid_type]))
+// 	{
+// 	  droid_pics = SDL_DisplayFormat (tmp);
+// 	} // else assume it's png ;)
+//       else
+// 	{
+// 	  droid_pics = SDL_DisplayFormatAlpha (tmp);
+// 	}
+//       SDL_FreeSurface (tmp);
+//       SDL_RWseek (packed_portraits[droid_type], 0, SEEK_SET);
+// 
+// 
+//       // do we have to scale the droid pics
+//       if (GameConfig.scale != 1.0)
+// 	ScalePic (&droid_pics, GameConfig.scale);
+// 
+//       last_droid_type = droid_type;
+//     }
+// 
+//   num_frames = droid_pics->w / Portrait_Rect.w;
+// 
+//   // sanity check
+//   if ( num_frames == 0)
+//     {
+//       DebugPrintf (0, "WARNING: Only one frame found. Width droid-pics=%d, Frame-width=%d\n",
+// 		   droid_pics->w, Portrait_Rect.w);
+//       num_frames = 1;       // continue and hope for the best
+//     }
+// 
+//   frame_duration = SDL_GetTicks() - last_frame_time;
+// 
+//   if (cycle_time && (frame_duration >  1000.0*cycle_time/num_frames) )
+//     {
+//       need_new_frame = TRUE;
+//       frame_num ++;
+//     }
+// 
+//   if (frame_num >= num_frames)
+//     frame_num = 0;
+// 
+//   if ( (flags & (RESET|UPDATE)) || need_new_frame)
+//     {
+//       src_rect.x = frame_num*src_rect.w;
+// 
+//       SDL_BlitSurface (droid_background, NULL, ne_screen, &dst);
+//       SDL_BlitSurface (droid_pics, &src_rect, ne_screen, &dst);
+// 
+//       SDL_UpdateRects (ne_screen, 1, &dst);
+// 
+//       last_frame_time = SDL_GetTicks();
+//     }
+// 
+//   SDL_SetClipRect (ne_screen, NULL);
+// 
+//   return;
+// 
+// } // show_droid_portrait
 
 // ----------------------------------------------------------------------
 // do all alert-related agitations: alert-sirens and alert-lights
