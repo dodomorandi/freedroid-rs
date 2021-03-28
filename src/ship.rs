@@ -1,23 +1,27 @@
 use crate::{
     b_font::{FontHeight, GetCurrentFont, Para_BFont, SetCurrentFont},
     defs::{
-        AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Sound, RESET, TEXT_STRETCH,
-        UPDATE,
+        AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction, Sound, Status,
+        RESET, TEXT_STRETCH, UPDATE,
     },
     global::Druidmap,
     graphics::{
-        arrow_down, arrow_left, arrow_right, arrow_up, console_bg_pic2, packed_portraits, vid_bpp,
-        ScalePic, SetCombatScaleTo,
+        arrow_cursor, arrow_down, arrow_left, arrow_right, arrow_up, console_bg_pic2,
+        crosshair_cursor, packed_portraits, vid_bpp, ClearGraphMem, ScalePic, SetCombatScaleTo,
     },
-    input::wait_for_key_pressed,
+    input::{
+        last_mouse_event, update_input, wait_for_all_keys_released, wait_for_key_pressed, SDL_Delay,
+    },
     map::GetMapBrick,
-    ne_screen,
-    sound::Play_Sound,
+    menu::getMenuAction,
+    misc::Activate_Conservative_Frame_Computation,
+    ne_screen, show_cursor,
+    sound::{MenuItemSelectedSound, MoveMenuPositionSound, Play_Sound},
     structs::Level,
     text::DisplayText,
     vars::{
-        Cons_Header_Rect, Cons_Text_Rect, Portrait_Rect, BRAIN_NAMES, CLASSES, CLASS_NAMES,
-        DRIVE_NAMES, SENSOR_NAMES, WEAPON_NAMES,
+        Cons_Header_Rect, Cons_Menu_Rects, Cons_Text_Rect, Full_User_Rect, Portrait_Rect,
+        User_Rect, BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES, WEAPON_NAMES,
     },
     view::{Assemble_Combat_Picture, DisplayBanner},
     AlertLevel, CurLevel, GameConfig, Me,
@@ -25,9 +29,9 @@ use crate::{
 
 use log::{error, warn};
 use sdl::{
-    event::ll::SDL_DISABLE,
+    event::ll::{SDL_DISABLE, SDL_ENABLE},
     ll::SDL_GetTicks,
-    mouse::ll::SDL_ShowCursor,
+    mouse::ll::{SDL_SetCursor, SDL_ShowCursor, SDL_WarpMouse},
     video::ll::{
         SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_Flip, SDL_FreeSurface,
         SDL_RWops, SDL_SetClipRect, SDL_Surface, SDL_UpdateRects, SDL_UpperBlit,
@@ -35,7 +39,7 @@ use sdl::{
     Rect,
 };
 use std::{
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     ffi::CStr,
     ops::Not,
     os::raw::{c_char, c_float, c_int},
@@ -46,7 +50,10 @@ const UPDATE_ONLY: u8 = 0x01;
 
 extern "C" {
     pub fn EnterLift();
-    pub fn EnterKonsole();
+    pub fn PaintConsoleMenu(pos: c_int, flag: c_int);
+    pub fn CursorIsOnRect(rect: *mut Rect) -> c_int;
+    pub fn GreatDruidShow();
+    pub fn ShowLifts(level: c_int, liftrow: c_int);
 
     pub fn IMG_Load_RW(src: *mut SDL_RWops, freesrc: c_int) -> *mut SDL_Surface;
     pub fn IMG_isJPG(src: *mut SDL_RWops) -> c_int;
@@ -479,4 +486,187 @@ pub unsafe extern "C" fn ShowDeckMap(deck: Level) {
     wait_for_key_pressed();
 
     SetCombatScaleTo(1.0);
+}
+
+/// EnterKonsole(): does all konsole- duties
+/// This function runs the consoles. This means the following duties:
+/// 2 * Show a small-scale plan of the current deck
+/// 3 * Show a side-elevation on the ship
+/// 1 * Give all available data on lower druid types
+/// 0 * Reenter the game without squashing the colortable
+#[no_mangle]
+pub unsafe extern "C" fn EnterKonsole() {
+    // Prevent distortion of framerate by the delay coming from
+    // the time spend in the menu.
+    Activate_Conservative_Frame_Computation();
+
+    let tmp_rect = User_Rect;
+    User_Rect = Full_User_Rect;
+
+    wait_for_all_keys_released();
+
+    Me.status = Status::Console as c_int;
+
+    if cfg!(target_os = "android") {
+        show_cursor = false;
+    }
+
+    SDL_SetCursor(arrow_cursor);
+
+    SetCurrentFont(Para_BFont);
+
+    let mut pos = 0; // starting menu position
+    PaintConsoleMenu(c_int::try_from(pos).unwrap(), 0);
+
+    let wait_move_ticks: u32 = 100;
+    static mut LAST_MOVE_TICK: u32 = 0;
+    let mut finished = false;
+    let mut need_update = true;
+    while !finished {
+        if show_cursor {
+            SDL_ShowCursor(SDL_ENABLE);
+        } else {
+            SDL_ShowCursor(SDL_DISABLE);
+        }
+
+        // check if the mouse-cursor is on any of the console-menu points
+        for (i, rect) in Cons_Menu_Rects.iter_mut().enumerate() {
+            if show_cursor && pos != i && CursorIsOnRect(rect) != 0 {
+                MoveMenuPositionSound();
+                pos = i;
+                need_update = true;
+            }
+        }
+        let action = getMenuAction(250);
+        if SDL_GetTicks() - LAST_MOVE_TICK > wait_move_ticks {
+            match action {
+                MenuAction::BACK => {
+                    finished = true;
+                    wait_for_all_keys_released();
+                }
+
+                MenuAction::UP => {
+                    if pos > 0 {
+                        pos -= 1;
+                    } else {
+                        pos = 3;
+                    }
+                    // when warping the mouse-cursor: don't count that as a mouse-activity
+                    // this is a dirty hack, but that should be enough for here...
+                    if show_cursor {
+                        let mousemove_buf = last_mouse_event;
+                        SDL_WarpMouse(
+                            (Cons_Menu_Rects[pos].x
+                                + i16::try_from(Cons_Menu_Rects[pos].w / 2).unwrap())
+                            .try_into()
+                            .unwrap(),
+                            (Cons_Menu_Rects[pos].y
+                                + i16::try_from(Cons_Menu_Rects[pos].h / 2).unwrap())
+                            .try_into()
+                            .unwrap(),
+                        );
+                        update_input(); // this sets a new last_mouse_event
+                        last_mouse_event = mousemove_buf; //... which we override.. ;)
+                    }
+                    MoveMenuPositionSound();
+                    need_update = true;
+                    LAST_MOVE_TICK = SDL_GetTicks();
+                }
+
+                MenuAction::DOWN => {
+                    if pos < 3 {
+                        pos += 1;
+                    } else {
+                        pos = 0;
+                    }
+                    // when warping the mouse-cursor: don't count that as a mouse-activity
+                    // this is a dirty hack, but that should be enough for here...
+                    if show_cursor {
+                        let mousemove_buf = last_mouse_event;
+                        SDL_WarpMouse(
+                            (Cons_Menu_Rects[pos].x
+                                + i16::try_from(Cons_Menu_Rects[pos].w / 2).unwrap())
+                            .try_into()
+                            .unwrap(),
+                            (Cons_Menu_Rects[pos].y
+                                + i16::try_from(Cons_Menu_Rects[pos].h / 2).unwrap())
+                            .try_into()
+                            .unwrap(),
+                        );
+                        update_input(); // this sets a new last_mouse_event
+                        last_mouse_event = mousemove_buf; //... which we override.. ;)
+                    }
+                    MoveMenuPositionSound();
+                    need_update = true;
+                    LAST_MOVE_TICK = SDL_GetTicks();
+                }
+
+                MenuAction::CLICK => {
+                    MenuItemSelectedSound();
+                    wait_for_all_keys_released();
+                    need_update = true;
+                    match pos {
+                        0 => {
+                            finished = true;
+                        }
+                        1 => {
+                            GreatDruidShow();
+                            PaintConsoleMenu(pos.try_into().unwrap(), 0);
+                        }
+                        2 => {
+                            ClearGraphMem();
+                            DisplayBanner(
+                                null_mut(),
+                                null_mut(),
+                                DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+                            );
+                            ShowDeckMap(*CurLevel);
+                            PaintConsoleMenu(pos.try_into().unwrap(), 0);
+                        }
+                        3 => {
+                            ClearGraphMem();
+                            DisplayBanner(
+                                null_mut(),
+                                null_mut(),
+                                DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+                            );
+                            ShowLifts((*CurLevel).levelnum, -1);
+                            wait_for_key_pressed();
+                            PaintConsoleMenu(pos.try_into().unwrap(), 0);
+                        }
+                        _ => {
+                            error!("Konsole menu out of bounds... pos = {}", pos);
+                            pos = 0;
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        if need_update {
+            PaintConsoleMenu(pos.try_into().unwrap(), UPDATE_ONLY.into());
+            if cfg!(not(target_os = "android")) {
+                SDL_Flip(ne_screen);
+            }
+
+            need_update = false;
+        }
+        if cfg!(target_os = "android") {
+            SDL_Flip(ne_screen); // for responsive input on Android, we need to run this every cycle
+        }
+
+        SDL_Delay(1); // don't hog CPU
+    }
+
+    User_Rect = tmp_rect;
+
+    Me.status = Status::Mobile as c_int;
+
+    ClearGraphMem();
+
+    SDL_SetCursor(crosshair_cursor);
+    if !show_cursor {
+        SDL_ShowCursor(SDL_DISABLE);
+    }
 }

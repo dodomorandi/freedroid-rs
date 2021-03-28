@@ -295,161 +295,161 @@ This function runs the consoles. This means the following duties:
 @Ret:
 @Int:
 * $Function----------------------------------------------------------*/
-void
-EnterKonsole (void)
-{
-  int i, pos, mousemove_buf;
-  SDL_Rect TmpRect;
-  // Prevent distortion of framerate by the delay coming from
-  // the time spend in the menu.
-  Activate_Conservative_Frame_Computation();
-
-  Copy_Rect (User_Rect, TmpRect);
-  Copy_Rect (Full_User_Rect, User_Rect);
-
-  wait_for_all_keys_released();
-
-  Me.status = CONSOLE;
-
-#ifdef ANDROID
-  show_cursor = FALSE;
-#endif
-
-  SDL_SetCursor (arrow_cursor);
-
-  SetCurrentFont( Para_BFont );
-
-  pos = 0;   // starting menu position
-  PaintConsoleMenu (pos, 0);
-
-  /* Gesamtkonsolenschleife */
-  const Uint32 wait_move_ticks = 100;
-  static Uint32 last_move_tick = 0;
-  MenuAction_t action = ACTION_NONE;
-  bool finished = FALSE;
-  bool need_update = TRUE;
-  while ( !finished )
-    {
-      if (show_cursor) SDL_ShowCursor (SDL_ENABLE);
-      else SDL_ShowCursor (SDL_DISABLE);
-
-      // check if the mouse-cursor is on any of the console-menu points
-      for (i=0; i < 4; i++)
-	if (show_cursor && (pos != i) && CursorIsOnRect(&Cons_Menu_Rects[i]) )
-	  {
-	    MoveMenuPositionSound ();
-	    pos = i;
-            need_update = TRUE;
-	  }
-      action = getMenuAction( 250 );
-      if ( SDL_GetTicks() - last_move_tick > wait_move_ticks )
-        {
-          switch ( action )
-            {
-            case ACTION_BACK:
-	      finished = TRUE;
-              wait_for_all_keys_released();
-              break;
-
-            case ACTION_UP:
-              if (pos > 0) pos--;
-              else pos = 3;
-              // when warping the mouse-cursor: don't count that as a mouse-activity
-              // this is a dirty hack, but that should be enough for here...
-              if (show_cursor)
-                {
-                  mousemove_buf = last_mouse_event;
-                  SDL_WarpMouse (Cons_Menu_Rects[pos].x+Cons_Menu_Rects[pos].w/2,
-                                 Cons_Menu_Rects[pos].y+Cons_Menu_Rects[pos].h/2);
-                  update_input ();  // this sets a new last_mouse_event
-                  last_mouse_event = mousemove_buf; //... which we override.. ;)
-                }
-              MoveMenuPositionSound ();
-              need_update = TRUE;
-              last_move_tick = SDL_GetTicks();
-              break;
-
-            case ACTION_DOWN:
-              if (pos < 3) pos++;
-              else pos = 0;
-              // when warping the mouse-cursor: don't count that as a mouse-activity
-              // this is a dirty hack, but that should be enough for here...
-              if (show_cursor)
-                {
-                  mousemove_buf = last_mouse_event;
-                  SDL_WarpMouse (Cons_Menu_Rects[pos].x+Cons_Menu_Rects[pos].w/2,
-                                 Cons_Menu_Rects[pos].y+Cons_Menu_Rects[pos].h/2);
-                  update_input ();  // this sets a new last_mouse_event
-                  last_mouse_event = mousemove_buf; //... which we override.. ;)
-                }
-              MoveMenuPositionSound ();
-              need_update = TRUE;
-              last_move_tick = SDL_GetTicks();
-              break;
-
-            case ACTION_CLICK:
-              MenuItemSelectedSound();
-              wait_for_all_keys_released();
-              need_update = TRUE;
-              switch (pos)
-                {
-                case 0:
-                  finished = TRUE;
-                  break;
-                case 1:
-                  GreatDruidShow ();
-                  PaintConsoleMenu (pos, 0);
-                  break;
-                case 2:
-                  ClearGraphMem();
-                  DisplayBanner (NULL, NULL, BANNER_FORCE_UPDATE);
-                  ShowDeckMap (CurLevel);
-                  PaintConsoleMenu(pos, 0);
-                  break;
-                case 3:
-                  ClearGraphMem();
-                  DisplayBanner (NULL, NULL, BANNER_FORCE_UPDATE);
-                  ShowLifts (CurLevel->levelnum, -1);
-                  wait_for_key_pressed();
-                  PaintConsoleMenu(pos, 0);
-                  break;
-                default:
-                  DebugPrintf (1, "Konsole menu out of bounds... pos = %d", pos);
-                  pos = 0;
-                  break;
-                } // switch
-              break;
-            default:
-              break;
-            } // switch(action)
-        } // if time-since-last move > wait
-
-      if ( need_update ) {
-        PaintConsoleMenu (pos, UPDATE_ONLY);
-#ifndef ANDROID
-        SDL_Flip (ne_screen);
-#endif
-        need_update = FALSE;
-      }
-#ifdef ANDROID
-      SDL_Flip( ne_screen );	// for responsive input on Android, we need to run this every cycle
-#endif
-      SDL_Delay(1);	// don't hog CPU
-    } // while(!finished)
-
-  Copy_Rect (TmpRect, User_Rect);
-
-  Me.status = MOBILE;
-
-  ClearGraphMem();
-
-  SDL_SetCursor (crosshair_cursor);
-  if (!show_cursor)
-    SDL_ShowCursor (SDL_DISABLE);
-
-  return;
-
-} // void EnterKonsole(void)
+// void
+// EnterKonsole (void)
+// {
+//   int i, pos, mousemove_buf;
+//   SDL_Rect TmpRect;
+//   // Prevent distortion of framerate by the delay coming from
+//   // the time spend in the menu.
+//   Activate_Conservative_Frame_Computation();
+// 
+//   Copy_Rect (User_Rect, TmpRect);
+//   Copy_Rect (Full_User_Rect, User_Rect);
+// 
+//   wait_for_all_keys_released();
+// 
+//   Me.status = CONSOLE;
+// 
+// #ifdef ANDROID
+//   show_cursor = FALSE;
+// #endif
+// 
+//   SDL_SetCursor (arrow_cursor);
+// 
+//   SetCurrentFont( Para_BFont );
+// 
+//   pos = 0;   // starting menu position
+//   PaintConsoleMenu (pos, 0);
+// 
+//   /* Gesamtkonsolenschleife */
+//   const Uint32 wait_move_ticks = 100;
+//   static Uint32 last_move_tick = 0;
+//   MenuAction_t action = ACTION_NONE;
+//   bool finished = FALSE;
+//   bool need_update = TRUE;
+//   while ( !finished )
+//     {
+//       if (show_cursor) SDL_ShowCursor (SDL_ENABLE);
+//       else SDL_ShowCursor (SDL_DISABLE);
+// 
+//       // check if the mouse-cursor is on any of the console-menu points
+//       for (i=0; i < 4; i++)
+// 	if (show_cursor && (pos != i) && CursorIsOnRect(&Cons_Menu_Rects[i]) )
+// 	  {
+// 	    MoveMenuPositionSound ();
+// 	    pos = i;
+//             need_update = TRUE;
+// 	  }
+//       action = getMenuAction( 250 );
+//       if ( SDL_GetTicks() - last_move_tick > wait_move_ticks )
+//         {
+//           switch ( action )
+//             {
+//             case ACTION_BACK:
+// 	      finished = TRUE;
+//               wait_for_all_keys_released();
+//               break;
+// 
+//             case ACTION_UP:
+//               if (pos > 0) pos--;
+//               else pos = 3;
+//               // when warping the mouse-cursor: don't count that as a mouse-activity
+//               // this is a dirty hack, but that should be enough for here...
+//               if (show_cursor)
+//                 {
+//                   mousemove_buf = last_mouse_event;
+//                   SDL_WarpMouse (Cons_Menu_Rects[pos].x+Cons_Menu_Rects[pos].w/2,
+//                                  Cons_Menu_Rects[pos].y+Cons_Menu_Rects[pos].h/2);
+//                   update_input ();  // this sets a new last_mouse_event
+//                   last_mouse_event = mousemove_buf; //... which we override.. ;)
+//                 }
+//               MoveMenuPositionSound ();
+//               need_update = TRUE;
+//               last_move_tick = SDL_GetTicks();
+//               break;
+// 
+//             case ACTION_DOWN:
+//               if (pos < 3) pos++;
+//               else pos = 0;
+//               // when warping the mouse-cursor: don't count that as a mouse-activity
+//               // this is a dirty hack, but that should be enough for here...
+//               if (show_cursor)
+//                 {
+//                   mousemove_buf = last_mouse_event;
+//                   SDL_WarpMouse (Cons_Menu_Rects[pos].x+Cons_Menu_Rects[pos].w/2,
+//                                  Cons_Menu_Rects[pos].y+Cons_Menu_Rects[pos].h/2);
+//                   update_input ();  // this sets a new last_mouse_event
+//                   last_mouse_event = mousemove_buf; //... which we override.. ;)
+//                 }
+//               MoveMenuPositionSound ();
+//               need_update = TRUE;
+//               last_move_tick = SDL_GetTicks();
+//               break;
+// 
+//             case ACTION_CLICK:
+//               MenuItemSelectedSound();
+//               wait_for_all_keys_released();
+//               need_update = TRUE;
+//               switch (pos)
+//                 {
+//                 case 0:
+//                   finished = TRUE;
+//                   break;
+//                 case 1:
+//                   GreatDruidShow ();
+//                   PaintConsoleMenu (pos, 0);
+//                   break;
+//                 case 2:
+//                   ClearGraphMem();
+//                   DisplayBanner (NULL, NULL, BANNER_FORCE_UPDATE);
+//                   ShowDeckMap (CurLevel);
+//                   PaintConsoleMenu(pos, 0);
+//                   break;
+//                 case 3:
+//                   ClearGraphMem();
+//                   DisplayBanner (NULL, NULL, BANNER_FORCE_UPDATE);
+//                   ShowLifts (CurLevel->levelnum, -1);
+//                   wait_for_key_pressed();
+//                   PaintConsoleMenu(pos, 0);
+//                   break;
+//                 default:
+//                   DebugPrintf (1, "Konsole menu out of bounds... pos = %d", pos);
+//                   pos = 0;
+//                   break;
+//                 } // switch
+//               break;
+//             default:
+//               break;
+//             } // switch(action)
+//         } // if time-since-last move > wait
+// 
+//       if ( need_update ) {
+//         PaintConsoleMenu (pos, UPDATE_ONLY);
+// #ifndef ANDROID
+//         SDL_Flip (ne_screen);
+// #endif
+//         need_update = FALSE;
+//       }
+// #ifdef ANDROID
+//       SDL_Flip( ne_screen );	// for responsive input on Android, we need to run this every cycle
+// #endif
+//       SDL_Delay(1);	// don't hog CPU
+//     } // while(!finished)
+// 
+//   Copy_Rect (TmpRect, User_Rect);
+// 
+//   Me.status = MOBILE;
+// 
+//   ClearGraphMem();
+// 
+//   SDL_SetCursor (crosshair_cursor);
+//   if (!show_cursor)
+//     SDL_ShowCursor (SDL_DISABLE);
+// 
+//   return;
+// 
+// } // void EnterKonsole(void)
 
 /*-----------------------------------------------------------------
  * @Desc: diese Funktion zeigt die m"oglichen Auswahlpunkte des Menus
