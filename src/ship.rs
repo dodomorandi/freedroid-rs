@@ -1,11 +1,15 @@
 use crate::{
     b_font::{FontHeight, GetCurrentFont, Para_BFont, SetCurrentFont},
-    defs::{AlertNames, DisplayBannerFlags, Sound, RESET, TEXT_STRETCH, UPDATE},
+    defs::{
+        AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Sound, RESET, TEXT_STRETCH,
+        UPDATE,
+    },
     global::Druidmap,
     graphics::{
         arrow_down, arrow_left, arrow_right, arrow_up, console_bg_pic2, packed_portraits, vid_bpp,
-        ScalePic,
+        ScalePic, SetCombatScaleTo,
     },
+    input::wait_for_key_pressed,
     map::GetMapBrick,
     ne_screen,
     sound::Play_Sound,
@@ -15,13 +19,15 @@ use crate::{
         Cons_Header_Rect, Cons_Text_Rect, Portrait_Rect, BRAIN_NAMES, CLASSES, CLASS_NAMES,
         DRIVE_NAMES, SENSOR_NAMES, WEAPON_NAMES,
     },
-    view::DisplayBanner,
+    view::{Assemble_Combat_Picture, DisplayBanner},
     AlertLevel, CurLevel, GameConfig, Me,
 };
 
 use log::{error, warn};
 use sdl::{
+    event::ll::SDL_DISABLE,
     ll::SDL_GetTicks,
+    mouse::ll::SDL_ShowCursor,
     video::ll::{
         SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_Flip, SDL_FreeSurface,
         SDL_RWops, SDL_SetClipRect, SDL_Surface, SDL_UpdateRects, SDL_UpperBlit,
@@ -39,7 +45,6 @@ use std::{
 const UPDATE_ONLY: u8 = 0x01;
 
 extern "C" {
-    pub fn ShowDeckMap(deck: Level);
     pub fn EnterLift();
     pub fn EnterKonsole();
 
@@ -443,4 +448,35 @@ Paradroid to eliminate all rogue robots.\0",
     } else {
         SDL_Flip(ne_screen);
     }
+}
+
+/// Displays the concept view of Level "deck" in Userfenster
+///
+/// Note: we no longer wait here for a key-press, but return
+/// immediately
+#[no_mangle]
+pub unsafe extern "C" fn ShowDeckMap(deck: Level) {
+    let tmp = Me.pos;
+
+    let cur_level = &*CurLevel;
+    Me.pos.x = (cur_level.xlen / 2) as f32;
+    Me.pos.y = (cur_level.ylen / 2) as f32;
+
+    SDL_ShowCursor(SDL_DISABLE);
+
+    SetCombatScaleTo(0.25);
+
+    Assemble_Combat_Picture(
+        (AssembleCombatWindowFlags::ONLY_SHOW_MAP | AssembleCombatWindowFlags::SHOW_FULL_MAP)
+            .bits()
+            .into(),
+    );
+
+    SDL_Flip(ne_screen);
+
+    Me.pos = tmp;
+
+    wait_for_key_pressed();
+
+    SetCombatScaleTo(1.0);
 }
