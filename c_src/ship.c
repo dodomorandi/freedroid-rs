@@ -239,51 +239,51 @@ EnterLift (void)
  *  if liftrow==-1: dont' highlight any liftrows
  *
  *-----------------------------------------------------------------*/
-void
-ShowLifts (int level, int liftrow)
-{
-  SDL_Rect src, dst;
-  int i;
-  SDL_Color lift_bg_color = {0,0,0};  /* black... */
-  int xoffs = User_Rect.w/20;
-  int yoffs = User_Rect.h/5;
-
-  SDL_ShowCursor (SDL_DISABLE);
-  // fill the user fenster with some color
-  Fill_Rect (User_Rect, lift_bg_color);
-
-  /* First blit ship "lights off" */
-  Copy_Rect (User_Rect, dst);
-  SDL_SetClipRect (ne_screen, &dst);
-  Copy_Rect (User_Rect, dst);
-  dst.x += xoffs;
-  dst.y += yoffs;
-  SDL_BlitSurface (ship_off_pic, NULL, ne_screen, &dst);
-
-  if (level >= 0)
-    for (i=0; i<curShip.num_level_rects[level]; i++)
-      {
-	Copy_Rect (curShip.Level_Rects[level][i], src);
-	Copy_Rect (src, dst);
-	dst.x += User_Rect.x + xoffs;   /* offset respective to User-Rectangle */
-	dst.y += User_Rect.y + yoffs;
-	SDL_BlitSurface (ship_on_pic, &src, ne_screen, &dst);
-      }
-
-  if (liftrow >=0)
-    {
-      Copy_Rect (curShip.LiftRow_Rect[liftrow], src);
-      Copy_Rect (src, dst);
-      dst.x += User_Rect.x + xoffs;   /* offset respective to User-Rectangle */
-      dst.y += User_Rect.y + yoffs;
-      SDL_BlitSurface (ship_on_pic, &src, ne_screen, &dst);
-    }
-
-  SDL_Flip (ne_screen);
-
-  return;
-
-} /* ShowLifts() */
+// void
+// ShowLifts (int level, int liftrow)
+// {
+//   SDL_Rect src, dst;
+//   int i;
+//   SDL_Color lift_bg_color = {0,0,0};  /* black... */
+//   int xoffs = User_Rect.w/20;
+//   int yoffs = User_Rect.h/5;
+// 
+//   SDL_ShowCursor (SDL_DISABLE);
+//   // fill the user fenster with some color
+//   Fill_Rect (User_Rect, lift_bg_color);
+// 
+//   /* First blit ship "lights off" */
+//   Copy_Rect (User_Rect, dst);
+//   SDL_SetClipRect (ne_screen, &dst);
+//   Copy_Rect (User_Rect, dst);
+//   dst.x += xoffs;
+//   dst.y += yoffs;
+//   SDL_BlitSurface (ship_off_pic, NULL, ne_screen, &dst);
+// 
+//   if (level >= 0)
+//     for (i=0; i<curShip.num_level_rects[level]; i++)
+//       {
+// 	Copy_Rect (curShip.Level_Rects[level][i], src);
+// 	Copy_Rect (src, dst);
+// 	dst.x += User_Rect.x + xoffs;   /* offset respective to User-Rectangle */
+// 	dst.y += User_Rect.y + yoffs;
+// 	SDL_BlitSurface (ship_on_pic, &src, ne_screen, &dst);
+//       }
+// 
+//   if (liftrow >=0)
+//     {
+//       Copy_Rect (curShip.LiftRow_Rect[liftrow], src);
+//       Copy_Rect (src, dst);
+//       dst.x += User_Rect.x + xoffs;   /* offset respective to User-Rectangle */
+//       dst.y += User_Rect.y + yoffs;
+//       SDL_BlitSurface (ship_on_pic, &src, ne_screen, &dst);
+//     }
+// 
+//   SDL_Flip (ne_screen);
+// 
+//   return;
+// 
+// } /* ShowLifts() */
 
 /*@Function============================================================
 @Desc: EnterKonsole(): does all konsole- duties

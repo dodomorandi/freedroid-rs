@@ -1,5 +1,6 @@
 use crate::{
     b_font::{FontHeight, GetCurrentFont, Para_BFont, SetCurrentFont},
+    curShip,
     defs::{
         get_user_center, AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction,
         MouseLeftPressedR, Sound, Status, DROID_ROTATION_TIME, RESET, TEXT_STRETCH, UPDATE,
@@ -7,7 +8,8 @@ use crate::{
     global::Druidmap,
     graphics::{
         arrow_cursor, arrow_down, arrow_left, arrow_right, arrow_up, console_bg_pic2,
-        crosshair_cursor, packed_portraits, vid_bpp, ClearGraphMem, ScalePic, SetCombatScaleTo,
+        crosshair_cursor, packed_portraits, ship_off_pic, ship_on_pic, vid_bpp, ClearGraphMem,
+        ScalePic, SetCombatScaleTo,
     },
     input::{
         input_axis, last_mouse_event, update_input, wait_for_all_keys_released,
@@ -25,7 +27,7 @@ use crate::{
         Portrait_Rect, User_Rect, BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES,
         WEAPON_NAMES,
     },
-    view::{Assemble_Combat_Picture, DisplayBanner},
+    view::{Assemble_Combat_Picture, DisplayBanner, Fill_Rect},
     AlertLevel, CurLevel, GameConfig, Me,
 };
 
@@ -35,8 +37,8 @@ use sdl::{
     ll::SDL_GetTicks,
     mouse::ll::{SDL_SetCursor, SDL_ShowCursor, SDL_WarpMouse},
     video::ll::{
-        SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_Flip, SDL_FreeSurface,
-        SDL_RWops, SDL_SetClipRect, SDL_Surface, SDL_UpdateRects, SDL_UpperBlit,
+        SDL_Color, SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_Flip,
+        SDL_FreeSurface, SDL_RWops, SDL_SetClipRect, SDL_Surface, SDL_UpdateRects, SDL_UpperBlit,
     },
     Rect,
 };
@@ -53,7 +55,6 @@ const UPDATE_ONLY: u8 = 0x01;
 extern "C" {
     pub fn EnterLift();
     pub fn PaintConsoleMenu(pos: c_int, flag: c_int);
-    pub fn ShowLifts(level: c_int, liftrow: c_int);
 
     pub fn IMG_Load_RW(src: *mut SDL_RWops, freesrc: c_int) -> *mut SDL_Surface;
     pub fn IMG_isJPG(src: *mut SDL_RWops) -> c_int;
@@ -797,4 +798,54 @@ pub unsafe extern "C" fn CursorIsOnRect(rect: &Rect) -> c_int {
         && cur_pos.y >= rect.y.into()
         && cur_pos.y <= i32::from(rect.y) + i32::from(rect.h))
     .into()
+}
+
+/// @Desc: show side-view of the ship, and hightlight the current
+///        level + lift
+///
+///  if level==-1: don't highlight any level
+///  if liftrow==-1: dont' highlight any liftrows
+#[no_mangle]
+pub unsafe extern "C" fn ShowLifts(level: c_int, liftrow: c_int) {
+    let lift_bg_color = SDL_Color {
+        r: 0,
+        g: 0,
+        b: 0,
+        unused: 0,
+    }; /* black... */
+    let xoffs: i16 = (User_Rect.w / 20).try_into().unwrap();
+    let yoffs: i16 = (User_Rect.h / 5).try_into().unwrap();
+
+    SDL_ShowCursor(SDL_DISABLE);
+    // fill the user fenster with some color
+    Fill_Rect(User_Rect, lift_bg_color);
+
+    /* First blit ship "lights off" */
+    let mut dst = User_Rect;
+    SDL_SetClipRect(ne_screen, &dst);
+    dst = User_Rect;
+    dst.x += xoffs;
+    dst.y += yoffs;
+    SDL_UpperBlit(ship_off_pic, null_mut(), ne_screen, &mut dst);
+
+    if level >= 0 {
+        for i in 0..curShip.num_level_rects[usize::try_from(level).unwrap()] {
+            let mut src =
+                curShip.Level_Rects[usize::try_from(level).unwrap()][usize::try_from(i).unwrap()];
+            dst = src;
+            dst.x += User_Rect.x + xoffs; /* offset respective to User-Rectangle */
+            dst.y += User_Rect.y + yoffs;
+            SDL_UpperBlit(ship_on_pic, &mut src, ne_screen, &mut dst);
+        }
+    }
+
+    if liftrow >= 0 {
+        let mut src = curShip.LiftRow_Rect[usize::try_from(liftrow).unwrap()];
+        dst = src;
+        dst.x += User_Rect.x + xoffs; /* offset respective to User-Rectangle */
+        dst.y += User_Rect.y + yoffs;
+        SDL_UpperBlit(ship_on_pic, &mut src, ne_screen, &mut dst);
+    }
+
+    SDL_Flip(ne_screen);
 }
