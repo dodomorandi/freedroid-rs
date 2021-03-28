@@ -555,21 +555,21 @@ LevelEmpty (void)
 /* ----------------------------------------------------------------------
  * This function should check if the mouse cursor is in the given Rectangle
  * ---------------------------------------------------------------------- */
-int
-CursorIsOnRect (SDL_Rect *rect)
-{
-  point CurPos;
-
-  CurPos.x = input_axis.x + (UserCenter_x - 16);
-  CurPos.y = input_axis.y + (UserCenter_y - 16);
-
-  if ( (CurPos.x >= rect->x) && (CurPos.x <= rect->x + rect->w) )
-    if ( (CurPos.y >= rect->y) && (CurPos.y <= rect->y + rect->h) )
-      return (TRUE);
-
-  return (FALSE);
-
-}; // int CursorIsOnRect
+// int
+// CursorIsOnRect (SDL_Rect *rect)
+// {
+//   point CurPos;
+// 
+//   CurPos.x = input_axis.x + (UserCenter_x - 16);
+//   CurPos.y = input_axis.y + (UserCenter_y - 16);
+// 
+//   if ( (CurPos.x >= rect->x) && (CurPos.x <= rect->x + rect->w) )
+//     if ( (CurPos.y >= rect->y) && (CurPos.y <= rect->y + rect->h) )
+//       return (TRUE);
+// 
+//   return (FALSE);
+// 
+// }; // int CursorIsOnRect
 
 /* ----------------------------------------------------------------------
  * This function does the robot show when the user has selected robot

@@ -1,8 +1,8 @@
 use crate::{
     b_font::{FontHeight, GetCurrentFont, Para_BFont, SetCurrentFont},
     defs::{
-        AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction, MouseLeftPressedR,
-        Sound, Status, DROID_ROTATION_TIME, RESET, TEXT_STRETCH, UPDATE,
+        get_user_center, AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction,
+        MouseLeftPressedR, Sound, Status, DROID_ROTATION_TIME, RESET, TEXT_STRETCH, UPDATE,
     },
     global::Druidmap,
     graphics::{
@@ -10,14 +10,15 @@ use crate::{
         crosshair_cursor, packed_portraits, vid_bpp, ClearGraphMem, ScalePic, SetCombatScaleTo,
     },
     input::{
-        last_mouse_event, update_input, wait_for_all_keys_released, wait_for_key_pressed, SDL_Delay,
+        input_axis, last_mouse_event, update_input, wait_for_all_keys_released,
+        wait_for_key_pressed, SDL_Delay,
     },
     map::GetMapBrick,
     menu::getMenuAction,
     misc::Activate_Conservative_Frame_Computation,
     ne_screen, show_cursor,
     sound::{MenuItemSelectedSound, MoveMenuPositionSound, Play_Sound},
-    structs::Level,
+    structs::{Level, Point},
     text::DisplayText,
     vars::{
         Cons_Droid_Rect, Cons_Header_Rect, Cons_Menu_Rects, Cons_Text_Rect, Full_User_Rect,
@@ -52,7 +53,6 @@ const UPDATE_ONLY: u8 = 0x01;
 extern "C" {
     pub fn EnterLift();
     pub fn PaintConsoleMenu(pos: c_int, flag: c_int);
-    pub fn CursorIsOnRect(rect: *mut Rect) -> c_int;
     pub fn ShowLifts(level: c_int, liftrow: c_int);
 
     pub fn IMG_Load_RW(src: *mut SDL_RWops, freesrc: c_int) -> *mut SDL_Surface;
@@ -705,13 +705,13 @@ pub unsafe extern "C" fn GreatDruidShow() {
         let mut action = MenuAction::empty();
         // special handling of mouse-clicks: check if move-arrows were clicked on
         if MouseLeftPressedR() {
-            if CursorIsOnRect(&mut left_rect) != 0 {
+            if CursorIsOnRect(&left_rect) != 0 {
                 action = MenuAction::LEFT;
-            } else if CursorIsOnRect(&mut right_rect) != 0 {
+            } else if CursorIsOnRect(&right_rect) != 0 {
                 action = MenuAction::RIGHT;
-            } else if CursorIsOnRect(&mut up_rect) != 0 {
+            } else if CursorIsOnRect(&up_rect) != 0 {
                 action = MenuAction::UP;
-            } else if CursorIsOnRect(&mut down_rect) != 0 {
+            } else if CursorIsOnRect(&down_rect) != 0 {
                 action = MenuAction::DOWN;
             }
         } else {
@@ -781,4 +781,20 @@ pub unsafe extern "C" fn GreatDruidShow() {
 
         SDL_Delay(1); // don't hog CPU
     }
+}
+
+/// This function should check if the mouse cursor is in the given Rectangle
+#[no_mangle]
+pub unsafe extern "C" fn CursorIsOnRect(rect: &Rect) -> c_int {
+    let user_center = get_user_center();
+    let cur_pos = Point {
+        x: input_axis.x + (i32::from(user_center.x) - 16),
+        y: input_axis.y + (i32::from(user_center.y) - 16),
+    };
+
+    (cur_pos.x >= rect.x.into()
+        && cur_pos.x <= i32::from(rect.x) + i32::from(rect.w)
+        && cur_pos.y >= rect.y.into()
+        && cur_pos.y <= i32::from(rect.y) + i32::from(rect.h))
+    .into()
 }
