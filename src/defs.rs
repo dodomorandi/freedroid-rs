@@ -148,10 +148,25 @@ pub unsafe fn CtrlPressed() -> bool {
     ModIsPressed(Mod::LCtrl as u32 | Mod::RCtrl as u32)
 }
 
-// #define MouseLeftPressed() KeyIsPressed(MOUSE_BUTTON1)
-// #define MouseLeftPressedR() KeyIsPressedR(MOUSE_BUTTON1)
-// #define MouseRightPressed() KeyIsPressed(MOUSE_BUTTON2)
-// #define MouseRightPressedR() KeyIsPressedR(MOUSE_BUTTON2)
+#[inline]
+pub unsafe fn MouseLeftPressed() -> bool {
+    KeyIsPressed(PointerStates::MouseButton1 as c_int)
+}
+
+#[inline]
+pub unsafe fn MouseLeftPressedR() -> bool {
+    KeyIsPressedR(PointerStates::MouseButton1 as c_int)
+}
+
+#[inline]
+pub unsafe fn MouseRightPressed() -> bool {
+    KeyIsPressed(PointerStates::MouseButton2 as c_int)
+}
+
+#[inline]
+pub unsafe fn MouseRightPressedR() -> bool {
+    KeyIsPressedR(PointerStates::MouseButton2 as c_int)
+}
 
 // #define EscapePressed() KeyIsPressed(SDLK_ESCAPE)
 // #define SpacePressed() KeyIsPressed(SDLK_SPACE)

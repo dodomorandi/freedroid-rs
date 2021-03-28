@@ -1,8 +1,8 @@
 use crate::{
     b_font::{FontHeight, GetCurrentFont, Para_BFont, SetCurrentFont},
     defs::{
-        AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction, Sound, Status,
-        RESET, TEXT_STRETCH, UPDATE,
+        AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction, MouseLeftPressedR,
+        Sound, Status, DROID_ROTATION_TIME, RESET, TEXT_STRETCH, UPDATE,
     },
     global::Druidmap,
     graphics::{
@@ -20,8 +20,9 @@ use crate::{
     structs::Level,
     text::DisplayText,
     vars::{
-        Cons_Header_Rect, Cons_Menu_Rects, Cons_Text_Rect, Full_User_Rect, Portrait_Rect,
-        User_Rect, BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES, WEAPON_NAMES,
+        Cons_Droid_Rect, Cons_Header_Rect, Cons_Menu_Rects, Cons_Text_Rect, Full_User_Rect,
+        Portrait_Rect, User_Rect, BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES,
+        WEAPON_NAMES,
     },
     view::{Assemble_Combat_Picture, DisplayBanner},
     AlertLevel, CurLevel, GameConfig, Me,
@@ -52,7 +53,6 @@ extern "C" {
     pub fn EnterLift();
     pub fn PaintConsoleMenu(pos: c_int, flag: c_int);
     pub fn CursorIsOnRect(rect: *mut Rect) -> c_int;
-    pub fn GreatDruidShow();
     pub fn ShowLifts(level: c_int, liftrow: c_int);
 
     pub fn IMG_Load_RW(src: *mut SDL_RWops, freesrc: c_int) -> *mut SDL_Surface;
@@ -668,5 +668,117 @@ pub unsafe extern "C" fn EnterKonsole() {
     SDL_SetCursor(crosshair_cursor);
     if !show_cursor {
         SDL_ShowCursor(SDL_DISABLE);
+    }
+}
+
+/// This function does the robot show when the user has selected robot
+/// show from the console menu.
+#[no_mangle]
+pub unsafe extern "C" fn GreatDruidShow() {
+    let mut finished = false;
+
+    let mut droidtype = Me.ty;
+    let mut page = 0;
+
+    show_droid_info(droidtype, page, 0);
+    show_droid_portrait(Cons_Droid_Rect, droidtype, 0.0, UPDATE | RESET);
+
+    wait_for_all_keys_released();
+    let mut need_update = true;
+    let wait_move_ticks: u32 = 100;
+    static mut LAST_MOVE_TICK: u32 = 0;
+
+    while !finished {
+        show_droid_portrait(Cons_Droid_Rect, droidtype, DROID_ROTATION_TIME, 0);
+
+        if show_cursor {
+            SDL_ShowCursor(SDL_ENABLE);
+        } else {
+            SDL_ShowCursor(SDL_DISABLE);
+        }
+
+        if need_update {
+            show_droid_info(droidtype, page, UPDATE_ONLY.into());
+            need_update = false;
+        }
+
+        let mut action = MenuAction::empty();
+        // special handling of mouse-clicks: check if move-arrows were clicked on
+        if MouseLeftPressedR() {
+            if CursorIsOnRect(&mut left_rect) != 0 {
+                action = MenuAction::LEFT;
+            } else if CursorIsOnRect(&mut right_rect) != 0 {
+                action = MenuAction::RIGHT;
+            } else if CursorIsOnRect(&mut up_rect) != 0 {
+                action = MenuAction::UP;
+            } else if CursorIsOnRect(&mut down_rect) != 0 {
+                action = MenuAction::DOWN;
+            }
+        } else {
+            action = getMenuAction(250);
+        }
+
+        let time_for_move = SDL_GetTicks() - LAST_MOVE_TICK > wait_move_ticks;
+        match action {
+            MenuAction::BACK | MenuAction::CLICK => {
+                finished = true;
+                wait_for_all_keys_released();
+            }
+
+            MenuAction::UP => {
+                if !time_for_move {
+                    continue;
+                }
+
+                if droidtype < Me.ty {
+                    MoveMenuPositionSound();
+                    droidtype += 1;
+                    need_update = true;
+                    LAST_MOVE_TICK = SDL_GetTicks();
+                }
+            }
+
+            MenuAction::DOWN => {
+                if !time_for_move {
+                    continue;
+                }
+
+                if droidtype > 0 {
+                    MoveMenuPositionSound();
+                    droidtype -= 1;
+                    need_update = true;
+                    LAST_MOVE_TICK = SDL_GetTicks();
+                }
+            }
+
+            MenuAction::RIGHT => {
+                if !time_for_move {
+                    continue;
+                }
+
+                if page < 2 {
+                    MoveMenuPositionSound();
+                    page += 1;
+                    need_update = true;
+                    LAST_MOVE_TICK = SDL_GetTicks();
+                }
+            }
+
+            MenuAction::LEFT => {
+                if !time_for_move {
+                    continue;
+                }
+
+                if page > 0 {
+                    MoveMenuPositionSound();
+                    page -= 1;
+                    need_update = true;
+                    LAST_MOVE_TICK = SDL_GetTicks();
+                }
+            }
+            _ => {}
+        }
+
+        SDL_Delay(1); // don't hog CPU
     }
 }

@@ -575,116 +575,116 @@ CursorIsOnRect (SDL_Rect *rect)
  * This function does the robot show when the user has selected robot
  * show from the console menu.
  * ---------------------------------------------------------------------- */
-void
-GreatDruidShow (void)
-{
-  int droidtype;
-  int page;
-  bool finished = FALSE;
-
-  droidtype = Me.type;
-  page = 0;
-
-  show_droid_info (droidtype, page, 0);
-  show_droid_portrait (Cons_Droid_Rect, droidtype, 0.0, UPDATE|RESET);
-
-  wait_for_all_keys_released();
-  bool need_update = TRUE;
-  const Uint32 wait_move_ticks = 100;
-  static Uint32 last_move_tick = 0;
-
-  while (!finished)
-    {
-      show_droid_portrait (Cons_Droid_Rect, droidtype, DROID_ROTATION_TIME, 0);
-
-      if (show_cursor) SDL_ShowCursor (SDL_ENABLE);
-      else SDL_ShowCursor (SDL_DISABLE);
-
-      if ( need_update )
-	{
-	  show_droid_info (droidtype, page, UPDATE_ONLY);
-	  need_update = FALSE;
-	}
-
-      MenuAction_t action = ACTION_NONE;
-      // special handling of mouse-clicks: check if move-arrows were clicked on
-      if (MouseLeftPressedR ()) {
-        if ( CursorIsOnRect (&left_rect) ) {
-          action = ACTION_LEFT;
-        }
-        else if (CursorIsOnRect (&right_rect) ) {
-          action = ACTION_RIGHT;
-        }
-        else if (CursorIsOnRect (&up_rect) ) {
-          action = ACTION_UP;
-        }
-        else if (CursorIsOnRect (&down_rect) ) {
-          action = ACTION_DOWN;
-        }
-      } else {
-        action = getMenuAction ( 250 );
-      }
-
-      bool time_for_move = ( SDL_GetTicks() - last_move_tick > wait_move_ticks );
-      switch ( action )
-        {
-        case ACTION_BACK:
-        case ACTION_CLICK:
-          finished = TRUE;
-          wait_for_all_keys_released();
-          break;
-
-        case ACTION_UP:
-          if ( !time_for_move ) continue;
-
-          if ( droidtype < Me.type ) {
-            MoveMenuPositionSound();
-            droidtype ++;
-            need_update = TRUE;
-            last_move_tick = SDL_GetTicks();
-          }
-          break;
-
-        case ACTION_DOWN:
-          if ( !time_for_move ) continue;
-
-          if ( droidtype > 0 ) {
-            MoveMenuPositionSound();
-            droidtype --;
-            need_update = TRUE;
-            last_move_tick = SDL_GetTicks();
-          }
-          break;
-
-        case ACTION_RIGHT:
-          if ( !time_for_move ) continue;
-
-          if ( page < 2 ) {
-            MoveMenuPositionSound();
-            page ++;
-            need_update = TRUE;
-            last_move_tick = SDL_GetTicks();
-          }
-          break;
-
-        case ACTION_LEFT:
-          if ( !time_for_move ) continue;
-
-          if ( page > 0 ) {
-            MoveMenuPositionSound();
-            page --;
-            need_update = TRUE;
-            last_move_tick = SDL_GetTicks();
-          }
-        default:
-          break;
-        } // switch(action)
-
-      SDL_Delay(1); // don't hog CPU
-    } /* while !finished */
-
-  return;
-}; // void GreatDroidShow( void )
+// void
+// GreatDruidShow (void)
+// {
+//   int droidtype;
+//   int page;
+//   bool finished = FALSE;
+// 
+//   droidtype = Me.type;
+//   page = 0;
+// 
+//   show_droid_info (droidtype, page, 0);
+//   show_droid_portrait (Cons_Droid_Rect, droidtype, 0.0, UPDATE|RESET);
+// 
+//   wait_for_all_keys_released();
+//   bool need_update = TRUE;
+//   const Uint32 wait_move_ticks = 100;
+//   static Uint32 last_move_tick = 0;
+// 
+//   while (!finished)
+//     {
+//       show_droid_portrait (Cons_Droid_Rect, droidtype, DROID_ROTATION_TIME, 0);
+// 
+//       if (show_cursor) SDL_ShowCursor (SDL_ENABLE);
+//       else SDL_ShowCursor (SDL_DISABLE);
+// 
+//       if ( need_update )
+// 	{
+// 	  show_droid_info (droidtype, page, UPDATE_ONLY);
+// 	  need_update = FALSE;
+// 	}
+// 
+//       MenuAction_t action = ACTION_NONE;
+//       // special handling of mouse-clicks: check if move-arrows were clicked on
+//       if (MouseLeftPressedR ()) {
+//         if ( CursorIsOnRect (&left_rect) ) {
+//           action = ACTION_LEFT;
+//         }
+//         else if (CursorIsOnRect (&right_rect) ) {
+//           action = ACTION_RIGHT;
+//         }
+//         else if (CursorIsOnRect (&up_rect) ) {
+//           action = ACTION_UP;
+//         }
+//         else if (CursorIsOnRect (&down_rect) ) {
+//           action = ACTION_DOWN;
+//         }
+//       } else {
+//         action = getMenuAction ( 250 );
+//       }
+// 
+//       bool time_for_move = ( SDL_GetTicks() - last_move_tick > wait_move_ticks );
+//       switch ( action )
+//         {
+//         case ACTION_BACK:
+//         case ACTION_CLICK:
+//           finished = TRUE;
+//           wait_for_all_keys_released();
+//           break;
+// 
+//         case ACTION_UP:
+//           if ( !time_for_move ) continue;
+// 
+//           if ( droidtype < Me.type ) {
+//             MoveMenuPositionSound();
+//             droidtype ++;
+//             need_update = TRUE;
+//             last_move_tick = SDL_GetTicks();
+//           }
+//           break;
+// 
+//         case ACTION_DOWN:
+//           if ( !time_for_move ) continue;
+// 
+//           if ( droidtype > 0 ) {
+//             MoveMenuPositionSound();
+//             droidtype --;
+//             need_update = TRUE;
+//             last_move_tick = SDL_GetTicks();
+//           }
+//           break;
+// 
+//         case ACTION_RIGHT:
+//           if ( !time_for_move ) continue;
+// 
+//           if ( page < 2 ) {
+//             MoveMenuPositionSound();
+//             page ++;
+//             need_update = TRUE;
+//             last_move_tick = SDL_GetTicks();
+//           }
+//           break;
+// 
+//         case ACTION_LEFT:
+//           if ( !time_for_move ) continue;
+// 
+//           if ( page > 0 ) {
+//             MoveMenuPositionSound();
+//             page --;
+//             need_update = TRUE;
+//             last_move_tick = SDL_GetTicks();
+//           }
+//         default:
+//           break;
+//         } // switch(action)
+// 
+//       SDL_Delay(1); // don't hog CPU
+//     } /* while !finished */
+// 
+//   return;
+// }; // void GreatDroidShow( void )
 
 /*------------------------------------------------------------
  * display infopage page of droidtype
