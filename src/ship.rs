@@ -7,9 +7,9 @@ use crate::{
     },
     global::Druidmap,
     graphics::{
-        arrow_cursor, arrow_down, arrow_left, arrow_right, arrow_up, console_bg_pic2,
-        crosshair_cursor, packed_portraits, ship_off_pic, ship_on_pic, vid_bpp, ClearGraphMem,
-        ScalePic, SetCombatScaleTo,
+        arrow_cursor, arrow_down, arrow_left, arrow_right, arrow_up, console_bg_pic1,
+        console_bg_pic2, console_pic, crosshair_cursor, packed_portraits, ship_off_pic,
+        ship_on_pic, vid_bpp, ClearGraphMem, ScalePic, SetCombatScaleTo,
     },
     input::{
         input_axis, last_mouse_event, update_input, wait_for_all_keys_released,
@@ -23,9 +23,9 @@ use crate::{
     structs::{Level, Point},
     text::DisplayText,
     vars::{
-        Cons_Droid_Rect, Cons_Header_Rect, Cons_Menu_Rects, Cons_Text_Rect, Full_User_Rect,
-        Portrait_Rect, User_Rect, BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES,
-        WEAPON_NAMES,
+        Cons_Droid_Rect, Cons_Header_Rect, Cons_Menu_Rect, Cons_Menu_Rects, Cons_Text_Rect,
+        Full_User_Rect, Portrait_Rect, User_Rect, BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES,
+        SENSOR_NAMES, WEAPON_NAMES,
     },
     view::{Assemble_Combat_Picture, DisplayBanner, Fill_Rect},
     AlertLevel, CurLevel, GameConfig, Me,
@@ -54,7 +54,6 @@ const UPDATE_ONLY: u8 = 0x01;
 
 extern "C" {
     pub fn EnterLift();
-    pub fn PaintConsoleMenu(pos: c_int, flag: c_int);
 
     pub fn IMG_Load_RW(src: *mut SDL_RWops, freesrc: c_int) -> *mut SDL_Surface;
     pub fn IMG_isJPG(src: *mut SDL_RWops) -> c_int;
@@ -848,4 +847,66 @@ pub unsafe extern "C" fn ShowLifts(level: c_int, liftrow: c_int) {
     }
 
     SDL_Flip(ne_screen);
+}
+
+/// diese Funktion zeigt die m"oglichen Auswahlpunkte des Menus
+/// Sie soll die Schriftfarben nicht ver"andern
+///
+/// NOTE: this function does not actually _display_ anything yet,
+///       it just prepares the display, so you need
+///       to call SDL_Flip() to display the result!
+/// pos  : 0<=pos<=3: which menu-position is currently active?
+/// flag : UPDATE_ONLY  only update the console-menu bar, not text & background
+#[no_mangle]
+pub unsafe extern "C" fn PaintConsoleMenu(pos: c_int, flag: c_int) {
+    use std::io::Write;
+    let mut menu_text: [u8; 200] = [0; 200];
+
+    if (flag & i32::from(UPDATE_ONLY)) == 0 {
+        ClearGraphMem();
+        SDL_SetClipRect(ne_screen, null_mut());
+        SDL_UpperBlit(console_bg_pic1, null_mut(), ne_screen, null_mut());
+
+        DisplayBanner(
+            null_mut(),
+            null_mut(),
+            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+        );
+
+        write!(
+            &mut menu_text[..],
+            "Area : {}\nDeck : {}    Alert: {}\0",
+            CStr::from_ptr(curShip.AreaName.as_ptr()).to_str().unwrap(),
+            CStr::from_ptr((*CurLevel).Levelname).to_str().unwrap(),
+            AlertNames::try_from(AlertLevel).unwrap().to_str(),
+        )
+        .unwrap();
+        DisplayText(
+            menu_text.as_mut_ptr() as *mut c_char,
+            Cons_Header_Rect.x.into(),
+            Cons_Header_Rect.y.into(),
+            &Cons_Header_Rect,
+        );
+
+        write!(
+            &mut menu_text[..],
+            "Logout from console\n\nDroid info\n\nDeck map\n\nShip map\0"
+        )
+        .unwrap();
+        DisplayText(
+            menu_text.as_mut_ptr() as *mut c_char,
+            Cons_Text_Rect.x.into(),
+            c_int::from(Cons_Text_Rect.y) + 25,
+            &Cons_Text_Rect,
+        );
+    } // only if not UPDATE_ONLY was required
+
+    let mut src = Rect {
+        x: i16::try_from(Cons_Menu_Rects[0].w).unwrap() * i16::try_from(pos).unwrap()
+            + (2. * pos as f32 * GameConfig.scale) as i16,
+        y: 0,
+        w: Cons_Menu_Rect.w,
+        h: 4 * Cons_Menu_Rect.h,
+    };
+    SDL_UpperBlit(console_pic, &mut src, ne_screen, &mut Cons_Menu_Rect);
 }

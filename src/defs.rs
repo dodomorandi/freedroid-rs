@@ -442,6 +442,25 @@ pub enum AlertNames {
     Last,
 }
 
+impl AlertNames {
+    pub fn to_str(&self) -> &'static str {
+        self.into()
+    }
+}
+
+impl From<&AlertNames> for &'static str {
+    fn from(alert_name: &AlertNames) -> Self {
+        use AlertNames::*;
+        match alert_name {
+            Green => "green",
+            Yellow => "yellow",
+            Amber => "amber",
+            Red => "red",
+            Last => panic!("invalid alert name"),
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct InvalidAlertName;
 

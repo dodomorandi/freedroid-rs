@@ -461,37 +461,37 @@ This function runs the consoles. This means the following duties:
  *  pos  : 0<=pos<=3: which menu-position is currently active?
  *  flag : UPDATE_ONLY  only update the console-menu bar, not text & background
  *-----------------------------------------------------------------*/
-void
-PaintConsoleMenu (int pos, int flag)
-{
-  char MenuText[200];
-  SDL_Rect src;
-
-  if ( !(flag & UPDATE_ONLY) )
-    {
-      ClearGraphMem ();
-      SDL_SetClipRect ( ne_screen , NULL );
-      SDL_BlitSurface( console_bg_pic1 , NULL , ne_screen , NULL );
-
-      DisplayBanner (NULL, NULL,  BANNER_FORCE_UPDATE );
-
-      sprintf (MenuText, "Area : %s\nDeck : %s    Alert: %s",
-	       curShip.AreaName, CurLevel->Levelname, Alertcolor[AlertLevel]);
-      DisplayText (MenuText, Cons_Header_Rect.x, Cons_Header_Rect.y, &Cons_Header_Rect);
-
-      sprintf (MenuText, "Logout from console\n\nDroid info\n\nDeck map\n\nShip map");
-      DisplayText (MenuText, Cons_Text_Rect.x, Cons_Text_Rect.y+25, &Cons_Text_Rect);
-
-    } // only if not UPDATE_ONLY was required
-
-  src.x = Cons_Menu_Rects[0].w * pos + 2*pos*GameConfig.scale;
-  src.y = 0;
-  src.w = Cons_Menu_Rect.w;
-  src.h = 4 * Cons_Menu_Rect.h;
-  SDL_BlitSurface (console_pic, &src, ne_screen, &Cons_Menu_Rect);
-
-  return;
-}	// PaintConsoleMenu ()
+// void
+// PaintConsoleMenu (int pos, int flag)
+// {
+//   char MenuText[200];
+//   SDL_Rect src;
+// 
+//   if ( !(flag & UPDATE_ONLY) )
+//     {
+//       ClearGraphMem ();
+//       SDL_SetClipRect ( ne_screen , NULL );
+//       SDL_BlitSurface( console_bg_pic1 , NULL , ne_screen , NULL );
+// 
+//       DisplayBanner (NULL, NULL,  BANNER_FORCE_UPDATE );
+// 
+//       sprintf (MenuText, "Area : %s\nDeck : %s    Alert: %s",
+// 	       curShip.AreaName, CurLevel->Levelname, Alertcolor[AlertLevel]);
+//       DisplayText (MenuText, Cons_Header_Rect.x, Cons_Header_Rect.y, &Cons_Header_Rect);
+// 
+//       sprintf (MenuText, "Logout from console\n\nDroid info\n\nDeck map\n\nShip map");
+//       DisplayText (MenuText, Cons_Text_Rect.x, Cons_Text_Rect.y+25, &Cons_Text_Rect);
+// 
+//     } // only if not UPDATE_ONLY was required
+// 
+//   src.x = Cons_Menu_Rects[0].w * pos + 2*pos*GameConfig.scale;
+//   src.y = 0;
+//   src.w = Cons_Menu_Rect.w;
+//   src.h = 4 * Cons_Menu_Rect.h;
+//   SDL_BlitSurface (console_pic, &src, ne_screen, &Cons_Menu_Rect);
+// 
+//   return;
+// }	// PaintConsoleMenu ()
 
 /*-----------------------------------------------------------------
  * @Desc: Displays the concept view of Level "deck" in Userfenster
