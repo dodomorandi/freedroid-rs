@@ -9,7 +9,7 @@ use crate::{
     structs::Finepoint,
     text::EnemyHitByBulletText,
     vars::{Bulletmap, Druidmap},
-    AllBullets, AllEnemys, CurLevel, InvincibleMode, Me, NumEnemys, Status,
+    AllBlasts, AllBullets, AllEnemys, CurLevel, InvincibleMode, Me, NumEnemys, Status,
 };
 
 use log::info;
@@ -22,7 +22,6 @@ extern "C" {
     pub fn DeleteBullet(num: c_int);
     pub fn MoveBullets();
     pub fn ExplodeBlasts();
-    pub fn DeleteBlast(num: c_int);
     pub fn StartBlast(x: c_float, y: c_float, ty: c_int);
 
 }
@@ -217,4 +216,9 @@ pub unsafe extern "C" fn CheckBulletCollisions(num: c_int) {
             }
         }
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn DeleteBlast(num: c_int) {
+    AllBlasts[usize::try_from(num).unwrap()].ty = Status::Out as c_int;
 }

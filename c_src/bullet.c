@@ -229,11 +229,11 @@ ExplodeBlasts (void)
 @Ret: keiner
 @Int:
 * $Function----------------------------------------------------------*/
-void
-DeleteBlast (int Blastnummer)
-{
-  AllBlasts[Blastnummer].type = OUT;
-}
+// void
+// DeleteBlast (int Blastnummer)
+// {
+//   AllBlasts[Blastnummer].type = OUT;
+// }
 
 /*@Function============================================================
 @Desc:
