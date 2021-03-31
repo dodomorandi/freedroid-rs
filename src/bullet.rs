@@ -5,4 +5,5 @@ extern "C" {
     pub fn CheckBulletCollisions(num: c_int);
     pub fn MoveBullets();
     pub fn ExplodeBlasts();
+    pub fn DeleteBlast(num: c_int);
 }

@@ -70,166 +70,166 @@ SDL_Surface *droid_pics = NULL;
  * @Desc: does all the work when we enter a lift
  *
  *-----------------------------------------------------------------*/
-void
-EnterLift (void)
-{
-  int i;
-  int curLevel;
-  int curLift, upLift, downLift, liftrow;
-
-  DebugPrintf (2, "\nvoid EnterLift(void): Function call confirmed.");
-
-  /* Prevent distortion of framerate by the delay coming from
-   * the time spend in the menu. */
-  Activate_Conservative_Frame_Computation();
-
-  /* make sure to release the fire-key */
-  wait_for_all_keys_released();
-
-  /* Prevent the influ from coming out of the lift in transfer mode
-   * by turning off transfer mode as soon as the influ enters the lift */
-  Me.status= ELEVATOR;
-
-  SDL_ShowCursor(SDL_DISABLE);
-
-  curLevel = CurLevel->levelnum;
-
-  if ((curLift = GetCurrentLift ()) == -1)
-    {
-      printf ("Lift out of order, I'm so sorry !");
-      return;
-    }
-
-  EnterLiftSound ();
-  Switch_Background_Music_To (NULL); // turn off Bg music
-
-  upLift = curShip.AllLifts[curLift].up;
-  downLift = curShip.AllLifts[curLift].down;
-
-  liftrow = curShip.AllLifts[curLift].lift_row;
-
-  // clear the whole screen
-  ClearGraphMem();
-  DisplayBanner (NULL, NULL,  BANNER_FORCE_UPDATE );
-
-  const Uint32 wait_move_ticks = 100;
-  static Uint32 last_move_tick = 0;
-  MenuAction_t action = ACTION_NONE;
-  bool finished = FALSE;
-  while ( !finished )
-    {
-      ShowLifts (curLevel, liftrow);
-
-      action = getMenuAction( 500 );
-      if ( SDL_GetTicks() - last_move_tick > wait_move_ticks )
-        {
-          switch ( action )
-            {
-            case ACTION_CLICK:
-              finished = TRUE;
-              wait_for_all_keys_released();
-              break;
-
-            case ACTION_UP:
-            case ACTION_UP_WHEEL:
-              last_move_tick = SDL_GetTicks();
-              if (upLift != -1)
-                {			/* gibt es noch einen Lift hoeher ? */
-                  if (curShip.AllLifts[upLift].x == 99)
-                    {
-                      DebugPrintf (0, "Lift out of order, so sorry ..");
-                    }
-                  else
-                    {
-                      downLift = curLift;
-                      curLift = upLift;
-                      curLevel = curShip.AllLifts[curLift].level;
-                      upLift = curShip.AllLifts[curLift].up;
-                      ShowLifts (curLevel, liftrow);
-                      MoveLiftSound ();
-                    }
-                } /* if uplevel */
-              break;
-
-            case ACTION_DOWN:
-            case ACTION_DOWN_WHEEL:
-              last_move_tick = SDL_GetTicks();
-              if (downLift != -1)
-                {			/* gibt es noch einen Lift tiefer ? */
-                  if (curShip.AllLifts[downLift].x == 99)
-                    {
-                      DebugPrintf (0, "Lift Out of order, so sorry ..");
-                    }
-                  else
-                    {
-                      upLift = curLift;
-                      curLift = downLift;
-                      curLevel = curShip.AllLifts[curLift].level;
-                      downLift = curShip.AllLifts[curLift].down;
-                      ShowLifts (curLevel, liftrow);
-                      MoveLiftSound ();
-                    }
-                } /* if downlevel */
-              break;
-            default:
-              break;
-            } // switch(action)
-        }
-      SDL_Delay(1);	// don't hog CPU
-    } // while !finished
-
-  //--------------------
-  // It might happen, that the influencer enters the elevator, but then decides to
-  // come out on the same level where he has been before.  In this case of course there
-  // is no need to reshuffle enemys or to reset influencers position.  Therefore, only
-  // when a real level change has occured, we need to do real changes as below, where
-  // we set the new level and set new position and initiate timers and all that...
-  //
-  if (curLevel != CurLevel->levelnum)
-    {				/* wirklich neu ??? */
-      int array_num = 0;
-      Level tmp;
-
-      /* Aktuellen Level setzen */
-      while ((tmp = curShip.AllLevels[array_num]) != NULL)
-	{
-	  if (tmp->levelnum == curLevel)
-	    break;
-	  else
-	    array_num++;
-	}
-
-
-      CurLevel = curShip.AllLevels[array_num];
-
-      // redistribute the enemys around the level
-      //      ShuffleEnemys ();
-
-      // set the position of the influencer to the correct locatiohn
-      Me.pos.x = curShip.AllLifts[curLift].x;
-      Me.pos.y = curShip.AllLifts[curLift].y;
-
-      for (i = 0; i < MAXBLASTS; i++)
-	DeleteBlast( i );
-      for (i = 0; i < MAXBULLETS; i++)
-	DeleteBullet ( i ) ;
-    } // if real level change has occured
-
-  LeaveLiftSound ( );
-  Switch_Background_Music_To (CurLevel->Background_Song_Name);
-  ClearGraphMem ( );
-  DisplayBanner (NULL, NULL,  BANNER_FORCE_UPDATE );
-
-  // UnfadeLevel ();
-
-  Me.status = MOBILE;
-  Me.TextVisibleTime=0;
-  Me.TextToBeDisplayed=CurLevel->Level_Enter_Comment;
-
-  DebugPrintf (2, "\nvoid EnterLift(void): Usual end of function reached.");
-
-  return;
-}	/* EnterLift */
+// void
+// EnterLift (void)
+// {
+//   int i;
+//   int curLevel;
+//   int curLift, upLift, downLift, liftrow;
+// 
+//   DebugPrintf (2, "\nvoid EnterLift(void): Function call confirmed.");
+// 
+//   /* Prevent distortion of framerate by the delay coming from
+//    * the time spend in the menu. */
+//   Activate_Conservative_Frame_Computation();
+// 
+//   /* make sure to release the fire-key */
+//   wait_for_all_keys_released();
+// 
+//   /* Prevent the influ from coming out of the lift in transfer mode
+//    * by turning off transfer mode as soon as the influ enters the lift */
+//   Me.status= ELEVATOR;
+// 
+//   SDL_ShowCursor(SDL_DISABLE);
+// 
+//   curLevel = CurLevel->levelnum;
+// 
+//   if ((curLift = GetCurrentLift ()) == -1)
+//     {
+//       printf ("Lift out of order, I'm so sorry !");
+//       return;
+//     }
+// 
+//   EnterLiftSound ();
+//   Switch_Background_Music_To (NULL); // turn off Bg music
+// 
+//   upLift = curShip.AllLifts[curLift].up;
+//   downLift = curShip.AllLifts[curLift].down;
+// 
+//   liftrow = curShip.AllLifts[curLift].lift_row;
+// 
+//   // clear the whole screen
+//   ClearGraphMem();
+//   DisplayBanner (NULL, NULL,  BANNER_FORCE_UPDATE );
+// 
+//   const Uint32 wait_move_ticks = 100;
+//   static Uint32 last_move_tick = 0;
+//   MenuAction_t action = ACTION_NONE;
+//   bool finished = FALSE;
+//   while ( !finished )
+//     {
+//       ShowLifts (curLevel, liftrow);
+// 
+//       action = getMenuAction( 500 );
+//       if ( SDL_GetTicks() - last_move_tick > wait_move_ticks )
+//         {
+//           switch ( action )
+//             {
+//             case ACTION_CLICK:
+//               finished = TRUE;
+//               wait_for_all_keys_released();
+//               break;
+// 
+//             case ACTION_UP:
+//             case ACTION_UP_WHEEL:
+//               last_move_tick = SDL_GetTicks();
+//               if (upLift != -1)
+//                 {			/* gibt es noch einen Lift hoeher ? */
+//                   if (curShip.AllLifts[upLift].x == 99)
+//                     {
+//                       DebugPrintf (0, "Lift out of order, so sorry ..");
+//                     }
+//                   else
+//                     {
+//                       downLift = curLift;
+//                       curLift = upLift;
+//                       curLevel = curShip.AllLifts[curLift].level;
+//                       upLift = curShip.AllLifts[curLift].up;
+//                       ShowLifts (curLevel, liftrow);
+//                       MoveLiftSound ();
+//                     }
+//                 } /* if uplevel */
+//               break;
+// 
+//             case ACTION_DOWN:
+//             case ACTION_DOWN_WHEEL:
+//               last_move_tick = SDL_GetTicks();
+//               if (downLift != -1)
+//                 {			/* gibt es noch einen Lift tiefer ? */
+//                   if (curShip.AllLifts[downLift].x == 99)
+//                     {
+//                       DebugPrintf (0, "Lift Out of order, so sorry ..");
+//                     }
+//                   else
+//                     {
+//                       upLift = curLift;
+//                       curLift = downLift;
+//                       curLevel = curShip.AllLifts[curLift].level;
+//                       downLift = curShip.AllLifts[curLift].down;
+//                       ShowLifts (curLevel, liftrow);
+//                       MoveLiftSound ();
+//                     }
+//                 } /* if downlevel */
+//               break;
+//             default:
+//               break;
+//             } // switch(action)
+//         }
+//       SDL_Delay(1);	// don't hog CPU
+//     } // while !finished
+// 
+//   //--------------------
+//   // It might happen, that the influencer enters the elevator, but then decides to
+//   // come out on the same level where he has been before.  In this case of course there
+//   // is no need to reshuffle enemys or to reset influencers position.  Therefore, only
+//   // when a real level change has occured, we need to do real changes as below, where
+//   // we set the new level and set new position and initiate timers and all that...
+//   //
+//   if (curLevel != CurLevel->levelnum)
+//     {				/* wirklich neu ??? */
+//       int array_num = 0;
+//       Level tmp;
+// 
+//       /* Aktuellen Level setzen */
+//       while ((tmp = curShip.AllLevels[array_num]) != NULL)
+// 	{
+// 	  if (tmp->levelnum == curLevel)
+// 	    break;
+// 	  else
+// 	    array_num++;
+// 	}
+// 
+// 
+//       CurLevel = curShip.AllLevels[array_num];
+// 
+//       // redistribute the enemys around the level
+//       //      ShuffleEnemys ();
+// 
+//       // set the position of the influencer to the correct locatiohn
+//       Me.pos.x = curShip.AllLifts[curLift].x;
+//       Me.pos.y = curShip.AllLifts[curLift].y;
+// 
+//       for (i = 0; i < MAXBLASTS; i++)
+// 	DeleteBlast( i );
+//       for (i = 0; i < MAXBULLETS; i++)
+// 	DeleteBullet ( i ) ;
+//     } // if real level change has occured
+// 
+//   LeaveLiftSound ( );
+//   Switch_Background_Music_To (CurLevel->Background_Song_Name);
+//   ClearGraphMem ( );
+//   DisplayBanner (NULL, NULL,  BANNER_FORCE_UPDATE );
+// 
+//   // UnfadeLevel ();
+// 
+//   Me.status = MOBILE;
+//   Me.TextVisibleTime=0;
+//   Me.TextToBeDisplayed=CurLevel->Level_Enter_Comment;
+// 
+//   DebugPrintf (2, "\nvoid EnterLift(void): Usual end of function reached.");
+// 
+//   return;
+// }	/* EnterLift */
 
 /*-----------------------------------------------------------------
  * @Desc: show side-view of the ship, and hightlight the current

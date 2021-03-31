@@ -1,9 +1,11 @@
 use crate::{
     b_font::{FontHeight, GetCurrentFont, Para_BFont, SetCurrentFont},
+    bullet::{DeleteBlast, DeleteBullet},
     curShip,
     defs::{
         get_user_center, AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction,
-        MouseLeftPressedR, Sound, Status, DROID_ROTATION_TIME, RESET, TEXT_STRETCH, UPDATE,
+        MouseLeftPressedR, Sound, Status, DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET,
+        TEXT_STRETCH, UPDATE,
     },
     global::Druidmap,
     graphics::{
@@ -15,11 +17,14 @@ use crate::{
         input_axis, last_mouse_event, update_input, wait_for_all_keys_released,
         wait_for_key_pressed, SDL_Delay,
     },
-    map::GetMapBrick,
+    map::{GetCurrentLift, GetMapBrick},
     menu::getMenuAction,
     misc::Activate_Conservative_Frame_Computation,
     ne_screen, show_cursor,
-    sound::{MenuItemSelectedSound, MoveMenuPositionSound, Play_Sound},
+    sound::{
+        EnterLiftSound, LeaveLiftSound, MenuItemSelectedSound, MoveLiftSound,
+        MoveMenuPositionSound, Play_Sound, Switch_Background_Music_To,
+    },
     structs::{Level, Point},
     text::DisplayText,
     vars::{
@@ -53,7 +58,6 @@ use std::{
 const UPDATE_ONLY: u8 = 0x01;
 
 extern "C" {
-    pub fn EnterLift();
 
     pub fn IMG_Load_RW(src: *mut SDL_RWops, freesrc: c_int) -> *mut SDL_Surface;
     pub fn IMG_isJPG(src: *mut SDL_RWops) -> c_int;
@@ -909,4 +913,145 @@ pub unsafe extern "C" fn PaintConsoleMenu(pos: c_int, flag: c_int) {
         h: 4 * Cons_Menu_Rect.h,
     };
     SDL_UpperBlit(console_pic, &mut src, ne_screen, &mut Cons_Menu_Rect);
+}
+
+/// does all the work when we enter a lift
+#[no_mangle]
+pub unsafe extern "C" fn EnterLift() {
+    /* Prevent distortion of framerate by the delay coming from
+     * the time spend in the menu. */
+    Activate_Conservative_Frame_Computation();
+
+    /* make sure to release the fire-key */
+    wait_for_all_keys_released();
+
+    /* Prevent the influ from coming out of the lift in transfer mode
+     * by turning off transfer mode as soon as the influ enters the lift */
+    Me.status = Status::Elevator as c_int;
+
+    SDL_ShowCursor(SDL_DISABLE);
+
+    let mut cur_level = (*CurLevel).levelnum;
+
+    let cur_lift = GetCurrentLift();
+    if cur_lift == -1 {
+        error!("Lift out of order, I'm so sorry !");
+        return;
+    }
+    let mut cur_lift: usize = cur_lift.try_into().unwrap();
+
+    EnterLiftSound();
+    Switch_Background_Music_To(null_mut()); // turn off Bg music
+
+    let mut up_lift = curShip.AllLifts[cur_lift].up;
+    let mut down_lift = curShip.AllLifts[cur_lift].down;
+
+    let liftrow = curShip.AllLifts[cur_lift].lift_row;
+
+    // clear the whole screen
+    ClearGraphMem();
+    DisplayBanner(
+        null_mut(),
+        null_mut(),
+        DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+    );
+
+    let wait_move_ticks: u32 = 100;
+    static mut LAST_MOVE_TICK: u32 = 0;
+    let mut finished = false;
+    while !finished {
+        ShowLifts(cur_level, liftrow);
+
+        let action = getMenuAction(500);
+        if SDL_GetTicks() - LAST_MOVE_TICK > wait_move_ticks {
+            match action {
+                MenuAction::CLICK => {
+                    finished = true;
+                    wait_for_all_keys_released();
+                }
+
+                MenuAction::UP | MenuAction::UP_WHEEL => {
+                    LAST_MOVE_TICK = SDL_GetTicks();
+                    if up_lift != -1 {
+                        if curShip.AllLifts[usize::try_from(up_lift).unwrap()].x == 99 {
+                            error!("Lift out of order, so sorry ..");
+                        } else {
+                            down_lift = cur_lift.try_into().unwrap();
+                            cur_lift = up_lift.try_into().unwrap();
+                            cur_level = curShip.AllLifts[cur_lift].level;
+                            up_lift = curShip.AllLifts[cur_lift].up;
+                            ShowLifts(cur_level, liftrow);
+                            MoveLiftSound();
+                        }
+                    }
+                }
+
+                MenuAction::DOWN | MenuAction::DOWN_WHEEL => {
+                    LAST_MOVE_TICK = SDL_GetTicks();
+                    if down_lift != -1 {
+                        if curShip.AllLifts[usize::try_from(down_lift).unwrap()].x == 99 {
+                            error!("Lift Out of order, so sorry ..");
+                        } else {
+                            up_lift = cur_lift.try_into().unwrap();
+                            cur_lift = down_lift.try_into().unwrap();
+                            cur_level = curShip.AllLifts[cur_lift].level;
+                            down_lift = curShip.AllLifts[cur_lift].down;
+                            ShowLifts(cur_level, liftrow);
+                            MoveLiftSound();
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        SDL_Delay(1); // don't hog CPU
+    }
+
+    // It might happen, that the influencer enters the elevator, but then decides to
+    // come out on the same level where he has been before.  In this case of course there
+    // is no need to reshuffle enemys or to reset influencers position.  Therefore, only
+    // when a real level change has occured, we need to do real changes as below, where
+    // we set the new level and set new position and initiate timers and all that...
+    if cur_level != (*CurLevel).levelnum {
+        let mut array_num = 0;
+
+        let mut tmp;
+        while {
+            tmp = curShip.AllLevels[array_num];
+            tmp.is_null().not()
+        } {
+            if (*tmp).levelnum == cur_level {
+                break;
+            } else {
+                array_num += 1;
+            }
+        }
+
+        CurLevel = curShip.AllLevels[array_num];
+
+        // set the position of the influencer to the correct locatiohn
+        Me.pos.x = curShip.AllLifts[cur_lift].x as f32;
+        Me.pos.y = curShip.AllLifts[cur_lift].y as f32;
+
+        for i in 0..c_int::try_from(MAXBLASTS).unwrap() {
+            DeleteBlast(i);
+        }
+        for i in 0..c_int::try_from(MAXBULLETS).unwrap() {
+            DeleteBullet(i);
+        }
+    }
+
+    let cur_level = &*CurLevel;
+    LeaveLiftSound();
+    Switch_Background_Music_To(cur_level.Background_Song_Name);
+    ClearGraphMem();
+    DisplayBanner(
+        null_mut(),
+        null_mut(),
+        DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+    );
+
+    Me.status = Status::Mobile as c_int;
+    Me.TextVisibleTime = 0.;
+    Me.TextToBeDisplayed = cur_level.Level_Enter_Comment;
 }
