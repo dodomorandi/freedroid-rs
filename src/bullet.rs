@@ -3,14 +3,15 @@ use crate::{
         BulletKind, Direction, Explosion, BULLET_COLL_DIST2, COLLISION_STEPSIZE, FLASH_DURATION,
         MAXBLASTS, MAXBULLETS,
     },
-    global::Droid_Radius,
+    global::{Blast_Damage_Per_Second, Blast_Radius, Droid_Radius},
     map::{IsPassable, IsVisible},
     misc::Frame_Time,
-    sound::GotHitSound,
-    structs::Finepoint,
-    text::EnemyHitByBulletText,
+    sound::{GotHitSound, GotIntoBlastSound},
+    structs::{Finepoint, Vect},
+    text::{AddInfluBurntText, EnemyHitByBulletText},
     vars::{Blastmap, Bulletmap, Druidmap},
-    AllBlasts, AllBullets, AllEnemys, CurLevel, InvincibleMode, Me, NumEnemys, Status,
+    AllBlasts, AllBullets, AllEnemys, CurLevel, InvincibleMode, LastGotIntoBlastSound, Me,
+    NumEnemys, Status,
 };
 
 use log::info;
@@ -23,7 +24,6 @@ extern "C" {
     pub fn DeleteBullet(num: c_int);
     pub fn MoveBullets();
     pub fn StartBlast(x: c_float, y: c_float, ty: c_int);
-    pub fn CheckBlastCollisions(num: c_int);
 }
 
 #[inline]
@@ -241,4 +241,82 @@ pub unsafe extern "C" fn ExplodeBlasts() {
                 DeleteBlast(i.try_into().unwrap());
             }
         });
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn CheckBlastCollisions(num: c_int) {
+    let level = (*CurLevel).levelnum;
+    let cur_blast = &mut AllBlasts[usize::try_from(num).unwrap()];
+
+    /* check Blast-Bullet Collisions and kill hit Bullets */
+    for (i, cur_bullet) in AllBullets[0..MAXBULLETS].iter().enumerate() {
+        if cur_bullet.ty == Status::Out as u8 {
+            continue;
+        }
+
+        let vdist = Vect {
+            x: cur_bullet.pos.x - cur_blast.PX,
+            y: cur_bullet.pos.y - cur_blast.PY,
+        };
+        let dist = (vdist.x * vdist.x + vdist.y * vdist.y).sqrt();
+        if dist < Blast_Radius {
+            StartBlast(
+                cur_bullet.pos.x,
+                cur_bullet.pos.y,
+                Explosion::Bulletblast as c_int,
+            );
+            DeleteBullet(i.try_into().unwrap());
+        }
+    }
+
+    /* Check Blast-Enemy Collisions and smash energy of hit enemy */
+    for enemy in AllEnemys
+        .iter_mut()
+        .take(usize::try_from(NumEnemys).unwrap())
+    {
+        if enemy.status == Status::Out as c_int || enemy.levelnum != level {
+            continue;
+        }
+
+        let vdist = Vect {
+            x: enemy.pos.x - cur_blast.PX,
+            y: enemy.pos.y - cur_blast.PY,
+        };
+        let dist = (vdist.x * vdist.x + vdist.y * vdist.y).sqrt();
+
+        if dist < Blast_Radius + Droid_Radius {
+            /* drag energy of enemy */
+            enemy.energy -= Blast_Damage_Per_Second * Frame_Time();
+        }
+
+        if enemy.energy < 0. {
+            enemy.energy = 0.;
+        }
+    }
+
+    /* Check influence-Blast collisions */
+    let vdist = Vect {
+        x: Me.pos.x - cur_blast.PX,
+        y: Me.pos.y - cur_blast.PY,
+    };
+    let dist = (vdist.x * vdist.x + vdist.y * vdist.y).sqrt();
+
+    if Me.status != Status::Out as c_int && !cur_blast.mine && dist < Blast_Radius + Droid_Radius {
+        if InvincibleMode == 0 {
+            Me.energy -= Blast_Damage_Per_Second * Frame_Time();
+
+            // So the influencer got some damage from the hot blast
+            // Now most likely, he then will also say so :)
+            if cur_blast.MessageWasDone == 0 {
+                AddInfluBurntText();
+                cur_blast.MessageWasDone = true.into();
+            }
+        }
+        // In order to avoid a new sound EVERY frame we check for how long the previous blast
+        // lies back in time.  LastBlastHit is a float, that counts SECONDS real-time !!
+        if LastGotIntoBlastSound > 1.2 {
+            GotIntoBlastSound();
+            LastGotIntoBlastSound = 0.;
+        }
+    }
 }

@@ -450,85 +450,85 @@ GetDirection (point robo, point bul)
   @Ret: void
   @Int:
   * $Function----------------------------------------------------------*/
-void
-CheckBlastCollisions (int num)
-{
-  int i;
-  int level = CurLevel->levelnum;
-  Blast CurBlast = &(AllBlasts[num]);
-  Bullet CurBullet;
-  float dist;
-  vect vdist;
-
-  /* check Blast-Bullet Collisions and kill hit Bullets */
-  for (i = 0; i < MAXBULLETS; i++)
-    {
-      CurBullet = &AllBullets[i];
-      if (CurBullet->type == OUT)
-	continue;
-
-      vdist.x = CurBullet->pos.x - CurBlast->PX;
-      vdist.y = CurBullet->pos.y - CurBlast->PY;
-      dist = sqrt(vdist.x*vdist.x + vdist.y*vdist.y);
-      if (dist < Blast_Radius)
-	{
-	  StartBlast (CurBullet->pos.x, CurBullet->pos.y, BULLETBLAST);
-	  DeleteBullet( i );
-	}
-
-    }	/* for */
-
-  /* Check Blast-Enemy Collisions and smash energy of hit enemy */
-  for (i = 0; i < NumEnemys; i++)
-    {
-      if ((AllEnemys[i].status == OUT)
-	  || (AllEnemys[i].levelnum != level))
-	continue;
-
-      vdist.x = AllEnemys[i].pos.x - CurBlast->PX;
-      vdist.y = AllEnemys[i].pos.y - CurBlast->PY;
-      dist = sqrt(vdist.x*vdist.x + vdist.y*vdist.y);
-
-      if (dist < Blast_Radius+Droid_Radius)
-	{
-	  /* drag energy of enemy */
-	  AllEnemys[i].energy -= Blast_Damage_Per_Second * Frame_Time ();
-	}
-
-      if (AllEnemys[i].energy < 0)
-	AllEnemys[i].energy = 0;
-
-    }				/* for */
-
-  /* Check influence-Blast collisions */
-  vdist.x = Me.pos.x - CurBlast->PX;
-  vdist.y = Me.pos.y - CurBlast->PY;
-  dist = sqrt(vdist.x*vdist.x + vdist.y*vdist.y);
-
-  if ( (Me.status != OUT) && (!CurBlast->mine) && (dist < Blast_Radius+Droid_Radius) )
-    {
-      if (!InvincibleMode)
-	{
-	  Me.energy -= Blast_Damage_Per_Second * Frame_Time ();
-
-	  // So the influencer got some damage from the hot blast
-	  // Now most likely, he then will also say so :)
-	  if ( !CurBlast->MessageWasDone )
-	    {
-	      AddInfluBurntText();
-	      CurBlast->MessageWasDone=TRUE;
-	    }
-
-	}
-      // In order to avoid a new sound EVERY frame we check for how long the previous blast
-      // lies back in time.  LastBlastHit is a float, that counts SECONDS real-time !!
-      if (LastGotIntoBlastSound > 1.2)
-	{
-	  GotIntoBlastSound ();
-	  LastGotIntoBlastSound = 0;
-	}
-    }
-
-}				/* CheckBlastCollisions */
+// void
+// CheckBlastCollisions (int num)
+// {
+//   int i;
+//   int level = CurLevel->levelnum;
+//   Blast CurBlast = &(AllBlasts[num]);
+//   Bullet CurBullet;
+//   float dist;
+//   vect vdist;
+// 
+//   /* check Blast-Bullet Collisions and kill hit Bullets */
+//   for (i = 0; i < MAXBULLETS; i++)
+//     {
+//       CurBullet = &AllBullets[i];
+//       if (CurBullet->type == OUT)
+// 	continue;
+// 
+//       vdist.x = CurBullet->pos.x - CurBlast->PX;
+//       vdist.y = CurBullet->pos.y - CurBlast->PY;
+//       dist = sqrt(vdist.x*vdist.x + vdist.y*vdist.y);
+//       if (dist < Blast_Radius)
+// 	{
+// 	  StartBlast (CurBullet->pos.x, CurBullet->pos.y, BULLETBLAST);
+// 	  DeleteBullet( i );
+// 	}
+// 
+//     }	/* for */
+// 
+//   /* Check Blast-Enemy Collisions and smash energy of hit enemy */
+//   for (i = 0; i < NumEnemys; i++)
+//     {
+//       if ((AllEnemys[i].status == OUT)
+// 	  || (AllEnemys[i].levelnum != level))
+// 	continue;
+// 
+//       vdist.x = AllEnemys[i].pos.x - CurBlast->PX;
+//       vdist.y = AllEnemys[i].pos.y - CurBlast->PY;
+//       dist = sqrt(vdist.x*vdist.x + vdist.y*vdist.y);
+// 
+//       if (dist < Blast_Radius+Droid_Radius)
+// 	{
+// 	  /* drag energy of enemy */
+// 	  AllEnemys[i].energy -= Blast_Damage_Per_Second * Frame_Time ();
+// 	}
+// 
+//       if (AllEnemys[i].energy < 0)
+// 	AllEnemys[i].energy = 0;
+// 
+//     }				/* for */
+// 
+//   /* Check influence-Blast collisions */
+//   vdist.x = Me.pos.x - CurBlast->PX;
+//   vdist.y = Me.pos.y - CurBlast->PY;
+//   dist = sqrt(vdist.x*vdist.x + vdist.y*vdist.y);
+// 
+//   if ( (Me.status != OUT) && (!CurBlast->mine) && (dist < Blast_Radius+Droid_Radius) )
+//     {
+//       if (!InvincibleMode)
+// 	{
+// 	  Me.energy -= Blast_Damage_Per_Second * Frame_Time ();
+// 
+// 	  // So the influencer got some damage from the hot blast
+// 	  // Now most likely, he then will also say so :)
+// 	  if ( !CurBlast->MessageWasDone )
+// 	    {
+// 	      AddInfluBurntText();
+// 	      CurBlast->MessageWasDone=TRUE;
+// 	    }
+// 
+// 	}
+//       // In order to avoid a new sound EVERY frame we check for how long the previous blast
+//       // lies back in time.  LastBlastHit is a float, that counts SECONDS real-time !!
+//       if (LastGotIntoBlastSound > 1.2)
+// 	{
+// 	  GotIntoBlastSound ();
+// 	  LastGotIntoBlastSound = 0;
+// 	}
+//     }
+// 
+// }				/* CheckBlastCollisions */
 
 #undef _bullet_c
