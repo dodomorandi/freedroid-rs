@@ -1624,6 +1624,8 @@ pub unsafe extern "C" fn GetCurrentLift() -> c_int {
         if curShip.AllLifts[i].x == gx && curShip.AllLifts[i].y == gy {
             break;
         }
+
+        i += 1;
     }
 
     if i == usize::try_from(curShip.num_lifts).unwrap() + 1 {
