@@ -20,8 +20,8 @@ use crate::{
         MAX_MAP_COLS, MAX_MAP_ROWS,
     },
     global::{
-        CurrentCombatScaleFactor, Druidmap, Font0_BFont, Font1_BFont, Font2_BFont, GameConfig,
-        Menu_BFont, INFLUENCE_MODE_NAMES,
+        CurrentCombatScaleFactor, Font0_BFont, Font1_BFont, Font2_BFont, GameConfig, Menu_BFont,
+        INFLUENCE_MODE_NAMES,
     },
     graphics::{
         classic_theme_index, ne_screen, toggle_fullscreen, AllThemes, BannerIsDestroyed,
@@ -46,7 +46,10 @@ use crate::{
     },
     sound_on, stop_influencer,
     text::{getchar_raw, printf_SDL, DisplayText, GetString},
-    vars::{Block_Rect, Classic_User_Rect, Full_User_Rect, Me, Menu_Rect, Screen_Rect, User_Rect},
+    vars::{
+        Block_Rect, Classic_User_Rect, Druidmap, Full_User_Rect, Me, Menu_Rect, Screen_Rect,
+        User_Rect,
+    },
     view::{Assemble_Combat_Picture, DisplayBanner, PutInfluence},
     AllEnemys, CurLevel, InvincibleMode, NumEnemys, Number_Of_Droid_Types,
 };
@@ -746,7 +749,7 @@ pub unsafe extern "C" fn Cheatmenu() {
                 let mut l_num = 0;
                 libc::sscanf(input, cstr!("%d").as_ptr() as *mut c_char, &mut l_num);
                 libc::free(input as *mut c_void);
-                ShowDeckMap(*curShip.AllLevels[usize::try_from(l_num).unwrap()]);
+                ShowDeckMap();
                 getchar_raw();
             }
 

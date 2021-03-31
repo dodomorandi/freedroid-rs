@@ -211,6 +211,18 @@ pub struct BlastSpec {
                                                                     // the blast images of this blast type
 }
 
+impl BlastSpec {
+    pub const fn default_const() -> Self {
+        Self {
+            phases: 0,
+            picpointer: null_mut(),
+            block: null_mut(),
+            total_animation_time: 0.,
+            SurfacePointer: [null_mut(); MAX_PHASES_IN_A_BULLET],
+        }
+    }
+}
+
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Blast {

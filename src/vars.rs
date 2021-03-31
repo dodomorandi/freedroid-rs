@@ -1,6 +1,6 @@
 use crate::{
-    defs::{AlertNames, Droid, Status, MAX_INFLU_POSITION_HISTORY},
-    structs::{Finepoint, Gps, Influence},
+    defs::{AlertNames, Droid, Status, ALLBLASTTYPES, MAX_INFLU_POSITION_HISTORY},
+    structs::{BlastSpec, BulletSpec, DruidSpec, Finepoint, Gps, Influence},
 };
 
 use cstr::cstr;
@@ -102,6 +102,15 @@ pub static mut Me: Influence = Influence {
     TextToBeDisplayed: null_mut(),
     Position_History_Ring_Buffer: [Gps { x: 0., y: 0., z: 0 }; MAX_INFLU_POSITION_HISTORY],
 };
+
+#[no_mangle]
+pub static mut Druidmap: *mut DruidSpec = null_mut();
+
+#[no_mangle]
+pub static mut Bulletmap: *mut BulletSpec = null_mut();
+
+#[no_mangle]
+pub static mut Blastmap: [BlastSpec; ALLBLASTTYPES] = [BlastSpec::default_const(); ALLBLASTTYPES];
 
 pub const CLASS_NAMES: [&CStr; 10] = [
     cstr!("Influence device"),

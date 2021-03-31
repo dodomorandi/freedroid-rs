@@ -6,8 +6,7 @@ use crate::{
     },
     enemy::ClearEnemys,
     global::{
-        Droid_Radius, Druidmap, GameConfig, LevelDoorsNotMovedTime,
-        Time_For_Each_Phase_Of_Door_Movement,
+        Droid_Radius, GameConfig, LevelDoorsNotMovedTime, Time_For_Each_Phase_Of_Door_Movement,
     },
     influencer::RefreshInfluencer,
     menu::SHIP_EXT,
@@ -17,7 +16,7 @@ use crate::{
     },
     ship::{EnterKonsole, EnterLift},
     structs::{Finepoint, GrobPoint, Level},
-    vars::Block_Rect,
+    vars::{Block_Rect, Druidmap},
     AllEnemys, CurLevel, Me, NumEnemys, Number_Of_Droid_Types,
 };
 

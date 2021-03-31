@@ -7,7 +7,6 @@ use crate::{
         MouseLeftPressedR, Sound, Status, DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET,
         TEXT_STRETCH, UPDATE,
     },
-    global::Druidmap,
     graphics::{
         arrow_cursor, arrow_down, arrow_left, arrow_right, arrow_up, console_bg_pic1,
         console_bg_pic2, console_pic, crosshair_cursor, packed_portraits, ship_off_pic,
@@ -25,12 +24,12 @@ use crate::{
         EnterLiftSound, LeaveLiftSound, MenuItemSelectedSound, MoveLiftSound,
         MoveMenuPositionSound, Play_Sound, Switch_Background_Music_To,
     },
-    structs::{Level, Point},
+    structs::Point,
     text::DisplayText,
     vars::{
         Cons_Droid_Rect, Cons_Header_Rect, Cons_Menu_Rect, Cons_Menu_Rects, Cons_Text_Rect,
-        Full_User_Rect, Portrait_Rect, User_Rect, BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES,
-        SENSOR_NAMES, WEAPON_NAMES,
+        Druidmap, Full_User_Rect, Portrait_Rect, User_Rect, BRAIN_NAMES, CLASSES, CLASS_NAMES,
+        DRIVE_NAMES, SENSOR_NAMES, WEAPON_NAMES,
     },
     view::{Assemble_Combat_Picture, DisplayBanner, Fill_Rect},
     AlertLevel, AllEnemys, CurLevel, GameConfig, Me, NumEnemys,
@@ -61,14 +60,14 @@ extern "C" {
 
     pub fn IMG_Load_RW(src: *mut SDL_RWops, freesrc: c_int) -> *mut SDL_Surface;
     pub fn IMG_isJPG(src: *mut SDL_RWops) -> c_int;
-
-    pub static mut droid_background: *mut SDL_Surface;
-    pub static mut droid_pics: *mut SDL_Surface;
-    pub static mut up_rect: Rect;
-    pub static mut down_rect: Rect;
-    pub static mut left_rect: Rect;
-    pub static mut right_rect: Rect;
 }
+
+pub static mut DROID_BACKGROUND: *mut SDL_Surface = null_mut();
+pub static mut DROID_PICS: *mut SDL_Surface = null_mut();
+pub static mut UP_RECT: Rect = rect!(0, 0, 0, 0);
+pub static mut DOWN_RECT: Rect = rect!(0, 0, 0, 0);
+pub static mut LEFT_RECT: Rect = rect!(0, 0, 0, 0);
+pub static mut RIGHT_RECT: Rect = rect!(0, 0, 0, 0);
 
 #[inline]
 pub unsafe fn sdl_rw_seek(ctx: *mut SDL_RWops, offset: c_int, whence: c_int) -> c_int {
@@ -79,8 +78,8 @@ pub unsafe fn sdl_rw_seek(ctx: *mut SDL_RWops, offset: c_int, whence: c_int) -> 
 
 #[no_mangle]
 pub unsafe extern "C" fn FreeDroidPics() {
-    SDL_FreeSurface(droid_pics);
-    SDL_FreeSurface(droid_background);
+    SDL_FreeSurface(DROID_PICS);
+    SDL_FreeSurface(DROID_BACKGROUND);
 }
 
 /// do all alert-related agitations: alert-sirens and alert-lights
@@ -165,27 +164,27 @@ pub unsafe extern "C" fn show_droid_portrait(
 
     SDL_SetClipRect(ne_screen, &dst);
 
-    if droid_background.is_null() {
+    if DROID_BACKGROUND.is_null() {
         // first call
         let tmp = SDL_CreateRGBSurface(0, dst.w.into(), dst.h.into(), vid_bpp, 0, 0, 0, 0);
-        droid_background = SDL_DisplayFormat(tmp);
+        DROID_BACKGROUND = SDL_DisplayFormat(tmp);
         SDL_FreeSurface(tmp);
-        SDL_UpperBlit(ne_screen, &mut dst, droid_background, null_mut());
+        SDL_UpperBlit(ne_screen, &mut dst, DROID_BACKGROUND, null_mut());
         SRC_RECT = Portrait_Rect;
     }
 
     if flags & RESET != 0 {
-        SDL_UpperBlit(ne_screen, &mut dst, droid_background, null_mut());
+        SDL_UpperBlit(ne_screen, &mut dst, DROID_BACKGROUND, null_mut());
         FRAME_NUM = 0;
         LAST_FRAME_TIME = SDL_GetTicks();
     }
 
-    if droid_type != LAST_DROID_TYPE || droid_pics.is_null() {
+    if droid_type != LAST_DROID_TYPE || DROID_PICS.is_null() {
         // we need to unpack the droid-pics into our local storage
-        if droid_pics.is_null().not() {
-            SDL_FreeSurface(droid_pics);
+        if DROID_PICS.is_null().not() {
+            SDL_FreeSurface(DROID_PICS);
         }
-        droid_pics = null_mut();
+        DROID_PICS = null_mut();
         let packed_portrait = packed_portraits[usize::try_from(droid_type).unwrap()];
         let tmp = IMG_Load_RW(packed_portrait, 0);
         // important: return seek-position to beginning of RWops for next operation to succeed!
@@ -199,10 +198,10 @@ pub unsafe extern "C" fn show_droid_portrait(
         }
         // now see if its a jpg, then we add some transparency by color-keying:
         if IMG_isJPG(packed_portrait) != 0 {
-            droid_pics = SDL_DisplayFormat(tmp);
+            DROID_PICS = SDL_DisplayFormat(tmp);
         } else {
             // else assume it's png ;)
-            droid_pics = SDL_DisplayFormatAlpha(tmp);
+            DROID_PICS = SDL_DisplayFormatAlpha(tmp);
         }
         SDL_FreeSurface(tmp);
         sdl_rw_seek(packed_portrait, 0, libc::SEEK_SET);
@@ -210,13 +209,13 @@ pub unsafe extern "C" fn show_droid_portrait(
         // do we have to scale the droid pics
         #[allow(clippy::float_cmp)]
         if GameConfig.scale != 1.0 {
-            ScalePic(&mut droid_pics, GameConfig.scale);
+            ScalePic(&mut DROID_PICS, GameConfig.scale);
         }
 
         LAST_DROID_TYPE = droid_type;
     }
 
-    let droid_pics_ref = &*droid_pics;
+    let droid_pics_ref = &*DROID_PICS;
     let mut num_frames = droid_pics_ref.w / c_int::from(Portrait_Rect.w);
 
     // sanity check
@@ -242,8 +241,8 @@ pub unsafe extern "C" fn show_droid_portrait(
     if flags & (RESET | UPDATE) != 0 || need_new_frame {
         SRC_RECT.x = i16::try_from(FRAME_NUM).unwrap() * i16::try_from(SRC_RECT.w).unwrap();
 
-        SDL_UpperBlit(droid_background, null_mut(), ne_screen, &mut dst);
-        SDL_UpperBlit(droid_pics, &mut SRC_RECT, ne_screen, &mut dst);
+        SDL_UpperBlit(DROID_BACKGROUND, null_mut(), ne_screen, &mut dst);
+        SDL_UpperBlit(DROID_PICS, &mut SRC_RECT, ne_screen, &mut dst);
 
         SDL_UpdateRects(ne_screen, 1, &mut dst);
 
@@ -268,26 +267,26 @@ pub unsafe extern "C" fn show_droid_info(droid_type: c_int, page: c_int, flags: 
 
     let lineskip = ((f64::from(FontHeight(&*GetCurrentFont())) * TEXT_STRETCH) as f32) as i16;
     let lastline = Cons_Header_Rect.y + i16::try_from(Cons_Header_Rect.h).unwrap();
-    up_rect = Rect {
+    UP_RECT = Rect {
         x: Cons_Header_Rect.x,
         y: lastline - lineskip,
         w: 25,
         h: 13,
     };
-    down_rect = Rect {
+    DOWN_RECT = Rect {
         x: Cons_Header_Rect.x,
         y: (f32::from(lastline) - 0.5 * f32::from(lineskip)) as i16,
         w: 25,
         h: 13,
     };
-    left_rect = Rect {
+    LEFT_RECT = Rect {
         x: (f32::from(Cons_Header_Rect.x + i16::try_from(Cons_Header_Rect.w).unwrap())
             - 1.5 * f32::from(lineskip)) as i16,
         y: (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
         w: 13,
         h: 25,
     };
-    right_rect = Rect {
+    RIGHT_RECT = Rect {
         x: (f32::from(Cons_Header_Rect.x + i16::try_from(Cons_Header_Rect.w).unwrap())
             - 1.0 * f32::from(lineskip)) as i16,
         y: (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
@@ -437,19 +436,19 @@ Paradroid to eliminate all rogue robots.\0",
 
     if show_arrows {
         if Me.ty > droid_type {
-            SDL_UpperBlit(arrow_up, null_mut(), ne_screen, &mut up_rect);
+            SDL_UpperBlit(arrow_up, null_mut(), ne_screen, &mut UP_RECT);
         }
 
         if droid_type > 0 {
-            SDL_UpperBlit(arrow_down, null_mut(), ne_screen, &mut down_rect);
+            SDL_UpperBlit(arrow_down, null_mut(), ne_screen, &mut DOWN_RECT);
         }
 
         if page > 0 {
-            SDL_UpperBlit(arrow_left, null_mut(), ne_screen, &mut left_rect);
+            SDL_UpperBlit(arrow_left, null_mut(), ne_screen, &mut LEFT_RECT);
         }
 
         if page < 2 {
-            SDL_UpperBlit(arrow_right, null_mut(), ne_screen, &mut right_rect);
+            SDL_UpperBlit(arrow_right, null_mut(), ne_screen, &mut RIGHT_RECT);
         }
     }
 
@@ -461,12 +460,12 @@ Paradroid to eliminate all rogue robots.\0",
     }
 }
 
-/// Displays the concept view of Level "deck" in Userfenster
+/// Displays the concept view of deck
 ///
 /// Note: we no longer wait here for a key-press, but return
 /// immediately
 #[no_mangle]
-pub unsafe extern "C" fn ShowDeckMap(deck: Level) {
+pub unsafe extern "C" fn ShowDeckMap() {
     let tmp = Me.pos;
 
     let cur_level = &*CurLevel;
@@ -624,7 +623,7 @@ pub unsafe extern "C" fn EnterKonsole() {
                                 null_mut(),
                                 DisplayBannerFlags::FORCE_UPDATE.bits().into(),
                             );
-                            ShowDeckMap(*CurLevel);
+                            ShowDeckMap();
                             PaintConsoleMenu(pos.try_into().unwrap(), 0);
                         }
                         3 => {
@@ -709,13 +708,13 @@ pub unsafe extern "C" fn GreatDruidShow() {
         let mut action = MenuAction::empty();
         // special handling of mouse-clicks: check if move-arrows were clicked on
         if MouseLeftPressedR() {
-            if CursorIsOnRect(&left_rect) != 0 {
+            if CursorIsOnRect(&LEFT_RECT) != 0 {
                 action = MenuAction::LEFT;
-            } else if CursorIsOnRect(&right_rect) != 0 {
+            } else if CursorIsOnRect(&RIGHT_RECT) != 0 {
                 action = MenuAction::RIGHT;
-            } else if CursorIsOnRect(&up_rect) != 0 {
+            } else if CursorIsOnRect(&UP_RECT) != 0 {
                 action = MenuAction::UP;
-            } else if CursorIsOnRect(&down_rect) != 0 {
+            } else if CursorIsOnRect(&DOWN_RECT) != 0 {
                 action = MenuAction::DOWN;
             }
         } else {

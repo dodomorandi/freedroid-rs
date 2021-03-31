@@ -4,7 +4,6 @@ use crate::{
         DROID_ROTATION_TIME, SHOW_WAIT, UPDATE,
     },
     enemy::ClassOfDruid,
-    global::Druidmap,
     graphics::{ne_screen, takeover_bg_pic, ClearGraphMem},
     input::{any_key_just_pressed, wait_for_all_keys_released, KeyIsPressedR},
     menu::getMenuAction,
@@ -15,7 +14,7 @@ use crate::{
         Takeover_Game_Lost_Sound, Takeover_Game_Won_Sound, Takeover_Set_Capsule_Sound,
     },
     structs::Point,
-    vars::{Classic_User_Rect, Cons_Droid_Rect, Me, User_Rect},
+    vars::{Classic_User_Rect, Cons_Droid_Rect, Druidmap, Me, User_Rect},
     view::{DisplayBanner, Fill_Rect, PutEnemy, PutInfluence},
     AllEnemys, DeathCount, InvincibleMode, PreTakeEnergy, RealScore,
 };

@@ -9,9 +9,9 @@ use crate::{
     },
     enemy::{MoveEnemys, ShuffleEnemys},
     global::{
-        collision_lose_energy_calibrator, Blast_Damage_Per_Second, Blast_Radius, Blastmap,
-        Bulletmap, CurrentCombatScaleFactor, Droid_Radius, Druidmap, Font0_BFont, GameConfig,
-        SkipAFewFrames, Time_For_Each_Phase_Of_Door_Movement,
+        collision_lose_energy_calibrator, Blast_Damage_Per_Second, Blast_Radius,
+        CurrentCombatScaleFactor, Droid_Radius, Font0_BFont, GameConfig, SkipAFewFrames,
+        Time_For_Each_Phase_Of_Door_Movement,
     },
     graphics::{
         ne_screen, pic999, white_noise, AllThemes, ClearGraphMem, DisplayImage, InitPictures,
@@ -34,7 +34,10 @@ use crate::{
     sound_on,
     structs::{BulletSpec, DruidSpec},
     text::{printf_SDL, DisplayText, ScrollText},
-    vars::{Classic_User_Rect, Full_User_Rect, Portrait_Rect, Screen_Rect, User_Rect},
+    vars::{
+        Blastmap, Bulletmap, Classic_User_Rect, Druidmap, Full_User_Rect, Portrait_Rect,
+        Screen_Rect, User_Rect,
+    },
     view::{Assemble_Combat_Picture, DisplayBanner},
     AlertBonusPerSec, AlertThreshold, AllBlasts, AllBullets, AllEnemys, CurLevel, DeathCount,
     DeathCountDrainSpeed, GameOver, LastGotIntoBlastSound, LastRefreshSound,
