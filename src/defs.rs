@@ -19,7 +19,7 @@ use sdl::{
     sdl::Rect,
     video::ll::{SDL_FreeSurface, SDL_Surface},
 };
-use std::{convert::TryFrom, ffi::CStr, os::raw::c_int};
+use std::{convert::TryFrom, ffi::CStr, fmt, os::raw::c_int};
 
 pub const MAX_THEMES: usize = 100;
 
@@ -367,7 +367,7 @@ bitflags! {
     }
 }
 
-pub const COLLISION_STEPSIZE: f64 = 0.1;
+pub const COLLISION_STEPSIZE: f32 = 0.1;
 
 /* ************************************************************
  * Highscore related defines
@@ -565,7 +565,7 @@ pub const LEFT_TEXT_LEN: usize = 10;
 pub const RIGHT_TEXT_LEN: usize = 6;
 
 pub const BULLET_BULLET_COLLISION_DIST: f64 = 10.0 / 64.0;
-pub const BULLET_COLL_DIST2: f64 = 0.0244140625;
+pub const BULLET_COLL_DIST2: f32 = 0.0244140625;
 // **********************************************************************
 //
 //
@@ -761,6 +761,47 @@ pub enum BulletKind {
     Flash,
     Exterminator,
     LaserRifle,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct InvalidBulletKind<T>(T);
+
+impl<T> fmt::Display for InvalidBulletKind<T>
+where
+    T: fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Invalid raw bullet kind {}", self.0)
+    }
+}
+
+impl TryFrom<u8> for BulletKind {
+    type Error = InvalidBulletKind<u8>;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        use BulletKind::*;
+        Ok(match value {
+            0 => Pulse,
+            1 => SinglePulse,
+            2 => Military,
+            3 => Flash,
+            4 => Exterminator,
+            5 => LaserRifle,
+            _ => return Err(InvalidBulletKind(value)),
+        })
+    }
+}
+
+impl TryFrom<c_int> for BulletKind {
+    type Error = InvalidBulletKind<c_int>;
+
+    fn try_from(value: c_int) -> Result<Self, Self::Error> {
+        u8::try_from(value)
+            .map_err(|_| InvalidBulletKind(value))
+            .and_then(|value| {
+                BulletKind::try_from(value).map_err(|err| InvalidBulletKind(err.0.into()))
+            })
+    }
 }
 
 /* Explosionstypen */
