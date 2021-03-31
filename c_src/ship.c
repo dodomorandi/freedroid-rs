@@ -533,24 +533,24 @@ This function runs the consoles. This means the following duties:
 @Ret:
 @Int:
 * $Function----------------------------------------------------------*/
-int
-LevelEmpty (void)
-{
-  int i;
-  int levelnum = CurLevel->levelnum;
-
-  if (CurLevel->empty)
-    return TRUE;
-
-  for (i = 0; i < NumEnemys; i++)
-    {
-      if ((AllEnemys[i].levelnum == levelnum) &&
-	  ( (AllEnemys[i].status != OUT) && (AllEnemys[i].status != TERMINATED) ) )
-	return FALSE;
-    }
-
-  return TRUE;
-}
+// int
+// LevelEmpty (void)
+// {
+//   int i;
+//   int levelnum = CurLevel->levelnum;
+// 
+//   if (CurLevel->empty)
+//     return TRUE;
+// 
+//   for (i = 0; i < NumEnemys; i++)
+//     {
+//       if ((AllEnemys[i].levelnum == levelnum) &&
+// 	  ( (AllEnemys[i].status != OUT) && (AllEnemys[i].status != TERMINATED) ) )
+// 	return FALSE;
+//     }
+// 
+//   return TRUE;
+// }
 
 /* ----------------------------------------------------------------------
  * This function should check if the mouse cursor is in the given Rectangle

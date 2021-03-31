@@ -33,7 +33,7 @@ use crate::{
         SENSOR_NAMES, WEAPON_NAMES,
     },
     view::{Assemble_Combat_Picture, DisplayBanner, Fill_Rect},
-    AlertLevel, CurLevel, GameConfig, Me,
+    AlertLevel, AllEnemys, CurLevel, GameConfig, Me, NumEnemys,
 };
 
 use log::{error, warn};
@@ -1054,4 +1054,24 @@ pub unsafe extern "C" fn EnterLift() {
     Me.status = Status::Mobile as c_int;
     Me.TextVisibleTime = 0.;
     Me.TextToBeDisplayed = cur_level.Level_Enter_Comment;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn LevelEmpty() -> c_int {
+    let cur_level = &*CurLevel;
+    if cur_level.empty != 0 {
+        return true.into();
+    }
+
+    let levelnum = cur_level.levelnum;
+
+    AllEnemys[0..usize::try_from(NumEnemys).unwrap()]
+        .iter()
+        .find(|enemy| {
+            enemy.levelnum == levelnum
+                && enemy.status != Status::Out as c_int
+                && enemy.status != Status::Terminated as c_int
+        })
+        .is_none()
+        .into()
 }
