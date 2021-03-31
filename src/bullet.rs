@@ -1,14 +1,15 @@
 use crate::{
     defs::{
         BulletKind, Direction, Explosion, BULLET_COLL_DIST2, COLLISION_STEPSIZE, FLASH_DURATION,
-        MAXBULLETS,
+        MAXBLASTS, MAXBULLETS,
     },
     global::Droid_Radius,
     map::{IsPassable, IsVisible},
+    misc::Frame_Time,
     sound::GotHitSound,
     structs::Finepoint,
     text::EnemyHitByBulletText,
-    vars::{Bulletmap, Druidmap},
+    vars::{Blastmap, Bulletmap, Druidmap},
     AllBlasts, AllBullets, AllEnemys, CurLevel, InvincibleMode, Me, NumEnemys, Status,
 };
 
@@ -21,9 +22,8 @@ use std::{
 extern "C" {
     pub fn DeleteBullet(num: c_int);
     pub fn MoveBullets();
-    pub fn ExplodeBlasts();
     pub fn StartBlast(x: c_float, y: c_float, ty: c_int);
-
+    pub fn CheckBlastCollisions(num: c_int);
 }
 
 #[inline]
@@ -221,4 +221,24 @@ pub unsafe extern "C" fn CheckBulletCollisions(num: c_int) {
 #[no_mangle]
 pub unsafe extern "C" fn DeleteBlast(num: c_int) {
     AllBlasts[usize::try_from(num).unwrap()].ty = Status::Out as c_int;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ExplodeBlasts() {
+    AllBlasts[..MAXBLASTS]
+        .iter_mut()
+        .enumerate()
+        .filter(|(_, blast)| blast.ty != Status::Out as c_int)
+        .for_each(|(i, cur_blast)| {
+            if cur_blast.ty == Explosion::Druidblast as c_int {
+                CheckBlastCollisions(i.try_into().unwrap());
+            }
+
+            let blast_spec = &Blastmap[usize::try_from(cur_blast.ty).unwrap()];
+            cur_blast.phase +=
+                Frame_Time() * blast_spec.phases as f32 / blast_spec.total_animation_time;
+            if cur_blast.phase.floor() as c_int >= blast_spec.phases {
+                DeleteBlast(i.try_into().unwrap());
+            }
+        });
 }

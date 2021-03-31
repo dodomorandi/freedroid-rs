@@ -201,27 +201,27 @@ StartBlast (float x, float y, int type)
 @Ret: keiner
 @Int: keiner
 * $Function----------------------------------------------------------*/
-void
-ExplodeBlasts (void)
-{
-  int i;
-  Blast CurBlast = AllBlasts;
-
-  for (i = 0; i < MAXBLASTS; i++, CurBlast++)
-    if (CurBlast->type != OUT)
-      {
-
-	/* Druidblasts sind gefaehrlich !! */
-	if (CurBlast->type == DRUIDBLAST)
-	  CheckBlastCollisions (i);
-
-	// CurBlast->phase++;
-	CurBlast->phase += Frame_Time () * Blastmap[ CurBlast->type ].phases / Blastmap[ CurBlast->type ].total_animation_time;
-	if (((int) floorf (CurBlast->phase)) >=
-	    Blastmap[CurBlast->type].phases)
-	  DeleteBlast (i);
-      }				/* if */
-}				/* ExplodeBlasts */
+// void
+// ExplodeBlasts (void)
+// {
+//   int i;
+//   Blast CurBlast = AllBlasts;
+// 
+//   for (i = 0; i < MAXBLASTS; i++, CurBlast++)
+//     if (CurBlast->type != OUT)
+//       {
+// 
+// 	/* Druidblasts sind gefaehrlich !! */
+// 	if (CurBlast->type == DRUIDBLAST)
+// 	  CheckBlastCollisions (i);
+// 
+// 	// CurBlast->phase++;
+// 	CurBlast->phase += Frame_Time () * Blastmap[ CurBlast->type ].phases / Blastmap[ CurBlast->type ].total_animation_time;
+// 	if (((int) floorf (CurBlast->phase)) >=
+// 	    Blastmap[CurBlast->type].phases)
+// 	  DeleteBlast (i);
+//       }				/* if */
+// }				/* ExplodeBlasts */
 
 /*@Function============================================================
 @Desc: Einen eizelnen Blast ausloeschen
