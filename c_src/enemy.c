@@ -632,123 +632,123 @@ but of course only if the odds are good i.e. requirements are met.
 
 @Ret: void
 * $Function----------------------------------------------------------*/
-void
-AttackInfluence (int enemynum)
-{
-  int j;
-  Bullet CurBullet;
-  int guntype;
-  float xdist, ydist;
-  float dist2;
-  Enemy ThisRobot=&AllEnemys[ enemynum ];
-
-
-  //--------------------
-  // At first, we check for a lot of cases in which we do not
-  // need to move anything for this reason or for that
-  //
-
-  // ignore robots on other levels
-  if ( ThisRobot->levelnum != CurLevel->levelnum) return;
-
-  // ignore dead robots as well...
-  if ( ThisRobot->status == OUT ) return;
-
-  xdist = Me.pos.x - ThisRobot->pos.x;
-  ydist = Me.pos.y - ThisRobot->pos.y;
-
-  // Add some security against division by zero
-  if (xdist == 0) xdist = 0.01;
-  if (ydist == 0) ydist = 0.01;
-
-  // if odds are good, make a shot at your target
-  guntype = Druidmap[ThisRobot->type].gun;
-
-  dist2 = sqrt(xdist * xdist + ydist * ydist);
-
-  //--------------------
-  //
-  // From here on, it's classical Paradroid robot behaviour concerning fireing....
-  //
-
-  if ( dist2 >= FIREDIST2 ) return; // distance limitation only for MS mechs
-
-  if ( ThisRobot->firewait ) return;
-
-  if ( !IsVisible (&ThisRobot->pos))
-    return;
-
-  if ( ( MyRandom (AGGRESSIONMAX) >= Druidmap[ThisRobot->type].aggression ))
-    {
-      ThisRobot->firewait += 1.0*MyRandom(1000)* ROBOT_MAX_WAIT_BETWEEN_SHOTS / 1000.0;
-      return;
-    }
-
-
-  Fire_Bullet_Sound ( guntype );
-
-  // find a bullet entry, that isn't currently used...
-  for (j = 0; j < MAXBULLETS; j++)
-    {
-      if (AllBullets[j].type == OUT)
-	break;
-    }
-  if (j == MAXBULLETS)
-    {
-      DebugPrintf (2, "\nvoid AttackInfluencer(void):  no free bullets... giving up\n");
-      return ;
-    }
-
-  CurBullet = &AllBullets[j];
-  // determine the direction of the shot, so that it will go into the direction of
-  // the target
-
-  if (fabsf (xdist) > fabsf (ydist))
-    {
-      CurBullet->speed.x = Bulletmap[guntype].speed;
-      CurBullet->speed.y = ydist * CurBullet->speed.x / xdist;
-      if (xdist < 0)
-	{
-	  CurBullet->speed.x = -CurBullet->speed.x;
-	  CurBullet->speed.y = -CurBullet->speed.y;
-	}
-    }
-
-  if (fabsf (xdist) < fabsf (ydist))
-    {
-      CurBullet->speed.y = Bulletmap[guntype].speed;
-      CurBullet->speed.x = xdist * CurBullet->speed.y / ydist;
-      if (ydist < 0)
-	{
-	  CurBullet->speed.x = -CurBullet->speed.x;
-	  CurBullet->speed.y = -CurBullet->speed.y;
-	}
-    }
-
-  CurBullet->angle = - ( 90 + 180 * atan2 ( CurBullet->speed.y,  CurBullet->speed.x ) / M_PI );
-
-  /* Bullets im Zentrum des Schuetzen starten */
-  CurBullet->pos.x = ThisRobot->pos.x;
-  CurBullet->pos.y = ThisRobot->pos.y;
-
-  /* Bullets so abfeuern, dass sie nicht den Schuetzen treffen */
-  CurBullet->pos.x +=
-    (CurBullet->speed.x) / fabsf (Bulletmap[guntype].speed) * 0.5;
-  CurBullet->pos.y +=
-    (CurBullet->speed.y) / fabsf (Bulletmap[guntype].speed) * 0.5;
-
-  /* Dem Bullettype entsprechend lange warten vor naechstem Schuss */
-
-  ThisRobot->firewait = Bulletmap[Druidmap[ThisRobot->type].gun].recharging_time ;
-
-  /* Bullettype gemaess dem ueblichen guntype fuer den robottyp setzen */
-  CurBullet->type = guntype;
-  CurBullet->time_in_frames = 0;
-  CurBullet->time_in_seconds = 0;
-
-  //}	/* if */
-
-}   /* AttackInfluence */
+// void
+// AttackInfluence (int enemynum)
+// {
+//   int j;
+//   Bullet CurBullet;
+//   int guntype;
+//   float xdist, ydist;
+//   float dist2;
+//   Enemy ThisRobot=&AllEnemys[ enemynum ];
+// 
+// 
+//   //--------------------
+//   // At first, we check for a lot of cases in which we do not
+//   // need to move anything for this reason or for that
+//   //
+// 
+//   // ignore robots on other levels
+//   if ( ThisRobot->levelnum != CurLevel->levelnum) return;
+// 
+//   // ignore dead robots as well...
+//   if ( ThisRobot->status == OUT ) return;
+// 
+//   xdist = Me.pos.x - ThisRobot->pos.x;
+//   ydist = Me.pos.y - ThisRobot->pos.y;
+// 
+//   // Add some security against division by zero
+//   if (xdist == 0) xdist = 0.01;
+//   if (ydist == 0) ydist = 0.01;
+// 
+//   // if odds are good, make a shot at your target
+//   guntype = Druidmap[ThisRobot->type].gun;
+// 
+//   dist2 = sqrt(xdist * xdist + ydist * ydist);
+// 
+//   //--------------------
+//   //
+//   // From here on, it's classical Paradroid robot behaviour concerning fireing....
+//   //
+// 
+//   if ( dist2 >= FIREDIST2 ) return; // distance limitation only for MS mechs
+// 
+//   if ( ThisRobot->firewait ) return;
+// 
+//   if ( !IsVisible (&ThisRobot->pos))
+//     return;
+// 
+//   if ( ( MyRandom (AGGRESSIONMAX) >= Druidmap[ThisRobot->type].aggression ))
+//     {
+//       ThisRobot->firewait += 1.0*MyRandom(1000)* ROBOT_MAX_WAIT_BETWEEN_SHOTS / 1000.0;
+//       return;
+//     }
+// 
+// 
+//   Fire_Bullet_Sound ( guntype );
+// 
+//   // find a bullet entry, that isn't currently used...
+//   for (j = 0; j < MAXBULLETS; j++)
+//     {
+//       if (AllBullets[j].type == OUT)
+// 	break;
+//     }
+//   if (j == MAXBULLETS)
+//     {
+//       DebugPrintf (2, "\nvoid AttackInfluencer(void):  no free bullets... giving up\n");
+//       return ;
+//     }
+// 
+//   CurBullet = &AllBullets[j];
+//   // determine the direction of the shot, so that it will go into the direction of
+//   // the target
+// 
+//   if (fabsf (xdist) > fabsf (ydist))
+//     {
+//       CurBullet->speed.x = Bulletmap[guntype].speed;
+//       CurBullet->speed.y = ydist * CurBullet->speed.x / xdist;
+//       if (xdist < 0)
+// 	{
+// 	  CurBullet->speed.x = -CurBullet->speed.x;
+// 	  CurBullet->speed.y = -CurBullet->speed.y;
+// 	}
+//     }
+// 
+//   if (fabsf (xdist) < fabsf (ydist))
+//     {
+//       CurBullet->speed.y = Bulletmap[guntype].speed;
+//       CurBullet->speed.x = xdist * CurBullet->speed.y / ydist;
+//       if (ydist < 0)
+// 	{
+// 	  CurBullet->speed.x = -CurBullet->speed.x;
+// 	  CurBullet->speed.y = -CurBullet->speed.y;
+// 	}
+//     }
+// 
+//   CurBullet->angle = - ( 90 + 180 * atan2 ( CurBullet->speed.y,  CurBullet->speed.x ) / M_PI );
+// 
+//   /* Bullets im Zentrum des Schuetzen starten */
+//   CurBullet->pos.x = ThisRobot->pos.x;
+//   CurBullet->pos.y = ThisRobot->pos.y;
+// 
+//   /* Bullets so abfeuern, dass sie nicht den Schuetzen treffen */
+//   CurBullet->pos.x +=
+//     (CurBullet->speed.x) / fabsf (Bulletmap[guntype].speed) * 0.5;
+//   CurBullet->pos.y +=
+//     (CurBullet->speed.y) / fabsf (Bulletmap[guntype].speed) * 0.5;
+// 
+//   /* Dem Bullettype entsprechend lange warten vor naechstem Schuss */
+// 
+//   ThisRobot->firewait = Bulletmap[Druidmap[ThisRobot->type].gun].recharging_time ;
+// 
+//   /* Bullettype gemaess dem ueblichen guntype fuer den robottyp setzen */
+//   CurBullet->type = guntype;
+//   CurBullet->time_in_frames = 0;
+//   CurBullet->time_in_seconds = 0;
+// 
+//   //}	/* if */
+// 
+// }   /* AttackInfluence */
 
 /*@Function============================================================
 @Desc: CheckEnemyEnemyCollision()

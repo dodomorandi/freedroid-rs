@@ -712,9 +712,9 @@ pub const ALLBLASTTYPES: usize = 2; /* number of different exposions */
 
 pub const MAXBULLETS: usize = 100; /* maximum possible Bullets in the air */
 pub const MAXBLASTS: usize = 100; /* max. possible Blasts visible */
-pub const AGGRESSIONMAX: usize = 100;
-pub const ROBOT_MAX_WAIT_BETWEEN_SHOTS: usize = 5; // how long shoud each droid wait at most until
-                                                   // is considers fireing again?
+pub const AGGRESSIONMAX: c_int = 100;
+pub const ROBOT_MAX_WAIT_BETWEEN_SHOTS: f32 = 5.; // how long shoud each droid wait at most until
+                                                  // is considers fireing again?
 
 /* Map-related defines:
     WARNING leave them here, they are required in struct.h
