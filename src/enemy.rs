@@ -1,7 +1,7 @@
 use crate::{
     bullet::StartBlast,
     defs::{
-        Explosion, Status, AGGRESSIONMAX, DECKCOMPLETEBONUS, ENEMYPHASES, MAXBULLETS,
+        Explosion, Status, AGGRESSIONMAX, DECKCOMPLETEBONUS, ENEMYMAXWAIT, ENEMYPHASES, MAXBULLETS,
         ROBOT_MAX_WAIT_BETWEEN_SHOTS, SLOWMO_FACTOR, WAIT_COLLISION, WAIT_LEVELEMPTY,
     },
     global::Droid_Radius,
@@ -9,6 +9,7 @@ use crate::{
     misc::{set_time_factor, Frame_Time, MyRandom},
     ship::LevelEmpty,
     sound::Fire_Bullet_Sound,
+    structs::Finepoint,
     vars::{Bulletmap, Druidmap, Me},
     AllBullets, AllEnemys, CurLevel, DeathCount, NumEnemys, RealScore,
 };
@@ -24,7 +25,6 @@ extern "C" {
     pub fn ClearEnemys();
     pub fn PermanentHealRobots();
     pub fn MoveThisRobotThowardsHisWaypoint(enemy_num: c_int);
-    pub fn SelectNextWaypointClassical(enemy_num: c_int);
 }
 
 /// according to the intro, the laser can be "focused on any target
@@ -311,4 +311,37 @@ pub unsafe extern "C" fn CheckEnemyEnemyCollision(enemy_num: c_int) -> c_int {
     }
 
     false.into()
+}
+
+/// This function checks if the connection between two points is free of
+/// droids.
+///
+/// Map tiles are not taken into consideration, only droids.
+#[no_mangle]
+pub unsafe extern "C" fn SelectNextWaypointClassical(enemy_num: c_int) {
+    let this_robot = &mut AllEnemys[usize::try_from(enemy_num).unwrap()];
+
+    // We do some definitions to save us some more typing later...
+    let wp_list = (*CurLevel).AllWaypoints;
+    let nextwp = usize::try_from(this_robot.nextwaypoint).unwrap();
+
+    // determine the remaining way until the target point is reached
+    let restweg = Finepoint {
+        x: f32::from(wp_list[nextwp].x) - this_robot.pos.x,
+        y: f32::from(wp_list[nextwp].y) - this_robot.pos.y,
+    };
+
+    // Now we can see if we are perhaps already there?
+    // then it might be time to set a new waypoint.
+    //
+    if restweg.x == 0. && restweg.y == 0. {
+        this_robot.lastwaypoint = this_robot.nextwaypoint;
+        this_robot.warten = MyRandom(ENEMYMAXWAIT) as f32;
+
+        let num_con = wp_list[nextwp].num_connections;
+        if num_con > 0 {
+            this_robot.nextwaypoint =
+                wp_list[nextwp].connections[usize::try_from(MyRandom(num_con - 1)).unwrap()];
+        }
+    }
 }

@@ -255,43 +255,43 @@ ShuffleEnemys (void)
  * MAP TILES ARE NOT TAKEN INTO CONSIDERATION, ONLY DROIDS!!!
  *
  ----------------------------------------------------------------------*/
-void
-SelectNextWaypointClassical( int EnemyNum )
-{
-  int num_con;
-  finepoint Restweg;
-  Waypoint WpList;		/* Pointer to waypoint-liste */
-  int nextwp;
-  Enemy ThisRobot=&AllEnemys[EnemyNum];
-
-  // We do some definitions to save us some more typing later...
-  WpList = CurLevel->AllWaypoints;
-  nextwp = ThisRobot->nextwaypoint;
-
-  // determine the remaining way until the target point is reached
-  Restweg.x = WpList[nextwp].x - ThisRobot->pos.x;
-  Restweg.y = WpList[nextwp].y - ThisRobot->pos.y;
-
-  //--------------------
-  // Now we can see if we are perhaps already there?
-  // then it might be time to set a new waypoint.
-  //
-  if ((Restweg.x == 0) && (Restweg.y == 0))
-    {
-      ThisRobot->lastwaypoint = ThisRobot->nextwaypoint;
-      ThisRobot->warten = MyRandom (ENEMYMAXWAIT);
-
-      /* suche moegliche Verbindung von hier */
-      DebugPrintf (2, "/* suche moegliche Verbindung von hier */\n");
-
-      num_con = WpList[nextwp].num_connections;
-      if ( num_con > 0)
-	ThisRobot->nextwaypoint = WpList[nextwp].connections[MyRandom(num_con-1)];
-    }			/* if */
-
-  return;
-
-} // void MoveThisRobotClassical ( int Enemynum );
+// void
+// SelectNextWaypointClassical( int EnemyNum )
+// {
+//   int num_con;
+//   finepoint Restweg;
+//   Waypoint WpList;		/* Pointer to waypoint-liste */
+//   int nextwp;
+//   Enemy ThisRobot=&AllEnemys[EnemyNum];
+// 
+//   // We do some definitions to save us some more typing later...
+//   WpList = CurLevel->AllWaypoints;
+//   nextwp = ThisRobot->nextwaypoint;
+// 
+//   // determine the remaining way until the target point is reached
+//   Restweg.x = WpList[nextwp].x - ThisRobot->pos.x;
+//   Restweg.y = WpList[nextwp].y - ThisRobot->pos.y;
+// 
+//   //--------------------
+//   // Now we can see if we are perhaps already there?
+//   // then it might be time to set a new waypoint.
+//   //
+//   if ((Restweg.x == 0) && (Restweg.y == 0))
+//     {
+//       ThisRobot->lastwaypoint = ThisRobot->nextwaypoint;
+//       ThisRobot->warten = MyRandom (ENEMYMAXWAIT);
+// 
+//       /* suche moegliche Verbindung von hier */
+//       DebugPrintf (2, "/* suche moegliche Verbindung von hier */\n");
+// 
+//       num_con = WpList[nextwp].num_connections;
+//       if ( num_con > 0)
+// 	ThisRobot->nextwaypoint = WpList[nextwp].connections[MyRandom(num_con-1)];
+//     }			/* if */
+// 
+//   return;
+// 
+// } // void MoveThisRobotClassical ( int Enemynum );
 
 /* ----------------------------------------------------------------------
  * This function checks if the connection between two points is free of

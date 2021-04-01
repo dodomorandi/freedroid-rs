@@ -646,7 +646,7 @@ pub const WAIT_TRANSFERMODE: f64 = 0.3; /* this is a "float" indicating the numb
                                         This variable describes the amount in SECONDS */
 pub const WAIT_COLLISION: c_int = 1; // after a little collision with influ, enemys hold position for a while
                                      // this variable describes the amount of time in SECONDS
-pub const ENEMYMAXWAIT: f64 = 2.0; // after each robot has reached its current destination waypoint is waits a
+pub const ENEMYMAXWAIT: c_int = 2; // after each robot has reached its current destination waypoint is waits a
                                    // while.  This variable describes the amount of time in SECONDS.  However,
                                    // the final wait time is a random number within [0,ENEMYMAXWAIT].
 pub const FLASH_DURATION: f32 = 0.1; // in seconds
