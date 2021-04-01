@@ -839,38 +839,38 @@ CheckEnemyEnemyCollision (int enemynum)
 @Ret:
 @Int:
 * $Function----------------------------------------------------------*/
-void
-AnimateEnemys (void)
-{
-  int i;
-
-  for (i = 0; i < NumEnemys; i++)
-    {
-      //      if (AllEnemys[i].type == DRUID598)
-      //	{
-	  //   AllEnemys[i].feindrehcode,
-	  //   Druidmap[AllEnemys[i].type].maxenergy,
-	  //   AllEnemys[i].energy,
-	  //  AllEnemys[i].phase);
-      //}
-
-      /* ignore enemys that are dead or on other levels or dummys */
-      if (AllEnemys[i].levelnum != CurLevel->levelnum)
-	continue;
-      if (AllEnemys[i].status == OUT)
-	continue;
-
-      // AllEnemys[i].feindrehcode+=AllEnemys[i].energy;
-      AllEnemys[i].phase +=
-	(AllEnemys[i].energy / Druidmap[AllEnemys[i].type].maxenergy) *
-	Frame_Time () * ENEMYPHASES * 2.5;
-
-      if (AllEnemys[i].phase >= ENEMYPHASES)
-	{
-	  AllEnemys[i].phase = 0;
-	}
-    }
-} // void AnimateEnemys(void)
+// void
+// AnimateEnemys (void)
+// {
+//   int i;
+// 
+//   for (i = 0; i < NumEnemys; i++)
+//     {
+//       //      if (AllEnemys[i].type == DRUID598)
+//       //	{
+// 	  //   AllEnemys[i].feindrehcode,
+// 	  //   Druidmap[AllEnemys[i].type].maxenergy,
+// 	  //   AllEnemys[i].energy,
+// 	  //  AllEnemys[i].phase);
+//       //}
+// 
+//       /* ignore enemys that are dead or on other levels or dummys */
+//       if (AllEnemys[i].levelnum != CurLevel->levelnum)
+// 	continue;
+//       if (AllEnemys[i].status == OUT)
+// 	continue;
+// 
+//       // AllEnemys[i].feindrehcode+=AllEnemys[i].energy;
+//       AllEnemys[i].phase +=
+// 	(AllEnemys[i].energy / Druidmap[AllEnemys[i].type].maxenergy) *
+// 	Frame_Time () * ENEMYPHASES * 2.5;
+// 
+//       if (AllEnemys[i].phase >= ENEMYPHASES)
+// 	{
+// 	  AllEnemys[i].phase = 0;
+// 	}
+//     }
+// } // void AnimateEnemys(void)
 
 /*@Function============================================================
 @Desc: ClassOfDruid(druidtype): liefert die Classe des Druidtypes type
