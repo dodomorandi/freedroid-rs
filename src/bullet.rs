@@ -6,7 +6,7 @@ use crate::{
     global::{Blast_Damage_Per_Second, Blast_Radius, Droid_Radius},
     map::{IsPassable, IsVisible},
     misc::Frame_Time,
-    sound::{GotHitSound, GotIntoBlastSound},
+    sound::{DruidBlastSound, GotHitSound, GotIntoBlastSound},
     structs::{Finepoint, Vect},
     text::{AddInfluBurntText, EnemyHitByBulletText},
     vars::{Blastmap, Bulletmap, Druidmap},
@@ -23,7 +23,6 @@ use std::{
 extern "C" {
     pub fn DeleteBullet(num: c_int);
     pub fn MoveBullets();
-    pub fn StartBlast(x: c_float, y: c_float, ty: c_int);
 }
 
 #[inline]
@@ -318,5 +317,43 @@ pub unsafe extern "C" fn CheckBlastCollisions(num: c_int) {
             GotIntoBlastSound();
             LastGotIntoBlastSound = 0.;
         }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn StartBlast(x: c_float, y: c_float, mut ty: c_int) {
+    let mut i = 0;
+    while i < MAXBLASTS {
+        if AllBlasts[i].ty == Status::Out as c_int {
+            break;
+        }
+
+        i += 1;
+    }
+
+    if i >= MAXBLASTS {
+        i = 0;
+    }
+
+    /* Get Pointer to it: more comfortable */
+    let new_blast = &mut AllBlasts[i];
+
+    if ty == Explosion::Rejectblast as c_int {
+        new_blast.mine = true;
+        ty = Explosion::Druidblast as c_int; // not really a different type, just avoid damaging influencer
+    } else {
+        new_blast.mine = false;
+    }
+
+    new_blast.PX = x;
+    new_blast.PY = y;
+
+    new_blast.ty = ty;
+    new_blast.phase = 0.;
+
+    new_blast.MessageWasDone = 0;
+
+    if ty == Explosion::Druidblast as c_int {
+        DruidBlastSound();
     }
 }

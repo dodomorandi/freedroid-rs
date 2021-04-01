@@ -152,49 +152,49 @@ DeleteBullet (int Bulletnumber)
 @Ret: void
 @Int:
 * $Function----------------------------------------------------------*/
-void
-StartBlast (float x, float y, int type)
-{
-  int i;
-  Blast NewBlast;
-
-  /* Position des naechsten freien Blasts herausfinden */
-  for (i = 0; i < MAXBLASTS; i++)
-    if (AllBlasts[i].type == OUT)
-      break;
-
-  /* keinen gefunden: nimm den ersten */
-  if (i >= MAXBLASTS)
-    i = 0;
-
-  /* Get Pointer to it: more comfortable */
-  NewBlast = &(AllBlasts[i]);
-
-
-  if (type == REJECTBLAST)
-    {
-      NewBlast->mine = TRUE;
-      type = DRUIDBLAST;    // not really a different type, just avoid damaging influencer
-    }
-  else
-    NewBlast->mine = FALSE;
-
-  /* Einen Blast an x/y erzeugen */
-  NewBlast->PX = x;
-  NewBlast->PY = y;
-
-  NewBlast->type = type;
-  NewBlast->phase = 0;
-
-  NewBlast->MessageWasDone = 0;
-
-
-  if (type == DRUIDBLAST)
-    {
-     DruidBlastSound ();
-    }
-
-}				/* StartBlast */
+// void
+// StartBlast (float x, float y, int type)
+// {
+//   int i;
+//   Blast NewBlast;
+// 
+//   /* Position des naechsten freien Blasts herausfinden */
+//   for (i = 0; i < MAXBLASTS; i++)
+//     if (AllBlasts[i].type == OUT)
+//       break;
+// 
+//   /* keinen gefunden: nimm den ersten */
+//   if (i >= MAXBLASTS)
+//     i = 0;
+// 
+//   /* Get Pointer to it: more comfortable */
+//   NewBlast = &(AllBlasts[i]);
+// 
+// 
+//   if (type == REJECTBLAST)
+//     {
+//       NewBlast->mine = TRUE;
+//       type = DRUIDBLAST;    // not really a different type, just avoid damaging influencer
+//     }
+//   else
+//     NewBlast->mine = FALSE;
+// 
+//   /* Einen Blast an x/y erzeugen */
+//   NewBlast->PX = x;
+//   NewBlast->PY = y;
+// 
+//   NewBlast->type = type;
+//   NewBlast->phase = 0;
+// 
+//   NewBlast->MessageWasDone = 0;
+// 
+// 
+//   if (type == DRUIDBLAST)
+//     {
+//      DruidBlastSound ();
+//     }
+// 
+// }				/* StartBlast */
 
 /*@Function============================================================
 @Desc: Diese Funktion zaehlt die Phasen aller Explosionen weiter
