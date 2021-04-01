@@ -878,15 +878,15 @@ AnimateEnemys (void)
 @Ret: int class: 0-9
 @Int:
 * $Function----------------------------------------------------------*/
-int
-ClassOfDruid (int druidtype)
-{
-  char classnumber[2];
-
-  classnumber[0] = Druidmap[druidtype].druidname[0];	/* first digit is class */
-  classnumber[1] = '\0';
-
-  return (atoi (classnumber));
-}				/* ClassOfDruid */
+// int
+// ClassOfDruid (int druidtype)
+// {
+//   char classnumber[2];
+// 
+//   classnumber[0] = Druidmap[druidtype].druidname[0];	/* first digit is class */
+//   classnumber[1] = '\0';
+// 
+//   return (atoi (classnumber));
+// }				/* ClassOfDruid */
 
 #undef _enemy_c
