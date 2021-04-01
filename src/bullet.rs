@@ -15,13 +15,14 @@ use crate::{
 };
 
 use log::info;
+use sdl::video::ll::SDL_FreeSurface;
 use std::{
     convert::{TryFrom, TryInto},
     os::raw::{c_float, c_int},
+    ptr::null_mut,
 };
 
 extern "C" {
-    pub fn DeleteBullet(num: c_int);
     pub fn MoveBullets();
 }
 
@@ -356,4 +357,52 @@ pub unsafe extern "C" fn StartBlast(x: c_float, y: c_float, mut ty: c_int) {
     if ty == Explosion::Druidblast as c_int {
         DruidBlastSound();
     }
+}
+
+/// delete bullet of given number, set it type=OUT, put it at x/y=-1/-1
+/// and create a Bullet-blast if with_blast==TRUE
+#[no_mangle]
+pub unsafe extern "C" fn DeleteBullet(bullet_number: c_int) {
+    let cur_bullet = &mut AllBullets[usize::try_from(bullet_number).unwrap()];
+
+    if cur_bullet.ty == Status::Out as u8 {
+        // ignore dead bullets
+        return;
+    }
+
+    //--------------------
+    // At first we generate the blast at the collision spot of the bullet,
+    // cause later, after the bullet is deleted, it will be hard to know
+    // the correct location ;)
+
+    // RP (18/11/02): nay, we do that manually before DeleteBullet() now,
+    // --> not all bullets should create Blasts (i.e. not if droid was hit)
+    //  StartBlast (CurBullet->pos.x, CurBullet->pos.y, BULLETBLAST);
+
+    //--------------------
+    // maybe, the bullet had several SDL_Surfaces attached to it.  Then we need to
+    // free the SDL_Surfaces again as well...
+    //
+    if cur_bullet.Surfaces_were_generated != 0 {
+        info!("DeleteBullet: freeing this bullets attached surfaces...");
+        let bullet_spec = &*Bulletmap.add(cur_bullet.ty.into());
+        for phase in 0..usize::try_from(bullet_spec.phases).unwrap() {
+            SDL_FreeSurface(cur_bullet.SurfacePointer[phase]);
+            cur_bullet.SurfacePointer[phase] = null_mut();
+        }
+        cur_bullet.Surfaces_were_generated = false.into();
+    }
+
+    //--------------------
+    // Now that the memory has been freed again, we can finally delete this bullet entry.
+    // Hope, that this does not give us a SEGFAULT, but it should not do so.
+    //
+    cur_bullet.ty = Status::Out as u8;
+    cur_bullet.time_in_seconds = 0.;
+    cur_bullet.time_in_frames = 0;
+    cur_bullet.mine = false;
+    cur_bullet.phase = 0;
+    cur_bullet.pos.x = -1.;
+    cur_bullet.pos.y = -1.;
+    cur_bullet.angle = 0.;
 }

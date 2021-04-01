@@ -95,56 +95,56 @@ MoveBullets (void)
 @Ret:
 @Int:
 * $Function----------------------------------------------------------*/
-void
-DeleteBullet (int Bulletnumber)
-{
-  Bullet CurBullet = &AllBullets[Bulletnumber];
-  int i;
-
-  if (CurBullet->type == OUT) // ignore dead bullets
-    return;
-
-  //--------------------
-  // At first we generate the blast at the collision spot of the bullet,
-  // cause later, after the bullet is deleted, it will be hard to know
-  // the correct location ;)
-
-  // RP (18/11/02): nay, we do that manually before DeleteBullet() now,
-  // --> not all bullets should create Blasts (i.e. not if droid was hit)
-  //  StartBlast (CurBullet->pos.x, CurBullet->pos.y, BULLETBLAST);
-
-  //--------------------
-  // maybe, the bullet had several SDL_Surfaces attached to it.  Then we need to
-  // free the SDL_Surfaces again as well...
-  //
-  // if ( ( CurBullet->type != FLASH) && ( CurBullet->type != OUT ) )
-  if ( CurBullet->Surfaces_were_generated )
-    {
-      DebugPrintf( 1 , "\nvoid DeleteBullet(...): freeing this bullets attached surfaces...");
-      for ( i=0 ; i < Bulletmap[ CurBullet->type ].phases ; i++ )
-	{
-	  SDL_FreeSurface( CurBullet->SurfacePointer[i] );
-	  CurBullet->SurfacePointer[i] = NULL;
-	}
-      CurBullet->Surfaces_were_generated = FALSE;
-    }
-
-  //--------------------
-  // Now that the memory has been freed again, we can finally delete this bullet entry.
-  // Hope, that this does not give us a SEGFAULT, but it should not do so.
-  //
-  CurBullet->type = OUT;
-  CurBullet->time_in_seconds = 0;
-  CurBullet->time_in_frames = 0;
-  CurBullet->mine = FALSE;
-  CurBullet->phase = 0;
-  CurBullet->pos.x = -1;
-  CurBullet->pos.y = -1;
-  CurBullet->angle = 0;
-
-  return;
-
-}; // void DeleteBullet(int Bulletnumber)
+// void
+// DeleteBullet (int Bulletnumber)
+// {
+//   Bullet CurBullet = &AllBullets[Bulletnumber];
+//   int i;
+// 
+//   if (CurBullet->type == OUT) // ignore dead bullets
+//     return;
+// 
+//   //--------------------
+//   // At first we generate the blast at the collision spot of the bullet,
+//   // cause later, after the bullet is deleted, it will be hard to know
+//   // the correct location ;)
+// 
+//   // RP (18/11/02): nay, we do that manually before DeleteBullet() now,
+//   // --> not all bullets should create Blasts (i.e. not if droid was hit)
+//   //  StartBlast (CurBullet->pos.x, CurBullet->pos.y, BULLETBLAST);
+// 
+//   //--------------------
+//   // maybe, the bullet had several SDL_Surfaces attached to it.  Then we need to
+//   // free the SDL_Surfaces again as well...
+//   //
+//   // if ( ( CurBullet->type != FLASH) && ( CurBullet->type != OUT ) )
+//   if ( CurBullet->Surfaces_were_generated )
+//     {
+//       DebugPrintf( 1 , "\nvoid DeleteBullet(...): freeing this bullets attached surfaces...");
+//       for ( i=0 ; i < Bulletmap[ CurBullet->type ].phases ; i++ )
+// 	{
+// 	  SDL_FreeSurface( CurBullet->SurfacePointer[i] );
+// 	  CurBullet->SurfacePointer[i] = NULL;
+// 	}
+//       CurBullet->Surfaces_were_generated = FALSE;
+//     }
+// 
+//   //--------------------
+//   // Now that the memory has been freed again, we can finally delete this bullet entry.
+//   // Hope, that this does not give us a SEGFAULT, but it should not do so.
+//   //
+//   CurBullet->type = OUT;
+//   CurBullet->time_in_seconds = 0;
+//   CurBullet->time_in_frames = 0;
+//   CurBullet->mine = FALSE;
+//   CurBullet->phase = 0;
+//   CurBullet->pos.x = -1;
+//   CurBullet->pos.y = -1;
+//   CurBullet->angle = 0;
+// 
+//   return;
+// 
+// }; // void DeleteBullet(int Bulletnumber)
 
 /*@Function============================================================
 @Desc: StartBlast(): erzeugt einen Blast type an x/y
