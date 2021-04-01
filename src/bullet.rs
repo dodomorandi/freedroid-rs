@@ -22,10 +22,6 @@ use std::{
     ptr::null_mut,
 };
 
-extern "C" {
-    pub fn MoveBullets();
-}
-
 #[inline]
 unsafe fn get_druid_hit_dist_squared() -> f32 {
     (0.3 + 4. / 64.) * (Droid_Radius + 4. / 64.)
@@ -405,4 +401,25 @@ pub unsafe extern "C" fn DeleteBullet(bullet_number: c_int) {
     cur_bullet.pos.x = -1.;
     cur_bullet.pos.y = -1.;
     cur_bullet.angle = 0.;
+}
+
+/// This function moves all the bullets according to their speeds.
+///
+/// NEW: this function also takes into accoung the current framerate.
+#[no_mangle]
+pub unsafe extern "C" fn MoveBullets() {
+    for cur_bullet in &mut AllBullets[..MAXBULLETS] {
+        if cur_bullet.ty == Status::Out as u8 {
+            continue;
+        }
+
+        cur_bullet.prev_pos.x = cur_bullet.pos.x;
+        cur_bullet.prev_pos.y = cur_bullet.pos.y;
+
+        cur_bullet.pos.x += cur_bullet.speed.x * Frame_Time();
+        cur_bullet.pos.y += cur_bullet.speed.y * Frame_Time();
+
+        cur_bullet.time_in_frames += 1;
+        cur_bullet.time_in_seconds += Frame_Time();
+    }
 }

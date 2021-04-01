@@ -59,34 +59,34 @@ NEW: this function also takes into accoung the current framerate.
 @Int: keiner
 * $Function----------------------------------------------------------*/
 
-void
-MoveBullets (void)
-{
-
-  /* lokale Variablen der Funktion: */
-  int i;
-  Bullet CurBullet;
-
-  /* Bewegung der Bullets */
-  for (i = 0; i < MAXBULLETS; i++)
-    {
-      CurBullet = &AllBullets[i];
-
-      if ( CurBullet->type == OUT )
-	continue;
-
-      CurBullet->prev_pos.x = CurBullet->pos.x;
-      CurBullet->prev_pos.y = CurBullet->pos.y;
-
-      CurBullet->pos.x += CurBullet->speed.x * Frame_Time ();
-      CurBullet->pos.y += CurBullet->speed.y * Frame_Time ();
-
-      CurBullet->time_in_frames++;
-      CurBullet->time_in_seconds += Frame_Time();
-    }				/* for */
-
-  return;
-}				// void MoveBullets(void)
+// void
+// MoveBullets (void)
+// {
+// 
+//   /* lokale Variablen der Funktion: */
+//   int i;
+//   Bullet CurBullet;
+// 
+//   /* Bewegung der Bullets */
+//   for (i = 0; i < MAXBULLETS; i++)
+//     {
+//       CurBullet = &AllBullets[i];
+// 
+//       if ( CurBullet->type == OUT )
+// 	continue;
+// 
+//       CurBullet->prev_pos.x = CurBullet->pos.x;
+//       CurBullet->prev_pos.y = CurBullet->pos.y;
+// 
+//       CurBullet->pos.x += CurBullet->speed.x * Frame_Time ();
+//       CurBullet->pos.y += CurBullet->speed.y * Frame_Time ();
+// 
+//       CurBullet->time_in_frames++;
+//       CurBullet->time_in_seconds += Frame_Time();
+//     }				/* for */
+// 
+//   return;
+// }				// void MoveBullets(void)
 
 
 /*@Function============================================================
