@@ -2,7 +2,7 @@ use crate::{
     bullet::StartBlast,
     defs::{
         Explosion, Status, AGGRESSIONMAX, DECKCOMPLETEBONUS, ENEMYMAXWAIT, ENEMYPHASES, MAXBULLETS,
-        ROBOT_MAX_WAIT_BETWEEN_SHOTS, SLOWMO_FACTOR, WAIT_COLLISION, WAIT_LEVELEMPTY,
+        MAXWAYPOINTS, ROBOT_MAX_WAIT_BETWEEN_SHOTS, SLOWMO_FACTOR, WAIT_COLLISION, WAIT_LEVELEMPTY,
     },
     global::Droid_Radius,
     map::IsVisible,
@@ -17,11 +17,11 @@ use crate::{
 use log::warn;
 use std::{
     convert::{TryFrom, TryInto},
+    ops::Not,
     os::raw::c_int,
 };
 
 extern "C" {
-    pub fn ShuffleEnemys();
     pub fn ClearEnemys();
     pub fn PermanentHealRobots();
     pub fn MoveThisRobotThowardsHisWaypoint(enemy_num: c_int);
@@ -343,5 +343,53 @@ pub unsafe extern "C" fn SelectNextWaypointClassical(enemy_num: c_int) {
             this_robot.nextwaypoint =
                 wp_list[nextwp].connections[usize::try_from(MyRandom(num_con - 1)).unwrap()];
         }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ShuffleEnemys() {
+    let cur_level = &*CurLevel;
+    let cur_level_num = cur_level.levelnum;
+    let mut used_wp: [bool; MAXWAYPOINTS] = [false; MAXWAYPOINTS];
+    let mut warned = false;
+
+    let num_wp = cur_level.num_waypoints;
+    let mut nth_enemy = 0;
+
+    for enemy in &mut AllEnemys[..usize::try_from(NumEnemys).unwrap()] {
+        if enemy.status == Status::Out as c_int || enemy.levelnum != cur_level_num {
+            /* dont handle dead enemys or on other level */
+            continue;
+        }
+
+        nth_enemy += 1;
+        if nth_enemy > num_wp {
+            if !warned {
+                warn!(
+                    "Less waypoints ({}) than enemys on level {}? ...cannot insert all droids on \
+                     this level.",
+                    num_wp, cur_level_num
+                );
+            }
+
+            warned = true;
+            enemy.status = Status::Out as c_int;
+            continue;
+        }
+
+        let mut wp;
+        loop {
+            wp = usize::try_from(MyRandom(num_wp - 1)).unwrap();
+            if used_wp[wp].not() {
+                break;
+            }
+        }
+
+        used_wp[wp] = true;
+        enemy.pos.x = cur_level.AllWaypoints[wp].x.into();
+        enemy.pos.y = cur_level.AllWaypoints[wp].y.into();
+
+        enemy.lastwaypoint = wp.try_into().unwrap();
+        enemy.nextwaypoint = wp.try_into().unwrap();
     }
 }

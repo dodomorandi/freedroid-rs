@@ -196,57 +196,57 @@ ClearEnemys (void)
  *
  *
  *-----------------------------------------------------------------*/
-void
-ShuffleEnemys (void)
-{
-  int curlevel = CurLevel->levelnum;
-  int i;
-  int nth_enemy;
-  int wp, num_wp;
-  bool used_wp[MAXWAYPOINTS];
-  bool warned = FALSE;
-
-  num_wp = CurLevel->num_waypoints;
-
-  // keep a little list of which waypoints have already been used
-  for ( i=0 ; i < num_wp; i++)
-    used_wp[i] = FALSE;
-
-  nth_enemy = 0;
-  for (i = 0; i < NumEnemys ; i++)
-    {
-      if (AllEnemys[i].status == OUT || AllEnemys[i].levelnum != curlevel)
-	continue;		/* dont handle dead enemys or on other level */
-
-      nth_enemy++;
-      if (nth_enemy > num_wp)
-	{
-	  if (!warned)
-	    {
-	      DebugPrintf (0, "\nWARNING: Less waypoints (%d) than enemys on level %d? !\n",
-			   num_wp, CurLevel->levelnum );
-	      DebugPrintf (0, "...cannot insert all droids on this level!\n");
-	    }
-
-	  warned = TRUE;
-	  AllEnemys[i].status = OUT;
-	  continue;
-	}
-
-      do { wp = MyRandom(num_wp-1);} while(used_wp[wp]);
-
-      used_wp[wp] = TRUE;
-      AllEnemys[i].pos.x = CurLevel->AllWaypoints[wp].x;
-      AllEnemys[i].pos.y = CurLevel->AllWaypoints[wp].y;
-
-      AllEnemys[i].lastwaypoint = wp;
-      AllEnemys[i].nextwaypoint = wp;
-
-    }/* for NumEnemys */
-
-  return;
-
-}	/* ShuffleEnemys() */
+// void
+// ShuffleEnemys (void)
+// {
+//   int curlevel = CurLevel->levelnum;
+//   int i;
+//   int nth_enemy;
+//   int wp, num_wp;
+//   bool used_wp[MAXWAYPOINTS];
+//   bool warned = FALSE;
+// 
+//   num_wp = CurLevel->num_waypoints;
+// 
+//   // keep a little list of which waypoints have already been used
+//   for ( i=0 ; i < num_wp; i++)
+//     used_wp[i] = FALSE;
+// 
+//   nth_enemy = 0;
+//   for (i = 0; i < NumEnemys ; i++)
+//     {
+//       if (AllEnemys[i].status == OUT || AllEnemys[i].levelnum != curlevel)
+// 	continue;		/* dont handle dead enemys or on other level */
+// 
+//       nth_enemy++;
+//       if (nth_enemy > num_wp)
+// 	{
+// 	  if (!warned)
+// 	    {
+// 	      DebugPrintf (0, "\nWARNING: Less waypoints (%d) than enemys on level %d? !\n",
+// 			   num_wp, CurLevel->levelnum );
+// 	      DebugPrintf (0, "...cannot insert all droids on this level!\n");
+// 	    }
+// 
+// 	  warned = TRUE;
+// 	  AllEnemys[i].status = OUT;
+// 	  continue;
+// 	}
+// 
+//       do { wp = MyRandom(num_wp-1);} while(used_wp[wp]);
+// 
+//       used_wp[wp] = TRUE;
+//       AllEnemys[i].pos.x = CurLevel->AllWaypoints[wp].x;
+//       AllEnemys[i].pos.y = CurLevel->AllWaypoints[wp].y;
+// 
+//       AllEnemys[i].lastwaypoint = wp;
+//       AllEnemys[i].nextwaypoint = wp;
+// 
+//     }/* for NumEnemys */
+// 
+//   return;
+// 
+// }	/* ShuffleEnemys() */
 
 /* ----------------------------------------------------------------------
  * This function checks if the connection between two points is free of
