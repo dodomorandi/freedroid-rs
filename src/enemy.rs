@@ -12,8 +12,10 @@ use std::{
 
 extern "C" {
     pub fn ShuffleEnemys();
-    pub fn MoveEnemys();
     pub fn ClearEnemys();
+    pub fn PermanentHealRobots();
+    pub fn MoveThisEnemy(enemy_num: c_int);
+    pub fn AttackInfluence(enemy_num: c_int);
 }
 
 #[no_mangle]
@@ -44,6 +46,34 @@ pub unsafe extern "C" fn AnimateEnemys() {
 
         if enemy.phase >= ENEMYPHASES as f32 {
             enemy.phase = 0.;
+        }
+    }
+}
+
+/// This is the function, that move each of the enemys according to
+/// their orders and their program
+#[no_mangle]
+pub unsafe extern "C" fn MoveEnemys() {
+    PermanentHealRobots(); // enemy robots heal as time passes...
+
+    AnimateEnemys(); // move the "phase" of the rotation of enemys
+
+    for (i, enemy) in AllEnemys[0..usize::try_from(NumEnemys).unwrap()]
+        .iter_mut()
+        .enumerate()
+    {
+        if enemy.status == Status::Out as i32
+            || enemy.status == Status::Terminated as i32
+            || enemy.levelnum != (*CurLevel).levelnum
+        {
+            continue;
+        }
+
+        MoveThisEnemy(i.try_into().unwrap());
+
+        // If its a combat droid, then if might attack...
+        if (*Druidmap.add(usize::try_from(enemy.ty).unwrap())).aggression != 0 {
+            AttackInfluence(i.try_into().unwrap());
         }
     }
 }

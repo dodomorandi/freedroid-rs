@@ -599,31 +599,31 @@ their orders and their program
 
 @Ret: none
 * $Function----------------------------------------------------------*/
-void
-MoveEnemys (void)
-{
-  int i;
-
-  PermanentHealRobots ();  // enemy robots heal as time passes...
-
-  AnimateEnemys ();	// move the "phase" of the rotation of enemys
-
-  for (i = 0; i < NumEnemys; i++)
-     {
-
-       if ( (AllEnemys[i].status == OUT) || (AllEnemys[i].status == TERMINATED) ||
-	    (AllEnemys[i].levelnum != CurLevel->levelnum) )
-	 continue;
-
-       MoveThisEnemy(i);
-
-       // If its a combat droid, then if might attack...
-       if (Druidmap[AllEnemys[i].type].aggression)
-	 AttackInfluence (i);
-
-     }	/* for NumEnemys */
-
-} /* MoveEnemys() */
+// void
+// MoveEnemys (void)
+// {
+//   int i;
+// 
+//   PermanentHealRobots ();  // enemy robots heal as time passes...
+// 
+//   AnimateEnemys ();	// move the "phase" of the rotation of enemys
+// 
+//   for (i = 0; i < NumEnemys; i++)
+//      {
+// 
+//        if ( (AllEnemys[i].status == OUT) || (AllEnemys[i].status == TERMINATED) ||
+// 	    (AllEnemys[i].levelnum != CurLevel->levelnum) )
+// 	 continue;
+// 
+//        MoveThisEnemy(i);
+// 
+//        // If its a combat droid, then if might attack...
+//        if (Druidmap[AllEnemys[i].type].aggression)
+// 	 AttackInfluence (i);
+// 
+//      }	/* for NumEnemys */
+// 
+// } /* MoveEnemys() */
 
 /*@Function============================================================
 @Desc: AttackInfluence(): This function sometimes fires a bullet from
