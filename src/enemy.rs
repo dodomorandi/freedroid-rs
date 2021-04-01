@@ -1,10 +1,15 @@
 use crate::{
-    defs::{Status, AGGRESSIONMAX, ENEMYPHASES, MAXBULLETS, ROBOT_MAX_WAIT_BETWEEN_SHOTS},
+    bullet::StartBlast,
+    defs::{
+        Explosion, Status, AGGRESSIONMAX, DECKCOMPLETEBONUS, ENEMYPHASES, MAXBULLETS,
+        ROBOT_MAX_WAIT_BETWEEN_SHOTS, SLOWMO_FACTOR, WAIT_LEVELEMPTY,
+    },
     map::IsVisible,
-    misc::{Frame_Time, MyRandom},
+    misc::{set_time_factor, Frame_Time, MyRandom},
+    ship::LevelEmpty,
     sound::Fire_Bullet_Sound,
     vars::{Bulletmap, Druidmap, Me},
-    AllBullets, AllEnemys, CurLevel, NumEnemys,
+    AllBullets, AllEnemys, CurLevel, DeathCount, NumEnemys, RealScore,
 };
 
 use log::warn;
@@ -17,7 +22,9 @@ extern "C" {
     pub fn ShuffleEnemys();
     pub fn ClearEnemys();
     pub fn PermanentHealRobots();
-    pub fn MoveThisEnemy(enemy_num: c_int);
+    pub fn CheckEnemyEnemyCollision(enemy_num: c_int) -> c_int;
+    pub fn MoveThisRobotThowardsHisWaypoint(enemy_num: c_int);
+    pub fn SelectNextWaypointClassical(enemy_num: c_int);
 }
 
 /// according to the intro, the laser can be "focused on any target
@@ -196,4 +203,48 @@ pub unsafe extern "C" fn AttackInfluence(enemy_num: c_int) {
     cur_bullet.ty = guntype.try_into().unwrap();
     cur_bullet.time_in_frames = 0;
     cur_bullet.time_in_seconds = 0.;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn MoveThisEnemy(enemy_num: c_int) {
+    let this_robot = &mut AllEnemys[usize::try_from(enemy_num).unwrap()];
+
+    // Now check if the robot is still alive
+    // if the robot just got killed, initiate the
+    // explosion and all that...
+    if this_robot.energy <= 0. && (this_robot.status != Status::Terminated as c_int) {
+        this_robot.status = Status::Terminated as c_int;
+        RealScore += (*Druidmap.add(usize::try_from(this_robot.ty).unwrap())).score as f32;
+
+        DeathCount += (this_robot.ty * this_robot.ty) as f32; // quadratic "importance", max=529
+
+        StartBlast(
+            this_robot.pos.x,
+            this_robot.pos.y,
+            Explosion::Druidblast as c_int,
+        );
+        if LevelEmpty() != 0 {
+            RealScore += DECKCOMPLETEBONUS;
+
+            let cur_level = &mut *CurLevel;
+            cur_level.empty = true.into();
+            cur_level.timer = WAIT_LEVELEMPTY;
+            set_time_factor(SLOWMO_FACTOR); // watch final explosion in slow-motion
+        }
+        return; // this one's down, so we can move on to the next
+    }
+
+    // robots that still have to wait also do not need to
+    // be processed for movement
+    if this_robot.warten > 0. {
+        return;
+    }
+
+    // Now check for collisions of this enemy with his colleagues
+    CheckEnemyEnemyCollision(enemy_num);
+
+    // Now comes the real movement part
+    MoveThisRobotThowardsHisWaypoint(enemy_num);
+
+    SelectNextWaypointClassical(enemy_num);
 }

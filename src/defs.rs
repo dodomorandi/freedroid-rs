@@ -635,7 +635,7 @@ pub const ALLSHIPS: usize = 4;
 pub const ENEMYPHASES: usize = 8;
 pub const DROID_PHASES: usize = ENEMYPHASES;
 
-pub const WAIT_LEVELEMPTY: f64 = 0.5; /* warte bevor Graufaerben (in seconds)*/
+pub const WAIT_LEVELEMPTY: f32 = 0.5; /* warte bevor Graufaerben (in seconds)*/
 pub const SLOWMO_FACTOR: f32 = 0.33; // slow-motion effect on last blast when level is going empty
 pub const WAIT_AFTER_KILLED: u32 = 2000; // time (in ms) to wait and still display pictures after the destruction of
 pub const SHOW_WAIT: u32 = 3500; // std amount of time to show something
@@ -869,7 +869,7 @@ pub enum Status {
     Out,
 }
 
-pub const DECKCOMPLETEBONUS: usize = 500;
+pub const DECKCOMPLETEBONUS: f32 = 500.;
 
 /* Konstanten die die Kartenwerte anschaulich machen */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

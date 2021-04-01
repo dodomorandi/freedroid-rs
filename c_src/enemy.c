@@ -549,49 +549,49 @@ SelectNextWaypointAdvanced ( int EnemyNum )
 } // void MoveThisRobotAdvanced ( int EnemyNum )
 
 
-void
-MoveThisEnemy( int EnemyNum )
-{
-  Enemy ThisRobot=&AllEnemys[ EnemyNum ];
-
-  // Now check if the robot is still alive
-  // if the robot just got killed, initiate the
-  // explosion and all that...
-  if ( ThisRobot->energy <= 0 && (ThisRobot->status != TERMINATED) )
-    {
-      ThisRobot->status = TERMINATED;
-      RealScore += Druidmap[ ThisRobot->type ].score;
-
-      DeathCount += ThisRobot->type * ThisRobot->type;   // quadratic "importance", max=529
-
-      StartBlast ( ThisRobot->pos.x, ThisRobot->pos.y, DRUIDBLAST);
-      if (LevelEmpty ())
-	{
-
-	  RealScore += DECKCOMPLETEBONUS;
-
-	  CurLevel->empty = TRUE;
-	  CurLevel->timer = WAIT_LEVELEMPTY;
-          set_time_factor ( SLOWMO_FACTOR );	// watch final explosion in slow-motion
-	}
-      return;	// this one's down, so we can move on to the next
-    }
-
-  // robots that still have to wait also do not need to
-  // be processed for movement
-  if ( ThisRobot->warten > 0)
-    return;
-
-  // Now check for collisions of this enemy with his colleagues
-  CheckEnemyEnemyCollision ( EnemyNum );
-
-  //--------------------
-  // Now comes the real movement part
-  MoveThisRobotThowardsHisWaypoint( EnemyNum );
-
-  SelectNextWaypointClassical( EnemyNum );
-
-} // void MoveThisEnemy ( int EnemyNum )
+// void
+// MoveThisEnemy( int EnemyNum )
+// {
+//   Enemy ThisRobot=&AllEnemys[ EnemyNum ];
+// 
+//   // Now check if the robot is still alive
+//   // if the robot just got killed, initiate the
+//   // explosion and all that...
+//   if ( ThisRobot->energy <= 0 && (ThisRobot->status != TERMINATED) )
+//     {
+//       ThisRobot->status = TERMINATED;
+//       RealScore += Druidmap[ ThisRobot->type ].score;
+// 
+//       DeathCount += ThisRobot->type * ThisRobot->type;   // quadratic "importance", max=529
+// 
+//       StartBlast ( ThisRobot->pos.x, ThisRobot->pos.y, DRUIDBLAST);
+//       if (LevelEmpty ())
+// 	{
+// 
+// 	  RealScore += DECKCOMPLETEBONUS;
+// 
+// 	  CurLevel->empty = TRUE;
+// 	  CurLevel->timer = WAIT_LEVELEMPTY;
+//           set_time_factor ( SLOWMO_FACTOR );	// watch final explosion in slow-motion
+// 	}
+//       return;	// this one's down, so we can move on to the next
+//     }
+// 
+//   // robots that still have to wait also do not need to
+//   // be processed for movement
+//   if ( ThisRobot->warten > 0)
+//     return;
+// 
+//   // Now check for collisions of this enemy with his colleagues
+//   CheckEnemyEnemyCollision ( EnemyNum );
+// 
+//   //--------------------
+//   // Now comes the real movement part
+//   MoveThisRobotThowardsHisWaypoint( EnemyNum );
+// 
+//   SelectNextWaypointClassical( EnemyNum );
+// 
+// } // void MoveThisEnemy ( int EnemyNum )
 
 /*@Function============================================================
 @Desc: This is the function, that move each of the enemys according to
