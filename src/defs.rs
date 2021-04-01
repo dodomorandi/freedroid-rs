@@ -644,7 +644,7 @@ pub const WAIT_SHIPEMPTY: usize = 20;
 pub const WAIT_TRANSFERMODE: f64 = 0.3; /* this is a "float" indicating the number of seconds the influence
                                         stand still with space pressed, before switching into transfermode
                                         This variable describes the amount in SECONDS */
-pub const WAIT_COLLISION: usize = 1; // after a little collision with influ, enemys hold position for a while
+pub const WAIT_COLLISION: c_int = 1; // after a little collision with influ, enemys hold position for a while
                                      // this variable describes the amount of time in SECONDS
 pub const ENEMYMAXWAIT: f64 = 2.0; // after each robot has reached its current destination waypoint is waits a
                                    // while.  This variable describes the amount of time in SECONDS.  However,

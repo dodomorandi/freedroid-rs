@@ -2,8 +2,9 @@ use crate::{
     bullet::StartBlast,
     defs::{
         Explosion, Status, AGGRESSIONMAX, DECKCOMPLETEBONUS, ENEMYPHASES, MAXBULLETS,
-        ROBOT_MAX_WAIT_BETWEEN_SHOTS, SLOWMO_FACTOR, WAIT_LEVELEMPTY,
+        ROBOT_MAX_WAIT_BETWEEN_SHOTS, SLOWMO_FACTOR, WAIT_COLLISION, WAIT_LEVELEMPTY,
     },
+    global::Droid_Radius,
     map::IsVisible,
     misc::{set_time_factor, Frame_Time, MyRandom},
     ship::LevelEmpty,
@@ -22,7 +23,6 @@ extern "C" {
     pub fn ShuffleEnemys();
     pub fn ClearEnemys();
     pub fn PermanentHealRobots();
-    pub fn CheckEnemyEnemyCollision(enemy_num: c_int) -> c_int;
     pub fn MoveThisRobotThowardsHisWaypoint(enemy_num: c_int);
     pub fn SelectNextWaypointClassical(enemy_num: c_int);
 }
@@ -30,6 +30,8 @@ extern "C" {
 /// according to the intro, the laser can be "focused on any target
 /// within a range of eight metres"
 const FIREDIST2: f32 = 8.;
+
+const COL_SPEED: f32 = 3.;
 
 #[no_mangle]
 pub unsafe extern "C" fn ClassOfDruid(druid_type: c_int) -> c_int {
@@ -247,4 +249,66 @@ pub unsafe extern "C" fn MoveThisEnemy(enemy_num: c_int) {
     MoveThisRobotThowardsHisWaypoint(enemy_num);
 
     SelectNextWaypointClassical(enemy_num);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn CheckEnemyEnemyCollision(enemy_num: c_int) -> c_int {
+    let curlev = (*CurLevel).levelnum;
+
+    let enemy_num: usize = enemy_num.try_into().unwrap();
+    let (enemys_before, rest) =
+        AllEnemys[..usize::try_from(NumEnemys).unwrap()].split_at_mut(enemy_num);
+    let (cur_enemy, enemys_after) = rest.split_first_mut().unwrap();
+    let check_x = cur_enemy.pos.x;
+    let check_y = cur_enemy.pos.y;
+
+    for enemy in enemys_before.iter_mut().chain(enemys_after) {
+        // check only collisions of LIVING enemys on this level
+        if enemy.status == Status::Out as c_int
+            || enemy.status == Status::Terminated as c_int
+            || enemy.levelnum != curlev
+        {
+            continue;
+        }
+
+        /* get distance between enemy and cur_enemy */
+        let xdist = check_x - enemy.pos.x;
+        let ydist = check_y - enemy.pos.y;
+
+        let dist = (xdist * xdist + ydist * ydist).sqrt();
+
+        // Is there a Collision?
+        if dist <= (2. * Droid_Radius) {
+            // am I waiting already?  If so, keep waiting...
+            if cur_enemy.warten != 0. {
+                cur_enemy.warten = MyRandom(2 * WAIT_COLLISION) as f32;
+                continue;
+            }
+
+            enemy.warten = MyRandom(2 * WAIT_COLLISION) as f32;
+
+            if xdist != 0. {
+                enemy.pos.x -= xdist / xdist.abs() * Frame_Time();
+            }
+            if ydist != 0. {
+                enemy.pos.y -= ydist / ydist.abs() * Frame_Time();
+            }
+
+            std::mem::swap(&mut cur_enemy.nextwaypoint, &mut cur_enemy.lastwaypoint);
+
+            let speed_x = cur_enemy.speed.x;
+            let speed_y = cur_enemy.speed.y;
+
+            if speed_x != 0. {
+                cur_enemy.pos.x -= Frame_Time() * COL_SPEED * (speed_x) / speed_x.abs();
+            }
+            if speed_y != 0. {
+                cur_enemy.pos.y -= Frame_Time() * COL_SPEED * (speed_y) / speed_y.abs();
+            }
+
+            return true.into();
+        }
+    }
+
+    false.into()
 }

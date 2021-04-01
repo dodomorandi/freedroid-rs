@@ -756,81 +756,81 @@ but of course only if the odds are good i.e. requirements are met.
 @Ret: 	TRUE: if enemy Nr. Enemynum collided with another enemy
 @Int:
 * $Function----------------------------------------------------------*/
-int
-CheckEnemyEnemyCollision (int enemynum)
-{
-  int i;
-  int curlev = CurLevel->levelnum;
-  float check_x, check_y;
-  int swap;
-  float xdist, ydist;
-  float dist;
-  float speed_x, speed_y;
-
-  check_x = AllEnemys[enemynum].pos.x;
-  check_y = AllEnemys[enemynum].pos.y;
-
-  for (i = 0; i < NumEnemys ; i++)
-    {
-      // check only collisions of LIVING enemys on this level
-      if ( (AllEnemys[i].status == OUT) || (AllEnemys[i].status == TERMINATED)
-	   || AllEnemys[i].levelnum != curlev)
-	continue;
-      // dont check yourself...
-      if (i == enemynum)
-	continue;
-
-      /* get distance between enemy i and enemynum */
-      xdist = check_x - AllEnemys[i].pos.x;
-      ydist = check_y - AllEnemys[i].pos.y;
-
-      dist = sqrt(xdist * xdist + ydist * ydist);
-
-      // Is there a Collision?
-      if ( dist <= 2*Droid_Radius)
-	{
-
-	  // am I waiting already?  If so, keep waiting...
-	  if (AllEnemys[enemynum].warten)
-	    {
-	      /* weiter warten */
-	      AllEnemys[enemynum].warten = MyRandom(2*WAIT_COLLISION);
-	      continue;
-	    }
-
-	  /* Sonst: Feind stoppen und selbst umdrehen */
-	  AllEnemys[i].warten = MyRandom(2*WAIT_COLLISION);
-
-	  /* gestoppten gegner ein wenig zurueckstossen */
-	  if (xdist)
-	    AllEnemys[i].pos.x -= xdist / fabsf (xdist) * Frame_Time();
-	  if (ydist)
-	    AllEnemys[i].pos.y -= ydist / fabsf (ydist) * Frame_Time();
-
-	  swap = AllEnemys[enemynum].nextwaypoint;
-	  AllEnemys[enemynum].nextwaypoint =
-	    AllEnemys[enemynum].lastwaypoint;
-	  AllEnemys[enemynum].lastwaypoint = swap;
-
-	  /* Etwas aus Gegner herausbewegen !! */
-	  speed_x = AllEnemys[enemynum].speed.x;
-	  speed_y = AllEnemys[enemynum].speed.y;
-
-	  if (speed_x)
-	    AllEnemys[enemynum].pos.x -=
-	      Frame_Time() * COL_SPEED * (speed_x) / fabsf (speed_x);
-	  if (speed_y)
-	    AllEnemys[enemynum].pos.y -=
-	      Frame_Time() * COL_SPEED * (speed_y) / fabsf (speed_y);
-
-	  return TRUE;
-
-	}			/* if dist zu klein */
-
-    }				/* for */
-
-  return FALSE;
-} // int CheckEnemyEnemyCollision
+// int
+// CheckEnemyEnemyCollision (int enemynum)
+// {
+//   int i;
+//   int curlev = CurLevel->levelnum;
+//   float check_x, check_y;
+//   int swap;
+//   float xdist, ydist;
+//   float dist;
+//   float speed_x, speed_y;
+// 
+//   check_x = AllEnemys[enemynum].pos.x;
+//   check_y = AllEnemys[enemynum].pos.y;
+// 
+//   for (i = 0; i < NumEnemys ; i++)
+//     {
+//       // check only collisions of LIVING enemys on this level
+//       if ( (AllEnemys[i].status == OUT) || (AllEnemys[i].status == TERMINATED)
+// 	   || AllEnemys[i].levelnum != curlev)
+// 	continue;
+//       // dont check yourself...
+//       if (i == enemynum)
+// 	continue;
+// 
+//       /* get distance between enemy i and enemynum */
+//       xdist = check_x - AllEnemys[i].pos.x;
+//       ydist = check_y - AllEnemys[i].pos.y;
+// 
+//       dist = sqrt(xdist * xdist + ydist * ydist);
+// 
+//       // Is there a Collision?
+//       if ( dist <= 2*Droid_Radius)
+// 	{
+// 
+// 	  // am I waiting already?  If so, keep waiting...
+// 	  if (AllEnemys[enemynum].warten)
+// 	    {
+// 	      /* weiter warten */
+// 	      AllEnemys[enemynum].warten = MyRandom(2*WAIT_COLLISION);
+// 	      continue;
+// 	    }
+// 
+// 	  /* Sonst: Feind stoppen und selbst umdrehen */
+// 	  AllEnemys[i].warten = MyRandom(2*WAIT_COLLISION);
+// 
+// 	  /* gestoppten gegner ein wenig zurueckstossen */
+// 	  if (xdist)
+// 	    AllEnemys[i].pos.x -= xdist / fabsf (xdist) * Frame_Time();
+// 	  if (ydist)
+// 	    AllEnemys[i].pos.y -= ydist / fabsf (ydist) * Frame_Time();
+// 
+// 	  swap = AllEnemys[enemynum].nextwaypoint;
+// 	  AllEnemys[enemynum].nextwaypoint =
+// 	    AllEnemys[enemynum].lastwaypoint;
+// 	  AllEnemys[enemynum].lastwaypoint = swap;
+// 
+// 	  /* Etwas aus Gegner herausbewegen !! */
+// 	  speed_x = AllEnemys[enemynum].speed.x;
+// 	  speed_y = AllEnemys[enemynum].speed.y;
+// 
+// 	  if (speed_x)
+// 	    AllEnemys[enemynum].pos.x -=
+// 	      Frame_Time() * COL_SPEED * (speed_x) / fabsf (speed_x);
+// 	  if (speed_y)
+// 	    AllEnemys[enemynum].pos.y -=
+// 	      Frame_Time() * COL_SPEED * (speed_y) / fabsf (speed_y);
+// 
+// 	  return TRUE;
+// 
+// 	}			/* if dist zu klein */
+// 
+//     }				/* for */
+// 
+//   return FALSE;
+// } // int CheckEnemyEnemyCollision
 
 
 /*@Function============================================================
