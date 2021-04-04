@@ -897,54 +897,54 @@ NEW: this function now takes into account the framerates.
 @Ret: void
 @In
 * $Function----------------------------------------------------------*/
-void
-RefreshInfluencer (void)
-{
-  static int timecounter = 3;	/* to slow down healing process */
-
-  if (--timecounter)
-    return;
-  if (timecounter == 0)
-    timecounter = 3;
-
-  if (Me.energy < Me.health)
-    {
-      Me.energy += REFRESH_ENERGY * Frame_Time () * 5;
-      RealScore -= REFRESH_ENERGY * Frame_Time () * 10;
-
-      if (RealScore < 0) RealScore = 0; // don't go negative...
-
-      if (Me.energy > Me.health)
-	Me.energy = Me.health;
-
-      if (LastRefreshSound > 0.6)
-	{
-	  RefreshSound ();
-	  LastRefreshSound = 0;
-	}
-
-      //--------------------
-      // since robots like the refresh, the influencer might also say so...
-      //
-      if ( GameConfig.Droid_Talk)
-	{
-	  Me.TextToBeDisplayed="Ahhh, that feels so good...";
-	  Me.TextVisibleTime=0;
-	}
-    }
-  else
-    {
-      //--------------------
-      // If nothing more is to be had, the influencer might also say so...
-      if ( GameConfig.Droid_Talk)
-	{
-	  Me.TextToBeDisplayed="Oh, it seems that was it again.";
-	  Me.TextVisibleTime=0;
-	}
-    }
-
-  return;
-}				/* RefreshInfluence */
+// void
+// RefreshInfluencer (void)
+// {
+//   static int timecounter = 3;	/* to slow down healing process */
+// 
+//   if (--timecounter)
+//     return;
+//   if (timecounter == 0)
+//     timecounter = 3;
+// 
+//   if (Me.energy < Me.health)
+//     {
+//       Me.energy += REFRESH_ENERGY * Frame_Time () * 5;
+//       RealScore -= REFRESH_ENERGY * Frame_Time () * 10;
+// 
+//       if (RealScore < 0) RealScore = 0; // don't go negative...
+// 
+//       if (Me.energy > Me.health)
+// 	Me.energy = Me.health;
+// 
+//       if (LastRefreshSound > 0.6)
+// 	{
+// 	  RefreshSound ();
+// 	  LastRefreshSound = 0;
+// 	}
+// 
+//       //--------------------
+//       // since robots like the refresh, the influencer might also say so...
+//       //
+//       if ( GameConfig.Droid_Talk)
+// 	{
+// 	  Me.TextToBeDisplayed="Ahhh, that feels so good...";
+// 	  Me.TextVisibleTime=0;
+// 	}
+//     }
+//   else
+//     {
+//       //--------------------
+//       // If nothing more is to be had, the influencer might also say so...
+//       if ( GameConfig.Droid_Talk)
+// 	{
+// 	  Me.TextToBeDisplayed="Oh, it seems that was it again.";
+// 	  Me.TextVisibleTime=0;
+// 	}
+//     }
+// 
+//   return;
+// }				/* RefreshInfluence */
 
 /*@Function============================================================
 @Desc: influ-enemy collisions are sucking someones
