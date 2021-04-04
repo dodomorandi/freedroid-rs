@@ -749,7 +749,7 @@ pub const BREMSDREHUNG: usize = 3; /* warte 3*, bevor Influencer weitergedreht w
 
 /* Wegstossgeschw. von Tueren u.ae. */
 // NORMALISATION #define PUSHSPEED 2
-pub const PUSHSPEED: usize = 2;
+pub const PUSHSPEED: f32 = 2.;
 
 /* Schusstypen */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

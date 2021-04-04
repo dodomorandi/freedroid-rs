@@ -1,11 +1,15 @@
 use crate::{
-    defs::{self, Explosion, Sound, Status, MAXBLASTS, WAIT_COLLISION},
+    defs::{
+        self, Direction, Explosion, MapTile, Sound, Status, MAXBLASTS, PUSHSPEED, WAIT_COLLISION,
+    },
     global::{collision_lose_energy_calibrator, Droid_Radius},
+    map::{DruidPassable, GetMapBrick},
     misc::{Frame_Time, MyRandom, Terminate},
     ship::LevelEmpty,
     sound::{
         BounceSound, CollisionDamagedEnemySound, CollisionGotDamagedSound, Play_Sound, RefreshSound,
     },
+    structs::Finepoint,
     takeover::Takeover,
     text::EnemyInfluCollisionText,
     vars::Druidmap,
@@ -14,19 +18,19 @@ use crate::{
 };
 
 use cstr::cstr;
-use log::error;
+use log::{error, info, warn};
 use std::{
     convert::{TryFrom, TryInto},
     ops::Not,
-    os::raw::{c_char, c_int},
+    os::raw::{c_char, c_float, c_int},
 };
 
 extern "C" {
     pub fn AnimateInfluence();
-    pub fn CheckInfluenceWallCollisions();
     pub fn MoveInfluence();
     pub fn InitInfluPositionHistory();
-
+    pub fn GetInfluPositionHistoryX(how_long_past: c_int) -> c_float;
+    pub fn GetInfluPositionHistoryY(how_long_past: c_int) -> c_float;
 }
 
 const REFRESH_ENERGY: f32 = 3.;
@@ -209,4 +213,134 @@ pub unsafe extern "C" fn ExplodeInfluencer() {
     }
 
     Play_Sound(Sound::Influexplosion as c_int);
+}
+
+/// This function checks for collisions of the influencer with walls,
+/// doors, consoles, boxes and all other map elements.
+/// In case of a collision, the position and speed of the influencer are
+/// adapted accordingly.
+/// NOTE: Of course this functions HAS to take into account the current framerate!
+#[no_mangle]
+pub unsafe extern "C" fn CheckInfluenceWallCollisions() {
+    let sx = Me.speed.x * Frame_Time();
+    let sy = Me.speed.y * Frame_Time();
+    let mut h_door_sliding_active = false;
+
+    let lastpos = Finepoint {
+        x: Me.pos.x - sx,
+        y: Me.pos.y - sy,
+    };
+
+    let res = DruidPassable(Me.pos.x, Me.pos.y);
+
+    // Influence-Wall-Collision only has to be checked in case of
+    // a collision of course, which is indicated by res not CENTER.
+    if res != Direction::Center as c_int {
+        //--------------------
+        // At first we just check in which directions (from the last position)
+        // the ways are blocked and in which directions the ways are open.
+        //
+        let north_south_axis_blocked;
+        if !((DruidPassable(
+            lastpos.x,
+            lastpos.y + (*Druidmap.add(usize::try_from(Me.ty).unwrap())).maxspeed * Frame_Time(),
+        ) != Direction::Center as c_int)
+            || (DruidPassable(
+                lastpos.x,
+                lastpos.y
+                    - (*Druidmap.add(usize::try_from(Me.ty).unwrap())).maxspeed * Frame_Time(),
+            ) != Direction::Center as c_int))
+        {
+            info!("North-south-Axis seems to be free.");
+            north_south_axis_blocked = false;
+        } else {
+            north_south_axis_blocked = true;
+        }
+
+        let east_west_axis_blocked;
+        if (DruidPassable(
+            lastpos.x + (*Druidmap.add(usize::try_from(Me.ty).unwrap())).maxspeed * Frame_Time(),
+            lastpos.y,
+        ) == Direction::Center as c_int)
+            && (DruidPassable(
+                lastpos.x
+                    - (*Druidmap.add(usize::try_from(Me.ty).unwrap())).maxspeed * Frame_Time(),
+                lastpos.y,
+            ) == Direction::Center as c_int)
+        {
+            east_west_axis_blocked = false;
+        } else {
+            east_west_axis_blocked = true;
+        }
+
+        // Now we try to handle the sitution:
+
+        if north_south_axis_blocked {
+            // NorthSouthCorrectionDone=TRUE;
+            Me.pos.y = lastpos.y;
+            Me.speed.y = 0.;
+
+            // if its an open door, we also correct the east-west position, in the
+            // sense that we move thowards the middle
+            if GetMapBrick(&*CurLevel, Me.pos.x, Me.pos.y - 0.5) == MapTile::HGanztuere as u8
+                || GetMapBrick(&*CurLevel, Me.pos.x, Me.pos.y + 0.5) == MapTile::HGanztuere as u8
+            {
+                Me.pos.x += f32::copysign(PUSHSPEED * Frame_Time(), Me.pos.x.round() - Me.pos.x);
+                h_door_sliding_active = true;
+            }
+        }
+
+        if east_west_axis_blocked {
+            // EastWestCorrectionDone=TRUE;
+            if !h_door_sliding_active {
+                Me.pos.x = lastpos.x;
+            }
+            Me.speed.x = 0.;
+
+            // if its an open door, we also correct the north-south position, in the
+            // sense that we move thowards the middle
+            if (GetMapBrick(&*CurLevel, Me.pos.x + 0.5, Me.pos.y) == MapTile::VGanztuere as u8)
+                || (GetMapBrick(&*CurLevel, Me.pos.x - 0.5, Me.pos.y) == MapTile::VGanztuere as u8)
+            {
+                Me.pos.y += f32::copysign(PUSHSPEED * Frame_Time(), Me.pos.y.round() - Me.pos.y);
+            }
+        }
+
+        if east_west_axis_blocked && north_south_axis_blocked {
+            // printf("\nBOTH AXES BLOCKED... Corner handling activated...");
+            // in case both axes were blocked, we must be at a corner.
+            // both axis-blocked-routines have been executed, so the speed has
+            // been set to absolutely zero and we are at the previous position.
+            //
+            // But perhaps everything would be fine,
+            // if we just restricted ourselves to moving in only ONE direction.
+            // try if this would make sense...
+            // (Of course we may only move into the one direction that is free)
+            //
+            if DruidPassable(Me.pos.x + sx, Me.pos.y) == Direction::Center as c_int {
+                Me.pos.x += sx;
+            }
+            if DruidPassable(Me.pos.x, Me.pos.y + sy) == Direction::Center as c_int {
+                Me.pos.y += sy;
+            }
+        }
+
+        // Here I introduce some extra security as a fallback:  Obviously
+        // if the influencer is blocked FOR THE SECOND TIME, then the throw-back-algorithm
+        // above HAS FAILED.  The absolutely fool-proof and secure handling is now done by
+        // simply reverting to the last influ coordinated, where influ was NOT BLOCKED.
+        // For this reason, a history of influ-coordinates has been introduced.  This will all
+        // be done here and now:
+
+        if (DruidPassable(Me.pos.x, Me.pos.y) != Direction::Center as c_int)
+            && (DruidPassable(GetInfluPositionHistoryX(0), GetInfluPositionHistoryY(0))
+                != Direction::Center as c_int)
+            && (DruidPassable(GetInfluPositionHistoryX(1), GetInfluPositionHistoryY(1))
+                != Direction::Center as c_int)
+        {
+            Me.pos.x = GetInfluPositionHistoryX(2);
+            Me.pos.y = GetInfluPositionHistoryY(2);
+            warn!("ATTENTION! CheckInfluenceWallCollsision FALLBACK ACTIVATED!!",);
+        }
+    }
 }

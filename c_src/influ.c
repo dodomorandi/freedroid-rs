@@ -317,286 +317,286 @@ NOTE: Of course this functions HAS to take into account the current framerate!
 @Ret: void
 @Int:
 * $Function----------------------------------------------------------*/
-void
-CheckInfluenceWallCollisions (void)
-{
-  int sign;
-  float SX = Me.speed.x * Frame_Time ();
-  float SY = Me.speed.y * Frame_Time ();
-  finepoint lastpos;
-  int res;
-  int NumberOfShifts=0;
-  int safty_sx = 0, safty_sy = 0;	/* wegstoss - Geschwindigkeiten (falls noetig) */
-  int NorthSouthAxisBlocked=FALSE;
-  int EastWestAxisBlocked=FALSE;
-  int H_Door_Sliding_Active = FALSE;
-
-
-  int crashx = FALSE, crashy = FALSE;	/* Merker wo kollidiert wurde */
-
-  lastpos.x = Me.pos.x - SX;
-  lastpos.y = Me.pos.y - SY;
-
-  // lastpos.x = Me.Position_History[0].x;
-  // lastpos.y = Me.Position_History[0].y;
-
-  res = DruidPassable (Me.pos.x, Me.pos.y);
-
-#define NEW_BOUNCE_CHECK
-#ifdef NEW_BOUNCE_CHECK
-
-  // Influence-Wall-Collision only has to be checked in case of
-  // a collision of course, which is indicated by res not CENTER.
-  if (res != CENTER )
-    {
-
-      //--------------------
-      // At first we just check in which directions (from the last position)
-      // the ways are blocked and in which directions the ways are open.
-      //
-      if ( ! ( ( DruidPassable(lastpos.x , lastpos.y + Druidmap[Me.type].maxspeed * Frame_Time() ) != CENTER ) ||
-	       ( DruidPassable(lastpos.x , lastpos.y - Druidmap[Me.type].maxspeed * Frame_Time() ) != CENTER ) ) )
-	{
-	  DebugPrintf(1, "\nNorth-south-Axis seems to be free.");
-	  NorthSouthAxisBlocked = FALSE;
-	}
-      else
-	{
-	  NorthSouthAxisBlocked = TRUE;
-	}
-
-      if ( ( DruidPassable(lastpos.x + Druidmap[Me.type].maxspeed * Frame_Time() , lastpos.y ) == CENTER ) &&
-	   ( DruidPassable(lastpos.x - Druidmap[Me.type].maxspeed * Frame_Time() , lastpos.y ) == CENTER ) )
-	{
-	  EastWestAxisBlocked = FALSE;
-	}
-      else
-	{
-	  EastWestAxisBlocked = TRUE;
-	}
-
-      //--------------------
-      // Now we try to handle the sitution:
-      //
-
-      if ( NorthSouthAxisBlocked )
-	{
-	  // NorthSouthCorrectionDone=TRUE;
-	  Me.pos.y = lastpos.y;
-	  Me.speed.y = 0;
-
-	  // if its an open door, we also correct the east-west position, in the
-	  // sense that we move thowards the middle
-	  if ( (GetMapBrick(CurLevel, Me.pos.x , Me.pos.y - 0.5 ) == H_GANZTUERE ) ||
-	       (GetMapBrick(CurLevel, Me.pos.x , Me.pos.y + 0.5 ) == H_GANZTUERE ) )
-	    {
-	      Me.pos.x += copysignf ( PUSHSPEED * Frame_Time() , ( rintf(Me.pos.x) - Me.pos.x ));
-	      H_Door_Sliding_Active = TRUE;
-	    }
-	}
-
-      if ( EastWestAxisBlocked )
-	{
-	  // EastWestCorrectionDone=TRUE;
-	  if ( !H_Door_Sliding_Active ) Me.pos.x = lastpos.x;
-	  Me.speed.x = 0;
-
-	  // if its an open door, we also correct the north-south position, in the
-	  // sense that we move thowards the middle
-	  if ( (GetMapBrick(CurLevel, Me.pos.x +0.5 , Me.pos.y) == V_GANZTUERE ) ||
-	       (GetMapBrick(CurLevel, Me.pos.x -0.5 , Me.pos.y) == V_GANZTUERE ) )
-	    Me.pos.y += copysignf (PUSHSPEED * Frame_Time() , ( rintf(Me.pos.y) - Me.pos.y ));
-	}
-
-      if ( EastWestAxisBlocked && NorthSouthAxisBlocked )
-	{
-	  // printf("\nBOTH AXES BLOCKED... Corner handling activated...");
-	  // in case both axes were blocked, we must be at a corner.
-	  // both axis-blocked-routines have been executed, so the speed has
-	  // been set to absolutely zero and we are at the previous position.
-	  //
-	  // But perhaps everything would be fine,
-	  // if we just restricted ourselves to moving in only ONE direction.
-	  // try if this would make sense...
-	  // (Of course we may only move into the one direction that is free)
-	  //
-	  if ( DruidPassable( Me.pos.x + SX , Me.pos.y ) == CENTER ) Me.pos.x += SX;
-	  if ( DruidPassable( Me.pos.x , Me.pos.y +SY ) == CENTER ) Me.pos.y += SY;
-	}
-
-      // Here I introduce some extra security as a fallback:  Obviously
-      // if the influencer is blocked FOR THE SECOND TIME, then the throw-back-algorithm
-      // above HAS FAILED.  The absolutely fool-proof and secure handling is now done by
-      // simply reverting to the last influ coordinated, where influ was NOT BLOCKED.
-      // For this reason, a history of influ-coordinates has been introduced.  This will all
-      // be done here and now:
-
-      if ( (DruidPassable (Me.pos.x, Me.pos.y) != CENTER) &&
-	   (DruidPassable ( GetInfluPositionHistoryX( 0 ) , GetInfluPositionHistoryY( 0 ) ) != CENTER) &&
-	   (DruidPassable ( GetInfluPositionHistoryX( 1 ) , GetInfluPositionHistoryY( 1 ) ) != CENTER) )
-	{
-	  Me.pos.x = GetInfluPositionHistoryX( 2 );
-	  Me.pos.y = GetInfluPositionHistoryY( 2 );
-	  DebugPrintf(1, "\nATTENTION! CheckInfluenceWallCollsision FALLBACK ACTIVATED!!");
-	}
-
-    }
-
-  return;
-
-#endif
-
-  switch (res)
-    {
-      // In this case, the influencer is (completely?) blocked.
-    case -1:
-      // --------------------
-      // We handle here the case, that the influencer is completely blocked.
-      // WHAT DO WE DO?  ---  The new algorithm proceeds as follows:
-      // 1. Check if the north-south axis would be free FROM THE PREVIOUS POSITION
-      // 2. Check if the east-west axis would be free FROM THE PREVIOUS POSITION
-      //    and both of the above under the assumption of full speed.
-      // 3. If the north south axis is free, it must have been the east-west movement
-      //    otherwise it must have been the north-west movement, which caused the
-      //    collision.
-      // 4. Therefore restore the last position and move from there, but only in
-      //    the free direction and not in the other.
-      //
-
-      /*
-      if ( ( DruidPassable(lastpos.x , lastpos.y + Druidmap[Me.type].maxspeed * Frame_Time() ) == CENTER ) &&
-	   ( DruidPassable(lastpos.x , lastpos.y - Druidmap[Me.type].maxspeed * Frame_Time() ) == CENTER ) )
-	{
-	  printf("\nNorth-south-Axis seems to be free.");
-	}
-      else
-	{
-	  printf("\nNorth-south-Axis seems NOT to be free.");
-	  printf("\nCorrection movement and position in this direction...");
-	  Me.pos.y = lastpos.y;
-	  Me.speed.y = 0;
-	  // return;
-	}
-
-      if ( ( DruidPassable(lastpos.x + Druidmap[Me.type].maxspeed * Frame_Time() , lastpos.y ) == CENTER ) &&
-	   ( DruidPassable(lastpos.x - Druidmap[Me.type].maxspeed * Frame_Time() , lastpos.y ) == CENTER ) )
-	{
-	  printf("\nEast-west-Axis seems to be free.");
-	}
-      else
-	{
-	  printf("\nEast-west-Axis seems NOT to be free.");
-	  printf("\nCorrection movement and position in this direction...");
-	  Me.pos.x = lastpos.x;
-	  Me.speed.x = 0;
-	  //return;
-	}
-
-      return;
-
-      */
-
-      /* Festellen, in welcher Richtung die Mauer lag,
-         und den Influencer entsprechend stoppen */
-      if ( rintf(SX) && (DruidPassable (lastpos.x + SX, lastpos.y) != CENTER))
-	{
-	  crashx = TRUE;	/* In X wurde gecrasht */
-	  sign = (SX < 0) ? -1 : 1;
-	  SX = abs ((int)SX);
-	  NumberOfShifts=0;
-	  while (--SX
-		 && (DruidPassable (lastpos.x + sign * SX, lastpos.y) !=
-		     CENTER) && (NumberOfShifts++ < 4));
-	  Me.pos.x = lastpos.x + SX * sign;
-	  Me.speed.x = 0;
-
-	  /* falls Influencer weggestossen werden muss ! */
-	  safty_sx = (-1) * sign * PUSHSPEED;
-	}
-
-      if (rintf(SY) && (DruidPassable (lastpos.x, lastpos.y + SY) != CENTER))
-	{
-	  crashy = TRUE;	/* in Y wurde gecrasht */
-	  sign = (SY < 0) ? -1 : 1;
-	  SY = abs ((int)SY);
-	  NumberOfShifts=0;
-	  while (--SY
-		 && (DruidPassable (lastpos.x, lastpos.y + sign * SY) !=
-		     CENTER) && (NumberOfShifts++ < 4));
-	  Me.pos.y = lastpos.y + SY * sign;
-	  Me.speed.y = 0;
-
-	  /* Falls Influencer weggestossen werden muss */
-	  safty_sy = (-1) * sign * PUSHSPEED;
-	}
-
-      /* Hat das nichts geholfen, noch etwas wegschubsen */
-      if (DruidPassable (Me.pos.x, Me.pos.y) != CENTER)
-	{
-	  if (crashx)
-	    {
-	      Me.speed.x = safty_sx;
-	      Me.pos.x += Me.speed.x * Frame_Time() ;
-	    }
-
-	  if (crashy)
-	    {
-	      Me.speed.y = safty_sy;
-	      Me.pos.y += Me.speed.y * Frame_Time() ;
-	    }
-	}
-
-      break;
-
-      /* Von Tuerrand wegschubsen */
-    case OBEN:
-      Me.speed.y = -PUSHSPEED;
-      Me.pos.y += Me.speed.y; // * Frame_Time();
-      break;
-
-    case UNTEN:
-      Me.speed.y = PUSHSPEED;
-      Me.pos.y += Me.speed.y; // * Frame_Time() ;
-      break;
-
-    case RECHTS:
-      Me.speed.x = PUSHSPEED;
-      Me.pos.x += Me.speed.x; // * Frame_Time() ;
-      break;
-
-    case LINKS:
-      Me.speed.x = -PUSHSPEED;
-      Me.pos.x += Me.speed.x; // * Frame_Time() ;
-      break;
-
-      /* Not blocked at all ! */
-    case CENTER:
-      break;
-
-    default:
-      DebugPrintf (2, "Illegal return value from DruidPassable() ");
-      Terminate (-1);
-      break;
-
-    } /* switch */
-
-  // This old bouncing code is no longer working in all cases due to bigger numbers
-  // and frame_rate dependence.  I therefore introduce some extra security:  Obviously
-  // if the influencer is blocked FOR THE SECOND TIME, then the throw-back-algorithm
-  // above HAS FAILED.  The absolutely fool-proof and secure handling is now done by
-  // simply reverting to the last influ coordinated, where influ was NOT BLOCKED.
-  // For this reason, a history of influ-coordinates has been introduced.  This will all
-  // be done here and now:
-
-  if ( (DruidPassable (Me.pos.x, Me.pos.y) != CENTER) &&
-       (DruidPassable ( GetInfluPositionHistoryX ( 0 ) , GetInfluPositionHistoryY ( 0 ) != CENTER ) ) &&
-       (DruidPassable ( GetInfluPositionHistoryX ( 1 ) , GetInfluPositionHistoryY ( 1 ) != CENTER ) ) )
-    {
-      Me.pos.x = GetInfluPositionHistoryX ( 2 );
-      Me.pos.y = GetInfluPositionHistoryY ( 2 );
-    }
-
-} /* CheckInfluenceWallCollisions */
+// void
+// CheckInfluenceWallCollisions (void)
+// {
+//   int sign;
+//   float SX = Me.speed.x * Frame_Time ();
+//   float SY = Me.speed.y * Frame_Time ();
+//   finepoint lastpos;
+//   int res;
+//   int NumberOfShifts=0;
+//   int safty_sx = 0, safty_sy = 0;	/* wegstoss - Geschwindigkeiten (falls noetig) */
+//   int NorthSouthAxisBlocked=FALSE;
+//   int EastWestAxisBlocked=FALSE;
+//   int H_Door_Sliding_Active = FALSE;
+// 
+// 
+//   int crashx = FALSE, crashy = FALSE;	/* Merker wo kollidiert wurde */
+// 
+//   lastpos.x = Me.pos.x - SX;
+//   lastpos.y = Me.pos.y - SY;
+// 
+//   // lastpos.x = Me.Position_History[0].x;
+//   // lastpos.y = Me.Position_History[0].y;
+// 
+//   res = DruidPassable (Me.pos.x, Me.pos.y);
+// 
+// #define NEW_BOUNCE_CHECK
+// #ifdef NEW_BOUNCE_CHECK
+// 
+//   // Influence-Wall-Collision only has to be checked in case of
+//   // a collision of course, which is indicated by res not CENTER.
+//   if (res != CENTER )
+//     {
+// 
+//       //--------------------
+//       // At first we just check in which directions (from the last position)
+//       // the ways are blocked and in which directions the ways are open.
+//       //
+//       if ( ! ( ( DruidPassable(lastpos.x , lastpos.y + Druidmap[Me.type].maxspeed * Frame_Time() ) != CENTER ) ||
+// 	       ( DruidPassable(lastpos.x , lastpos.y - Druidmap[Me.type].maxspeed * Frame_Time() ) != CENTER ) ) )
+// 	{
+// 	  DebugPrintf(1, "\nNorth-south-Axis seems to be free.");
+// 	  NorthSouthAxisBlocked = FALSE;
+// 	}
+//       else
+// 	{
+// 	  NorthSouthAxisBlocked = TRUE;
+// 	}
+// 
+//       if ( ( DruidPassable(lastpos.x + Druidmap[Me.type].maxspeed * Frame_Time() , lastpos.y ) == CENTER ) &&
+// 	   ( DruidPassable(lastpos.x - Druidmap[Me.type].maxspeed * Frame_Time() , lastpos.y ) == CENTER ) )
+// 	{
+// 	  EastWestAxisBlocked = FALSE;
+// 	}
+//       else
+// 	{
+// 	  EastWestAxisBlocked = TRUE;
+// 	}
+// 
+//       //--------------------
+//       // Now we try to handle the sitution:
+//       //
+// 
+//       if ( NorthSouthAxisBlocked )
+// 	{
+// 	  // NorthSouthCorrectionDone=TRUE;
+// 	  Me.pos.y = lastpos.y;
+// 	  Me.speed.y = 0;
+// 
+// 	  // if its an open door, we also correct the east-west position, in the
+// 	  // sense that we move thowards the middle
+// 	  if ( (GetMapBrick(CurLevel, Me.pos.x , Me.pos.y - 0.5 ) == H_GANZTUERE ) ||
+// 	       (GetMapBrick(CurLevel, Me.pos.x , Me.pos.y + 0.5 ) == H_GANZTUERE ) )
+// 	    {
+// 	      Me.pos.x += copysignf ( PUSHSPEED * Frame_Time() , ( rintf(Me.pos.x) - Me.pos.x ));
+// 	      H_Door_Sliding_Active = TRUE;
+// 	    }
+// 	}
+// 
+//       if ( EastWestAxisBlocked )
+// 	{
+// 	  // EastWestCorrectionDone=TRUE;
+// 	  if ( !H_Door_Sliding_Active ) Me.pos.x = lastpos.x;
+// 	  Me.speed.x = 0;
+// 
+// 	  // if its an open door, we also correct the north-south position, in the
+// 	  // sense that we move thowards the middle
+// 	  if ( (GetMapBrick(CurLevel, Me.pos.x +0.5 , Me.pos.y) == V_GANZTUERE ) ||
+// 	       (GetMapBrick(CurLevel, Me.pos.x -0.5 , Me.pos.y) == V_GANZTUERE ) )
+// 	    Me.pos.y += copysignf (PUSHSPEED * Frame_Time() , ( rintf(Me.pos.y) - Me.pos.y ));
+// 	}
+// 
+//       if ( EastWestAxisBlocked && NorthSouthAxisBlocked )
+// 	{
+// 	  // printf("\nBOTH AXES BLOCKED... Corner handling activated...");
+// 	  // in case both axes were blocked, we must be at a corner.
+// 	  // both axis-blocked-routines have been executed, so the speed has
+// 	  // been set to absolutely zero and we are at the previous position.
+// 	  //
+// 	  // But perhaps everything would be fine,
+// 	  // if we just restricted ourselves to moving in only ONE direction.
+// 	  // try if this would make sense...
+// 	  // (Of course we may only move into the one direction that is free)
+// 	  //
+// 	  if ( DruidPassable( Me.pos.x + SX , Me.pos.y ) == CENTER ) Me.pos.x += SX;
+// 	  if ( DruidPassable( Me.pos.x , Me.pos.y +SY ) == CENTER ) Me.pos.y += SY;
+// 	}
+// 
+//       // Here I introduce some extra security as a fallback:  Obviously
+//       // if the influencer is blocked FOR THE SECOND TIME, then the throw-back-algorithm
+//       // above HAS FAILED.  The absolutely fool-proof and secure handling is now done by
+//       // simply reverting to the last influ coordinated, where influ was NOT BLOCKED.
+//       // For this reason, a history of influ-coordinates has been introduced.  This will all
+//       // be done here and now:
+// 
+//       if ( (DruidPassable (Me.pos.x, Me.pos.y) != CENTER) &&
+// 	   (DruidPassable ( GetInfluPositionHistoryX( 0 ) , GetInfluPositionHistoryY( 0 ) ) != CENTER) &&
+// 	   (DruidPassable ( GetInfluPositionHistoryX( 1 ) , GetInfluPositionHistoryY( 1 ) ) != CENTER) )
+// 	{
+// 	  Me.pos.x = GetInfluPositionHistoryX( 2 );
+// 	  Me.pos.y = GetInfluPositionHistoryY( 2 );
+// 	  DebugPrintf(1, "\nATTENTION! CheckInfluenceWallCollsision FALLBACK ACTIVATED!!");
+// 	}
+// 
+//     }
+// 
+//   return;
+// 
+// #endif
+// 
+//   switch (res)
+//     {
+//       // In this case, the influencer is (completely?) blocked.
+//     case -1:
+//       // --------------------
+//       // We handle here the case, that the influencer is completely blocked.
+//       // WHAT DO WE DO?  ---  The new algorithm proceeds as follows:
+//       // 1. Check if the north-south axis would be free FROM THE PREVIOUS POSITION
+//       // 2. Check if the east-west axis would be free FROM THE PREVIOUS POSITION
+//       //    and both of the above under the assumption of full speed.
+//       // 3. If the north south axis is free, it must have been the east-west movement
+//       //    otherwise it must have been the north-west movement, which caused the
+//       //    collision.
+//       // 4. Therefore restore the last position and move from there, but only in
+//       //    the free direction and not in the other.
+//       //
+// 
+//       /*
+//       if ( ( DruidPassable(lastpos.x , lastpos.y + Druidmap[Me.type].maxspeed * Frame_Time() ) == CENTER ) &&
+// 	   ( DruidPassable(lastpos.x , lastpos.y - Druidmap[Me.type].maxspeed * Frame_Time() ) == CENTER ) )
+// 	{
+// 	  printf("\nNorth-south-Axis seems to be free.");
+// 	}
+//       else
+// 	{
+// 	  printf("\nNorth-south-Axis seems NOT to be free.");
+// 	  printf("\nCorrection movement and position in this direction...");
+// 	  Me.pos.y = lastpos.y;
+// 	  Me.speed.y = 0;
+// 	  // return;
+// 	}
+// 
+//       if ( ( DruidPassable(lastpos.x + Druidmap[Me.type].maxspeed * Frame_Time() , lastpos.y ) == CENTER ) &&
+// 	   ( DruidPassable(lastpos.x - Druidmap[Me.type].maxspeed * Frame_Time() , lastpos.y ) == CENTER ) )
+// 	{
+// 	  printf("\nEast-west-Axis seems to be free.");
+// 	}
+//       else
+// 	{
+// 	  printf("\nEast-west-Axis seems NOT to be free.");
+// 	  printf("\nCorrection movement and position in this direction...");
+// 	  Me.pos.x = lastpos.x;
+// 	  Me.speed.x = 0;
+// 	  //return;
+// 	}
+// 
+//       return;
+// 
+//       */
+// 
+//       /* Festellen, in welcher Richtung die Mauer lag,
+//          und den Influencer entsprechend stoppen */
+//       if ( rintf(SX) && (DruidPassable (lastpos.x + SX, lastpos.y) != CENTER))
+// 	{
+// 	  crashx = TRUE;	/* In X wurde gecrasht */
+// 	  sign = (SX < 0) ? -1 : 1;
+// 	  SX = abs ((int)SX);
+// 	  NumberOfShifts=0;
+// 	  while (--SX
+// 		 && (DruidPassable (lastpos.x + sign * SX, lastpos.y) !=
+// 		     CENTER) && (NumberOfShifts++ < 4));
+// 	  Me.pos.x = lastpos.x + SX * sign;
+// 	  Me.speed.x = 0;
+// 
+// 	  /* falls Influencer weggestossen werden muss ! */
+// 	  safty_sx = (-1) * sign * PUSHSPEED;
+// 	}
+// 
+//       if (rintf(SY) && (DruidPassable (lastpos.x, lastpos.y + SY) != CENTER))
+// 	{
+// 	  crashy = TRUE;	/* in Y wurde gecrasht */
+// 	  sign = (SY < 0) ? -1 : 1;
+// 	  SY = abs ((int)SY);
+// 	  NumberOfShifts=0;
+// 	  while (--SY
+// 		 && (DruidPassable (lastpos.x, lastpos.y + sign * SY) !=
+// 		     CENTER) && (NumberOfShifts++ < 4));
+// 	  Me.pos.y = lastpos.y + SY * sign;
+// 	  Me.speed.y = 0;
+// 
+// 	  /* Falls Influencer weggestossen werden muss */
+// 	  safty_sy = (-1) * sign * PUSHSPEED;
+// 	}
+// 
+//       /* Hat das nichts geholfen, noch etwas wegschubsen */
+//       if (DruidPassable (Me.pos.x, Me.pos.y) != CENTER)
+// 	{
+// 	  if (crashx)
+// 	    {
+// 	      Me.speed.x = safty_sx;
+// 	      Me.pos.x += Me.speed.x * Frame_Time() ;
+// 	    }
+// 
+// 	  if (crashy)
+// 	    {
+// 	      Me.speed.y = safty_sy;
+// 	      Me.pos.y += Me.speed.y * Frame_Time() ;
+// 	    }
+// 	}
+// 
+//       break;
+// 
+//       /* Von Tuerrand wegschubsen */
+//     case OBEN:
+//       Me.speed.y = -PUSHSPEED;
+//       Me.pos.y += Me.speed.y; // * Frame_Time();
+//       break;
+// 
+//     case UNTEN:
+//       Me.speed.y = PUSHSPEED;
+//       Me.pos.y += Me.speed.y; // * Frame_Time() ;
+//       break;
+// 
+//     case RECHTS:
+//       Me.speed.x = PUSHSPEED;
+//       Me.pos.x += Me.speed.x; // * Frame_Time() ;
+//       break;
+// 
+//     case LINKS:
+//       Me.speed.x = -PUSHSPEED;
+//       Me.pos.x += Me.speed.x; // * Frame_Time() ;
+//       break;
+// 
+//       /* Not blocked at all ! */
+//     case CENTER:
+//       break;
+// 
+//     default:
+//       DebugPrintf (2, "Illegal return value from DruidPassable() ");
+//       Terminate (-1);
+//       break;
+// 
+//     } /* switch */
+// 
+//   // This old bouncing code is no longer working in all cases due to bigger numbers
+//   // and frame_rate dependence.  I therefore introduce some extra security:  Obviously
+//   // if the influencer is blocked FOR THE SECOND TIME, then the throw-back-algorithm
+//   // above HAS FAILED.  The absolutely fool-proof and secure handling is now done by
+//   // simply reverting to the last influ coordinated, where influ was NOT BLOCKED.
+//   // For this reason, a history of influ-coordinates has been introduced.  This will all
+//   // be done here and now:
+// 
+//   if ( (DruidPassable (Me.pos.x, Me.pos.y) != CENTER) &&
+//        (DruidPassable ( GetInfluPositionHistoryX ( 0 ) , GetInfluPositionHistoryY ( 0 ) != CENTER ) ) &&
+//        (DruidPassable ( GetInfluPositionHistoryX ( 1 ) , GetInfluPositionHistoryY ( 1 ) != CENTER ) ) )
+//     {
+//       Me.pos.x = GetInfluPositionHistoryX ( 2 );
+//       Me.pos.y = GetInfluPositionHistoryY ( 2 );
+//     }
+// 
+// } /* CheckInfluenceWallCollisions */
 
 /*@Function============================================================
 @Desc: Dies Prozedur passt die momentane Geschwindigkeit an die Hoechst-
