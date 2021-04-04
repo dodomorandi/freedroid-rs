@@ -1,18 +1,23 @@
 use crate::{
-    defs::{Status, WAIT_COLLISION},
+    defs::{self, Explosion, Sound, Status, MAXBLASTS, WAIT_COLLISION},
     global::{collision_lose_energy_calibrator, Droid_Radius},
-    misc::Frame_Time,
+    misc::{Frame_Time, MyRandom, Terminate},
     ship::LevelEmpty,
-    sound::{BounceSound, CollisionDamagedEnemySound, CollisionGotDamagedSound, RefreshSound},
+    sound::{
+        BounceSound, CollisionDamagedEnemySound, CollisionGotDamagedSound, Play_Sound, RefreshSound,
+    },
     takeover::Takeover,
     text::EnemyInfluCollisionText,
     vars::Druidmap,
-    AllEnemys, CurLevel, GameConfig, InvincibleMode, LastRefreshSound, Me, NumEnemys, RealScore,
+    AllBlasts, AllEnemys, CurLevel, GameConfig, InvincibleMode, LastRefreshSound, Me, NumEnemys,
+    RealScore,
 };
 
 use cstr::cstr;
+use log::error;
 use std::{
     convert::{TryFrom, TryInto},
+    ops::Not,
     os::raw::{c_char, c_int},
 };
 
@@ -21,7 +26,6 @@ extern "C" {
     pub fn CheckInfluenceWallCollisions();
     pub fn MoveInfluence();
     pub fn InitInfluPositionHistory();
-    pub fn ExplodeInfluencer();
 
 }
 
@@ -176,4 +180,33 @@ pub unsafe extern "C" fn InfluEnemyCollisionLoseEnergy(enemy_num: c_int) {
         AllEnemys[usize::try_from(enemy_num).unwrap()].energy -= damage;
         CollisionDamagedEnemySound();
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ExplodeInfluencer() {
+    Me.status = Status::Terminated as c_int;
+
+    for i in 0..10 {
+        /* freien Blast finden */
+        let mut counter = 0;
+        loop {
+            let check = AllBlasts[counter].ty != Status::Out as c_int;
+            counter += 1;
+            if check.not() {
+                break;
+            }
+        }
+        counter -= 1;
+        if counter >= MAXBLASTS {
+            error!("Went out of blasts in ExplodeInfluencer...");
+            Terminate(defs::ERR.into());
+        }
+        let blast = &mut AllBlasts[counter];
+        blast.ty = Explosion::Druidblast as c_int;
+        blast.PX = Me.pos.x - Droid_Radius / 2. + MyRandom(10) as f32 * 0.05;
+        blast.PY = Me.pos.y - Droid_Radius / 2. + MyRandom(10) as f32 * 0.05;
+        blast.phase = 0.2 * i as f32;
+    }
+
+    Play_Sound(Sound::Influexplosion as c_int);
 }

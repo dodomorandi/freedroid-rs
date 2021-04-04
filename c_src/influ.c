@@ -663,40 +663,40 @@ InfluenceFrictionWithAir (void)
 @Ret: void
 @Int:
 * $Function----------------------------------------------------------*/
-void
-ExplodeInfluencer (void)
-{
-  int i;
-  int counter;
-
-  Me.status = TERMINATED;
-
-  DebugPrintf (2, "\nvoid ExplodeInfluencer(void): Real function call confirmed.");
-
-  /* ein paar versetze Explosionen */
-  for (i = 0; i < 10; i++)
-    {
-      /* freien Blast finden */
-      counter = 0;
-      while (AllBlasts[counter++].type != OUT);
-      counter -= 1;
-      if (counter >= MAXBLASTS)
-	{
-	  DebugPrintf(1, "\n\nWent out of blasts in ExplodeInfluencer...\n\n");
-	  Terminate(ERR);
-	}
-      AllBlasts[counter].type = DRUIDBLAST;
-      AllBlasts[counter].PX = Me.pos.x - Droid_Radius / 2 + MyRandom (10)*0.05;
-      AllBlasts[counter].PY = Me.pos.y - Droid_Radius / 2 + MyRandom (10)*0.05;
-      AllBlasts[counter].phase = 0.2*i;
-    }
-
-  Play_Sound (INFLUEXPLOSION_SOUND);
-
-  return;
-
-  DebugPrintf (2, "\nvoid ExplodeInfluencer(void): Usual end of function reached.");
-}				/* ExplodeInfluencer */
+// void
+// ExplodeInfluencer (void)
+// {
+//   int i;
+//   int counter;
+// 
+//   Me.status = TERMINATED;
+// 
+//   DebugPrintf (2, "\nvoid ExplodeInfluencer(void): Real function call confirmed.");
+// 
+//   /* ein paar versetze Explosionen */
+//   for (i = 0; i < 10; i++)
+//     {
+//       /* freien Blast finden */
+//       counter = 0;
+//       while (AllBlasts[counter++].type != OUT);
+//       counter -= 1;
+//       if (counter >= MAXBLASTS)
+// 	{
+// 	  DebugPrintf(1, "\n\nWent out of blasts in ExplodeInfluencer...\n\n");
+// 	  Terminate(ERR);
+// 	}
+//       AllBlasts[counter].type = DRUIDBLAST;
+//       AllBlasts[counter].PX = Me.pos.x - Droid_Radius / 2 + MyRandom (10)*0.05;
+//       AllBlasts[counter].PY = Me.pos.y - Droid_Radius / 2 + MyRandom (10)*0.05;
+//       AllBlasts[counter].phase = 0.2*i;
+//     }
+// 
+//   Play_Sound (INFLUEXPLOSION_SOUND);
+// 
+//   return;
+// 
+//   DebugPrintf (2, "\nvoid ExplodeInfluencer(void): Usual end of function reached.");
+// }				/* ExplodeInfluencer */
 
 /*@Function============================================================
 @Desc:
