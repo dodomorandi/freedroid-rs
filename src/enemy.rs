@@ -24,7 +24,6 @@ use std::{
 extern "C" {
     pub fn ClearEnemys();
     pub fn PermanentHealRobots();
-    pub fn MoveThisRobotThowardsHisWaypoint(enemy_num: c_int);
 }
 
 /// according to the intro, the laser can be "focused on any target
@@ -391,5 +390,46 @@ pub unsafe extern "C" fn ShuffleEnemys() {
 
         enemy.lastwaypoint = wp.try_into().unwrap();
         enemy.nextwaypoint = wp.try_into().unwrap();
+    }
+}
+
+/// This function moves one robot thowards his next waypoint.  If already
+/// there, the function does nothing more.
+#[no_mangle]
+pub unsafe extern "C" fn MoveThisRobotThowardsHisWaypoint(enemy_num: c_int) {
+    let this_robot = &mut AllEnemys[usize::try_from(enemy_num).unwrap()];
+
+    // We do some definitions to save us some more typing later...
+    let wp_list = (*CurLevel).AllWaypoints;
+    let nextwp: usize = this_robot.nextwaypoint.try_into().unwrap();
+    let maxspeed = (*Druidmap.add(usize::try_from(this_robot.ty).unwrap())).maxspeed;
+
+    let nextwp_pos = Finepoint {
+        x: wp_list[nextwp].x.into(),
+        y: wp_list[nextwp].y.into(),
+    };
+
+    // determine the remaining way until the target point is reached
+    let restweg = Finepoint {
+        x: nextwp_pos.x - this_robot.pos.x,
+        y: nextwp_pos.y - this_robot.pos.y,
+    };
+
+    let steplen = Frame_Time() * maxspeed;
+    // As long a the distance from the current position of the enemy
+    // to its next wp is large, movement is rather simple:
+
+    let dist = (restweg.x * restweg.x + restweg.y * restweg.y).sqrt();
+    if dist > steplen {
+        this_robot.speed.x = (restweg.x / dist) * maxspeed;
+        this_robot.speed.y = (restweg.y / dist) * maxspeed;
+        this_robot.pos.x += this_robot.speed.x * Frame_Time();
+        this_robot.pos.y += this_robot.speed.y * Frame_Time();
+    } else {
+        // If this enemy is just one step ahead of his target, we just put him there now
+        this_robot.pos.x = nextwp_pos.x;
+        this_robot.pos.y = nextwp_pos.y;
+        this_robot.speed.x = 0.;
+        this_robot.speed.y = 0.;
     }
 }

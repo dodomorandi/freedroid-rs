@@ -369,56 +369,56 @@ CheckIfWayIsFreeOfDroids ( float x1 , float y1 , float x2 , float y2 , int OurLe
  * there, the function does nothing more.
  *
  ----------------------------------------------------------------------*/
-void
-MoveThisRobotThowardsHisWaypoint ( int EnemyNum )
-{
-  finepoint Restweg;
-  Waypoint WpList;		/* Pointer to waypoint-liste */
-  int nextwp;
-  finepoint nextwp_pos;
-  float maxspeed, steplen, dist;
-  Enemy ThisRobot=&AllEnemys[ EnemyNum ];
-
-  DebugPrintf( 2 , "\n void MoveThisRobotThowardsHisWaypoint ( int EnemyNum ) : real function call confirmed. ");
-
-  // We do some definitions to save us some more typing later...
-  WpList = CurLevel->AllWaypoints;
-  nextwp = ThisRobot->nextwaypoint;
-  maxspeed = Druidmap[ ThisRobot->type ].maxspeed;
-
-  nextwp_pos.x = WpList[nextwp].x;
-  nextwp_pos.y = WpList[nextwp].y;
-
-  // determine the remaining way until the target point is reached
-  Restweg.x = nextwp_pos.x - ThisRobot->pos.x;
-  Restweg.y = nextwp_pos.y - ThisRobot->pos.y;
-
-  steplen = Frame_Time() * maxspeed;
-  // --------------------
-  // As long a the distance from the current position of the enemy
-  // to its next wp is large, movement is rather simple:
-
-  dist = sqrt(Restweg.x*Restweg.x + Restweg.y*Restweg.y);
-  if ( dist > steplen )
-    {
-      ThisRobot->speed.x = (Restweg.x/dist) * maxspeed;
-      ThisRobot->speed.y = (Restweg.y/dist) * maxspeed;
-      ThisRobot->pos.x += ThisRobot->speed.x * Frame_Time ();
-      ThisRobot->pos.y += ThisRobot->speed.y * Frame_Time ();
-    }
-  else
-    {
-      // --------------------
-      // If this enemy is just one step ahead of his target, we just put him there now
-      ThisRobot->pos.x = nextwp_pos.x;
-      ThisRobot->pos.y = nextwp_pos.y;
-      ThisRobot->speed.x = 0;
-      ThisRobot->speed.y = 0;
-    }
-
-  return;
-
-}; // void MoveThisRobotThowardsHisWaypoint ( int EnemyNum )
+// void
+// MoveThisRobotThowardsHisWaypoint ( int EnemyNum )
+// {
+//   finepoint Restweg;
+//   Waypoint WpList;		/* Pointer to waypoint-liste */
+//   int nextwp;
+//   finepoint nextwp_pos;
+//   float maxspeed, steplen, dist;
+//   Enemy ThisRobot=&AllEnemys[ EnemyNum ];
+// 
+//   DebugPrintf( 2 , "\n void MoveThisRobotThowardsHisWaypoint ( int EnemyNum ) : real function call confirmed. ");
+// 
+//   // We do some definitions to save us some more typing later...
+//   WpList = CurLevel->AllWaypoints;
+//   nextwp = ThisRobot->nextwaypoint;
+//   maxspeed = Druidmap[ ThisRobot->type ].maxspeed;
+// 
+//   nextwp_pos.x = WpList[nextwp].x;
+//   nextwp_pos.y = WpList[nextwp].y;
+// 
+//   // determine the remaining way until the target point is reached
+//   Restweg.x = nextwp_pos.x - ThisRobot->pos.x;
+//   Restweg.y = nextwp_pos.y - ThisRobot->pos.y;
+// 
+//   steplen = Frame_Time() * maxspeed;
+//   // --------------------
+//   // As long a the distance from the current position of the enemy
+//   // to its next wp is large, movement is rather simple:
+// 
+//   dist = sqrt(Restweg.x*Restweg.x + Restweg.y*Restweg.y);
+//   if ( dist > steplen )
+//     {
+//       ThisRobot->speed.x = (Restweg.x/dist) * maxspeed;
+//       ThisRobot->speed.y = (Restweg.y/dist) * maxspeed;
+//       ThisRobot->pos.x += ThisRobot->speed.x * Frame_Time ();
+//       ThisRobot->pos.y += ThisRobot->speed.y * Frame_Time ();
+//     }
+//   else
+//     {
+//       // --------------------
+//       // If this enemy is just one step ahead of his target, we just put him there now
+//       ThisRobot->pos.x = nextwp_pos.x;
+//       ThisRobot->pos.y = nextwp_pos.y;
+//       ThisRobot->speed.x = 0;
+//       ThisRobot->speed.y = 0;
+//     }
+// 
+//   return;
+// 
+// }; // void MoveThisRobotThowardsHisWaypoint ( int EnemyNum )
 
 /* ----------------------------------------------------------------------
  * This function moves one robot in an advanced way, that hasn't been
