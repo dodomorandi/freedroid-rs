@@ -632,8 +632,8 @@ pub const OK: i8 = 0;
 pub const DIRECTIONS: usize = 8;
 
 pub const ALLSHIPS: usize = 4;
-pub const ENEMYPHASES: usize = 8;
-pub const DROID_PHASES: usize = ENEMYPHASES;
+pub const ENEMYPHASES: u8 = 8;
+pub const DROID_PHASES: usize = ENEMYPHASES as usize;
 
 pub const WAIT_LEVELEMPTY: f32 = 0.5; /* warte bevor Graufaerben (in seconds)*/
 pub const SLOWMO_FACTOR: f32 = 0.33; // slow-motion effect on last blast when level is going empty

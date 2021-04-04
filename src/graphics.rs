@@ -148,13 +148,14 @@ pub static mut progress_filler_pic: *mut SDL_Surface = null_mut();
 pub static mut ne_screen: *mut SDL_Surface = null_mut(); /* the graphics display */
 
 #[no_mangle]
-pub static mut EnemySurfacePointer: [*mut SDL_Surface; ENEMYPHASES] = [null_mut(); ENEMYPHASES]; // A pointer to the surfaces containing the pictures of the
-                                                                                                 // enemys in different phases of rotation
+pub static mut EnemySurfacePointer: [*mut SDL_Surface; ENEMYPHASES as usize] =
+    [null_mut(); ENEMYPHASES as usize]; // A pointer to the surfaces containing the pictures of the
+                                        // enemys in different phases of rotation
 
 #[no_mangle]
-pub static mut InfluencerSurfacePointer: [*mut SDL_Surface; ENEMYPHASES] =
-    [null_mut(); ENEMYPHASES]; // A pointer to the surfaces containing the pictures of the
-                               // influencer in different phases of rotation
+pub static mut InfluencerSurfacePointer: [*mut SDL_Surface; ENEMYPHASES as usize] =
+    [null_mut(); ENEMYPHASES as usize]; // A pointer to the surfaces containing the pictures of the
+                                        // influencer in different phases of rotation
 
 #[no_mangle]
 pub static mut InfluDigitSurfacePointer: [*mut SDL_Surface; DIGITNUMBER] =

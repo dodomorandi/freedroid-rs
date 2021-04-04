@@ -1,6 +1,7 @@
 use crate::{
     defs::{
-        self, Direction, Explosion, MapTile, Sound, Status, MAXBLASTS, PUSHSPEED, WAIT_COLLISION,
+        self, Direction, Droid, Explosion, MapTile, Sound, Status, ENEMYPHASES, MAXBLASTS,
+        PUSHSPEED, WAIT_COLLISION,
     },
     global::{collision_lose_energy_calibrator, Droid_Radius},
     map::{DruidPassable, GetMapBrick},
@@ -26,7 +27,6 @@ use std::{
 };
 
 extern "C" {
-    pub fn AnimateInfluence();
     pub fn MoveInfluence();
     pub fn InitInfluPositionHistory();
     pub fn GetInfluPositionHistoryX(how_long_past: c_int) -> c_float;
@@ -342,5 +342,26 @@ pub unsafe extern "C" fn CheckInfluenceWallCollisions() {
             Me.pos.y = GetInfluPositionHistoryY(2);
             warn!("ATTENTION! CheckInfluenceWallCollsision FALLBACK ACTIVATED!!",);
         }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn AnimateInfluence() {
+    if Me.ty != Droid::Droid001 as c_int {
+        Me.phase += (Me.energy
+            / ((*Druidmap.add(usize::try_from(Me.ty).unwrap())).maxenergy
+                + (*Druidmap.add(Droid::Droid001 as usize)).maxenergy))
+            * Frame_Time()
+            * f32::from(ENEMYPHASES)
+            * 3.;
+    } else {
+        Me.phase += (Me.energy / ((*Druidmap.add(Droid::Droid001 as usize)).maxenergy))
+            * Frame_Time()
+            * f32::from(ENEMYPHASES)
+            * 3.;
+    }
+
+    if Me.phase.round() >= ENEMYPHASES.into() {
+        Me.phase = 0.;
     }
 }
