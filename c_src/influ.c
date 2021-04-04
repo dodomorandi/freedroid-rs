@@ -954,31 +954,31 @@ NEW: this function now takes into account the framerates.
 @Ret: void
 @Int:
 * $Function----------------------------------------------------------*/
-void
-InfluEnemyCollisionLoseEnergy (int enemynum)
-{
-  int enemytype = AllEnemys[enemynum].type;
-
-  float damage = (Druidmap[Me.type].class - Druidmap[enemytype].class) * collision_lose_energy_calibrator;
-
-  if ( damage < 0 ) // we took damage
-    {
-      CollisionGotDamagedSound();
-      if (InvincibleMode) {
-	return;
-      }
-      Me.energy += damage;
-      }
-  else if ( damage == 0 ) {	// nobody got hurt
-    BounceSound ();
-  } else { // damage > 0: enemy got damaged
-
-    AllEnemys[enemynum].energy -= damage;
-    CollisionDamagedEnemySound();
-  }
-
-  return;
-}; // void InfluEnemyCollisionLoseEnergy(int enemynum)
+// void
+// InfluEnemyCollisionLoseEnergy (int enemynum)
+// {
+//   int enemytype = AllEnemys[enemynum].type;
+// 
+//   float damage = (Druidmap[Me.type].class - Druidmap[enemytype].class) * collision_lose_energy_calibrator;
+// 
+//   if ( damage < 0 ) // we took damage
+//     {
+//       CollisionGotDamagedSound();
+//       if (InvincibleMode) {
+// 	return;
+//       }
+//       Me.energy += damage;
+//       }
+//   else if ( damage == 0 ) {	// nobody got hurt
+//     BounceSound ();
+//   } else { // damage > 0: enemy got damaged
+// 
+//     AllEnemys[enemynum].energy -= damage;
+//     CollisionDamagedEnemySound();
+//   }
+// 
+//   return;
+// }; // void InfluEnemyCollisionLoseEnergy(int enemynum)
 
 /*@Function============================================================
 @Desc: PermanentLoseEnergy(): In the classic paradroid game, the influencer

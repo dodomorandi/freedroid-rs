@@ -1,12 +1,13 @@
 use crate::{
     defs::{Status, WAIT_COLLISION},
-    global::Droid_Radius,
+    global::{collision_lose_energy_calibrator, Droid_Radius},
     misc::Frame_Time,
     ship::LevelEmpty,
-    sound::RefreshSound,
+    sound::{BounceSound, CollisionDamagedEnemySound, CollisionGotDamagedSound, RefreshSound},
     takeover::Takeover,
     text::EnemyInfluCollisionText,
-    AllEnemys, CurLevel, GameConfig, LastRefreshSound, Me, NumEnemys, RealScore,
+    vars::Druidmap,
+    AllEnemys, CurLevel, GameConfig, InvincibleMode, LastRefreshSound, Me, NumEnemys, RealScore,
 };
 
 use cstr::cstr;
@@ -21,7 +22,6 @@ extern "C" {
     pub fn MoveInfluence();
     pub fn InitInfluPositionHistory();
     pub fn ExplodeInfluencer();
-    pub fn InfluEnemyCollisionLoseEnergy(enemy_num: c_int);
 
 }
 
@@ -151,5 +151,29 @@ pub unsafe extern "C" fn CheckInfluenceEnemyCollision() {
                 (*CurLevel).empty = true.into();
             }
         }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn InfluEnemyCollisionLoseEnergy(enemy_num: c_int) {
+    let enemy_type = AllEnemys[usize::try_from(enemy_num).unwrap()].ty;
+
+    let damage = ((*Druidmap.add(usize::try_from(Me.ty).unwrap())).class
+        - (*Druidmap.add(usize::try_from(enemy_type).unwrap())).class) as f32
+        * collision_lose_energy_calibrator;
+
+    if damage < 0. {
+        // we took damage
+        CollisionGotDamagedSound();
+        if InvincibleMode == 0 {
+            Me.energy += damage;
+        }
+    } else if damage == 0. {
+        // nobody got hurt
+        BounceSound();
+    } else {
+        // damage > 0: enemy got damaged
+        AllEnemys[usize::try_from(enemy_num).unwrap()].energy -= damage;
+        CollisionDamagedEnemySound();
     }
 }
