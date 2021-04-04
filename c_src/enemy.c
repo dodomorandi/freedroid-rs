@@ -145,19 +145,19 @@ DirectLineWalkable( float x1 , float y1 , float x2 , float y2 )
 @Ret:
 @Int:
 * $Function----------------------------------------------------------*/
-void
-PermanentHealRobots (void)
-{
-  int i;
-
-  for (i = 0; i < NumEnemys; i++)
-    {
-      if (AllEnemys[i].status == OUT || AllEnemys[i].energy <= 0.0)
-	continue;
-      if (AllEnemys[i].energy < Druidmap[AllEnemys[i].type].maxenergy)
-	AllEnemys[i].energy += Druidmap[AllEnemys[i].type].lose_health * Frame_Time();
-    }
-} // void PermanentHealRobots(void)
+// void
+// PermanentHealRobots (void)
+// {
+//   int i;
+// 
+//   for (i = 0; i < NumEnemys; i++)
+//     {
+//       if (AllEnemys[i].status == OUT || AllEnemys[i].energy <= 0.0)
+// 	continue;
+//       if (AllEnemys[i].energy < Druidmap[AllEnemys[i].type].maxenergy)
+// 	AllEnemys[i].energy += Druidmap[AllEnemys[i].type].lose_health * Frame_Time();
+//     }
+// } // void PermanentHealRobots(void)
 
 
 /*-----------------------------------------------------------------

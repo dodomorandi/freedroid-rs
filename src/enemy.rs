@@ -23,10 +23,6 @@ use std::{
     os::raw::{c_char, c_int},
 };
 
-extern "C" {
-    pub fn PermanentHealRobots();
-}
-
 /// according to the intro, the laser can be "focused on any target
 /// within a range of eight metres"
 const FIREDIST2: f32 = 8.;
@@ -452,4 +448,19 @@ pub unsafe extern "C" fn ClearEnemys() {
     }
 
     NumEnemys = 0;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PermanentHealRobots() {
+    AllEnemys[0..usize::try_from(NumEnemys).unwrap()]
+        .iter_mut()
+        .filter(|enemy| {
+            enemy.status != Status::Out as c_int
+                && enemy.energy > 0.
+                && enemy.energy < (*Druidmap.add(usize::try_from(enemy.ty).unwrap())).maxenergy
+        })
+        .for_each(|enemy| {
+            enemy.energy +=
+                (*Druidmap.add(usize::try_from(enemy.ty).unwrap())).lose_health * Frame_Time();
+        });
 }
