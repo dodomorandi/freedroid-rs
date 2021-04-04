@@ -165,30 +165,30 @@ PermanentHealRobots (void)
  *
  *
  *-----------------------------------------------------------------*/
-void
-ClearEnemys (void)
-{
-  int i;
-
-  for (i = 0; i < MAX_ENEMYS_ON_SHIP; i++)
-    {
-      AllEnemys[i].type = -1;
-      AllEnemys[i].levelnum = -1;
-      AllEnemys[i].phase = 0;
-      AllEnemys[i].nextwaypoint = AllEnemys[i].lastwaypoint = 0;
-      AllEnemys[i].status = OUT;
-      AllEnemys[i].warten = 0;
-      AllEnemys[i].firewait = 0;
-      AllEnemys[i].energy = -1;
-      AllEnemys[i].TextVisibleTime = 0;
-      AllEnemys[i].TextToBeDisplayed = "";
-    }
-
-  NumEnemys = 0;
-
-  return;
-
-} /*  ClearEnemys() */
+// void
+// ClearEnemys (void)
+// {
+//   int i;
+// 
+//   for (i = 0; i < MAX_ENEMYS_ON_SHIP; i++)
+//     {
+//       AllEnemys[i].type = -1;
+//       AllEnemys[i].levelnum = -1;
+//       AllEnemys[i].phase = 0;
+//       AllEnemys[i].nextwaypoint = AllEnemys[i].lastwaypoint = 0;
+//       AllEnemys[i].status = OUT;
+//       AllEnemys[i].warten = 0;
+//       AllEnemys[i].firewait = 0;
+//       AllEnemys[i].energy = -1;
+//       AllEnemys[i].TextVisibleTime = 0;
+//       AllEnemys[i].TextToBeDisplayed = "";
+//     }
+// 
+//   NumEnemys = 0;
+// 
+//   return;
+// 
+// } /*  ClearEnemys() */
 
 
 /*-----------------------------------------------------------------

@@ -2,7 +2,8 @@ use crate::{
     bullet::StartBlast,
     defs::{
         Explosion, Status, AGGRESSIONMAX, DECKCOMPLETEBONUS, ENEMYMAXWAIT, ENEMYPHASES, MAXBULLETS,
-        MAXWAYPOINTS, ROBOT_MAX_WAIT_BETWEEN_SHOTS, SLOWMO_FACTOR, WAIT_COLLISION, WAIT_LEVELEMPTY,
+        MAXWAYPOINTS, MAX_ENEMYS_ON_SHIP, ROBOT_MAX_WAIT_BETWEEN_SHOTS, SLOWMO_FACTOR,
+        WAIT_COLLISION, WAIT_LEVELEMPTY,
     },
     global::Droid_Radius,
     map::IsVisible,
@@ -14,15 +15,15 @@ use crate::{
     AllBullets, AllEnemys, CurLevel, DeathCount, NumEnemys, RealScore,
 };
 
+use cstr::cstr;
 use log::warn;
 use std::{
     convert::{TryFrom, TryInto},
     ops::Not,
-    os::raw::c_int,
+    os::raw::{c_char, c_int},
 };
 
 extern "C" {
-    pub fn ClearEnemys();
     pub fn PermanentHealRobots();
 }
 
@@ -432,4 +433,23 @@ pub unsafe extern "C" fn MoveThisRobotThowardsHisWaypoint(enemy_num: c_int) {
         this_robot.speed.x = 0.;
         this_robot.speed.y = 0.;
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ClearEnemys() {
+    for enemy in &mut AllEnemys[..MAX_ENEMYS_ON_SHIP] {
+        enemy.ty = -1;
+        enemy.levelnum = -1;
+        enemy.phase = 0.;
+        enemy.nextwaypoint = 0;
+        enemy.lastwaypoint = 0;
+        enemy.status = Status::Out as c_int;
+        enemy.warten = 0.;
+        enemy.firewait = 0.;
+        enemy.energy = -1.;
+        enemy.TextVisibleTime = 0.;
+        enemy.TextToBeDisplayed = cstr!("").as_ptr() as *mut c_char;
+    }
+
+    NumEnemys = 0;
 }
