@@ -704,94 +704,94 @@ ExplodeInfluencer (void)
 @Ret:
 @Int:
 * $Function----------------------------------------------------------*/
-void
-CheckInfluenceEnemyCollision (void)
-{
-  int i;
-  float xdist;
-  float ydist;
-  float dist2;
-  float max_step_size;
-  int swap;
-
-  // return;
-
-  for (i = 0; i < NumEnemys ; i++)
-    {
-      /* ignore enemy that are not on this level or dead */
-      if (AllEnemys[i].levelnum != CurLevel->levelnum)
-	continue;
-      if (AllEnemys[i].status == OUT || AllEnemys[i].status == TERMINATED)
-	continue;
-
-      xdist = Me.pos.x - AllEnemys[i].pos.x;
-      ydist = Me.pos.y - AllEnemys[i].pos.y;
-
-      if (abs ((int)xdist) > 1)
-	continue;
-      if (abs ((int)ydist) > 1)
-	continue;
-
-      dist2 = sqrt( (xdist * xdist) + (ydist * ydist) );
-      if ( dist2 > 2 * Droid_Radius )
-	continue;
-
-
-      if (Me.status != TRANSFERMODE)
-	{
-
-	  Me.speed.x = -Me.speed.x;
-	  Me.speed.y = -Me.speed.y;
-
-	  if (Me.speed.x != 0)
-	    Me.speed.x +=
-	      COLLISION_PUSHSPEED * (Me.speed.x / fabsf (Me.speed.x));
-	  else if (xdist)
-	    Me.speed.x = COLLISION_PUSHSPEED * (xdist / fabsf (xdist));
-	  if (Me.speed.y != 0)
-	    Me.speed.y +=
-	      COLLISION_PUSHSPEED * (Me.speed.y / fabsf (Me.speed.y));
-	  else if (ydist)
-	    Me.speed.y = COLLISION_PUSHSPEED * (ydist / fabsf (ydist));
-
-	  // move the influencer a little bit out of the enemy AND the enemy a little bit out of the influ
-	  max_step_size = ((Frame_Time()) < ( MAXIMAL_STEP_SIZE ) ? (Frame_Time()) : ( MAXIMAL_STEP_SIZE )) ;
-	  Me.pos.x += copysignf( max_step_size , Me.pos.x - AllEnemys[i].pos.x ) ;
-	  Me.pos.y += copysignf( max_step_size , Me.pos.y - AllEnemys[i].pos.y ) ;
-	  AllEnemys[i].pos.x -= copysignf( Frame_Time() , Me.pos.x - AllEnemys[i].pos.x ) ;
-	  AllEnemys[i].pos.y -= copysignf( Frame_Time() , Me.pos.y - AllEnemys[i].pos.y ) ;
-	  // Me.pos.x += Me.speed.x * Frame_Time ();
-	  // Me.pos.y += Me.speed.y * Frame_Time ();
-
-	  // there might be walls close too, so lets check again for collisions with them
-	  CheckInfluenceWallCollisions ();
-
-	  // shortly stop this enemy, then send him back to previous waypoint
-	  if (!AllEnemys[i].warten)
-	    {
-	      AllEnemys[i].warten = WAIT_COLLISION;
-	      swap = AllEnemys[i].nextwaypoint;
-	      AllEnemys[i].nextwaypoint = AllEnemys[i].lastwaypoint;
-	      AllEnemys[i].lastwaypoint = swap;
-
-	      // Add some funny text!
-	      EnemyInfluCollisionText ( i );
-
-	    }
-	  InfluEnemyCollisionLoseEnergy (i);	/* someone loses energy ! */
-
-	}
-      else
-	{
-	  Takeover (i);
-
-	  if (LevelEmpty ())
-	    CurLevel->empty = TRUE;
-	}			/* if !Transfer else .. */
-
-    }				/* for */
-
-} // CheckInfluenceEnemyCollision
+// void
+// CheckInfluenceEnemyCollision (void)
+// {
+//   int i;
+//   float xdist;
+//   float ydist;
+//   float dist2;
+//   float max_step_size;
+//   int swap;
+// 
+//   // return;
+// 
+//   for (i = 0; i < NumEnemys ; i++)
+//     {
+//       /* ignore enemy that are not on this level or dead */
+//       if (AllEnemys[i].levelnum != CurLevel->levelnum)
+// 	continue;
+//       if (AllEnemys[i].status == OUT || AllEnemys[i].status == TERMINATED)
+// 	continue;
+// 
+//       xdist = Me.pos.x - AllEnemys[i].pos.x;
+//       ydist = Me.pos.y - AllEnemys[i].pos.y;
+// 
+//       if (abs ((int)xdist) > 1)
+// 	continue;
+//       if (abs ((int)ydist) > 1)
+// 	continue;
+// 
+//       dist2 = sqrt( (xdist * xdist) + (ydist * ydist) );
+//       if ( dist2 > 2 * Droid_Radius )
+// 	continue;
+// 
+// 
+//       if (Me.status != TRANSFERMODE)
+// 	{
+// 
+// 	  Me.speed.x = -Me.speed.x;
+// 	  Me.speed.y = -Me.speed.y;
+// 
+// 	  if (Me.speed.x != 0)
+// 	    Me.speed.x +=
+// 	      COLLISION_PUSHSPEED * (Me.speed.x / fabsf (Me.speed.x));
+// 	  else if (xdist)
+// 	    Me.speed.x = COLLISION_PUSHSPEED * (xdist / fabsf (xdist));
+// 	  if (Me.speed.y != 0)
+// 	    Me.speed.y +=
+// 	      COLLISION_PUSHSPEED * (Me.speed.y / fabsf (Me.speed.y));
+// 	  else if (ydist)
+// 	    Me.speed.y = COLLISION_PUSHSPEED * (ydist / fabsf (ydist));
+// 
+// 	  // move the influencer a little bit out of the enemy AND the enemy a little bit out of the influ
+// 	  max_step_size = ((Frame_Time()) < ( MAXIMAL_STEP_SIZE ) ? (Frame_Time()) : ( MAXIMAL_STEP_SIZE )) ;
+// 	  Me.pos.x += copysignf( max_step_size , Me.pos.x - AllEnemys[i].pos.x ) ;
+// 	  Me.pos.y += copysignf( max_step_size , Me.pos.y - AllEnemys[i].pos.y ) ;
+// 	  AllEnemys[i].pos.x -= copysignf( Frame_Time() , Me.pos.x - AllEnemys[i].pos.x ) ;
+// 	  AllEnemys[i].pos.y -= copysignf( Frame_Time() , Me.pos.y - AllEnemys[i].pos.y ) ;
+// 	  // Me.pos.x += Me.speed.x * Frame_Time ();
+// 	  // Me.pos.y += Me.speed.y * Frame_Time ();
+// 
+// 	  // there might be walls close too, so lets check again for collisions with them
+// 	  CheckInfluenceWallCollisions ();
+// 
+// 	  // shortly stop this enemy, then send him back to previous waypoint
+// 	  if (!AllEnemys[i].warten)
+// 	    {
+// 	      AllEnemys[i].warten = WAIT_COLLISION;
+// 	      swap = AllEnemys[i].nextwaypoint;
+// 	      AllEnemys[i].nextwaypoint = AllEnemys[i].lastwaypoint;
+// 	      AllEnemys[i].lastwaypoint = swap;
+// 
+// 	      // Add some funny text!
+// 	      EnemyInfluCollisionText ( i );
+// 
+// 	    }
+// 	  InfluEnemyCollisionLoseEnergy (i);	/* someone loses energy ! */
+// 
+// 	}
+//       else
+// 	{
+// 	  Takeover (i);
+// 
+// 	  if (LevelEmpty ())
+// 	    CurLevel->empty = TRUE;
+// 	}			/* if !Transfer else .. */
+// 
+//     }				/* for */
+// 
+// } // CheckInfluenceEnemyCollision
 
 /*@Function============================================================
 @Desc: Fire-Routine for the Influencer only !! (should be changed)

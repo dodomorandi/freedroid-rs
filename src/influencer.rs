@@ -1,18 +1,34 @@
-use crate::{misc::Frame_Time, sound::RefreshSound, GameConfig, LastRefreshSound, Me, RealScore};
+use crate::{
+    defs::{Status, WAIT_COLLISION},
+    global::Droid_Radius,
+    misc::Frame_Time,
+    ship::LevelEmpty,
+    sound::RefreshSound,
+    takeover::Takeover,
+    text::EnemyInfluCollisionText,
+    AllEnemys, CurLevel, GameConfig, LastRefreshSound, Me, NumEnemys, RealScore,
+};
 
 use cstr::cstr;
-use std::os::raw::{c_char, c_int};
+use std::{
+    convert::{TryFrom, TryInto},
+    os::raw::{c_char, c_int},
+};
 
 extern "C" {
     pub fn AnimateInfluence();
-    pub fn CheckInfluenceEnemyCollision();
     pub fn CheckInfluenceWallCollisions();
     pub fn MoveInfluence();
     pub fn InitInfluPositionHistory();
     pub fn ExplodeInfluencer();
+    pub fn InfluEnemyCollisionLoseEnergy(enemy_num: c_int);
+
 }
 
 const REFRESH_ENERGY: f32 = 3.;
+
+const COLLISION_PUSHSPEED: f32 = 2.0;
+const MAXIMAL_STEP_SIZE: f32 = 7.0 / 20.;
 
 /// Refresh fields can be used to regain energy
 /// lost due to bullets or collisions, but not energy lost due to permanent
@@ -57,6 +73,83 @@ pub unsafe extern "C" fn RefreshInfluencer() {
         if GameConfig.Droid_Talk != 0 {
             Me.TextToBeDisplayed = cstr!("Oh, it seems that was it again.").as_ptr() as *mut c_char;
             Me.TextVisibleTime = 0.;
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn CheckInfluenceEnemyCollision() {
+    for (i, enemy) in AllEnemys[..usize::try_from(NumEnemys).unwrap()]
+        .iter_mut()
+        .enumerate()
+    {
+        /* ignore enemy that are not on this level or dead */
+        if enemy.levelnum != (*CurLevel).levelnum {
+            continue;
+        }
+        if enemy.status == Status::Out as c_int || enemy.status == Status::Terminated as c_int {
+            continue;
+        }
+
+        let xdist = Me.pos.x - enemy.pos.x;
+        let ydist = Me.pos.y - enemy.pos.y;
+
+        if xdist.trunc().abs() > 1. {
+            continue;
+        }
+        if ydist.trunc().abs() > 1. {
+            continue;
+        }
+
+        let dist2 = ((xdist * xdist) + (ydist * ydist)).sqrt();
+        if dist2 > 2. * Droid_Radius {
+            continue;
+        }
+
+        if Me.status != Status::Transfermode as c_int {
+            Me.speed.x = -Me.speed.x;
+            Me.speed.y = -Me.speed.y;
+
+            if Me.speed.x != 0. {
+                Me.speed.x += COLLISION_PUSHSPEED * (Me.speed.x / Me.speed.x.abs());
+            } else if xdist != 0. {
+                Me.speed.x = COLLISION_PUSHSPEED * (xdist / xdist.abs());
+            }
+            if Me.speed.y != 0. {
+                Me.speed.y += COLLISION_PUSHSPEED * (Me.speed.y / Me.speed.y.abs());
+            } else if ydist != 0. {
+                Me.speed.y = COLLISION_PUSHSPEED * (ydist / ydist.abs());
+            }
+
+            // move the influencer a little bit out of the enemy AND the enemy a little bit out of the influ
+            let max_step_size = if Frame_Time() < MAXIMAL_STEP_SIZE {
+                Frame_Time()
+            } else {
+                MAXIMAL_STEP_SIZE
+            };
+            Me.pos.x += max_step_size.copysign(Me.pos.x - enemy.pos.x);
+            Me.pos.y += max_step_size.copysign(Me.pos.y - enemy.pos.y);
+            enemy.pos.x -= Frame_Time().copysign(Me.pos.x - enemy.pos.x);
+            enemy.pos.y -= Frame_Time().copysign(Me.pos.y - enemy.pos.y);
+
+            // there might be walls close too, so lets check again for collisions with them
+            CheckInfluenceWallCollisions();
+
+            // shortly stop this enemy, then send him back to previous waypoint
+            if enemy.warten == 0. {
+                enemy.warten = WAIT_COLLISION as f32;
+                std::mem::swap(&mut enemy.nextwaypoint, &mut enemy.lastwaypoint);
+
+                // Add some funny text!
+                EnemyInfluCollisionText(i.try_into().unwrap());
+            }
+            InfluEnemyCollisionLoseEnergy(i.try_into().unwrap()); /* someone loses energy ! */
+        } else {
+            Takeover(i.try_into().unwrap());
+
+            if LevelEmpty() != 0 {
+                (*CurLevel).empty = true.into();
+            }
         }
     }
 }
