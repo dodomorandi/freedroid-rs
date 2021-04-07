@@ -70,33 +70,33 @@ InitInfluPositionHistory( void )
     }
 } // void InitInfluPositionHistory( void )
 
-float
-GetInfluPositionHistoryX( int HowLongPast )
-{
-  int RingPosition;
-
-  RingPosition = CurrentZeroRingIndex - HowLongPast;
-
-  RingPosition += MAX_INFLU_POSITION_HISTORY; // We don't want any negative values, for safety
-
-  RingPosition %= MAX_INFLU_POSITION_HISTORY; // We do MODULO for the Ring buffer length
-
-  return Me.Position_History_Ring_Buffer[ RingPosition ].x;
-}
-
-float
-GetInfluPositionHistoryY( int HowLongPast )
-{
-  int RingPosition;
-
-  RingPosition = CurrentZeroRingIndex - HowLongPast;
-
-  RingPosition += MAX_INFLU_POSITION_HISTORY; // We don't want any negative values, for safety
-
-  RingPosition %= MAX_INFLU_POSITION_HISTORY; // We do MODULO for the Ring buffer length
-
-  return Me.Position_History_Ring_Buffer[ RingPosition ].y;
-}
+// float
+// GetInfluPositionHistoryX( int HowLongPast )
+// {
+//   int RingPosition;
+// 
+//   RingPosition = CurrentZeroRingIndex - HowLongPast;
+// 
+//   RingPosition += MAX_INFLU_POSITION_HISTORY; // We don't want any negative values, for safety
+// 
+//   RingPosition %= MAX_INFLU_POSITION_HISTORY; // We do MODULO for the Ring buffer length
+// 
+//   return Me.Position_History_Ring_Buffer[ RingPosition ].x;
+// }
+// 
+// float
+// GetInfluPositionHistoryY( int HowLongPast )
+// {
+//   int RingPosition;
+// 
+//   RingPosition = CurrentZeroRingIndex - HowLongPast;
+// 
+//   RingPosition += MAX_INFLU_POSITION_HISTORY; // We don't want any negative values, for safety
+// 
+//   RingPosition %= MAX_INFLU_POSITION_HISTORY; // We do MODULO for the Ring buffer length
+// 
+//   return Me.Position_History_Ring_Buffer[ RingPosition ].y;
+// }
 
 float
 GetInfluPositionHistoryZ( int HowLongPast )

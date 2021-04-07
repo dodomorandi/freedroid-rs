@@ -36,8 +36,6 @@ use std::{
 
 extern "C" {
     pub fn InitInfluPositionHistory();
-    pub fn GetInfluPositionHistoryX(how_long_past: c_int) -> c_float;
-    pub fn GetInfluPositionHistoryY(how_long_past: c_int) -> c_float;
 
     static mut CurrentZeroRingIndex: c_int;
 }
@@ -627,4 +625,23 @@ pub unsafe extern "C" fn AdjustSpeed() {
     let maxspeed = (*Druidmap.add(usize::try_from(Me.ty).unwrap())).maxspeed;
     Me.speed.x = Me.speed.x.clamp(-maxspeed, maxspeed);
     Me.speed.y = Me.speed.y.clamp(-maxspeed, maxspeed);
+}
+
+pub unsafe fn get_position_history(how_long_past: c_int) -> &'static Gps {
+    let ring_position =
+        CurrentZeroRingIndex - how_long_past + i32::try_from(MAX_INFLU_POSITION_HISTORY).unwrap();
+
+    let ring_position = usize::try_from(ring_position).unwrap() % MAX_INFLU_POSITION_HISTORY;
+
+    &Me.Position_History_Ring_Buffer[ring_position]
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn GetInfluPositionHistoryX(how_long_past: c_int) -> c_float {
+    get_position_history(how_long_past).x
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn GetInfluPositionHistoryY(how_long_past: c_int) -> c_float {
+    get_position_history(how_long_past).y
 }
