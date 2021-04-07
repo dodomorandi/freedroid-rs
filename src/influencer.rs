@@ -37,7 +37,6 @@ extern "C" {
     pub fn InitInfluPositionHistory();
     pub fn GetInfluPositionHistoryX(how_long_past: c_int) -> c_float;
     pub fn GetInfluPositionHistoryY(how_long_past: c_int) -> c_float;
-    pub fn PermanentLoseEnergy();
     pub fn FireBullet();
     pub fn InfluenceFrictionWithAir();
     pub fn AdjustSpeed();
@@ -510,4 +509,20 @@ pub unsafe extern "C" fn MoveInfluence() {
     ActSpecialField(Me.pos.x, Me.pos.y);
 
     AnimateInfluence(); // move the "phase" of influencers rotation
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn PermanentLoseEnergy() {
+    // Of course if in invincible mode, no energy will ever be lost...
+    if InvincibleMode != 0 {
+        return;
+    }
+
+    /* health decreases with time */
+    Me.health -= (*Druidmap.add(usize::try_from(Me.ty).unwrap())).lose_health * Frame_Time();
+
+    /* you cant have more energy than health */
+    if Me.energy > Me.health {
+        Me.energy = Me.health;
+    }
 }

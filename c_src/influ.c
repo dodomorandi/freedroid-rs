@@ -990,18 +990,18 @@ NEW: this function now takes into account the framerate.
 @Ret: void
 @Int:
 * $Function----------------------------------------------------------*/
-void
-PermanentLoseEnergy (void)
-{
-  // Of course if in invincible mode, no energy will ever be lost...
-  if (InvincibleMode) return;
-
-  /* health decreases with time */
-  Me.health -= Druidmap[Me.type].lose_health * Frame_Time();
-
-  /* you cant have more energy than health */
-  if (Me.energy > Me.health) Me.energy = Me.health;
-
-} // void PermanentLoseEnergy(void)
+// void
+// PermanentLoseEnergy (void)
+// {
+//   // Of course if in invincible mode, no energy will ever be lost...
+//   if (InvincibleMode) return;
+// 
+//   /* health decreases with time */
+//   Me.health -= Druidmap[Me.type].lose_health * Frame_Time();
+// 
+//   /* you cant have more energy than health */
+//   if (Me.energy > Me.health) Me.energy = Me.health;
+// 
+// } // void PermanentLoseEnergy(void)
 
 #undef _influ_c
