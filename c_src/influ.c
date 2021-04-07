@@ -627,34 +627,34 @@ AdjustSpeed (void)
 @Ret: keiner
 
 * $Function----------------------------------------------------------*/
-void
-InfluenceFrictionWithAir (void)
-{
-  float deccel = 7.0;
-  float slowdown;
-  int oldsign;
-
-  if (!RightPressed () && !LeftPressed ())
-    {
-      oldsign = sign(Me.speed.x);
-      slowdown = 1.0 * oldsign * deccel * Frame_Time();
-      Me.speed.x -= slowdown;
-      if (sign(Me.speed.x) != oldsign)  // changed direction -> vel=0
-	Me.speed.x = 0.0;
-    }
-
-  if (!UpPressed() && !DownPressed())
-    {
-      oldsign = sign(Me.speed.y);
-      slowdown = 1.0 * oldsign * deccel * Frame_Time();
-      Me.speed.y -= slowdown;
-      if (sign(Me.speed.y) != oldsign)  // changed direction -> vel=0
-	Me.speed.y = 0.0;
-    }
-
-  return;
-
-} // InfluenceFrictionWithAir (void)
+// void
+// InfluenceFrictionWithAir (void)
+// {
+//   float deccel = 7.0;
+//   float slowdown;
+//   int oldsign;
+// 
+//   if (!RightPressed () && !LeftPressed ())
+//     {
+//       oldsign = sign(Me.speed.x);
+//       slowdown = 1.0 * oldsign * deccel * Frame_Time();
+//       Me.speed.x -= slowdown;
+//       if (sign(Me.speed.x) != oldsign)  // changed direction -> vel=0
+// 	Me.speed.x = 0.0;
+//     }
+// 
+//   if (!UpPressed() && !DownPressed())
+//     {
+//       oldsign = sign(Me.speed.y);
+//       slowdown = 1.0 * oldsign * deccel * Frame_Time();
+//       Me.speed.y -= slowdown;
+//       if (sign(Me.speed.y) != oldsign)  // changed direction -> vel=0
+// 	Me.speed.y = 0.0;
+//     }
+// 
+//   return;
+// 
+// } // InfluenceFrictionWithAir (void)
 
 /*@Function============================================================
 @Desc: ExplodeInfluencer(): generiert eine grosse Explosion an

@@ -38,7 +38,6 @@ extern "C" {
     pub fn InitInfluPositionHistory();
     pub fn GetInfluPositionHistoryX(how_long_past: c_int) -> c_float;
     pub fn GetInfluPositionHistoryY(how_long_past: c_int) -> c_float;
-    pub fn InfluenceFrictionWithAir();
     pub fn AdjustSpeed();
 
     static mut CurrentZeroRingIndex: c_int;
@@ -593,4 +592,33 @@ pub unsafe extern "C" fn FireBullet() {
 
     cur_bullet.time_in_frames = 0;
     cur_bullet.time_in_seconds = 0.;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn InfluenceFrictionWithAir() {
+    const DECELERATION: f32 = 7.0;
+
+    if !RightPressed() && !LeftPressed() {
+        let oldsign = Me.speed.x.signum();
+        let slowdown = oldsign * DECELERATION * Frame_Time();
+        Me.speed.x -= slowdown;
+
+        #[allow(clippy::float_cmp)]
+        if Me.speed.x.signum() != oldsign {
+            // changed direction -> vel=0
+            Me.speed.x = 0.0;
+        }
+    }
+
+    if !UpPressed() && !DownPressed() {
+        let oldsign = Me.speed.y.signum();
+        let slowdown = oldsign * DECELERATION * Frame_Time();
+        Me.speed.y -= slowdown;
+
+        #[allow(clippy::float_cmp)]
+        if Me.speed.y.signum() != oldsign {
+            // changed direction -> vel=0
+            Me.speed.y = 0.0;
+        }
+    }
 }
