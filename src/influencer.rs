@@ -35,8 +35,6 @@ use std::{
 };
 
 extern "C" {
-    pub fn InitInfluPositionHistory();
-
     static mut CurrentZeroRingIndex: c_int;
 }
 
@@ -644,4 +642,13 @@ pub unsafe extern "C" fn GetInfluPositionHistoryX(how_long_past: c_int) -> c_flo
 #[no_mangle]
 pub unsafe extern "C" fn GetInfluPositionHistoryY(how_long_past: c_int) -> c_float {
     get_position_history(how_long_past).y
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn InitInfluPositionHistory() {
+    Me.Position_History_Ring_Buffer.fill(Gps {
+        x: Me.pos.x,
+        y: Me.pos.y,
+        z: (*CurLevel).levelnum,
+    });
 }
