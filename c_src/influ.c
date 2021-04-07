@@ -799,93 +799,93 @@ InfluenceFrictionWithAir (void)
 @Ret:
 @Int:
 * $Function----------------------------------------------------------*/
-void
-FireBullet (void)
-{
-  int i = 0;
-  Bullet CurBullet = NULL;	/* das Bullet, um das es jetzt geht */
-  int guntype = Druidmap[Me.type].gun;	/* which gun do we have ? */
-  float BulletSpeed = Bulletmap[guntype].speed;
-  float speed_norm;
-  finepoint speed;
-  int max_val;
-
-  /* Wenn noch kein Schuss loesbar ist sofort zurueck */
-  if (Me.firewait > 0)
-    return;
-  Me.firewait = Bulletmap[guntype].recharging_time;
-
-  /* Geraeusch eines geloesten Schusses fabrizieren */
-  Fire_Bullet_Sound ( guntype );
-
-  /* Naechste Freie Bulletposition suchen */
-  for (i = 0; i < (MAXBULLETS); i++)
-    {
-      if (AllBullets[i].type == OUT)
-	{
-	  CurBullet = &AllBullets[i];
-	  break;
-	}
-    }
-
-  /* Kein freies Bullet gefunden: Nimm das erste */
-  if (CurBullet == NULL)
-    CurBullet = &AllBullets[0];
-
-  CurBullet->pos.x = Me.pos.x;
-  CurBullet->pos.y = Me.pos.y;
-  CurBullet->type = guntype;
-  CurBullet->mine = TRUE;
-  CurBullet->owner = -1;
-
-  speed.x = 0.0;
-  speed.y = 0.0;
-
-  if (DownPressed ())
-    speed.y = 1.0;
-  if (UpPressed ())
-    speed.y = -1.0;
-  if (LeftPressed ())
-    speed.x = -1.0;
-  if (RightPressed ())
-    speed.x = 1.0;
-
-  /* if using a joystick/mouse, allow exact directional shots! */
-  if ( axis_is_active )
-    {
-      max_val = max (abs(input_axis.x), abs(input_axis.y));
-      speed.x = 1.0*input_axis.x/max_val;
-      speed.y = 1.0*input_axis.y/max_val;
-    }
-
-  speed_norm = sqrt (speed.x * speed.x + speed.y * speed.y);
-  CurBullet->speed.x = (speed.x/speed_norm);
-  CurBullet->speed.y = (speed.y/speed_norm);
-
-  // now determine the angle of the shot
-  CurBullet->angle= - ( atan2 (speed.y,  speed.x) * 180 / M_PI + 90 );
-
-  DebugPrintf( 1 , "\nFireBullet(...) : Phase of bullet=%d." , CurBullet->phase );
-  DebugPrintf( 1 , "\nFireBullet(...) : angle of bullet=%f." , CurBullet->angle );
-
-  //  printf_SDL(ne_screen, User_Rect.x, User_Rect.y, "Bullet speed: %g %g ",
-  //	     CurBullet->speed.x, CurBullet->speed.y);
-  //  getchar_raw();
-
-  CurBullet->speed.x *= BulletSpeed;
-  CurBullet->speed.y *= BulletSpeed;
-
-  // To prevent influ from hitting himself with his own bullets,
-  // move them a bit..
-  CurBullet->pos.x += 0.5 * (CurBullet->speed.x/BulletSpeed);
-  CurBullet->pos.y += 0.5 * (CurBullet->speed.y/BulletSpeed);
-
-  CurBullet->time_in_frames = 0;
-  CurBullet->time_in_seconds=0;
-
-  return;
-
-}; // FireBullet
+// void
+// FireBullet (void)
+// {
+//   int i = 0;
+//   Bullet CurBullet = NULL;	/* das Bullet, um das es jetzt geht */
+//   int guntype = Druidmap[Me.type].gun;	/* which gun do we have ? */
+//   float BulletSpeed = Bulletmap[guntype].speed;
+//   float speed_norm;
+//   finepoint speed;
+//   int max_val;
+// 
+//   /* Wenn noch kein Schuss loesbar ist sofort zurueck */
+//   if (Me.firewait > 0)
+//     return;
+//   Me.firewait = Bulletmap[guntype].recharging_time;
+// 
+//   /* Geraeusch eines geloesten Schusses fabrizieren */
+//   Fire_Bullet_Sound ( guntype );
+// 
+//   /* Naechste Freie Bulletposition suchen */
+//   for (i = 0; i < (MAXBULLETS); i++)
+//     {
+//       if (AllBullets[i].type == OUT)
+// 	{
+// 	  CurBullet = &AllBullets[i];
+// 	  break;
+// 	}
+//     }
+// 
+//   /* Kein freies Bullet gefunden: Nimm das erste */
+//   if (CurBullet == NULL)
+//     CurBullet = &AllBullets[0];
+// 
+//   CurBullet->pos.x = Me.pos.x;
+//   CurBullet->pos.y = Me.pos.y;
+//   CurBullet->type = guntype;
+//   CurBullet->mine = TRUE;
+//   CurBullet->owner = -1;
+// 
+//   speed.x = 0.0;
+//   speed.y = 0.0;
+// 
+//   if (DownPressed ())
+//     speed.y = 1.0;
+//   if (UpPressed ())
+//     speed.y = -1.0;
+//   if (LeftPressed ())
+//     speed.x = -1.0;
+//   if (RightPressed ())
+//     speed.x = 1.0;
+// 
+//   /* if using a joystick/mouse, allow exact directional shots! */
+//   if ( axis_is_active )
+//     {
+//       max_val = max (abs(input_axis.x), abs(input_axis.y));
+//       speed.x = 1.0*input_axis.x/max_val;
+//       speed.y = 1.0*input_axis.y/max_val;
+//     }
+// 
+//   speed_norm = sqrt (speed.x * speed.x + speed.y * speed.y);
+//   CurBullet->speed.x = (speed.x/speed_norm);
+//   CurBullet->speed.y = (speed.y/speed_norm);
+// 
+//   // now determine the angle of the shot
+//   CurBullet->angle= - ( atan2 (speed.y,  speed.x) * 180 / M_PI + 90 );
+// 
+//   DebugPrintf( 1 , "\nFireBullet(...) : Phase of bullet=%d." , CurBullet->phase );
+//   DebugPrintf( 1 , "\nFireBullet(...) : angle of bullet=%f." , CurBullet->angle );
+// 
+//   //  printf_SDL(ne_screen, User_Rect.x, User_Rect.y, "Bullet speed: %g %g ",
+//   //	     CurBullet->speed.x, CurBullet->speed.y);
+//   //  getchar_raw();
+// 
+//   CurBullet->speed.x *= BulletSpeed;
+//   CurBullet->speed.y *= BulletSpeed;
+// 
+//   // To prevent influ from hitting himself with his own bullets,
+//   // move them a bit..
+//   CurBullet->pos.x += 0.5 * (CurBullet->speed.x/BulletSpeed);
+//   CurBullet->pos.y += 0.5 * (CurBullet->speed.y/BulletSpeed);
+// 
+//   CurBullet->time_in_frames = 0;
+//   CurBullet->time_in_seconds=0;
+// 
+//   return;
+// 
+// }; // FireBullet
 
 /*@Function============================================================
 @Desc: RefreshInfluencer(): Refresh fields can be used to regain energy

@@ -2,23 +2,24 @@ use crate::{
     bullet::StartBlast,
     defs::{
         self, Direction, Droid, Explosion, MapTile, Sound, Status, ENEMYPHASES, MAXBLASTS,
-        PUSHSPEED, WAIT_COLLISION,
+        MAXBULLETS, PUSHSPEED, WAIT_COLLISION,
     },
     global::{collision_lose_energy_calibrator, Droid_Radius},
     init::ThouArtDefeated,
-    input::{cmd_is_active, NoDirectionPressed},
+    input::{axis_is_active, cmd_is_active, input_axis, NoDirectionPressed},
     map::{ActSpecialField, DruidPassable, GetMapBrick},
     misc::{Frame_Time, MyRandom, Terminate},
     ship::LevelEmpty,
     sound::{
-        BounceSound, CollisionDamagedEnemySound, CollisionGotDamagedSound, Play_Sound, RefreshSound,
+        BounceSound, CollisionDamagedEnemySound, CollisionGotDamagedSound, Fire_Bullet_Sound,
+        Play_Sound, RefreshSound,
     },
     structs::{Finepoint, Gps},
     takeover::Takeover,
     text::EnemyInfluCollisionText,
-    vars::Druidmap,
-    AllBlasts, AllEnemys, CurLevel, GameConfig, InvincibleMode, LastRefreshSound, Me, NumEnemys,
-    RealScore,
+    vars::{Bulletmap, Druidmap},
+    AllBlasts, AllBullets, AllEnemys, CurLevel, GameConfig, InvincibleMode, LastRefreshSound, Me,
+    NumEnemys, RealScore,
 };
 
 use cstr::cstr;
@@ -37,7 +38,6 @@ extern "C" {
     pub fn InitInfluPositionHistory();
     pub fn GetInfluPositionHistoryX(how_long_past: c_int) -> c_float;
     pub fn GetInfluPositionHistoryY(how_long_past: c_int) -> c_float;
-    pub fn FireBullet();
     pub fn InfluenceFrictionWithAir();
     pub fn AdjustSpeed();
 
@@ -525,4 +525,72 @@ pub unsafe extern "C" fn PermanentLoseEnergy() {
     if Me.energy > Me.health {
         Me.energy = Me.health;
     }
+}
+
+/// Fire-Routine for the Influencer only !! (should be changed)
+#[no_mangle]
+pub unsafe extern "C" fn FireBullet() {
+    let guntype = (*Druidmap.add(usize::try_from(Me.ty).unwrap())).gun; /* which gun do we have ? */
+    let bullet_speed = (*Bulletmap.add(usize::try_from(guntype).unwrap())).speed;
+
+    if Me.firewait > 0. {
+        return;
+    }
+    Me.firewait = (*Bulletmap.add(usize::try_from(guntype).unwrap())).recharging_time;
+
+    Fire_Bullet_Sound(guntype);
+
+    let cur_bullet = AllBullets[..MAXBULLETS]
+        .iter_mut()
+        .find(|bullet| bullet.ty == Status::Out as u8)
+        .unwrap_or(&mut AllBullets[0]);
+
+    cur_bullet.pos.x = Me.pos.x;
+    cur_bullet.pos.y = Me.pos.y;
+    cur_bullet.ty = guntype.try_into().unwrap();
+    cur_bullet.mine = true;
+    cur_bullet.owner = -1;
+
+    let mut speed = Finepoint { x: 0., y: 0. };
+
+    if DownPressed() {
+        speed.y = 1.0;
+    }
+    if UpPressed() {
+        speed.y = -1.0;
+    }
+    if LeftPressed() {
+        speed.x = -1.0;
+    }
+    if RightPressed() {
+        speed.x = 1.0;
+    }
+
+    /* if using a joystick/mouse, allow exact directional shots! */
+    if axis_is_active != 0 {
+        let max_val = input_axis.x.abs().max(input_axis.y.abs()) as f32;
+        speed.x = input_axis.x as f32 / max_val;
+        speed.y = input_axis.y as f32 / max_val;
+    }
+
+    let speed_norm = (speed.x * speed.x + speed.y * speed.y).sqrt();
+    cur_bullet.speed.x = speed.x / speed_norm;
+    cur_bullet.speed.y = speed.y / speed_norm;
+
+    // now determine the angle of the shot
+    cur_bullet.angle = -speed.y.atan2(speed.x) * 180. / std::f32::consts::PI + 90.;
+
+    info!("FireBullet: Phase of bullet={}.", cur_bullet.phase);
+    info!("FireBullet: angle of bullet={}.", cur_bullet.angle);
+
+    cur_bullet.speed.x *= bullet_speed;
+    cur_bullet.speed.y *= bullet_speed;
+
+    // To prevent influ from hitting himself with his own bullets,
+    // move them a bit..
+    cur_bullet.pos.x += 0.5 * (cur_bullet.speed.x / bullet_speed);
+    cur_bullet.pos.y += 0.5 * (cur_bullet.speed.y / bullet_speed);
+
+    cur_bullet.time_in_frames = 0;
+    cur_bullet.time_in_seconds = 0.;
 }
