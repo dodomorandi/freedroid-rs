@@ -38,7 +38,6 @@ extern "C" {
     pub fn InitInfluPositionHistory();
     pub fn GetInfluPositionHistoryX(how_long_past: c_int) -> c_float;
     pub fn GetInfluPositionHistoryY(how_long_past: c_int) -> c_float;
-    pub fn AdjustSpeed();
 
     static mut CurrentZeroRingIndex: c_int;
 }
@@ -621,4 +620,11 @@ pub unsafe extern "C" fn InfluenceFrictionWithAir() {
             Me.speed.y = 0.0;
         }
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn AdjustSpeed() {
+    let maxspeed = (*Druidmap.add(usize::try_from(Me.ty).unwrap())).maxspeed;
+    Me.speed.x = Me.speed.x.clamp(-maxspeed, maxspeed);
+    Me.speed.y = Me.speed.y.clamp(-maxspeed, maxspeed);
 }

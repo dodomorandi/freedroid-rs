@@ -604,20 +604,20 @@ NOTE: Of course this functions HAS to take into account the current framerate!
 @Ret: keiner
 @Int: keiner
 * $Function----------------------------------------------------------*/
-void
-AdjustSpeed (void)
-{
-  float maxspeed = Druidmap[Me.type].maxspeed;
-  if (Me.speed.x > maxspeed)
-    Me.speed.x = maxspeed;
-  if (Me.speed.x < (-maxspeed))
-    Me.speed.x = (-maxspeed);
-
-  if (Me.speed.y > maxspeed)
-    Me.speed.y = maxspeed;
-  if (Me.speed.y < (-maxspeed))
-    Me.speed.y = (-maxspeed);
-}				// void AdjustSpeed(void)
+// void
+// AdjustSpeed (void)
+// {
+//   float maxspeed = Druidmap[Me.type].maxspeed;
+//   if (Me.speed.x > maxspeed)
+//     Me.speed.x = maxspeed;
+//   if (Me.speed.x < (-maxspeed))
+//     Me.speed.x = (-maxspeed);
+// 
+//   if (Me.speed.y > maxspeed)
+//     Me.speed.y = maxspeed;
+//   if (Me.speed.y < (-maxspeed))
+//     Me.speed.y = (-maxspeed);
+// }				// void AdjustSpeed(void)
 
 
 /*@Function============================================================
