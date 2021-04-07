@@ -345,7 +345,11 @@ pub unsafe fn RightPressedR() -> bool {
     cmd_is_activeR(Cmds::Right)
 }
 
-// #define AnyCmdActive() (cmd_is_active(CMD_FIRE) || cmd_is_active(CMD_ACTIVATE) || cmd_is_active(CMD_TAKEOVER) )
+#[inline]
+pub unsafe fn AnyCmdActive() -> bool {
+    cmd_is_active(Cmds::Fire) || cmd_is_active(Cmds::Activate) || cmd_is_active(Cmds::Takeover)
+}
+
 // #define AnyCmdActiveR() (cmd_is_activeR(CMD_FIRE) || cmd_is_activeR(CMD_ACTIVATE) || cmd_is_activeR(CMD_TAKEOVER) )
 
 // ----------------------------------------
@@ -641,7 +645,7 @@ pub const WAIT_AFTER_KILLED: u32 = 2000; // time (in ms) to wait and still displ
 pub const SHOW_WAIT: u32 = 3500; // std amount of time to show something
                                  // the players droid.  This is now measured in seconds and can be a float
 pub const WAIT_SHIPEMPTY: usize = 20;
-pub const WAIT_TRANSFERMODE: f64 = 0.3; /* this is a "float" indicating the number of seconds the influence
+pub const WAIT_TRANSFERMODE: f32 = 0.3; /* this is a "float" indicating the number of seconds the influence
                                         stand still with space pressed, before switching into transfermode
                                         This variable describes the amount in SECONDS */
 pub const WAIT_COLLISION: c_int = 1; // after a little collision with influ, enemys hold position for a while

@@ -120,135 +120,135 @@ keys pressed and also adjusts his status and current "phase" of his rotation.
 
 @Ret: none
 * $Function----------------------------------------------------------*/
-void
-MoveInfluence (void)
-{
-  float accel = Druidmap[Me.type].accel;
-  float planned_step_x;
-  float planned_step_y;
-  static float TransferCounter = 0;
-
-  accel *= Frame_Time();
-
-  DebugPrintf (2, "\nvoid MoveInfluence(void):  Real function call confirmed.");
-
-  //--------------------
-  // We store the influencers position for the history record and so that others
-  // can follow his trail.
-  //
-
-  CurrentZeroRingIndex++;
-  CurrentZeroRingIndex %= MAX_INFLU_POSITION_HISTORY;
-  Me.Position_History_Ring_Buffer [CurrentZeroRingIndex].x = Me.pos.x;
-  Me.Position_History_Ring_Buffer [CurrentZeroRingIndex].y = Me.pos.y;
-  Me.Position_History_Ring_Buffer [CurrentZeroRingIndex].z = CurLevel->levelnum ;
-
-  PermanentLoseEnergy ();	/* influ permanently loses energy */
-
-  // check, if the influencer is still ok
-  if (Me.energy <= 0)
-    {
-      if (Me.type != DRUID001)
-	{
-	  Me.type = DRUID001;
-	  Me.energy = BLINKENERGY;
-	  Me.health = BLINKENERGY;
-	  StartBlast (Me.pos.x, Me.pos.y, REJECTBLAST);
-	}
-      else
-	{
-	  Me.status = TERMINATED;
-	  ThouArtDefeated ();
-	  DebugPrintf (2, "\nvoid MoveInfluence(void):  Alternate end of function reached.");
-	  return;
-	}
-    }
-
-  /* Time passed before entering Transfermode ?? */
-  if ( TransferCounter >= WAIT_TRANSFERMODE )
-    {
-      Me.status = TRANSFERMODE;
-      TransferCounter=0;
-    }
-
-  if (UpPressed())
-    Me.speed.y -= accel;
-  if (DownPressed ())
-    Me.speed.y += accel;
-  if (LeftPressed())
-    Me.speed.x -= accel;
-  if (RightPressed())
-    Me.speed.x += accel;
-
-//  We only need this check if we want held fire to cause activate 
-  if (!AnyCmdActive()) // Used to be !SpacePressed, which causes any fire button != SPACE behave differently than space
-     Me.status = MOBILE;
-
-  if (TransferCounter == 1)
-    {
-      Me.status = TRANSFERMODE;
-      TransferCounter = 0;
-    }
-
-  if (cmd_is_active(CMD_ACTIVATE)) // activate mode for Konsole and Lifts
-    Me.status = ACTIVATE;
-
-   if ( GameConfig.FireHoldTakeover && (FirePressed ()) && (NoDirectionPressed ()) &&(Me.status != WEAPON) && (Me.status != TRANSFERMODE) ) // Proposed FireActivatePressed here...
-   TransferCounter += Frame_Time(); // Or make it an option!
-
-  if ( (FirePressed() ) && (!NoDirectionPressed () ) && (Me.status != TRANSFERMODE) )
-    Me.status = WEAPON;
-
-  if (FirePressed() && (!NoDirectionPressed())&&(Me.status==WEAPON)&&(Me.firewait == 0) )
-    FireBullet ();
-
-  if ( (Me.status != WEAPON) && (cmd_is_active(CMD_TAKEOVER)) )
-    Me.status = TRANSFERMODE;
-
-
-  InfluenceFrictionWithAir (); // The influ should lose some of his speed when no key is pressed
-
-  AdjustSpeed ();  // If the influ is faster than allowed for his type, slow him
-
-  //--------------------
-  // Now we move influence according to current speed.  But there has been a problem
-  // reported from people, that the influencer would (*very* rarely) jump throught walls
-  // and even out of the ship.  This has *never* occured on my fast machine.  Therefore
-  // I assume that the problem is related to sometimes very low framerates on these machines.
-  // So, we do a sanity check not to make steps too big.
-  //
-  // So what do we do?  We allow a maximum step of exactly that, what the 302 (with a speed
-  // of 7) could get when the framerate is as low as 20 FPS.  This should be sufficient to
-  // prevent the influencer from *ever* leaving the ship.  I hope this really does work.
-  // The definition of that speed is made in MAXIMAL_STEP_SIZE at the top of this file.
-  //
-  // And on machines with FPS << 20, it will certainly alter the game behaviour, so people
-  // should really start using a pentium or better machine.
-  //
-  // NOTE:  PLEASE LEAVE THE .0 in the code or gcc will round it down to 0 like an integer.
-  //
-  planned_step_x = Me.speed.x * Frame_Time ();
-  planned_step_y = Me.speed.y * Frame_Time ();
-  if ( fabsf(planned_step_x) >= MAXIMAL_STEP_SIZE )
-    {
-      planned_step_x = copysignf( MAXIMAL_STEP_SIZE , planned_step_x );
-    }
-  if ( fabsf(planned_step_y) >= MAXIMAL_STEP_SIZE )
-    {
-      planned_step_y = copysignf( MAXIMAL_STEP_SIZE , planned_step_y );
-    }
-  Me.pos.x += planned_step_x;
-  Me.pos.y += planned_step_y;
-
-  //--------------------
-  // Check it the influ is on a special field like a lift, a console or a refresh
-  ActSpecialField ( Me.pos.x , Me.pos.y );
-
-  AnimateInfluence ();	// move the "phase" of influencers rotation
-
-  DebugPrintf (2, "\nvoid MoveInfluence(void):  Usual end of function reached.");
-
-} /* MoveInfluence */
+// void
+// MoveInfluence (void)
+// {
+//   float accel = Druidmap[Me.type].accel;
+//   float planned_step_x;
+//   float planned_step_y;
+//   static float TransferCounter = 0;
+// 
+//   accel *= Frame_Time();
+// 
+//   DebugPrintf (2, "\nvoid MoveInfluence(void):  Real function call confirmed.");
+// 
+//   //--------------------
+//   // We store the influencers position for the history record and so that others
+//   // can follow his trail.
+//   //
+// 
+//   CurrentZeroRingIndex++;
+//   CurrentZeroRingIndex %= MAX_INFLU_POSITION_HISTORY;
+//   Me.Position_History_Ring_Buffer [CurrentZeroRingIndex].x = Me.pos.x;
+//   Me.Position_History_Ring_Buffer [CurrentZeroRingIndex].y = Me.pos.y;
+//   Me.Position_History_Ring_Buffer [CurrentZeroRingIndex].z = CurLevel->levelnum ;
+// 
+//   PermanentLoseEnergy ();	/* influ permanently loses energy */
+// 
+//   // check, if the influencer is still ok
+//   if (Me.energy <= 0)
+//     {
+//       if (Me.type != DRUID001)
+// 	{
+// 	  Me.type = DRUID001;
+// 	  Me.energy = BLINKENERGY;
+// 	  Me.health = BLINKENERGY;
+// 	  StartBlast (Me.pos.x, Me.pos.y, REJECTBLAST);
+// 	}
+//       else
+// 	{
+// 	  Me.status = TERMINATED;
+// 	  ThouArtDefeated ();
+// 	  DebugPrintf (2, "\nvoid MoveInfluence(void):  Alternate end of function reached.");
+// 	  return;
+// 	}
+//     }
+// 
+//   /* Time passed before entering Transfermode ?? */
+//   if ( TransferCounter >= WAIT_TRANSFERMODE )
+//     {
+//       Me.status = TRANSFERMODE;
+//       TransferCounter=0;
+//     }
+// 
+//   if (UpPressed())
+//     Me.speed.y -= accel;
+//   if (DownPressed ())
+//     Me.speed.y += accel;
+//   if (LeftPressed())
+//     Me.speed.x -= accel;
+//   if (RightPressed())
+//     Me.speed.x += accel;
+// 
+// //  We only need this check if we want held fire to cause activate 
+//   if (!AnyCmdActive()) // Used to be !SpacePressed, which causes any fire button != SPACE behave differently than space
+//      Me.status = MOBILE;
+// 
+//   if (TransferCounter == 1)
+//     {
+//       Me.status = TRANSFERMODE;
+//       TransferCounter = 0;
+//     }
+// 
+//   if (cmd_is_active(CMD_ACTIVATE)) // activate mode for Konsole and Lifts
+//     Me.status = ACTIVATE;
+// 
+//    if ( GameConfig.FireHoldTakeover && (FirePressed ()) && (NoDirectionPressed ()) &&(Me.status != WEAPON) && (Me.status != TRANSFERMODE) ) // Proposed FireActivatePressed here...
+//    TransferCounter += Frame_Time(); // Or make it an option!
+// 
+//   if ( (FirePressed() ) && (!NoDirectionPressed () ) && (Me.status != TRANSFERMODE) )
+//     Me.status = WEAPON;
+// 
+//   if (FirePressed() && (!NoDirectionPressed())&&(Me.status==WEAPON)&&(Me.firewait == 0) )
+//     FireBullet ();
+// 
+//   if ( (Me.status != WEAPON) && (cmd_is_active(CMD_TAKEOVER)) )
+//     Me.status = TRANSFERMODE;
+// 
+// 
+//   InfluenceFrictionWithAir (); // The influ should lose some of his speed when no key is pressed
+// 
+//   AdjustSpeed ();  // If the influ is faster than allowed for his type, slow him
+// 
+//   //--------------------
+//   // Now we move influence according to current speed.  But there has been a problem
+//   // reported from people, that the influencer would (*very* rarely) jump throught walls
+//   // and even out of the ship.  This has *never* occured on my fast machine.  Therefore
+//   // I assume that the problem is related to sometimes very low framerates on these machines.
+//   // So, we do a sanity check not to make steps too big.
+//   //
+//   // So what do we do?  We allow a maximum step of exactly that, what the 302 (with a speed
+//   // of 7) could get when the framerate is as low as 20 FPS.  This should be sufficient to
+//   // prevent the influencer from *ever* leaving the ship.  I hope this really does work.
+//   // The definition of that speed is made in MAXIMAL_STEP_SIZE at the top of this file.
+//   //
+//   // And on machines with FPS << 20, it will certainly alter the game behaviour, so people
+//   // should really start using a pentium or better machine.
+//   //
+//   // NOTE:  PLEASE LEAVE THE .0 in the code or gcc will round it down to 0 like an integer.
+//   //
+//   planned_step_x = Me.speed.x * Frame_Time ();
+//   planned_step_y = Me.speed.y * Frame_Time ();
+//   if ( fabsf(planned_step_x) >= MAXIMAL_STEP_SIZE )
+//     {
+//       planned_step_x = copysignf( MAXIMAL_STEP_SIZE , planned_step_x );
+//     }
+//   if ( fabsf(planned_step_y) >= MAXIMAL_STEP_SIZE )
+//     {
+//       planned_step_y = copysignf( MAXIMAL_STEP_SIZE , planned_step_y );
+//     }
+//   Me.pos.x += planned_step_x;
+//   Me.pos.y += planned_step_y;
+// 
+//   //--------------------
+//   // Check it the influ is on a special field like a lift, a console or a refresh
+//   ActSpecialField ( Me.pos.x , Me.pos.y );
+// 
+//   AnimateInfluence ();	// move the "phase" of influencers rotation
+// 
+//   DebugPrintf (2, "\nvoid MoveInfluence(void):  Usual end of function reached.");
+// 
+// } /* MoveInfluence */
 
 
 /*@Function============================================================
