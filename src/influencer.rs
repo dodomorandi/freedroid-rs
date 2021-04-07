@@ -34,9 +34,7 @@ use std::{
     os::raw::{c_char, c_float, c_int},
 };
 
-extern "C" {
-    static mut CurrentZeroRingIndex: c_int;
-}
+static mut CURRENT_ZERO_RING_INDEX: c_int = 0;
 
 const REFRESH_ENERGY: f32 = 3.;
 
@@ -382,9 +380,9 @@ pub unsafe extern "C" fn MoveInfluence() {
     // We store the influencers position for the history record and so that others
     // can follow his trail.
 
-    CurrentZeroRingIndex += 1;
-    CurrentZeroRingIndex %= c_int::try_from(MAX_INFLU_POSITION_HISTORY).unwrap();
-    Me.Position_History_Ring_Buffer[usize::try_from(CurrentZeroRingIndex).unwrap()] = Gps {
+    CURRENT_ZERO_RING_INDEX += 1;
+    CURRENT_ZERO_RING_INDEX %= c_int::try_from(MAX_INFLU_POSITION_HISTORY).unwrap();
+    Me.Position_History_Ring_Buffer[usize::try_from(CURRENT_ZERO_RING_INDEX).unwrap()] = Gps {
         x: Me.pos.x,
         y: Me.pos.y,
         z: (*CurLevel).levelnum,
@@ -626,8 +624,8 @@ pub unsafe extern "C" fn AdjustSpeed() {
 }
 
 pub unsafe fn get_position_history(how_long_past: c_int) -> &'static Gps {
-    let ring_position =
-        CurrentZeroRingIndex - how_long_past + i32::try_from(MAX_INFLU_POSITION_HISTORY).unwrap();
+    let ring_position = CURRENT_ZERO_RING_INDEX - how_long_past
+        + i32::try_from(MAX_INFLU_POSITION_HISTORY).unwrap();
 
     let ring_position = usize::try_from(ring_position).unwrap() % MAX_INFLU_POSITION_HISTORY;
 
