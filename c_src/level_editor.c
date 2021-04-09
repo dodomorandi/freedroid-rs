@@ -208,285 +208,285 @@ Show_Waypoints(void)
 
 @Ret:  none
 * $Function----------------------------------------------------------*/
-void
-LevelEditor(void)
-{
-  int BlockX=rintf(Me.pos.x);
-  int BlockY=rintf(Me.pos.y);
-  int Done=FALSE;
-  int i,k;
-  int SpecialMapValue;
-  int OriginWaypoint = (-1);
-  char* NumericInputString;
-  SDL_Rect rect;
-  waypoint *SrcWp;
-
-  int KeymapOffset = 15;
-
-  Copy_Rect (User_Rect, rect);
-  Copy_Rect (Screen_Rect, User_Rect);  /// level editor can use the full screen!
-
-  while ( !Done )
-    {
-      if ( cmd_is_activeR ( CMD_MENU ) ) {
-	showLevelEditorMenu();
-        if ( quit_LevelEditor ) {
-          Done = TRUE;
-          CurrentCombatScaleFactor = 1;
-          SetCombatScaleTo (CurrentCombatScaleFactor);
-          quit_LevelEditor = FALSE;
-        }
-        continue;
-      }
-
-      BlockX=rintf(Me.pos.x);
-      BlockY=rintf(Me.pos.y);
-
-      Fill_Rect (User_Rect, Black);
-      Assemble_Combat_Picture ( ONLY_SHOW_MAP );
-      Highlight_Current_Block();
-      Show_Waypoints();
-
-      // show line between a selected connection-origin and the current block
-      if (OriginWaypoint != (-1) )
-	DrawLineBetweenTiles( BlockX, BlockY,
-			      CurLevel->AllWaypoints[OriginWaypoint].x,
-			      CurLevel->AllWaypoints[OriginWaypoint].y,
-			      HIGHLIGHTCOLOR2 );
-
-
-      PrintStringFont (ne_screen, Font0_BFont, Full_User_Rect.x+Full_User_Rect.w/3 ,
-		       Full_User_Rect.y+Full_User_Rect.h - FontHeight(Font0_BFont),
-		       "Press F1 for keymap");
-
-      SDL_Flip( ne_screen );
-
-      //--------------------
-      // If the user of the Level editor pressed some cursor keys, move the
-      // highlited filed (that is Me.pos) accordingly. This is done here:
-      //
-      if (LeftPressedR())
-	if ( rintf(Me.pos.x) > 0 ) Me.pos.x-=1;
-
-      if (RightPressedR())
-	if ( rintf(Me.pos.x) < CurLevel->xlen-1 ) Me.pos.x+=1;
-
-      if (UpPressedR())
-	if ( rintf(Me.pos.y) > 0 ) Me.pos.y-=1;
-
-      if (DownPressedR())
-	if ( rintf(Me.pos.y) < CurLevel->ylen-1 ) Me.pos.y+=1;
-
-
-      if ( KeyIsPressedR (SDLK_F1) )
-	{
-	  k=3;
-	  //	  SDL_BlitSurface ( console_bg_pic2 , NULL, ne_screen, NULL);
-	  MakeGridOnScreen (NULL);
-	  CenteredPutString   ( ne_screen ,  (k)*FontHeight(Menu_BFont), "Level Editor Keymap"); k+=2;
-	  // DisplayText ("Use cursor keys to move around.", 1, 2 *FontHeight(Menu_BFont), NULL );
-	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "Use cursor keys to move around." ); k++;
-	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "Use number pad to plant walls." ); k++;
-	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "Use shift and number pad to plant extras." ); k++;
-	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "R...Refresh, 1-5...Blocktype 1-5, L...Lift" ); k++;
-	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "F...Fine grid, T/SHIFT + T...Doors" ); k++;
-	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "M...Alert, E...Enter tile by number" ); k++;
-	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "Space/Enter...Floor" ); k+=2;
-
-	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "I/O...zoom INTO/OUT OF the map" ); k+=2;
-	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "P...toggle wayPOINT on/off" ); k++;
-	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "C...start/end waypoint CONNECTION" ); k++;
-
-	  SDL_Flip ( ne_screen );
-	  while (!FirePressedR() && !EscapePressedR() && !ReturnPressedR() ) SDL_Delay(1);
-	}
-
-      //--------------------
-      // Since the level editor will not always be able to
-      // immediately feature all the the map tiles that might
-      // have been added recently, we should offer a feature, so that you can
-      // specify the value of a map piece just numerically.  This will be
-      // done upon pressing the 'e' key.
-	  //
-      if ( KeyIsPressedR ('e') )
-	{
-	  CenteredPutString   ( ne_screen ,  6*FontHeight(Menu_BFont), "Please enter new value: ");
-	  SDL_Flip( ne_screen );
-	  NumericInputString = GetString (10, 2);
-	  sscanf( NumericInputString , "%d" , &SpecialMapValue );
-	  if ( SpecialMapValue >= NUM_MAP_BLOCKS ) SpecialMapValue=0;
-	  CurLevel->map[BlockY][BlockX]=SpecialMapValue;
-	}
-
-      //--------------------
-      //If the person using the level editor decides he/she wants a different
-      //scale for the editing process, he/she may say so by using the O/I keys.
-      //
-      if ( KeyIsPressedR ('o') )
-	{
-	  if (CurrentCombatScaleFactor > 0.25 )
-	    CurrentCombatScaleFactor -= 0.25;
-	  SetCombatScaleTo (CurrentCombatScaleFactor);
-	}
-      if ( KeyIsPressedR ('i') )
-	{
-	  CurrentCombatScaleFactor += 0.25;
-	  SetCombatScaleTo (CurrentCombatScaleFactor);
-	}
-
-      // toggle waypoint on current square.  That means either removed or added.
-      // And in case of removal, also the connections must be removed.
-      if (KeyIsPressedR('p'))
-	{
-	  // find out if there is a waypoint on the current square
-	  for (i=0 ; i < CurLevel->num_waypoints; i++)
-	    {
-	      if ( ( CurLevel->AllWaypoints[i].x == BlockX ) &&
-		   ( CurLevel->AllWaypoints[i].y == BlockY ) ) break;
-	    }
-
-	  // if its waypoint already, this waypoint must be deleted.
-	  if (i < CurLevel->num_waypoints)
-	    DeleteWaypoint (CurLevel, i);
-	  else // if its not a waypoint already, it must be made into one
-	    CreateWaypoint (CurLevel, BlockX, BlockY);
-
-	} // if 'p' pressed (toggle waypoint)
-
-      // create a connection between waypoints.  If this is the first selected waypoint, its
-      // an origin and the second "C"-pressed waypoint will be used a target.
-      // If origin and destination are the same, the operation is cancelled.
-      if (KeyIsPressedR ('c'))
-	{
-	  // Determine which waypoint is currently targeted
-	  for (i=0 ; i < CurLevel->num_waypoints ; i++)
-	    {
-	      if ( ( CurLevel->AllWaypoints[i].x == BlockX ) &&
-		   ( CurLevel->AllWaypoints[i].y == BlockY ) ) break;
-	    }
-
-	  if ( i == CurLevel->num_waypoints )
-	    DebugPrintf(0, "\nSorry, no waypoint here to connect...\n");
-	  else
-	    {
-
-	      if ( OriginWaypoint == (-1) )
-		{
-		  OriginWaypoint = i;
-		  SrcWp = &(CurLevel->AllWaypoints[OriginWaypoint]);
-		  if (SrcWp->num_connections < MAX_WP_CONNECTIONS)
-		    DebugPrintf (0, "\nWaypoint nr. %d. selected as origin\n", i);
-		  else
-		    {
-		      DebugPrintf (0, "\nSorry, maximal number of waypoint-connections (%d) reached!\n",
-				   MAX_WP_CONNECTIONS);
-		      DebugPrintf (0, "Operation not possible\n");
-		      OriginWaypoint = (-1);
-		      SrcWp = NULL;
-		    }
-		}
-	      else
-		{
-		  if ( OriginWaypoint == i )
-		    {
-		      DebugPrintf(0, "\nOrigin==Target --> Connection Operation cancelled.\n");
-		      OriginWaypoint = (-1);
-		      SrcWp = NULL;
-		    }
-		  else
-		    {
-		      DebugPrintf(0, "\nTarget-waypoint %d selected\n Connection established!\n", i );
-		      SrcWp->connections[SrcWp->num_connections] = i;
-		      SrcWp->num_connections ++;
-		      OriginWaypoint = (-1);
-		      SrcWp = NULL;
-		    }
-		}
-	    }
-
-	}
-
-      // If the person using the level editor pressed some editing keys, insert the
-      // corresponding map tile.  This is done here:
-      if (KeyIsPressedR ('f'))
-	CurLevel->map[BlockY][BlockX]=FINE_GRID;
-      if (KeyIsPressedR ('1'))
-	CurLevel->map[BlockY][BlockX]=BLOCK1;
-      if (KeyIsPressedR ('2'))
-	CurLevel->map[BlockY][BlockX]=BLOCK2;
-      if (KeyIsPressedR ('3'))
-	CurLevel->map[BlockY][BlockX]=BLOCK3;
-      if (KeyIsPressedR ('4'))
-	CurLevel->map[BlockY][BlockX]=BLOCK4;
-      if (KeyIsPressedR ('5'))
-	CurLevel->map[BlockY][BlockX]=BLOCK5;
-      if (KeyIsPressedR ('l'))
-	CurLevel->map[BlockY][BlockX]=LIFT;
-      if (KeyIsPressedR (SDLK_KP_PLUS))
-	CurLevel->map[BlockY][BlockX]=V_WALL;
-      if (KeyIsPressedR (SDLK_KP0))
-	CurLevel->map[BlockY][BlockX]=H_WALL;
-      if (KeyIsPressedR(SDLK_KP1))
-	CurLevel->map[BlockY][BlockX]=ECK_LU;
-      if (KeyIsPressedR (SDLK_KP2))
-	{
-	  if (!ShiftPressed())
-	    CurLevel->map[BlockY][BlockX]=T_U;
-	  else CurLevel->map[BlockY][BlockX]=KONSOLE_U;
-	    }
-      if (KeyIsPressedR (SDLK_KP3))
-	CurLevel->map[BlockY][BlockX]=ECK_RU;
-      if (KeyIsPressedR (SDLK_KP4))
-	{
-	  if (!ShiftPressed())
-	    CurLevel->map[BlockY][BlockX]=T_L;
-	  else CurLevel->map[BlockY][BlockX]=KONSOLE_L;
-	}
-      if (KeyIsPressedR (SDLK_KP5))
-	{
-	  if (!ShiftPressed())
-	    CurLevel->map[BlockY][BlockX]=KREUZ;
-	  else CurLevel->map[BlockY][BlockX]=VOID;
-	}
-      if (KeyIsPressedR (SDLK_KP6))
-	{
-	  if (!ShiftPressed())
-	    CurLevel->map[BlockY][BlockX]=T_R;
-	  else CurLevel->map[BlockY][BlockX]=KONSOLE_R;
-	}
-      if (KeyIsPressedR (SDLK_KP7))
-	CurLevel->map[BlockY][BlockX]=ECK_LO;
-      if (KeyIsPressedR (SDLK_KP8))
-	{
-	  if (!ShiftPressed())
-	    CurLevel->map[BlockY][BlockX]=T_O;
-	  else CurLevel->map[BlockY][BlockX]=KONSOLE_O;
-	}
-      if (KeyIsPressedR (SDLK_KP9))
-	CurLevel->map[BlockY][BlockX]=ECK_RO;
-      if ( KeyIsPressedR ('m'))
-	CurLevel->map[BlockY][BlockX]=ALERT_GREEN;
-      if (KeyIsPressedR ('r'))
-	CurLevel->map[BlockY][BlockX]=REFRESH1;
-      if (KeyIsPressedR('t'))
-	{
-	  if (ShiftPressed())
-	    CurLevel->map[BlockY][BlockX]=V_ZUTUERE;
-	  else CurLevel->map[BlockY][BlockX]=H_ZUTUERE;
-	}
-      if ((SpacePressed() || MouseLeftPressed()))
-	CurLevel->map[BlockY][BlockX]=FLOOR;
-
-    } // while (!Done)
-
-  ShuffleEnemys ();  // now make sure droids get redestributed correctly!
-
-  Copy_Rect (rect, User_Rect);
-
-  ClearGraphMem();
-  return;
-
-} // void LevelEditor(void)
+// void
+// LevelEditor(void)
+// {
+//   int BlockX=rintf(Me.pos.x);
+//   int BlockY=rintf(Me.pos.y);
+//   int Done=FALSE;
+//   int i,k;
+//   int SpecialMapValue;
+//   int OriginWaypoint = (-1);
+//   char* NumericInputString;
+//   SDL_Rect rect;
+//   waypoint *SrcWp;
+// 
+//   int KeymapOffset = 15;
+// 
+//   Copy_Rect (User_Rect, rect);
+//   Copy_Rect (Screen_Rect, User_Rect);  /// level editor can use the full screen!
+// 
+//   while ( !Done )
+//     {
+//       if ( cmd_is_activeR ( CMD_MENU ) ) {
+// 	showLevelEditorMenu();
+//         if ( quit_LevelEditor ) {
+//           Done = TRUE;
+//           CurrentCombatScaleFactor = 1;
+//           SetCombatScaleTo (CurrentCombatScaleFactor);
+//           quit_LevelEditor = FALSE;
+//         }
+//         continue;
+//       }
+// 
+//       BlockX=rintf(Me.pos.x);
+//       BlockY=rintf(Me.pos.y);
+// 
+//       Fill_Rect (User_Rect, Black);
+//       Assemble_Combat_Picture ( ONLY_SHOW_MAP );
+//       Highlight_Current_Block();
+//       Show_Waypoints();
+// 
+//       // show line between a selected connection-origin and the current block
+//       if (OriginWaypoint != (-1) )
+// 	DrawLineBetweenTiles( BlockX, BlockY,
+// 			      CurLevel->AllWaypoints[OriginWaypoint].x,
+// 			      CurLevel->AllWaypoints[OriginWaypoint].y,
+// 			      HIGHLIGHTCOLOR2 );
+// 
+// 
+//       PrintStringFont (ne_screen, Font0_BFont, Full_User_Rect.x+Full_User_Rect.w/3 ,
+// 		       Full_User_Rect.y+Full_User_Rect.h - FontHeight(Font0_BFont),
+// 		       "Press F1 for keymap");
+// 
+//       SDL_Flip( ne_screen );
+// 
+//       //--------------------
+//       // If the user of the Level editor pressed some cursor keys, move the
+//       // highlited filed (that is Me.pos) accordingly. This is done here:
+//       //
+//       if (LeftPressedR())
+// 	if ( rintf(Me.pos.x) > 0 ) Me.pos.x-=1;
+// 
+//       if (RightPressedR())
+// 	if ( rintf(Me.pos.x) < CurLevel->xlen-1 ) Me.pos.x+=1;
+// 
+//       if (UpPressedR())
+// 	if ( rintf(Me.pos.y) > 0 ) Me.pos.y-=1;
+// 
+//       if (DownPressedR())
+// 	if ( rintf(Me.pos.y) < CurLevel->ylen-1 ) Me.pos.y+=1;
+// 
+// 
+//       if ( KeyIsPressedR (SDLK_F1) )
+// 	{
+// 	  k=3;
+// 	  //	  SDL_BlitSurface ( console_bg_pic2 , NULL, ne_screen, NULL);
+// 	  MakeGridOnScreen (NULL);
+// 	  CenteredPutString   ( ne_screen ,  (k)*FontHeight(Menu_BFont), "Level Editor Keymap"); k+=2;
+// 	  // DisplayText ("Use cursor keys to move around.", 1, 2 *FontHeight(Menu_BFont), NULL );
+// 	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "Use cursor keys to move around." ); k++;
+// 	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "Use number pad to plant walls." ); k++;
+// 	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "Use shift and number pad to plant extras." ); k++;
+// 	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "R...Refresh, 1-5...Blocktype 1-5, L...Lift" ); k++;
+// 	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "F...Fine grid, T/SHIFT + T...Doors" ); k++;
+// 	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "M...Alert, E...Enter tile by number" ); k++;
+// 	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "Space/Enter...Floor" ); k+=2;
+// 
+// 	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "I/O...zoom INTO/OUT OF the map" ); k+=2;
+// 	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "P...toggle wayPOINT on/off" ); k++;
+// 	  PutString ( ne_screen , KeymapOffset , (k) * FontHeight(Menu_BFont)  , "C...start/end waypoint CONNECTION" ); k++;
+// 
+// 	  SDL_Flip ( ne_screen );
+// 	  while (!FirePressedR() && !EscapePressedR() && !ReturnPressedR() ) SDL_Delay(1);
+// 	}
+// 
+//       //--------------------
+//       // Since the level editor will not always be able to
+//       // immediately feature all the the map tiles that might
+//       // have been added recently, we should offer a feature, so that you can
+//       // specify the value of a map piece just numerically.  This will be
+//       // done upon pressing the 'e' key.
+// 	  //
+//       if ( KeyIsPressedR ('e') )
+// 	{
+// 	  CenteredPutString   ( ne_screen ,  6*FontHeight(Menu_BFont), "Please enter new value: ");
+// 	  SDL_Flip( ne_screen );
+// 	  NumericInputString = GetString (10, 2);
+// 	  sscanf( NumericInputString , "%d" , &SpecialMapValue );
+// 	  if ( SpecialMapValue >= NUM_MAP_BLOCKS ) SpecialMapValue=0;
+// 	  CurLevel->map[BlockY][BlockX]=SpecialMapValue;
+// 	}
+// 
+//       //--------------------
+//       //If the person using the level editor decides he/she wants a different
+//       //scale for the editing process, he/she may say so by using the O/I keys.
+//       //
+//       if ( KeyIsPressedR ('o') )
+// 	{
+// 	  if (CurrentCombatScaleFactor > 0.25 )
+// 	    CurrentCombatScaleFactor -= 0.25;
+// 	  SetCombatScaleTo (CurrentCombatScaleFactor);
+// 	}
+//       if ( KeyIsPressedR ('i') )
+// 	{
+// 	  CurrentCombatScaleFactor += 0.25;
+// 	  SetCombatScaleTo (CurrentCombatScaleFactor);
+// 	}
+// 
+//       // toggle waypoint on current square.  That means either removed or added.
+//       // And in case of removal, also the connections must be removed.
+//       if (KeyIsPressedR('p'))
+// 	{
+// 	  // find out if there is a waypoint on the current square
+// 	  for (i=0 ; i < CurLevel->num_waypoints; i++)
+// 	    {
+// 	      if ( ( CurLevel->AllWaypoints[i].x == BlockX ) &&
+// 		   ( CurLevel->AllWaypoints[i].y == BlockY ) ) break;
+// 	    }
+// 
+// 	  // if its waypoint already, this waypoint must be deleted.
+// 	  if (i < CurLevel->num_waypoints)
+// 	    DeleteWaypoint (CurLevel, i);
+// 	  else // if its not a waypoint already, it must be made into one
+// 	    CreateWaypoint (CurLevel, BlockX, BlockY);
+// 
+// 	} // if 'p' pressed (toggle waypoint)
+// 
+//       // create a connection between waypoints.  If this is the first selected waypoint, its
+//       // an origin and the second "C"-pressed waypoint will be used a target.
+//       // If origin and destination are the same, the operation is cancelled.
+//       if (KeyIsPressedR ('c'))
+// 	{
+// 	  // Determine which waypoint is currently targeted
+// 	  for (i=0 ; i < CurLevel->num_waypoints ; i++)
+// 	    {
+// 	      if ( ( CurLevel->AllWaypoints[i].x == BlockX ) &&
+// 		   ( CurLevel->AllWaypoints[i].y == BlockY ) ) break;
+// 	    }
+// 
+// 	  if ( i == CurLevel->num_waypoints )
+// 	    DebugPrintf(0, "\nSorry, no waypoint here to connect...\n");
+// 	  else
+// 	    {
+// 
+// 	      if ( OriginWaypoint == (-1) )
+// 		{
+// 		  OriginWaypoint = i;
+// 		  SrcWp = &(CurLevel->AllWaypoints[OriginWaypoint]);
+// 		  if (SrcWp->num_connections < MAX_WP_CONNECTIONS)
+// 		    DebugPrintf (0, "\nWaypoint nr. %d. selected as origin\n", i);
+// 		  else
+// 		    {
+// 		      DebugPrintf (0, "\nSorry, maximal number of waypoint-connections (%d) reached!\n",
+// 				   MAX_WP_CONNECTIONS);
+// 		      DebugPrintf (0, "Operation not possible\n");
+// 		      OriginWaypoint = (-1);
+// 		      SrcWp = NULL;
+// 		    }
+// 		}
+// 	      else
+// 		{
+// 		  if ( OriginWaypoint == i )
+// 		    {
+// 		      DebugPrintf(0, "\nOrigin==Target --> Connection Operation cancelled.\n");
+// 		      OriginWaypoint = (-1);
+// 		      SrcWp = NULL;
+// 		    }
+// 		  else
+// 		    {
+// 		      DebugPrintf(0, "\nTarget-waypoint %d selected\n Connection established!\n", i );
+// 		      SrcWp->connections[SrcWp->num_connections] = i;
+// 		      SrcWp->num_connections ++;
+// 		      OriginWaypoint = (-1);
+// 		      SrcWp = NULL;
+// 		    }
+// 		}
+// 	    }
+// 
+// 	}
+// 
+//       // If the person using the level editor pressed some editing keys, insert the
+//       // corresponding map tile.  This is done here:
+//       if (KeyIsPressedR ('f'))
+// 	CurLevel->map[BlockY][BlockX]=FINE_GRID;
+//       if (KeyIsPressedR ('1'))
+// 	CurLevel->map[BlockY][BlockX]=BLOCK1;
+//       if (KeyIsPressedR ('2'))
+// 	CurLevel->map[BlockY][BlockX]=BLOCK2;
+//       if (KeyIsPressedR ('3'))
+// 	CurLevel->map[BlockY][BlockX]=BLOCK3;
+//       if (KeyIsPressedR ('4'))
+// 	CurLevel->map[BlockY][BlockX]=BLOCK4;
+//       if (KeyIsPressedR ('5'))
+// 	CurLevel->map[BlockY][BlockX]=BLOCK5;
+//       if (KeyIsPressedR ('l'))
+// 	CurLevel->map[BlockY][BlockX]=LIFT;
+//       if (KeyIsPressedR (SDLK_KP_PLUS))
+// 	CurLevel->map[BlockY][BlockX]=V_WALL;
+//       if (KeyIsPressedR (SDLK_KP0))
+// 	CurLevel->map[BlockY][BlockX]=H_WALL;
+//       if (KeyIsPressedR(SDLK_KP1))
+// 	CurLevel->map[BlockY][BlockX]=ECK_LU;
+//       if (KeyIsPressedR (SDLK_KP2))
+// 	{
+// 	  if (!ShiftPressed())
+// 	    CurLevel->map[BlockY][BlockX]=T_U;
+// 	  else CurLevel->map[BlockY][BlockX]=KONSOLE_U;
+// 	    }
+//       if (KeyIsPressedR (SDLK_KP3))
+// 	CurLevel->map[BlockY][BlockX]=ECK_RU;
+//       if (KeyIsPressedR (SDLK_KP4))
+// 	{
+// 	  if (!ShiftPressed())
+// 	    CurLevel->map[BlockY][BlockX]=T_L;
+// 	  else CurLevel->map[BlockY][BlockX]=KONSOLE_L;
+// 	}
+//       if (KeyIsPressedR (SDLK_KP5))
+// 	{
+// 	  if (!ShiftPressed())
+// 	    CurLevel->map[BlockY][BlockX]=KREUZ;
+// 	  else CurLevel->map[BlockY][BlockX]=VOID;
+// 	}
+//       if (KeyIsPressedR (SDLK_KP6))
+// 	{
+// 	  if (!ShiftPressed())
+// 	    CurLevel->map[BlockY][BlockX]=T_R;
+// 	  else CurLevel->map[BlockY][BlockX]=KONSOLE_R;
+// 	}
+//       if (KeyIsPressedR (SDLK_KP7))
+// 	CurLevel->map[BlockY][BlockX]=ECK_LO;
+//       if (KeyIsPressedR (SDLK_KP8))
+// 	{
+// 	  if (!ShiftPressed())
+// 	    CurLevel->map[BlockY][BlockX]=T_O;
+// 	  else CurLevel->map[BlockY][BlockX]=KONSOLE_O;
+// 	}
+//       if (KeyIsPressedR (SDLK_KP9))
+// 	CurLevel->map[BlockY][BlockX]=ECK_RO;
+//       if ( KeyIsPressedR ('m'))
+// 	CurLevel->map[BlockY][BlockX]=ALERT_GREEN;
+//       if (KeyIsPressedR ('r'))
+// 	CurLevel->map[BlockY][BlockX]=REFRESH1;
+//       if (KeyIsPressedR('t'))
+// 	{
+// 	  if (ShiftPressed())
+// 	    CurLevel->map[BlockY][BlockX]=V_ZUTUERE;
+// 	  else CurLevel->map[BlockY][BlockX]=H_ZUTUERE;
+// 	}
+//       if ((SpacePressed() || MouseLeftPressed()))
+// 	CurLevel->map[BlockY][BlockX]=FLOOR;
+// 
+//     } // while (!Done)
+// 
+//   ShuffleEnemys ();  // now make sure droids get redestributed correctly!
+// 
+//   Copy_Rect (rect, User_Rect);
+// 
+//   ClearGraphMem();
+//   return;
+// 
+// } // void LevelEditor(void)
 
 
 

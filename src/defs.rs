@@ -9,13 +9,10 @@ use crate::{
 use bitflags::bitflags;
 use cstr::cstr;
 #[cfg(feature = "gcw0")]
-use sdl::keysym::{
-    SDLK_BACKSPACE, SDLK_ESCAPE, SDLK_LALT, SDLK_LCTRL, SDLK_LSHIFT, SDLK_RETURN, SDLK_SPACE,
-    SDLK_TAB,
-};
+use sdl::keysym::{SDLK_BACKSPACE, SDLK_LALT, SDLK_LCTRL, SDLK_LSHIFT, SDLK_RETURN, SDLK_TAB};
 use sdl::{
     event::Mod,
-    keysym::SDLK_RETURN,
+    keysym::{SDLK_ESCAPE, SDLK_RETURN, SDLK_SPACE},
     sdl::Rect,
     video::ll::{SDL_FreeSurface, SDL_Surface},
 };
@@ -169,8 +166,17 @@ pub unsafe fn MouseRightPressedR() -> bool {
 }
 
 // #define EscapePressed() KeyIsPressed(SDLK_ESCAPE)
-// #define SpacePressed() KeyIsPressed(SDLK_SPACE)
-// #define EscapePressedR() KeyIsPressedR (SDLK_ESCAPE)
+
+#[inline]
+pub unsafe fn SpacePressed() -> bool {
+    KeyIsPressed(SDLK_SPACE as c_int)
+}
+
+#[inline]
+pub unsafe fn EscapePressedR() -> bool {
+    KeyIsPressedR(SDLK_ESCAPE as c_int)
+}
+
 // #define SpacePressedR() KeyIsPressedR (SDLK_SPACE)
 
 #[cfg(feature = "gcw0")]

@@ -1,3 +1,427 @@
+use crate::{
+    b_font::{CenteredPutString, FontHeight, PrintStringFont, PutString},
+    defs::{
+        AssembleCombatWindowFlags, Cmds, DownPressedR, EscapePressedR, FirePressedR, LeftPressedR,
+        MapTile, MouseLeftPressed, ReturnPressedR, RightPressedR, ShiftPressed, SpacePressed,
+        UpPressedR, MAX_WP_CONNECTIONS, NUM_MAP_BLOCKS,
+    },
+    enemy::ShuffleEnemys,
+    global::{CurrentCombatScaleFactor, Font0_BFont, Menu_BFont},
+    graphics::{
+        ne_screen, ClearGraphMem, DrawLineBetweenTiles, MakeGridOnScreen, SetCombatScaleTo,
+    },
+    input::{cmd_is_activeR, KeyIsPressedR, SDL_Delay},
+    menu::{quit_LevelEditor, showLevelEditorMenu},
+    structs::Level,
+    text::GetString,
+    vars::{Full_User_Rect, Screen_Rect, User_Rect},
+    view::{Assemble_Combat_Picture, Black, Fill_Rect},
+    CurLevel, Me,
+};
+
+use cstr::cstr;
+use log::{info, warn};
+use sdl::{
+    event::ll::SDLK_F1,
+    event::ll::{
+        SDLK_KP0, SDLK_KP1, SDLK_KP2, SDLK_KP3, SDLK_KP4, SDLK_KP5, SDLK_KP6, SDLK_KP7, SDLK_KP8,
+        SDLK_KP9, SDLK_KP_PLUS,
+    },
+    video::ll::SDL_Flip,
+};
+use std::{
+    convert::{TryFrom, TryInto},
+    ops::Not,
+    os::raw::{c_char, c_int},
+    ptr::null_mut,
+};
+
+const HIGHLIGHTCOLOR2: i32 = 100;
+
 extern "C" {
-    pub fn LevelEditor();
+    fn Highlight_Current_Block();
+    fn Show_Waypoints();
+    fn DeleteWaypoint(level: *mut Level, num: c_int);
+    fn CreateWaypoint(level: *mut Level, block_x: c_int, block_y: c_int);
+}
+
+/// This function is provides the Level Editor integrated into
+/// freedroid.  Actually this function is a submenu of the big
+/// Escape Menu.  In here you can edit the level and upon pressing
+/// escape enter a further submenu where you can save the level,
+/// change level name and quit from level editing.
+#[no_mangle]
+pub unsafe extern "C" fn LevelEditor() {
+    let mut done = false;
+    let mut origin_waypoint: c_int = -1;
+
+    let keymap_offset = 15;
+
+    let rect = User_Rect;
+    User_Rect = Screen_Rect; // level editor can use the full screen!
+    let mut src_wp = null_mut();
+
+    while done.not() {
+        if cmd_is_activeR(Cmds::Menu) {
+            showLevelEditorMenu();
+            if quit_LevelEditor {
+                done = true;
+                CurrentCombatScaleFactor = 1.;
+                SetCombatScaleTo(CurrentCombatScaleFactor);
+                quit_LevelEditor = false;
+            }
+            continue;
+        }
+
+        let block_x = (Me.pos.x).round() as c_int;
+        let block_y = (Me.pos.y).round() as c_int;
+
+        Fill_Rect(User_Rect, Black);
+        Assemble_Combat_Picture(AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits().into());
+        Highlight_Current_Block();
+        Show_Waypoints();
+
+        // show line between a selected connection-origin and the current block
+        if origin_waypoint != -1 {
+            DrawLineBetweenTiles(
+                block_x as f32,
+                block_y as f32,
+                (*CurLevel).AllWaypoints[usize::try_from(origin_waypoint).unwrap()]
+                    .x
+                    .into(),
+                (*CurLevel).AllWaypoints[usize::try_from(origin_waypoint).unwrap()]
+                    .y
+                    .into(),
+                HIGHLIGHTCOLOR2,
+            );
+        }
+
+        PrintStringFont(
+            ne_screen,
+            Font0_BFont,
+            i32::from(Full_User_Rect.x) + i32::from(Full_User_Rect.w) / 3,
+            i32::from(Full_User_Rect.y) + i32::from(Full_User_Rect.h) - FontHeight(&*Font0_BFont),
+            cstr!("Press F1 for keymap").as_ptr() as *mut c_char,
+        );
+
+        SDL_Flip(ne_screen);
+
+        // If the user of the Level editor pressed some cursor keys, move the
+        // highlited filed (that is Me.pos) accordingly. This is done here:
+        //
+        if LeftPressedR() && Me.pos.x.round() > 0. {
+            Me.pos.x -= 1.;
+        }
+
+        if RightPressedR() && (Me.pos.x.round() as c_int) < (*CurLevel).xlen - 1 {
+            Me.pos.x += 1.;
+        }
+
+        if UpPressedR() && Me.pos.y.round() > 0. {
+            Me.pos.y -= 1.;
+        }
+
+        if DownPressedR() && (Me.pos.y.round() as c_int) < (*CurLevel).ylen - 1 {
+            Me.pos.y += 1.;
+        }
+
+        if KeyIsPressedR(SDLK_F1.try_into().unwrap()) {
+            let mut k = 3;
+            MakeGridOnScreen(None);
+            CenteredPutString(
+                ne_screen,
+                k * FontHeight(&*Menu_BFont),
+                cstr!("Level Editor Keymap").as_ptr() as *mut c_char,
+            );
+            k += 2;
+            PutString(
+                ne_screen,
+                keymap_offset,
+                (k) * FontHeight(&*Menu_BFont),
+                cstr!("Use cursor keys to move around.").as_ptr() as *mut c_char,
+            );
+            k += 1;
+            PutString(
+                ne_screen,
+                keymap_offset,
+                (k) * FontHeight(&*Menu_BFont),
+                cstr!("Use number pad to plant walls.").as_ptr() as *mut c_char,
+            );
+            k += 1;
+            PutString(
+                ne_screen,
+                keymap_offset,
+                (k) * FontHeight(&*Menu_BFont),
+                cstr!("Use shift and number pad to plant extras.").as_ptr() as *mut c_char,
+            );
+            k += 1;
+            PutString(
+                ne_screen,
+                keymap_offset,
+                (k) * FontHeight(&*Menu_BFont),
+                cstr!("R...Refresh, 1-5...Blocktype 1-5, L...Lift").as_ptr() as *mut c_char,
+            );
+            k += 1;
+            PutString(
+                ne_screen,
+                keymap_offset,
+                (k) * FontHeight(&*Menu_BFont),
+                cstr!("F...Fine grid, T/SHIFT + T...Doors").as_ptr() as *mut c_char,
+            );
+            k += 1;
+            PutString(
+                ne_screen,
+                keymap_offset,
+                (k) * FontHeight(&*Menu_BFont),
+                cstr!("M...Alert, E...Enter tile by number").as_ptr() as *mut c_char,
+            );
+            k += 1;
+            PutString(
+                ne_screen,
+                keymap_offset,
+                (k) * FontHeight(&*Menu_BFont),
+                cstr!("Space/Enter...Floor").as_ptr() as *mut c_char,
+            );
+            k += 2;
+
+            PutString(
+                ne_screen,
+                keymap_offset,
+                (k) * FontHeight(&*Menu_BFont),
+                cstr!("I/O...zoom INTO/OUT OF the map").as_ptr() as *mut c_char,
+            );
+            k += 2;
+            PutString(
+                ne_screen,
+                keymap_offset,
+                (k) * FontHeight(&*Menu_BFont),
+                cstr!("P...toggle wayPOINT on/off").as_ptr() as *mut c_char,
+            );
+            k += 1;
+            PutString(
+                ne_screen,
+                keymap_offset,
+                (k) * FontHeight(&*Menu_BFont),
+                cstr!("C...start/end waypoint CONNECTION").as_ptr() as *mut c_char,
+            );
+
+            SDL_Flip(ne_screen);
+            while !FirePressedR() && !EscapePressedR() && !ReturnPressedR() {
+                SDL_Delay(1);
+            }
+        }
+
+        //--------------------
+        // Since the level editor will not always be able to
+        // immediately feature all the the map tiles that might
+        // have been added recently, we should offer a feature, so that you can
+        // specify the value of a map piece just numerically.  This will be
+        // done upon pressing the 'e' key.
+        //
+        if KeyIsPressedR(b'e'.into()) {
+            CenteredPutString(
+                ne_screen,
+                6 * FontHeight(&*Menu_BFont),
+                cstr!("Please enter new value: ").as_ptr() as *mut c_char,
+            );
+            SDL_Flip(ne_screen);
+            let numeric_input_string = GetString(10, 2);
+            let mut special_map_value: c_int = 0;
+            libc::sscanf(
+                numeric_input_string,
+                cstr!("%d").as_ptr() as *mut c_char,
+                &mut special_map_value,
+            );
+            if special_map_value >= NUM_MAP_BLOCKS.try_into().unwrap() {
+                special_map_value = 0;
+            }
+            *((*CurLevel).map[usize::try_from(block_y).unwrap()])
+                .add(block_x.try_into().unwrap()) = special_map_value.try_into().unwrap();
+        }
+
+        //If the person using the level editor decides he/she wants a different
+        //scale for the editing process, he/she may say so by using the O/I keys.
+        if KeyIsPressedR(b'o'.into()) {
+            if CurrentCombatScaleFactor > 0.25 {
+                CurrentCombatScaleFactor -= 0.25;
+            }
+            SetCombatScaleTo(CurrentCombatScaleFactor);
+        }
+        if KeyIsPressedR(b'i'.into()) {
+            CurrentCombatScaleFactor += 0.25;
+            SetCombatScaleTo(CurrentCombatScaleFactor);
+        }
+
+        // toggle waypoint on current square.  That means either removed or added.
+        // And in case of removal, also the connections must be removed.
+        if KeyIsPressedR(b'p'.into()) {
+            // find out if there is a waypoint on the current square
+            let mut i = 0;
+            while i < usize::try_from((*CurLevel).num_waypoints).unwrap() {
+                if i32::from((*CurLevel).AllWaypoints[i].x) == block_x
+                    && i32::from((*CurLevel).AllWaypoints[i].y) == block_y
+                {
+                    break;
+                }
+
+                i += 1;
+            }
+
+            // if its waypoint already, this waypoint must be deleted.
+            if i < usize::try_from((*CurLevel).num_waypoints).unwrap() {
+                DeleteWaypoint(CurLevel, i.try_into().unwrap());
+            } else {
+                // if its not a waypoint already, it must be made into one
+                CreateWaypoint(CurLevel, block_x, block_y);
+            }
+        } // if 'p' pressed (toggle waypoint)
+
+        // create a connection between waypoints.  If this is the first selected waypoint, its
+        // an origin and the second "C"-pressed waypoint will be used a target.
+        // If origin and destination are the same, the operation is cancelled.
+        if KeyIsPressedR(b'c'.into()) {
+            // Determine which waypoint is currently targeted
+            let mut i = 0;
+            while i < usize::try_from((*CurLevel).num_waypoints).unwrap() {
+                if i32::from((*CurLevel).AllWaypoints[i].x) == block_x
+                    && i32::from((*CurLevel).AllWaypoints[i].y) == block_y
+                {
+                    break;
+                }
+
+                i += 1;
+            }
+
+            if i == usize::try_from((*CurLevel).num_waypoints).unwrap() {
+                warn!("Sorry, no waypoint here to connect.");
+            } else if origin_waypoint == -1 {
+                origin_waypoint = i.try_into().unwrap();
+                src_wp = &mut (*CurLevel).AllWaypoints[i];
+                if (*src_wp).num_connections < c_int::try_from(MAX_WP_CONNECTIONS).unwrap() {
+                    info!("Waypoint nr. {}. selected as origin", i);
+                } else {
+                    warn!(
+                        "Sorry, maximal number of waypoint-connections ({}) reached! Operation \
+                         not possible.",
+                        MAX_WP_CONNECTIONS,
+                    );
+                    origin_waypoint = -1;
+                    src_wp = null_mut();
+                }
+            } else if origin_waypoint == c_int::try_from(i).unwrap() {
+                info!("Origin==Target --> Connection Operation cancelled.");
+                origin_waypoint = -1;
+                src_wp = null_mut();
+            } else {
+                info!("Target-waypoint {} selected. Connection established!", i);
+                (*src_wp).connections[usize::try_from((*src_wp).num_connections).unwrap()] =
+                    i.try_into().unwrap();
+                (*src_wp).num_connections += 1;
+                origin_waypoint = -1;
+                src_wp = null_mut();
+            }
+        }
+
+        let map_tile = &mut *((*CurLevel).map[usize::try_from(block_y).unwrap()]
+            .add(block_x.try_into().unwrap()));
+
+        // If the person using the level editor pressed some editing keys, insert the
+        // corresponding map tile.  This is done here:
+        if KeyIsPressedR(b'f'.into()) {
+            *map_tile = MapTile::FineGrid as i8;
+        }
+        if KeyIsPressedR(b'1'.into()) {
+            *map_tile = MapTile::Block1 as i8;
+        }
+        if KeyIsPressedR(b'2'.into()) {
+            *map_tile = MapTile::Block2 as i8;
+        }
+        if KeyIsPressedR(b'3'.into()) {
+            *map_tile = MapTile::Block3 as i8;
+        }
+        if KeyIsPressedR(b'4'.into()) {
+            *map_tile = MapTile::Block4 as i8;
+        }
+        if KeyIsPressedR(b'5'.into()) {
+            *map_tile = MapTile::Block5 as i8;
+        }
+        if KeyIsPressedR(b'l'.into()) {
+            *map_tile = MapTile::Lift as i8;
+        }
+        if KeyIsPressedR(SDLK_KP_PLUS as c_int) {
+            *map_tile = MapTile::VWall as i8;
+        }
+        if KeyIsPressedR(SDLK_KP0 as c_int) {
+            *map_tile = MapTile::HWall as i8;
+        }
+        if KeyIsPressedR(SDLK_KP1 as c_int) {
+            *map_tile = MapTile::EckLu as i8;
+        }
+        if KeyIsPressedR(SDLK_KP2 as c_int) {
+            if !ShiftPressed() {
+                *map_tile = MapTile::TU as i8;
+            } else {
+                *map_tile = MapTile::KonsoleU as i8;
+            }
+        }
+        if KeyIsPressedR(SDLK_KP3 as c_int) {
+            *map_tile = MapTile::EckRu as i8;
+        }
+        if KeyIsPressedR(SDLK_KP4 as c_int) {
+            if !ShiftPressed() {
+                *map_tile = MapTile::TL as i8;
+            } else {
+                *map_tile = MapTile::KonsoleL as i8;
+            }
+        }
+        if KeyIsPressedR(SDLK_KP5 as c_int) {
+            if !ShiftPressed() {
+                *map_tile = MapTile::Kreuz as i8;
+            } else {
+                *map_tile = MapTile::Void as i8;
+            }
+        }
+        if KeyIsPressedR(SDLK_KP6 as c_int) {
+            if !ShiftPressed() {
+                *map_tile = MapTile::TR as i8;
+            } else {
+                *map_tile = MapTile::KonsoleR as i8;
+            }
+        }
+        if KeyIsPressedR(SDLK_KP7 as c_int) {
+            *map_tile = MapTile::EckLo as i8;
+        }
+        if KeyIsPressedR(SDLK_KP8 as c_int) {
+            if !ShiftPressed() {
+                *map_tile = MapTile::TO as i8;
+            } else {
+                *map_tile = MapTile::KonsoleO as i8;
+            }
+        }
+        if KeyIsPressedR(SDLK_KP9 as c_int) {
+            *map_tile = MapTile::EckRo as i8;
+        }
+        if KeyIsPressedR(b'm'.into()) {
+            *map_tile = MapTile::AlertGreen as i8;
+        }
+        if KeyIsPressedR(b'r'.into()) {
+            *map_tile = MapTile::Refresh1 as i8;
+        }
+        if KeyIsPressedR(b't'.into()) {
+            if ShiftPressed() {
+                *map_tile = MapTile::VZutuere as i8;
+            } else {
+                *map_tile = MapTile::HZutuere as i8;
+            }
+        }
+        if SpacePressed() || MouseLeftPressed() {
+            *map_tile = MapTile::Floor as i8;
+        }
+    }
+
+    ShuffleEnemys(); // now make sure droids get redestributed correctly!
+
+    User_Rect = rect;
+
+    ClearGraphMem();
 }
