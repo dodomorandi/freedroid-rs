@@ -3,7 +3,7 @@ use crate::{
     defs::{
         AssembleCombatWindowFlags, Cmds, DownPressedR, EscapePressedR, FirePressedR, LeftPressedR,
         MapTile, MouseLeftPressed, ReturnPressedR, RightPressedR, ShiftPressed, SpacePressed,
-        UpPressedR, MAX_WP_CONNECTIONS, NUM_MAP_BLOCKS,
+        UpPressedR, MAXWAYPOINTS, MAX_WP_CONNECTIONS, NUM_MAP_BLOCKS,
     },
     enemy::ShuffleEnemys,
     global::{CurrentCombatScaleFactor, Font0_BFont, Menu_BFont},
@@ -42,7 +42,6 @@ extern "C" {
     fn Highlight_Current_Block();
     fn Show_Waypoints();
     fn DeleteWaypoint(level: *mut Level, num: c_int);
-    fn CreateWaypoint(level: *mut Level, block_x: c_int, block_y: c_int);
 }
 
 /// This function is provides the Level Editor integrated into
@@ -272,7 +271,7 @@ pub unsafe extern "C" fn LevelEditor() {
                 DeleteWaypoint(CurLevel, i.try_into().unwrap());
             } else {
                 // if its not a waypoint already, it must be made into one
-                CreateWaypoint(CurLevel, block_x, block_y);
+                create_waypoint(&mut *CurLevel, block_x, block_y);
             }
         } // if 'p' pressed (toggle waypoint)
 
@@ -424,4 +423,22 @@ pub unsafe extern "C" fn LevelEditor() {
     User_Rect = rect;
 
     ClearGraphMem();
+}
+
+/// create a new empty waypoint on position x/y
+fn create_waypoint(level: &mut Level, block_x: c_int, block_y: c_int) {
+    if level.num_waypoints == c_int::try_from(MAXWAYPOINTS).unwrap() {
+        warn!(
+            "Maximal number of waypoints ({}) reached on this level. Cannot insert any more.",
+            MAXWAYPOINTS,
+        );
+        return;
+    }
+
+    let num = usize::try_from(level.num_waypoints).unwrap();
+    level.num_waypoints += 1;
+
+    level.AllWaypoints[num].x = block_x.try_into().unwrap();
+    level.AllWaypoints[num].y = block_y.try_into().unwrap();
+    level.AllWaypoints[num].num_connections = 0;
 }

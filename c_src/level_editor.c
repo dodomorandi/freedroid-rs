@@ -537,26 +537,26 @@ DeleteWaypoint (level *Lev, int num)
 /*----------------------------------------------------------------------
  * create a new empty waypoint on position x/y
  *----------------------------------------------------------------------*/
-void
-CreateWaypoint (level *Lev, int x, int y)
-{
-  int num;
-
-  if (Lev->num_waypoints == MAXWAYPOINTS)
-    {
-      DebugPrintf (0, "WARNING: maximal number of waypoints (%d) reached on this level!!\n",
-		   MAXWAYPOINTS);
-      DebugPrintf (0, "... cannot insert any more, sorry!\n");
-      return;
-    }
-
-  num = Lev->num_waypoints;
-  Lev->num_waypoints ++;
-
-  Lev->AllWaypoints[num].x = x;
-  Lev->AllWaypoints[num].y = y;
-  Lev->AllWaypoints[num].num_connections = 0;
-
-  return;
-} // CreateWaypoint()
+// void
+// CreateWaypoint (level *Lev, int x, int y)
+// {
+//   int num;
+// 
+//   if (Lev->num_waypoints == MAXWAYPOINTS)
+//     {
+//       DebugPrintf (0, "WARNING: maximal number of waypoints (%d) reached on this level!!\n",
+// 		   MAXWAYPOINTS);
+//       DebugPrintf (0, "... cannot insert any more, sorry!\n");
+//       return;
+//     }
+// 
+//   num = Lev->num_waypoints;
+//   Lev->num_waypoints ++;
+// 
+//   Lev->AllWaypoints[num].x = x;
+//   Lev->AllWaypoints[num].y = y;
+//   Lev->AllWaypoints[num].num_connections = 0;
+// 
+//   return;
+// } // CreateWaypoint()
 
