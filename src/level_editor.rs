@@ -1,20 +1,21 @@
 use crate::{
     b_font::{CenteredPutString, FontHeight, PrintStringFont, PutString},
     defs::{
-        AssembleCombatWindowFlags, Cmds, DownPressedR, EscapePressedR, FirePressedR, LeftPressedR,
-        MapTile, MouseLeftPressed, ReturnPressedR, RightPressedR, ShiftPressed, SpacePressed,
-        UpPressedR, MAXWAYPOINTS, MAX_WP_CONNECTIONS, NUM_MAP_BLOCKS,
+        get_user_center, AssembleCombatWindowFlags, Cmds, DownPressedR, EscapePressedR,
+        FirePressedR, LeftPressedR, MapTile, MouseLeftPressed, ReturnPressedR, RightPressedR,
+        ShiftPressed, SpacePressed, UpPressedR, MAXWAYPOINTS, MAX_WP_CONNECTIONS, NUM_MAP_BLOCKS,
     },
     enemy::ShuffleEnemys,
     global::{CurrentCombatScaleFactor, Font0_BFont, Menu_BFont},
     graphics::{
-        ne_screen, ClearGraphMem, DrawLineBetweenTiles, MakeGridOnScreen, SetCombatScaleTo,
+        ne_screen, putpixel, ClearGraphMem, DrawLineBetweenTiles, MakeGridOnScreen,
+        SetCombatScaleTo,
     },
     input::{cmd_is_activeR, KeyIsPressedR, SDL_Delay},
     menu::{quit_LevelEditor, showLevelEditorMenu},
     structs::{Level, Waypoint},
     text::GetString,
-    vars::{Full_User_Rect, Screen_Rect, User_Rect},
+    vars::{Block_Rect, Full_User_Rect, Screen_Rect, User_Rect},
     view::{Assemble_Combat_Picture, Black, Fill_Rect},
     CurLevel, Me,
 };
@@ -27,7 +28,7 @@ use sdl::{
         SDLK_KP0, SDLK_KP1, SDLK_KP2, SDLK_KP3, SDLK_KP4, SDLK_KP5, SDLK_KP6, SDLK_KP7, SDLK_KP8,
         SDLK_KP9, SDLK_KP_PLUS,
     },
-    video::ll::SDL_Flip,
+    video::ll::{SDL_Flip, SDL_LockSurface, SDL_UnlockSurface},
 };
 use std::{
     cmp::Ordering,
@@ -37,11 +38,11 @@ use std::{
     ptr::null_mut,
 };
 
+const HIGHLIGHTCOLOR: u32 = 255;
 const HIGHLIGHTCOLOR2: i32 = 100;
 
 extern "C" {
     fn Highlight_Current_Block();
-    fn Show_Waypoints();
 }
 
 /// This function is provides the Level Editor integrated into
@@ -78,7 +79,7 @@ pub unsafe extern "C" fn LevelEditor() {
         Fill_Rect(User_Rect, Black);
         Assemble_Combat_Picture(AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits().into());
         Highlight_Current_Block();
-        Show_Waypoints();
+        show_waypoints();
 
         // show line between a selected connection-origin and the current block
         if origin_waypoint != -1 {
@@ -490,4 +491,99 @@ fn delete_waypoint(level: &mut Level, num: c_int) {
             }
         }
     }
+}
+
+/// This function is used by the Level Editor integrated into
+/// freedroid.  It marks all waypoints with a cross.
+unsafe fn show_waypoints() {
+    let block_x = Me.pos.x.round();
+    let block_y = Me.pos.y.round();
+
+    SDL_LockSurface(ne_screen);
+
+    for wp in 0..usize::try_from((*CurLevel).num_waypoints).unwrap() {
+        let this_wp = &mut (*CurLevel).AllWaypoints[wp];
+        // Draw the cross in the middle of the middle of the tile
+        for i in
+            i32::try_from(Block_Rect.w / 4).unwrap()..i32::try_from(3 * Block_Rect.w / 4).unwrap()
+        {
+            // This draws a (double) line at the upper border of the current block
+            let mut x = i + i32::from(User_Rect.x) + i32::from(User_Rect.w / 2)
+                - ((Me.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(Block_Rect.w)) as i32;
+            let user_center = get_user_center();
+            let mut y = i + i32::from(user_center.y)
+                - ((Me.pos.y - f32::from(this_wp.y) + 0.5) * f32::from(Block_Rect.h)) as i32;
+            if x < i32::from(User_Rect.x)
+                || x > i32::from(User_Rect.x) + i32::from(User_Rect.w)
+                || y < i32::from(User_Rect.y)
+                || y > i32::from(User_Rect.y) + i32::from(User_Rect.h)
+            {
+                continue;
+            }
+            putpixel(ne_screen, x, y, HIGHLIGHTCOLOR);
+
+            x = i + i32::from(User_Rect.x) + i32::from(User_Rect.w / 2)
+                - ((Me.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(Block_Rect.w)) as i32;
+            y = i + i32::from(user_center.y)
+                - ((Me.pos.y - f32::from(this_wp.y) + 0.5) * f32::from(Block_Rect.h)) as i32
+                + 1;
+            if x < i32::from(User_Rect.x)
+                || x > i32::from(User_Rect.x) + i32::from(User_Rect.w)
+                || y < i32::from(User_Rect.y)
+                || y > i32::from(User_Rect.y) + i32::from(User_Rect.h)
+            {
+                continue;
+            }
+            putpixel(ne_screen, x, y, HIGHLIGHTCOLOR);
+
+            // This draws a line at the lower border of the current block
+            x = i + i32::from(User_Rect.x) + i32::from(User_Rect.w / 2)
+                - ((Me.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(Block_Rect.w)) as i32;
+            y = -i + i32::from(user_center.y)
+                - ((Me.pos.y - f32::from(this_wp.y) - 0.5) * f32::from(Block_Rect.h)) as i32
+                - 1;
+            if x < i32::from(User_Rect.x)
+                || x > i32::from(User_Rect.x) + i32::from(User_Rect.w)
+                || y < i32::from(User_Rect.y)
+                || y > i32::from(User_Rect.y) + i32::from(User_Rect.h)
+            {
+                continue;
+            }
+            putpixel(ne_screen, x, y, HIGHLIGHTCOLOR);
+
+            x = i + i32::from(User_Rect.x) + i32::from(User_Rect.w / 2)
+                - ((Me.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(Block_Rect.w)) as i32;
+            y = -i + i32::from(user_center.y)
+                - ((Me.pos.y - f32::from(this_wp.y) - 0.5) * f32::from(Block_Rect.h)) as i32
+                - 2;
+            if x < i32::from(User_Rect.x)
+                || x > i32::from(User_Rect.x) + i32::from(User_Rect.w)
+                || y < i32::from(User_Rect.y)
+                || y > i32::from(User_Rect.y) + i32::from(User_Rect.h)
+            {
+                continue;
+            }
+            putpixel(ne_screen, x, y, HIGHLIGHTCOLOR);
+        }
+
+        // Draw the connections to other waypoints, BUT ONLY FOR THE WAYPOINT CURRENTLY TARGETED
+        if (block_x - f32::from(this_wp.x)).abs() <= f32::EPSILON
+            && (block_y - f32::from(this_wp.y)).abs() <= f32::EPSILON
+        {
+            for &connection in
+                &this_wp.connections[0..usize::try_from(this_wp.num_connections).unwrap()]
+            {
+                let connection = usize::try_from(connection).unwrap();
+                DrawLineBetweenTiles(
+                    this_wp.x.into(),
+                    this_wp.y.into(),
+                    (*CurLevel).AllWaypoints[connection].x.into(),
+                    (*CurLevel).AllWaypoints[connection].y.into(),
+                    HIGHLIGHTCOLOR as i32,
+                );
+            }
+        }
+    }
+
+    SDL_UnlockSurface(ne_screen);
 }

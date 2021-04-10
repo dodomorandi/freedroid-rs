@@ -131,73 +131,73 @@ Highlight_Current_Block(void)
 
 @Ret:  none
 * $Function----------------------------------------------------------*/
-void
-Show_Waypoints(void)
-{
-  int wp;
-  int i;
-  int x;
-  int y;
-  int BlockX, BlockY;
-  waypoint *this_wp;
-
-
-  BlockX=rintf(Me.pos.x);
-  BlockY=rintf(Me.pos.y);
-
-  SDL_LockSurface( ne_screen );
-
-  for (wp=0; wp<CurLevel->num_waypoints; wp++)
-    {
-      this_wp = &CurLevel->AllWaypoints[wp];
-      //--------------------
-      // Draw the cross in the middle of the middle of the tile
-      //
-      for (i= Block_Rect.w/4; i<3 * Block_Rect.w / 4; i++)
-	{
-	  // This draws a (double) line at the upper border of the current block
-	  x = i + User_Rect.x+(User_Rect.w/2)- (( Me.pos.x)-this_wp->x + 0.5) * Block_Rect.w;
-	  y = i + UserCenter_y - (( Me.pos.y)-this_wp->y + 0.5) * Block_Rect.h;
-	  if ( ( x < User_Rect.x ) || ( x > User_Rect.x + User_Rect.w ) || ( y < User_Rect. y) || ( y > User_Rect.y + User_Rect.h ) ) continue;
-	  putpixel( ne_screen , x , y , HIGHLIGHTCOLOR );
-
-
-	  x = i + User_Rect.x + (User_Rect.w/2) - (( Me.pos.x )-this_wp->x + 0.5) * Block_Rect.w;
-	  y = i + UserCenter_y - (( Me.pos.y)-this_wp->y + 0.5) * Block_Rect.h + 1;
-	  if ( ( x < User_Rect.x ) || ( x > User_Rect.x + User_Rect.w ) || ( y < User_Rect. y) || ( y > User_Rect.y + User_Rect.h ) ) continue;
-	  putpixel( ne_screen , x , y , HIGHLIGHTCOLOR );
-
-	  // This draws a line at the lower border of the current block
-	  x = i + User_Rect.x + (User_Rect.w/2) - (( Me.pos.x)-this_wp->x + 0.5) * Block_Rect.w;
-	  y = -i + UserCenter_y - (( Me.pos.y )-this_wp->y - 0.5 ) * Block_Rect.h -1;
-	  if ( ( x < User_Rect.x ) || ( x > User_Rect.x + User_Rect.w ) || ( y < User_Rect. y) || ( y > User_Rect.y + User_Rect.h ) ) continue;
-	  putpixel( ne_screen , x , y , HIGHLIGHTCOLOR );
-
-	  x = i + User_Rect.x + (User_Rect.w/2) - (( Me.pos.x)-this_wp->x + 0.5) * Block_Rect.w;
-	  y = -i + UserCenter_y - ((Me.pos.y)-this_wp->y - 0.5 ) * Block_Rect.h -2;
-	  if ( ( x < User_Rect.x ) || ( x > User_Rect.x + User_Rect.w ) || ( y < User_Rect. y) || ( y > User_Rect.y + User_Rect.h ) ) continue;
-	  putpixel( ne_screen , x , y , HIGHLIGHTCOLOR );
-
-	}
-
-      //--------------------
-      // Draw the connections to other waypoints, BUT ONLY FOR THE WAYPOINT CURRENTLY TARGETED
-      //
-      if ( (BlockX == this_wp->x) && (BlockY == this_wp->y) )
-	for ( i=0; i<this_wp->num_connections; i++ )
-	  {
-	    DrawLineBetweenTiles( this_wp->x , this_wp->y ,
-				  CurLevel->AllWaypoints[this_wp->connections[i]].x ,
-				  CurLevel->AllWaypoints[this_wp->connections[i]].y ,
-				  HIGHLIGHTCOLOR );
-	  }
-    }
-
-  SDL_UnlockSurface( ne_screen );
-
-  return;
-
-} // void Show_Waypoints(void);
+// void
+// Show_Waypoints(void)
+// {
+//   int wp;
+//   int i;
+//   int x;
+//   int y;
+//   int BlockX, BlockY;
+//   waypoint *this_wp;
+// 
+// 
+//   BlockX=rintf(Me.pos.x);
+//   BlockY=rintf(Me.pos.y);
+// 
+//   SDL_LockSurface( ne_screen );
+// 
+//   for (wp=0; wp<CurLevel->num_waypoints; wp++)
+//     {
+//       this_wp = &CurLevel->AllWaypoints[wp];
+//       //--------------------
+//       // Draw the cross in the middle of the middle of the tile
+//       //
+//       for (i= Block_Rect.w/4; i<3 * Block_Rect.w / 4; i++)
+// 	{
+// 	  // This draws a (double) line at the upper border of the current block
+// 	  x = i + User_Rect.x+(User_Rect.w/2)- (( Me.pos.x)-this_wp->x + 0.5) * Block_Rect.w;
+// 	  y = i + UserCenter_y - (( Me.pos.y)-this_wp->y + 0.5) * Block_Rect.h;
+// 	  if ( ( x < User_Rect.x ) || ( x > User_Rect.x + User_Rect.w ) || ( y < User_Rect. y) || ( y > User_Rect.y + User_Rect.h ) ) continue;
+// 	  putpixel( ne_screen , x , y , HIGHLIGHTCOLOR );
+// 
+// 
+// 	  x = i + User_Rect.x + (User_Rect.w/2) - (( Me.pos.x )-this_wp->x + 0.5) * Block_Rect.w;
+// 	  y = i + UserCenter_y - (( Me.pos.y)-this_wp->y + 0.5) * Block_Rect.h + 1;
+// 	  if ( ( x < User_Rect.x ) || ( x > User_Rect.x + User_Rect.w ) || ( y < User_Rect. y) || ( y > User_Rect.y + User_Rect.h ) ) continue;
+// 	  putpixel( ne_screen , x , y , HIGHLIGHTCOLOR );
+// 
+// 	  // This draws a line at the lower border of the current block
+// 	  x = i + User_Rect.x + (User_Rect.w/2) - (( Me.pos.x)-this_wp->x + 0.5) * Block_Rect.w;
+// 	  y = -i + UserCenter_y - (( Me.pos.y )-this_wp->y - 0.5 ) * Block_Rect.h -1;
+// 	  if ( ( x < User_Rect.x ) || ( x > User_Rect.x + User_Rect.w ) || ( y < User_Rect. y) || ( y > User_Rect.y + User_Rect.h ) ) continue;
+// 	  putpixel( ne_screen , x , y , HIGHLIGHTCOLOR );
+// 
+// 	  x = i + User_Rect.x + (User_Rect.w/2) - (( Me.pos.x)-this_wp->x + 0.5) * Block_Rect.w;
+// 	  y = -i + UserCenter_y - ((Me.pos.y)-this_wp->y - 0.5 ) * Block_Rect.h -2;
+// 	  if ( ( x < User_Rect.x ) || ( x > User_Rect.x + User_Rect.w ) || ( y < User_Rect. y) || ( y > User_Rect.y + User_Rect.h ) ) continue;
+// 	  putpixel( ne_screen , x , y , HIGHLIGHTCOLOR );
+// 
+// 	}
+// 
+//       //--------------------
+//       // Draw the connections to other waypoints, BUT ONLY FOR THE WAYPOINT CURRENTLY TARGETED
+//       //
+//       if ( (BlockX == this_wp->x) && (BlockY == this_wp->y) )
+// 	for ( i=0; i<this_wp->num_connections; i++ )
+// 	  {
+// 	    DrawLineBetweenTiles( this_wp->x , this_wp->y ,
+// 				  CurLevel->AllWaypoints[this_wp->connections[i]].x ,
+// 				  CurLevel->AllWaypoints[this_wp->connections[i]].y ,
+// 				  HIGHLIGHTCOLOR );
+// 	  }
+//     }
+// 
+//   SDL_UnlockSurface( ne_screen );
+// 
+//   return;
+// 
+// } // void Show_Waypoints(void);
 
 /*@Function============================================================
 @Desc: This function is provides the Level Editor integrated into
