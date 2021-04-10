@@ -1,23 +1,24 @@
 use crate::{
-    b_font::{CharWidth, FontHeight, GetCurrentFont, PutChar, PutString},
+    b_font::{char_width, font_height, get_current_font, put_char, put_string},
     defs::{
-        self, Cmds, DownPressed, FirePressedR, PointerStates, UpPressed, SHOW_WAIT, TEXT_STRETCH,
+        self, down_pressed, fire_pressed_r, up_pressed, Cmds, PointerStates, SHOW_WAIT,
+        TEXT_STRETCH,
     },
-    global::GameConfig,
-    graphics::{ne_screen, vid_bpp},
+    global::GAME_CONFIG,
+    graphics::{NE_SCREEN, VID_BPP},
     input::{
-        any_key_just_pressed, joy_num_axes, joy_sensitivity, key_cmds, update_input,
-        wait_for_all_keys_released, SDL_Delay, WheelDownPressed, WheelUpPressed,
+        any_key_just_pressed, update_input, wait_for_all_keys_released, wheel_down_pressed,
+        wheel_up_pressed, SDL_Delay, JOY_NUM_AXES, JOY_SENSITIVITY, KEY_CMDS,
     },
-    misc::{MyRandom, Terminate},
-    vars::{Me, Screen_Rect},
-    AllEnemys,
+    misc::{my_random, terminate},
+    vars::{ME, SCREEN_RECT},
+    ALL_ENEMYS,
 };
 
 #[cfg(feature = "arcade-input")]
 use crate::{
-    defs::{DownPressedR, LeftPressedR, RightPressedR, UpPressedR},
-    input::{cmd_is_activeR, KeyIsPressedR},
+    defs::{down_pressed_r, left_pressed_r, right_pressed_r, up_pressed_r},
+    input::{cmd_is_active_r, key_is_pressed_r},
 };
 
 use cstr::cstr;
@@ -62,11 +63,9 @@ const ARCADE_INPUT_CHARS: [c_int; 70] = [
     119, 120, 121, 122,
 ];
 
-static mut MyCursorX: c_int = 0;
-
-static mut MyCursorY: c_int = 0;
-
-static mut TextBuffer: [u8; 10000] = [0; 10000];
+static mut MY_CURSOR_X: c_int = 0;
+static mut MY_CURSOR_Y: c_int = 0;
+static mut TEXT_BUFFER: [u8; 10000] = [0; 10000];
 
 /// Reads a string of "MaxLen" from User-input, and echos it
 /// either to stdout or using graphics-text, depending on the
@@ -76,7 +75,7 @@ static mut TextBuffer: [u8; 10000] = [0; 10000];
 /// * echo=2    print using graphics-text
 ///
 /// values of echo > 2 are ignored and treated like echo=0
-pub unsafe fn GetString(max_len: c_int, echo: c_int) -> *mut c_char {
+pub unsafe fn get_string(max_len: c_int, echo: c_int) -> *mut c_char {
     let max_len: usize = max_len.try_into().unwrap();
 
     if echo == 1 {
@@ -84,18 +83,18 @@ pub unsafe fn GetString(max_len: c_int, echo: c_int) -> *mut c_char {
         return null_mut();
     }
 
-    let x0 = MyCursorX;
-    let y0 = MyCursorY;
-    let height = FontHeight(&*GetCurrentFont());
+    let x0 = MY_CURSOR_X;
+    let y0 = MY_CURSOR_Y;
+    let height = font_height(&*get_current_font());
 
-    let store = SDL_CreateRGBSurface(0, Screen_Rect.w.into(), height, vid_bpp, 0, 0, 0, 0);
+    let store = SDL_CreateRGBSurface(0, SCREEN_RECT.w.into(), height, VID_BPP, 0, 0, 0, 0);
     let mut store_rect = Rect::new(
         x0.try_into().unwrap(),
         y0.try_into().unwrap(),
-        Screen_Rect.w,
+        SCREEN_RECT.w,
         height.try_into().unwrap(),
     );
-    SDL_UpperBlit(ne_screen, &mut store_rect, store, null_mut());
+    SDL_UpperBlit(NE_SCREEN, &mut store_rect, store, null_mut());
 
     #[cfg(feature = "arcade-input")]
     let blink_time = 200; // For adjusting fast <->slow blink; in ms
@@ -117,9 +116,9 @@ pub unsafe fn GetString(max_len: c_int, echo: c_int) -> *mut c_char {
 
     while !finished {
         let mut tmp_rect = store_rect;
-        SDL_UpperBlit(store, null_mut(), ne_screen, &mut tmp_rect);
-        PutString(ne_screen, x0, y0, CStr::from_ptr(input.as_ptr()).to_bytes());
-        SDL_Flip(ne_screen);
+        SDL_UpperBlit(store, null_mut(), NE_SCREEN, &mut tmp_rect);
+        put_string(NE_SCREEN, x0, y0, CStr::from_ptr(input.as_ptr()).to_bytes());
+        SDL_Flip(NE_SCREEN);
 
         #[cfg(feature = "arcade-input")]
         {
@@ -255,22 +254,22 @@ pub unsafe fn getchar_raw() -> c_int {
             SDL_JOYAXISMOTION => {
                 let jaxis = &*event.jaxis();
                 let axis = jaxis.axis;
-                if axis == 0 || ((joy_num_axes >= 5) && (axis == 3))
+                if axis == 0 || ((JOY_NUM_AXES >= 5) && (axis == 3))
                 /* x-axis */
                 {
-                    if joy_sensitivity * i32::from(jaxis.value) > 10000
+                    if JOY_SENSITIVITY * i32::from(jaxis.value) > 10000
                     /* about half tilted */
                     {
                         return_key = PointerStates::JoyRight as c_int;
-                    } else if joy_sensitivity * i32::from(jaxis.value) < -10000 {
+                    } else if JOY_SENSITIVITY * i32::from(jaxis.value) < -10000 {
                         return_key = PointerStates::JoyLeft as c_int;
                     }
-                } else if (axis == 1) || ((joy_num_axes >= 5) && (axis == 4))
+                } else if (axis == 1) || ((JOY_NUM_AXES >= 5) && (axis == 4))
                 /* y-axis */
                 {
-                    if joy_sensitivity * i32::from(jaxis.value) > 10000 {
+                    if JOY_SENSITIVITY * i32::from(jaxis.value) > 10000 {
                         return_key = PointerStates::JoyDown as c_int;
-                    } else if joy_sensitivity * i32::from(jaxis.value) < -10000 {
+                    } else if JOY_SENSITIVITY * i32::from(jaxis.value) < -10000 {
                         return_key = PointerStates::JoyUp as c_int;
                     }
                 }
@@ -314,7 +313,7 @@ pub unsafe fn getchar_raw() -> c_int {
 /// Added functionality to PrintString() is:
 ///  o) passing -1 as coord uses previous x and next-line y for printing
 ///  o) Screen is updated immediatly after print, using SDL_flip()
-pub unsafe fn printf_SDL(
+pub unsafe fn printf_sdl(
     screen: *mut SDL_Surface,
     mut x: c_int,
     mut y: c_int,
@@ -323,27 +322,27 @@ pub unsafe fn printf_SDL(
     use std::io::Write;
 
     if x == -1 {
-        x = MyCursorX;
+        x = MY_CURSOR_X;
     } else {
-        MyCursorX = x;
+        MY_CURSOR_X = x;
     }
 
     if y == -1 {
-        y = MyCursorY;
+        y = MY_CURSOR_Y;
     } else {
-        MyCursorY = y;
+        MY_CURSOR_Y = y;
     }
 
-    let mut cursor = Cursor::new(TextBuffer.as_mut());
+    let mut cursor = Cursor::new(TEXT_BUFFER.as_mut());
     cursor.write_fmt(format_args).unwrap();
-    let text_buffer = &TextBuffer[..usize::try_from(cursor.position()).unwrap()];
+    let text_buffer = &TEXT_BUFFER[..usize::try_from(cursor.position()).unwrap()];
     let textlen: c_int = text_buffer
         .iter()
-        .map(|&c| CharWidth(&*GetCurrentFont(), c))
+        .map(|&c| char_width(&*get_current_font(), c))
         .sum();
 
-    PutString(screen, x, y, text_buffer);
-    let h = FontHeight(&*GetCurrentFont()) + 2;
+    put_string(screen, x, y, text_buffer);
+    let h = font_height(&*get_current_font()) + 2;
 
     SDL_UpdateRect(
         screen,
@@ -354,11 +353,11 @@ pub unsafe fn printf_SDL(
     ); // update the relevant line
 
     if *text_buffer.last().unwrap() == b'\n' {
-        MyCursorX = x;
-        MyCursorY = (f64::from(y) + 1.1 * f64::from(h)) as c_int;
+        MY_CURSOR_X = x;
+        MY_CURSOR_Y = (f64::from(y) + 1.1 * f64::from(h)) as c_int;
     } else {
-        MyCursorX += textlen;
-        MyCursorY = y;
+        MY_CURSOR_X += textlen;
+        MY_CURSOR_Y = y;
     }
 }
 
@@ -376,7 +375,7 @@ pub unsafe fn printf_SDL(
 /// Return TRUE if some characters where written inside the clip rectangle,
 /// FALSE if not (used by ScrollText to know if Text has been scrolled
 /// out of clip-rect completely)
-pub unsafe fn DisplayText(
+pub unsafe fn display_text(
     text: *const c_char,
     startx: c_int,
     starty: c_int,
@@ -387,19 +386,19 @@ pub unsafe fn DisplayText(
     }
 
     if startx != -1 {
-        MyCursorX = startx;
+        MY_CURSOR_X = startx;
     }
     if starty != -1 {
-        MyCursorY = starty;
+        MY_CURSOR_Y = starty;
     }
 
     let mut store_clip = Rect::new(0, 0, 0, 0);
     let mut temp_clipping_rect;
-    SDL_GetClipRect(ne_screen, &mut store_clip); /* store previous clip-rect */
+    SDL_GetClipRect(NE_SCREEN, &mut store_clip); /* store previous clip-rect */
     if !clip.is_null() {
-        SDL_SetClipRect(ne_screen, clip);
+        SDL_SetClipRect(NE_SCREEN, clip);
     } else {
-        temp_clipping_rect = Rect::new(0, 0, Screen_Rect.w, Screen_Rect.h);
+        temp_clipping_rect = Rect::new(0, 0, SCREEN_RECT.w, SCREEN_RECT.h);
         clip = &mut temp_clipping_rect;
     }
 
@@ -407,32 +406,32 @@ pub unsafe fn DisplayText(
 
     let clip = &*clip;
     while let Some((&first, rest)) = text.split_first() {
-        if MyCursorY >= c_int::from(clip.y) + c_int::from(clip.h) {
+        if MY_CURSOR_Y >= c_int::from(clip.y) + c_int::from(clip.h) {
             break;
         }
 
         if first == b'\n' {
-            MyCursorX = clip.x.into();
-            MyCursorY += (f64::from(FontHeight(&*GetCurrentFont())) * TEXT_STRETCH) as c_int;
+            MY_CURSOR_X = clip.x.into();
+            MY_CURSOR_Y += (f64::from(font_height(&*get_current_font())) * TEXT_STRETCH) as c_int;
         } else {
-            DisplayChar(first as c_uchar);
+            display_char(first as c_uchar);
         }
 
         text = rest;
         if is_linebreak_needed(text, clip) {
             text = &text[1..];
-            MyCursorX = clip.x.into();
-            MyCursorY += (f64::from(FontHeight(&*GetCurrentFont())) * TEXT_STRETCH) as c_int;
+            MY_CURSOR_X = clip.x.into();
+            MY_CURSOR_Y += (f64::from(font_height(&*get_current_font())) * TEXT_STRETCH) as c_int;
         }
     }
 
-    SDL_SetClipRect(ne_screen, &store_clip); /* restore previous clip-rect */
+    SDL_SetClipRect(NE_SCREEN, &store_clip); /* restore previous clip-rect */
 
     /*
      * ScrollText() wants to know if we still wrote something inside the
      * clip-rectangle, of if the Text has been scrolled out
      */
-    if MyCursorY < clip.y.into() || starty > c_int::from(clip.y) + c_int::from(clip.h) {
+    if MY_CURSOR_Y < clip.y.into() || starty > c_int::from(clip.y) + c_int::from(clip.h) {
         false as c_int
     } else {
         true as c_int
@@ -441,19 +440,19 @@ pub unsafe fn DisplayText(
 
 /// This function displays a char. It uses Menu_BFont now
 /// to do this.  MyCursorX is  updated to new position.
-pub unsafe fn DisplayChar(c: c_uchar) {
+pub unsafe fn display_char(c: c_uchar) {
     // don't accept non-printable characters
     if !(c.is_ascii_graphic() || c.is_ascii_whitespace()) {
         println!("Illegal char passed to DisplayChar(): {}", c);
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
 
-    PutChar(ne_screen, MyCursorX, MyCursorY, c.into());
+    put_char(NE_SCREEN, MY_CURSOR_X, MY_CURSOR_Y, c);
 
     // After the char has been displayed, we must move the cursor to its
     // new position.  That depends of course on the char displayed.
     //
-    MyCursorX += CharWidth(&*GetCurrentFont(), c.into());
+    MY_CURSOR_X += char_width(&*get_current_font(), c);
 }
 
 ///  This function checks if the next word still fits in this line
@@ -479,9 +478,9 @@ pub unsafe fn is_linebreak_needed(textpos: &[u8], clip: &Rect) -> bool {
         .copied()
         .take_while(|&c| c != b' ' && c != b'\n');
     for c in iter {
-        let w = CharWidth(&*GetCurrentFont(), c.into());
+        let w = char_width(&*get_current_font(), c);
         needed_space += w;
-        if MyCursorX + needed_space > c_int::from(clip.x) + c_int::from(clip.w) - w {
+        if MY_CURSOR_X + needed_space > c_int::from(clip.x) + c_int::from(clip.w) - w {
             return true;
         }
     }
@@ -489,104 +488,90 @@ pub unsafe fn is_linebreak_needed(textpos: &[u8], clip: &Rect) -> bool {
     false
 }
 
-pub unsafe fn EnemyHitByBulletText(enemy: c_int) {
-    let robot = &mut AllEnemys[usize::try_from(enemy).unwrap()];
+pub unsafe fn enemy_hit_by_bullet_text(enemy: c_int) {
+    let robot = &mut ALL_ENEMYS[usize::try_from(enemy).unwrap()];
 
-    if GameConfig.Droid_Talk == 0 {
+    if GAME_CONFIG.droid_talk == 0 {
         return;
     }
 
-    robot.TextVisibleTime = 0.;
-    match MyRandom(4) {
+    robot.text_visible_time = 0.;
+    match my_random(4) {
         0 => {
-            robot.TextToBeDisplayed =
+            robot.text_to_be_displayed =
                 cstr!("Unhandled exception fault.  Press ok to reboot.").as_ptr() as *mut c_char;
         }
         1 => {
-            robot.TextToBeDisplayed =
+            robot.text_to_be_displayed =
                 cstr!("System fault. Please buy a newer version.").as_ptr() as *mut c_char;
         }
         2 => {
-            robot.TextToBeDisplayed =
+            robot.text_to_be_displayed =
                 cstr!("System error. Might be a virus.").as_ptr() as *mut c_char;
         }
         3 => {
-            robot.TextToBeDisplayed =
+            robot.text_to_be_displayed =
                 cstr!("System error. Pleae buy an upgrade from MS.").as_ptr() as *mut c_char;
         }
         4 => {
-            robot.TextToBeDisplayed =
+            robot.text_to_be_displayed =
                 cstr!("System error. Press any key to reboot.").as_ptr() as *mut c_char;
         }
         _ => unreachable!(),
     }
 }
 
-pub unsafe fn EnemyInfluCollisionText(enemy: c_int) {
-    let robot = &mut AllEnemys[usize::try_from(enemy).unwrap()];
+pub unsafe fn enemy_influ_collision_text(enemy: c_int) {
+    let robot = &mut ALL_ENEMYS[usize::try_from(enemy).unwrap()];
 
-    if GameConfig.Droid_Talk == 0 {
+    if GAME_CONFIG.droid_talk == 0 {
         return;
     }
 
-    robot.TextVisibleTime = 0.;
-    match MyRandom(1) {
+    robot.text_visible_time = 0.;
+    match my_random(1) {
         0 => {
-            robot.TextToBeDisplayed =
+            robot.text_to_be_displayed =
                 cstr!("Hey, I'm from MS! Walk outa my way!").as_ptr() as *mut c_char;
         }
         1 => {
-            robot.TextToBeDisplayed =
+            robot.text_to_be_displayed =
                 cstr!("Hey, I know the big MS boss! You better go.").as_ptr() as *mut c_char;
         }
         _ => unreachable!(),
     }
 }
 
-pub unsafe fn AddStandingAndAimingText(enemy: c_int) {
-    let robot = &mut AllEnemys[usize::try_from(enemy).unwrap()];
-
-    if GameConfig.Droid_Talk == 0 {
+pub unsafe fn add_influ_burnt_text() {
+    if GAME_CONFIG.droid_talk == 0 {
         return;
     }
 
-    robot.TextVisibleTime = 0.;
+    ME.text_visible_time = 0.;
 
-    if Me.speed.x.abs() < 1. && Me.speed.y.abs() < 1. {
-        robot.TextToBeDisplayed = cstr!("Yeah, stay like that, haha.").as_ptr() as *mut c_char;
-    } else {
-        robot.TextToBeDisplayed = cstr!("Stand still while I aim at you.").as_ptr() as *mut c_char;
-    }
-}
-
-pub unsafe fn AddInfluBurntText() {
-    if GameConfig.Droid_Talk == 0 {
-        return;
-    }
-
-    Me.TextVisibleTime = 0.;
-
-    match MyRandom(6) {
-        0 => Me.TextToBeDisplayed = cstr!("Aaarrgh, aah, that burnt me!").as_ptr() as *mut c_char,
-        1 => Me.TextToBeDisplayed = cstr!("Hell, that blast was hot!").as_ptr() as *mut c_char,
+    match my_random(6) {
+        0 => {
+            ME.text_to_be_displayed = cstr!("Aaarrgh, aah, that burnt me!").as_ptr() as *mut c_char
+        }
+        1 => ME.text_to_be_displayed = cstr!("Hell, that blast was hot!").as_ptr() as *mut c_char,
         2 => {
-            Me.TextToBeDisplayed =
+            ME.text_to_be_displayed =
                 cstr!("Ghaart, I hate to stain my chassis like that.").as_ptr() as *mut c_char
         }
         3 => {
-            Me.TextToBeDisplayed =
+            ME.text_to_be_displayed =
                 cstr!("Oh no!  I think I've burnt a cable!").as_ptr() as *mut c_char
         }
         4 => {
-            Me.TextToBeDisplayed =
+            ME.text_to_be_displayed =
                 cstr!("Oh no, my poor transfer connectors smolder!").as_ptr() as *mut c_char
         }
         5 => {
-            Me.TextToBeDisplayed =
+            ME.text_to_be_displayed =
                 cstr!("I hope that didn't melt any circuits!").as_ptr() as *mut c_char
         }
         6 => {
-            Me.TextToBeDisplayed =
+            ME.text_to_be_displayed =
                 cstr!("So that gives some more black scars on me ol' dented chassis!").as_ptr()
                     as *mut c_char
         }
@@ -594,37 +579,10 @@ pub unsafe fn AddInfluBurntText() {
     }
 }
 
-/// Similar to putchar(), using SDL via the BFont-fct PutChar().
-///
-/// sets MyCursor[XY], and allows passing (-1,-1) as coords to indicate
-/// using the current cursor position.
-pub unsafe fn putchar_SDL(
-    surface: *mut SDL_Surface,
-    mut x: c_int,
-    mut y: c_int,
-    c: c_int,
-) -> c_int {
-    if x == -1 {
-        x = MyCursorX;
-    }
-    if y == -1 {
-        y = MyCursorY;
-    }
-
-    MyCursorX = x + CharWidth(&*GetCurrentFont(), c.try_into().unwrap());
-    MyCursorY = y;
-
-    let ret = PutChar(surface, x, y, c.try_into().unwrap());
-
-    SDL_Flip(surface);
-
-    ret
-}
-
 /// Scrolls a given text down inside the given rect
 ///
 /// returns 0 if end of text was scolled out, 1 if user pressed fire
-pub unsafe fn ScrollText(
+pub unsafe fn scroll_text(
     text: *mut c_char,
     rect: &mut SDL_Rect,
     _seconds_minimum_duration: c_int,
@@ -634,20 +592,20 @@ pub unsafe fn ScrollText(
     const MAX_SPEED: c_int = 150;
     let mut just_started = true;
 
-    let background = SDL_DisplayFormat(ne_screen);
+    let background = SDL_DisplayFormat(NE_SCREEN);
 
     wait_for_all_keys_released();
     let ret;
     loop {
         let mut prev_tick = SDL_GetTicks();
-        SDL_UpperBlit(background, null_mut(), ne_screen, null_mut());
-        if DisplayText(text, rect.x.into(), insert_line as c_int, rect) == 0 {
+        SDL_UpperBlit(background, null_mut(), NE_SCREEN, null_mut());
+        if display_text(text, rect.x.into(), insert_line as c_int, rect) == 0 {
             ret = 0; /* Text has been scrolled outside Rect */
             break;
         }
-        SDL_Flip(ne_screen);
+        SDL_Flip(NE_SCREEN);
 
-        if GameConfig.HogCPU != 0 {
+        if GAME_CONFIG.hog_cpu != 0 {
             SDL_Delay(1);
         }
 
@@ -664,9 +622,9 @@ pub unsafe fn ScrollText(
                 }
             }
 
-            if (key == key_cmds[Cmds::Fire as usize][0])
-                || (key == key_cmds[Cmds::Fire as usize][1])
-                || (key == key_cmds[Cmds::Fire as usize][2])
+            if (key == KEY_CMDS[Cmds::Fire as usize][0])
+                || (key == KEY_CMDS[Cmds::Fire as usize][1])
+                || (key == KEY_CMDS[Cmds::Fire as usize][2])
             {
                 trace!("in just_started: Fire registered");
                 ret = 1;
@@ -675,19 +633,19 @@ pub unsafe fn ScrollText(
             prev_tick = SDL_GetTicks();
         }
 
-        if FirePressedR() {
+        if fire_pressed_r() {
             trace!("outside just_started: Fire registered");
             ret = 1;
             break;
         }
 
-        if UpPressed() || WheelUpPressed() {
+        if up_pressed() || wheel_up_pressed() {
             speed -= 5;
             if speed < -MAX_SPEED {
                 speed = -MAX_SPEED;
             }
         }
-        if DownPressed() || WheelDownPressed() {
+        if down_pressed() || wheel_down_pressed() {
             speed += 5;
             if speed > MAX_SPEED {
                 speed = MAX_SPEED;
@@ -704,8 +662,8 @@ pub unsafe fn ScrollText(
         }
     }
 
-    SDL_UpperBlit(background, null_mut(), ne_screen, null_mut());
-    SDL_Flip(ne_screen);
+    SDL_UpperBlit(background, null_mut(), NE_SCREEN, null_mut());
+    SDL_Flip(NE_SCREEN);
     SDL_FreeSurface(background);
 
     ret

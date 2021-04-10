@@ -1,8 +1,8 @@
 use crate::{
     defs::{BulletKind, Criticality, Sound, Themed, BYCOLOR, NUM_COLORS, SOUND_DIR_C},
-    global::GameConfig,
+    global::GAME_CONFIG,
     misc::find_file,
-    sound_on, CurLevel,
+    CUR_LEVEL, SOUND_ON,
 };
 
 use cstr::cstr;
@@ -139,16 +139,16 @@ unsafe fn mix_play_channel(channel: c_int, chunk: *mut Mix_Chunk, loops: c_int) 
     Mix_PlayChannelTimed(channel, chunk, loops, -1)
 }
 
-pub unsafe fn CrySound() {
-    Play_Sound(Sound::Cry as i32);
+pub unsafe fn cry_sound() {
+    play_sound(Sound::Cry as i32);
 }
 
-pub unsafe fn TransferSound() {
-    Play_Sound(Sound::Transfer as i32);
+pub unsafe fn transfer_sound() {
+    play_sound(Sound::Transfer as i32);
 }
 
-pub unsafe fn Play_Sound(tune: c_int) {
-    if sound_on == 0 {
+pub unsafe fn play_sound(tune: c_int) {
+    if SOUND_ON == 0 {
         return;
     }
 
@@ -169,7 +169,7 @@ pub unsafe fn Play_Sound(tune: c_int) {
     }
 }
 
-pub unsafe fn FreeSounds() {
+pub unsafe fn free_sounds() {
     LOADED_WAV_FILES
         .iter()
         .filter(|file| !file.is_null())
@@ -188,143 +188,143 @@ pub unsafe fn FreeSounds() {
     SDL_CloseAudio();
 }
 
-pub unsafe fn Takeover_Set_Capsule_Sound() {
-    if sound_on == 0 {
+pub unsafe fn takeover_set_capsule_sound() {
+    if SOUND_ON == 0 {
         return;
     }
 
-    Play_Sound(Sound::TakeoverSetCapsule as i32);
+    play_sound(Sound::TakeoverSetCapsule as i32);
 }
 
-pub unsafe fn Takeover_Game_Won_Sound() {
-    if sound_on == 0 {
+pub unsafe fn takeover_game_won_sound() {
+    if SOUND_ON == 0 {
         return;
     }
 
-    Play_Sound(Sound::TakeoverGameWon as i32);
+    play_sound(Sound::TakeoverGameWon as i32);
 }
 
-pub unsafe fn Takeover_Game_Deadlock_Sound() {
-    if sound_on == 0 {
+pub unsafe fn takeover_game_deadlock_sound() {
+    if SOUND_ON == 0 {
         return;
     }
 
-    Play_Sound(Sound::TakeoverGameDeadlock as i32);
+    play_sound(Sound::TakeoverGameDeadlock as i32);
 }
 
-pub unsafe fn Takeover_Game_Lost_Sound() {
-    if sound_on == 0 {
+pub unsafe fn takeover_game_lost_sound() {
+    if SOUND_ON == 0 {
         return;
     }
 
-    Play_Sound(Sound::TakeoverGameLost as i32);
+    play_sound(Sound::TakeoverGameLost as i32);
 }
 
-pub unsafe fn CollisionGotDamagedSound() {
-    if sound_on == 0 {
+pub unsafe fn collision_got_damaged_sound() {
+    if SOUND_ON == 0 {
         return;
     }
 
-    Play_Sound(Sound::CollisionGotDamaged as i32);
+    play_sound(Sound::CollisionGotDamaged as i32);
 }
 
-pub unsafe fn CollisionDamagedEnemySound() {
-    if sound_on == 0 {
+pub unsafe fn collision_damaged_enemy_sound() {
+    if SOUND_ON == 0 {
         return;
     }
 
-    Play_Sound(Sound::CollisionDamagedEnemy as i32);
+    play_sound(Sound::CollisionDamagedEnemy as i32);
 }
 
-pub unsafe fn BounceSound() {
-    if sound_on == 0 {
+pub unsafe fn bounce_sound() {
+    if SOUND_ON == 0 {
         return;
     }
 
-    Play_Sound(Sound::Collision as i32);
+    play_sound(Sound::Collision as i32);
 }
 
-pub unsafe fn DruidBlastSound() {
-    if sound_on == 0 {
+pub unsafe fn druid_blast_sound() {
+    if SOUND_ON == 0 {
         return;
     }
 
-    Play_Sound(Sound::Blast as i32);
+    play_sound(Sound::Blast as i32);
 }
 
-pub unsafe fn GotHitSound() {
-    if sound_on == 0 {
+pub unsafe fn got_hit_sound() {
+    if SOUND_ON == 0 {
         return;
     }
 
-    Play_Sound(Sound::GotHit as i32);
+    play_sound(Sound::GotHit as i32);
 }
 
-pub unsafe fn GotIntoBlastSound() {
-    if sound_on == 0 {
+pub unsafe fn got_into_blast_sound() {
+    if SOUND_ON == 0 {
         return;
     }
 
-    Play_Sound(Sound::GotIntoBlast as i32);
+    play_sound(Sound::GotIntoBlast as i32);
 }
 
-pub unsafe fn RefreshSound() {
-    if sound_on == 0 {
+pub unsafe fn refresh_sound() {
+    if SOUND_ON == 0 {
         return;
     }
 
-    Play_Sound(Sound::Refresh as i32);
+    play_sound(Sound::Refresh as i32);
 }
 
-pub unsafe fn MoveLiftSound() {
-    if sound_on == 0 {
+pub unsafe fn move_lift_sound() {
+    if SOUND_ON == 0 {
         return;
     }
 
-    Play_Sound(Sound::MoveElevator as i32);
+    play_sound(Sound::MoveElevator as i32);
 }
 
-pub unsafe fn MenuItemSelectedSound() {
-    if sound_on == 0 {
+pub unsafe fn menu_item_selected_sound() {
+    if SOUND_ON == 0 {
         return;
     }
 
-    Play_Sound(Sound::MenuItemSelected as i32);
+    play_sound(Sound::MenuItemSelected as i32);
 }
 
-pub unsafe fn MoveMenuPositionSound() {
-    if sound_on == 0 {
+pub unsafe fn move_menu_position_sound() {
+    if SOUND_ON == 0 {
         return;
     }
 
-    Play_Sound(Sound::MoveMenuPosition as i32);
+    play_sound(Sound::MoveMenuPosition as i32);
 }
 
-pub unsafe fn ThouArtDefeatedSound() {
-    if sound_on == 0 {
+pub unsafe fn thou_art_defeated_sound() {
+    if SOUND_ON == 0 {
         return;
     }
-    Play_Sound(Sound::ThouArtDefeated as i32);
+    play_sound(Sound::ThouArtDefeated as i32);
 }
 
-pub unsafe fn EnterLiftSound() {
-    if sound_on == 0 {
-        return;
-    }
-
-    Play_Sound(Sound::EnterElevator as i32);
-}
-
-pub unsafe fn LeaveLiftSound() {
-    if sound_on == 0 {
+pub unsafe fn enter_lift_sound() {
+    if SOUND_ON == 0 {
         return;
     }
 
-    Play_Sound(Sound::LeaveElevator as i32);
+    play_sound(Sound::EnterElevator as i32);
 }
 
-pub unsafe fn Fire_Bullet_Sound(bullet_type: c_int) {
-    if sound_on == 0 {
+pub unsafe fn leave_lift_sound() {
+    if SOUND_ON == 0 {
+        return;
+    }
+
+    play_sound(Sound::LeaveElevator as i32);
+}
+
+pub unsafe fn fire_bullet_sound(bullet_type: c_int) {
+    if SOUND_ON == 0 {
         return;
     }
 
@@ -340,20 +340,20 @@ pub unsafe fn Fire_Bullet_Sound(bullet_type: c_int) {
     };
 
     match bullet_type {
-        Pulse => Play_Sound(Sound::FireBulletPulse as i32),
-        SinglePulse => Play_Sound(Sound::FireBulletSinglePulse as i32),
-        Military => Play_Sound(Sound::FireBulletMilitary as i32),
-        Flash => Play_Sound(Sound::FireBulletFlash as i32),
-        Exterminator => Play_Sound(Sound::FireBulletExterminator as i32),
-        LaserRifle => Play_Sound(Sound::FireBulletLaserRifle as i32),
+        Pulse => play_sound(Sound::FireBulletPulse as i32),
+        SinglePulse => play_sound(Sound::FireBulletSinglePulse as i32),
+        Military => play_sound(Sound::FireBulletMilitary as i32),
+        Flash => play_sound(Sound::FireBulletFlash as i32),
+        Exterminator => play_sound(Sound::FireBulletExterminator as i32),
+        LaserRifle => play_sound(Sound::FireBulletLaserRifle as i32),
     }
 }
 
-pub unsafe fn Switch_Background_Music_To(filename_raw: *const c_char) {
+pub unsafe fn switch_background_music_to(filename_raw: *const c_char) {
     static mut PREV_COLOR: c_int = -1;
     static mut PAUSED: bool = false;
 
-    if sound_on == 0 {
+    if SOUND_ON == 0 {
         return;
     }
 
@@ -369,14 +369,17 @@ pub unsafe fn Switch_Background_Music_To(filename_raw: *const c_char) {
     // if filename_raw==BYCOLOR then chose bg_music[color]
     // NOTE: if new level-color is the same as before, just resume paused music!
     if filename_raw.to_bytes() == BYCOLOR.to_bytes() {
-        if PAUSED && PREV_COLOR == (*CurLevel).color {
+        if PAUSED && PREV_COLOR == (*CUR_LEVEL).color {
             // current level-song was just paused
             Mix_ResumeMusic();
             PAUSED = false;
         } else {
-            Mix_PlayMusic(MUSIC_SONGS[usize::try_from((*CurLevel).color).unwrap()], -1);
+            Mix_PlayMusic(
+                MUSIC_SONGS[usize::try_from((*CUR_LEVEL).color).unwrap()],
+                -1,
+            );
             PAUSED = false;
-            PREV_COLOR = (*CurLevel).color;
+            PREV_COLOR = (*CUR_LEVEL).color;
         }
     } else {
         // not using BYCOLOR mechanism: just play specified song
@@ -407,19 +410,19 @@ pub unsafe fn Switch_Background_Music_To(filename_raw: *const c_char) {
         Mix_PlayMusic(TMP_MOD_FILE, -1);
     }
 
-    Mix_VolumeMusic((GameConfig.Current_BG_Music_Volume * f32::from(MIX_MAX_VOLUME)) as c_int);
+    Mix_VolumeMusic((GAME_CONFIG.current_bg_music_volume * f32::from(MIX_MAX_VOLUME)) as c_int);
 }
 
-pub unsafe fn CountdownSound() {
-    Play_Sound(Sound::Countdown as i32);
+pub unsafe fn countdown_sound() {
+    play_sound(Sound::Countdown as i32);
 }
 
-pub unsafe fn EndCountdownSound() {
-    Play_Sound(Sound::Endcountdown as i32);
+pub unsafe fn end_countdown_sound() {
+    play_sound(Sound::Endcountdown as i32);
 }
 
-pub unsafe fn Set_Sound_FX_Volume(new_volume: c_float) {
-    if sound_on == 0 {
+pub unsafe fn set_sound_f_x_volume(new_volume: c_float) {
+    if SOUND_ON == 0 {
         return;
     }
 
@@ -431,18 +434,18 @@ pub unsafe fn Set_Sound_FX_Volume(new_volume: c_float) {
     });
 }
 
-pub unsafe fn Set_BG_Music_Volume(new_volume: c_float) {
-    if sound_on == 0 {
+pub unsafe fn set_bg_music_volume(new_volume: c_float) {
+    if SOUND_ON == 0 {
         return;
     }
 
     Mix_VolumeMusic((new_volume * f32::from(MIX_MAX_VOLUME)) as c_int);
 }
 
-pub unsafe fn Init_Audio() {
+pub unsafe fn init_audio() {
     info!("Initializing SDL Audio Systems");
 
-    if sound_on == 0 {
+    if SOUND_ON == 0 {
         return;
     }
 
@@ -453,7 +456,7 @@ pub unsafe fn Init_Audio() {
             "SDL Sound subsystem could not be initialized. \
              Continuing with sound disabled",
         );
-        sound_on = false.into();
+        SOUND_ON = false.into();
         return;
     } else {
         info!("SDL Audio initialisation successful.");
@@ -468,7 +471,7 @@ pub unsafe fn Init_Audio() {
             "SDL Mixer Error: {}. Continuing with sound disabled",
             get_error(),
         );
-        sound_on = false.into();
+        SOUND_ON = false.into();
         return;
     } else {
         warn!("Successfully opened SDL audio channel.");
@@ -505,7 +508,7 @@ pub unsafe fn Init_Audio() {
                 sample_filename.to_string_lossy()
             );
             warn!("Continuing with sound disabled. Error = {}", get_error());
-            sound_on = false.into();
+            SOUND_ON = false.into();
             return;
         } else {
             info!(
@@ -532,7 +535,7 @@ pub unsafe fn Init_Audio() {
                 "SDL Mixer Error: {}. Continuing with sound disabled",
                 get_error()
             );
-            sound_on = false.into();
+            SOUND_ON = false.into();
             return;
         } else {
             info!("Successfully loaded file {}.", music_file.to_string_lossy());
@@ -544,5 +547,5 @@ pub unsafe fn Init_Audio() {
     // the music and sound volumes accoridingly, i.e. as specifies by the users
     // configuration.
     //
-    Set_Sound_FX_Volume(GameConfig.Current_Sound_FX_Volume);
+    set_sound_f_x_volume(GAME_CONFIG.current_sound_fx_volume);
 }

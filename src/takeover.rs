@@ -1,22 +1,23 @@
 use crate::{
     defs::{
-        self, AltPressed, CtrlPressed, DisplayBannerFlags, Droid, FirePressedR, MenuAction, Status,
-        DROID_ROTATION_TIME, SHOW_WAIT, UPDATE,
+        self, alt_pressed, ctrl_pressed, fire_pressed_r, DisplayBannerFlags, Droid, MenuAction,
+        Status, DROID_ROTATION_TIME, SHOW_WAIT, UPDATE,
     },
-    enemy::ClassOfDruid,
-    graphics::{ne_screen, takeover_bg_pic, ClearGraphMem},
-    input::{any_key_just_pressed, wait_for_all_keys_released, KeyIsPressedR},
-    menu::getMenuAction,
-    misc::{Activate_Conservative_Frame_Computation, MyRandom},
+    enemy::class_of_druid,
+    graphics::{clear_graph_mem, NE_SCREEN, TAKEOVER_BG_PIC},
+    input::{any_key_just_pressed, key_is_pressed_r, wait_for_all_keys_released},
+    menu::get_menu_action,
+    misc::{activate_conservative_frame_computation, my_random},
     ship::{show_droid_info, show_droid_portrait},
     sound::{
-        CountdownSound, EndCountdownSound, MoveMenuPositionSound, Takeover_Game_Deadlock_Sound,
-        Takeover_Game_Lost_Sound, Takeover_Game_Won_Sound, Takeover_Set_Capsule_Sound,
+        countdown_sound, end_countdown_sound, move_menu_position_sound,
+        takeover_game_deadlock_sound, takeover_game_lost_sound, takeover_game_won_sound,
+        takeover_set_capsule_sound,
     },
     structs::Point,
-    vars::{Classic_User_Rect, Cons_Droid_Rect, Druidmap, Me, User_Rect},
-    view::{DisplayBanner, Fill_Rect, PutEnemy, PutInfluence},
-    AllEnemys, DeathCount, InvincibleMode, PreTakeEnergy, RealScore,
+    vars::{CLASSIC_USER_RECT, CONS_DROID_RECT, DRUIDMAP, ME, USER_RECT},
+    view::{display_banner, fill_rect, put_enemy, put_influence},
+    ALL_ENEMYS, DEATH_COUNT, INVINCIBLE_MODE, PRE_TAKE_ENERGY, REAL_SCORE,
 };
 
 use cstr::cstr;
@@ -370,7 +371,6 @@ impl From<Color> for usize {
 
 /* Element - Names */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[repr(C)]
 enum ToElement {
     Cable,
     CableEnd,
@@ -530,10 +530,10 @@ unsafe fn enemy_movements() {
         return;
     }
 
-    let next_row = match MyRandom(ACTIONS) {
+    let next_row = match my_random(ACTIONS) {
         0 => {
             /* Move along */
-            if MyRandom(100) <= MOVE_PROBABILITY {
+            if my_random(100) <= MOVE_PROBABILITY {
                 row += DIRECTION;
                 if row > i32::try_from(NUM_LINES).unwrap() - 1 {
                     1
@@ -549,7 +549,7 @@ unsafe fn enemy_movements() {
 
         1 => {
             /* Turn around */
-            if MyRandom(100) <= TURN_PROBABILITY {
+            if my_random(100) <= TURN_PROBABILITY {
                 DIRECTION *= -1;
             }
             row + 1
@@ -559,12 +559,12 @@ unsafe fn enemy_movements() {
             /* Try to set  capsule */
             match usize::try_from(row) {
                 Ok(row)
-                    if MyRandom(100) <= SET_PROBABILITY
+                    if my_random(100) <= SET_PROBABILITY
                         && PLAYGROUND[opponent_color][0][row] != Block::CableEnd
                         && ACTIVATION_MAP[opponent_color][0][row] == Condition::Inactive =>
                 {
                     NUM_CAPSULES[Opponents::Enemy as usize] -= 1;
-                    Takeover_Set_Capsule_Sound();
+                    takeover_set_capsule_sound();
                     PLAYGROUND[opponent_color][0][row] = Block::Repeater;
                     ACTIVATION_MAP[opponent_color][0][row] = Condition::Active1;
                     CAPSULES_COUNTDOWN[opponent_color][0][row] = Some(CAPSULE_COUNTDOWN * 2);
@@ -838,8 +838,8 @@ unsafe fn invent_playground() {
                 }
 
                 let new_element =
-                    u8::try_from(MyRandom((TO_ELEMENTS - 1).try_into().unwrap())).unwrap();
-                if MyRandom(MAX_PROB) > ELEMENTS_PROBABILITIES[usize::from(new_element)] {
+                    u8::try_from(my_random((TO_ELEMENTS - 1).try_into().unwrap())).unwrap();
+                if my_random(MAX_PROB) > ELEMENTS_PROBABILITIES[usize::from(new_element)] {
                     continue;
                 }
 
@@ -956,20 +956,20 @@ unsafe fn show_playground() {
     let your_color: usize = YOUR_COLOR.into();
     let opponent_color: usize = OPPONENT_COLOR.into();
 
-    let xoffs = Classic_User_Rect.x;
-    let yoffs = Classic_User_Rect.y;
+    let xoffs = CLASSIC_USER_RECT.x;
+    let yoffs = CLASSIC_USER_RECT.y;
 
-    SDL_SetClipRect(ne_screen, null_mut());
+    SDL_SetClipRect(NE_SCREEN, null_mut());
 
-    SDL_UpperBlit(takeover_bg_pic, &mut User_Rect, ne_screen, &mut User_Rect);
+    SDL_UpperBlit(TAKEOVER_BG_PIC, &mut USER_RECT, NE_SCREEN, &mut USER_RECT);
 
-    PutInfluence(
+    put_influence(
         i32::from(xoffs) + DROID_STARTS[your_color].x,
         i32::from(yoffs) + DROID_STARTS[your_color].y,
     );
 
-    if AllEnemys[usize::try_from(DROID_NUM).unwrap()].status != Status::Out as i32 {
-        PutEnemy(
+    if ALL_ENEMYS[usize::try_from(DROID_NUM).unwrap()].status != Status::Out as i32 {
+        put_enemy(
             DROID_NUM,
             i32::from(xoffs) + DROID_STARTS[opponent_color].x,
             i32::from(yoffs) + DROID_STARTS[opponent_color].y,
@@ -979,15 +979,15 @@ unsafe fn show_playground() {
     let mut dst = Rect::new(
         xoffs + i16::try_from(LEFT_GROUND_START.x).unwrap(),
         yoffs + i16::try_from(LEFT_GROUND_START.y).unwrap(),
-        User_Rect.w,
-        User_Rect.h,
+        USER_RECT.w,
+        USER_RECT.h,
     );
 
     let mut to_ground_blocks = TO_GROUND_BLOCKS.lock().unwrap();
     SDL_UpperBlit(
         TO_BLOCKS,
         &mut to_ground_blocks[GroundBlock::YellowAbove as usize],
-        ne_screen,
+        NE_SCREEN,
         &mut dst,
     );
 
@@ -997,7 +997,7 @@ unsafe fn show_playground() {
         SDL_UpperBlit(
             TO_BLOCKS,
             &mut to_ground_blocks[GroundBlock::YellowMiddle as usize],
-            ne_screen,
+            NE_SCREEN,
             &mut dst,
         );
 
@@ -1007,7 +1007,7 @@ unsafe fn show_playground() {
     SDL_UpperBlit(
         TO_BLOCKS,
         &mut to_ground_blocks[GroundBlock::YellowBelow as usize],
-        ne_screen,
+        NE_SCREEN,
         &mut dst,
     );
 
@@ -1017,11 +1017,11 @@ unsafe fn show_playground() {
         0,
         0,
     );
-    SDL_UpperBlit(TO_BLOCKS, &mut LEADER_BLOCK, ne_screen, &mut dst);
+    SDL_UpperBlit(TO_BLOCKS, &mut LEADER_BLOCK, NE_SCREEN, &mut dst);
 
     dst.y += i16::try_from(LEADER_LED.h).unwrap();
     for _ in 0..12 {
-        SDL_UpperBlit(TO_BLOCKS, &mut COLUMN_BLOCK, ne_screen, &mut dst);
+        SDL_UpperBlit(TO_BLOCKS, &mut COLUMN_BLOCK, NE_SCREEN, &mut dst);
         dst.y += i16::try_from(COLUMN_RECT.h).unwrap();
     }
 
@@ -1036,7 +1036,7 @@ unsafe fn show_playground() {
     SDL_UpperBlit(
         TO_BLOCKS,
         &mut to_ground_blocks[GroundBlock::VioletAbove as usize],
-        ne_screen,
+        NE_SCREEN,
         &mut dst,
     );
     dst.y += i16::try_from(GROUND_RECT.h).unwrap();
@@ -1045,7 +1045,7 @@ unsafe fn show_playground() {
         SDL_UpperBlit(
             TO_BLOCKS,
             &mut to_ground_blocks[GroundBlock::VioletMiddle as usize],
-            ne_screen,
+            NE_SCREEN,
             &mut dst,
         );
         dst.y += i16::try_from(GROUND_RECT.h).unwrap();
@@ -1054,7 +1054,7 @@ unsafe fn show_playground() {
     SDL_UpperBlit(
         TO_BLOCKS,
         &mut to_ground_blocks[GroundBlock::VioletBelow as usize],
-        ne_screen,
+        NE_SCREEN,
         &mut dst,
     );
     drop(to_ground_blocks);
@@ -1065,14 +1065,14 @@ unsafe fn show_playground() {
     SDL_UpperBlit(
         TO_BLOCKS,
         &mut FILL_BLOCKS[leader_color],
-        ne_screen,
+        NE_SCREEN,
         &mut dst,
     );
     dst.y += i16::try_from(FILL_BLOCK.h).unwrap();
     SDL_UpperBlit(
         TO_BLOCKS,
         &mut FILL_BLOCKS[leader_color],
-        ne_screen,
+        NE_SCREEN,
         &mut dst,
     );
 
@@ -1093,7 +1093,7 @@ unsafe fn show_playground() {
             SDL_UpperBlit(
                 TO_BLOCKS,
                 &mut FILL_BLOCKS[usize::try_from(display_column).unwrap()],
-                ne_screen,
+                NE_SCREEN,
                 &mut dst,
             );
         });
@@ -1139,7 +1139,7 @@ unsafe fn show_playground() {
                 );
 
                 let block = playground_line + activation_line * TO_BLOCKS_N;
-                SDL_UpperBlit(TO_BLOCKS, &mut to_game_blocks[block], ne_screen, &mut dst);
+                SDL_UpperBlit(TO_BLOCKS, &mut to_game_blocks[block], NE_SCREEN, &mut dst);
             },
         );
 
@@ -1183,7 +1183,7 @@ unsafe fn show_playground() {
                     0,
                 );
                 let block = playground_line + (NUM_PHASES + activation_line) * TO_BLOCKS_N;
-                SDL_UpperBlit(TO_BLOCKS, &mut to_game_blocks[block], ne_screen, &mut dst);
+                SDL_UpperBlit(TO_BLOCKS, &mut to_game_blocks[block], NE_SCREEN, &mut dst);
             },
         );
 
@@ -1209,7 +1209,7 @@ unsafe fn show_playground() {
                 0,
             );
             if capsules != 0 {
-                SDL_UpperBlit(TO_BLOCKS, &mut CAPSULE_BLOCKS[color], ne_screen, &mut dst);
+                SDL_UpperBlit(TO_BLOCKS, &mut CAPSULE_BLOCKS[color], NE_SCREEN, &mut dst);
             }
 
             for capsule in 0..capsules.saturating_sub(1) {
@@ -1221,7 +1221,7 @@ unsafe fn show_playground() {
                     0,
                     0,
                 );
-                SDL_UpperBlit(TO_BLOCKS, &mut CAPSULE_BLOCKS[color], ne_screen, &mut dst);
+                SDL_UpperBlit(TO_BLOCKS, &mut CAPSULE_BLOCKS[color], NE_SCREEN, &mut dst);
             }
         });
 }
@@ -1238,7 +1238,7 @@ unsafe fn play_game() {
 
     wait_for_all_keys_released();
 
-    CountdownSound();
+    countdown_sound();
     let mut finish_takeover = false;
     let your_color = usize::try_from(YOUR_COLOR).unwrap();
     while !finish_takeover {
@@ -1250,17 +1250,17 @@ unsafe fn play_game() {
             prev_count_tick += COUNT_TICK_LEN; /* set for next countdown tick */
             countdown -= 1;
             let count_text = format!("Finish-{}\0", countdown);
-            DisplayBanner(
+            display_banner(
                 count_text.as_bytes().as_ptr() as *const c_char,
                 null_mut(),
                 0,
             );
 
             if countdown != 0 && countdown % 10 == 0 {
-                CountdownSound();
+                countdown_sound();
             }
             if countdown == 0 {
-                EndCountdownSound();
+                end_countdown_sound();
                 finish_takeover = true;
             }
 
@@ -1277,9 +1277,9 @@ unsafe fn play_game() {
                 110 // PC default, allows for quick-repeat key hits
             };
 
-            let action = getMenuAction(key_repeat_delay);
+            let action = get_menu_action(key_repeat_delay);
             /* allow for a WIN-key that give immedate victory */
-            if KeyIsPressedR(b'w'.into()) && CtrlPressed() && AltPressed() {
+            if key_is_pressed_r(b'w'.into()) && ctrl_pressed() && alt_pressed() {
                 LEADER_COLOR = YOUR_COLOR; /* simple as that */
                 return;
             }
@@ -1309,7 +1309,7 @@ unsafe fn play_game() {
                         PLAYGROUND[your_color][0][row] = Block::Repeater;
                         ACTIVATION_MAP[your_color][0][row] = Condition::Active1;
                         CAPSULES_COUNTDOWN[your_color][0][row] = Some(CAPSULE_COUNTDOWN * 2);
-                        Takeover_Set_Capsule_Sound();
+                        takeover_set_capsule_sound();
                     }
                 }
             }
@@ -1326,7 +1326,7 @@ unsafe fn play_game() {
             show_playground();
         } // if do_update_move
 
-        SDL_Flip(ne_screen);
+        SDL_Flip(NE_SCREEN);
         SDL_Delay(1);
     } /* while !FinishTakeover */
 
@@ -1358,7 +1358,7 @@ unsafe fn play_game() {
         process_display_column();
         show_playground();
         SDL_Delay(1);
-        SDL_Flip(ne_screen);
+        SDL_Flip(NE_SCREEN);
     } /* while (countdown) */
 
     wait_for_all_keys_released();
@@ -1375,10 +1375,10 @@ unsafe fn choose_color() {
 
     let mut color_chosen = false;
     while !color_chosen {
-        let action = getMenuAction(110);
+        let action = get_menu_action(110);
         if action.intersects(MenuAction::RIGHT | MenuAction::DOWN_WHEEL) {
             if YOUR_COLOR != Color::Violet {
-                MoveMenuPositionSound();
+                move_menu_position_sound();
             }
             YOUR_COLOR = Color::Violet;
             OPPONENT_COLOR = Color::Yellow;
@@ -1386,7 +1386,7 @@ unsafe fn choose_color() {
 
         if action.intersects(MenuAction::LEFT | MenuAction::UP_WHEEL) {
             if YOUR_COLOR != Color::Yellow {
-                MoveMenuPositionSound();
+                move_menu_position_sound();
             }
             YOUR_COLOR = Color::Yellow;
             OPPONENT_COLOR = Color::Violet;
@@ -1402,7 +1402,7 @@ unsafe fn choose_color() {
             countdown -= 1; /* Count down */
             let count_text = format!("Color-{}\0", countdown);
 
-            DisplayBanner(count_text.as_ptr() as *const c_char, null_mut(), 0);
+            display_banner(count_text.as_ptr() as *const c_char, null_mut(), 0);
             show_playground();
         }
 
@@ -1410,7 +1410,7 @@ unsafe fn choose_color() {
             color_chosen = true;
         }
 
-        SDL_Flip(ne_screen);
+        SDL_Flip(NE_SCREEN);
         SDL_Delay(1); // don't hog CPU
     }
 }
@@ -1418,19 +1418,19 @@ unsafe fn choose_color() {
 /// play takeover-game against a druid
 ///
 /// Returns true if the user won, false otherwise
-pub unsafe fn Takeover(enemynum: c_int) -> c_int {
+pub unsafe fn takeover(enemynum: c_int) -> c_int {
     static mut REJECT_ENERGY: c_int = 0; /* your energy if you're rejected */
 
     /* Prevent distortion of framerate by the delay coming from
      * the time spend in the menu.
      */
-    Activate_Conservative_Frame_Computation();
+    activate_conservative_frame_computation();
 
     // Takeover game always uses Classic User_Rect:
-    let buf = User_Rect;
-    User_Rect = Classic_User_Rect;
+    let buf = USER_RECT;
+    USER_RECT = CLASSIC_USER_RECT;
 
-    DisplayBanner(
+    display_banner(
         null_mut(),
         null_mut(),
         DisplayBannerFlags::FORCE_UPDATE.bits().into(),
@@ -1442,42 +1442,42 @@ pub unsafe fn Takeover(enemynum: c_int) -> c_int {
         b: 130,
         unused: 0,
     };
-    Fill_Rect(User_Rect, BG_COLOR);
+    fill_rect(USER_RECT, BG_COLOR);
 
-    Me.status = Status::Mobile as i32; /* the new status _after_ the takeover game */
+    ME.status = Status::Mobile as i32; /* the new status _after_ the takeover game */
 
     SDL_ShowCursor(SDL_DISABLE); // no mouse-cursor in takeover game!
 
-    show_droid_info(Me.ty, -1, 0);
-    show_droid_portrait(Cons_Droid_Rect, Me.ty, DROID_ROTATION_TIME, UPDATE);
+    show_droid_info(ME.ty, -1, 0);
+    show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, UPDATE);
 
     wait_for_all_keys_released();
-    while !FirePressedR() {
-        show_droid_portrait(Cons_Droid_Rect, Me.ty, DROID_ROTATION_TIME, 0);
+    while !fire_pressed_r() {
+        show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, 0);
         SDL_Delay(1);
     }
 
     let enemy_index: usize = enemynum.try_into().unwrap();
-    show_droid_info(AllEnemys[enemy_index].ty, -2, 0);
+    show_droid_info(ALL_ENEMYS[enemy_index].ty, -2, 0);
     show_droid_portrait(
-        Cons_Droid_Rect,
-        AllEnemys[enemy_index].ty,
+        CONS_DROID_RECT,
+        ALL_ENEMYS[enemy_index].ty,
         DROID_ROTATION_TIME,
         UPDATE,
     );
     wait_for_all_keys_released();
-    while !FirePressedR() {
+    while !fire_pressed_r() {
         show_droid_portrait(
-            Cons_Droid_Rect,
-            AllEnemys[enemy_index].ty,
+            CONS_DROID_RECT,
+            ALL_ENEMYS[enemy_index].ty,
             DROID_ROTATION_TIME,
             0,
         );
         SDL_Delay(1);
     }
 
-    SDL_UpperBlit(takeover_bg_pic, null_mut(), ne_screen, null_mut());
-    DisplayBanner(
+    SDL_UpperBlit(TAKEOVER_BG_PIC, null_mut(), NE_SCREEN, null_mut());
+    display_banner(
         null_mut(),
         null_mut(),
         DisplayBannerFlags::FORCE_UPDATE.bits().into(),
@@ -1503,14 +1503,14 @@ pub unsafe fn Takeover(enemynum: c_int) -> c_int {
         CAPSULE_CUR_ROW[usize::from(Color::Violet)] = 0;
 
         DROID_NUM = enemynum;
-        OPPONENT_TYPE = AllEnemys[enemy_index].ty;
-        NUM_CAPSULES[Opponents::You as usize] = 3 + ClassOfDruid(Me.ty);
-        NUM_CAPSULES[Opponents::Enemy as usize] = 4 + ClassOfDruid(OPPONENT_TYPE);
+        OPPONENT_TYPE = ALL_ENEMYS[enemy_index].ty;
+        NUM_CAPSULES[Opponents::You as usize] = 3 + class_of_druid(ME.ty);
+        NUM_CAPSULES[Opponents::Enemy as usize] = 4 + class_of_druid(OPPONENT_TYPE);
 
         invent_playground();
 
         show_playground();
-        SDL_Flip(ne_screen);
+        SDL_Flip(NE_SCREEN);
 
         choose_color();
         wait_for_all_keys_released();
@@ -1520,36 +1520,36 @@ pub unsafe fn Takeover(enemynum: c_int) -> c_int {
 
         let message;
         /* Ausgang beurteilen und returnen */
-        if InvincibleMode != 0 || LEADER_COLOR == YOUR_COLOR {
-            Takeover_Game_Won_Sound();
-            if Me.ty == Droid::Droid001 as c_int {
-                REJECT_ENERGY = Me.energy as c_int;
-                PreTakeEnergy = Me.energy as c_int;
+        if INVINCIBLE_MODE != 0 || LEADER_COLOR == YOUR_COLOR {
+            takeover_game_won_sound();
+            if ME.ty == Droid::Droid001 as c_int {
+                REJECT_ENERGY = ME.energy as c_int;
+                PRE_TAKE_ENERGY = ME.energy as c_int;
             }
 
             // We provide some security agains too high energy/health values gained
             // by very rapid successions of successful takeover attempts
-            let droid_map = std::slice::from_raw_parts(Druidmap, Droid::NumDroids as usize);
-            if Me.energy > droid_map[Droid::Droid001 as usize].maxenergy {
-                Me.energy = droid_map[Droid::Droid001 as usize].maxenergy;
+            let droid_map = std::slice::from_raw_parts(DRUIDMAP, Droid::NumDroids as usize);
+            if ME.energy > droid_map[Droid::Droid001 as usize].maxenergy {
+                ME.energy = droid_map[Droid::Droid001 as usize].maxenergy;
             }
-            if Me.health > droid_map[Droid::Droid001 as usize].maxenergy {
-                Me.health = droid_map[Droid::Droid001 as usize].maxenergy;
+            if ME.health > droid_map[Droid::Droid001 as usize].maxenergy {
+                ME.health = droid_map[Droid::Droid001 as usize].maxenergy;
             }
 
             // We allow to gain the current energy/full health that was still in the
             // other droid, since all previous damage must be due to fighting damage,
             // and this is exactly the sort of damage can usually be cured in refreshes.
-            Me.energy += AllEnemys[enemy_index].energy;
-            Me.health += droid_map[usize::try_from(OPPONENT_TYPE).unwrap()].maxenergy;
+            ME.energy += ALL_ENEMYS[enemy_index].energy;
+            ME.health += droid_map[usize::try_from(OPPONENT_TYPE).unwrap()].maxenergy;
 
-            Me.ty = AllEnemys[enemy_index].ty;
+            ME.ty = ALL_ENEMYS[enemy_index].ty;
 
-            RealScore += droid_map[usize::try_from(OPPONENT_TYPE).unwrap()].score as f32;
+            REAL_SCORE += droid_map[usize::try_from(OPPONENT_TYPE).unwrap()].score as f32;
 
-            DeathCount += (OPPONENT_TYPE * OPPONENT_TYPE) as f32; // quadratic "importance", max=529
+            DEATH_COUNT += (OPPONENT_TYPE * OPPONENT_TYPE) as f32; // quadratic "importance", max=529
 
-            AllEnemys[enemy_index].status = Status::Out as c_int; // removed droid silently (no blast!)
+            ALL_ENEMYS[enemy_index].status = Status::Out as c_int; // removed droid silently (no blast!)
 
             if LEADER_COLOR != YOUR_COLOR {
                 /* only won because of InvincibleMode */
@@ -1563,32 +1563,32 @@ pub unsafe fn Takeover(enemynum: c_int) -> c_int {
         } else if LEADER_COLOR == OPPONENT_COLOR {
             /* LEADER_COLOR == YOUR_COLOR */
             // you lost, but enemy is killed too --> blast it!
-            AllEnemys[enemy_index].energy = -1.0; /* to be sure */
+            ALL_ENEMYS[enemy_index].energy = -1.0; /* to be sure */
 
-            Takeover_Game_Lost_Sound();
-            if Me.ty != Droid::Droid001 as c_int {
+            takeover_game_lost_sound();
+            if ME.ty != Droid::Droid001 as c_int {
                 message = cstr!("Rejected");
-                Me.ty = Droid::Droid001 as c_int;
-                Me.energy = REJECT_ENERGY as f32;
+                ME.ty = Droid::Droid001 as c_int;
+                ME.energy = REJECT_ENERGY as f32;
             } else {
                 message = cstr!("Burnt Out");
-                Me.energy = 0.;
+                ME.energy = 0.;
             }
             finish_takeover = true;
         } else {
             /* LeadColor == OPPONENT_COLOR */
 
-            Takeover_Game_Deadlock_Sound();
+            takeover_game_deadlock_sound();
             message = cstr!("Deadlock");
         }
 
-        DisplayBanner(message.as_ptr(), null_mut(), 0);
+        display_banner(message.as_ptr(), null_mut(), 0);
         show_playground();
-        SDL_Flip(ne_screen);
+        SDL_Flip(NE_SCREEN);
 
         wait_for_all_keys_released();
         let now = SDL_GetTicks();
-        while !FirePressedR() && SDL_GetTicks() - now < SHOW_WAIT {
+        while !fire_pressed_r() && SDL_GetTicks() - now < SHOW_WAIT {
             #[cfg(target_os = "android")]
             SDL_Flip(ne_screen);
 
@@ -1597,9 +1597,9 @@ pub unsafe fn Takeover(enemynum: c_int) -> c_int {
     }
 
     // restore User_Rect
-    User_Rect = buf;
+    USER_RECT = buf;
 
-    ClearGraphMem();
+    clear_graph_mem();
 
     (LEADER_COLOR == YOUR_COLOR).into()
 }

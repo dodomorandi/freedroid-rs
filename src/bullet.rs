@@ -3,15 +3,15 @@ use crate::{
         BulletKind, Direction, Explosion, BULLET_COLL_DIST2, COLLISION_STEPSIZE, FLASH_DURATION,
         MAXBLASTS, MAXBULLETS,
     },
-    global::{Blast_Damage_Per_Second, Blast_Radius, Droid_Radius},
-    map::{IsPassable, IsVisible},
-    misc::Frame_Time,
-    sound::{DruidBlastSound, GotHitSound, GotIntoBlastSound},
+    global::{BLAST_DAMAGE_PER_SECOND, BLAST_RADIUS, DROID_RADIUS},
+    map::{is_passable, is_visible},
+    misc::frame_time,
+    sound::{druid_blast_sound, got_hit_sound, got_into_blast_sound},
     structs::{Finepoint, Vect},
-    text::{AddInfluBurntText, EnemyHitByBulletText},
-    vars::{Blastmap, Bulletmap, Druidmap},
-    AllBlasts, AllBullets, AllEnemys, CurLevel, InvincibleMode, LastGotIntoBlastSound, Me,
-    NumEnemys, Status,
+    text::{add_influ_burnt_text, enemy_hit_by_bullet_text},
+    vars::{BLASTMAP, BULLETMAP, DRUIDMAP},
+    Status, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, INVINCIBLE_MODE,
+    LAST_GOT_INTO_BLAST_SOUND, ME, NUM_ENEMYS,
 };
 
 use log::info;
@@ -24,12 +24,12 @@ use std::{
 
 #[inline]
 unsafe fn get_druid_hit_dist_squared() -> f32 {
-    (0.3 + 4. / 64.) * (Droid_Radius + 4. / 64.)
+    (0.3 + 4. / 64.) * (DROID_RADIUS + 4. / 64.)
 }
 
-pub unsafe fn CheckBulletCollisions(num: c_int) {
-    let level = (*CurLevel).levelnum;
-    let cur_bullet = &mut AllBullets[usize::try_from(num).unwrap()];
+pub unsafe fn check_bullet_collisions(num: c_int) {
+    let level = (*CUR_LEVEL).levelnum;
+    let cur_bullet = &mut ALL_BULLETS[usize::try_from(num).unwrap()];
     static mut FBT_COUNTER: c_int = 0;
 
     match BulletKind::try_from(cur_bullet.ty) {
@@ -59,7 +59,7 @@ pub unsafe fn CheckBulletCollisions(num: c_int) {
                 return;
             } // we only do the damage once and thats at frame nr. 1 of the flash
 
-            for (i, enemy) in AllEnemys[..usize::try_from(NumEnemys).unwrap()]
+            for (i, enemy) in ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()]
                 .iter_mut()
                 .enumerate()
             {
@@ -68,21 +68,21 @@ pub unsafe fn CheckBulletCollisions(num: c_int) {
                     continue;
                 }
 
-                if IsVisible(&enemy.pos) != 0
-                    && (*Druidmap.add(usize::try_from(enemy.ty).unwrap())).flashimmune == 0
+                if is_visible(&enemy.pos) != 0
+                    && (*DRUIDMAP.add(usize::try_from(enemy.ty).unwrap())).flashimmune == 0
                 {
-                    enemy.energy -= (*Bulletmap.add(BulletKind::Flash as usize)).damage as f32;
+                    enemy.energy -= (*BULLETMAP.add(BulletKind::Flash as usize)).damage as f32;
                     // Since the enemy just got hit, it might as well say so :)
-                    EnemyHitByBulletText(i.try_into().unwrap());
+                    enemy_hit_by_bullet_text(i.try_into().unwrap());
                 }
             }
 
             // droids with flash are always flash-immune!
             // -> we don't get hurt by our own flashes!
-            if InvincibleMode == 0
-                && (*Druidmap.add(usize::try_from(Me.ty).unwrap())).flashimmune == 0
+            if INVINCIBLE_MODE == 0
+                && (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).flashimmune == 0
             {
-                Me.energy -= (*Bulletmap.add(BulletKind::Flash as usize)).damage as f32;
+                ME.energy -= (*BULLETMAP.add(BulletKind::Flash as usize)).damage as f32;
             }
         }
 
@@ -115,40 +115,40 @@ pub unsafe fn CheckBulletCollisions(num: c_int) {
                 cur_bullet.pos.x += step.x;
                 cur_bullet.pos.y += step.y;
 
-                if IsPassable(
+                if is_passable(
                     cur_bullet.pos.x,
                     cur_bullet.pos.y,
                     Direction::Center as c_int,
                 ) != Direction::Center as c_int
                 {
-                    StartBlast(
+                    start_blast(
                         cur_bullet.pos.x,
                         cur_bullet.pos.y,
                         Explosion::Bulletblast as c_int,
                     );
-                    DeleteBullet(num);
+                    delete_bullet(num);
                     return;
                 }
 
                 // check for collision with influencer
                 if !cur_bullet.mine {
-                    let xdist = Me.pos.x - cur_bullet.pos.x;
-                    let ydist = Me.pos.y - cur_bullet.pos.y;
+                    let xdist = ME.pos.x - cur_bullet.pos.x;
+                    let ydist = ME.pos.y - cur_bullet.pos.y;
                     // FIXME: don't use DRUIDHITDIST2!!
                     if (xdist * xdist + ydist * ydist) < get_druid_hit_dist_squared() {
-                        GotHitSound();
+                        got_hit_sound();
 
-                        if InvincibleMode == 0 {
-                            Me.energy -= (*Bulletmap.add(cur_bullet.ty.into())).damage as f32;
+                        if INVINCIBLE_MODE == 0 {
+                            ME.energy -= (*BULLETMAP.add(cur_bullet.ty.into())).damage as f32;
                         }
 
-                        DeleteBullet(num);
+                        delete_bullet(num);
                         return;
                     }
                 }
 
                 // check for collision with enemys
-                for enemy in AllEnemys[..usize::try_from(NumEnemys).unwrap()].iter_mut() {
+                for enemy in ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()].iter_mut() {
                     if enemy.status == Status::Out as c_int
                         || enemy.status == Status::Terminated as c_int
                         || enemy.levelnum != level
@@ -163,10 +163,10 @@ pub unsafe fn CheckBulletCollisions(num: c_int) {
                     if (xdist * xdist + ydist * ydist) < get_druid_hit_dist_squared() {
                         // The enemy who was hit, loses some energy, depending on the bullet
                         enemy.energy -=
-                            (*Bulletmap.add(cur_bullet.ty.try_into().unwrap())).damage as f32;
+                            (*BULLETMAP.add(cur_bullet.ty.try_into().unwrap())).damage as f32;
 
-                        DeleteBullet(num);
-                        GotHitSound();
+                        delete_bullet(num);
+                        got_hit_sound();
 
                         if !cur_bullet.mine {
                             FBT_COUNTER += 1;
@@ -178,7 +178,7 @@ pub unsafe fn CheckBulletCollisions(num: c_int) {
                 }
 
                 // check for collisions with other bullets
-                for (i, bullet) in AllBullets[..MAXBULLETS].iter().enumerate() {
+                for (i, bullet) in ALL_BULLETS[..MAXBULLETS].iter().enumerate() {
                     if Some(i) == usize::try_from(num).ok() {
                         continue;
                     } // never check for collision with youself.. ;)
@@ -199,86 +199,86 @@ pub unsafe fn CheckBulletCollisions(num: c_int) {
                     // both will be deleted and replaced by blasts..
                     info!("Bullet-Bullet-Collision detected...");
 
-                    StartBlast(
+                    start_blast(
                         cur_bullet.pos.x,
                         cur_bullet.pos.y,
                         Explosion::Druidblast as c_int,
                     );
 
-                    DeleteBullet(num);
-                    DeleteBullet(i.try_into().unwrap());
+                    delete_bullet(num);
+                    delete_bullet(i.try_into().unwrap());
                 }
             }
         }
     }
 }
 
-pub unsafe fn DeleteBlast(num: c_int) {
-    AllBlasts[usize::try_from(num).unwrap()].ty = Status::Out as c_int;
+pub unsafe fn delete_blast(num: c_int) {
+    ALL_BLASTS[usize::try_from(num).unwrap()].ty = Status::Out as c_int;
 }
 
-pub unsafe fn ExplodeBlasts() {
-    AllBlasts[..MAXBLASTS]
+pub unsafe fn explode_blasts() {
+    ALL_BLASTS[..MAXBLASTS]
         .iter_mut()
         .enumerate()
         .filter(|(_, blast)| blast.ty != Status::Out as c_int)
         .for_each(|(i, cur_blast)| {
             if cur_blast.ty == Explosion::Druidblast as c_int {
-                CheckBlastCollisions(i.try_into().unwrap());
+                check_blast_collisions(i.try_into().unwrap());
             }
 
-            let blast_spec = &Blastmap[usize::try_from(cur_blast.ty).unwrap()];
+            let blast_spec = &BLASTMAP[usize::try_from(cur_blast.ty).unwrap()];
             cur_blast.phase +=
-                Frame_Time() * blast_spec.phases as f32 / blast_spec.total_animation_time;
+                frame_time() * blast_spec.phases as f32 / blast_spec.total_animation_time;
             if cur_blast.phase.floor() as c_int >= blast_spec.phases {
-                DeleteBlast(i.try_into().unwrap());
+                delete_blast(i.try_into().unwrap());
             }
         });
 }
 
-pub unsafe fn CheckBlastCollisions(num: c_int) {
-    let level = (*CurLevel).levelnum;
-    let cur_blast = &mut AllBlasts[usize::try_from(num).unwrap()];
+pub unsafe fn check_blast_collisions(num: c_int) {
+    let level = (*CUR_LEVEL).levelnum;
+    let cur_blast = &mut ALL_BLASTS[usize::try_from(num).unwrap()];
 
     /* check Blast-Bullet Collisions and kill hit Bullets */
-    for (i, cur_bullet) in AllBullets[0..MAXBULLETS].iter().enumerate() {
+    for (i, cur_bullet) in ALL_BULLETS[0..MAXBULLETS].iter().enumerate() {
         if cur_bullet.ty == Status::Out as u8 {
             continue;
         }
 
         let vdist = Vect {
-            x: cur_bullet.pos.x - cur_blast.PX,
-            y: cur_bullet.pos.y - cur_blast.PY,
+            x: cur_bullet.pos.x - cur_blast.px,
+            y: cur_bullet.pos.y - cur_blast.py,
         };
         let dist = (vdist.x * vdist.x + vdist.y * vdist.y).sqrt();
-        if dist < Blast_Radius {
-            StartBlast(
+        if dist < BLAST_RADIUS {
+            start_blast(
                 cur_bullet.pos.x,
                 cur_bullet.pos.y,
                 Explosion::Bulletblast as c_int,
             );
-            DeleteBullet(i.try_into().unwrap());
+            delete_bullet(i.try_into().unwrap());
         }
     }
 
     /* Check Blast-Enemy Collisions and smash energy of hit enemy */
-    for enemy in AllEnemys
+    for enemy in ALL_ENEMYS
         .iter_mut()
-        .take(usize::try_from(NumEnemys).unwrap())
+        .take(usize::try_from(NUM_ENEMYS).unwrap())
     {
         if enemy.status == Status::Out as c_int || enemy.levelnum != level {
             continue;
         }
 
         let vdist = Vect {
-            x: enemy.pos.x - cur_blast.PX,
-            y: enemy.pos.y - cur_blast.PY,
+            x: enemy.pos.x - cur_blast.px,
+            y: enemy.pos.y - cur_blast.py,
         };
         let dist = (vdist.x * vdist.x + vdist.y * vdist.y).sqrt();
 
-        if dist < Blast_Radius + Droid_Radius {
+        if dist < BLAST_RADIUS + DROID_RADIUS {
             /* drag energy of enemy */
-            enemy.energy -= Blast_Damage_Per_Second * Frame_Time();
+            enemy.energy -= BLAST_DAMAGE_PER_SECOND * frame_time();
         }
 
         if enemy.energy < 0. {
@@ -288,35 +288,35 @@ pub unsafe fn CheckBlastCollisions(num: c_int) {
 
     /* Check influence-Blast collisions */
     let vdist = Vect {
-        x: Me.pos.x - cur_blast.PX,
-        y: Me.pos.y - cur_blast.PY,
+        x: ME.pos.x - cur_blast.px,
+        y: ME.pos.y - cur_blast.py,
     };
     let dist = (vdist.x * vdist.x + vdist.y * vdist.y).sqrt();
 
-    if Me.status != Status::Out as c_int && !cur_blast.mine && dist < Blast_Radius + Droid_Radius {
-        if InvincibleMode == 0 {
-            Me.energy -= Blast_Damage_Per_Second * Frame_Time();
+    if ME.status != Status::Out as c_int && !cur_blast.mine && dist < BLAST_RADIUS + DROID_RADIUS {
+        if INVINCIBLE_MODE == 0 {
+            ME.energy -= BLAST_DAMAGE_PER_SECOND * frame_time();
 
             // So the influencer got some damage from the hot blast
             // Now most likely, he then will also say so :)
-            if cur_blast.MessageWasDone == 0 {
-                AddInfluBurntText();
-                cur_blast.MessageWasDone = true.into();
+            if cur_blast.message_was_done == 0 {
+                add_influ_burnt_text();
+                cur_blast.message_was_done = true.into();
             }
         }
         // In order to avoid a new sound EVERY frame we check for how long the previous blast
         // lies back in time.  LastBlastHit is a float, that counts SECONDS real-time !!
-        if LastGotIntoBlastSound > 1.2 {
-            GotIntoBlastSound();
-            LastGotIntoBlastSound = 0.;
+        if LAST_GOT_INTO_BLAST_SOUND > 1.2 {
+            got_into_blast_sound();
+            LAST_GOT_INTO_BLAST_SOUND = 0.;
         }
     }
 }
 
-pub unsafe fn StartBlast(x: c_float, y: c_float, mut ty: c_int) {
+pub unsafe fn start_blast(x: c_float, y: c_float, mut ty: c_int) {
     let mut i = 0;
     while i < MAXBLASTS {
-        if AllBlasts[i].ty == Status::Out as c_int {
+        if ALL_BLASTS[i].ty == Status::Out as c_int {
             break;
         }
 
@@ -328,7 +328,7 @@ pub unsafe fn StartBlast(x: c_float, y: c_float, mut ty: c_int) {
     }
 
     /* Get Pointer to it: more comfortable */
-    let new_blast = &mut AllBlasts[i];
+    let new_blast = &mut ALL_BLASTS[i];
 
     if ty == Explosion::Rejectblast as c_int {
         new_blast.mine = true;
@@ -337,23 +337,23 @@ pub unsafe fn StartBlast(x: c_float, y: c_float, mut ty: c_int) {
         new_blast.mine = false;
     }
 
-    new_blast.PX = x;
-    new_blast.PY = y;
+    new_blast.px = x;
+    new_blast.py = y;
 
     new_blast.ty = ty;
     new_blast.phase = 0.;
 
-    new_blast.MessageWasDone = 0;
+    new_blast.message_was_done = 0;
 
     if ty == Explosion::Druidblast as c_int {
-        DruidBlastSound();
+        druid_blast_sound();
     }
 }
 
 /// delete bullet of given number, set it type=OUT, put it at x/y=-1/-1
 /// and create a Bullet-blast if with_blast==TRUE
-pub unsafe fn DeleteBullet(bullet_number: c_int) {
-    let cur_bullet = &mut AllBullets[usize::try_from(bullet_number).unwrap()];
+pub unsafe fn delete_bullet(bullet_number: c_int) {
+    let cur_bullet = &mut ALL_BULLETS[usize::try_from(bullet_number).unwrap()];
 
     if cur_bullet.ty == Status::Out as u8 {
         // ignore dead bullets
@@ -373,14 +373,14 @@ pub unsafe fn DeleteBullet(bullet_number: c_int) {
     // maybe, the bullet had several SDL_Surfaces attached to it.  Then we need to
     // free the SDL_Surfaces again as well...
     //
-    if cur_bullet.Surfaces_were_generated != 0 {
+    if cur_bullet.surfaces_were_generated != 0 {
         info!("DeleteBullet: freeing this bullets attached surfaces...");
-        let bullet_spec = &*Bulletmap.add(cur_bullet.ty.into());
+        let bullet_spec = &*BULLETMAP.add(cur_bullet.ty.into());
         for phase in 0..usize::try_from(bullet_spec.phases).unwrap() {
-            SDL_FreeSurface(cur_bullet.SurfacePointer[phase]);
-            cur_bullet.SurfacePointer[phase] = null_mut();
+            SDL_FreeSurface(cur_bullet.surface_pointer[phase]);
+            cur_bullet.surface_pointer[phase] = null_mut();
         }
-        cur_bullet.Surfaces_were_generated = false.into();
+        cur_bullet.surfaces_were_generated = false.into();
     }
 
     //--------------------
@@ -400,8 +400,8 @@ pub unsafe fn DeleteBullet(bullet_number: c_int) {
 /// This function moves all the bullets according to their speeds.
 ///
 /// NEW: this function also takes into accoung the current framerate.
-pub unsafe fn MoveBullets() {
-    for cur_bullet in &mut AllBullets[..MAXBULLETS] {
+pub unsafe fn move_bullets() {
+    for cur_bullet in &mut ALL_BULLETS[..MAXBULLETS] {
         if cur_bullet.ty == Status::Out as u8 {
             continue;
         }
@@ -409,10 +409,10 @@ pub unsafe fn MoveBullets() {
         cur_bullet.prev_pos.x = cur_bullet.pos.x;
         cur_bullet.prev_pos.y = cur_bullet.pos.y;
 
-        cur_bullet.pos.x += cur_bullet.speed.x * Frame_Time();
-        cur_bullet.pos.y += cur_bullet.speed.y * Frame_Time();
+        cur_bullet.pos.x += cur_bullet.speed.x * frame_time();
+        cur_bullet.pos.y += cur_bullet.speed.y * frame_time();
 
         cur_bullet.time_in_frames += 1;
-        cur_bullet.time_in_seconds += Frame_Time();
+        cur_bullet.time_in_seconds += frame_time();
     }
 }

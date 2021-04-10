@@ -3,14 +3,12 @@ use crate::defs::*;
 use sdl::video::ll::{SDL_Rect, SDL_Surface};
 use std::ptr::null_mut;
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Point {
     pub x: i32,
     pub y: i32,
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ThemeList {
     pub num_themes: i32,
@@ -18,7 +16,6 @@ pub struct ThemeList {
     pub theme_name: [*mut u8; MAX_THEMES],
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct HighscoreEntry {
     pub name: [i8; MAX_NAME_LEN + 5],
@@ -26,7 +23,6 @@ pub struct HighscoreEntry {
     pub date: [i8; DATE_LEN + 5],
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Color {
     pub rot: u8,
@@ -34,31 +30,29 @@ pub struct Color {
     pub blau: u8,
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Config {
-    pub WantedTextVisibleTime: f32,
-    pub Draw_Framerate: i32,
-    pub Draw_Energy: i32,
-    pub Draw_Position: i32,
-    pub Draw_DeathCount: i32,
-    pub Droid_Talk: i32,
-    pub Current_BG_Music_Volume: f32,
-    pub Current_Sound_FX_Volume: f32,
-    pub Current_Gamma_Correction: f32,
-    pub Theme_Name: [i8; 100], // name of graphics-theme : dirname = graphics/TNAME_theme/
-    pub FullUserRect: i32,     // use "full" or "classic" (=small) User_Rect
-    pub UseFullscreen: i32,    // toggle for use of fullscreen vs. X11-window
-    pub TakeoverActivates: i32, // toggle if takeover-mode also does 'Activate' (i.e. lifts/consoles)
-    pub FireHoldTakeover: i32, // Activate Takeover-mode after a delay if fire is held without a direction
-    pub ShowDecals: i32,       // show dead droids-ashes...
-    pub AllMapVisible: i32,    // complete map is visible?
-    pub scale: f32,            // scale the whole graphics by this at load-time
-    pub HogCPU: i32,           // use 100% CPU or leave it some air to breathe?
-    pub emptyLevelSpeedup: f32, // time speedup factor to use on empty levels
+    pub wanted_text_visible_time: f32,
+    pub draw_framerate: i32,
+    pub draw_energy: i32,
+    pub draw_position: i32,
+    pub draw_death_count: i32,
+    pub droid_talk: i32,
+    pub current_bg_music_volume: f32,
+    pub current_sound_fx_volume: f32,
+    pub current_gamma_correction: f32,
+    pub theme_name: [i8; 100], // name of graphics-theme : dirname = graphics/TNAME_theme/
+    pub full_user_rect: i32,   // use "full" or "classic" (=small) User_Rect
+    pub use_fullscreen: i32,   // toggle for use of fullscreen vs. X11-window
+    pub takeover_activates: i32, // toggle if takeover-mode also does 'Activate' (i.e. lifts/consoles)
+    pub fire_hold_takeover: i32, // Activate Takeover-mode after a delay if fire is held without a direction
+    pub show_decals: i32,        // show dead droids-ashes...
+    pub all_map_visible: i32,    // complete map is visible?
+    pub scale: f32,              // scale the whole graphics by this at load-time
+    pub hog_cpu: i32,            // use 100% CPU or leave it some air to breathe?
+    pub empty_level_speedup: f32, // time speedup factor to use on empty levels
 }
 
-#[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Finepoint {
     pub x: f32,
@@ -73,14 +67,12 @@ impl Finepoint {
 
 pub type Vect = Finepoint;
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GrobPoint {
     pub x: i8,
     pub y: i8,
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Gps {
     pub x: f32,
@@ -88,7 +80,6 @@ pub struct Gps {
     pub z: i32,
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DruidSpec {
     pub druidname: [i8; 20],
@@ -111,7 +102,6 @@ pub struct DruidSpec {
     pub notes: *mut i8, /* notes on the druid of this type */
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Influence {
     pub ty: i32,          /* what kind of druid is this ? */
@@ -123,14 +113,13 @@ pub struct Influence {
     pub firewait: f32,    /* counter after fire */
     pub phase: f32,       /* the current phase of animation */
     pub timer: f32,
-    pub LastCrysoundTime: f32,
-    pub LastTransferSoundTime: f32,
-    pub TextVisibleTime: f32,
-    pub TextToBeDisplayed: *mut i8,
-    pub Position_History_Ring_Buffer: [Gps; MAX_INFLU_POSITION_HISTORY],
+    pub last_crysound_time: f32,
+    pub last_transfer_sound_time: f32,
+    pub text_visible_time: f32,
+    pub text_to_be_displayed: *mut i8,
+    pub position_history_ring_buffer: [Gps; MAX_INFLU_POSITION_HISTORY],
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Enemy {
     pub ty: i32,           /* gibt die Nummer in Druidmap an */
@@ -145,13 +134,12 @@ pub struct Enemy {
     pub warten: f32,       // time till the droid will start to move again
     pub passable: u8,      /* Zeit (counter), in der druid passable ist */
     pub firewait: f32,     /* gibt die Zeit bis zum naechsten Schuss an */
-    pub TextVisibleTime: f32,
-    pub TextToBeDisplayed: *mut i8,
-    pub NumberOfPeriodicSpecialStatements: i32,
-    pub PeriodicSpecialStatements: *mut *mut i8,
+    pub text_visible_time: f32,
+    pub text_to_be_displayed: *mut i8,
+    pub number_of_periodic_special_statements: i32,
+    pub periodic_special_statements: *mut *mut i8,
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BulletSpec {
     pub recharging_time: f32, // time until the next shot can be made, measures in seconds
@@ -160,11 +148,10 @@ pub struct BulletSpec {
     pub phases: i32,          /* how many phases in motion to show */
     pub phase_changes_per_second: f32, // how many different phases to display every second
     pub blast: i32,           /* which blast does this bullet create */
-    pub SurfacePointer: [*mut SDL_Surface; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
-                                                                    // the bullet images of this bullet
+    pub surface_pointer: [*mut SDL_Surface; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
+                                                                     // the bullet images of this bullet
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Bullet {
     pub pos: Finepoint,
@@ -177,8 +164,8 @@ pub struct Bullet {
     pub mine: bool,
     pub owner: i32,
     pub angle: f32,
-    pub Surfaces_were_generated: i32,
-    pub SurfacePointer: [*mut SDL_Surface; MAX_PHASES_IN_A_BULLET],
+    pub surfaces_were_generated: i32,
+    pub surface_pointer: [*mut SDL_Surface; MAX_PHASES_IN_A_BULLET],
 }
 
 impl Bullet {
@@ -194,21 +181,20 @@ impl Bullet {
             mine: false,
             owner: 0,
             angle: 0.,
-            Surfaces_were_generated: 0,
-            SurfacePointer: [null_mut(); MAX_PHASES_IN_A_BULLET],
+            surfaces_were_generated: 0,
+            surface_pointer: [null_mut(); MAX_PHASES_IN_A_BULLET],
         }
     }
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BlastSpec {
     pub phases: i32,
     pub picpointer: *mut u8,
     pub block: *mut SDL_Rect, /* the coordinates of the blocks in ne_blocks */
     pub total_animation_time: f32,
-    pub SurfacePointer: [*mut SDL_Surface; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
-                                                                    // the blast images of this blast type
+    pub surface_pointer: [*mut SDL_Surface; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
+                                                                     // the blast images of this blast type
 }
 
 impl BlastSpec {
@@ -218,23 +204,21 @@ impl BlastSpec {
             picpointer: null_mut(),
             block: null_mut(),
             total_animation_time: 0.,
-            SurfacePointer: [null_mut(); MAX_PHASES_IN_A_BULLET],
+            surface_pointer: [null_mut(); MAX_PHASES_IN_A_BULLET],
         }
     }
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Blast {
-    pub PX: f32, /* PosX */
-    pub PY: f32, /* PosY */
+    pub px: f32, /* PosX */
+    pub py: f32, /* PosY */
     pub ty: i32,
     pub phase: f32,
-    pub MessageWasDone: i32,
+    pub message_was_done: i32,
     pub mine: bool,
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Lift {
     pub level: i32, // The level, where this elevtor entrance is located
@@ -248,7 +232,6 @@ pub struct Lift {
     pub lift_row: i32, // which lift column does this lift entrance belong to?
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Waypoint {
     pub x: u8, /* Grob */
@@ -257,15 +240,14 @@ pub struct Waypoint {
     pub connections: [i32; MAX_WP_CONNECTIONS],
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Level {
     pub empty: i32,
     pub timer: f32,
     pub levelnum: i32,      /* Number of this level */
-    pub Levelname: *mut i8, /* Name of this level */
-    pub Background_Song_Name: *mut i8,
-    pub Level_Enter_Comment: *mut i8,
+    pub levelname: *mut i8, /* Name of this level */
+    pub background_song_name: *mut i8,
+    pub level_enter_comment: *mut i8,
     pub xlen: i32, /* X dimension */
     pub ylen: i32,
     pub color: i32,
@@ -274,24 +256,22 @@ pub struct Level {
     pub doors: [GrobPoint; MAX_DOORS_ON_LEVEL],
     pub alerts: [GrobPoint; MAX_ALERTS_ON_LEVEL],
     pub num_waypoints: i32,
-    pub AllWaypoints: [Waypoint; MAXWAYPOINTS],
+    pub all_waypoints: [Waypoint; MAXWAYPOINTS],
 }
 
-#[repr(C)]
 #[derive(Clone, Copy, PartialEq)]
 pub struct Ship {
     pub num_levels: i32,
     pub num_lifts: i32,
     pub num_lift_rows: i32,
-    pub AreaName: [i8; 100],
-    pub AllLevels: [*mut Level; MAX_LEVELS],
-    pub AllLifts: [Lift; MAX_LIFTS],
-    pub LiftRow_Rect: [SDL_Rect; MAX_LIFT_ROWS], /* the lift-row rectangles */
-    pub Level_Rects: [[SDL_Rect; MAX_LEVEL_RECTS]; MAX_LEVELS], /* level rectangles */
-    pub num_level_rects: [i32; MAX_LEVELS],      /* how many rects has a level */
+    pub area_name: [i8; 100],
+    pub all_levels: [*mut Level; MAX_LEVELS],
+    pub all_lifts: [Lift; MAX_LIFTS],
+    pub lift_row_rect: [SDL_Rect; MAX_LIFT_ROWS], /* the lift-row rectangles */
+    pub level_rects: [[SDL_Rect; MAX_LEVEL_RECTS]; MAX_LEVELS], /* level rectangles */
+    pub num_level_rects: [i32; MAX_LEVELS],       /* how many rects has a level */
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Bar {
     pub pos: Point,

@@ -1,30 +1,30 @@
 use crate::{
-    bullet::StartBlast,
+    bullet::start_blast,
     defs::{
         self, Direction, Droid, Explosion, MapTile, Sound, Status, ENEMYPHASES, MAXBLASTS,
         MAXBULLETS, PUSHSPEED, WAIT_COLLISION,
     },
-    global::{collision_lose_energy_calibrator, Droid_Radius},
-    init::ThouArtDefeated,
-    input::{axis_is_active, cmd_is_active, input_axis, NoDirectionPressed},
-    map::{ActSpecialField, DruidPassable, GetMapBrick},
-    misc::{Frame_Time, MyRandom, Terminate},
-    ship::LevelEmpty,
+    global::{COLLISION_LOSE_ENERGY_CALIBRATOR, DROID_RADIUS},
+    init::thou_art_defeated,
+    input::{cmd_is_active, no_direction_pressed, AXIS_IS_ACTIVE, INPUT_AXIS},
+    map::{act_special_field, druid_passable, get_map_brick},
+    misc::{frame_time, my_random, terminate},
+    ship::level_empty,
     sound::{
-        BounceSound, CollisionDamagedEnemySound, CollisionGotDamagedSound, Fire_Bullet_Sound,
-        Play_Sound, RefreshSound,
+        bounce_sound, collision_damaged_enemy_sound, collision_got_damaged_sound,
+        fire_bullet_sound, play_sound, refresh_sound,
     },
     structs::{Finepoint, Gps},
-    takeover::Takeover,
-    text::EnemyInfluCollisionText,
-    vars::{Bulletmap, Druidmap},
-    AllBlasts, AllBullets, AllEnemys, CurLevel, GameConfig, InvincibleMode, LastRefreshSound, Me,
-    NumEnemys, RealScore,
+    takeover::takeover,
+    text::enemy_influ_collision_text,
+    vars::{BULLETMAP, DRUIDMAP},
+    ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, GAME_CONFIG, INVINCIBLE_MODE,
+    LAST_REFRESH_SOUND, ME, NUM_ENEMYS, REAL_SCORE,
 };
 
 use cstr::cstr;
 use defs::{
-    AnyCmdActive, Cmds, DownPressed, FirePressed, LeftPressed, RightPressed, UpPressed,
+    any_cmd_active, down_pressed, fire_pressed, left_pressed, right_pressed, up_pressed, Cmds,
     BLINKENERGY, MAX_INFLU_POSITION_HISTORY, WAIT_TRANSFERMODE,
 };
 use log::{error, info, warn};
@@ -46,7 +46,7 @@ const MAXIMAL_STEP_SIZE: f32 = 7.0 / 20.;
 /// loss of health in PermanentLoseEnergy.
 ///
 /// This function now takes into account the framerates.
-pub unsafe fn RefreshInfluencer() {
+pub unsafe fn refresh_influencer() {
     static mut TIME_COUNTER: c_int = 3; /* to slow down healing process */
 
     TIME_COUNTER -= 1;
@@ -55,53 +55,54 @@ pub unsafe fn RefreshInfluencer() {
     }
     TIME_COUNTER = 3;
 
-    if Me.energy < Me.health {
-        Me.energy += REFRESH_ENERGY * Frame_Time() * 5.;
-        RealScore -= REFRESH_ENERGY * Frame_Time() * 10.;
+    if ME.energy < ME.health {
+        ME.energy += REFRESH_ENERGY * frame_time() * 5.;
+        REAL_SCORE -= REFRESH_ENERGY * frame_time() * 10.;
 
-        if RealScore < 0. {
+        if REAL_SCORE < 0. {
             // don't go negative...
-            RealScore = 0.;
+            REAL_SCORE = 0.;
         }
 
-        if Me.energy > Me.health {
-            Me.energy = Me.health;
+        if ME.energy > ME.health {
+            ME.energy = ME.health;
         }
 
-        if LastRefreshSound > 0.6 {
-            RefreshSound();
-            LastRefreshSound = 0.;
+        if LAST_REFRESH_SOUND > 0.6 {
+            refresh_sound();
+            LAST_REFRESH_SOUND = 0.;
         }
 
         // since robots like the refresh, the influencer might also say so...
-        if GameConfig.Droid_Talk != 0 {
-            Me.TextToBeDisplayed = cstr!("Ahhh, that feels so good...").as_ptr() as *mut c_char;
-            Me.TextVisibleTime = 0.;
+        if GAME_CONFIG.droid_talk != 0 {
+            ME.text_to_be_displayed = cstr!("Ahhh, that feels so good...").as_ptr() as *mut c_char;
+            ME.text_visible_time = 0.;
         }
     } else {
         // If nothing more is to be had, the influencer might also say so...
-        if GameConfig.Droid_Talk != 0 {
-            Me.TextToBeDisplayed = cstr!("Oh, it seems that was it again.").as_ptr() as *mut c_char;
-            Me.TextVisibleTime = 0.;
+        if GAME_CONFIG.droid_talk != 0 {
+            ME.text_to_be_displayed =
+                cstr!("Oh, it seems that was it again.").as_ptr() as *mut c_char;
+            ME.text_visible_time = 0.;
         }
     }
 }
 
-pub unsafe fn CheckInfluenceEnemyCollision() {
-    for (i, enemy) in AllEnemys[..usize::try_from(NumEnemys).unwrap()]
+pub unsafe fn check_influence_enemy_collision() {
+    for (i, enemy) in ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()]
         .iter_mut()
         .enumerate()
     {
         /* ignore enemy that are not on this level or dead */
-        if enemy.levelnum != (*CurLevel).levelnum {
+        if enemy.levelnum != (*CUR_LEVEL).levelnum {
             continue;
         }
         if enemy.status == Status::Out as c_int || enemy.status == Status::Terminated as c_int {
             continue;
         }
 
-        let xdist = Me.pos.x - enemy.pos.x;
-        let ydist = Me.pos.y - enemy.pos.y;
+        let xdist = ME.pos.x - enemy.pos.x;
+        let ydist = ME.pos.y - enemy.pos.y;
 
         if xdist.trunc().abs() > 1. {
             continue;
@@ -111,38 +112,38 @@ pub unsafe fn CheckInfluenceEnemyCollision() {
         }
 
         let dist2 = ((xdist * xdist) + (ydist * ydist)).sqrt();
-        if dist2 > 2. * Droid_Radius {
+        if dist2 > 2. * DROID_RADIUS {
             continue;
         }
 
-        if Me.status != Status::Transfermode as c_int {
-            Me.speed.x = -Me.speed.x;
-            Me.speed.y = -Me.speed.y;
+        if ME.status != Status::Transfermode as c_int {
+            ME.speed.x = -ME.speed.x;
+            ME.speed.y = -ME.speed.y;
 
-            if Me.speed.x != 0. {
-                Me.speed.x += COLLISION_PUSHSPEED * (Me.speed.x / Me.speed.x.abs());
+            if ME.speed.x != 0. {
+                ME.speed.x += COLLISION_PUSHSPEED * (ME.speed.x / ME.speed.x.abs());
             } else if xdist != 0. {
-                Me.speed.x = COLLISION_PUSHSPEED * (xdist / xdist.abs());
+                ME.speed.x = COLLISION_PUSHSPEED * (xdist / xdist.abs());
             }
-            if Me.speed.y != 0. {
-                Me.speed.y += COLLISION_PUSHSPEED * (Me.speed.y / Me.speed.y.abs());
+            if ME.speed.y != 0. {
+                ME.speed.y += COLLISION_PUSHSPEED * (ME.speed.y / ME.speed.y.abs());
             } else if ydist != 0. {
-                Me.speed.y = COLLISION_PUSHSPEED * (ydist / ydist.abs());
+                ME.speed.y = COLLISION_PUSHSPEED * (ydist / ydist.abs());
             }
 
             // move the influencer a little bit out of the enemy AND the enemy a little bit out of the influ
-            let max_step_size = if Frame_Time() < MAXIMAL_STEP_SIZE {
-                Frame_Time()
+            let max_step_size = if frame_time() < MAXIMAL_STEP_SIZE {
+                frame_time()
             } else {
                 MAXIMAL_STEP_SIZE
             };
-            Me.pos.x += max_step_size.copysign(Me.pos.x - enemy.pos.x);
-            Me.pos.y += max_step_size.copysign(Me.pos.y - enemy.pos.y);
-            enemy.pos.x -= Frame_Time().copysign(Me.pos.x - enemy.pos.x);
-            enemy.pos.y -= Frame_Time().copysign(Me.pos.y - enemy.pos.y);
+            ME.pos.x += max_step_size.copysign(ME.pos.x - enemy.pos.x);
+            ME.pos.y += max_step_size.copysign(ME.pos.y - enemy.pos.y);
+            enemy.pos.x -= frame_time().copysign(ME.pos.x - enemy.pos.x);
+            enemy.pos.y -= frame_time().copysign(ME.pos.y - enemy.pos.y);
 
             // there might be walls close too, so lets check again for collisions with them
-            CheckInfluenceWallCollisions();
+            check_influence_wall_collisions();
 
             // shortly stop this enemy, then send him back to previous waypoint
             if enemy.warten == 0. {
@@ -150,50 +151,50 @@ pub unsafe fn CheckInfluenceEnemyCollision() {
                 std::mem::swap(&mut enemy.nextwaypoint, &mut enemy.lastwaypoint);
 
                 // Add some funny text!
-                EnemyInfluCollisionText(i.try_into().unwrap());
+                enemy_influ_collision_text(i.try_into().unwrap());
             }
-            InfluEnemyCollisionLoseEnergy(i.try_into().unwrap()); /* someone loses energy ! */
+            influ_enemy_collision_lose_energy(i.try_into().unwrap()); /* someone loses energy ! */
         } else {
-            Takeover(i.try_into().unwrap());
+            takeover(i.try_into().unwrap());
 
-            if LevelEmpty() != 0 {
-                (*CurLevel).empty = true.into();
+            if level_empty() != 0 {
+                (*CUR_LEVEL).empty = true.into();
             }
         }
     }
 }
 
-pub unsafe fn InfluEnemyCollisionLoseEnergy(enemy_num: c_int) {
-    let enemy_type = AllEnemys[usize::try_from(enemy_num).unwrap()].ty;
+pub unsafe fn influ_enemy_collision_lose_energy(enemy_num: c_int) {
+    let enemy_type = ALL_ENEMYS[usize::try_from(enemy_num).unwrap()].ty;
 
-    let damage = ((*Druidmap.add(usize::try_from(Me.ty).unwrap())).class
-        - (*Druidmap.add(usize::try_from(enemy_type).unwrap())).class) as f32
-        * collision_lose_energy_calibrator;
+    let damage = ((*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).class
+        - (*DRUIDMAP.add(usize::try_from(enemy_type).unwrap())).class) as f32
+        * COLLISION_LOSE_ENERGY_CALIBRATOR;
 
     if damage < 0. {
         // we took damage
-        CollisionGotDamagedSound();
-        if InvincibleMode == 0 {
-            Me.energy += damage;
+        collision_got_damaged_sound();
+        if INVINCIBLE_MODE == 0 {
+            ME.energy += damage;
         }
     } else if damage == 0. {
         // nobody got hurt
-        BounceSound();
+        bounce_sound();
     } else {
         // damage > 0: enemy got damaged
-        AllEnemys[usize::try_from(enemy_num).unwrap()].energy -= damage;
-        CollisionDamagedEnemySound();
+        ALL_ENEMYS[usize::try_from(enemy_num).unwrap()].energy -= damage;
+        collision_damaged_enemy_sound();
     }
 }
 
-pub unsafe fn ExplodeInfluencer() {
-    Me.status = Status::Terminated as c_int;
+pub unsafe fn explode_influencer() {
+    ME.status = Status::Terminated as c_int;
 
     for i in 0..10 {
         /* freien Blast finden */
         let mut counter = 0;
         loop {
-            let check = AllBlasts[counter].ty != Status::Out as c_int;
+            let check = ALL_BLASTS[counter].ty != Status::Out as c_int;
             counter += 1;
             if check.not() {
                 break;
@@ -202,16 +203,16 @@ pub unsafe fn ExplodeInfluencer() {
         counter -= 1;
         if counter >= MAXBLASTS {
             error!("Went out of blasts in ExplodeInfluencer...");
-            Terminate(defs::ERR.into());
+            terminate(defs::ERR.into());
         }
-        let blast = &mut AllBlasts[counter];
+        let blast = &mut ALL_BLASTS[counter];
         blast.ty = Explosion::Druidblast as c_int;
-        blast.PX = Me.pos.x - Droid_Radius / 2. + MyRandom(10) as f32 * 0.05;
-        blast.PY = Me.pos.y - Droid_Radius / 2. + MyRandom(10) as f32 * 0.05;
+        blast.px = ME.pos.x - DROID_RADIUS / 2. + my_random(10) as f32 * 0.05;
+        blast.py = ME.pos.y - DROID_RADIUS / 2. + my_random(10) as f32 * 0.05;
         blast.phase = 0.2 * i as f32;
     }
 
-    Play_Sound(Sound::Influexplosion as c_int);
+    play_sound(Sound::Influexplosion as c_int);
 }
 
 /// This function checks for collisions of the influencer with walls,
@@ -219,17 +220,17 @@ pub unsafe fn ExplodeInfluencer() {
 /// In case of a collision, the position and speed of the influencer are
 /// adapted accordingly.
 /// NOTE: Of course this functions HAS to take into account the current framerate!
-pub unsafe fn CheckInfluenceWallCollisions() {
-    let sx = Me.speed.x * Frame_Time();
-    let sy = Me.speed.y * Frame_Time();
+pub unsafe fn check_influence_wall_collisions() {
+    let sx = ME.speed.x * frame_time();
+    let sy = ME.speed.y * frame_time();
     let mut h_door_sliding_active = false;
 
     let lastpos = Finepoint {
-        x: Me.pos.x - sx,
-        y: Me.pos.y - sy,
+        x: ME.pos.x - sx,
+        y: ME.pos.y - sy,
     };
 
-    let res = DruidPassable(Me.pos.x, Me.pos.y);
+    let res = druid_passable(ME.pos.x, ME.pos.y);
 
     // Influence-Wall-Collision only has to be checked in case of
     // a collision of course, which is indicated by res not CENTER.
@@ -239,14 +240,14 @@ pub unsafe fn CheckInfluenceWallCollisions() {
         // the ways are blocked and in which directions the ways are open.
         //
         let north_south_axis_blocked;
-        if !((DruidPassable(
+        if !((druid_passable(
             lastpos.x,
-            lastpos.y + (*Druidmap.add(usize::try_from(Me.ty).unwrap())).maxspeed * Frame_Time(),
+            lastpos.y + (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * frame_time(),
         ) != Direction::Center as c_int)
-            || (DruidPassable(
+            || (druid_passable(
                 lastpos.x,
                 lastpos.y
-                    - (*Druidmap.add(usize::try_from(Me.ty).unwrap())).maxspeed * Frame_Time(),
+                    - (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * frame_time(),
             ) != Direction::Center as c_int))
         {
             info!("North-south-Axis seems to be free.");
@@ -256,13 +257,13 @@ pub unsafe fn CheckInfluenceWallCollisions() {
         }
 
         let east_west_axis_blocked;
-        if (DruidPassable(
-            lastpos.x + (*Druidmap.add(usize::try_from(Me.ty).unwrap())).maxspeed * Frame_Time(),
+        if (druid_passable(
+            lastpos.x + (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * frame_time(),
             lastpos.y,
         ) == Direction::Center as c_int)
-            && (DruidPassable(
+            && (druid_passable(
                 lastpos.x
-                    - (*Druidmap.add(usize::try_from(Me.ty).unwrap())).maxspeed * Frame_Time(),
+                    - (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * frame_time(),
                 lastpos.y,
             ) == Direction::Center as c_int)
         {
@@ -275,15 +276,15 @@ pub unsafe fn CheckInfluenceWallCollisions() {
 
         if north_south_axis_blocked {
             // NorthSouthCorrectionDone=TRUE;
-            Me.pos.y = lastpos.y;
-            Me.speed.y = 0.;
+            ME.pos.y = lastpos.y;
+            ME.speed.y = 0.;
 
             // if its an open door, we also correct the east-west position, in the
             // sense that we move thowards the middle
-            if GetMapBrick(&*CurLevel, Me.pos.x, Me.pos.y - 0.5) == MapTile::HGanztuere as u8
-                || GetMapBrick(&*CurLevel, Me.pos.x, Me.pos.y + 0.5) == MapTile::HGanztuere as u8
+            if get_map_brick(&*CUR_LEVEL, ME.pos.x, ME.pos.y - 0.5) == MapTile::HGanztuere as u8
+                || get_map_brick(&*CUR_LEVEL, ME.pos.x, ME.pos.y + 0.5) == MapTile::HGanztuere as u8
             {
-                Me.pos.x += f32::copysign(PUSHSPEED * Frame_Time(), Me.pos.x.round() - Me.pos.x);
+                ME.pos.x += f32::copysign(PUSHSPEED * frame_time(), ME.pos.x.round() - ME.pos.x);
                 h_door_sliding_active = true;
             }
         }
@@ -291,16 +292,17 @@ pub unsafe fn CheckInfluenceWallCollisions() {
         if east_west_axis_blocked {
             // EastWestCorrectionDone=TRUE;
             if !h_door_sliding_active {
-                Me.pos.x = lastpos.x;
+                ME.pos.x = lastpos.x;
             }
-            Me.speed.x = 0.;
+            ME.speed.x = 0.;
 
             // if its an open door, we also correct the north-south position, in the
             // sense that we move thowards the middle
-            if (GetMapBrick(&*CurLevel, Me.pos.x + 0.5, Me.pos.y) == MapTile::VGanztuere as u8)
-                || (GetMapBrick(&*CurLevel, Me.pos.x - 0.5, Me.pos.y) == MapTile::VGanztuere as u8)
+            if (get_map_brick(&*CUR_LEVEL, ME.pos.x + 0.5, ME.pos.y) == MapTile::VGanztuere as u8)
+                || (get_map_brick(&*CUR_LEVEL, ME.pos.x - 0.5, ME.pos.y)
+                    == MapTile::VGanztuere as u8)
             {
-                Me.pos.y += f32::copysign(PUSHSPEED * Frame_Time(), Me.pos.y.round() - Me.pos.y);
+                ME.pos.y += f32::copysign(PUSHSPEED * frame_time(), ME.pos.y.round() - ME.pos.y);
             }
         }
 
@@ -315,11 +317,11 @@ pub unsafe fn CheckInfluenceWallCollisions() {
             // try if this would make sense...
             // (Of course we may only move into the one direction that is free)
             //
-            if DruidPassable(Me.pos.x + sx, Me.pos.y) == Direction::Center as c_int {
-                Me.pos.x += sx;
+            if druid_passable(ME.pos.x + sx, ME.pos.y) == Direction::Center as c_int {
+                ME.pos.x += sx;
             }
-            if DruidPassable(Me.pos.x, Me.pos.y + sy) == Direction::Center as c_int {
-                Me.pos.y += sy;
+            if druid_passable(ME.pos.x, ME.pos.y + sy) == Direction::Center as c_int {
+                ME.pos.y += sy;
             }
         }
 
@@ -330,137 +332,141 @@ pub unsafe fn CheckInfluenceWallCollisions() {
         // For this reason, a history of influ-coordinates has been introduced.  This will all
         // be done here and now:
 
-        if (DruidPassable(Me.pos.x, Me.pos.y) != Direction::Center as c_int)
-            && (DruidPassable(GetInfluPositionHistoryX(0), GetInfluPositionHistoryY(0))
-                != Direction::Center as c_int)
-            && (DruidPassable(GetInfluPositionHistoryX(1), GetInfluPositionHistoryY(1))
-                != Direction::Center as c_int)
+        if (druid_passable(ME.pos.x, ME.pos.y) != Direction::Center as c_int)
+            && (druid_passable(
+                get_influ_position_history_x(0),
+                get_influ_position_history_y(0),
+            ) != Direction::Center as c_int)
+            && (druid_passable(
+                get_influ_position_history_x(1),
+                get_influ_position_history_y(1),
+            ) != Direction::Center as c_int)
         {
-            Me.pos.x = GetInfluPositionHistoryX(2);
-            Me.pos.y = GetInfluPositionHistoryY(2);
+            ME.pos.x = get_influ_position_history_x(2);
+            ME.pos.y = get_influ_position_history_y(2);
             warn!("ATTENTION! CheckInfluenceWallCollsision FALLBACK ACTIVATED!!",);
         }
     }
 }
 
-pub unsafe fn AnimateInfluence() {
-    if Me.ty != Droid::Droid001 as c_int {
-        Me.phase += (Me.energy
-            / ((*Druidmap.add(usize::try_from(Me.ty).unwrap())).maxenergy
-                + (*Druidmap.add(Droid::Droid001 as usize)).maxenergy))
-            * Frame_Time()
+pub unsafe fn animate_influence() {
+    if ME.ty != Droid::Droid001 as c_int {
+        ME.phase += (ME.energy
+            / ((*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxenergy
+                + (*DRUIDMAP.add(Droid::Droid001 as usize)).maxenergy))
+            * frame_time()
             * f32::from(ENEMYPHASES)
             * 3.;
     } else {
-        Me.phase += (Me.energy / ((*Druidmap.add(Droid::Droid001 as usize)).maxenergy))
-            * Frame_Time()
+        ME.phase += (ME.energy / ((*DRUIDMAP.add(Droid::Droid001 as usize)).maxenergy))
+            * frame_time()
             * f32::from(ENEMYPHASES)
             * 3.;
     }
 
-    if Me.phase.round() >= ENEMYPHASES.into() {
-        Me.phase = 0.;
+    if ME.phase.round() >= ENEMYPHASES.into() {
+        ME.phase = 0.;
     }
 }
 
 /// This function moves the influencer, adjusts his speed according to
 /// keys pressed and also adjusts his status and current "phase" of his rotation.
-pub unsafe fn MoveInfluence() {
+pub unsafe fn move_influence() {
     static mut TRANSFER_COUNTER: c_float = 0.;
 
-    let accel = (*Druidmap.add(usize::try_from(Me.ty).unwrap())).accel * Frame_Time();
+    let accel = (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).accel * frame_time();
 
     // We store the influencers position for the history record and so that others
     // can follow his trail.
 
     CURRENT_ZERO_RING_INDEX += 1;
     CURRENT_ZERO_RING_INDEX %= c_int::try_from(MAX_INFLU_POSITION_HISTORY).unwrap();
-    Me.Position_History_Ring_Buffer[usize::try_from(CURRENT_ZERO_RING_INDEX).unwrap()] = Gps {
-        x: Me.pos.x,
-        y: Me.pos.y,
-        z: (*CurLevel).levelnum,
+    ME.position_history_ring_buffer[usize::try_from(CURRENT_ZERO_RING_INDEX).unwrap()] = Gps {
+        x: ME.pos.x,
+        y: ME.pos.y,
+        z: (*CUR_LEVEL).levelnum,
     };
 
-    PermanentLoseEnergy(); /* influ permanently loses energy */
+    permanent_lose_energy(); /* influ permanently loses energy */
 
     // check, if the influencer is still ok
-    if Me.energy <= 0. {
-        if Me.ty != Droid::Droid001 as c_int {
-            Me.ty = Droid::Droid001 as c_int;
-            Me.energy = BLINKENERGY;
-            Me.health = BLINKENERGY;
-            StartBlast(Me.pos.x, Me.pos.y, Explosion::Rejectblast as c_int);
+    if ME.energy <= 0. {
+        if ME.ty != Droid::Droid001 as c_int {
+            ME.ty = Droid::Droid001 as c_int;
+            ME.energy = BLINKENERGY;
+            ME.health = BLINKENERGY;
+            start_blast(ME.pos.x, ME.pos.y, Explosion::Rejectblast as c_int);
         } else {
-            Me.status = Status::Terminated as c_int;
-            ThouArtDefeated();
+            ME.status = Status::Terminated as c_int;
+            thou_art_defeated();
             return;
         }
     }
 
     /* Time passed before entering Transfermode ?? */
     if TRANSFER_COUNTER >= WAIT_TRANSFERMODE {
-        Me.status = Status::Transfermode as c_int;
+        ME.status = Status::Transfermode as c_int;
         TRANSFER_COUNTER = 0.;
     }
 
-    if UpPressed() {
-        Me.speed.y -= accel;
+    if up_pressed() {
+        ME.speed.y -= accel;
     }
-    if DownPressed() {
-        Me.speed.y += accel;
+    if down_pressed() {
+        ME.speed.y += accel;
     }
-    if LeftPressed() {
-        Me.speed.x -= accel;
+    if left_pressed() {
+        ME.speed.x -= accel;
     }
-    if RightPressed() {
-        Me.speed.x += accel;
+    if right_pressed() {
+        ME.speed.x += accel;
     }
 
     //  We only need this check if we want held fire to cause activate
-    if !AnyCmdActive() {
+    if !any_cmd_active() {
         // Used to be !SpacePressed, which causes any fire button != SPACE behave differently than space
-        Me.status = Status::Mobile as c_int;
+        ME.status = Status::Mobile as c_int;
     }
 
     if (TRANSFER_COUNTER - 1.).abs() <= f32::EPSILON {
-        Me.status = Status::Transfermode as c_int;
+        ME.status = Status::Transfermode as c_int;
         TRANSFER_COUNTER = 0.;
     }
 
     if cmd_is_active(Cmds::Activate) {
         // activate mode for Konsole and Lifts
-        Me.status = Status::Activate as c_int;
+        ME.status = Status::Activate as c_int;
     }
 
-    if GameConfig.FireHoldTakeover != 0
-        && FirePressed()
-        && NoDirectionPressed()
-        && Me.status != Status::Weapon as c_int
-        && Me.status != Status::Transfermode as c_int
+    if GAME_CONFIG.fire_hold_takeover != 0
+        && fire_pressed()
+        && no_direction_pressed()
+        && ME.status != Status::Weapon as c_int
+        && ME.status != Status::Transfermode as c_int
     {
         // Proposed FireActivatePressed here...
-        TRANSFER_COUNTER += Frame_Time(); // Or make it an option!
+        TRANSFER_COUNTER += frame_time(); // Or make it an option!
     }
 
-    if FirePressed() && !NoDirectionPressed() && Me.status != Status::Transfermode as c_int {
-        Me.status = Status::Weapon as c_int;
+    if fire_pressed() && !no_direction_pressed() && ME.status != Status::Transfermode as c_int {
+        ME.status = Status::Weapon as c_int;
     }
 
-    if FirePressed()
-        && !NoDirectionPressed()
-        && Me.status == Status::Weapon as c_int
-        && Me.firewait == 0.
+    if fire_pressed()
+        && !no_direction_pressed()
+        && ME.status == Status::Weapon as c_int
+        && ME.firewait == 0.
     {
-        FireBullet();
+        fire_bullet();
     }
 
-    if Me.status != Status::Weapon as c_int && cmd_is_active(Cmds::Takeover) {
-        Me.status = Status::Transfermode as c_int;
+    if ME.status != Status::Weapon as c_int && cmd_is_active(Cmds::Takeover) {
+        ME.status = Status::Transfermode as c_int;
     }
 
-    InfluenceFrictionWithAir(); // The influ should lose some of his speed when no key is pressed
+    influence_friction_with_air(); // The influ should lose some of his speed when no key is pressed
 
-    AdjustSpeed(); // If the influ is faster than allowed for his type, slow him
+    adjust_speed(); // If the influ is faster than allowed for his type, slow him
 
     // Now we move influence according to current speed.  But there has been a problem
     // reported from people, that the influencer would (*very* rarely) jump throught walls
@@ -478,82 +484,82 @@ pub unsafe fn MoveInfluence() {
     //
     // NOTE:  PLEASE LEAVE THE .0 in the code or gcc will round it down to 0 like an integer.
     //
-    let mut planned_step_x = Me.speed.x * Frame_Time();
-    let mut planned_step_y = Me.speed.y * Frame_Time();
+    let mut planned_step_x = ME.speed.x * frame_time();
+    let mut planned_step_y = ME.speed.y * frame_time();
     if planned_step_x.abs() >= MAXIMAL_STEP_SIZE {
         planned_step_x = f32::copysign(MAXIMAL_STEP_SIZE, planned_step_x);
     }
     if planned_step_y.abs() >= MAXIMAL_STEP_SIZE {
         planned_step_y = f32::copysign(MAXIMAL_STEP_SIZE, planned_step_y);
     }
-    Me.pos.x += planned_step_x;
-    Me.pos.y += planned_step_y;
+    ME.pos.x += planned_step_x;
+    ME.pos.y += planned_step_y;
 
     //--------------------
     // Check it the influ is on a special field like a lift, a console or a refresh
-    ActSpecialField(Me.pos.x, Me.pos.y);
+    act_special_field(ME.pos.x, ME.pos.y);
 
-    AnimateInfluence(); // move the "phase" of influencers rotation
+    animate_influence(); // move the "phase" of influencers rotation
 }
 
-pub unsafe fn PermanentLoseEnergy() {
+pub unsafe fn permanent_lose_energy() {
     // Of course if in invincible mode, no energy will ever be lost...
-    if InvincibleMode != 0 {
+    if INVINCIBLE_MODE != 0 {
         return;
     }
 
     /* health decreases with time */
-    Me.health -= (*Druidmap.add(usize::try_from(Me.ty).unwrap())).lose_health * Frame_Time();
+    ME.health -= (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).lose_health * frame_time();
 
     /* you cant have more energy than health */
-    if Me.energy > Me.health {
-        Me.energy = Me.health;
+    if ME.energy > ME.health {
+        ME.energy = ME.health;
     }
 }
 
 /// Fire-Routine for the Influencer only !! (should be changed)
-pub unsafe fn FireBullet() {
-    let guntype = (*Druidmap.add(usize::try_from(Me.ty).unwrap())).gun; /* which gun do we have ? */
-    let bullet_speed = (*Bulletmap.add(usize::try_from(guntype).unwrap())).speed;
+pub unsafe fn fire_bullet() {
+    let guntype = (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).gun; /* which gun do we have ? */
+    let bullet_speed = (*BULLETMAP.add(usize::try_from(guntype).unwrap())).speed;
 
-    if Me.firewait > 0. {
+    if ME.firewait > 0. {
         return;
     }
-    Me.firewait = (*Bulletmap.add(usize::try_from(guntype).unwrap())).recharging_time;
+    ME.firewait = (*BULLETMAP.add(usize::try_from(guntype).unwrap())).recharging_time;
 
-    Fire_Bullet_Sound(guntype);
+    fire_bullet_sound(guntype);
 
-    let cur_bullet = AllBullets[..MAXBULLETS]
+    let cur_bullet = ALL_BULLETS[..MAXBULLETS]
         .iter_mut()
         .find(|bullet| bullet.ty == Status::Out as u8)
-        .unwrap_or(&mut AllBullets[0]);
+        .unwrap_or(&mut ALL_BULLETS[0]);
 
-    cur_bullet.pos.x = Me.pos.x;
-    cur_bullet.pos.y = Me.pos.y;
+    cur_bullet.pos.x = ME.pos.x;
+    cur_bullet.pos.y = ME.pos.y;
     cur_bullet.ty = guntype.try_into().unwrap();
     cur_bullet.mine = true;
     cur_bullet.owner = -1;
 
     let mut speed = Finepoint { x: 0., y: 0. };
 
-    if DownPressed() {
+    if down_pressed() {
         speed.y = 1.0;
     }
-    if UpPressed() {
+    if up_pressed() {
         speed.y = -1.0;
     }
-    if LeftPressed() {
+    if left_pressed() {
         speed.x = -1.0;
     }
-    if RightPressed() {
+    if right_pressed() {
         speed.x = 1.0;
     }
 
     /* if using a joystick/mouse, allow exact directional shots! */
-    if axis_is_active != 0 {
-        let max_val = input_axis.x.abs().max(input_axis.y.abs()) as f32;
-        speed.x = input_axis.x as f32 / max_val;
-        speed.y = input_axis.y as f32 / max_val;
+    if AXIS_IS_ACTIVE != 0 {
+        let max_val = INPUT_AXIS.x.abs().max(INPUT_AXIS.y.abs()) as f32;
+        speed.x = INPUT_AXIS.x as f32 / max_val;
+        speed.y = INPUT_AXIS.y as f32 / max_val;
     }
 
     let speed_norm = (speed.x * speed.x + speed.y * speed.y).sqrt();
@@ -578,38 +584,38 @@ pub unsafe fn FireBullet() {
     cur_bullet.time_in_seconds = 0.;
 }
 
-pub unsafe fn InfluenceFrictionWithAir() {
+pub unsafe fn influence_friction_with_air() {
     const DECELERATION: f32 = 7.0;
 
-    if !RightPressed() && !LeftPressed() {
-        let oldsign = Me.speed.x.signum();
-        let slowdown = oldsign * DECELERATION * Frame_Time();
-        Me.speed.x -= slowdown;
+    if !right_pressed() && !left_pressed() {
+        let oldsign = ME.speed.x.signum();
+        let slowdown = oldsign * DECELERATION * frame_time();
+        ME.speed.x -= slowdown;
 
         #[allow(clippy::float_cmp)]
-        if Me.speed.x.signum() != oldsign {
+        if ME.speed.x.signum() != oldsign {
             // changed direction -> vel=0
-            Me.speed.x = 0.0;
+            ME.speed.x = 0.0;
         }
     }
 
-    if !UpPressed() && !DownPressed() {
-        let oldsign = Me.speed.y.signum();
-        let slowdown = oldsign * DECELERATION * Frame_Time();
-        Me.speed.y -= slowdown;
+    if !up_pressed() && !down_pressed() {
+        let oldsign = ME.speed.y.signum();
+        let slowdown = oldsign * DECELERATION * frame_time();
+        ME.speed.y -= slowdown;
 
         #[allow(clippy::float_cmp)]
-        if Me.speed.y.signum() != oldsign {
+        if ME.speed.y.signum() != oldsign {
             // changed direction -> vel=0
-            Me.speed.y = 0.0;
+            ME.speed.y = 0.0;
         }
     }
 }
 
-pub unsafe fn AdjustSpeed() {
-    let maxspeed = (*Druidmap.add(usize::try_from(Me.ty).unwrap())).maxspeed;
-    Me.speed.x = Me.speed.x.clamp(-maxspeed, maxspeed);
-    Me.speed.y = Me.speed.y.clamp(-maxspeed, maxspeed);
+pub unsafe fn adjust_speed() {
+    let maxspeed = (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed;
+    ME.speed.x = ME.speed.x.clamp(-maxspeed, maxspeed);
+    ME.speed.y = ME.speed.y.clamp(-maxspeed, maxspeed);
 }
 
 pub unsafe fn get_position_history(how_long_past: c_int) -> &'static Gps {
@@ -618,21 +624,21 @@ pub unsafe fn get_position_history(how_long_past: c_int) -> &'static Gps {
 
     let ring_position = usize::try_from(ring_position).unwrap() % MAX_INFLU_POSITION_HISTORY;
 
-    &Me.Position_History_Ring_Buffer[ring_position]
+    &ME.position_history_ring_buffer[ring_position]
 }
 
-pub unsafe fn GetInfluPositionHistoryX(how_long_past: c_int) -> c_float {
+pub unsafe fn get_influ_position_history_x(how_long_past: c_int) -> c_float {
     get_position_history(how_long_past).x
 }
 
-pub unsafe fn GetInfluPositionHistoryY(how_long_past: c_int) -> c_float {
+pub unsafe fn get_influ_position_history_y(how_long_past: c_int) -> c_float {
     get_position_history(how_long_past).y
 }
 
-pub unsafe fn InitInfluPositionHistory() {
-    Me.Position_History_Ring_Buffer.fill(Gps {
-        x: Me.pos.x,
-        y: Me.pos.y,
-        z: (*CurLevel).levelnum,
+pub unsafe fn init_influ_position_history() {
+    ME.position_history_ring_buffer.fill(Gps {
+        x: ME.pos.x,
+        y: ME.pos.y,
+        z: (*CUR_LEVEL).levelnum,
     });
 }

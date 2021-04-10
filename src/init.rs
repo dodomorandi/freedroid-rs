@@ -1,49 +1,48 @@
 use crate::{
-    b_font::{FontHeight, GetCurrentFont, SetCurrentFont},
-    bullet::{DeleteBullet, ExplodeBlasts, MoveBullets},
-    curShip, debug_level,
+    b_font::{font_height, get_current_font, set_current_font},
+    bullet::{delete_bullet, explode_blasts, move_bullets},
     defs::{
         self, get_user_center, scale_rect, AssembleCombatWindowFlags, Criticality,
         DisplayBannerFlags, Droid, Status, Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR,
         MAP_DIR_C, MAXBULLETS, SHOW_WAIT, SLOWMO_FACTOR, TITLE_PIC_FILE_C, WAIT_AFTER_KILLED,
     },
-    enemy::{MoveEnemys, ShuffleEnemys},
+    enemy::{move_enemys, shuffle_enemys},
     global::{
-        collision_lose_energy_calibrator, Blast_Damage_Per_Second, Blast_Radius,
-        CurrentCombatScaleFactor, Droid_Radius, Font0_BFont, GameConfig, Para_BFont,
-        SkipAFewFrames, Time_For_Each_Phase_Of_Door_Movement,
+        BLAST_DAMAGE_PER_SECOND, BLAST_RADIUS, COLLISION_LOSE_ENERGY_CALIBRATOR,
+        CURRENT_COMBAT_SCALE_FACTOR, DROID_RADIUS, FONT0_B_FONT, GAME_CONFIG, PARA_B_FONT,
+        SKIP_A_FEW_FRAMES, TIME_FOR_EACH_PHASE_OF_DOOR_MOVEMENT,
     },
     graphics::{
-        ne_screen, pic999, white_noise, AllThemes, ClearGraphMem, DisplayImage, InitPictures,
-        Init_Video, Load_Fonts, MakeGridOnScreen, Number_Of_Bullet_Types,
+        clear_graph_mem, display_image, init_pictures, init_video, load_fonts, make_grid_on_screen,
+        white_noise, ALL_THEMES, NE_SCREEN, NUMBER_OF_BULLET_TYPES, PIC999,
     },
-    highscore::{InitHighscores, UpdateHighscores, HIGHSCORES, NUM_HIGHSCORES},
-    influencer::{ExplodeInfluencer, InitInfluPositionHistory},
-    input::{
-        any_key_just_pressed, wait_for_all_keys_released, wait_for_key_pressed, Init_Joy, SDL_Delay,
-    },
-    map::{GetCrew, GetLiftConnections, LoadShip},
+    highscore::{init_highscores, update_highscores, HIGHSCORES, NUM_HIGHSCORES},
+    influencer::{explode_influencer, init_influ_position_history},
+    input::{any_key_just_pressed, init_joy, wait_for_all_keys_released, SDL_Delay},
+    map::{get_crew, get_lift_connections, load_ship},
     misc::{
-        find_file, init_progress, set_time_factor, update_progress,
-        Activate_Conservative_Frame_Computation, ComputeFPSForThisFrame, CountStringOccurences,
-        LoadGameConfig, LocateStringInData, MyMalloc, MyRandom, ReadAndMallocAndTerminateFile,
-        ReadAndMallocStringFromData, ReadValueFromString, StartTakingTimeForFPSCalculation,
-        Terminate,
+        activate_conservative_frame_computation, compute_fps_for_this_frame,
+        count_string_occurences, find_file, init_progress, load_game_config, locate_string_in_data,
+        my_malloc, my_random, read_and_malloc_and_terminate_file, read_and_malloc_string_from_data,
+        read_value_from_string, set_time_factor, start_taking_time_for_fps_calculation, terminate,
+        update_progress,
     },
-    sound::{Init_Audio, Switch_Background_Music_To, ThouArtDefeatedSound},
-    sound_on,
+    sound::{init_audio, switch_background_music_to, thou_art_defeated_sound},
     structs::{BulletSpec, DruidSpec},
-    text::{printf_SDL, DisplayText, ScrollText},
+    text::{display_text, printf_sdl, scroll_text},
     vars::{
-        Blastmap, Bulletmap, Classic_User_Rect, Druidmap, Full_User_Rect, Portrait_Rect,
-        Screen_Rect, User_Rect,
+        BLASTMAP, BULLETMAP, CLASSIC_USER_RECT, DRUIDMAP, FULL_USER_RECT, PORTRAIT_RECT,
+        SCREEN_RECT, USER_RECT,
     },
-    view::{Assemble_Combat_Picture, DisplayBanner},
-    AlertBonusPerSec, AlertThreshold, AllBlasts, AllBullets, AllEnemys, CurLevel, DeathCount,
-    DeathCountDrainSpeed, GameOver, LastGotIntoBlastSound, LastRefreshSound,
-    LevelDoorsNotMovedTime, Me, NumEnemys, Number_Of_Droid_Types, RealScore, ShowScore,
-    ThisMessageTime,
+    view::{assemble_combat_picture, display_banner},
+    ALERT_BONUS_PER_SEC, ALERT_THRESHOLD, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP,
+    DEATH_COUNT, DEATH_COUNT_DRAIN_SPEED, DEBUG_LEVEL, GAME_OVER, LAST_GOT_INTO_BLAST_SOUND,
+    LAST_REFRESH_SOUND, LEVEL_DOORS_NOT_MOVED_TIME, ME, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
+    REAL_SCORE, SHOW_SCORE, SOUND_ON, THIS_MESSAGE_TIME,
 };
+
+#[cfg(target_os = "windows")]
+use crate::input::wait_for_key_pressed;
 
 use clap::{crate_version, Clap};
 use cstr::cstr;
@@ -80,32 +79,32 @@ You may redistribute copies of Freedroid under the terms of the\n\
 GNU General Public License.\n\
 For more information about these matters, see the file named COPYING.";
 
-pub unsafe fn FreeGameMem() {
+pub unsafe fn free_game_mem() {
     // free bullet map
-    if Bulletmap.is_null().not() {
+    if BULLETMAP.is_null().not() {
         let bullet_map = std::slice::from_raw_parts_mut(
-            Bulletmap,
-            usize::try_from(Number_Of_Bullet_Types).unwrap(),
+            BULLETMAP,
+            usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap(),
         );
         for bullet in bullet_map {
-            for surface in &bullet.SurfacePointer {
+            for surface in &bullet.surface_pointer {
                 SDL_FreeSurface(*surface);
             }
         }
-        libc::free(Bulletmap as *mut c_void);
-        Bulletmap = null_mut();
+        libc::free(BULLETMAP as *mut c_void);
+        BULLETMAP = null_mut();
     }
 
     // free blast map
-    for blast_type in &mut Blastmap {
-        for surface in &mut blast_type.SurfacePointer {
+    for blast_type in &mut BLASTMAP {
+        for surface in &mut blast_type.surface_pointer {
             SDL_FreeSurface(*surface);
             *surface = null_mut();
         }
     }
 
     // free droid map
-    FreeDruidmap();
+    free_druidmap();
 
     // free highscores list
     if HIGHSCORES.is_null().not() {
@@ -123,32 +122,33 @@ pub unsafe fn FreeGameMem() {
     DEBRIEFING_TEXT = null_mut();
 }
 
-pub unsafe fn FreeDruidmap() {
-    if Druidmap.is_null() {
+pub unsafe fn free_druidmap() {
+    if DRUIDMAP.is_null() {
         return;
     }
     let droid_map =
-        std::slice::from_raw_parts(Druidmap, usize::try_from(Number_Of_Droid_Types).unwrap());
+        std::slice::from_raw_parts(DRUIDMAP, usize::try_from(NUMBER_OF_DROID_TYPES).unwrap());
     for droid in droid_map {
         libc::free(droid.notes as *mut c_void);
     }
 
-    libc::free(Druidmap as *mut c_void);
-    Druidmap = null_mut();
+    libc::free(DRUIDMAP as *mut c_void);
+    DRUIDMAP = null_mut();
 }
 
 /// put some ideology message for our poor friends enslaved by M$-Win32 ;)
-pub unsafe fn Win32Disclaimer() {
-    SDL_SetClipRect(ne_screen, null_mut());
-    DisplayImage(find_file(
+#[cfg(target_os = "windows")]
+pub unsafe fn win32_disclaimer() {
+    SDL_SetClipRect(NE_SCREEN, null_mut());
+    display_image(find_file(
         TITLE_PIC_FILE_C.as_ptr() as *mut c_char,
         GRAPHICS_DIR_C.as_ptr() as *mut c_char,
         Themed::NoTheme as c_int,
         Criticality::Critical as c_int,
     )); // show title pic
-    MakeGridOnScreen(Some(&Screen_Rect));
+    make_grid_on_screen(Some(&Screen_Rect));
 
-    SetCurrentFont(Para_BFont);
+    set_current_font(PARA_B_FONT);
 
     let mut rect = Full_User_Rect;
     rect.x += 10;
@@ -164,34 +164,34 @@ pub unsafe fn Win32Disclaimer() {
         rect.y.into(),
         &rect,
     );
-    SDL_Flip(ne_screen);
+    SDL_Flip(NE_SCREEN);
 
     wait_for_key_pressed();
 }
 
 /// This function checks, if the influencer has succeeded in his given
 /// mission.  If not it returns, if yes the Debriefing is started.
-pub unsafe fn CheckIfMissionIsComplete() {
-    for enemy in AllEnemys.iter().take(NumEnemys.try_into().unwrap()) {
+pub unsafe fn check_if_mission_is_complete() {
+    for enemy in ALL_ENEMYS.iter().take(NUM_ENEMYS.try_into().unwrap()) {
         if enemy.status != Status::Out as c_int && enemy.status != Status::Terminated as c_int {
             return;
         }
     }
 
     // mission complete: all droids have been killed
-    RealScore += MISSION_COMPLETE_BONUS;
-    ThouArtVictorious();
-    GameOver = true.into();
+    REAL_SCORE += MISSION_COMPLETE_BONUS;
+    thou_art_victorious();
+    GAME_OVER = true.into();
 }
 
-pub unsafe fn ThouArtVictorious() {
-    Switch_Background_Music_To(DEBRIEFING_SONG.as_ptr());
+pub unsafe fn thou_art_victorious() {
+    switch_background_music_to(DEBRIEFING_SONG.as_ptr());
 
     SDL_ShowCursor(SDL_DISABLE);
 
-    ShowScore = RealScore as c_long;
-    Me.status = Status::Victory as c_int;
-    DisplayBanner(
+    SHOW_SCORE = REAL_SCORE as c_long;
+    ME.status = Status::Victory as c_int;
+    display_banner(
         null_mut(),
         null_mut(),
         DisplayBannerFlags::FORCE_UPDATE.bits().into(),
@@ -202,20 +202,20 @@ pub unsafe fn ThouArtVictorious() {
     let now = SDL_GetTicks();
 
     while SDL_GetTicks() - now < WAIT_AFTER_KILLED {
-        DisplayBanner(null_mut(), null_mut(), 0);
-        ExplodeBlasts();
-        MoveBullets();
-        Assemble_Combat_Picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+        display_banner(null_mut(), null_mut(), 0);
+        explode_blasts();
+        move_bullets();
+        assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
     }
 
-    let mut rect = Full_User_Rect;
-    SDL_SetClipRect(ne_screen, null_mut());
-    MakeGridOnScreen(Some(&rect));
-    SDL_Flip(ne_screen);
+    let mut rect = FULL_USER_RECT;
+    SDL_SetClipRect(NE_SCREEN, null_mut());
+    make_grid_on_screen(Some(&rect));
+    SDL_Flip(NE_SCREEN);
     rect.x += 10;
     rect.w -= 20; //leave some border
-    SetCurrentFont(Para_BFont);
-    ScrollText(DEBRIEFING_TEXT, &mut rect, 6);
+    set_current_font(PARA_B_FONT);
+    scroll_text(DEBRIEFING_TEXT, &mut rect, 6);
 
     wait_for_all_keys_released();
 }
@@ -224,94 +224,94 @@ pub unsafe fn ThouArtVictorious() {
 ///
 /// This must not be confused with initnewgame, which
 /// only initializes a new mission for the game.
-pub unsafe fn InitFreedroid() {
-    Bulletmap = null_mut(); // That will cause the memory to be allocated later
+pub unsafe fn init_freedroid() {
+    BULLETMAP = null_mut(); // That will cause the memory to be allocated later
 
-    for bullet in &mut AllBullets {
-        bullet.Surfaces_were_generated = false.into();
+    for bullet in &mut ALL_BULLETS {
+        bullet.surfaces_were_generated = false.into();
     }
 
-    SkipAFewFrames = false.into();
-    Me.TextVisibleTime = 0.;
-    Me.TextToBeDisplayed = null_mut();
+    SKIP_A_FEW_FRAMES = false.into();
+    ME.text_visible_time = 0.;
+    ME.text_to_be_displayed = null_mut();
 
     // these are the hardcoded game-defaults, they can be overloaded by the config-file if present
-    GameConfig.Current_BG_Music_Volume = 0.3;
-    GameConfig.Current_Sound_FX_Volume = 0.5;
+    GAME_CONFIG.current_bg_music_volume = 0.3;
+    GAME_CONFIG.current_sound_fx_volume = 0.5;
 
-    GameConfig.WantedTextVisibleTime = 3.;
-    GameConfig.Droid_Talk = false.into();
+    GAME_CONFIG.wanted_text_visible_time = 3.;
+    GAME_CONFIG.droid_talk = false.into();
 
-    GameConfig.Draw_Framerate = false.into();
-    GameConfig.Draw_Energy = false.into();
-    GameConfig.Draw_DeathCount = false.into();
-    GameConfig.Draw_Position = false.into();
+    GAME_CONFIG.draw_framerate = false.into();
+    GAME_CONFIG.draw_energy = false.into();
+    GAME_CONFIG.draw_death_count = false.into();
+    GAME_CONFIG.draw_position = false.into();
 
     std::ptr::copy_nonoverlapping(
         b"classic\0".as_ptr(),
-        GameConfig.Theme_Name.as_mut_ptr() as *mut u8,
+        GAME_CONFIG.theme_name.as_mut_ptr() as *mut u8,
         b"classic\0".len(),
     );
-    GameConfig.FullUserRect = true.into();
-    GameConfig.UseFullscreen = false.into();
-    GameConfig.TakeoverActivates = true.into();
-    GameConfig.FireHoldTakeover = true.into();
-    GameConfig.ShowDecals = false.into();
-    GameConfig.AllMapVisible = true.into(); // classic setting: map always visible
+    GAME_CONFIG.full_user_rect = true.into();
+    GAME_CONFIG.use_fullscreen = false.into();
+    GAME_CONFIG.takeover_activates = true.into();
+    GAME_CONFIG.fire_hold_takeover = true.into();
+    GAME_CONFIG.show_decals = false.into();
+    GAME_CONFIG.all_map_visible = true.into(); // classic setting: map always visible
 
     let scale = if cfg!(feature = "gcw0") {
         0.5 // Default for 320x200 device (GCW0)
     } else {
         1.0 // overall scaling of _all_ graphics (e.g. for 320x200 displays)
     };
-    GameConfig.scale = scale;
+    GAME_CONFIG.scale = scale;
 
-    GameConfig.HogCPU = false.into(); // default to being nice
-    GameConfig.emptyLevelSpeedup = 1.0; // speed up *time* in empty levels (ie also energy-loss rate)
+    GAME_CONFIG.hog_cpu = false.into(); // default to being nice
+    GAME_CONFIG.empty_level_speedup = 1.0; // speed up *time* in empty levels (ie also energy-loss rate)
 
     // now load saved options from the config-file
-    LoadGameConfig();
+    load_game_config();
 
     // call this _after_ default settings and LoadGameConfig() ==> cmdline has highest priority!
     parse_command_line();
 
-    User_Rect = if GameConfig.FullUserRect != 0 {
-        Full_User_Rect
+    USER_RECT = if GAME_CONFIG.full_user_rect != 0 {
+        FULL_USER_RECT
     } else {
-        Classic_User_Rect
+        CLASSIC_USER_RECT
     };
 
-    scale_rect(&mut Screen_Rect, GameConfig.scale); // make sure we open a window of the right (rescaled) size!
-    Init_Video();
+    scale_rect(&mut SCREEN_RECT, GAME_CONFIG.scale); // make sure we open a window of the right (rescaled) size!
+    init_video();
 
-    DisplayImage(find_file(
+    display_image(find_file(
         TITLE_PIC_FILE_C.as_ptr() as *mut c_char,
         GRAPHICS_DIR_C.as_ptr() as *mut c_char,
         Themed::NoTheme as c_int,
         Criticality::Critical as c_int,
     )); // show title pic
-    SDL_Flip(ne_screen);
+    SDL_Flip(NE_SCREEN);
 
-    Load_Fonts(); // we need this for progress-meter!
+    load_fonts(); // we need this for progress-meter!
 
     init_progress(cstr!("Loading Freedroid").as_ptr() as *mut c_char);
 
-    FindAllThemes(); // put all found themes into a list: AllThemes[]
+    find_all_themes(); // put all found themes into a list: AllThemes[]
 
     update_progress(5);
 
-    Init_Audio();
+    init_audio();
 
-    Init_Joy();
+    init_joy();
 
-    Init_Game_Data(cstr!("freedroid.ruleset").as_ptr() as *mut c_char); // load the default ruleset. This can be */
+    init_game_data(cstr!("freedroid.ruleset").as_ptr() as *mut c_char); // load the default ruleset. This can be */
                                                                         // overwritten from the mission file.
 
     update_progress(10);
 
     // The default should be, that no rescaling of the
     // combat window at all is done.
-    CurrentCombatScaleFactor = 1.;
+    CURRENT_COMBAT_SCALE_FACTOR = 1.;
 
     /*
      * Initialise random-number generator in order to make
@@ -320,12 +320,12 @@ pub unsafe fn InitFreedroid() {
     libc::srand(SDL_GetTicks() as c_uint);
 
     /* initialize/load the highscore list */
-    InitHighscores();
+    init_highscores();
 
     /* Now fill the pictures correctly to the structs */
-    if InitPictures() == 0 {
+    if init_pictures() == 0 {
         error!("Error in InitPictures reported back...");
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
 
     update_progress(100); // finished init
@@ -365,47 +365,47 @@ unsafe fn parse_command_line() {
     let opt = Opt::parse();
 
     if opt.nosound {
-        sound_on = false.into();
+        SOUND_ON = false.into();
     } else if opt.sound {
-        sound_on = true.into();
+        SOUND_ON = true.into();
     }
 
     if let Some(sensitivity) = opt.sensitivity {
         if sensitivity > 32 {
             println!("\nJoystick sensitivity must lie in the range [0;32]");
-            Terminate(defs::ERR.into());
+            terminate(defs::ERR.into());
         }
     }
 
     if opt.debug > 0 {
-        debug_level = opt.debug.into();
+        DEBUG_LEVEL = opt.debug.into();
     }
 
     if let Some(scale) = opt.scale {
         if scale <= 0. {
             error!("illegal scale entered, needs to be >0: {}", scale);
-            Terminate(defs::ERR.into());
+            terminate(defs::ERR.into());
         }
-        GameConfig.scale = scale;
+        GAME_CONFIG.scale = scale;
         info!("Graphics scale set to {}", scale);
     }
 
     if opt.fullscreen {
-        GameConfig.UseFullscreen = true.into();
+        GAME_CONFIG.use_fullscreen = true.into();
     } else if opt.window {
-        GameConfig.UseFullscreen = false.into();
+        GAME_CONFIG.use_fullscreen = false.into();
     }
 }
 
 /// find all themes and put them in AllThemes
-pub unsafe fn FindAllThemes() {
+pub unsafe fn find_all_themes() {
     use std::fs;
 
     let mut classic_theme_index: usize = 0; // default: override when we actually find 'classic' theme
 
     // just to make sure...
-    AllThemes.num_themes = 0;
-    AllThemes
+    ALL_THEMES.num_themes = 0;
+    ALL_THEMES
         .theme_name
         .iter_mut()
         .filter(|name| name.is_null().not())
@@ -481,7 +481,7 @@ pub unsafe fn FindAllThemes() {
                         info!("The theme file is readable");
                         // last check: is this theme already in the list??
 
-                        let theme_exists = AllThemes
+                        let theme_exists = ALL_THEMES
                             .theme_name
                             .iter()
                             .copied()
@@ -497,12 +497,12 @@ pub unsafe fn FindAllThemes() {
                         } else {
                             info!("Found new graphics-theme: {}", theme_name);
                             if theme_name == "classic" {
-                                classic_theme_index = AllThemes.num_themes.try_into().unwrap();
+                                classic_theme_index = ALL_THEMES.num_themes.try_into().unwrap();
                             }
-                            let new_theme = &mut AllThemes.theme_name
-                                [usize::try_from(AllThemes.num_themes).unwrap()];
+                            let new_theme = &mut ALL_THEMES.theme_name
+                                [usize::try_from(ALL_THEMES.num_themes).unwrap()];
                             *new_theme =
-                                MyMalloc((theme_name.len() + 1).try_into().unwrap()) as *mut u8;
+                                my_malloc((theme_name.len() + 1).try_into().unwrap()) as *mut u8;
                             std::ptr::copy_nonoverlapping(
                                 theme_name.as_ptr(),
                                 *new_theme,
@@ -510,7 +510,7 @@ pub unsafe fn FindAllThemes() {
                             );
                             *new_theme.add(theme_name.len()) = b'\0';
 
-                            AllThemes.num_themes += 1;
+                            ALL_THEMES.num_themes += 1;
                         }
                     }
                     Err(err) => {
@@ -529,48 +529,48 @@ pub unsafe fn FindAllThemes() {
     add_theme_from_dir(Path::new(LOCAL_DATADIR));
 
     // now have a look at what we found:
-    if AllThemes.num_themes == 0 {
+    if ALL_THEMES.num_themes == 0 {
         error!("no valid graphic-themes found!!");
         error!("You need to install at least one to run Freedroid!!");
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
 
-    let selected_theme_index = AllThemes.theme_name
-        [..usize::try_from(AllThemes.num_themes).unwrap()]
+    let selected_theme_index = ALL_THEMES.theme_name
+        [..usize::try_from(ALL_THEMES.num_themes).unwrap()]
         .iter()
         .copied()
         .position(|theme_name| {
-            libc::strcmp(theme_name as *const _, GameConfig.Theme_Name.as_mut_ptr()) == 0
+            libc::strcmp(theme_name as *const _, GAME_CONFIG.theme_name.as_mut_ptr()) == 0
         });
 
     match selected_theme_index {
         Some(index) => {
             info!(
                 "Found selected theme {} from GameConfig.",
-                CStr::from_ptr(GameConfig.Theme_Name.as_ptr()).to_string_lossy(),
+                CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
             );
-            AllThemes.cur_tnum = index.try_into().unwrap();
+            ALL_THEMES.cur_tnum = index.try_into().unwrap();
         }
         None => {
             warn!(
                 "selected theme {} not valid! Using classic theme.",
-                CStr::from_ptr(GameConfig.Theme_Name.as_ptr()).to_string_lossy(),
+                CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
             );
             libc::strcpy(
-                GameConfig.Theme_Name.as_mut_ptr(),
-                AllThemes.theme_name[classic_theme_index] as *const _,
+                GAME_CONFIG.theme_name.as_mut_ptr(),
+                ALL_THEMES.theme_name[classic_theme_index] as *const _,
             );
-            AllThemes.cur_tnum = classic_theme_index.try_into().unwrap();
+            ALL_THEMES.cur_tnum = classic_theme_index.try_into().unwrap();
         }
     }
 
     info!(
         "Game starts using theme: {}",
-        CStr::from_ptr(GameConfig.Theme_Name.as_ptr()).to_string_lossy()
+        CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy()
     );
 }
 
-pub unsafe fn InitNewMission(mission_name: *mut c_char) {
+pub unsafe fn init_new_mission(mission_name: *mut c_char) {
     const END_OF_MISSION_DATA_STRING: &CStr = cstr!("*** End of Mission File ***");
     const MISSION_BRIEFING_BEGIN_STRING: &CStr =
         cstr!("** Start of Mission Briefing Text Section **");
@@ -599,26 +599,26 @@ pub unsafe fn InitNewMission(mission_name: *mut c_char) {
     //--------------------
     //At first we do the things that must be done for all
     //missions, regardless of mission file given
-    Activate_Conservative_Frame_Computation();
-    LastGotIntoBlastSound = 2.;
-    LastRefreshSound = 2.;
-    ThisMessageTime = 0;
-    LevelDoorsNotMovedTime = 0.0;
-    DeathCount = 0.;
+    activate_conservative_frame_computation();
+    LAST_GOT_INTO_BLAST_SOUND = 2.;
+    LAST_REFRESH_SOUND = 2.;
+    THIS_MESSAGE_TIME = 0;
+    LEVEL_DOORS_NOT_MOVED_TIME = 0.0;
+    DEATH_COUNT = 0.;
     set_time_factor(1.0);
 
     /* Delete all bullets and blasts */
     for bullet in 0..MAXBULLETS {
-        DeleteBullet(bullet.try_into().unwrap());
+        delete_bullet(bullet.try_into().unwrap());
     }
 
     info!("InitNewMission: All bullets have been deleted.");
-    for blast in &mut AllBlasts {
+    for blast in &mut ALL_BLASTS {
         blast.phase = Status::Out as c_int as c_float;
         blast.ty = Status::Out as c_int;
     }
     info!("InitNewMission: All blasts have been deleted.");
-    for enemy in &mut AllEnemys {
+    for enemy in &mut ALL_ENEMYS {
         enemy.ty = Status::Out as c_int;
         enemy.energy = -1.;
     }
@@ -628,9 +628,9 @@ pub unsafe fn InitNewMission(mission_name: *mut c_char) {
     //For that, we must get it into memory first.
     //The procedure is the same as with LoadShip
 
-    let oldfont = GetCurrentFont();
+    let oldfont = get_current_font();
 
-    SetCurrentFont(Font0_BFont);
+    set_current_font(FONT0_B_FONT);
     //  printf_SDL (ne_screen, User_Rect.x + 50, -1, "Loading mission data ");
 
     /* Read the whole mission data to memory */
@@ -641,8 +641,10 @@ pub unsafe fn InitNewMission(mission_name: *mut c_char) {
         Criticality::Critical as c_int,
     );
 
-    let main_mission_pointer =
-        ReadAndMallocAndTerminateFile(fpath, END_OF_MISSION_DATA_STRING.as_ptr() as *mut c_char);
+    let main_mission_pointer = read_and_malloc_and_terminate_file(
+        fpath,
+        END_OF_MISSION_DATA_STRING.as_ptr() as *mut c_char,
+    );
 
     //--------------------
     // Now the mission file is read into memory.  That means we can start to decode the details given
@@ -653,44 +655,44 @@ pub unsafe fn InitNewMission(mission_name: *mut c_char) {
     // mission file and load the game data.
     //
     let mut buffer: [c_char; 500] = [0; 500];
-    ReadValueFromString(
+    read_value_from_string(
         main_mission_pointer,
         GAMEDATANAME_INDICATION_STRING.as_ptr() as *mut c_char,
         cstr!("%s").as_ptr() as *mut c_char,
         buffer.as_mut_ptr() as *mut c_void,
     );
 
-    Init_Game_Data(buffer.as_mut_ptr());
+    init_game_data(buffer.as_mut_ptr());
 
     //--------------------
     // Now its time to get the shipname from the mission file and
     // read the ship file into the right memory structures
     //
-    ReadValueFromString(
+    read_value_from_string(
         main_mission_pointer,
         SHIPNAME_INDICATION_STRING.as_ptr() as *mut c_char,
         cstr!("%s").as_ptr() as *mut c_char,
         buffer.as_mut_ptr() as *mut c_void,
     );
 
-    if LoadShip(buffer.as_mut_ptr()) == defs::ERR.into() {
+    if load_ship(buffer.as_mut_ptr()) == defs::ERR.into() {
         error!("Error in LoadShip");
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
     //--------------------
     // Now its time to get the elevator file name from the mission file and
     // read the elevator file into the right memory structures
     //
-    ReadValueFromString(
+    read_value_from_string(
         main_mission_pointer,
         ELEVATORNAME_INDICATION_STRING.as_ptr() as *mut c_char,
         cstr!("%s").as_ptr() as *mut c_char,
         buffer.as_mut_ptr() as *mut c_void,
     );
 
-    if GetLiftConnections(buffer.as_mut_ptr()) == defs::ERR.into() {
+    if get_lift_connections(buffer.as_mut_ptr()) == defs::ERR.into() {
         error!("Error in GetLiftConnections");
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
     //--------------------
     // We also load the comment for the influencer to say at the beginning of the mission
@@ -700,14 +702,15 @@ pub unsafe fn InitNewMission(mission_name: *mut c_char) {
     // here would SegFault eventually!
     //  if (Me.TextToBeDisplayed) free (Me.TextToBeDisplayed);
 
-    Me.TextToBeDisplayed = cstr!("Ok. I'm on board.  Let's get to work.").as_ptr() as *mut c_char; // taken from Paradroid.mission
-    Me.TextVisibleTime = 0.;
+    ME.text_to_be_displayed =
+        cstr!("Ok. I'm on board.  Let's get to work.").as_ptr() as *mut c_char; // taken from Paradroid.mission
+    ME.text_visible_time = 0.;
 
     //--------------------
     // Now its time to get the crew file name from the mission file and
     // assemble an appropriate crew out of it
     //
-    ReadValueFromString(
+    read_value_from_string(
         main_mission_pointer,
         CREWNAME_INDICATION_STRING.as_ptr() as *mut c_char,
         cstr!("%s").as_ptr() as *mut c_char,
@@ -717,16 +720,16 @@ pub unsafe fn InitNewMission(mission_name: *mut c_char) {
     /* initialize enemys according to crew file */
     // WARNING!! THIS REQUIRES THE freedroid.ruleset FILE TO BE READ ALREADY, BECAUSE
     // ROBOT SPECIFICATIONS ARE ALREADY REQUIRED HERE!!!!!
-    if GetCrew(buffer.as_mut_ptr()) == defs::ERR.into() {
+    if get_crew(buffer.as_mut_ptr()) == defs::ERR.into() {
         error!("InitNewGame(): Initialization of enemys failed.",);
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
 
     //--------------------
     // Now its time to get the debriefing text from the mission file so that it
     // can be used, if the mission is completed and also the end title music name
     // must be read in as well
-    ReadValueFromString(
+    read_value_from_string(
         main_mission_pointer,
         MISSION_ENDTITLE_SONG_NAME_STRING.as_ptr() as *mut c_char,
         cstr!("%s").as_ptr() as *mut c_char,
@@ -736,7 +739,7 @@ pub unsafe fn InitNewMission(mission_name: *mut c_char) {
     if DEBRIEFING_TEXT.is_null().not() {
         libc::free(DEBRIEFING_TEXT as *mut c_void);
     }
-    DEBRIEFING_TEXT = ReadAndMallocStringFromData(
+    DEBRIEFING_TEXT = read_and_malloc_string_from_data(
         main_mission_pointer,
         MISSION_ENDTITLE_BEGIN_STRING.as_ptr() as *mut c_char,
         MISSION_ENDTITLE_END_STRING.as_ptr() as *mut c_char,
@@ -747,14 +750,14 @@ pub unsafe fn InitNewMission(mission_name: *mut c_char) {
     // current mission file, so that we know where to place the
     // influencer at the beginning of the mission.
 
-    let number_of_start_points = CountStringOccurences(
+    let number_of_start_points = count_string_occurences(
         main_mission_pointer,
         MISSION_START_POINT_STRING.as_ptr() as *mut c_char,
     );
 
     if number_of_start_points == 0 {
         error!("NOT EVEN ONE SINGLE STARTING POINT ENTRY FOUND!  TERMINATING!",);
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
     info!(
         "Found {} different starting points for the mission in the mission file.",
@@ -763,7 +766,7 @@ pub unsafe fn InitNewMission(mission_name: *mut c_char) {
 
     // Now that we know how many different starting points there are, we can randomly select
     // one of them and read then in this one starting point into the right structures...
-    let real_start_point = MyRandom(number_of_start_points - 1) + 1;
+    let real_start_point = my_random(number_of_start_points - 1) + 1;
     let mut start_point_pointer = main_mission_pointer;
     for _ in 0..real_start_point {
         start_point_pointer = libc::strstr(
@@ -784,7 +787,7 @@ pub unsafe fn InitNewMission(mission_name: *mut c_char) {
         cstr!("%d").as_ptr() as *mut c_char,
         &mut starting_level,
     );
-    CurLevel = curShip.AllLevels[usize::try_from(starting_level).unwrap()];
+    CUR_LEVEL = CUR_SHIP.all_levels[usize::try_from(starting_level).unwrap()];
     start_point_pointer = libc::strstr(start_point_pointer, cstr!("XPos=").as_ptr())
         .add(libc::strlen(cstr!("XPos=").as_ptr()));
     libc::sscanf(
@@ -792,7 +795,7 @@ pub unsafe fn InitNewMission(mission_name: *mut c_char) {
         cstr!("%d").as_ptr() as *mut c_char,
         &mut starting_x_pos,
     );
-    Me.pos.x = starting_x_pos as c_float;
+    ME.pos.x = starting_x_pos as c_float;
     start_point_pointer = libc::strstr(start_point_pointer, cstr!("YPos=").as_ptr())
         .add(libc::strlen(cstr!("YPos=").as_ptr()));
     libc::sscanf(
@@ -800,14 +803,14 @@ pub unsafe fn InitNewMission(mission_name: *mut c_char) {
         cstr!("%d").as_ptr() as *mut c_char,
         &mut starting_y_pos,
     );
-    Me.pos.y = starting_y_pos as c_float;
+    ME.pos.y = starting_y_pos as c_float;
     info!(
         "Final starting position: Level={} XPos={} YPos={}.",
         starting_level, starting_x_pos, starting_y_pos,
     );
 
     /* Reactivate the light on alle Levels, that might have been dark */
-    for &level in &curShip.AllLevels[0..usize::try_from(curShip.num_levels).unwrap()] {
+    for &level in &CUR_SHIP.all_levels[0..usize::try_from(CUR_SHIP.num_levels).unwrap()] {
         (*level).empty = false.into();
     }
 
@@ -816,50 +819,50 @@ pub unsafe fn InitNewMission(mission_name: *mut c_char) {
     //--------------------
     // At this point the position history can be initialized
     //
-    InitInfluPositionHistory();
+    init_influ_position_history();
     //  printf_SDL (ne_screen, -1, -1, ".");
 
     //  printf_SDL (ne_screen, -1, -1, " ok\n");
-    SetCurrentFont(oldfont);
+    set_current_font(oldfont);
     //--------------------
     // We start with doing the briefing things...
     // Now we search for the beginning of the mission briefing big section NOT subsection.
     // We display the title and explanation of controls and such...
-    let briefing_section_pointer = LocateStringInData(
+    let briefing_section_pointer = locate_string_in_data(
         main_mission_pointer,
         MISSION_BRIEFING_BEGIN_STRING.as_ptr() as *mut c_char,
     );
-    Title(briefing_section_pointer);
+    title(briefing_section_pointer);
 
     /* Den Banner fuer das Spiel anzeigen */
-    ClearGraphMem();
-    DisplayBanner(
+    clear_graph_mem();
+    display_banner(
         null_mut(),
         null_mut(),
         DisplayBannerFlags::FORCE_UPDATE.bits().into(),
     );
 
     // Switch_Background_Music_To (COMBAT_BACKGROUND_MUSIC_SOUND);
-    Switch_Background_Music_To((*CurLevel).Background_Song_Name);
+    switch_background_music_to((*CUR_LEVEL).background_song_name);
 
-    for level in &curShip.AllLevels[..usize::try_from(curShip.num_levels).unwrap()] {
-        CurLevel = *level;
-        ShuffleEnemys();
+    for level in &CUR_SHIP.all_levels[..usize::try_from(CUR_SHIP.num_levels).unwrap()] {
+        CUR_LEVEL = *level;
+        shuffle_enemys();
     }
 
-    CurLevel = curShip.AllLevels[usize::try_from(starting_level).unwrap()];
+    CUR_LEVEL = CUR_SHIP.all_levels[usize::try_from(starting_level).unwrap()];
 
     // Now that the briefing and all that is done,
     // the influence structure can be initialized for
     // the new mission:
-    Me.ty = Droid::Droid001 as c_int;
-    Me.speed.x = 0.;
-    Me.speed.y = 0.;
-    Me.energy = (*Druidmap.add(Droid::Droid001 as usize)).maxenergy;
-    Me.health = Me.energy; /* start with max. health */
-    Me.status = Status::Mobile as c_int;
-    Me.phase = 0.;
-    Me.timer = 0.0; // set clock to 0
+    ME.ty = Droid::Droid001 as c_int;
+    ME.speed.x = 0.;
+    ME.speed.y = 0.;
+    ME.energy = (*DRUIDMAP.add(Droid::Droid001 as usize)).maxenergy;
+    ME.health = ME.energy; /* start with max. health */
+    ME.status = Status::Mobile as c_int;
+    ME.phase = 0.;
+    ME.timer = 0.0; // set clock to 0
 
     info!("done."); // this matches the printf at the beginning of this function
 
@@ -870,7 +873,7 @@ pub unsafe fn InitNewMission(mission_name: *mut c_char) {
 ///  that a mission file has already been successfully loaded into
 ///  memory.  The briefing texts will be extracted and displayed in
 ///  scrolling font.
-pub unsafe fn Title(mission_briefing_pointer: *mut c_char) {
+pub unsafe fn title(mission_briefing_pointer: *mut c_char) {
     const BRIEFING_TITLE_PICTURE_STRING: &CStr =
         cstr!("The title picture in the graphics subdirectory for this mission is : ");
     const BRIEFING_TITLE_SONG_STRING: &CStr =
@@ -881,34 +884,34 @@ pub unsafe fn Title(mission_briefing_pointer: *mut c_char) {
         cstr!("* End of Mission Briefing Text Subsection *");
 
     let mut buffer: [c_char; 500] = [0; 500];
-    ReadValueFromString(
+    read_value_from_string(
         mission_briefing_pointer,
         BRIEFING_TITLE_SONG_STRING.as_ptr() as *mut c_char,
         cstr!("%s").as_ptr() as *mut c_char,
         buffer.as_mut_ptr() as *mut c_void,
     );
-    Switch_Background_Music_To(buffer.as_mut_ptr());
+    switch_background_music_to(buffer.as_mut_ptr());
 
-    SDL_SetClipRect(ne_screen, null_mut());
-    ReadValueFromString(
+    SDL_SetClipRect(NE_SCREEN, null_mut());
+    read_value_from_string(
         mission_briefing_pointer,
         BRIEFING_TITLE_PICTURE_STRING.as_ptr() as *mut c_char,
         cstr!("%s").as_ptr() as *mut c_char,
         buffer.as_mut_ptr() as *mut c_void,
     );
-    DisplayImage(find_file(
+    display_image(find_file(
         buffer.as_mut_ptr(),
         GRAPHICS_DIR_C.as_ptr() as *mut c_char,
         Themed::NoTheme as c_int,
         Criticality::Critical as c_int,
     ));
-    MakeGridOnScreen(Some(&Screen_Rect));
-    Me.status = Status::Briefing as c_int;
+    make_grid_on_screen(Some(&SCREEN_RECT));
+    ME.status = Status::Briefing as c_int;
     //  SDL_Flip (ne_screen);
 
-    SetCurrentFont(Para_BFont);
+    set_current_font(PARA_B_FONT);
 
-    DisplayBanner(
+    display_banner(
         null_mut(),
         null_mut(),
         DisplayBannerFlags::FORCE_UPDATE.bits().into(),
@@ -935,12 +938,12 @@ pub unsafe fn Title(mission_briefing_pointer: *mut c_char) {
         );
         if termination_pointer.is_null() {
             error!("Title: Unterminated Subsection in Mission briefing....Terminating...");
-            Terminate(defs::ERR.into());
+            terminate(defs::ERR.into());
         }
         let this_text_length = termination_pointer.offset_from(next_subsection_start_pointer);
         libc::free(prepared_briefing_text as *mut c_void);
         prepared_briefing_text =
-            MyMalloc(c_long::try_from(this_text_length).unwrap() + 10) as *mut c_char;
+            my_malloc(c_long::try_from(this_text_length).unwrap() + 10) as *mut c_char;
         libc::strncpy(
             prepared_briefing_text,
             next_subsection_start_pointer,
@@ -948,10 +951,10 @@ pub unsafe fn Title(mission_briefing_pointer: *mut c_char) {
         );
         *prepared_briefing_text.offset(this_text_length) = 0;
 
-        let mut rect = Full_User_Rect;
+        let mut rect = FULL_USER_RECT;
         rect.x += 10;
         rect.w -= 10; //leave some border
-        if ScrollText(prepared_briefing_text, &mut rect, 0) == 1 {
+        if scroll_text(prepared_briefing_text, &mut rect, 0) == 1 {
             break; // User pressed 'fire'
         }
     }
@@ -961,7 +964,7 @@ pub unsafe fn Title(mission_briefing_pointer: *mut c_char) {
 
 /// This function loads all the constant variables of the game from
 /// a dat file, that should be optimally human readable.
-pub unsafe fn Init_Game_Data(data_filename: *mut c_char) {
+pub unsafe fn init_game_data(data_filename: *mut c_char) {
     const END_OF_GAME_DAT_STRING: &CStr = cstr!("*** End of game.dat File ***");
 
     /* Read the whole game data to memory */
@@ -972,11 +975,12 @@ pub unsafe fn Init_Game_Data(data_filename: *mut c_char) {
         Criticality::Critical as c_int,
     );
 
-    let data = ReadAndMallocAndTerminateFile(fpath, END_OF_GAME_DAT_STRING.as_ptr() as *mut c_char);
+    let data =
+        read_and_malloc_and_terminate_file(fpath, END_OF_GAME_DAT_STRING.as_ptr() as *mut c_char);
 
-    Get_General_Game_Constants(data);
-    Get_Robot_Data(data as *mut c_void);
-    Get_Bullet_Data(data as *mut c_void);
+    get_general_game_constants(data);
+    get_robot_data(data as *mut c_void);
+    get_bullet_data(data as *mut c_void);
 
     // Now we read in the total time amount for the blast animations
     const BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING: &CStr =
@@ -984,17 +988,17 @@ pub unsafe fn Init_Game_Data(data_filename: *mut c_char) {
     const BLAST_TWO_TOTAL_AMOUNT_OF_TIME_STRING: &CStr =
         cstr!("Time in seconds for the animation of blast one :");
 
-    ReadValueFromString(
+    read_value_from_string(
         data,
         BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING.as_ptr() as *mut c_char,
         cstr!("%f").as_ptr() as *mut c_char,
-        &mut Blastmap[0].total_animation_time as *mut f32 as *mut c_void,
+        &mut BLASTMAP[0].total_animation_time as *mut f32 as *mut c_void,
     );
-    ReadValueFromString(
+    read_value_from_string(
         data,
         BLAST_TWO_TOTAL_AMOUNT_OF_TIME_STRING.as_ptr() as *mut c_char,
         cstr!("%f").as_ptr() as *mut c_char,
-        &mut Blastmap[1].total_animation_time as *mut f32 as *mut c_void,
+        &mut BLASTMAP[1].total_animation_time as *mut f32 as *mut c_void,
     );
 
     libc::free(data as *mut c_void);
@@ -1002,7 +1006,7 @@ pub unsafe fn Init_Game_Data(data_filename: *mut c_char) {
 
 /// This function loads all the constant variables of the game from
 /// a dat file, that should be optimally human readable.
-pub unsafe fn Get_Robot_Data(data_pointer: *mut c_void) {
+pub unsafe fn get_robot_data(data_pointer: *mut c_void) {
     const MAXSPEED_CALIBRATOR_STRING: &CStr =
         cstr!("Common factor for all droids maxspeed values: ");
     const ACCELERATION_CALIBRATOR_STRING: &CStr =
@@ -1048,7 +1052,7 @@ pub unsafe fn Get_Robot_Data(data_pointer: *mut c_void) {
     let mut aggression_calibrator = 0f32;
     let mut score_calibrator = 0f32;
 
-    let mut robot_pointer = LocateStringInData(
+    let mut robot_pointer = locate_string_in_data(
         data_pointer as *mut c_char,
         ROBOT_SECTION_BEGIN_STRING.as_ptr() as *mut c_char,
     );
@@ -1056,7 +1060,7 @@ pub unsafe fn Get_Robot_Data(data_pointer: *mut c_void) {
     info!("Starting to read robot calibration section");
 
     // Now we read in the speed calibration factor for all droids
-    ReadValueFromString(
+    read_value_from_string(
         robot_pointer,
         MAXSPEED_CALIBRATOR_STRING.as_ptr() as *mut c_char,
         cstr!("%f").as_ptr() as *mut c_char,
@@ -1064,7 +1068,7 @@ pub unsafe fn Get_Robot_Data(data_pointer: *mut c_void) {
     );
 
     // Now we read in the acceleration calibration factor for all droids
-    ReadValueFromString(
+    read_value_from_string(
         robot_pointer,
         ACCELERATION_CALIBRATOR_STRING.as_ptr() as *mut c_char,
         cstr!("%f").as_ptr() as *mut c_char,
@@ -1072,7 +1076,7 @@ pub unsafe fn Get_Robot_Data(data_pointer: *mut c_void) {
     );
 
     // Now we read in the maxenergy calibration factor for all droids
-    ReadValueFromString(
+    read_value_from_string(
         robot_pointer,
         MAXENERGY_CALIBRATOR_STRING.as_ptr() as *mut c_char,
         cstr!("%f").as_ptr() as *mut c_char,
@@ -1080,7 +1084,7 @@ pub unsafe fn Get_Robot_Data(data_pointer: *mut c_void) {
     );
 
     // Now we read in the energy_loss calibration factor for all droids
-    ReadValueFromString(
+    read_value_from_string(
         robot_pointer,
         ENERGYLOSS_CALIBRATOR_STRING.as_ptr() as *mut c_char,
         cstr!("%f").as_ptr() as *mut c_char,
@@ -1088,7 +1092,7 @@ pub unsafe fn Get_Robot_Data(data_pointer: *mut c_void) {
     );
 
     // Now we read in the aggression calibration factor for all droids
-    ReadValueFromString(
+    read_value_from_string(
         robot_pointer,
         AGGRESSION_CALIBRATOR_STRING.as_ptr() as *mut c_char,
         cstr!("%f").as_ptr() as *mut c_char,
@@ -1096,7 +1100,7 @@ pub unsafe fn Get_Robot_Data(data_pointer: *mut c_void) {
     );
 
     // Now we read in the score calibration factor for all droids
-    ReadValueFromString(
+    read_value_from_string(
         robot_pointer,
         SCORE_CALIBRATOR_STRING.as_ptr() as *mut c_char,
         cstr!("%f").as_ptr() as *mut c_char,
@@ -1106,23 +1110,23 @@ pub unsafe fn Get_Robot_Data(data_pointer: *mut c_void) {
     info!("Starting to read Robot data...");
 
     // cleanup if previously allocated:
-    FreeDruidmap();
+    free_druidmap();
 
     // At first, we must allocate memory for the droid specifications.
     // How much?  That depends on the number of droids defined in freedroid.ruleset.
     // So we have to count those first.  ok.  lets do it.
-    Number_Of_Droid_Types = CountStringOccurences(
+    NUMBER_OF_DROID_TYPES = count_string_occurences(
         data_pointer as *mut c_char,
         NEW_ROBOT_BEGIN_STRING.as_ptr() as *mut c_char,
     );
 
     // Now that we know how many robots are defined in freedroid.ruleset, we can allocate
     // a fitting amount of memory.
-    let mem = usize::try_from(Number_Of_Droid_Types).unwrap() * std::mem::size_of::<DruidSpec>();
-    Druidmap = MyMalloc(mem.try_into().unwrap()) as *mut DruidSpec;
+    let mem = usize::try_from(NUMBER_OF_DROID_TYPES).unwrap() * std::mem::size_of::<DruidSpec>();
+    DRUIDMAP = my_malloc(mem.try_into().unwrap()) as *mut DruidSpec;
     info!(
         "We have counted {} different druid types in the game data file.",
-        Number_Of_Droid_Types,
+        NUMBER_OF_DROID_TYPES,
     );
     info!("MEMORY HAS BEEN ALLOCATED. THE READING CAN BEGIN.");
 
@@ -1137,140 +1141,140 @@ pub unsafe fn Get_Robot_Data(data_pointer: *mut c_void) {
         robot_pointer = robot_pointer.add(1); // to avoid doubly taking this entry
 
         // Now we read in the Name of this droid.  We consider as a name the rest of the
-        ReadValueFromString(
+        read_value_from_string(
             robot_pointer,
             DROIDNAME_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%s").as_ptr() as *mut c_char,
-            &mut (*Druidmap.add(robot_index)).druidname as *mut _ as *mut c_void,
+            &mut (*DRUIDMAP.add(robot_index)).druidname as *mut _ as *mut c_void,
         );
 
         // Now we read in the maximal speed this droid can go.
-        ReadValueFromString(
+        read_value_from_string(
             robot_pointer,
             MAXSPEED_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
-            &mut (*Druidmap.add(robot_index)).maxspeed as *mut _ as *mut c_void,
+            &mut (*DRUIDMAP.add(robot_index)).maxspeed as *mut _ as *mut c_void,
         );
 
         // Now we read in the class of this droid.
-        ReadValueFromString(
+        read_value_from_string(
             robot_pointer,
             CLASS_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
-            &mut (*Druidmap.add(robot_index)).class as *mut _ as *mut c_void,
+            &mut (*DRUIDMAP.add(robot_index)).class as *mut _ as *mut c_void,
         );
 
         // Now we read in the maximal acceleration this droid can go.
-        ReadValueFromString(
+        read_value_from_string(
             robot_pointer,
             ACCELERATION_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
-            &mut (*Druidmap.add(robot_index)).accel as *mut _ as *mut c_void,
+            &mut (*DRUIDMAP.add(robot_index)).accel as *mut _ as *mut c_void,
         );
 
         // Now we read in the maximal energy this droid can store.
-        ReadValueFromString(
+        read_value_from_string(
             robot_pointer,
             MAXENERGY_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
-            &mut (*Druidmap.add(robot_index)).maxenergy as *mut _ as *mut c_void,
+            &mut (*DRUIDMAP.add(robot_index)).maxenergy as *mut _ as *mut c_void,
         );
 
         // Now we read in the lose_health rate.
-        ReadValueFromString(
+        read_value_from_string(
             robot_pointer,
             LOSEHEALTH_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
-            &mut (*Druidmap.add(robot_index)).lose_health as *mut _ as *mut c_void,
+            &mut (*DRUIDMAP.add(robot_index)).lose_health as *mut _ as *mut c_void,
         );
 
         // Now we read in the class of this droid.
-        ReadValueFromString(
+        read_value_from_string(
             robot_pointer,
             GUN_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
-            &mut (*Druidmap.add(robot_index)).gun as *mut _ as *mut c_void,
+            &mut (*DRUIDMAP.add(robot_index)).gun as *mut _ as *mut c_void,
         );
 
         // Now we read in the aggression rate of this droid.
-        ReadValueFromString(
+        read_value_from_string(
             robot_pointer,
             AGGRESSION_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
-            &mut (*Druidmap.add(robot_index)).aggression as *mut _ as *mut c_void,
+            &mut (*DRUIDMAP.add(robot_index)).aggression as *mut _ as *mut c_void,
         );
 
         // Now we read in the flash immunity of this droid.
-        ReadValueFromString(
+        read_value_from_string(
             robot_pointer,
             FLASHIMMUNE_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
-            &mut (*Druidmap.add(robot_index)).flashimmune as *mut _ as *mut c_void,
+            &mut (*DRUIDMAP.add(robot_index)).flashimmune as *mut _ as *mut c_void,
         );
 
         // Now we score to be had for destroying one droid of this type
-        ReadValueFromString(
+        read_value_from_string(
             robot_pointer,
             SCORE_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
-            &mut (*Druidmap.add(robot_index)).score as *mut _ as *mut c_void,
+            &mut (*DRUIDMAP.add(robot_index)).score as *mut _ as *mut c_void,
         );
 
         // Now we read in the height of this droid of this type
-        ReadValueFromString(
+        read_value_from_string(
             robot_pointer,
             HEIGHT_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
-            &mut (*Druidmap.add(robot_index)).height as *mut _ as *mut c_void,
+            &mut (*DRUIDMAP.add(robot_index)).height as *mut _ as *mut c_void,
         );
 
         // Now we read in the weight of this droid type
-        ReadValueFromString(
+        read_value_from_string(
             robot_pointer,
             WEIGHT_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
-            &mut (*Druidmap.add(robot_index)).weight as *mut _ as *mut c_void,
+            &mut (*DRUIDMAP.add(robot_index)).weight as *mut _ as *mut c_void,
         );
 
         // Now we read in the drive of this droid of this type
-        ReadValueFromString(
+        read_value_from_string(
             robot_pointer,
             DRIVE_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
-            &mut (*Druidmap.add(robot_index)).drive as *mut _ as *mut c_void,
+            &mut (*DRUIDMAP.add(robot_index)).drive as *mut _ as *mut c_void,
         );
 
         // Now we read in the brain of this droid of this type
-        ReadValueFromString(
+        read_value_from_string(
             robot_pointer,
             BRAIN_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
-            &mut (*Druidmap.add(robot_index)).brain as *mut _ as *mut c_void,
+            &mut (*DRUIDMAP.add(robot_index)).brain as *mut _ as *mut c_void,
         );
 
         // Now we read in the sensor 1, 2 and 3 of this droid type
-        ReadValueFromString(
+        read_value_from_string(
             robot_pointer,
             SENSOR1_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
-            &mut (*Druidmap.add(robot_index)).sensor1 as *mut _ as *mut c_void,
+            &mut (*DRUIDMAP.add(robot_index)).sensor1 as *mut _ as *mut c_void,
         );
-        ReadValueFromString(
+        read_value_from_string(
             robot_pointer,
             SENSOR2_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
-            &mut (*Druidmap.add(robot_index)).sensor2 as *mut _ as *mut c_void,
+            &mut (*DRUIDMAP.add(robot_index)).sensor2 as *mut _ as *mut c_void,
         );
-        ReadValueFromString(
+        read_value_from_string(
             robot_pointer,
             SENSOR3_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
-            &mut (*Druidmap.add(robot_index)).sensor3 as *mut _ as *mut c_void,
+            &mut (*DRUIDMAP.add(robot_index)).sensor3 as *mut _ as *mut c_void,
         );
 
         // Now we read in the notes concerning this droid.  We consider as notes all the rest of the
         // line after the NOTES_BEGIN_STRING until the "\n" is found.
-        (*Druidmap.add(robot_index)).notes = ReadAndMallocStringFromData(
+        (*DRUIDMAP.add(robot_index)).notes = read_and_malloc_string_from_data(
             robot_pointer,
             NOTES_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("\n").as_ptr() as *mut c_char,
@@ -1284,7 +1288,7 @@ pub unsafe fn Get_Robot_Data(data_pointer: *mut c_void) {
     info!("That must have been the last robot.  We're done reading the robot data.");
     info!("Applying the calibration factors to all droids...");
 
-    for droid in std::slice::from_raw_parts_mut(Druidmap, Number_Of_Droid_Types.try_into().unwrap())
+    for droid in std::slice::from_raw_parts_mut(DRUIDMAP, NUMBER_OF_DROID_TYPES.try_into().unwrap())
     {
         droid.maxspeed *= maxspeed_calibrator;
         droid.accel *= acceleration_calibrator;
@@ -1299,7 +1303,7 @@ pub unsafe fn Get_Robot_Data(data_pointer: *mut c_void) {
 /// but IT DOES NOT LOAD THE FILE, IT ASSUMES IT IS ALREADY LOADED and
 /// it only receives a pointer to the start of the bullet section from
 /// the calling function.
-pub unsafe fn Get_Bullet_Data(data_pointer: *mut c_void) {
+pub unsafe fn get_bullet_data(data_pointer: *mut c_void) {
     // const BULLET_SECTION_BEGIN_STRING: &CStr = cstr!("*** Start of Bullet Data Section: ***");
     // const BULLET_SECTION_END_STRING: &CStr = cstr!("*** End of Bullet Data Section: ***");
     const NEW_BULLET_TYPE_BEGIN_STRING: &CStr =
@@ -1326,7 +1330,7 @@ pub unsafe fn Get_Bullet_Data(data_pointer: *mut c_void) {
     // How much?  That depends on the number of droids defined in freedroid.ruleset.
     // So we have to count those first.  ok.  lets do it.
 
-    Number_Of_Bullet_Types = CountStringOccurences(
+    NUMBER_OF_BULLET_TYPES = count_string_occurences(
         data_pointer as *mut c_char,
         NEW_BULLET_TYPE_BEGIN_STRING.as_ptr() as *mut c_char,
     );
@@ -1338,18 +1342,18 @@ pub unsafe fn Get_Bullet_Data(data_pointer: *mut c_void) {
     // If we would do that in any case, every Init_Game_Data call would destroy the loaded
     // image files AND MOST LIKELY CAUSE A SEGFAULT!!!
     //
-    if Bulletmap.is_null() {
+    if BULLETMAP.is_null() {
         let mem =
-            usize::try_from(Number_Of_Bullet_Types).unwrap() * std::mem::size_of::<BulletSpec>();
-        Bulletmap = MyMalloc(mem.try_into().unwrap()) as *mut BulletSpec;
+            usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap() * std::mem::size_of::<BulletSpec>();
+        BULLETMAP = my_malloc(mem.try_into().unwrap()) as *mut BulletSpec;
         std::ptr::write_bytes(
-            Bulletmap,
+            BULLETMAP,
             0,
-            usize::try_from(Number_Of_Bullet_Types).unwrap(),
+            usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap(),
         );
         info!(
             "We have counted {} different bullet types in the game data file.",
-            Number_Of_Bullet_Types
+            NUMBER_OF_BULLET_TYPES
         );
         info!("MEMORY HAS BEEN ALLOCATED. THE READING CAN BEGIN.");
     }
@@ -1367,27 +1371,27 @@ pub unsafe fn Get_Bullet_Data(data_pointer: *mut c_void) {
         bullet_pointer = bullet_pointer.add(1); // to avoid doubly taking this entry
 
         // Now we read in the recharging time for this bullettype(=weapontype)
-        ReadValueFromString(
+        read_value_from_string(
             bullet_pointer,
             BULLET_RECHARGE_TIME_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
-            &mut (*Bulletmap.add(bullet_index)).recharging_time as *mut _ as *mut c_void,
+            &mut (*BULLETMAP.add(bullet_index)).recharging_time as *mut _ as *mut c_void,
         );
 
         // Now we read in the maximal speed this type of bullet can go.
-        ReadValueFromString(
+        read_value_from_string(
             bullet_pointer,
             BULLET_SPEED_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
-            &mut (*Bulletmap.add(bullet_index)).speed as *mut _ as *mut c_void,
+            &mut (*BULLETMAP.add(bullet_index)).speed as *mut _ as *mut c_void,
         );
 
         // Now we read in the damage this bullet can do
-        ReadValueFromString(
+        read_value_from_string(
             bullet_pointer,
             BULLET_DAMAGE_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
-            &mut (*Bulletmap.add(bullet_index)).damage as *mut _ as *mut c_void,
+            &mut (*BULLETMAP.add(bullet_index)).damage as *mut _ as *mut c_void,
         );
 
         // Now we read in the number of phases that are designed for this bullet type
@@ -1396,11 +1400,11 @@ pub unsafe fn Get_Bullet_Data(data_pointer: *mut c_void) {
         // &(*Bulletmap.add(BulletIndex)).phases , EndOfBulletData );
 
         // Now we read in the type of blast this bullet will cause when crashing e.g. against the wall
-        ReadValueFromString(
+        read_value_from_string(
             bullet_pointer,
             BULLET_BLAST_TYPE_CAUSED_BEGIN_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
-            &mut (*Bulletmap.add(bullet_index)).blast as *mut _ as *mut c_void,
+            &mut (*BULLETMAP.add(bullet_index)).blast as *mut _ as *mut c_void,
         );
 
         bullet_index += 1;
@@ -1416,7 +1420,7 @@ pub unsafe fn Get_Bullet_Data(data_pointer: *mut c_void) {
     let mut bullet_damage_calibrator = 0f32;
 
     // Now we read in the speed calibration factor for all bullets
-    ReadValueFromString(
+    read_value_from_string(
         data_pointer as *mut c_char,
         BULLET_SPEED_CALIBRATOR_STRING.as_ptr() as *mut c_char,
         cstr!("%f").as_ptr() as *mut c_char,
@@ -1424,7 +1428,7 @@ pub unsafe fn Get_Bullet_Data(data_pointer: *mut c_void) {
     );
 
     // Now we read in the damage calibration factor for all bullets
-    ReadValueFromString(
+    read_value_from_string(
         data_pointer as *mut c_char,
         BULLET_DAMAGE_CALIBRATOR_STRING.as_ptr() as *mut c_char,
         cstr!("%f").as_ptr() as *mut c_char,
@@ -1434,7 +1438,7 @@ pub unsafe fn Get_Bullet_Data(data_pointer: *mut c_void) {
     // Now that all the calibrations factors have been read in, we can start to
     // apply them to all the bullet types
     for bullet in
-        std::slice::from_raw_parts_mut(Bulletmap, usize::try_from(Number_Of_Bullet_Types).unwrap())
+        std::slice::from_raw_parts_mut(BULLETMAP, usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap())
     {
         bullet.speed *= bullet_speed_calibrator;
         bullet.damage = (bullet.damage as f32 * bullet_damage_calibrator) as c_int;
@@ -1443,7 +1447,7 @@ pub unsafe fn Get_Bullet_Data(data_pointer: *mut c_void) {
 
 /// This function loads all the constant variables of the game from
 /// a dat file, that should be optimally human readable.
-pub unsafe fn Get_General_Game_Constants(data: *mut c_char) {
+pub unsafe fn get_general_game_constants(data: *mut c_char) {
     // const CONSTANTS_SECTION_BEGIN_STRING: &CStr =
     //     cstr!("*** Start of General Game Constants Section: ***");
     // const CONSTANTS_SECTION_END_STRING: &CStr =
@@ -1465,72 +1469,72 @@ pub unsafe fn Get_General_Game_Constants(data: *mut c_char) {
     info!("Starting to read contents of General Game Constants section");
 
     // read in Alert-related parameters:
-    ReadValueFromString(
+    read_value_from_string(
         data,
         DEATHCOUNT_DRAIN_SPEED_STRING.as_ptr() as *mut c_char,
         cstr!("%f").as_ptr() as *mut c_char,
-        &mut DeathCountDrainSpeed as *mut _ as *mut c_void,
+        &mut DEATH_COUNT_DRAIN_SPEED as *mut _ as *mut c_void,
     );
-    ReadValueFromString(
+    read_value_from_string(
         data,
         ALERT_THRESHOLD_STRING.as_ptr() as *mut c_char,
         cstr!("%d").as_ptr() as *mut c_char,
-        &mut AlertThreshold as *mut _ as *mut c_void,
+        &mut ALERT_THRESHOLD as *mut _ as *mut c_void,
     );
-    ReadValueFromString(
+    read_value_from_string(
         data,
         ALERT_BONUS_PER_SEC_STRING.as_ptr() as *mut c_char,
         cstr!("%f").as_ptr() as *mut c_char,
-        &mut AlertBonusPerSec as *mut _ as *mut c_void,
+        &mut ALERT_BONUS_PER_SEC as *mut _ as *mut c_void,
     );
 
     // Now we read in the speed calibration factor for all bullets
-    ReadValueFromString(
+    read_value_from_string(
         data,
         COLLISION_LOSE_ENERGY_CALIBRATOR_STRING.as_ptr() as *mut c_char,
         cstr!("%f").as_ptr() as *mut c_char,
-        &mut collision_lose_energy_calibrator as *mut _ as *mut c_void,
+        &mut COLLISION_LOSE_ENERGY_CALIBRATOR as *mut _ as *mut c_void,
     );
 
     // Now we read in the blast radius
-    ReadValueFromString(
+    read_value_from_string(
         data,
         BLAST_RADIUS_SPECIFICATION_STRING.as_ptr() as *mut c_char,
         cstr!("%f").as_ptr() as *mut c_char,
-        &mut Blast_Radius as *mut _ as *mut c_void,
+        &mut BLAST_RADIUS as *mut _ as *mut c_void,
     );
 
     // Now we read in the druid 'radius' in x direction
-    ReadValueFromString(
+    read_value_from_string(
         data,
         DROID_RADIUS_SPECIFICATION_STRING.as_ptr() as *mut c_char,
         cstr!("%f").as_ptr() as *mut c_char,
-        &mut Droid_Radius as *mut _ as *mut c_void,
+        &mut DROID_RADIUS as *mut _ as *mut c_void,
     );
 
     // Now we read in the blast damage amount per 'second' of contact with the blast
-    ReadValueFromString(
+    read_value_from_string(
         data,
         BLAST_DAMAGE_SPECIFICATION_STRING.as_ptr() as *mut c_char,
         cstr!("%f").as_ptr() as *mut c_char,
-        &mut Blast_Damage_Per_Second as *mut _ as *mut c_void,
+        &mut BLAST_DAMAGE_PER_SECOND as *mut _ as *mut c_void,
     );
 
     // Now we read in the time is takes for the door to move one phase
-    ReadValueFromString(
+    read_value_from_string(
         data,
         TIME_FOR_DOOR_MOVEMENT_SPECIFICATION_STRING.as_ptr() as *mut c_char,
         cstr!("%f").as_ptr() as *mut c_char,
-        &mut Time_For_Each_Phase_Of_Door_Movement as *mut _ as *mut c_void,
+        &mut TIME_FOR_EACH_PHASE_OF_DOOR_MOVEMENT as *mut _ as *mut c_void,
     );
 }
 
 /// Show end-screen
-pub unsafe fn ThouArtDefeated() {
-    Me.status = Status::Terminated as c_int;
+pub unsafe fn thou_art_defeated() {
+    ME.status = Status::Terminated as c_int;
     SDL_ShowCursor(SDL_DISABLE);
 
-    ExplodeInfluencer();
+    explode_influencer();
 
     wait_for_all_keys_released();
 
@@ -1540,13 +1544,13 @@ pub unsafe fn ThouArtDefeated() {
         // add "slow motion effect" for final explosion
         set_time_factor(SLOWMO_FACTOR);
 
-        StartTakingTimeForFPSCalculation();
-        DisplayBanner(null_mut(), null_mut(), 0);
-        ExplodeBlasts();
-        MoveBullets();
-        MoveEnemys();
-        Assemble_Combat_Picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
-        ComputeFPSForThisFrame();
+        start_taking_time_for_fps_calculation();
+        display_banner(null_mut(), null_mut(), 0);
+        explode_blasts();
+        move_bullets();
+        move_enemys();
+        assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+        compute_fps_for_this_frame();
         if any_key_just_pressed() != 0 {
             break;
         }
@@ -1556,42 +1560,42 @@ pub unsafe fn ThouArtDefeated() {
     Mix_HaltMusic();
 
     // important!!: don't forget to stop fps calculation here (bugfix: enemy piles after gameOver)
-    Activate_Conservative_Frame_Computation();
+    activate_conservative_frame_computation();
 
     white_noise(
-        ne_screen,
-        &mut User_Rect,
+        NE_SCREEN,
+        &mut USER_RECT,
         WAIT_AFTER_KILLED.try_into().unwrap(),
     );
 
-    Assemble_Combat_Picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
-    MakeGridOnScreen(Some(&User_Rect));
+    assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+    make_grid_on_screen(Some(&USER_RECT));
 
     let mut dst = Rect {
-        x: get_user_center().x - i16::try_from(Portrait_Rect.w / 2).unwrap(),
-        y: get_user_center().y - i16::try_from(Portrait_Rect.h / 2).unwrap(),
-        w: Portrait_Rect.w,
-        h: Portrait_Rect.h,
+        x: get_user_center().x - i16::try_from(PORTRAIT_RECT.w / 2).unwrap(),
+        y: get_user_center().y - i16::try_from(PORTRAIT_RECT.h / 2).unwrap(),
+        w: PORTRAIT_RECT.w,
+        h: PORTRAIT_RECT.h,
     };
-    SDL_UpperBlit(pic999, null_mut(), ne_screen, &mut dst);
-    ThouArtDefeatedSound();
+    SDL_UpperBlit(PIC999, null_mut(), NE_SCREEN, &mut dst);
+    thou_art_defeated_sound();
 
-    SetCurrentFont(Para_BFont);
-    let h = FontHeight(&*Para_BFont);
-    DisplayText(
+    set_current_font(PARA_B_FONT);
+    let h = font_height(&*PARA_B_FONT);
+    display_text(
         cstr!("Transmission").as_ptr() as *mut c_char,
         i32::from(dst.x) - h,
         i32::from(dst.y) - h,
-        &User_Rect,
+        &USER_RECT,
     );
-    DisplayText(
+    display_text(
         cstr!("Terminated").as_ptr() as *mut c_char,
         i32::from(dst.x) - h,
         i32::from(dst.y) + i32::from(dst.h),
-        &User_Rect,
+        &USER_RECT,
     );
-    printf_SDL(ne_screen, -1, -1, format_args!("\n"));
-    SDL_Flip(ne_screen);
+    printf_sdl(NE_SCREEN, -1, -1, format_args!("\n"));
+    SDL_Flip(NE_SCREEN);
 
     now = SDL_GetTicks();
 
@@ -1603,7 +1607,7 @@ pub unsafe fn ThouArtDefeated() {
         }
     }
 
-    UpdateHighscores();
+    update_highscores();
 
-    GameOver = true.into();
+    GAME_OVER = true.into();
 }

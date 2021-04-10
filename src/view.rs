@@ -1,31 +1,29 @@
 use crate::{
-    b_font::{FontHeight, PrintStringFont, PutStringFont, SetCurrentFont},
+    b_font::{font_height, print_string_font, put_string_font, set_current_font},
     defs::{
         self, get_user_center, AssembleCombatWindowFlags, BulletKind, DisplayBannerFlags, Status,
         BLINKENERGY, CRY_SOUND_INTERVAL, FLASH_DURATION, LEFT_TEXT_LEN, MAXBLASTS, MAXBULLETS,
         RIGHT_TEXT_LEN, TRANSFER_SOUND_INTERVAL,
     },
-    global::{Font0_BFont, GameConfig, Para_BFont, INFLUENCE_MODE_NAMES},
+    global::{FONT0_B_FONT, GAME_CONFIG, INFLUENCE_MODE_NAMES, PARA_B_FONT},
     graphics::{
-        banner_pic, ne_screen, ApplyFilter, BannerIsDestroyed, BuildBlock, Decal_pics,
-        EnemyDigitSurfacePointer, EnemySurfacePointer, InfluDigitSurfacePointer,
-        InfluencerSurfacePointer, MapBlockSurfacePointer,
+        apply_filter, BANNER_IS_DESTROYED, BANNER_PIC, BUILD_BLOCK, DECAL_PICS,
+        ENEMY_DIGIT_SURFACE_POINTER, ENEMY_SURFACE_POINTER, INFLUENCER_SURFACE_POINTER,
+        INFLU_DIGIT_SURFACE_POINTER, MAP_BLOCK_SURFACE_POINTER, NE_SCREEN,
     },
-    map::{GetMapBrick, IsVisible},
-    misc::{Frame_Time, Terminate},
-    show_all_droids,
-    sound::{CrySound, TransferSound},
-    structs::{Enemy, Finepoint, GrobPoint, Point},
-    text::DisplayText,
+    map::{get_map_brick, is_visible},
+    misc::{frame_time, terminate},
+    sound::{cry_sound, transfer_sound},
+    structs::{Enemy, Finepoint, GrobPoint},
+    text::display_text,
     vars::{
-        Banner_Rect, Blastmap, Block_Rect, Bulletmap, Druidmap, Full_User_Rect, LeftInfo_Rect,
-        RightInfo_Rect, User_Rect,
+        BANNER_RECT, BLASTMAP, BLOCK_RECT, BULLETMAP, DRUIDMAP, FULL_USER_RECT, LEFT_INFO_RECT,
+        RIGHT_INFO_RECT, USER_RECT,
     },
-    AllBlasts, AllBullets, AllEnemys, CurLevel, DeathCount, FirstDigit_Rect, Me,
-    Number_Of_Droid_Types, SecondDigit_Rect, ShowScore, ThirdDigit_Rect,
+    ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, DEATH_COUNT, FIRST_DIGIT_RECT, ME,
+    NUMBER_OF_DROID_TYPES, SECOND_DIGIT_RECT, SHOW_ALL_DROIDS, SHOW_SCORE, THIRD_DIGIT_RECT,
 };
 
-use cstr::cstr;
 use log::{error, info, trace, warn};
 use sdl::{
     sdl::Rect,
@@ -54,7 +52,7 @@ extern "C" {
 
 const BLINK_LEN: f32 = 1.0;
 
-pub static Black: SDL_Color = SDL_Color {
+pub static BLACK: SDL_Color = SDL_Color {
     r: 0,
     g: 0,
     b: 0,
@@ -74,10 +72,10 @@ const FLASH_DARK: SDL_Color = SDL_Color {
     unused: 0,
 };
 
-pub unsafe fn Fill_Rect(mut rect: Rect, color: SDL_Color) {
-    let pixcolor = SDL_MapRGB((*ne_screen).format, color.r, color.g, color.b);
+pub unsafe fn fill_rect(mut rect: Rect, color: SDL_Color) {
+    let pixcolor = SDL_MapRGB((*NE_SCREEN).format, color.r, color.g, color.b);
 
-    SDL_FillRect(ne_screen, &mut rect, pixcolor);
+    SDL_FillRect(NE_SCREEN, &mut rect, pixcolor);
 }
 
 /// This function assembles the contents of the combat window
@@ -93,7 +91,7 @@ pub unsafe fn Fill_Rect(mut rect: Rect, color: SDL_Color) {
 ///     that has been modified
 ///
 /// (*) SHOW_FULL_MAP = 0x04: show complete map, disregard visibility
-pub unsafe fn Assemble_Combat_Picture(mask: c_int) {
+pub unsafe fn assemble_combat_picture(mask: c_int) {
     thread_local! {
         static TIME_SINCE_LAST_FPS_UPDATE: Cell<f32> = Cell::new(10.);
         static FPS_DISPLAYED: Cell<i32>=Cell::new(1);
@@ -103,28 +101,28 @@ pub unsafe fn Assemble_Combat_Picture(mask: c_int) {
 
     trace!("\nvoid Assemble_Combat_Picture(...): Real function call confirmed.");
 
-    SDL_SetClipRect(ne_screen, &User_Rect);
+    SDL_SetClipRect(NE_SCREEN, &USER_RECT);
 
-    if GameConfig.AllMapVisible == 0 {
-        Fill_Rect(User_Rect, Black);
+    if GAME_CONFIG.all_map_visible == 0 {
+        fill_rect(USER_RECT, BLACK);
     }
 
     let (upleft, downright) =
         if (mask & AssembleCombatWindowFlags::SHOW_FULL_MAP.bits() as i32) != 0 {
             let upleft = GrobPoint { x: -5, y: -5 };
             let downright = GrobPoint {
-                x: (*CurLevel).xlen as i8 + 5,
-                y: (*CurLevel).ylen as i8 + 5,
+                x: (*CUR_LEVEL).xlen as i8 + 5,
+                y: (*CUR_LEVEL).ylen as i8 + 5,
             };
             (upleft, downright)
         } else {
             let upleft = GrobPoint {
-                x: Me.pos.x as i8 - 6,
-                y: Me.pos.y as i8 - 5,
+                x: ME.pos.x as i8 - 6,
+                y: ME.pos.y as i8 - 5,
             };
             let downright = GrobPoint {
-                x: Me.pos.x as i8 + 7,
-                y: Me.pos.y as i8 + 5,
+                x: ME.pos.x as i8 + 7,
+                y: ME.pos.y as i8 + 5,
             };
             (upleft, downright)
         };
@@ -137,13 +135,13 @@ pub unsafe fn Assemble_Combat_Picture(mask: c_int) {
     (upleft.y..downright.y)
         .flat_map(|line| (upleft.x..downright.x).map(move |col| (line, col)))
         .for_each(|(line, col)| {
-            if GameConfig.AllMapVisible == 0
+            if GAME_CONFIG.all_map_visible == 0
                 && ((mask & AssembleCombatWindowFlags::SHOW_FULL_MAP.bits() as i32) == 0x0)
             {
                 pos.x = col.into();
                 pos.y = line.into();
-                vect.x = Me.pos.x - pos.x;
-                vect.y = Me.pos.y - pos.y;
+                vect.x = ME.pos.x - pos.x;
+                vect.y = ME.pos.y - pos.y;
                 len = (vect.x * vect.x + vect.y * vect.y).sqrt() + 0.01;
                 vect.x /= len;
                 vect.y /= len;
@@ -151,24 +149,24 @@ pub unsafe fn Assemble_Combat_Picture(mask: c_int) {
                     pos.x += vect.x;
                     pos.y += vect.y;
                 }
-                if IsVisible(&mut pos) == 0 {
+                if is_visible(&pos) == 0 {
                     return;
                 }
             }
 
-            map_brick = GetMapBrick(&*CurLevel, col.into(), line.into());
+            map_brick = get_map_brick(&*CUR_LEVEL, col.into(), line.into());
             let user_center = get_user_center();
             target_rectangle.x = user_center.x
-                + ((-Me.pos.x + 1.0 * f32::from(col) - 0.5) * f32::from(Block_Rect.w)).round()
+                + ((-ME.pos.x + 1.0 * f32::from(col) - 0.5) * f32::from(BLOCK_RECT.w)).round()
                     as i16;
             target_rectangle.y = user_center.y
-                + ((-Me.pos.y + 1.0 * f32::from(line) - 0.5) * f32::from(Block_Rect.h)).round()
+                + ((-ME.pos.y + 1.0 * f32::from(line) - 0.5) * f32::from(BLOCK_RECT.h)).round()
                     as i16;
             SDL_UpperBlit(
-                MapBlockSurfacePointer[usize::try_from((*CurLevel).color).unwrap()]
+                MAP_BLOCK_SURFACE_POINTER[usize::try_from((*CUR_LEVEL).color).unwrap()]
                     [usize::from(map_brick)],
                 null_mut(),
-                ne_screen,
+                NE_SCREEN,
                 &mut target_rectangle,
             );
         });
@@ -177,44 +175,42 @@ pub unsafe fn Assemble_Combat_Picture(mask: c_int) {
     // for the info-line text:
 
     let mut text_rect = Rect::new(
-        Full_User_Rect.x,
-        (i32::from(Full_User_Rect.y) + i32::from(Full_User_Rect.h)
-            - i32::from(FontHeight(&*Font0_BFont)))
-        .try_into()
-        .unwrap(),
-        Full_User_Rect.w,
-        FontHeight(&*Font0_BFont).try_into().unwrap(),
+        FULL_USER_RECT.x,
+        (i32::from(FULL_USER_RECT.y) + i32::from(FULL_USER_RECT.h) - font_height(&*FONT0_B_FONT))
+            .try_into()
+            .unwrap(),
+        FULL_USER_RECT.w,
+        font_height(&*FONT0_B_FONT).try_into().unwrap(),
     );
-    SDL_SetClipRect(ne_screen, &text_rect);
-    if GameConfig.FullUserRect == 0 {
-        SDL_FillRect(ne_screen, &mut text_rect, 0);
+    SDL_SetClipRect(NE_SCREEN, &text_rect);
+    if GAME_CONFIG.full_user_rect == 0 {
+        SDL_FillRect(NE_SCREEN, &mut text_rect, 0);
     }
 
-    if GameConfig.Draw_Position != 0 {
-        PrintStringFont(
-            ne_screen,
-            Font0_BFont,
-            (Full_User_Rect.x + (Full_User_Rect.w / 6) as i16).into(),
-            i32::from(Full_User_Rect.y) + i32::from(Full_User_Rect.h)
-                - i32::from(FontHeight(&*Font0_BFont)),
+    if GAME_CONFIG.draw_position != 0 {
+        print_string_font(
+            NE_SCREEN,
+            FONT0_B_FONT,
+            (FULL_USER_RECT.x + (FULL_USER_RECT.w / 6) as i16).into(),
+            i32::from(FULL_USER_RECT.y) + i32::from(FULL_USER_RECT.h) - font_height(&*FONT0_B_FONT),
             format_args!(
                 "GPS: X={:.0} Y={:.0} Lev={}",
-                Me.pos.x.round(),
-                Me.pos.y.round(),
-                (*CurLevel).levelnum,
+                ME.pos.x.round(),
+                ME.pos.y.round(),
+                (*CUR_LEVEL).levelnum,
             ),
         );
     }
 
     if mask & AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits() as i32 == 0 {
-        if GameConfig.Draw_Framerate != 0 {
+        if GAME_CONFIG.draw_framerate != 0 {
             TIME_SINCE_LAST_FPS_UPDATE.with(|time_cell| {
                 let mut time = time_cell.get();
-                time += Frame_Time();
+                time += frame_time();
 
                 if time > UPDATE_FPS_HOW_OFTEN {
                     FPS_DISPLAYED.with(|fps_displayed| {
-                        fps_displayed.set((1.0 / Frame_Time()) as i32);
+                        fps_displayed.set((1.0 / frame_time()) as i32);
                     });
                     time_cell.set(0.);
                 } else {
@@ -223,78 +219,77 @@ pub unsafe fn Assemble_Combat_Picture(mask: c_int) {
             });
 
             FPS_DISPLAYED.with(|fps_displayed| {
-                PrintStringFont(
-                    ne_screen,
-                    Font0_BFont,
-                    Full_User_Rect.x.into(),
-                    (Full_User_Rect.y as i32 + Full_User_Rect.h as i32
-                        - FontHeight(&*Font0_BFont) as i32)
-                        .into(),
+                print_string_font(
+                    NE_SCREEN,
+                    FONT0_B_FONT,
+                    FULL_USER_RECT.x.into(),
+                    FULL_USER_RECT.y as i32 + FULL_USER_RECT.h as i32
+                        - font_height(&*FONT0_B_FONT) as i32,
                     format_args!("FPS: {} ", fps_displayed.get()),
                 );
             });
         }
 
-        if GameConfig.Draw_Energy != 0 {
-            PrintStringFont(
-                ne_screen,
-                Font0_BFont,
-                i32::from(Full_User_Rect.x) + i32::from(Full_User_Rect.w) / 2,
-                i32::from(Full_User_Rect.y) + i32::from(Full_User_Rect.h)
-                    - i32::from(FontHeight(&*Font0_BFont)),
-                format_args!("Energy: {:.0}", Me.energy),
+        if GAME_CONFIG.draw_energy != 0 {
+            print_string_font(
+                NE_SCREEN,
+                FONT0_B_FONT,
+                i32::from(FULL_USER_RECT.x) + i32::from(FULL_USER_RECT.w) / 2,
+                i32::from(FULL_USER_RECT.y) + i32::from(FULL_USER_RECT.h)
+                    - font_height(&*FONT0_B_FONT),
+                format_args!("Energy: {:.0}", ME.energy),
             );
         }
-        if GameConfig.Draw_DeathCount != 0 {
-            PrintStringFont(
-                ne_screen,
-                Font0_BFont,
-                i32::from(Full_User_Rect.x) + 2 * i32::from(Full_User_Rect.w) / 3,
-                i32::from(Full_User_Rect.y) + i32::from(Full_User_Rect.h)
-                    - i32::from(FontHeight(&*Font0_BFont)),
-                format_args!("Deathcount: {:.0}", DeathCount,),
+        if GAME_CONFIG.draw_death_count != 0 {
+            print_string_font(
+                NE_SCREEN,
+                FONT0_B_FONT,
+                i32::from(FULL_USER_RECT.x) + 2 * i32::from(FULL_USER_RECT.w) / 3,
+                i32::from(FULL_USER_RECT.y) + i32::from(FULL_USER_RECT.h)
+                    - font_height(&*FONT0_B_FONT),
+                format_args!("Deathcount: {:.0}", DEATH_COUNT,),
             );
         }
 
-        SDL_SetClipRect(ne_screen, &User_Rect);
+        SDL_SetClipRect(NE_SCREEN, &USER_RECT);
 
         // make sure Ashes are displayed _before_ droids, so that they are _under_ them!
-        for enemy in &mut AllEnemys {
+        for enemy in &mut ALL_ENEMYS {
             if (enemy.status == Status::Terminated as i32)
-                && (enemy.levelnum == (*CurLevel).levelnum)
-                && IsVisible(&mut enemy.pos) != 0
+                && (enemy.levelnum == (*CUR_LEVEL).levelnum)
+                && is_visible(&enemy.pos) != 0
             {
-                PutAshes(enemy.pos.x, enemy.pos.y);
+                put_ashes(enemy.pos.x, enemy.pos.y);
             }
         }
 
-        AllEnemys
+        ALL_ENEMYS
             .iter()
             .enumerate()
             .filter(|(_, enemy)| {
-                !((enemy.levelnum != (*CurLevel).levelnum)
+                !((enemy.levelnum != (*CUR_LEVEL).levelnum)
                     || (enemy.status == Status::Out as i32)
                     || (enemy.status == Status::Terminated as i32))
             })
-            .for_each(|(index, _)| PutEnemy(index as c_int, -1, -1));
+            .for_each(|(index, _)| put_enemy(index as c_int, -1, -1));
 
-        if Me.energy > 0. {
-            PutInfluence(-1, -1);
+        if ME.energy > 0. {
+            put_influence(-1, -1);
         }
 
-        AllBullets
+        ALL_BULLETS
             .iter()
             .take(MAXBULLETS)
             .enumerate()
             .filter(|(_, bullet)| bullet.ty != Status::Out as u8)
-            .for_each(|(index, _)| PutBullet(index as i32));
+            .for_each(|(index, _)| put_bullet(index as i32));
 
-        AllBlasts
+        ALL_BLASTS
             .iter()
             .take(MAXBLASTS)
             .enumerate()
             .filter(|(_, blast)| blast.ty != Status::Out as i32)
-            .for_each(|(index, _)| PutBlast(index as i32));
+            .for_each(|(index, _)| put_blast(index as i32));
     }
 
     // At this point we are done with the drawing procedure
@@ -302,14 +297,14 @@ pub unsafe fn Assemble_Combat_Picture(mask: c_int) {
 
     if mask & AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits() as i32 != 0 {
         SDL_UpdateRect(
-            ne_screen,
-            User_Rect.x.into(),
-            User_Rect.y.into(),
-            User_Rect.w.into(),
-            User_Rect.h.into(),
+            NE_SCREEN,
+            USER_RECT.x.into(),
+            USER_RECT.y.into(),
+            USER_RECT.w.into(),
+            USER_RECT.h.into(),
         );
         SDL_UpdateRect(
-            ne_screen,
+            NE_SCREEN,
             text_rect.x.into(),
             text_rect.y.into(),
             text_rect.w.into(),
@@ -317,100 +312,100 @@ pub unsafe fn Assemble_Combat_Picture(mask: c_int) {
         );
     }
 
-    SDL_SetClipRect(ne_screen, null_mut());
+    SDL_SetClipRect(NE_SCREEN, null_mut());
 }
 
 /// put some ashes at (x,y)
-pub unsafe fn PutAshes(x: f32, y: f32) {
-    if GameConfig.ShowDecals == 0 {
+pub unsafe fn put_ashes(x: f32, y: f32) {
+    if GAME_CONFIG.show_decals == 0 {
         return;
     }
 
     let user_center = get_user_center();
     let mut dst = Rect::new(
-        (f32::from(user_center.x) + (-Me.pos.x + x) * f32::from(Block_Rect.w)
-            - f32::from(Block_Rect.w / 2)) as i16,
-        (f32::from(user_center.y) + (-Me.pos.y + y) * f32::from(Block_Rect.h)
-            - f32::from(Block_Rect.h / 2)) as i16,
+        (f32::from(user_center.x) + (-ME.pos.x + x) * f32::from(BLOCK_RECT.w)
+            - f32::from(BLOCK_RECT.w / 2)) as i16,
+        (f32::from(user_center.y) + (-ME.pos.y + y) * f32::from(BLOCK_RECT.h)
+            - f32::from(BLOCK_RECT.h / 2)) as i16,
         0,
         0,
     );
-    SDL_UpperBlit(Decal_pics[0], null_mut(), ne_screen, &mut dst);
+    SDL_UpperBlit(DECAL_PICS[0], null_mut(), NE_SCREEN, &mut dst);
 }
 
-pub unsafe fn PutEnemy(enemy_index: c_int, x: c_int, y: c_int) {
-    let droid: &mut Enemy = &mut AllEnemys[usize::try_from(enemy_index).unwrap()];
+pub unsafe fn put_enemy(enemy_index: c_int, x: c_int, y: c_int) {
+    let droid: &mut Enemy = &mut ALL_ENEMYS[usize::try_from(enemy_index).unwrap()];
     let ty = droid.ty;
     let phase = droid.phase;
-    let name = &mut (*Druidmap.offset(ty.try_into().unwrap())).druidname;
+    let name = &mut (*DRUIDMAP.offset(ty.try_into().unwrap())).druidname;
 
     if (droid.status == Status::Terminated as i32)
         || (droid.status == Status::Out as i32)
-        || (droid.levelnum != (*CurLevel).levelnum)
+        || (droid.levelnum != (*CUR_LEVEL).levelnum)
     {
         return;
     }
 
     // if the enemy is out of sight, we need not do anything more here
-    if show_all_droids == 0 && IsVisible(&mut droid.pos) == 0 {
+    if SHOW_ALL_DROIDS == 0 && is_visible(&droid.pos) == 0 {
         trace!("ONSCREEN=FALSE --> usual end of function reached.");
         return;
     }
 
     // We check for incorrect droid types, which sometimes might occor, especially after
     // heavy editing of the crew initialisation functions ;)
-    if droid.ty >= Number_Of_Droid_Types {
+    if droid.ty >= NUMBER_OF_DROID_TYPES {
         error!("nonexistant droid-type encountered: {}", droid.ty);
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
 
     //--------------------
     // First blit just the enemy hat and shoes.
     SDL_UpperBlit(
-        EnemySurfacePointer[phase as usize],
+        ENEMY_SURFACE_POINTER[phase as usize],
         null_mut(),
-        BuildBlock,
+        BUILD_BLOCK,
         null_mut(),
     );
 
     //--------------------
     // Now the numbers should be blittet.
-    let mut dst = FirstDigit_Rect.clone();
+    let mut dst = FIRST_DIGIT_RECT;
     SDL_UpperBlit(
-        EnemyDigitSurfacePointer[usize::try_from(name[0] - b'1' as i8 + 1).unwrap()],
+        ENEMY_DIGIT_SURFACE_POINTER[usize::try_from(name[0] - b'1' as i8 + 1).unwrap()],
         null_mut(),
-        BuildBlock,
+        BUILD_BLOCK,
         &mut dst,
     );
 
-    dst = SecondDigit_Rect.clone();
+    dst = SECOND_DIGIT_RECT;
     SDL_UpperBlit(
-        EnemyDigitSurfacePointer[usize::try_from(name[1] - b'1' as i8 + 1).unwrap()],
+        ENEMY_DIGIT_SURFACE_POINTER[usize::try_from(name[1] - b'1' as i8 + 1).unwrap()],
         null_mut(),
-        BuildBlock,
+        BUILD_BLOCK,
         &mut dst,
     );
 
-    dst = ThirdDigit_Rect.clone();
+    dst = THIRD_DIGIT_RECT;
     SDL_UpperBlit(
-        EnemyDigitSurfacePointer[usize::try_from(name[2] - b'1' as i8 + 1).unwrap()],
+        ENEMY_DIGIT_SURFACE_POINTER[usize::try_from(name[2] - b'1' as i8 + 1).unwrap()],
         null_mut(),
-        BuildBlock,
+        BUILD_BLOCK,
         &mut dst,
     );
 
     // now blit the whole construction to screen:
     if x == -1 {
         let user_center = get_user_center();
-        dst.x = (f32::from(user_center.x) + (droid.pos.x - Me.pos.x) * f32::from(Block_Rect.w)
-            - f32::from(Block_Rect.w / 2)) as i16;
-        dst.y = (f32::from(user_center.y) + (droid.pos.y - Me.pos.y) * f32::from(Block_Rect.h)
-            - f32::from(Block_Rect.h / 2)) as i16;
+        dst.x = (f32::from(user_center.x) + (droid.pos.x - ME.pos.x) * f32::from(BLOCK_RECT.w)
+            - f32::from(BLOCK_RECT.w / 2)) as i16;
+        dst.y = (f32::from(user_center.y) + (droid.pos.y - ME.pos.y) * f32::from(BLOCK_RECT.h)
+            - f32::from(BLOCK_RECT.h / 2)) as i16;
     } else {
         dst.x = x.try_into().unwrap();
         dst.y = y.try_into().unwrap();
     }
-    SDL_UpperBlit(BuildBlock, null_mut(), ne_screen, &mut dst);
+    SDL_UpperBlit(BUILD_BLOCK, null_mut(), NE_SCREEN, &mut dst);
 
     //--------------------
     // At this point we can assume, that the enemys has been blittet to the
@@ -419,19 +414,19 @@ pub unsafe fn PutEnemy(enemy_index: c_int, x: c_int, y: c_int) {
     // So now we can add some text the enemys says.  That might be fun.
     //
     if x == -1
-        && droid.TextVisibleTime < GameConfig.WantedTextVisibleTime
-        && GameConfig.Droid_Talk != 0
+        && droid.text_visible_time < GAME_CONFIG.wanted_text_visible_time
+        && GAME_CONFIG.droid_talk != 0
     {
-        PutStringFont(
-            ne_screen,
-            Font0_BFont,
-            (f32::from(User_Rect.x)
-                + f32::from(User_Rect.w / 2)
-                + f32::from(Block_Rect.w / 3)
-                + (droid.pos.x - Me.pos.x) * f32::from(Block_Rect.w)) as i32,
-            (f32::from(User_Rect.y) + f32::from(User_Rect.h / 2) - f32::from(Block_Rect.h / 2)
-                + (droid.pos.y - Me.pos.y) * f32::from(Block_Rect.h)) as i32,
-            CStr::from_ptr(droid.TextToBeDisplayed).to_bytes(),
+        put_string_font(
+            NE_SCREEN,
+            FONT0_B_FONT,
+            (f32::from(USER_RECT.x)
+                + f32::from(USER_RECT.w / 2)
+                + f32::from(BLOCK_RECT.w / 3)
+                + (droid.pos.x - ME.pos.x) * f32::from(BLOCK_RECT.w)) as i32,
+            (f32::from(USER_RECT.y) + f32::from(USER_RECT.h / 2) - f32::from(BLOCK_RECT.h / 2)
+                + (droid.pos.y - ME.pos.y) * f32::from(BLOCK_RECT.h)) as i32,
+            CStr::from_ptr(droid.text_to_be_displayed).to_bytes(),
         );
     }
 
@@ -442,78 +437,78 @@ pub unsafe fn PutEnemy(enemy_index: c_int, x: c_int, y: c_int) {
 /// to the center of the combat window if (-1,-1) was specified, or
 /// to the specified coordinates anywhere on the screen, useful e.g.
 /// for using the influencer as a cursor in the menus.
-pub unsafe fn PutInfluence(x: c_int, y: c_int) {
+pub unsafe fn put_influence(x: c_int, y: c_int) {
     let text_rect = Rect::new(
-        User_Rect.x + (User_Rect.w / 2) as i16 + (Block_Rect.w / 3) as i16,
-        User_Rect.y + (User_Rect.h / 2) as i16 - (Block_Rect.h / 2) as i16,
-        User_Rect.w / 2 - Block_Rect.w / 3,
-        User_Rect.h / 2,
+        USER_RECT.x + (USER_RECT.w / 2) as i16 + (BLOCK_RECT.w / 3) as i16,
+        USER_RECT.y + (USER_RECT.h / 2) as i16 - (BLOCK_RECT.h / 2) as i16,
+        USER_RECT.w / 2 - BLOCK_RECT.w / 3,
+        USER_RECT.h / 2,
     );
 
     trace!("PutInfluence real function call confirmed.");
 
     // Now we draw the hat and shoes of the influencer
     SDL_UpperBlit(
-        InfluencerSurfacePointer[(Me.phase).floor() as usize],
+        INFLUENCER_SURFACE_POINTER[(ME.phase).floor() as usize],
         null_mut(),
-        BuildBlock,
+        BUILD_BLOCK,
         null_mut(),
     );
 
     // Now we draw the first digit of the influencers current number.
-    let mut dst = FirstDigit_Rect.clone();
+    let mut dst = FIRST_DIGIT_RECT;
     SDL_UpperBlit(
-        InfluDigitSurfacePointer[usize::try_from(
-            (*Druidmap.offset(Me.ty.try_into().unwrap())).druidname[0] - b'1' as i8 + 1,
+        INFLU_DIGIT_SURFACE_POINTER[usize::try_from(
+            (*DRUIDMAP.offset(ME.ty.try_into().unwrap())).druidname[0] - b'1' as i8 + 1,
         )
         .unwrap()],
         null_mut(),
-        BuildBlock,
+        BUILD_BLOCK,
         &mut dst,
     );
 
     // Now we draw the second digit of the influencers current number.
-    dst = SecondDigit_Rect.clone();
+    dst = SECOND_DIGIT_RECT;
     SDL_UpperBlit(
-        InfluDigitSurfacePointer[usize::try_from(
-            (*Druidmap.offset(Me.ty.try_into().unwrap())).druidname[1] - b'1' as i8 + 1,
+        INFLU_DIGIT_SURFACE_POINTER[usize::try_from(
+            (*DRUIDMAP.offset(ME.ty.try_into().unwrap())).druidname[1] - b'1' as i8 + 1,
         )
         .unwrap()],
         null_mut(),
-        BuildBlock,
+        BUILD_BLOCK,
         &mut dst,
     );
 
     // Now we draw the third digit of the influencers current number.
-    dst = ThirdDigit_Rect.clone();
+    dst = THIRD_DIGIT_RECT;
     SDL_UpperBlit(
-        InfluDigitSurfacePointer[usize::try_from(
-            (*Druidmap.offset(Me.ty.try_into().unwrap())).druidname[2] - b'1' as i8 + 1,
+        INFLU_DIGIT_SURFACE_POINTER[usize::try_from(
+            (*DRUIDMAP.offset(ME.ty.try_into().unwrap())).druidname[2] - b'1' as i8 + 1,
         )
         .unwrap()],
         null_mut(),
-        BuildBlock,
+        BUILD_BLOCK,
         &mut dst,
     );
 
-    if Me.energy * 100. / (*Druidmap.offset(Me.ty.try_into().unwrap())).maxenergy <= BLINKENERGY
+    if ME.energy * 100. / (*DRUIDMAP.offset(ME.ty.try_into().unwrap())).maxenergy <= BLINKENERGY
         && x == -1
     {
         // In case of low energy, do the fading effect...
-        let rest = Me.timer % BLINK_LEN; // period of fading is given by BLINK_LEN
+        let rest = ME.timer % BLINK_LEN; // period of fading is given by BLINK_LEN
         let filt = if rest < BLINK_LEN / 2. {
             0.40 + (1.0 - 2.0 * rest / BLINK_LEN) * 0.60 // decrease white->grey
         } else {
             0.40 + (2.0 * rest / BLINK_LEN - 1.0) * 0.60 // increase back to white
         };
 
-        ApplyFilter(&mut *BuildBlock, filt, filt, filt);
+        apply_filter(&mut *BUILD_BLOCK, filt, filt, filt);
 
         // ... and also maybe start a new cry-sound
 
-        if Me.LastCrysoundTime > CRY_SOUND_INTERVAL {
-            Me.LastCrysoundTime = 0.;
-            CrySound();
+        if ME.last_crysound_time > CRY_SOUND_INTERVAL {
+            ME.last_crysound_time = 0.;
+            cry_sound();
         }
     }
 
@@ -521,43 +516,43 @@ pub unsafe fn PutInfluence(x: c_int, y: c_int) {
     // In case of transfer mode, we produce the transfer mode sound
     // but of course only in some periodic intervall...
 
-    if Me.status == Status::Transfermode as i32 && x == -1 {
-        ApplyFilter(&mut *BuildBlock, 1.0, 0.0, 0.0);
+    if ME.status == Status::Transfermode as i32 && x == -1 {
+        apply_filter(&mut *BUILD_BLOCK, 1.0, 0.0, 0.0);
 
-        if Me.LastTransferSoundTime > TRANSFER_SOUND_INTERVAL {
-            Me.LastTransferSoundTime = 0.;
-            TransferSound();
+        if ME.last_transfer_sound_time > TRANSFER_SOUND_INTERVAL {
+            ME.last_transfer_sound_time = 0.;
+            transfer_sound();
         }
     }
 
     if x == -1 {
         let user_center = get_user_center();
-        dst.x = user_center.x - (Block_Rect.w / 2) as i16;
-        dst.y = user_center.y - (Block_Rect.h / 2) as i16;
+        dst.x = user_center.x - (BLOCK_RECT.w / 2) as i16;
+        dst.y = user_center.y - (BLOCK_RECT.h / 2) as i16;
     } else {
         dst.x = x.try_into().unwrap();
         dst.y = y.try_into().unwrap();
     }
 
-    SDL_UpperBlit(BuildBlock, null_mut(), ne_screen, &mut dst);
+    SDL_UpperBlit(BUILD_BLOCK, null_mut(), NE_SCREEN, &mut dst);
 
     //--------------------
     // Maybe the influencer has something to say :)
     // so let him say it..
     //
     if x == -1
-        && Me.TextVisibleTime < GameConfig.WantedTextVisibleTime
-        && GameConfig.Droid_Talk != 0
+        && ME.text_visible_time < GAME_CONFIG.wanted_text_visible_time
+        && GAME_CONFIG.droid_talk != 0
     {
         //      PutStringFont ( ne_screen , Font0_BFont ,
         //		      User_Rect.x+(User_Rect.w/2) + Block_Rect.w/3 ,
         //		      User_Rect.y+(User_Rect.h/2) - Block_Rect.h/2 ,
         //		      Me.TextToBeDisplayed );
-        SetCurrentFont(Font0_BFont);
-        DisplayText(
-            Me.TextToBeDisplayed,
-            i32::from(User_Rect.x) + i32::from(User_Rect.w / 2) + i32::from(Block_Rect.w / 3),
-            i32::from(User_Rect.y) + i32::from(User_Rect.h / 2) - i32::from(Block_Rect.h / 2),
+        set_current_font(FONT0_B_FONT);
+        display_text(
+            ME.text_to_be_displayed,
+            i32::from(USER_RECT.x) + i32::from(USER_RECT.w / 2) + i32::from(BLOCK_RECT.w / 3),
+            i32::from(USER_RECT.y) + i32::from(USER_RECT.h / 2) - i32::from(BLOCK_RECT.h / 2),
             &text_rect,
         );
     }
@@ -568,8 +563,8 @@ pub unsafe fn PutInfluence(x: c_int, y: c_int) {
 /// PutBullet: draws a Bullet into the combat window.  The only
 /// parameter given is the number of the bullet in the AllBullets
 /// array. Everything else is computed in here.
-pub unsafe fn PutBullet(bullet_number: c_int) {
-    let cur_bullet = &mut AllBullets[usize::try_from(bullet_number).unwrap()];
+pub unsafe fn put_bullet(bullet_number: c_int) {
+    let cur_bullet = &mut ALL_BULLETS[usize::try_from(bullet_number).unwrap()];
 
     trace!("PutBullet: real function call confirmed.");
 
@@ -583,23 +578,23 @@ pub unsafe fn PutBullet(bullet_number: c_int) {
         // or black each frame until the flash is over.  (Flash
         // deletion after some time is done in CheckBulletCollisions.)
         if cur_bullet.time_in_seconds <= FLASH_DURATION / 4. {
-            Fill_Rect(User_Rect, FLASH_LIGHT);
+            fill_rect(USER_RECT, FLASH_LIGHT);
         } else if cur_bullet.time_in_seconds <= FLASH_DURATION / 2. {
-            Fill_Rect(User_Rect, FLASH_DARK);
+            fill_rect(USER_RECT, FLASH_DARK);
         } else if cur_bullet.time_in_seconds <= 3. * FLASH_DURATION / 4. {
-            Fill_Rect(User_Rect, FLASH_LIGHT);
+            fill_rect(USER_RECT, FLASH_LIGHT);
         } else if cur_bullet.time_in_seconds <= FLASH_DURATION {
-            Fill_Rect(User_Rect, FLASH_DARK);
+            fill_rect(USER_RECT, FLASH_DARK);
         }
 
         return;
     }
 
-    let bullet = &*Bulletmap.offset(cur_bullet.ty.try_into().unwrap());
+    let bullet = &*BULLETMAP.offset(cur_bullet.ty.try_into().unwrap());
     let mut phase_of_bullet =
         (cur_bullet.time_in_seconds * bullet.phase_changes_per_second) as usize;
 
-    phase_of_bullet = phase_of_bullet % usize::try_from(bullet.phases).unwrap();
+    phase_of_bullet %= usize::try_from(bullet.phases).unwrap();
 
     // DebugPrintf( 0 , "\nPhaseOfBullet: %d.", PhaseOfBullet );
 
@@ -609,10 +604,10 @@ pub unsafe fn PutBullet(bullet_number: c_int) {
     // Then, we'll have to generate these
     //
     //if ( cur_bullet.time_in_frames == 1 )
-    if cur_bullet.Surfaces_were_generated == 0 {
+    if cur_bullet.surfaces_were_generated == 0 {
         for i in 0..usize::try_from(bullet.phases).unwrap() {
-            cur_bullet.SurfacePointer[i] = rotozoomSurface(
-                bullet.SurfacePointer[i],
+            cur_bullet.surface_pointer[i] = rotozoomSurface(
+                bullet.surface_pointer[i],
                 cur_bullet.angle.into(),
                 1.0,
                 false.into(),
@@ -622,7 +617,7 @@ pub unsafe fn PutBullet(bullet_number: c_int) {
             "This was the first time for this bullet, so images were generated... angle={}",
             cur_bullet.angle
         );
-        cur_bullet.Surfaces_were_generated = true.into();
+        cur_bullet.surfaces_were_generated = true.into();
     }
 
     // WARNING!!! PAY ATTENTION HERE!! After the rotozoom was applied to the image, it is NO
@@ -633,29 +628,29 @@ pub unsafe fn PutBullet(bullet_number: c_int) {
     let user_center = get_user_center();
     let mut dst = Rect::new(
         (f32::from(user_center.x)
-            - (Me.pos.x - cur_bullet.pos.x) * f32::from(Block_Rect.w)
-            - ((*cur_bullet.SurfacePointer[phase_of_bullet]).w / 2) as f32) as i16,
+            - (ME.pos.x - cur_bullet.pos.x) * f32::from(BLOCK_RECT.w)
+            - ((*cur_bullet.surface_pointer[phase_of_bullet]).w / 2) as f32) as i16,
         (f32::from(user_center.y)
-            - (Me.pos.y - cur_bullet.pos.y) * f32::from(Block_Rect.w)
-            - ((*cur_bullet.SurfacePointer[phase_of_bullet]).h / 2) as f32) as i16,
+            - (ME.pos.y - cur_bullet.pos.y) * f32::from(BLOCK_RECT.w)
+            - ((*cur_bullet.surface_pointer[phase_of_bullet]).h / 2) as f32) as i16,
         0,
         0,
     );
 
     SDL_UpperBlit(
-        cur_bullet.SurfacePointer[phase_of_bullet],
+        cur_bullet.surface_pointer[phase_of_bullet],
         null_mut(),
-        ne_screen,
+        NE_SCREEN,
         &mut dst,
     );
 
     trace!("PutBullet: end of function reached.");
 }
 
-pub unsafe fn PutBlast(blast_number: c_int) {
+pub unsafe fn put_blast(blast_number: c_int) {
     trace!("PutBlast: real function call confirmed.");
 
-    let cur_blast = &mut AllBlasts[usize::try_from(blast_number).unwrap()];
+    let cur_blast = &mut ALL_BLASTS[usize::try_from(blast_number).unwrap()];
 
     // If the blast is already long deat, we need not do anything else here
     if cur_blast.ty == Status::Out as i32 {
@@ -665,31 +660,24 @@ pub unsafe fn PutBlast(blast_number: c_int) {
     let user_center = get_user_center();
     let mut dst = Rect::new(
         (f32::from(user_center.x)
-            - (Me.pos.x - cur_blast.PX) * f32::from(Block_Rect.w)
-            - f32::from(Block_Rect.w / 2)) as i16,
+            - (ME.pos.x - cur_blast.px) * f32::from(BLOCK_RECT.w)
+            - f32::from(BLOCK_RECT.w / 2)) as i16,
         (f32::from(user_center.y)
-            - (Me.pos.y - cur_blast.PY) * f32::from(Block_Rect.h)
-            - f32::from(Block_Rect.h / 2)) as i16,
+            - (ME.pos.y - cur_blast.py) * f32::from(BLOCK_RECT.h)
+            - f32::from(BLOCK_RECT.h / 2)) as i16,
         0,
         0,
     );
     // SDL_BlitSurface( ne_blocks,
     // Blastmap[CurBlast->type].block + ((int) floorf(CurBlast->phase)), ne_screen , &dst);
     SDL_UpperBlit(
-        Blastmap[usize::try_from(cur_blast.ty).unwrap()].SurfacePointer
+        BLASTMAP[usize::try_from(cur_blast.ty).unwrap()].surface_pointer
             [(cur_blast.phase).floor() as usize],
         null_mut(),
-        ne_screen,
+        NE_SCREEN,
         &mut dst,
     );
     trace!("PutBlast: end of function reached.");
-}
-
-/// This function fills the whole combat window with the one color
-/// given as the only parameter to the function.  For this purpose
-/// a fast SDL basic function is used.
-pub unsafe fn SetUserfenster(color: c_int) {
-    SDL_FillRect(ne_screen, &mut User_Rect.clone(), color as u32);
 }
 
 /// This function updates the top status bar.
@@ -704,7 +692,7 @@ pub unsafe fn SetUserfenster(color: c_int) {
 /// text.
 ///
 /// BANNER_NO_SDL_UPDATE=4: Prevents any SDL_Update calls.
-pub unsafe fn DisplayBanner(mut left: *const c_char, mut right: *const c_char, flags: c_int) {
+pub unsafe fn display_banner(mut left: *const c_char, mut right: *const c_char, flags: c_int) {
     use std::io::Write;
 
     let mut dummy: [u8; 80];
@@ -729,14 +717,14 @@ pub unsafe fn DisplayBanner(mut left: *const c_char, mut right: *const c_char, f
 
     if left.is_null() {
         /* Left-DEFAULT: Mode */
-        left = INFLUENCE_MODE_NAMES[Me.status as usize].as_ptr();
+        left = INFLUENCE_MODE_NAMES[ME.status as usize].as_ptr();
     }
 
     if right.is_null()
     /* Right-DEFAULT: Score */
     {
         dummy = [0u8; 80];
-        write!(dummy.as_mut(), "{}", ShowScore).unwrap();
+        write!(dummy.as_mut(), "{}", SHOW_SCORE).unwrap();
         right = dummy.as_mut_ptr() as *mut c_char;
     }
 
@@ -748,7 +736,7 @@ pub unsafe fn DisplayBanner(mut left: *const c_char, mut right: *const c_char, f
             "String {} too long for Left Infoline!!",
             left.to_string_lossy()
         );
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
     let right = CStr::from_ptr(right);
     let right_len = right.to_bytes().len();
@@ -757,7 +745,7 @@ pub unsafe fn DisplayBanner(mut left: *const c_char, mut right: *const c_char, f
             "String {} too long for Right Infoline!!",
             right.to_string_lossy()
         );
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
 
     /* Now prepare the left/right text-boxes */
@@ -773,7 +761,7 @@ pub unsafe fn DisplayBanner(mut left: *const c_char, mut right: *const c_char, f
     // --------------------
     // No we see if the screen need an update...
 
-    if BannerIsDestroyed != 0
+    if BANNER_IS_DESTROYED != 0
         || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
         || PREVIOUS_LEFT_BOX
             .with(|previous_left_box| left_box.as_ref() != previous_left_box.borrow().as_ref())
@@ -782,23 +770,24 @@ pub unsafe fn DisplayBanner(mut left: *const c_char, mut right: *const c_char, f
     {
         // Redraw the whole background of the top status bar
         let mut dst = Rect::new(0, 0, 0, 0);
-        SDL_SetClipRect(ne_screen, null_mut()); // this unsets the clipping rectangle
-        SDL_UpperBlit(banner_pic, null_mut(), ne_screen, &mut dst);
+        SDL_SetClipRect(NE_SCREEN, null_mut()); // this unsets the clipping rectangle
+        SDL_UpperBlit(BANNER_PIC, null_mut(), NE_SCREEN, &mut dst);
 
         // Now the text should be ready and its
         // time to display it...
-        if PREVIOUS_LEFT_BOX
-            .with(|previous_left_box| left_box.as_ref() != previous_left_box.borrow().as_ref())
-            || PREVIOUS_RIGHT_BOX.with(|previous_right_box| {
-                right_box.as_ref() != previous_right_box.borrow().as_ref()
-            })
+        let previous_left_check = PREVIOUS_LEFT_BOX
+            .with(|previous_left_box| left_box.as_ref() != previous_left_box.borrow().as_ref());
+        let previous_right_check = PREVIOUS_RIGHT_BOX
+            .with(|previous_right_box| right_box.as_ref() != previous_right_box.borrow().as_ref());
+        if previous_left_check
+            || previous_right_check
             || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
         {
-            dst.x = LeftInfo_Rect.x;
-            dst.y = LeftInfo_Rect.y - i16::try_from(FontHeight(&*Para_BFont)).unwrap();
-            PrintStringFont(
-                ne_screen,
-                Para_BFont,
+            dst.x = LEFT_INFO_RECT.x;
+            dst.y = LEFT_INFO_RECT.y - i16::try_from(font_height(&*PARA_B_FONT)).unwrap();
+            print_string_font(
+                NE_SCREEN,
+                PARA_B_FONT,
                 dst.x.into(),
                 dst.y.into(),
                 format_args!(
@@ -815,11 +804,11 @@ pub unsafe fn DisplayBanner(mut left: *const c_char, mut right: *const c_char, f
                 previous_left_box[left_box_len] = b'\0';
             });
 
-            dst.x = RightInfo_Rect.x;
-            dst.y = RightInfo_Rect.y - i16::try_from(FontHeight(&*Para_BFont)).unwrap();
-            PrintStringFont(
-                ne_screen,
-                Para_BFont,
+            dst.x = RIGHT_INFO_RECT.x;
+            dst.y = RIGHT_INFO_RECT.y - i16::try_from(font_height(&*PARA_B_FONT)).unwrap();
+            print_string_font(
+                NE_SCREEN,
+                PARA_B_FONT,
                 dst.x.into(),
                 dst.y.into(),
                 format_args!(
@@ -839,10 +828,9 @@ pub unsafe fn DisplayBanner(mut left: *const c_char, mut right: *const c_char, f
 
         // finally update the whole top status box
         if (flags & i32::from(DisplayBannerFlags::NO_SDL_UPDATE.bits())) == 0 {
-            SDL_UpdateRect(ne_screen, 0, 0, Banner_Rect.w.into(), Banner_Rect.h.into());
+            SDL_UpdateRect(NE_SCREEN, 0, 0, BANNER_RECT.w.into(), BANNER_RECT.h.into());
         }
 
-        BannerIsDestroyed = false.into();
-        return;
+        BANNER_IS_DESTROYED = false.into();
     }
 }

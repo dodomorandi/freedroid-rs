@@ -2,20 +2,21 @@
 use crate::input::wait_for_key_pressed;
 use crate::{
     b_font::{
-        CenteredPrintString, CharWidth, FontHeight, GetCurrentFont, PrintString, SetCurrentFont,
+        centered_print_string, char_width, font_height, get_current_font, print_string,
+        set_current_font,
     },
     defs::{
         self, Criticality, DisplayBannerFlags, Status, Themed, DATE_LEN, GRAPHICS_DIR_C,
         HS_BACKGROUND_FILE_C, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
     },
-    global::{Highscore_BFont, Para_BFont},
-    graphics::{ne_screen, pic999, DisplayImage, MakeGridOnScreen},
+    global::{HIGHSCORE_B_FONT, PARA_B_FONT},
+    graphics::{display_image, make_grid_on_screen, NE_SCREEN, PIC999},
     input::wait_for_key_pressed,
     misc::find_file,
-    text::{printf_SDL, DisplayText, GetString},
-    vars::{Full_User_Rect, Me, Portrait_Rect, Screen_Rect, User_Rect},
-    view::{Assemble_Combat_Picture, DisplayBanner},
-    ConfigDir, RealScore, ShowScore,
+    text::{display_text, get_string, printf_sdl},
+    vars::{FULL_USER_RECT, ME, PORTRAIT_RECT, SCREEN_RECT, USER_RECT},
+    view::{assemble_combat_picture, display_banner},
+    CONFIG_DIR, REAL_SCORE, SHOW_SCORE,
 };
 
 use cstr::cstr;
@@ -37,7 +38,6 @@ use std::{
 pub static mut HIGHSCORES: *mut *mut HighscoreEntry = null_mut();
 pub static mut NUM_HIGHSCORES: i32 = 0; /* total number of entries in our list (fixed) */
 
-#[repr(C)]
 pub struct HighscoreEntry {
     name: [c_char; MAX_NAME_LEN + 5],
     score: c_long,
@@ -84,7 +84,7 @@ impl Default for HighscoreEntry {
             .for_each(|(dst, src)| *dst = src);
         let score = -1;
 
-        Self { name, date, score }
+        Self { name, score, date }
     }
 }
 
@@ -111,7 +111,7 @@ impl HighscoreEntry {
 }
 
 /// Set up a new highscore list: load from disk if found
-fn init_highscores(config_dir: Option<&Path>) {
+fn init_highscores_inner(config_dir: Option<&Path>) {
     let file = config_dir.and_then(|config_dir| {
         let path = config_dir.join("highscores");
         let file = File::open(&path).ok();
@@ -147,7 +147,7 @@ fn init_highscores(config_dir: Option<&Path>) {
     }
 }
 
-fn save_highscores(config_dir: Option<&Path>) -> Result<(), ()> {
+fn save_highscores_inner(config_dir: Option<&Path>) -> Result<(), ()> {
     match config_dir {
         Some(config_dir) => {
             let path = config_dir.join("highscores");
@@ -183,11 +183,11 @@ fn save_highscores(config_dir: Option<&Path>) -> Result<(), ()> {
     }
 }
 
-fn update_highscores() {
-    let score = unsafe { RealScore };
+pub fn update_highscores() {
+    let score = unsafe { REAL_SCORE };
     unsafe {
-        RealScore = 0.;
-        ShowScore = 0;
+        REAL_SCORE = 0.;
+        SHOW_SCORE = 0;
     }
 
     if score <= 0. {
@@ -195,7 +195,7 @@ fn update_highscores() {
     }
 
     unsafe {
-        Me.status = Status::Debriefing as c_int;
+        ME.status = Status::Debriefing as c_int;
     }
 
     let hightscores = unsafe {
@@ -210,36 +210,36 @@ fn update_highscores() {
     };
 
     unsafe {
-        let prev_font = GetCurrentFont();
-        SetCurrentFont(Highscore_BFont);
+        let prev_font = get_current_font();
+        set_current_font(HIGHSCORE_B_FONT);
 
-        let user_center_x: i16 = User_Rect.x + (User_Rect.w / 2) as i16;
-        let user_center_y: i16 = User_Rect.y + (User_Rect.h / 2) as i16;
+        let user_center_x: i16 = USER_RECT.x + (USER_RECT.w / 2) as i16;
+        let user_center_y: i16 = USER_RECT.y + (USER_RECT.h / 2) as i16;
 
-        Assemble_Combat_Picture(0);
-        MakeGridOnScreen(Some(&User_Rect));
+        assemble_combat_picture(0);
+        make_grid_on_screen(Some(&USER_RECT));
         let mut dst = SDL_Rect::new(
-            user_center_x - (Portrait_Rect.w / 2) as i16,
-            user_center_y - (Portrait_Rect.h / 2) as i16,
-            Portrait_Rect.w,
-            Portrait_Rect.h,
+            user_center_x - (PORTRAIT_RECT.w / 2) as i16,
+            user_center_y - (PORTRAIT_RECT.h / 2) as i16,
+            PORTRAIT_RECT.w,
+            PORTRAIT_RECT.h,
         );
-        SDL_UpperBlit(pic999, null_mut(), ne_screen, &mut dst);
-        let h = FontHeight(&*Para_BFont);
-        DisplayText(
+        SDL_UpperBlit(PIC999, null_mut(), NE_SCREEN, &mut dst);
+        let h = font_height(&*PARA_B_FONT);
+        display_text(
             cstr!("Great Score !").as_ptr(),
             i32::from(dst.x) - h,
             i32::from(dst.y) - h,
-            &User_Rect,
+            &USER_RECT,
         );
 
         // TODO ARCADEINPUT
         #[cfg(not(target_os = "android"))]
-        DisplayText(
+        display_text(
             cstr!("Enter your name: ").as_ptr(),
             i32::from(dst.x) - 5 * h,
             i32::from(dst.y) + i32::from(dst.h),
-            &User_Rect,
+            &USER_RECT,
         );
 
         #[cfg(target_os = "android")]
@@ -247,8 +247,8 @@ fn update_highscores() {
 
         // TODO More ARCADEINPUT
 
-        SDL_Flip(ne_screen);
-        SDL_SetClipRect(ne_screen, null_mut());
+        SDL_Flip(NE_SCREEN);
+        SDL_SetClipRect(NE_SCREEN, null_mut());
 
         let date = format!("{}", chrono::Local::today().format("%Y/%m/%d"));
 
@@ -256,14 +256,14 @@ fn update_highscores() {
         let new_entry = HighscoreEntry::new("Player", score as i64, &date);
         #[cfg(not(target_os = "android"))]
         let new_entry = {
-            let tmp_name = GetString(MAX_NAME_LEN as c_int, 2);
+            let tmp_name = get_string(MAX_NAME_LEN as c_int, 2);
             let mut new_entry = HighscoreEntry::new("", score as i64, &date);
             libc::strcpy(new_entry.name.as_mut_ptr(), tmp_name);
             libc::free(tmp_name as *mut c_void);
             new_entry
         };
 
-        printf_SDL(ne_screen, -1, -1, format_args!("\n"));
+        printf_sdl(NE_SCREEN, -1, -1, format_args!("\n"));
 
         hightscores[entry_pos..]
             .iter_mut()
@@ -271,38 +271,34 @@ fn update_highscores() {
                 mem::replace(cur_entry, new_entry)
             });
 
-        SetCurrentFont(prev_font);
+        set_current_font(prev_font);
     }
 }
 
 fn get_config_dir() -> Option<&'static Path> {
-    if unsafe { ConfigDir[0] } == 0 {
+    if unsafe { CONFIG_DIR[0] } == 0 {
         None
     } else {
-        let config_dir = unsafe { CStr::from_ptr(ConfigDir.as_ptr()) };
+        let config_dir = unsafe { CStr::from_ptr(CONFIG_DIR.as_ptr()) };
         let config_dir = Path::new(config_dir.to_str().unwrap());
         Some(config_dir)
     }
 }
 
-pub fn InitHighscores() {
-    init_highscores(get_config_dir());
+pub fn init_highscores() {
+    init_highscores_inner(get_config_dir());
 }
 
-pub fn SaveHighscores() -> c_int {
-    match save_highscores(get_config_dir()) {
+pub fn save_highscores() -> c_int {
+    match save_highscores_inner(get_config_dir()) {
         Ok(()) => defs::OK.into(),
         Err(()) => defs::ERR.into(),
     }
 }
 
-pub fn UpdateHighscores() {
-    update_highscores()
-}
-
 /// Display the high scores of the single player game.
 /// This function is actually a submenu of the MainMenu.
-pub unsafe fn ShowHighscores() {
+pub unsafe fn show_highscores() {
     let fpath = find_file(
         HS_BACKGROUND_FILE_C.as_ptr() as *mut c_char,
         GRAPHICS_DIR_C.as_ptr() as *mut c_char,
@@ -310,31 +306,31 @@ pub unsafe fn ShowHighscores() {
         Criticality::WarnOnly as c_int,
     );
     if fpath.is_null().not() {
-        DisplayImage(fpath);
+        display_image(fpath);
     }
-    MakeGridOnScreen(Some(&Screen_Rect));
-    DisplayBanner(
+    make_grid_on_screen(Some(&SCREEN_RECT));
+    display_banner(
         null_mut(),
         null_mut(),
         DisplayBannerFlags::FORCE_UPDATE.bits().into(),
     );
 
-    let prev_font = GetCurrentFont();
-    SetCurrentFont(Highscore_BFont);
+    let prev_font = get_current_font();
+    set_current_font(HIGHSCORE_B_FONT);
 
-    let len = CharWidth(&*GetCurrentFont(), b'9'.into());
+    let len = char_width(&*get_current_font(), b'9');
 
-    let x0 = i32::from(Screen_Rect.w) / 8;
+    let x0 = i32::from(SCREEN_RECT.w) / 8;
     let x1 = x0 + 2 * len;
     let x2 = x1 + 11 * len;
     let x3 = x2 + i32::try_from(MAX_NAME_LEN).unwrap() * len;
 
-    let height = FontHeight(&*GetCurrentFont());
+    let height = font_height(&*get_current_font());
 
-    let y0 = i32::from(Full_User_Rect.y) + height;
+    let y0 = i32::from(FULL_USER_RECT.y) + height;
 
-    CenteredPrintString(
-        ne_screen,
+    centered_print_string(
+        NE_SCREEN,
         y0,
         format_args!("Top {}  scores\n", NUM_HIGHSCORES),
     );
@@ -343,15 +339,15 @@ pub unsafe fn ShowHighscores() {
         std::slice::from_raw_parts(HIGHSCORES, usize::try_from(NUM_HIGHSCORES).unwrap());
     for (i, highscore) in highscores.iter().copied().enumerate() {
         let i = i32::try_from(i).unwrap();
-        PrintString(
-            ne_screen,
+        print_string(
+            NE_SCREEN,
             x0,
             y0 + (i + 2) * height,
             format_args!("{}", i + 1),
         );
         if (*highscore).score >= 0 {
-            PrintString(
-                ne_screen,
+            print_string(
+                NE_SCREEN,
                 x1,
                 y0 + (i + 2) * height,
                 format_args!(
@@ -360,8 +356,8 @@ pub unsafe fn ShowHighscores() {
                 ),
             );
         }
-        PrintString(
-            ne_screen,
+        print_string(
+            NE_SCREEN,
             x2,
             y0 + (i + 2) * height,
             format_args!(
@@ -370,17 +366,17 @@ pub unsafe fn ShowHighscores() {
             ),
         );
         if (*highscore).score >= 0 {
-            PrintString(
-                ne_screen,
+            print_string(
+                NE_SCREEN,
                 x3,
                 y0 + (i + 2) * height,
                 format_args!("{}", (*highscore).score),
             );
         }
     }
-    SDL_Flip(ne_screen);
+    SDL_Flip(NE_SCREEN);
 
     wait_for_key_pressed();
 
-    SetCurrentFont(prev_font);
+    set_current_font(prev_font);
 }

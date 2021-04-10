@@ -1,23 +1,24 @@
 use crate::{
-    b_font::{CenteredPutString, FontHeight, PrintStringFont, PutString},
+    b_font::{centered_put_string, font_height, print_string_font, put_string},
     defs::{
-        get_user_center, AssembleCombatWindowFlags, Cmds, DownPressedR, EscapePressedR,
-        FirePressedR, LeftPressedR, MapTile, MouseLeftPressed, ReturnPressedR, RightPressedR,
-        ShiftPressed, SpacePressed, UpPressedR, MAXWAYPOINTS, MAX_WP_CONNECTIONS, NUM_MAP_BLOCKS,
+        down_pressed_r, escape_pressed_r, fire_pressed_r, get_user_center, left_pressed_r,
+        mouse_left_pressed, return_pressed_r, right_pressed_r, shift_pressed, space_pressed,
+        up_pressed_r, AssembleCombatWindowFlags, Cmds, MapTile, MAXWAYPOINTS, MAX_WP_CONNECTIONS,
+        NUM_MAP_BLOCKS,
     },
-    enemy::ShuffleEnemys,
-    global::{CurrentCombatScaleFactor, Font0_BFont, Menu_BFont},
+    enemy::shuffle_enemys,
+    global::{CURRENT_COMBAT_SCALE_FACTOR, FONT0_B_FONT, MENU_B_FONT},
     graphics::{
-        ne_screen, putpixel, ClearGraphMem, DrawLineBetweenTiles, MakeGridOnScreen,
-        SetCombatScaleTo,
+        clear_graph_mem, draw_line_between_tiles, make_grid_on_screen, putpixel,
+        set_combat_scale_to, NE_SCREEN,
     },
-    input::{cmd_is_activeR, KeyIsPressedR, SDL_Delay},
-    menu::{quit_LevelEditor, showLevelEditorMenu},
+    input::{cmd_is_active_r, key_is_pressed_r, SDL_Delay},
+    menu::{show_level_editor_menu, QUIT_LEVEL_EDITOR},
     structs::{Level, Waypoint},
-    text::GetString,
-    vars::{Block_Rect, Full_User_Rect, Screen_Rect, User_Rect},
-    view::{Assemble_Combat_Picture, Black, Fill_Rect},
-    CurLevel, Me,
+    text::get_string,
+    vars::{BLOCK_RECT, FULL_USER_RECT, SCREEN_RECT, USER_RECT},
+    view::{assemble_combat_picture, fill_rect, BLACK},
+    CUR_LEVEL, ME,
 };
 
 use cstr::cstr;
@@ -46,162 +47,162 @@ const HIGHLIGHTCOLOR2: i32 = 100;
 /// Escape Menu.  In here you can edit the level and upon pressing
 /// escape enter a further submenu where you can save the level,
 /// change level name and quit from level editing.
-pub unsafe fn LevelEditor() {
+pub unsafe fn level_editor() {
     let mut done = false;
     let mut origin_waypoint: c_int = -1;
 
     let keymap_offset = 15;
 
-    let rect = User_Rect;
-    User_Rect = Screen_Rect; // level editor can use the full screen!
+    let rect = USER_RECT;
+    USER_RECT = SCREEN_RECT; // level editor can use the full screen!
     let mut src_wp = null_mut();
 
     while done.not() {
-        if cmd_is_activeR(Cmds::Menu) {
-            showLevelEditorMenu();
-            if quit_LevelEditor {
+        if cmd_is_active_r(Cmds::Menu) {
+            show_level_editor_menu();
+            if QUIT_LEVEL_EDITOR {
                 done = true;
-                CurrentCombatScaleFactor = 1.;
-                SetCombatScaleTo(CurrentCombatScaleFactor);
-                quit_LevelEditor = false;
+                CURRENT_COMBAT_SCALE_FACTOR = 1.;
+                set_combat_scale_to(CURRENT_COMBAT_SCALE_FACTOR);
+                QUIT_LEVEL_EDITOR = false;
             }
             continue;
         }
 
-        let block_x = (Me.pos.x).round() as c_int;
-        let block_y = (Me.pos.y).round() as c_int;
+        let block_x = (ME.pos.x).round() as c_int;
+        let block_y = (ME.pos.y).round() as c_int;
 
-        Fill_Rect(User_Rect, Black);
-        Assemble_Combat_Picture(AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits().into());
+        fill_rect(USER_RECT, BLACK);
+        assemble_combat_picture(AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits().into());
         highlight_current_block();
         show_waypoints();
 
         // show line between a selected connection-origin and the current block
         if origin_waypoint != -1 {
-            DrawLineBetweenTiles(
+            draw_line_between_tiles(
                 block_x as f32,
                 block_y as f32,
-                (*CurLevel).AllWaypoints[usize::try_from(origin_waypoint).unwrap()]
+                (*CUR_LEVEL).all_waypoints[usize::try_from(origin_waypoint).unwrap()]
                     .x
                     .into(),
-                (*CurLevel).AllWaypoints[usize::try_from(origin_waypoint).unwrap()]
+                (*CUR_LEVEL).all_waypoints[usize::try_from(origin_waypoint).unwrap()]
                     .y
                     .into(),
                 HIGHLIGHTCOLOR2,
             );
         }
 
-        PrintStringFont(
-            ne_screen,
-            Font0_BFont,
-            i32::from(Full_User_Rect.x) + i32::from(Full_User_Rect.w) / 3,
-            i32::from(Full_User_Rect.y) + i32::from(Full_User_Rect.h) - FontHeight(&*Font0_BFont),
+        print_string_font(
+            NE_SCREEN,
+            FONT0_B_FONT,
+            i32::from(FULL_USER_RECT.x) + i32::from(FULL_USER_RECT.w) / 3,
+            i32::from(FULL_USER_RECT.y) + i32::from(FULL_USER_RECT.h) - font_height(&*FONT0_B_FONT),
             format_args!("Press F1 for keymap"),
         );
 
-        SDL_Flip(ne_screen);
+        SDL_Flip(NE_SCREEN);
 
         // If the user of the Level editor pressed some cursor keys, move the
         // highlited filed (that is Me.pos) accordingly. This is done here:
         //
-        if LeftPressedR() && Me.pos.x.round() > 0. {
-            Me.pos.x -= 1.;
+        if left_pressed_r() && ME.pos.x.round() > 0. {
+            ME.pos.x -= 1.;
         }
 
-        if RightPressedR() && (Me.pos.x.round() as c_int) < (*CurLevel).xlen - 1 {
-            Me.pos.x += 1.;
+        if right_pressed_r() && (ME.pos.x.round() as c_int) < (*CUR_LEVEL).xlen - 1 {
+            ME.pos.x += 1.;
         }
 
-        if UpPressedR() && Me.pos.y.round() > 0. {
-            Me.pos.y -= 1.;
+        if up_pressed_r() && ME.pos.y.round() > 0. {
+            ME.pos.y -= 1.;
         }
 
-        if DownPressedR() && (Me.pos.y.round() as c_int) < (*CurLevel).ylen - 1 {
-            Me.pos.y += 1.;
+        if down_pressed_r() && (ME.pos.y.round() as c_int) < (*CUR_LEVEL).ylen - 1 {
+            ME.pos.y += 1.;
         }
 
-        if KeyIsPressedR(SDLK_F1.try_into().unwrap()) {
+        if key_is_pressed_r(SDLK_F1.try_into().unwrap()) {
             let mut k = 3;
-            MakeGridOnScreen(None);
-            CenteredPutString(
-                ne_screen,
-                k * FontHeight(&*Menu_BFont),
+            make_grid_on_screen(None);
+            centered_put_string(
+                NE_SCREEN,
+                k * font_height(&*MENU_B_FONT),
                 b"Level Editor Keymap",
             );
             k += 2;
-            PutString(
-                ne_screen,
+            put_string(
+                NE_SCREEN,
                 keymap_offset,
-                (k) * FontHeight(&*Menu_BFont),
+                (k) * font_height(&*MENU_B_FONT),
                 b"Use cursor keys to move around.",
             );
             k += 1;
-            PutString(
-                ne_screen,
+            put_string(
+                NE_SCREEN,
                 keymap_offset,
-                (k) * FontHeight(&*Menu_BFont),
+                (k) * font_height(&*MENU_B_FONT),
                 b"Use number pad to plant walls.",
             );
             k += 1;
-            PutString(
-                ne_screen,
+            put_string(
+                NE_SCREEN,
                 keymap_offset,
-                (k) * FontHeight(&*Menu_BFont),
+                (k) * font_height(&*MENU_B_FONT),
                 b"Use shift and number pad to plant extras.",
             );
             k += 1;
-            PutString(
-                ne_screen,
+            put_string(
+                NE_SCREEN,
                 keymap_offset,
-                (k) * FontHeight(&*Menu_BFont),
+                (k) * font_height(&*MENU_B_FONT),
                 b"R...Refresh, 1-5...Blocktype 1-5, L...Lift",
             );
             k += 1;
-            PutString(
-                ne_screen,
+            put_string(
+                NE_SCREEN,
                 keymap_offset,
-                (k) * FontHeight(&*Menu_BFont),
+                (k) * font_height(&*MENU_B_FONT),
                 b"F...Fine grid, T/SHIFT + T...Doors",
             );
             k += 1;
-            PutString(
-                ne_screen,
+            put_string(
+                NE_SCREEN,
                 keymap_offset,
-                (k) * FontHeight(&*Menu_BFont),
+                (k) * font_height(&*MENU_B_FONT),
                 b"M...Alert, E...Enter tile by number",
             );
             k += 1;
-            PutString(
-                ne_screen,
+            put_string(
+                NE_SCREEN,
                 keymap_offset,
-                (k) * FontHeight(&*Menu_BFont),
+                (k) * font_height(&*MENU_B_FONT),
                 b"Space/Enter...Floor",
             );
             k += 2;
 
-            PutString(
-                ne_screen,
+            put_string(
+                NE_SCREEN,
                 keymap_offset,
-                (k) * FontHeight(&*Menu_BFont),
+                (k) * font_height(&*MENU_B_FONT),
                 b"I/O...zoom INTO/OUT OF the map",
             );
             k += 2;
-            PutString(
-                ne_screen,
+            put_string(
+                NE_SCREEN,
                 keymap_offset,
-                (k) * FontHeight(&*Menu_BFont),
+                (k) * font_height(&*MENU_B_FONT),
                 b"P...toggle wayPOINT on/off",
             );
             k += 1;
-            PutString(
-                ne_screen,
+            put_string(
+                NE_SCREEN,
                 keymap_offset,
-                (k) * FontHeight(&*Menu_BFont),
+                (k) * font_height(&*MENU_B_FONT),
                 b"C...start/end waypoint CONNECTION",
             );
 
-            SDL_Flip(ne_screen);
-            while !FirePressedR() && !EscapePressedR() && !ReturnPressedR() {
+            SDL_Flip(NE_SCREEN);
+            while !fire_pressed_r() && !escape_pressed_r() && !return_pressed_r() {
                 SDL_Delay(1);
             }
         }
@@ -213,14 +214,14 @@ pub unsafe fn LevelEditor() {
         // specify the value of a map piece just numerically.  This will be
         // done upon pressing the 'e' key.
         //
-        if KeyIsPressedR(b'e'.into()) {
-            CenteredPutString(
-                ne_screen,
-                6 * FontHeight(&*Menu_BFont),
+        if key_is_pressed_r(b'e'.into()) {
+            centered_put_string(
+                NE_SCREEN,
+                6 * font_height(&*MENU_B_FONT),
                 b"Please enter new value: ",
             );
-            SDL_Flip(ne_screen);
-            let numeric_input_string = GetString(10, 2);
+            SDL_Flip(NE_SCREEN);
+            let numeric_input_string = get_string(10, 2);
             let mut special_map_value: c_int = 0;
             libc::sscanf(
                 numeric_input_string,
@@ -230,31 +231,31 @@ pub unsafe fn LevelEditor() {
             if special_map_value >= NUM_MAP_BLOCKS.try_into().unwrap() {
                 special_map_value = 0;
             }
-            *((*CurLevel).map[usize::try_from(block_y).unwrap()])
+            *((*CUR_LEVEL).map[usize::try_from(block_y).unwrap()])
                 .add(block_x.try_into().unwrap()) = special_map_value.try_into().unwrap();
         }
 
         //If the person using the level editor decides he/she wants a different
         //scale for the editing process, he/she may say so by using the O/I keys.
-        if KeyIsPressedR(b'o'.into()) {
-            if CurrentCombatScaleFactor > 0.25 {
-                CurrentCombatScaleFactor -= 0.25;
+        if key_is_pressed_r(b'o'.into()) {
+            if CURRENT_COMBAT_SCALE_FACTOR > 0.25 {
+                CURRENT_COMBAT_SCALE_FACTOR -= 0.25;
             }
-            SetCombatScaleTo(CurrentCombatScaleFactor);
+            set_combat_scale_to(CURRENT_COMBAT_SCALE_FACTOR);
         }
-        if KeyIsPressedR(b'i'.into()) {
-            CurrentCombatScaleFactor += 0.25;
-            SetCombatScaleTo(CurrentCombatScaleFactor);
+        if key_is_pressed_r(b'i'.into()) {
+            CURRENT_COMBAT_SCALE_FACTOR += 0.25;
+            set_combat_scale_to(CURRENT_COMBAT_SCALE_FACTOR);
         }
 
         // toggle waypoint on current square.  That means either removed or added.
         // And in case of removal, also the connections must be removed.
-        if KeyIsPressedR(b'p'.into()) {
+        if key_is_pressed_r(b'p'.into()) {
             // find out if there is a waypoint on the current square
             let mut i = 0;
-            while i < usize::try_from((*CurLevel).num_waypoints).unwrap() {
-                if i32::from((*CurLevel).AllWaypoints[i].x) == block_x
-                    && i32::from((*CurLevel).AllWaypoints[i].y) == block_y
+            while i < usize::try_from((*CUR_LEVEL).num_waypoints).unwrap() {
+                if i32::from((*CUR_LEVEL).all_waypoints[i].x) == block_x
+                    && i32::from((*CUR_LEVEL).all_waypoints[i].y) == block_y
                 {
                     break;
                 }
@@ -263,23 +264,23 @@ pub unsafe fn LevelEditor() {
             }
 
             // if its waypoint already, this waypoint must be deleted.
-            if i < usize::try_from((*CurLevel).num_waypoints).unwrap() {
-                delete_waypoint(&mut *CurLevel, i.try_into().unwrap());
+            if i < usize::try_from((*CUR_LEVEL).num_waypoints).unwrap() {
+                delete_waypoint(&mut *CUR_LEVEL, i.try_into().unwrap());
             } else {
                 // if its not a waypoint already, it must be made into one
-                create_waypoint(&mut *CurLevel, block_x, block_y);
+                create_waypoint(&mut *CUR_LEVEL, block_x, block_y);
             }
         } // if 'p' pressed (toggle waypoint)
 
         // create a connection between waypoints.  If this is the first selected waypoint, its
         // an origin and the second "C"-pressed waypoint will be used a target.
         // If origin and destination are the same, the operation is cancelled.
-        if KeyIsPressedR(b'c'.into()) {
+        if key_is_pressed_r(b'c'.into()) {
             // Determine which waypoint is currently targeted
             let mut i = 0;
-            while i < usize::try_from((*CurLevel).num_waypoints).unwrap() {
-                if i32::from((*CurLevel).AllWaypoints[i].x) == block_x
-                    && i32::from((*CurLevel).AllWaypoints[i].y) == block_y
+            while i < usize::try_from((*CUR_LEVEL).num_waypoints).unwrap() {
+                if i32::from((*CUR_LEVEL).all_waypoints[i].x) == block_x
+                    && i32::from((*CUR_LEVEL).all_waypoints[i].y) == block_y
                 {
                     break;
                 }
@@ -287,11 +288,11 @@ pub unsafe fn LevelEditor() {
                 i += 1;
             }
 
-            if i == usize::try_from((*CurLevel).num_waypoints).unwrap() {
+            if i == usize::try_from((*CUR_LEVEL).num_waypoints).unwrap() {
                 warn!("Sorry, no waypoint here to connect.");
             } else if origin_waypoint == -1 {
                 origin_waypoint = i.try_into().unwrap();
-                src_wp = &mut (*CurLevel).AllWaypoints[i];
+                src_wp = &mut (*CUR_LEVEL).all_waypoints[i];
                 if (*src_wp).num_connections < c_int::try_from(MAX_WP_CONNECTIONS).unwrap() {
                     info!("Waypoint nr. {}. selected as origin", i);
                 } else {
@@ -317,108 +318,108 @@ pub unsafe fn LevelEditor() {
             }
         }
 
-        let map_tile = &mut *((*CurLevel).map[usize::try_from(block_y).unwrap()]
+        let map_tile = &mut *((*CUR_LEVEL).map[usize::try_from(block_y).unwrap()]
             .add(block_x.try_into().unwrap()));
 
         // If the person using the level editor pressed some editing keys, insert the
         // corresponding map tile.  This is done here:
-        if KeyIsPressedR(b'f'.into()) {
+        if key_is_pressed_r(b'f'.into()) {
             *map_tile = MapTile::FineGrid as i8;
         }
-        if KeyIsPressedR(b'1'.into()) {
+        if key_is_pressed_r(b'1'.into()) {
             *map_tile = MapTile::Block1 as i8;
         }
-        if KeyIsPressedR(b'2'.into()) {
+        if key_is_pressed_r(b'2'.into()) {
             *map_tile = MapTile::Block2 as i8;
         }
-        if KeyIsPressedR(b'3'.into()) {
+        if key_is_pressed_r(b'3'.into()) {
             *map_tile = MapTile::Block3 as i8;
         }
-        if KeyIsPressedR(b'4'.into()) {
+        if key_is_pressed_r(b'4'.into()) {
             *map_tile = MapTile::Block4 as i8;
         }
-        if KeyIsPressedR(b'5'.into()) {
+        if key_is_pressed_r(b'5'.into()) {
             *map_tile = MapTile::Block5 as i8;
         }
-        if KeyIsPressedR(b'l'.into()) {
+        if key_is_pressed_r(b'l'.into()) {
             *map_tile = MapTile::Lift as i8;
         }
-        if KeyIsPressedR(SDLK_KP_PLUS as c_int) {
+        if key_is_pressed_r(SDLK_KP_PLUS as c_int) {
             *map_tile = MapTile::VWall as i8;
         }
-        if KeyIsPressedR(SDLK_KP0 as c_int) {
+        if key_is_pressed_r(SDLK_KP0 as c_int) {
             *map_tile = MapTile::HWall as i8;
         }
-        if KeyIsPressedR(SDLK_KP1 as c_int) {
+        if key_is_pressed_r(SDLK_KP1 as c_int) {
             *map_tile = MapTile::EckLu as i8;
         }
-        if KeyIsPressedR(SDLK_KP2 as c_int) {
-            if !ShiftPressed() {
-                *map_tile = MapTile::TU as i8;
+        if key_is_pressed_r(SDLK_KP2 as c_int) {
+            if !shift_pressed() {
+                *map_tile = MapTile::Tu as i8;
             } else {
                 *map_tile = MapTile::KonsoleU as i8;
             }
         }
-        if KeyIsPressedR(SDLK_KP3 as c_int) {
+        if key_is_pressed_r(SDLK_KP3 as c_int) {
             *map_tile = MapTile::EckRu as i8;
         }
-        if KeyIsPressedR(SDLK_KP4 as c_int) {
-            if !ShiftPressed() {
-                *map_tile = MapTile::TL as i8;
+        if key_is_pressed_r(SDLK_KP4 as c_int) {
+            if !shift_pressed() {
+                *map_tile = MapTile::Tl as i8;
             } else {
                 *map_tile = MapTile::KonsoleL as i8;
             }
         }
-        if KeyIsPressedR(SDLK_KP5 as c_int) {
-            if !ShiftPressed() {
+        if key_is_pressed_r(SDLK_KP5 as c_int) {
+            if !shift_pressed() {
                 *map_tile = MapTile::Kreuz as i8;
             } else {
                 *map_tile = MapTile::Void as i8;
             }
         }
-        if KeyIsPressedR(SDLK_KP6 as c_int) {
-            if !ShiftPressed() {
-                *map_tile = MapTile::TR as i8;
+        if key_is_pressed_r(SDLK_KP6 as c_int) {
+            if !shift_pressed() {
+                *map_tile = MapTile::Tr as i8;
             } else {
                 *map_tile = MapTile::KonsoleR as i8;
             }
         }
-        if KeyIsPressedR(SDLK_KP7 as c_int) {
+        if key_is_pressed_r(SDLK_KP7 as c_int) {
             *map_tile = MapTile::EckLo as i8;
         }
-        if KeyIsPressedR(SDLK_KP8 as c_int) {
-            if !ShiftPressed() {
-                *map_tile = MapTile::TO as i8;
+        if key_is_pressed_r(SDLK_KP8 as c_int) {
+            if !shift_pressed() {
+                *map_tile = MapTile::To as i8;
             } else {
                 *map_tile = MapTile::KonsoleO as i8;
             }
         }
-        if KeyIsPressedR(SDLK_KP9 as c_int) {
+        if key_is_pressed_r(SDLK_KP9 as c_int) {
             *map_tile = MapTile::EckRo as i8;
         }
-        if KeyIsPressedR(b'm'.into()) {
+        if key_is_pressed_r(b'm'.into()) {
             *map_tile = MapTile::AlertGreen as i8;
         }
-        if KeyIsPressedR(b'r'.into()) {
+        if key_is_pressed_r(b'r'.into()) {
             *map_tile = MapTile::Refresh1 as i8;
         }
-        if KeyIsPressedR(b't'.into()) {
-            if ShiftPressed() {
+        if key_is_pressed_r(b't'.into()) {
+            if shift_pressed() {
                 *map_tile = MapTile::VZutuere as i8;
             } else {
                 *map_tile = MapTile::HZutuere as i8;
             }
         }
-        if SpacePressed() || MouseLeftPressed() {
+        if space_pressed() || mouse_left_pressed() {
             *map_tile = MapTile::Floor as i8;
         }
     }
 
-    ShuffleEnemys(); // now make sure droids get redestributed correctly!
+    shuffle_enemys(); // now make sure droids get redestributed correctly!
 
-    User_Rect = rect;
+    USER_RECT = rect;
 
-    ClearGraphMem();
+    clear_graph_mem();
 }
 
 /// create a new empty waypoint on position x/y
@@ -434,14 +435,14 @@ fn create_waypoint(level: &mut Level, block_x: c_int, block_y: c_int) {
     let num = usize::try_from(level.num_waypoints).unwrap();
     level.num_waypoints += 1;
 
-    level.AllWaypoints[num].x = block_x.try_into().unwrap();
-    level.AllWaypoints[num].y = block_y.try_into().unwrap();
-    level.AllWaypoints[num].num_connections = 0;
+    level.all_waypoints[num].x = block_x.try_into().unwrap();
+    level.all_waypoints[num].y = block_y.try_into().unwrap();
+    level.all_waypoints[num].num_connections = 0;
 }
 
 /// delete given waypoint num (and all its connections) on level Lev
 fn delete_waypoint(level: &mut Level, num: c_int) {
-    let wp_list = &mut level.AllWaypoints;
+    let wp_list = &mut level.all_waypoints;
     let wpmax = level.num_waypoints - 1;
 
     // is this the last one? then just delete
@@ -491,74 +492,74 @@ fn delete_waypoint(level: &mut Level, num: c_int) {
 /// This function is used by the Level Editor integrated into
 /// freedroid.  It marks all waypoints with a cross.
 unsafe fn show_waypoints() {
-    let block_x = Me.pos.x.round();
-    let block_y = Me.pos.y.round();
+    let block_x = ME.pos.x.round();
+    let block_y = ME.pos.y.round();
 
-    SDL_LockSurface(ne_screen);
+    SDL_LockSurface(NE_SCREEN);
 
-    for wp in 0..usize::try_from((*CurLevel).num_waypoints).unwrap() {
-        let this_wp = &mut (*CurLevel).AllWaypoints[wp];
+    for wp in 0..usize::try_from((*CUR_LEVEL).num_waypoints).unwrap() {
+        let this_wp = &mut (*CUR_LEVEL).all_waypoints[wp];
         // Draw the cross in the middle of the middle of the tile
         for i in
-            i32::try_from(Block_Rect.w / 4).unwrap()..i32::try_from(3 * Block_Rect.w / 4).unwrap()
+            i32::try_from(BLOCK_RECT.w / 4).unwrap()..i32::try_from(3 * BLOCK_RECT.w / 4).unwrap()
         {
             // This draws a (double) line at the upper border of the current block
-            let mut x = i + i32::from(User_Rect.x) + i32::from(User_Rect.w / 2)
-                - ((Me.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(Block_Rect.w)) as i32;
+            let mut x = i + i32::from(USER_RECT.x) + i32::from(USER_RECT.w / 2)
+                - ((ME.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(BLOCK_RECT.w)) as i32;
             let user_center = get_user_center();
             let mut y = i + i32::from(user_center.y)
-                - ((Me.pos.y - f32::from(this_wp.y) + 0.5) * f32::from(Block_Rect.h)) as i32;
-            if x < i32::from(User_Rect.x)
-                || x > i32::from(User_Rect.x) + i32::from(User_Rect.w)
-                || y < i32::from(User_Rect.y)
-                || y > i32::from(User_Rect.y) + i32::from(User_Rect.h)
+                - ((ME.pos.y - f32::from(this_wp.y) + 0.5) * f32::from(BLOCK_RECT.h)) as i32;
+            if x < i32::from(USER_RECT.x)
+                || x > i32::from(USER_RECT.x) + i32::from(USER_RECT.w)
+                || y < i32::from(USER_RECT.y)
+                || y > i32::from(USER_RECT.y) + i32::from(USER_RECT.h)
             {
                 continue;
             }
-            putpixel(ne_screen, x, y, HIGHLIGHTCOLOR);
+            putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
 
-            x = i + i32::from(User_Rect.x) + i32::from(User_Rect.w / 2)
-                - ((Me.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(Block_Rect.w)) as i32;
+            x = i + i32::from(USER_RECT.x) + i32::from(USER_RECT.w / 2)
+                - ((ME.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(BLOCK_RECT.w)) as i32;
             y = i + i32::from(user_center.y)
-                - ((Me.pos.y - f32::from(this_wp.y) + 0.5) * f32::from(Block_Rect.h)) as i32
+                - ((ME.pos.y - f32::from(this_wp.y) + 0.5) * f32::from(BLOCK_RECT.h)) as i32
                 + 1;
-            if x < i32::from(User_Rect.x)
-                || x > i32::from(User_Rect.x) + i32::from(User_Rect.w)
-                || y < i32::from(User_Rect.y)
-                || y > i32::from(User_Rect.y) + i32::from(User_Rect.h)
+            if x < i32::from(USER_RECT.x)
+                || x > i32::from(USER_RECT.x) + i32::from(USER_RECT.w)
+                || y < i32::from(USER_RECT.y)
+                || y > i32::from(USER_RECT.y) + i32::from(USER_RECT.h)
             {
                 continue;
             }
-            putpixel(ne_screen, x, y, HIGHLIGHTCOLOR);
+            putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
 
             // This draws a line at the lower border of the current block
-            x = i + i32::from(User_Rect.x) + i32::from(User_Rect.w / 2)
-                - ((Me.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(Block_Rect.w)) as i32;
+            x = i + i32::from(USER_RECT.x) + i32::from(USER_RECT.w / 2)
+                - ((ME.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(BLOCK_RECT.w)) as i32;
             y = -i + i32::from(user_center.y)
-                - ((Me.pos.y - f32::from(this_wp.y) - 0.5) * f32::from(Block_Rect.h)) as i32
+                - ((ME.pos.y - f32::from(this_wp.y) - 0.5) * f32::from(BLOCK_RECT.h)) as i32
                 - 1;
-            if x < i32::from(User_Rect.x)
-                || x > i32::from(User_Rect.x) + i32::from(User_Rect.w)
-                || y < i32::from(User_Rect.y)
-                || y > i32::from(User_Rect.y) + i32::from(User_Rect.h)
+            if x < i32::from(USER_RECT.x)
+                || x > i32::from(USER_RECT.x) + i32::from(USER_RECT.w)
+                || y < i32::from(USER_RECT.y)
+                || y > i32::from(USER_RECT.y) + i32::from(USER_RECT.h)
             {
                 continue;
             }
-            putpixel(ne_screen, x, y, HIGHLIGHTCOLOR);
+            putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
 
-            x = i + i32::from(User_Rect.x) + i32::from(User_Rect.w / 2)
-                - ((Me.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(Block_Rect.w)) as i32;
+            x = i + i32::from(USER_RECT.x) + i32::from(USER_RECT.w / 2)
+                - ((ME.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(BLOCK_RECT.w)) as i32;
             y = -i + i32::from(user_center.y)
-                - ((Me.pos.y - f32::from(this_wp.y) - 0.5) * f32::from(Block_Rect.h)) as i32
+                - ((ME.pos.y - f32::from(this_wp.y) - 0.5) * f32::from(BLOCK_RECT.h)) as i32
                 - 2;
-            if x < i32::from(User_Rect.x)
-                || x > i32::from(User_Rect.x) + i32::from(User_Rect.w)
-                || y < i32::from(User_Rect.y)
-                || y > i32::from(User_Rect.y) + i32::from(User_Rect.h)
+            if x < i32::from(USER_RECT.x)
+                || x > i32::from(USER_RECT.x) + i32::from(USER_RECT.w)
+                || y < i32::from(USER_RECT.y)
+                || y > i32::from(USER_RECT.y) + i32::from(USER_RECT.h)
             {
                 continue;
             }
-            putpixel(ne_screen, x, y, HIGHLIGHTCOLOR);
+            putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
         }
 
         // Draw the connections to other waypoints, BUT ONLY FOR THE WAYPOINT CURRENTLY TARGETED
@@ -569,18 +570,18 @@ unsafe fn show_waypoints() {
                 &this_wp.connections[0..usize::try_from(this_wp.num_connections).unwrap()]
             {
                 let connection = usize::try_from(connection).unwrap();
-                DrawLineBetweenTiles(
+                draw_line_between_tiles(
                     this_wp.x.into(),
                     this_wp.y.into(),
-                    (*CurLevel).AllWaypoints[connection].x.into(),
-                    (*CurLevel).AllWaypoints[connection].y.into(),
+                    (*CUR_LEVEL).all_waypoints[connection].x.into(),
+                    (*CUR_LEVEL).all_waypoints[connection].y.into(),
                     HIGHLIGHTCOLOR as i32,
                 );
             }
         }
     }
 
-    SDL_UnlockSurface(ne_screen);
+    SDL_UnlockSurface(NE_SCREEN);
 }
 
 /// This function is used by the Level Editor integrated into
@@ -588,97 +589,97 @@ unsafe fn show_waypoints() {
 /// edited or would be edited, if the user pressed something.  I.e.
 /// it provides a "cursor" for the Level Editor.
 unsafe fn highlight_current_block() {
-    SDL_LockSurface(ne_screen);
+    SDL_LockSurface(NE_SCREEN);
 
     let user_center = get_user_center();
-    for i in 0..i32::from(Block_Rect.w) {
+    for i in 0..i32::from(BLOCK_RECT.w) {
         // This draws a (double) line at the upper border of the current block
         putpixel(
-            ne_screen,
-            i + i32::from(User_Rect.x)
-                + i32::from(User_Rect.w / 2)
-                + (((Me.pos.x).round() - Me.pos.x - 0.5) * f32::from(Block_Rect.w)) as i32,
+            NE_SCREEN,
+            i + i32::from(USER_RECT.x)
+                + i32::from(USER_RECT.w / 2)
+                + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(BLOCK_RECT.w)) as i32,
             i32::from(user_center.y)
-                + (((Me.pos.y).round() - Me.pos.y - 0.5) * f32::from(Block_Rect.h)) as i32,
+                + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(BLOCK_RECT.h)) as i32,
             HIGHLIGHTCOLOR,
         );
         putpixel(
-            ne_screen,
-            i + i32::from(User_Rect.x)
-                + i32::from(User_Rect.w / 2)
-                + (((Me.pos.x).round() - Me.pos.x - 0.5) * f32::from(Block_Rect.w)) as i32,
+            NE_SCREEN,
+            i + i32::from(USER_RECT.x)
+                + i32::from(USER_RECT.w / 2)
+                + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(BLOCK_RECT.w)) as i32,
             i32::from(user_center.y)
-                + (((Me.pos.y).round() - Me.pos.y - 0.5) * f32::from(Block_Rect.h)) as i32
+                + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(BLOCK_RECT.h)) as i32
                 + 1,
             HIGHLIGHTCOLOR,
         );
 
         // This draws a line at the lower border of the current block
         putpixel(
-            ne_screen,
-            i + i32::from(User_Rect.x)
-                + i32::from(User_Rect.w / 2)
-                + (((Me.pos.x).round() - Me.pos.x - 0.5) * f32::from(Block_Rect.w)) as i32,
+            NE_SCREEN,
+            i + i32::from(USER_RECT.x)
+                + i32::from(USER_RECT.w / 2)
+                + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(BLOCK_RECT.w)) as i32,
             i32::from(user_center.y)
-                + (((Me.pos.y).round() - Me.pos.y + 0.5) * f32::from(Block_Rect.h)) as i32
+                + (((ME.pos.y).round() - ME.pos.y + 0.5) * f32::from(BLOCK_RECT.h)) as i32
                 - 1,
             HIGHLIGHTCOLOR,
         );
         putpixel(
-            ne_screen,
-            i + i32::from(User_Rect.x)
-                + i32::from(User_Rect.w / 2)
-                + (((Me.pos.x).round() - Me.pos.x - 0.5) * f32::from(Block_Rect.w)) as i32,
+            NE_SCREEN,
+            i + i32::from(USER_RECT.x)
+                + i32::from(USER_RECT.w / 2)
+                + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(BLOCK_RECT.w)) as i32,
             i32::from(user_center.y)
-                + (((Me.pos.y).round() - Me.pos.y + 0.5) * f32::from(Block_Rect.h)) as i32
+                + (((ME.pos.y).round() - ME.pos.y + 0.5) * f32::from(BLOCK_RECT.h)) as i32
                 - 2,
             HIGHLIGHTCOLOR,
         );
 
         // This draws a line at the left border of the current block
         putpixel(
-            ne_screen,
-            i32::from(User_Rect.x)
-                + i32::from(User_Rect.w / 2)
-                + (((Me.pos.x).round() - Me.pos.x - 0.5) * f32::from(Block_Rect.w)) as i32,
+            NE_SCREEN,
+            i32::from(USER_RECT.x)
+                + i32::from(USER_RECT.w / 2)
+                + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(BLOCK_RECT.w)) as i32,
             i32::from(user_center.y)
-                + (((Me.pos.y).round() - Me.pos.y - 0.5) * f32::from(Block_Rect.h)) as i32
+                + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(BLOCK_RECT.h)) as i32
                 + i,
             HIGHLIGHTCOLOR,
         );
         putpixel(
-            ne_screen,
-            1 + i32::from(User_Rect.x)
-                + i32::from(User_Rect.w / 2)
-                + (((Me.pos.x).round() - Me.pos.x - 0.5) * f32::from(Block_Rect.w)) as i32,
+            NE_SCREEN,
+            1 + i32::from(USER_RECT.x)
+                + i32::from(USER_RECT.w / 2)
+                + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(BLOCK_RECT.w)) as i32,
             i32::from(user_center.y)
-                + (((Me.pos.y).round() - Me.pos.y - 0.5) * f32::from(Block_Rect.h)) as i32
+                + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(BLOCK_RECT.h)) as i32
                 + i,
             HIGHLIGHTCOLOR,
         );
 
         // This draws a line at the right border of the current block
         putpixel(
-            ne_screen,
-            -1 + i32::from(User_Rect.x)
-                + i32::from(User_Rect.w / 2)
-                + (((Me.pos.x).round() - Me.pos.x + 0.5) * f32::from(Block_Rect.w)) as i32,
+            NE_SCREEN,
+            -1 + i32::from(USER_RECT.x)
+                + i32::from(USER_RECT.w / 2)
+                + (((ME.pos.x).round() - ME.pos.x + 0.5) * f32::from(BLOCK_RECT.w)) as i32,
             i32::from(user_center.y)
-                + (((Me.pos.y).round() - Me.pos.y - 0.5) * f32::from(Block_Rect.h)) as i32
+                + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(BLOCK_RECT.h)) as i32
                 + i,
             HIGHLIGHTCOLOR,
         );
         putpixel(
-            ne_screen,
-            -2 + i32::from(User_Rect.x)
-                + i32::from(User_Rect.w / 2)
-                + (((Me.pos.x).round() - Me.pos.x + 0.5) * f32::from(Block_Rect.w)) as i32,
+            NE_SCREEN,
+            -2 + i32::from(USER_RECT.x)
+                + i32::from(USER_RECT.w / 2)
+                + (((ME.pos.x).round() - ME.pos.x + 0.5) * f32::from(BLOCK_RECT.w)) as i32,
             i32::from(user_center.y)
-                + (((Me.pos.y).round() - Me.pos.y - 0.5) * f32::from(Block_Rect.h)) as i32
+                + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(BLOCK_RECT.h)) as i32
                 + i,
             HIGHLIGHTCOLOR,
         );
     }
 
-    SDL_UnlockSurface(ne_screen);
+    SDL_UnlockSurface(NE_SCREEN);
 }

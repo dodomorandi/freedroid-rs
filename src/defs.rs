@@ -1,9 +1,9 @@
 #[cfg(feature = "gcw0")]
-use crate::input::{KeyIsPressed, KeyIsPressedR};
+use crate::input::{key_is_pressed, key_is_pressed_r};
 use crate::{
-    input::{cmd_is_active, cmd_is_activeR, KeyIsPressed, KeyIsPressedR, ModIsPressed},
+    input::{cmd_is_active, cmd_is_active_r, key_is_pressed, key_is_pressed_r, mod_is_pressed},
     structs::Point,
-    vars::User_Rect,
+    vars::USER_RECT,
 };
 
 use bitflags::bitflags;
@@ -20,8 +20,6 @@ use std::{convert::TryFrom, ffi::CStr, fmt, os::raw::c_int};
 
 pub const MAX_THEMES: usize = 100;
 
-pub const JOY_MAX_VAL: usize = 32767; // maximal amplitude of joystick axis values
-
 pub const RESET: c_int = 0x01;
 pub const UPDATE: c_int = 0x02;
 pub const INIT_ONLY: usize = 0x04;
@@ -32,7 +30,7 @@ pub const NUM_DECAL_PICS: usize = 2;
 
 #[inline]
 pub unsafe fn get_user_center() -> Rect {
-    let Rect { x, y, w, h } = User_Rect;
+    let Rect { x, y, w, h } = USER_RECT;
     Rect {
         x: x + (w / 2) as i16,
         y: y + (h / 2) as i16,
@@ -73,7 +71,7 @@ pub unsafe fn free_if_unused(surface: *mut SDL_Surface) {
 // some input-related defines and macros
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(C)]
+#[allow(dead_code)]
 pub enum PointerStates {
     MouseUp = sdl::event::Key::Last as isize + 1,
     MouseRight,
@@ -100,7 +98,6 @@ pub enum PointerStates {
 //--------------------------------------------------
 // here come the actual game-"commands"
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(C)]
 pub enum Cmds {
     Up = 0,
     Down,
@@ -121,63 +118,44 @@ pub enum Cmds {
 //--------------------------------------------------
 
 #[inline]
-pub unsafe fn ReturnPressed() -> bool {
-    KeyIsPressed(SDLK_RETURN as i32)
+pub unsafe fn return_pressed_r() -> bool {
+    key_is_pressed_r(SDLK_RETURN as i32)
 }
 
 #[inline]
-pub unsafe fn ReturnPressedR() -> bool {
-    KeyIsPressedR(SDLK_RETURN as i32)
+pub unsafe fn shift_pressed() -> bool {
+    mod_is_pressed(Mod::LShift as u32 | Mod::RShift as u32)
 }
 
 #[inline]
-pub unsafe fn ShiftPressed() -> bool {
-    ModIsPressed(Mod::LShift as u32 | Mod::RShift as u32)
+pub unsafe fn alt_pressed() -> bool {
+    mod_is_pressed(Mod::LAlt as u32 | Mod::RAlt as u32)
 }
 
 #[inline]
-pub unsafe fn AltPressed() -> bool {
-    ModIsPressed(Mod::LAlt as u32 | Mod::RAlt as u32)
+pub unsafe fn ctrl_pressed() -> bool {
+    mod_is_pressed(Mod::LCtrl as u32 | Mod::RCtrl as u32)
 }
 
 #[inline]
-pub unsafe fn CtrlPressed() -> bool {
-    ModIsPressed(Mod::LCtrl as u32 | Mod::RCtrl as u32)
+pub unsafe fn mouse_left_pressed() -> bool {
+    key_is_pressed(PointerStates::MouseButton1 as c_int)
 }
 
 #[inline]
-pub unsafe fn MouseLeftPressed() -> bool {
-    KeyIsPressed(PointerStates::MouseButton1 as c_int)
+pub unsafe fn mouse_left_pressed_r() -> bool {
+    key_is_pressed_r(PointerStates::MouseButton1 as c_int)
 }
 
 #[inline]
-pub unsafe fn MouseLeftPressedR() -> bool {
-    KeyIsPressedR(PointerStates::MouseButton1 as c_int)
+pub unsafe fn space_pressed() -> bool {
+    key_is_pressed(SDLK_SPACE as c_int)
 }
 
 #[inline]
-pub unsafe fn MouseRightPressed() -> bool {
-    KeyIsPressed(PointerStates::MouseButton2 as c_int)
+pub unsafe fn escape_pressed_r() -> bool {
+    key_is_pressed_r(SDLK_ESCAPE as c_int)
 }
-
-#[inline]
-pub unsafe fn MouseRightPressedR() -> bool {
-    KeyIsPressedR(PointerStates::MouseButton2 as c_int)
-}
-
-// #define EscapePressed() KeyIsPressed(SDLK_ESCAPE)
-
-#[inline]
-pub unsafe fn SpacePressed() -> bool {
-    KeyIsPressed(SDLK_SPACE as c_int)
-}
-
-#[inline]
-pub unsafe fn EscapePressedR() -> bool {
-    KeyIsPressedR(SDLK_ESCAPE as c_int)
-}
-
-// #define SpacePressedR() KeyIsPressedR (SDLK_SPACE)
 
 #[cfg(feature = "gcw0")]
 #[inline]
@@ -302,66 +280,63 @@ pub unsafe fn gcw0_any_button_pressed_r() -> bool {
 }
 
 #[inline]
-pub unsafe fn UpPressed() -> bool {
+pub unsafe fn up_pressed() -> bool {
     cmd_is_active(Cmds::Up)
 }
 
 #[inline]
-pub unsafe fn DownPressed() -> bool {
+pub unsafe fn down_pressed() -> bool {
     cmd_is_active(Cmds::Down)
 }
 
 #[inline]
-pub unsafe fn LeftPressed() -> bool {
+pub unsafe fn left_pressed() -> bool {
     cmd_is_active(Cmds::Left)
 }
 
 #[inline]
-pub unsafe fn RightPressed() -> bool {
+pub unsafe fn right_pressed() -> bool {
     cmd_is_active(Cmds::Right)
 }
 
 #[inline]
-pub unsafe fn FirePressed() -> bool {
+pub unsafe fn fire_pressed() -> bool {
     cmd_is_active(Cmds::Fire)
 }
 
 #[inline]
-pub unsafe fn FirePressedR() -> bool {
-    cmd_is_activeR(Cmds::Fire)
+pub unsafe fn fire_pressed_r() -> bool {
+    cmd_is_active_r(Cmds::Fire)
 }
 
 #[inline]
-pub unsafe fn UpPressedR() -> bool {
-    cmd_is_activeR(Cmds::Up)
+pub unsafe fn up_pressed_r() -> bool {
+    cmd_is_active_r(Cmds::Up)
 }
 
 #[inline]
-pub unsafe fn DownPressedR() -> bool {
-    cmd_is_activeR(Cmds::Down)
+pub unsafe fn down_pressed_r() -> bool {
+    cmd_is_active_r(Cmds::Down)
 }
 
 #[inline]
-pub unsafe fn LeftPressedR() -> bool {
-    cmd_is_activeR(Cmds::Left)
+pub unsafe fn left_pressed_r() -> bool {
+    cmd_is_active_r(Cmds::Left)
 }
 
 #[inline]
-pub unsafe fn RightPressedR() -> bool {
-    cmd_is_activeR(Cmds::Right)
+pub unsafe fn right_pressed_r() -> bool {
+    cmd_is_active_r(Cmds::Right)
 }
 
 #[inline]
-pub unsafe fn AnyCmdActive() -> bool {
+pub unsafe fn any_cmd_active() -> bool {
     cmd_is_active(Cmds::Fire) || cmd_is_active(Cmds::Activate) || cmd_is_active(Cmds::Takeover)
 }
-
-// #define AnyCmdActiveR() (cmd_is_activeR(CMD_FIRE) || cmd_is_activeR(CMD_ACTIVATE) || cmd_is_activeR(CMD_TAKEOVER) )
 
 // ----------------------------------------
 
 bitflags! {
-    #[repr(C)]
     pub struct MenuAction: i32 {
         const INFO = 0b0000_0000_0001;
         const BACK = 0b0000_0000_0010;
@@ -382,7 +357,6 @@ pub const COLLISION_STEPSIZE: f32 = 0.1;
 /* ************************************************************
  * Highscore related defines
  *************************************************************/
-pub const HS_BACKGROUND_FILE: &str = "transfer.jpg";
 pub const HS_BACKGROUND_FILE_C: &CStr = cstr!("transfer.jpg");
 pub const HS_EMPTY_ENTRY: &str = "--- empty ---";
 pub const MAX_NAME_LEN: usize = 15; /* max len of highscore name entry */
@@ -392,14 +366,12 @@ pub const DATE_LEN: usize = 10; /* reserved for the date-string */
 
 // find_file(): use current-theme subdir in search or not
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(C)]
 pub enum Themed {
     NoTheme = 0,
     UseTheme,
 }
 // find_file(): how important is the file in question:
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(C)]
 pub enum Criticality {
     Ignore = 0, // ignore if not found and return NULL
     WarnOnly,   // warn if not found and return NULL
@@ -443,7 +415,6 @@ bitflags! {
 
 // symbolic Alert-names
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(C)]
 pub enum AlertNames {
     Green = 0,
     Yellow,
@@ -507,53 +478,31 @@ pub const FD_DATADIR: &str = "."; // our local fallback
 pub const LOCAL_DATADIR: &str = ".."; // local fallback
                                       // #endif
 
-pub const GRAPHICS_DIR: &str = "graphics/";
 pub const GRAPHICS_DIR_C: &CStr = cstr!("graphics/");
-pub const SOUND_DIR: &str = "sound/";
 pub const SOUND_DIR_C: &CStr = cstr!("sound/");
-pub const MAP_DIR: &str = "map/";
 pub const MAP_DIR_C: &CStr = cstr!("map/");
 
-pub const MAP_BLOCK_FILE: &str = "map_blocks.png";
 pub const MAP_BLOCK_FILE_C: &CStr = cstr!("map_blocks.png");
-pub const DROID_BLOCK_FILE: &str = "droids.png";
 pub const DROID_BLOCK_FILE_C: &CStr = cstr!("droids.png");
-pub const BULLET_BLOCK_FILE: &str = "bullet.png";
 pub const BULLET_BLOCK_FILE_C: &CStr = cstr!("bullet.png");
-pub const BLAST_BLOCK_FILE: &str = "blast.png";
 pub const BLAST_BLOCK_FILE_C: &CStr = cstr!("blast.png");
-pub const DIGIT_BLOCK_FILE: &str = "digits.png";
 pub const DIGIT_BLOCK_FILE_C: &CStr = cstr!("digits.png");
 
-pub const BANNER_BLOCK_FILE: &str = "banner.png";
 pub const BANNER_BLOCK_FILE_C: &CStr = cstr!("banner.png");
-pub const TITLE_PIC_FILE: &str = "title.jpg";
 pub const TITLE_PIC_FILE_C: &CStr = cstr!("title.jpg");
-pub const CONSOLE_PIC_FILE: &str = "console_fg.png";
 pub const CONSOLE_PIC_FILE_C: &CStr = cstr!("console_fg.png");
-pub const CONSOLE_BG_PIC1_FILE: &str = "console_bg1.jpg";
 pub const CONSOLE_BG_PIC1_FILE_C: &CStr = cstr!("console_bg1.jpg");
-pub const CONSOLE_BG_PIC2_FILE: &str = "console_bg2.jpg";
 pub const CONSOLE_BG_PIC2_FILE_C: &CStr = cstr!("console_bg2.jpg");
-pub const TAKEOVER_BG_PIC_FILE: &str = "takeover_bg.jpg";
 pub const TAKEOVER_BG_PIC_FILE_C: &CStr = cstr!("takeover_bg.jpg");
-pub const CREDITS_PIC_FILE: &str = "credits.jpg";
 pub const CREDITS_PIC_FILE_C: &CStr = cstr!("credits.jpg");
 
-pub const SHIP_ON_PIC_FILE: &str = "ship_on.png";
 pub const SHIP_ON_PIC_FILE_C: &CStr = cstr!("ship_on.png");
-pub const SHIP_OFF_PIC_FILE: &str = "ship_off.png";
 pub const SHIP_OFF_PIC_FILE_C: &CStr = cstr!("ship_off.png");
 
-pub const PROGRESS_METER_FILE: &str = "progress_meter.png";
 pub const PROGRESS_METER_FILE_C: &CStr = cstr!("progress_meter.png");
-pub const PROGRESS_FILLER_FILE: &str = "progress_filler.png";
 pub const PROGRESS_FILLER_FILE_C: &CStr = cstr!("progress_filler.png");
 
-pub const STANDARD_MISSION: &str = "Paradroid.mission";
 pub const STANDARD_MISSION_C: &CStr = cstr!("Paradroid.mission");
-pub const NEW_MISSION: &str = "CleanPrivateGoodsStorageCellar.mission";
-pub const NEW_MISSION_C: &CStr = cstr!("CleanPrivateGoodsStorageCellar.mission");
 
 pub const PARA_FONT_FILE: &str = "parafont.png";
 pub const PARA_FONT_FILE_C: &CStr = cstr!("parafont.png");
@@ -574,8 +523,7 @@ pub const TEXT_STRETCH: f64 = 1.2;
 pub const LEFT_TEXT_LEN: usize = 10;
 pub const RIGHT_TEXT_LEN: usize = 6;
 
-pub const BULLET_BULLET_COLLISION_DIST: f64 = 10.0 / 64.0;
-pub const BULLET_COLL_DIST2: f32 = 0.0244140625;
+pub const BULLET_COLL_DIST2: f32 = 0.024_414_063;
 // **********************************************************************
 //
 //
@@ -585,7 +533,7 @@ pub const BULLET_COLL_DIST2: f32 = 0.0244140625;
 // The order of appearance here should match the order of appearance
 // in the SoundSampleFilenames definition located in sound.c!
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[repr(C)]
+#[allow(dead_code)]
 pub enum Sound {
     Error = 0,
     Blast,
@@ -641,16 +589,13 @@ pub const OK: i8 = 0;
 
 pub const DIRECTIONS: usize = 8;
 
-pub const ALLSHIPS: usize = 4;
 pub const ENEMYPHASES: u8 = 8;
-pub const DROID_PHASES: usize = ENEMYPHASES as usize;
 
 pub const WAIT_LEVELEMPTY: f32 = 0.5; /* warte bevor Graufaerben (in seconds)*/
 pub const SLOWMO_FACTOR: f32 = 0.33; // slow-motion effect on last blast when level is going empty
 pub const WAIT_AFTER_KILLED: u32 = 2000; // time (in ms) to wait and still display pictures after the destruction of
 pub const SHOW_WAIT: u32 = 3500; // std amount of time to show something
                                  // the players droid.  This is now measured in seconds and can be a float
-pub const WAIT_SHIPEMPTY: usize = 20;
 pub const WAIT_TRANSFERMODE: f32 = 0.3; /* this is a "float" indicating the number of seconds the influence
                                         stand still with space pressed, before switching into transfermode
                                         This variable describes the amount in SECONDS */
@@ -663,7 +608,6 @@ pub const FLASH_DURATION: f32 = 0.1; // in seconds
 
 /* direction definitions (fireing bullets and testing blockedness of positions) */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[repr(C)]
 pub enum Direction {
     Oben = 0,
     Rechtsoben,
@@ -733,7 +677,6 @@ pub const MAX_WP_CONNECTIONS: usize = 12;
 pub const MAX_MAP_ROWS: usize = 255;
 pub const MAX_MAP_COLS: usize = 255;
 pub const MAX_ENEMYS_ON_SHIP: usize = 300;
-pub const MAX_CHAT_KEYWORDS_PER_DROID: usize = 30;
 pub const MAX_INFLU_POSITION_HISTORY: usize = 100;
 
 pub const MAX_LIFTS: usize = 50; /* actually the entries to the lifts */
@@ -743,27 +686,18 @@ pub const MAX_LIFT_ROWS: usize = 15; /* the different lift "rows" */
 /* don't change this easily */
 /* corresponds to a reserved palette range !*/
 pub const MAX_LEVEL_RECTS: usize = 20; // how many rects compose a level
-pub const MAX_EVENT_TRIGGERS: usize = 20; // how many event triggers at most to allow
-pub const MAX_TRIGGERED_ACTIONS: usize = 20; // how many triggerable actions to allow at most
 
 pub const MAXWAYPOINTS: usize = 100;
 pub const MAX_DOORS_ON_LEVEL: usize = 60;
 pub const MAX_REFRESHES_ON_LEVEL: usize = 40;
 pub const MAX_ALERTS_ON_LEVEL: usize = 40;
-pub const MAX_TELEPORTERS_ON_LEVEL: usize = 10;
 
 pub const MAX_PHASES_IN_A_BULLET: usize = 12;
-pub const MAX_STEPS_IN_GIVEN_COURSE: usize = 1000;
 
-pub const BREMSDREHUNG: usize = 3; /* warte 3*, bevor Influencer weitergedreht wird */
-
-/* Wegstossgeschw. von Tueren u.ae. */
-// NORMALISATION #define PUSHSPEED 2
 pub const PUSHSPEED: f32 = 2.;
 
 /* Schusstypen */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[repr(C)]
 pub enum BulletKind {
     Pulse = 0,
     SinglePulse,
@@ -814,9 +748,7 @@ impl TryFrom<c_int> for BulletKind {
     }
 }
 
-/* Explosionstypen */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[repr(C)]
 pub enum Explosion {
     Bulletblast = 0,
     Druidblast,
@@ -825,9 +757,8 @@ pub enum Explosion {
 
 pub const BLINKENERGY: f32 = 25.;
 
-/* Druidtypen */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[repr(C)]
+#[allow(dead_code)]
 pub enum Droid {
     Droid001 = 0, /* You will know why are the numbers there, when you */
     Droid123 = 1, /* enter the crew of a level !! */
@@ -856,9 +787,8 @@ pub enum Droid {
     NumDroids,
 }
 
-/* Status- Werte der Druids */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[repr(C)]
+#[allow(dead_code)]
 pub enum Status {
     Mobile,
     Transfermode,
@@ -881,19 +811,17 @@ pub enum Status {
 
 pub const DECKCOMPLETEBONUS: f32 = 500.;
 
-/* Konstanten die die Kartenwerte anschaulich machen */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[repr(C)]
 pub enum MapTile {
     Floor,
     EckLu,
-    TU,
+    Tu,
     EckRu,
-    TL,
+    Tl,
     Kreuz,
-    TR,
+    Tr,
     EckLo,
-    TO,
+    To,
     EckRo,
     HWall,
     VWall,
@@ -947,13 +875,13 @@ macro_rules! impl_try_from_map_tile {
                 Ok(match value {
                     0 => Floor,
                     1 => EckLu,
-                    2 => TU,
+                    2 => Tu,
                     3 => EckRu,
-                    4 => TL,
+                    4 => Tl,
                     5 => Kreuz,
-                    6 => TR,
+                    6 => Tr,
                     7 => EckLo,
-                    8 => TO,
+                    8 => To,
                     9 => EckRo,
                     10 => HWall,
                     11 => VWall,

@@ -1,31 +1,30 @@
 #[cfg(feature = "gcw0")]
 use crate::defs::{gcw0_ls_pressed_r, gcw0_rs_pressed_r};
 use crate::{
-    bullet::DeleteBullet,
-    curShip, debug_level,
+    bullet::delete_bullet,
     defs::{
-        self, scale_rect, AssembleCombatWindowFlags, Cmds, Criticality, FirePressedR, Status,
+        self, fire_pressed_r, scale_rect, AssembleCombatWindowFlags, Cmds, Criticality, Status,
         Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE_C,
         PROGRESS_METER_FILE_C,
     },
-    enemy::{AnimateEnemys, ShuffleEnemys},
-    global::{GameConfig, SkipAFewFrames},
+    enemy::{animate_enemys, shuffle_enemys},
+    global::{GAME_CONFIG, SKIP_A_FEW_FRAMES},
     graphics::{
-        ne_screen, progress_filler_pic, progress_meter_pic, BannerIsDestroyed, FreeGraphics,
-        Load_Block, ScalePic,
+        free_graphics, load_block, scale_pic, BANNER_IS_DESTROYED, NE_SCREEN, PROGRESS_FILLER_PIC,
+        PROGRESS_METER_PIC,
     },
-    highscore::SaveHighscores,
-    influencer::AnimateInfluence,
-    init::FreeGameMem,
-    input::{cmd_is_active, cmd_is_activeR, cmd_strings, key_cmds, KeyIsPressedR, SDL_Delay},
-    map::{AnimateRefresh, FreeShipMemory},
-    menu::FreeMenuData,
-    ship::FreeDroidPics,
-    sound::{FreeSounds, LeaveLiftSound},
-    text::printf_SDL,
-    vars::{Me, ProgressBar_Rect, ProgressMeter_Rect, ProgressText_Rect},
-    view::{Assemble_Combat_Picture, DisplayBanner},
-    AllBlasts, AllEnemys, ConfigDir, CurLevel, FPSover1, NumEnemys,
+    highscore::save_highscores,
+    influencer::animate_influence,
+    init::free_game_mem,
+    input::{cmd_is_active, cmd_is_active_r, key_is_pressed_r, SDL_Delay, CMD_STRINGS, KEY_CMDS},
+    map::{animate_refresh, free_ship_memory},
+    menu::free_menu_data,
+    ship::free_droid_pics,
+    sound::{free_sounds, leave_lift_sound},
+    text::printf_sdl,
+    vars::{ME, PROGRESS_BAR_RECT, PROGRESS_METER_RECT, PROGRESS_TEXT_RECT},
+    view::{assemble_combat_picture, display_banner},
+    ALL_BLASTS, ALL_ENEMYS, CONFIG_DIR, CUR_LEVEL, CUR_SHIP, F_P_SOVER1, NUM_ENEMYS,
 };
 
 use cstr::cstr;
@@ -52,33 +51,25 @@ use std::{
     sync::RwLock,
 };
 
-static mut oneframedelay: c_long = 0;
-
-static mut tenframedelay: c_long = 0;
-
-static mut onehundredframedelay: c_long = 0;
-
-static mut Now_SDL_Ticks: u32 = 0;
-
-static mut One_Frame_SDL_Ticks: u32 = 0;
-
-static mut framenr: c_int = 0;
-
+static mut ONE_FRAME_DELAY: c_long = 0;
+static mut NOW_SDL_TICKS: u32 = 0;
+static mut ONE_FRAME_SDL_TICKS: u32 = 0;
+static mut FRAME_NR: c_int = 0;
 static CURRENT_TIME_FACTOR: Lazy<RwLock<f32>> = Lazy::new(|| RwLock::new(1.));
 
 pub unsafe fn update_progress(percent: c_int) {
-    let h = (f64::from(ProgressBar_Rect.h) * f64::from(percent) / 100.) as u16;
+    let h = (f64::from(PROGRESS_BAR_RECT.h) * f64::from(percent) / 100.) as u16;
     let mut dst = Rect::new(
-        ProgressBar_Rect.x + ProgressMeter_Rect.x,
-        ProgressBar_Rect.y + ProgressMeter_Rect.y + ProgressBar_Rect.h as i16 - h as i16,
-        ProgressBar_Rect.w,
+        PROGRESS_BAR_RECT.x + PROGRESS_METER_RECT.x,
+        PROGRESS_BAR_RECT.y + PROGRESS_METER_RECT.y + PROGRESS_BAR_RECT.h as i16 - h as i16,
+        PROGRESS_BAR_RECT.w,
         h,
     );
 
-    let mut src = Rect::new(0, ProgressBar_Rect.h as i16 - dst.h as i16, dst.h, 0);
+    let mut src = Rect::new(0, PROGRESS_BAR_RECT.h as i16 - dst.h as i16, dst.h, 0);
 
-    SDL_UpperBlit(progress_filler_pic, &mut src, ne_screen, &mut dst);
-    SDL_UpdateRects(ne_screen, 1, &mut dst);
+    SDL_UpperBlit(PROGRESS_FILLER_PIC, &mut src, NE_SCREEN, &mut dst);
+    SDL_UpdateRects(NE_SCREEN, 1, &mut dst);
 }
 
 /// This function is the key to independence of the framerate for various game elements.
@@ -97,15 +88,15 @@ pub unsafe fn update_progress(percent: c_int) {
 ///
 /// This counter is most conveniently set via the function Activate_Conservative_Frame_Computation,
 /// which can be conveniently called from eveywhere.
-pub unsafe fn Frame_Time() -> c_float {
+pub unsafe fn frame_time() -> c_float {
     static mut PREVIOUS_TIME: c_float = 0.1;
 
-    if SkipAFewFrames != 0 {
+    if SKIP_A_FEW_FRAMES != 0 {
         return PREVIOUS_TIME;
     }
 
-    if FPSover1 > 0. {
-        PREVIOUS_TIME = 1.0 / FPSover1;
+    if F_P_SOVER1 > 0. {
+        PREVIOUS_TIME = 1.0 / F_P_SOVER1;
     }
 
     PREVIOUS_TIME * *CURRENT_TIME_FACTOR.read().unwrap()
@@ -118,23 +109,23 @@ pub unsafe fn set_time_factor(time_factor: c_float) {
 
 /// This function is used for terminating freedroid.  It will close
 /// the SDL submodules and exit.
-pub unsafe fn Terminate(exit_code: c_int) -> ! {
+pub unsafe fn terminate(exit_code: c_int) -> ! {
     info!("Termination of Freedroid initiated.");
 
     if exit_code == defs::OK.into() {
         info!("Writing config file");
-        SaveGameConfig();
+        save_game_config();
         info!("Writing highscores to disk");
-        SaveHighscores();
+        save_highscores();
     }
 
     // ----- free memory
-    FreeShipMemory();
-    FreeDroidPics();
-    FreeGraphics();
-    FreeSounds();
-    FreeMenuData();
-    FreeGameMem();
+    free_ship_memory();
+    free_droid_pics();
+    free_graphics();
+    free_sounds();
+    free_menu_data();
+    free_game_mem();
 
     // ----- exit
     info!("Thank you for playing Freedroid.");
@@ -144,7 +135,7 @@ pub unsafe fn Terminate(exit_code: c_int) -> ! {
 
 /// This function is used to generate a random integer in the range
 /// from [0 to upper_bound] (inclusive), distributed uniformly.
-pub unsafe fn MyRandom(upper_bound: c_int) -> c_int {
+pub unsafe fn my_random(upper_bound: c_int) -> c_int {
     // random float in [0,upper_bound+1)
     let tmp = (f64::from(upper_bound) + 1.0)
         * (f64::from(libc::rand()) / (f64::from(libc::RAND_MAX) + 1.0));
@@ -162,42 +153,42 @@ pub unsafe fn MyRandom(upper_bound: c_int) -> c_int {
 /// can further be toggled from PAUSE to CHEESE, which is
 /// a feature from the original program that should probably
 /// allow for better screenshots.
-pub unsafe fn Pause() {
-    Me.status = Status::Pause as i32;
-    Assemble_Combat_Picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+pub unsafe fn pause() {
+    ME.status = Status::Pause as i32;
+    assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
 
     let mut cheese = false;
     loop {
-        StartTakingTimeForFPSCalculation();
+        start_taking_time_for_fps_calculation();
 
         if !cheese {
-            AnimateInfluence();
-            AnimateRefresh();
-            AnimateEnemys();
+            animate_influence();
+            animate_refresh();
+            animate_enemys();
         }
 
-        DisplayBanner(null_mut(), null_mut(), 0);
-        Assemble_Combat_Picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+        display_banner(null_mut(), null_mut(), 0);
+        assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
 
         SDL_Delay(1);
 
-        ComputeFPSForThisFrame();
+        compute_fps_for_this_frame();
 
         #[cfg(feature = "gcw0")]
         let cond = gcw0_ls_pressed_r() || gcw0_rs_pressed_r();
         #[cfg(not(feature = "gcw0"))]
-        let cond = KeyIsPressedR(b'c'.into());
+        let cond = key_is_pressed_r(b'c'.into());
 
         if cond {
-            if Me.status != Status::Cheese as i32 {
-                Me.status = Status::Cheese as i32;
+            if ME.status != Status::Cheese as i32 {
+                ME.status = Status::Cheese as i32;
             } else {
-                Me.status = Status::Pause as i32;
+                ME.status = Status::Pause as i32;
             }
             cheese = !cheese;
         }
 
-        if FirePressedR() || cmd_is_activeR(Cmds::Pause) {
+        if fire_pressed_r() || cmd_is_active_r(Cmds::Pause) {
             while cmd_is_active(Cmds::Pause) {
                 SDL_Delay(1);
             }
@@ -227,14 +218,14 @@ const VID_SCALE_FACTOR: &str = "Vid_ScaleFactor";
 const HOG_CPU: &str = "Hog_Cpu";
 const EMPTY_LEVEL_SPEEDUP: &str = "EmptyLevelSpeedup";
 
-pub unsafe fn SaveGameConfig() -> c_int {
+pub unsafe fn save_game_config() -> c_int {
     use std::io::Write;
-    if ConfigDir[0] == b'\0' as c_char {
+    if CONFIG_DIR[0] == b'\0' as c_char {
         return defs::ERR.into();
     }
 
     let config_path =
-        Path::new(&CStr::from_ptr(ConfigDir.as_ptr()).to_str().unwrap()).join("config");
+        Path::new(&CStr::from_ptr(CONFIG_DIR.as_ptr()).to_str().unwrap()).join("config");
     let mut config = match File::create(&config_path) {
         Ok(config) => config,
         Err(_) => {
@@ -248,71 +239,91 @@ pub unsafe fn SaveGameConfig() -> c_int {
 
     // Now write the actual data, line by line
     writeln!(config, "{} = {}", VERSION_STRING, env!("CARGO_PKG_VERSION")).unwrap();
-    writeln!(config, "{} = {}", DRAW_FRAMERATE, GameConfig.Draw_Framerate).unwrap();
-    writeln!(config, "{} = {}", DRAW_ENERGY, GameConfig.Draw_Energy).unwrap();
-    writeln!(config, "{} = {}", DRAW_POSITION, GameConfig.Draw_Position).unwrap();
     writeln!(
         config,
         "{} = {}",
-        DRAW_DEATHCOUNT, GameConfig.Draw_DeathCount
+        DRAW_FRAMERATE, GAME_CONFIG.draw_framerate
     )
     .unwrap();
-    writeln!(config, "{} = {}", DROID_TALK, GameConfig.Droid_Talk).unwrap();
+    writeln!(config, "{} = {}", DRAW_ENERGY, GAME_CONFIG.draw_energy).unwrap();
+    writeln!(config, "{} = {}", DRAW_POSITION, GAME_CONFIG.draw_position).unwrap();
     writeln!(
         config,
         "{} = {}",
-        WANTED_TEXT_VISIBLE_TIME, GameConfig.WantedTextVisibleTime,
+        DRAW_DEATHCOUNT, GAME_CONFIG.draw_death_count
     )
     .unwrap();
+    writeln!(config, "{} = {}", DROID_TALK, GAME_CONFIG.droid_talk).unwrap();
     writeln!(
         config,
         "{} = {}",
-        CURRENT_BG_MUSIC_VOLUME, GameConfig.Current_BG_Music_Volume,
-    )
-    .unwrap();
-    writeln!(
-        config,
-        "{} = {}",
-        CURRENT_SOUND_FX_VOLUME, GameConfig.Current_Sound_FX_Volume,
+        WANTED_TEXT_VISIBLE_TIME, GAME_CONFIG.wanted_text_visible_time,
     )
     .unwrap();
     writeln!(
         config,
         "{} = {}",
-        CURRENT_GAMMA_CORRECTION, GameConfig.Current_Gamma_Correction,
+        CURRENT_BG_MUSIC_VOLUME, GAME_CONFIG.current_bg_music_volume,
+    )
+    .unwrap();
+    writeln!(
+        config,
+        "{} = {}",
+        CURRENT_SOUND_FX_VOLUME, GAME_CONFIG.current_sound_fx_volume,
+    )
+    .unwrap();
+    writeln!(
+        config,
+        "{} = {}",
+        CURRENT_GAMMA_CORRECTION, GAME_CONFIG.current_gamma_correction,
     )
     .unwrap();
     writeln!(
         config,
         "{} = {}",
         THEME_NAME,
-        CStr::from_ptr(GameConfig.Theme_Name.as_ptr())
+        CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr())
             .to_str()
             .unwrap()
     )
     .unwrap();
-    writeln!(config, "{} = {}", FULL_USER_RECT, GameConfig.FullUserRect).unwrap();
-    writeln!(config, "{} = {}", USE_FULLSCREEN, GameConfig.UseFullscreen).unwrap();
     writeln!(
         config,
         "{} = {}",
-        TAKEOVER_ACTIVATES, GameConfig.TakeoverActivates,
+        FULL_USER_RECT, GAME_CONFIG.full_user_rect
     )
     .unwrap();
     writeln!(
         config,
         "{} = {}",
-        FIRE_HOLD_TAKEOVER, GameConfig.FireHoldTakeover,
+        USE_FULLSCREEN, GAME_CONFIG.use_fullscreen
     )
     .unwrap();
-    writeln!(config, "{} = {}", SHOW_DECALS, GameConfig.ShowDecals).unwrap();
-    writeln!(config, "{} = {}", ALL_MAP_VISIBLE, GameConfig.AllMapVisible).unwrap();
-    writeln!(config, "{} = {}", VID_SCALE_FACTOR, GameConfig.scale).unwrap();
-    writeln!(config, "{} = {}", HOG_CPU, GameConfig.HogCPU).unwrap();
     writeln!(
         config,
         "{} = {}",
-        EMPTY_LEVEL_SPEEDUP, GameConfig.emptyLevelSpeedup,
+        TAKEOVER_ACTIVATES, GAME_CONFIG.takeover_activates,
+    )
+    .unwrap();
+    writeln!(
+        config,
+        "{} = {}",
+        FIRE_HOLD_TAKEOVER, GAME_CONFIG.fire_hold_takeover,
+    )
+    .unwrap();
+    writeln!(config, "{} = {}", SHOW_DECALS, GAME_CONFIG.show_decals).unwrap();
+    writeln!(
+        config,
+        "{} = {}",
+        ALL_MAP_VISIBLE, GAME_CONFIG.all_map_visible
+    )
+    .unwrap();
+    writeln!(config, "{} = {}", VID_SCALE_FACTOR, GAME_CONFIG.scale).unwrap();
+    writeln!(config, "{} = {}", HOG_CPU, GAME_CONFIG.hog_cpu).unwrap();
+    writeln!(
+        config,
+        "{} = {}",
+        EMPTY_LEVEL_SPEEDUP, GAME_CONFIG.empty_level_speedup,
     )
     .unwrap();
 
@@ -321,10 +332,10 @@ pub unsafe fn SaveGameConfig() -> c_int {
         writeln!(
             config,
             "{} \t= {}_{}_{}",
-            CStr::from_ptr(cmd_strings[i]).to_str().unwrap(),
-            key_cmds[i][0],
-            key_cmds[i][1],
-            key_cmds[i][2],
+            CStr::from_ptr(CMD_STRINGS[i]).to_str().unwrap(),
+            KEY_CMDS[i][0],
+            KEY_CMDS[i][1],
+            KEY_CMDS[i][2],
         )
         .unwrap();
     }
@@ -335,17 +346,17 @@ pub unsafe fn SaveGameConfig() -> c_int {
 
 /// This function starts the time-taking process.  Later the results
 /// of this function will be used to calculate the current framerate
-pub unsafe fn StartTakingTimeForFPSCalculation() {
+pub unsafe fn start_taking_time_for_fps_calculation() {
     /* This ensures, that 0 is never an encountered framenr,
      * therefore count to 100 here
      * Take the time now for calculating the frame rate
      * (DO NOT MOVE THIS COMMAND PLEASE!) */
-    framenr += 1;
+    FRAME_NR += 1;
 
-    One_Frame_SDL_Ticks = SDL_GetTicks();
+    ONE_FRAME_SDL_TICKS = SDL_GetTicks();
 }
 
-pub unsafe fn ComputeFPSForThisFrame() {
+pub unsafe fn compute_fps_for_this_frame() {
     // In the following paragraph the framerate calculation is done.
     // There are basically two ways to do this:
     // The first way is to use SDL_GetTicks(), a function measuring milliseconds
@@ -359,29 +370,33 @@ pub unsafe fn ComputeFPSForThisFrame() {
     // SPACE KEY, SO PLEASE DO NOT ERASE EITHER METHOD.  PLEASE ASK JP FIRST.
     //
 
-    if SkipAFewFrames != 0 {
+    if SKIP_A_FEW_FRAMES != 0 {
         return;
     }
 
-    Now_SDL_Ticks = SDL_GetTicks();
-    oneframedelay = c_long::from(Now_SDL_Ticks) - c_long::from(One_Frame_SDL_Ticks);
-    oneframedelay = if oneframedelay > 0 { oneframedelay } else { 1 }; // avoid division by zero
-    FPSover1 = (1000. / oneframedelay as f64) as f32;
+    NOW_SDL_TICKS = SDL_GetTicks();
+    ONE_FRAME_DELAY = c_long::from(NOW_SDL_TICKS) - c_long::from(ONE_FRAME_SDL_TICKS);
+    ONE_FRAME_DELAY = if ONE_FRAME_DELAY > 0 {
+        ONE_FRAME_DELAY
+    } else {
+        1
+    }; // avoid division by zero
+    F_P_SOVER1 = (1000. / ONE_FRAME_DELAY as f64) as f32;
 }
 
-pub unsafe fn Activate_Conservative_Frame_Computation() {
-    SkipAFewFrames = true.into();
+pub unsafe fn activate_conservative_frame_computation() {
+    SKIP_A_FEW_FRAMES = true.into();
 
     // Now we are in some form of pause.  It can't
     // hurt to have the top status bar redrawn after that,
     // so we set this variable...
-    BannerIsDestroyed = true.into();
+    BANNER_IS_DESTROYED = true.into();
 }
 
 /// This function usese calloc, so memory is automatically 0-initialized!
 /// The function also checks for success and terminates in case of
 /// "out of memory", so we dont need to do this always in the code.
-pub unsafe fn MyMalloc(mut size: c_long) -> *mut c_void {
+pub unsafe fn my_malloc(mut size: c_long) -> *mut c_void {
     // make Gnu-compatible even if on a broken system:
     if size == 0 {
         size = 1;
@@ -390,7 +405,7 @@ pub unsafe fn MyMalloc(mut size: c_long) -> *mut c_void {
     let ptr = libc::calloc(1, size.try_into().unwrap());
     if ptr.is_null() {
         error!("MyMalloc({}) did not succeed!", size);
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
 
     ptr
@@ -445,7 +460,7 @@ pub unsafe fn find_file(
         let theme_dir = if use_theme == Themed::UseTheme as c_int {
             Cow::Owned(format!(
                 "{}_theme/",
-                CStr::from_ptr(GameConfig.Theme_Name.as_ptr()).to_string_lossy(),
+                CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
             ))
         } else {
             Cow::Borrowed("")
@@ -477,7 +492,7 @@ pub unsafe fn find_file(
             Ok(critical) => critical,
             Err(_) => {
                 error!("ERROR in find_file(): Code should never reach this line!! Harakiri",);
-                Terminate(defs::ERR.into());
+                terminate(defs::ERR.into());
             }
         };
         // how critical is this file for the game:
@@ -488,7 +503,7 @@ pub unsafe fn find_file(
                     warn!(
                         "file {} not found in theme-dir: graphics/{}_theme/",
                         fname,
-                        CStr::from_ptr(GameConfig.Theme_Name.as_ptr()).to_string_lossy(),
+                        CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
                     );
                 } else {
                     warn!("file {} not found ", fname);
@@ -502,12 +517,12 @@ pub unsafe fn find_file(
                     error!(
                         "file {} not found in theme-dir: graphics/{}_theme/, cannot run without it!",
                         fname,
-                        CStr::from_ptr(GameConfig.Theme_Name.as_ptr()).to_string_lossy(),
+                        CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
                     );
                 } else {
                     error!("file {} not found, cannot run without it!", fname);
                 }
-                Terminate(defs::ERR.into());
+                terminate(defs::ERR.into());
             }
         }
     }
@@ -521,56 +536,56 @@ pub unsafe fn init_progress(mut text: *mut c_char) {
         text = cstr!("Progress...").as_ptr() as *mut c_char;
     }
 
-    if progress_meter_pic.is_null() {
+    if PROGRESS_METER_PIC.is_null() {
         let mut fpath = find_file(
             PROGRESS_METER_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         );
-        progress_meter_pic = Load_Block(fpath, 0, 0, null_mut(), 0);
-        ScalePic(&mut progress_meter_pic, GameConfig.scale);
+        PROGRESS_METER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
+        scale_pic(&mut PROGRESS_METER_PIC, GAME_CONFIG.scale);
         fpath = find_file(
             PROGRESS_FILLER_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         );
-        progress_filler_pic = Load_Block(fpath, 0, 0, null_mut(), 0);
-        ScalePic(&mut progress_filler_pic, GameConfig.scale);
+        PROGRESS_FILLER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
+        scale_pic(&mut PROGRESS_FILLER_PIC, GAME_CONFIG.scale);
 
-        scale_rect(&mut ProgressMeter_Rect, GameConfig.scale);
-        scale_rect(&mut ProgressBar_Rect, GameConfig.scale);
-        scale_rect(&mut ProgressText_Rect, GameConfig.scale);
+        scale_rect(&mut PROGRESS_METER_RECT, GAME_CONFIG.scale);
+        scale_rect(&mut PROGRESS_BAR_RECT, GAME_CONFIG.scale);
+        scale_rect(&mut PROGRESS_TEXT_RECT, GAME_CONFIG.scale);
     }
 
-    SDL_SetClipRect(ne_screen, null_mut()); // this unsets the clipping rectangle
+    SDL_SetClipRect(NE_SCREEN, null_mut()); // this unsets the clipping rectangle
     SDL_UpperBlit(
-        progress_meter_pic,
+        PROGRESS_METER_PIC,
         null_mut(),
-        ne_screen,
-        &mut ProgressMeter_Rect,
+        NE_SCREEN,
+        &mut PROGRESS_METER_RECT,
     );
 
-    let mut dst = ProgressText_Rect;
-    dst.x += ProgressMeter_Rect.x;
-    dst.y += ProgressMeter_Rect.y;
+    let mut dst = PROGRESS_TEXT_RECT;
+    dst.x += PROGRESS_METER_RECT.x;
+    dst.y += PROGRESS_METER_RECT.y;
 
-    printf_SDL(
-        ne_screen,
+    printf_sdl(
+        NE_SCREEN,
         dst.x.into(),
         dst.y.into(),
         format_args!("{}", CStr::from_ptr(text).to_str().unwrap()),
     );
 
-    SDL_Flip(ne_screen);
+    SDL_Flip(NE_SCREEN);
 }
 
 /// This function read in a file with the specified name, allocated
 /// memory for it of course, looks for the file end string and then
 /// terminates the whole read in file with a 0 character, so that it
 /// can easily be treated like a common string.
-pub unsafe fn ReadAndMallocAndTerminateFile(
+pub unsafe fn read_and_malloc_and_terminate_file(
     filename: *mut c_char,
     file_end_string: *mut c_char,
 ) -> *mut c_char {
@@ -616,7 +631,7 @@ pub unsafe fn ReadAndMallocAndTerminateFile(
         ",
                 filename
             );
-            Terminate(defs::ERR.into());
+            terminate(defs::ERR.into());
         }
     };
     let file_len = match file
@@ -630,14 +645,14 @@ pub unsafe fn ReadAndMallocAndTerminateFile(
         }
         None => {
             error!("ReadAndMallocAndTerminateFile: Error fstat-ing File....");
-            Terminate(defs::ERR.into());
+            terminate(defs::ERR.into());
         }
     };
 
-    let data = MyMalloc((file_len + 64 * 2 + 10000).try_into().unwrap()) as *mut c_char;
+    let data = my_malloc((file_len + 64 * 2 + 10000).try_into().unwrap()) as *mut c_char;
     if data.is_null() {
         error!("ReadAndMallocAndTerminateFile: Out of Memory?");
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
 
     let all_data = std::slice::from_raw_parts_mut(data as *mut u8, file_len + 64 * 2 + 10000);
@@ -647,7 +662,7 @@ pub unsafe fn ReadAndMallocAndTerminateFile(
             Ok(()) => info!("ReadAndMallocAndTerminateFile: Reading file succeeded..."),
             Err(_) => {
                 error!("ReadAndMallocAndTerminateFile: Reading file failed...");
-                Terminate(defs::ERR.into());
+                terminate(defs::ERR.into());
             }
         }
     }
@@ -687,7 +702,7 @@ pub unsafe fn ReadAndMallocAndTerminateFile(
                 filename,
                 file_end_string.to_string_lossy()
             );
-            Terminate(defs::ERR.into());
+            terminate(defs::ERR.into());
         }
         Some(pos) => all_data[pos] = 0,
     }
@@ -704,7 +719,7 @@ pub unsafe fn ReadAndMallocAndTerminateFile(
 ///
 /// NOTE!!: be sure dst is large enough for data read by FormatString, or
 /// sscanf will crash!!
-pub unsafe fn ReadValueFromString(
+pub unsafe fn read_value_from_string(
     data: *mut c_char,
     label: *mut c_char,
     format_string: *mut c_char,
@@ -712,7 +727,7 @@ pub unsafe fn ReadValueFromString(
 ) {
     // Now we locate the label in data and position pointer right after the label
     // ..will Terminate itself if not found...
-    let pos = LocateStringInData(data, label).add(CStr::from_ptr(label).to_bytes().len());
+    let pos = locate_string_in_data(data, label).add(CStr::from_ptr(label).to_bytes().len());
 
     if libc::sscanf(pos, format_string, dst) == libc::EOF {
         error!(
@@ -721,7 +736,7 @@ pub unsafe fn ReadValueFromString(
             CStr::from_ptr(format_string).to_string_lossy(),
             CStr::from_ptr(label).to_string_lossy(),
         );
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     } else {
         info!("ReadValueFromString: value read in successfully.");
     }
@@ -733,7 +748,7 @@ pub unsafe fn ReadValueFromString(
 ///
 /// The return value is a pointer to the first instance where the substring
 /// we are searching is found in the main text.
-pub unsafe fn LocateStringInData(
+pub unsafe fn locate_string_in_data(
     search_begin_pointer: *mut c_char,
     search_text_pointer: *mut c_char,
 ) -> *mut c_char {
@@ -765,7 +780,7 @@ pub unsafe fn LocateStringInData(
              \n",
             search_text
         );
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     } else {
         info!(
             "LocateStringInDate: String {} successfully located within data. ",
@@ -775,33 +790,19 @@ pub unsafe fn LocateStringInData(
     temp
 }
 
-/// FS_filelength().. (taken from quake2)
-///
-/// contrary to stat() this fct is nice and portable,
-pub unsafe fn FS_filelength(file: *mut libc::FILE) -> c_int {
-    use libc::{fseek, ftell, SEEK_END, SEEK_SET};
-    let pos = ftell(file);
-    assert_ne!(fseek(file, 0, SEEK_END), -1);
-    let end = ftell(file);
-    assert_ne!(end, -1);
-    assert_ne!(fseek(file, pos, SEEK_SET), -1);
-
-    end.try_into().unwrap()
-}
-
 /// This function teleports the influencer to a new position on the
 /// ship.  THIS CAN BE A POSITION ON A DIFFERENT LEVEL.
-pub unsafe fn Teleport(level_num: c_int, x: c_int, y: c_int) {
+pub unsafe fn teleport(level_num: c_int, x: c_int, y: c_int) {
     let cur_level = level_num;
     let mut array_num = 0;
 
-    if cur_level != (*CurLevel).levelnum {
+    if cur_level != (*CUR_LEVEL).levelnum {
         //--------------------
         // In case a real level change has happend,
         // we need to do a lot of work:
 
         loop {
-            let tmp = curShip.AllLevels[array_num];
+            let tmp = CUR_SHIP.all_levels[array_num];
             if tmp.is_null() {
                 break;
             }
@@ -813,37 +814,37 @@ pub unsafe fn Teleport(level_num: c_int, x: c_int, y: c_int) {
             }
         }
 
-        CurLevel = curShip.AllLevels[array_num];
+        CUR_LEVEL = CUR_SHIP.all_levels[array_num];
 
-        ShuffleEnemys();
+        shuffle_enemys();
 
-        Me.pos.x = x as f32;
-        Me.pos.y = y as f32;
+        ME.pos.x = x as f32;
+        ME.pos.y = y as f32;
 
         // turn off all blasts and bullets from the old level
-        AllBlasts
+        ALL_BLASTS
             .iter_mut()
             .take(MAXBLASTS)
             .for_each(|blast| blast.ty = Status::Out as i32);
-        (0..MAXBULLETS).for_each(|bullet| DeleteBullet(bullet.try_into().unwrap()));
+        (0..MAXBULLETS).for_each(|bullet| delete_bullet(bullet.try_into().unwrap()));
     } else {
         //--------------------
         // If no real level change has occured, everything
         // is simple and we just need to set the new coordinates, haha
         //
-        Me.pos.x = x as f32;
-        Me.pos.y = y as f32;
+        ME.pos.x = x as f32;
+        ME.pos.y = y as f32;
     }
 
-    LeaveLiftSound();
+    leave_lift_sound();
 }
 
 /// This function is kills all enemy robots on the whole ship.
 /// It querys the user once for safety.
-pub unsafe fn Armageddon() {
-    AllEnemys
+pub unsafe fn armageddon() {
+    ALL_ENEMYS
         .iter_mut()
-        .take(NumEnemys.try_into().unwrap())
+        .take(NUM_ENEMYS.try_into().unwrap())
         .for_each(|enemy| {
             enemy.energy = 0.;
             enemy.status = Status::Out as c_int;
@@ -852,7 +853,7 @@ pub unsafe fn Armageddon() {
 
 /// This function counts the number of occurences of a string in a given
 /// other string.
-pub unsafe fn CountStringOccurences(
+pub unsafe fn count_string_occurences(
     search_string: *mut c_char,
     target_string: *mut c_char,
 ) -> c_int {
@@ -874,7 +875,7 @@ pub unsafe fn CountStringOccurences(
 /// from after there up to a sting end indicator and mallocs memory for
 /// it, copys it there and returns it.
 /// The original source string specified should in no way be modified.
-pub unsafe fn ReadAndMallocStringFromData(
+pub unsafe fn read_and_malloc_string_from_data(
     search_string: *mut c_char,
     start_indication_string: *mut c_char,
     end_indication_string: *mut c_char,
@@ -904,7 +905,7 @@ pub unsafe fn ReadAndMallocStringFromData(
              \n",
             CStr::from_ptr(start_indication_string).to_string_lossy()
         );
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     } else {
         // Now we move to the beginning
         let search_pointer = search_pointer.add(libc::strlen(start_indication_string));
@@ -935,13 +936,13 @@ pub unsafe fn ReadAndMallocStringFromData(
                  \n",
                 CStr::from_ptr(end_indication_string).to_string_lossy(),
             );
-            Terminate(defs::ERR.into());
+            terminate(defs::ERR.into());
         }
 
         // Now we allocate memory and copy the string...
         let string_length = end_of_string_pointer.offset_from(search_pointer);
 
-        let return_string = MyMalloc(c_long::try_from(string_length).unwrap() + 1) as *mut c_char;
+        let return_string = my_malloc(c_long::try_from(string_length).unwrap() + 1) as *mut c_char;
         libc::strncpy(
             return_string,
             search_pointer,
@@ -961,7 +962,7 @@ pub unsafe fn ReadAndMallocStringFromData(
 ///
 /// this should be the first of all load/save functions called
 /// as here we read the $HOME-dir and create the config-subdir if neccessary
-pub unsafe fn LoadGameConfig() -> c_int {
+pub unsafe fn load_game_config() -> c_int {
     // ----------------------------------------------------------------------
     // Game-config maker-strings for config-file:
 
@@ -1056,41 +1057,41 @@ pub unsafe fn LoadGameConfig() -> c_int {
         };
     }
 
-    parse_variable! { GameConfig.Draw_Framerate = DRAW_FRAMERATE; };
-    parse_variable! { GameConfig.Draw_Energy = DRAW_ENERGY; };
-    parse_variable! { GameConfig.Draw_Position = DRAW_POSITION; };
-    parse_variable! { GameConfig.Draw_DeathCount = DRAW_DEATHCOUNT; };
-    parse_variable! { GameConfig.Droid_Talk = DROID_TALK; };
-    parse_variable! { GameConfig.WantedTextVisibleTime = WANTED_TEXT_VISIBLE_TIME; };
-    parse_variable! { GameConfig.Current_BG_Music_Volume = CURRENT_BG_MUSIC_VOLUME; };
-    parse_variable! { GameConfig.Current_Sound_FX_Volume = CURRENT_SOUND_FX_VOLUME; };
-    parse_variable! { GameConfig.Current_Gamma_Correction = CURRENT_GAMMA_CORRECTION; };
+    parse_variable! { GAME_CONFIG.draw_framerate = DRAW_FRAMERATE; };
+    parse_variable! { GAME_CONFIG.draw_energy = DRAW_ENERGY; };
+    parse_variable! { GAME_CONFIG.draw_position = DRAW_POSITION; };
+    parse_variable! { GAME_CONFIG.draw_death_count = DRAW_DEATHCOUNT; };
+    parse_variable! { GAME_CONFIG.droid_talk = DROID_TALK; };
+    parse_variable! { GAME_CONFIG.wanted_text_visible_time = WANTED_TEXT_VISIBLE_TIME; };
+    parse_variable! { GAME_CONFIG.current_bg_music_volume = CURRENT_BG_MUSIC_VOLUME; };
+    parse_variable! { GAME_CONFIG.current_sound_fx_volume = CURRENT_SOUND_FX_VOLUME; };
+    parse_variable! { GAME_CONFIG.current_gamma_correction = CURRENT_GAMMA_CORRECTION; };
     {
         let value = read_variable(&data, THEME_NAME);
         if let Some(value) = value {
-            GameConfig.Theme_Name[..value.len()].copy_from_slice(std::slice::from_raw_parts(
+            GAME_CONFIG.theme_name[..value.len()].copy_from_slice(std::slice::from_raw_parts(
                 value.as_ptr() as *const c_char,
                 value.len(),
             ));
-            GameConfig.Theme_Name[value.len()] = 0;
+            GAME_CONFIG.theme_name[value.len()] = 0;
         }
     }
-    parse_variable! { GameConfig.FullUserRect = FULL_USER_RECT; };
-    parse_variable! { GameConfig.UseFullscreen = USE_FULLSCREEN; };
-    parse_variable! { GameConfig.TakeoverActivates = TAKEOVER_ACTIVATES; };
-    parse_variable! { GameConfig.FireHoldTakeover = FIRE_HOLD_TAKEOVER; };
-    parse_variable! { GameConfig.ShowDecals = SHOW_DECALS; };
-    parse_variable! { GameConfig.AllMapVisible = ALL_MAP_VISIBLE; };
-    parse_variable! { GameConfig.scale = VID_SCALE_FACTOR; };
-    parse_variable! { GameConfig.HogCPU = HOG_CPU; };
-    parse_variable! { GameConfig.emptyLevelSpeedup = EMPTY_LEVEL_SPEEDUP; };
+    parse_variable! { GAME_CONFIG.full_user_rect = FULL_USER_RECT; };
+    parse_variable! { GAME_CONFIG.use_fullscreen = USE_FULLSCREEN; };
+    parse_variable! { GAME_CONFIG.takeover_activates = TAKEOVER_ACTIVATES; };
+    parse_variable! { GAME_CONFIG.fire_hold_takeover = FIRE_HOLD_TAKEOVER; };
+    parse_variable! { GAME_CONFIG.show_decals = SHOW_DECALS; };
+    parse_variable! { GAME_CONFIG.all_map_visible = ALL_MAP_VISIBLE; };
+    parse_variable! { GAME_CONFIG.scale = VID_SCALE_FACTOR; };
+    parse_variable! { GAME_CONFIG.hog_cpu = HOG_CPU; };
+    parse_variable! { GAME_CONFIG.empty_level_speedup = EMPTY_LEVEL_SPEEDUP; };
 
     // read in keyboard-config
-    for (index, &cmd_string) in cmd_strings.iter().enumerate() {
+    for (index, &cmd_string) in CMD_STRINGS.iter().enumerate() {
         let value = read_variable(&data, CStr::from_ptr(cmd_string).to_str().unwrap());
         if let Some(value) = value {
             let value = std::str::from_utf8(value).unwrap();
-            key_cmds[index]
+            KEY_CMDS[index]
                 .iter_mut()
                 .zip(value.splitn(3, '_').map(|x| x.parse().unwrap()))
                 .for_each(|(key_cmd, value)| *key_cmd = value);
@@ -1107,15 +1108,4 @@ fn read_variable<'a>(data: &'a [u8], var_name: &str) -> Option<&'a [u8]> {
         .filter_map(|line| line.trim_start().strip_prefix(b"="))
         .map(|line| line.trim())
         .next()
-}
-
-/// just a plain old sign-function
-pub fn sign(x: c_float) -> c_int {
-    if x == 0.0 {
-        0
-    } else if x > 0.0 {
-        1
-    } else {
-        -1
-    }
 }

@@ -1,5 +1,5 @@
 use crate::{
-    b_font::{BFontInfo, GetCurrentFont, LoadFont, PutPixel, SetCurrentFont},
+    b_font::{get_current_font, load_font, put_pixel, set_current_font, BFontInfo},
     defs::{
         self, free_if_unused, get_user_center, scale_point, scale_rect, Cmds, Criticality,
         DisplayBannerFlags, Droid, Sound, Themed, BANNER_BLOCK_FILE_C, BLAST_BLOCK_FILE_C,
@@ -11,14 +11,15 @@ use crate::{
         SHIP_ON_PIC_FILE_C, TAKEOVER_BG_PIC_FILE_C,
     },
     global::{
-        Font0_BFont, Font1_BFont, Font2_BFont, GameConfig, Highscore_BFont, Menu_BFont, Para_BFont,
+        FONT0_B_FONT, FONT1_B_FONT, FONT2_B_FONT, GAME_CONFIG, HIGHSCORE_B_FONT, MENU_B_FONT,
+        PARA_B_FONT,
     },
     input::{any_key_just_pressed, cmd_is_active, wait_for_all_keys_released, SDL_Delay},
     misc::{
-        find_file, init_progress, update_progress, Activate_Conservative_Frame_Computation,
-        MyMalloc, ReadAndMallocAndTerminateFile, ReadValueFromString, Terminate,
+        activate_conservative_frame_computation, find_file, init_progress, my_malloc,
+        read_and_malloc_and_terminate_file, read_value_from_string, terminate, update_progress,
     },
-    sound::Play_Sound,
+    sound::play_sound,
     structs::ThemeList,
     takeover::{
         set_takeover_rects, CAPSULE_BLOCKS, CAPSULE_RECT, COLUMN_BLOCK, COLUMN_RECT, COLUMN_START,
@@ -27,15 +28,15 @@ use crate::{
         PLAYGROUND_STARTS, RIGHT_GROUND_START, TO_BLOCKS, TO_BLOCK_FILE_C, TO_GAME_BLOCKS,
         TO_GROUND_BLOCKS,
     },
-    text::printf_SDL,
+    text::printf_sdl,
     vars::{
-        Banner_Rect, Blastmap, Block_Rect, Bulletmap, Classic_User_Rect, ConsMenuItem_Rect,
-        Cons_Droid_Rect, Cons_Header_Rect, Cons_Menu_Rect, Cons_Menu_Rects, Cons_Text_Rect,
-        Digit_Rect, Druidmap, Full_User_Rect, LeftInfo_Rect, Me, Menu_Rect, OptionsMenu_Rect,
-        OrigBlock_Rect, OrigDigit_Rect, Portrait_Rect, RightInfo_Rect, Screen_Rect, User_Rect,
+        BANNER_RECT, BLASTMAP, BLOCK_RECT, BULLETMAP, CLASSIC_USER_RECT, CONS_DROID_RECT,
+        CONS_HEADER_RECT, CONS_MENU_ITEM_RECT, CONS_MENU_RECT, CONS_MENU_RECTS, CONS_TEXT_RECT,
+        DIGIT_RECT, DRUIDMAP, FULL_USER_RECT, LEFT_INFO_RECT, ME, MENU_RECT, OPTIONS_MENU_RECT,
+        ORIG_BLOCK_RECT, ORIG_DIGIT_RECT, PORTRAIT_RECT, RIGHT_INFO_RECT, SCREEN_RECT, USER_RECT,
     },
-    view::DisplayBanner,
-    AllBullets, FirstDigit_Rect, SecondDigit_Rect, ThirdDigit_Rect,
+    view::display_banner,
+    ALL_BULLETS, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
 };
 
 use array_init::array_init;
@@ -68,89 +69,52 @@ use std::{
     ptr::null_mut,
 };
 
-pub static mut vid_info: *const SDL_VideoInfo = null_mut();
-
-pub static mut vid_bpp: c_int = 0;
-
-pub static mut portrait_raw_mem: [*mut c_char; Droid::NumDroids as usize] =
+pub static mut VID_INFO: *const SDL_VideoInfo = null_mut();
+pub static mut VID_BPP: c_int = 0;
+pub static mut PORTRAIT_RAW_MEM: [*mut c_char; Droid::NumDroids as usize] =
     [null_mut(); Droid::NumDroids as usize];
-
-pub static mut fonts_loaded: c_int = 0;
-
-pub static mut MapBlockSurfacePointer: [[*mut SDL_Surface; NUM_MAP_BLOCKS]; NUM_COLORS] =
+pub static mut FONTS_LOADED: c_int = 0;
+pub static mut MAP_BLOCK_SURFACE_POINTER: [[*mut SDL_Surface; NUM_MAP_BLOCKS]; NUM_COLORS] =
     [[null_mut(); NUM_MAP_BLOCKS]; NUM_COLORS]; // A pointer to the surfaces containing the map-pics, which may be rescaled with respect to
-
-pub static mut OrigMapBlockSurfacePointer: [[*mut SDL_Surface; NUM_MAP_BLOCKS]; NUM_COLORS] =
+pub static mut ORIG_MAP_BLOCK_SURFACE_POINTER: [[*mut SDL_Surface; NUM_MAP_BLOCKS]; NUM_COLORS] =
     [[null_mut(); NUM_MAP_BLOCKS]; NUM_COLORS]; // A pointer to the surfaces containing the original map-pics as read from disk
-
-pub static mut BuildBlock: *mut SDL_Surface = null_mut(); // a block for temporary pic-construction
-
-pub static mut BannerIsDestroyed: i32 = 0;
-
-pub static mut banner_pic: *mut SDL_Surface = null_mut(); /* the banner pic */
-
-pub static mut pic999: *mut SDL_Surface = null_mut();
-
-pub static mut packed_portraits: [*mut SDL_RWops; Droid::NumDroids as usize] =
+pub static mut BUILD_BLOCK: *mut SDL_Surface = null_mut(); // a block for temporary pic-construction
+pub static mut BANNER_IS_DESTROYED: i32 = 0;
+pub static mut BANNER_PIC: *mut SDL_Surface = null_mut(); /* the banner pic */
+pub static mut PIC999: *mut SDL_Surface = null_mut();
+pub static mut PACKED_PORTRAITS: [*mut SDL_RWops; Droid::NumDroids as usize] =
     [null_mut(); Droid::NumDroids as usize];
-
-pub static mut Decal_pics: [*mut SDL_Surface; NUM_DECAL_PICS] = [null_mut(); NUM_DECAL_PICS];
-
-pub static mut takeover_bg_pic: *mut SDL_Surface = null_mut();
-
-pub static mut console_pic: *mut SDL_Surface = null_mut();
-
-pub static mut console_bg_pic1: *mut SDL_Surface = null_mut();
-
-pub static mut console_bg_pic2: *mut SDL_Surface = null_mut();
-
-pub static mut arrow_up: *mut SDL_Surface = null_mut();
-
-pub static mut arrow_down: *mut SDL_Surface = null_mut();
-
-pub static mut arrow_right: *mut SDL_Surface = null_mut();
-
-pub static mut arrow_left: *mut SDL_Surface = null_mut();
-
-pub static mut ship_off_pic: *mut SDL_Surface = null_mut(); /* Side-view of ship: lights off */
-
-pub static mut ship_on_pic: *mut SDL_Surface = null_mut(); /* Side-view of ship: lights on */
-
-pub static mut progress_meter_pic: *mut SDL_Surface = null_mut();
-
-pub static mut progress_filler_pic: *mut SDL_Surface = null_mut();
-
-pub static mut ne_screen: *mut SDL_Surface = null_mut(); /* the graphics display */
-
-pub static mut EnemySurfacePointer: [*mut SDL_Surface; ENEMYPHASES as usize] =
+pub static mut DECAL_PICS: [*mut SDL_Surface; NUM_DECAL_PICS] = [null_mut(); NUM_DECAL_PICS];
+pub static mut TAKEOVER_BG_PIC: *mut SDL_Surface = null_mut();
+pub static mut CONSOLE_PIC: *mut SDL_Surface = null_mut();
+pub static mut CONSOLE_BG_PIC1: *mut SDL_Surface = null_mut();
+pub static mut CONSOLE_BG_PIC2: *mut SDL_Surface = null_mut();
+pub static mut ARROW_UP: *mut SDL_Surface = null_mut();
+pub static mut ARROW_DOWN: *mut SDL_Surface = null_mut();
+pub static mut ARROW_RIGHT: *mut SDL_Surface = null_mut();
+pub static mut ARROW_LEFT: *mut SDL_Surface = null_mut();
+pub static mut SHIP_OFF_PIC: *mut SDL_Surface = null_mut(); /* Side-view of ship: lights off */
+pub static mut SHIP_ON_PIC: *mut SDL_Surface = null_mut(); /* Side-view of ship: lights on */
+pub static mut PROGRESS_METER_PIC: *mut SDL_Surface = null_mut();
+pub static mut PROGRESS_FILLER_PIC: *mut SDL_Surface = null_mut();
+pub static mut NE_SCREEN: *mut SDL_Surface = null_mut(); /* the graphics display */
+pub static mut ENEMY_SURFACE_POINTER: [*mut SDL_Surface; ENEMYPHASES as usize] =
     [null_mut(); ENEMYPHASES as usize]; // A pointer to the surfaces containing the pictures of the
-                                        // enemys in different phases of rotation
-
-pub static mut InfluencerSurfacePointer: [*mut SDL_Surface; ENEMYPHASES as usize] =
+pub static mut INFLUENCER_SURFACE_POINTER: [*mut SDL_Surface; ENEMYPHASES as usize] =
     [null_mut(); ENEMYPHASES as usize]; // A pointer to the surfaces containing the pictures of the
-                                        // influencer in different phases of rotation
-
-pub static mut InfluDigitSurfacePointer: [*mut SDL_Surface; DIGITNUMBER] =
+pub static mut INFLU_DIGIT_SURFACE_POINTER: [*mut SDL_Surface; DIGITNUMBER] =
     [null_mut(); DIGITNUMBER]; // A pointer to the surfaces containing the pictures of the
-                               // influencer in different phases of rotation
-
-pub static mut EnemyDigitSurfacePointer: [*mut SDL_Surface; DIGITNUMBER] =
+pub static mut ENEMY_DIGIT_SURFACE_POINTER: [*mut SDL_Surface; DIGITNUMBER] =
     [null_mut(); DIGITNUMBER]; // A pointer to the surfaces containing the pictures of the
-                               // influencer in different phases of rotation
-
-pub static mut crosshair_cursor: *mut SDL_Cursor = null_mut();
-
-pub static mut arrow_cursor: *mut SDL_Cursor = null_mut();
-
-pub static mut Number_Of_Bullet_Types: i32 = 0;
-
-pub static mut AllThemes: ThemeList = ThemeList {
+pub static mut CROSSHAIR_CURSOR: *mut SDL_Cursor = null_mut();
+pub static mut ARROW_CURSOR: *mut SDL_Cursor = null_mut();
+pub static mut NUMBER_OF_BULLET_TYPES: i32 = 0;
+pub static mut ALL_THEMES: ThemeList = ThemeList {
     num_themes: 0,
     cur_tnum: 0,
     theme_name: [null_mut(); MAX_THEMES],
 };
-
-pub static mut classic_theme_index: i32 = 0;
+pub static mut CLASSIC_THEME_INDEX: i32 = 0;
 
 #[link(name = "SDL_image")]
 extern "C" {
@@ -173,23 +137,23 @@ extern "C" {
 /// "second" pixel is blacked out, thereby generation a fading
 /// effect.  This function was created to fade the background of the
 /// Escape menu and its submenus.
-pub unsafe fn MakeGridOnScreen(grid_rectangle: Option<&SDL_Rect>) {
-    let grid_rectangle = grid_rectangle.unwrap_or(&User_Rect);
+pub unsafe fn make_grid_on_screen(grid_rectangle: Option<&SDL_Rect>) {
+    let grid_rectangle = grid_rectangle.unwrap_or(&USER_RECT);
 
     trace!("MakeGridOnScreen(...): real function call confirmed.");
-    SDL_LockSurface(ne_screen);
+    SDL_LockSurface(NE_SCREEN);
     let rect_x = i32::from(grid_rectangle.x);
     let rect_y = i32::from(grid_rectangle.y);
     (rect_y..(rect_y + i32::from(grid_rectangle.y)))
         .flat_map(|y| (rect_x..(rect_x + i32::from(grid_rectangle.w))).map(move |x| (x, y)))
         .filter(|(x, y)| (x + y) % 2 == 0)
-        .for_each(|(x, y)| putpixel(ne_screen, x, y, 0));
+        .for_each(|(x, y)| putpixel(NE_SCREEN, x, y, 0));
 
-    SDL_UnlockSurface(ne_screen);
+    SDL_UnlockSurface(NE_SCREEN);
     trace!("MakeGridOnScreen(...): end of function reached.");
 }
 
-pub unsafe fn ApplyFilter(
+pub unsafe fn apply_filter(
     surface: &mut SDL_Surface,
     fred: c_float,
     fgreen: c_float,
@@ -204,7 +168,7 @@ pub unsafe fn ApplyFilter(
             let mut blue = 0;
             let mut alpha = 0;
 
-            GetRGBA(surface, x, y, &mut red, &mut green, &mut blue, &mut alpha);
+            get_rgba(surface, x, y, &mut red, &mut green, &mut blue, &mut alpha);
             if alpha == 0 {
                 return;
             }
@@ -225,28 +189,28 @@ pub unsafe fn ApplyFilter(
 }
 
 pub unsafe fn toggle_fullscreen() {
-    let mut vid_flags = (*ne_screen).flags;
+    let mut vid_flags = (*NE_SCREEN).flags;
 
-    if GameConfig.UseFullscreen != 0 {
+    if GAME_CONFIG.use_fullscreen != 0 {
         vid_flags &= !(VideoFlag::Fullscreen as u32);
     } else {
         vid_flags |= VideoFlag::Fullscreen as u32;
     }
 
-    ne_screen = SDL_SetVideoMode(Screen_Rect.w.into(), Screen_Rect.h.into(), 0, vid_flags);
-    if ne_screen.is_null() {
+    NE_SCREEN = SDL_SetVideoMode(SCREEN_RECT.w.into(), SCREEN_RECT.h.into(), 0, vid_flags);
+    if NE_SCREEN.is_null() {
         error!(
             "unable to toggle windowed/fullscreen {} x {} video mode.",
-            Screen_Rect.w, Screen_Rect.h,
+            SCREEN_RECT.w, SCREEN_RECT.h,
         );
         error!("SDL-Error: {}", get_error());
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
 
-    if (*ne_screen).flags != vid_flags {
+    if (*NE_SCREEN).flags != vid_flags {
         warn!("Failed to toggle windowed/fullscreen mode!");
     } else {
-        GameConfig.UseFullscreen = !GameConfig.UseFullscreen;
+        GAME_CONFIG.use_fullscreen = !GAME_CONFIG.use_fullscreen;
     }
 }
 
@@ -258,14 +222,14 @@ pub unsafe fn toggle_fullscreen() {
 /// NOTE:  This function does NOT check for existing screenshots,
 ///        but will silently overwrite them.  No problem in most
 ///        cases I think.
-pub unsafe fn TakeScreenshot() {
+pub unsafe fn take_screenshot() {
     static mut NUMBER_OF_SCREENSHOT: u32 = 0;
 
-    Activate_Conservative_Frame_Computation();
+    activate_conservative_frame_computation();
 
     let screenshot_filename = format!("Screenshot_{}.bmp\0", NUMBER_OF_SCREENSHOT);
     SDL_SaveBMP_RW(
-        ne_screen,
+        NE_SCREEN,
         SDL_RWFromFile(
             screenshot_filename.as_ptr() as *const c_char,
             cstr!("wb").as_ptr(),
@@ -273,22 +237,22 @@ pub unsafe fn TakeScreenshot() {
         1,
     );
     NUMBER_OF_SCREENSHOT = NUMBER_OF_SCREENSHOT.wrapping_add(1);
-    DisplayBanner(
+    display_banner(
         cstr!("Screenshot").as_ptr(),
         null_mut(),
         (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
             .bits()
             .into(),
     );
-    MakeGridOnScreen(None);
-    SDL_Flip(ne_screen);
-    Play_Sound(Sound::Screenshot as i32);
+    make_grid_on_screen(None);
+    SDL_Flip(NE_SCREEN);
+    play_sound(Sound::Screenshot as i32);
 
     while cmd_is_active(Cmds::Screenshot) {
         SDL_Delay(1);
     }
 
-    DisplayBanner(
+    display_banner(
         null_mut(),
         null_mut(),
         DisplayBannerFlags::FORCE_UPDATE.bits().into(),
@@ -302,9 +266,9 @@ unsafe fn free_surface_array(surfaces: &[*mut SDL_Surface]) {
         .for_each(|&surface| SDL_FreeSurface(surface));
 }
 
-pub unsafe fn FreeGraphics() {
+pub unsafe fn free_graphics() {
     // free RWops structures
-    packed_portraits
+    PACKED_PORTRAITS
         .iter()
         .filter(|packed_portrait| !packed_portrait.is_null())
         .for_each(|&packed_portrait| {
@@ -313,51 +277,51 @@ pub unsafe fn FreeGraphics() {
             close(packed_portrait);
         });
 
-    portrait_raw_mem
+    PORTRAIT_RAW_MEM
         .iter()
         .for_each(|&mem| libc::free(mem as *mut c_void));
 
-    SDL_FreeSurface(ne_screen);
+    SDL_FreeSurface(NE_SCREEN);
 
-    free_surface_array(&EnemySurfacePointer);
-    free_surface_array(&InfluencerSurfacePointer);
-    free_surface_array(&InfluDigitSurfacePointer);
-    free_surface_array(&EnemyDigitSurfacePointer);
-    free_surface_array(&Decal_pics);
+    free_surface_array(&ENEMY_SURFACE_POINTER);
+    free_surface_array(&INFLUENCER_SURFACE_POINTER);
+    free_surface_array(&INFLU_DIGIT_SURFACE_POINTER);
+    free_surface_array(&ENEMY_DIGIT_SURFACE_POINTER);
+    free_surface_array(&DECAL_PICS);
 
-    OrigMapBlockSurfacePointer
+    ORIG_MAP_BLOCK_SURFACE_POINTER
         .iter()
         .flat_map(|arr| arr.iter())
         .for_each(|&surface| SDL_FreeSurface(surface));
 
-    SDL_FreeSurface(BuildBlock);
-    SDL_FreeSurface(banner_pic);
-    SDL_FreeSurface(pic999);
+    SDL_FreeSurface(BUILD_BLOCK);
+    SDL_FreeSurface(BANNER_PIC);
+    SDL_FreeSurface(PIC999);
     // SDL_RWops *packed_portraits[NUM_DROIDS];
-    SDL_FreeSurface(takeover_bg_pic);
-    SDL_FreeSurface(console_pic);
-    SDL_FreeSurface(console_bg_pic1);
-    SDL_FreeSurface(console_bg_pic2);
+    SDL_FreeSurface(TAKEOVER_BG_PIC);
+    SDL_FreeSurface(CONSOLE_PIC);
+    SDL_FreeSurface(CONSOLE_BG_PIC1);
+    SDL_FreeSurface(CONSOLE_BG_PIC2);
 
-    SDL_FreeSurface(arrow_up);
-    SDL_FreeSurface(arrow_down);
-    SDL_FreeSurface(arrow_right);
-    SDL_FreeSurface(arrow_left);
+    SDL_FreeSurface(ARROW_UP);
+    SDL_FreeSurface(ARROW_DOWN);
+    SDL_FreeSurface(ARROW_RIGHT);
+    SDL_FreeSurface(ARROW_LEFT);
 
-    SDL_FreeSurface(ship_off_pic);
-    SDL_FreeSurface(ship_on_pic);
-    SDL_FreeSurface(progress_meter_pic);
-    SDL_FreeSurface(progress_filler_pic);
+    SDL_FreeSurface(SHIP_OFF_PIC);
+    SDL_FreeSurface(SHIP_ON_PIC);
+    SDL_FreeSurface(PROGRESS_METER_PIC);
+    SDL_FreeSurface(PROGRESS_FILLER_PIC);
     SDL_FreeSurface(TO_BLOCKS);
 
     // free fonts
     [
-        Menu_BFont,
-        Para_BFont,
-        Highscore_BFont,
-        Font0_BFont,
-        Font1_BFont,
-        Font2_BFont,
+        MENU_B_FONT,
+        PARA_B_FONT,
+        HIGHSCORE_B_FONT,
+        FONT0_B_FONT,
+        FONT1_B_FONT,
+        FONT2_B_FONT,
     ]
     .iter()
     .filter(|font| !font.is_null())
@@ -367,11 +331,11 @@ pub unsafe fn FreeGraphics() {
     });
 
     // free Load_Block()-internal buffer
-    Load_Block(null_mut(), 0, 0, null_mut(), FREE_ONLY as i32);
+    load_block(null_mut(), 0, 0, null_mut(), FREE_ONLY as i32);
 
     // free cursors
-    SDL_FreeCursor(crosshair_cursor);
-    SDL_FreeCursor(arrow_cursor);
+    SDL_FreeCursor(CROSSHAIR_CURSOR);
+    SDL_FreeCursor(ARROW_CURSOR);
 }
 
 /// Set the pixel at (x, y) to the given value
@@ -412,7 +376,7 @@ pub unsafe fn putpixel(surface: *const SDL_Surface, x: c_int, y: c_int, pixel: u
 
 /// This function gives the green component of a pixel, using a value of
 /// 255 for the most green pixel and 0 for the least green pixel.
-pub unsafe fn GetRGBA(
+pub unsafe fn get_rgba(
     surface: &SDL_Surface,
     x: c_int,
     y: c_int,
@@ -439,7 +403,7 @@ pub unsafe fn GetRGBA(
 /// NOTE: to avoid memory-leaks, use (flags | INIT_ONLY) if you only
 ///       call this function to set up a new pic-file to be read.
 ///       This will avoid copying & mallocing a new pic, NULL will be returned
-pub unsafe fn Load_Block(
+pub unsafe fn load_block(
     fpath: *mut c_char,
     line: c_int,
     col: c_int,
@@ -486,7 +450,7 @@ pub unsafe fn Load_Block(
     if usealpha {
         SDL_SetAlpha(pic, 0, 0); /* clear per-surf alpha for internal blit */
     }
-    let tmp = SDL_CreateRGBSurface(0, dim.w.into(), dim.h.into(), vid_bpp, 0, 0, 0, 0);
+    let tmp = SDL_CreateRGBSurface(0, dim.w.into(), dim.h.into(), VID_BPP, 0, 0, 0, 0);
     let ret = if usealpha {
         SDL_DisplayFormatAlpha(tmp)
     } else {
@@ -513,7 +477,7 @@ pub unsafe fn Load_Block(
 }
 
 /// scale all "static" rectangles, which are theme-independent
-pub unsafe fn ScaleStatRects(scale: c_float) {
+pub unsafe fn scale_stat_rects(scale: c_float) {
     macro_rules! scale {
         ($rect:ident) => {
             scale_rect(&mut $rect, scale);
@@ -526,28 +490,28 @@ pub unsafe fn ScaleStatRects(scale: c_float) {
         };
     }
 
-    scale!(Block_Rect);
-    scale!(User_Rect);
-    scale!(Classic_User_Rect);
-    scale!(Full_User_Rect);
-    scale!(Banner_Rect);
-    scale!(Portrait_Rect);
-    scale!(Cons_Droid_Rect);
-    scale!(Menu_Rect);
-    scale!(OptionsMenu_Rect);
-    scale!(Digit_Rect);
-    scale!(Cons_Header_Rect);
-    scale!(Cons_Menu_Rect);
-    scale!(Cons_Text_Rect);
+    scale!(BLOCK_RECT);
+    scale!(USER_RECT);
+    scale!(CLASSIC_USER_RECT);
+    scale!(FULL_USER_RECT);
+    scale!(BANNER_RECT);
+    scale!(PORTRAIT_RECT);
+    scale!(CONS_DROID_RECT);
+    scale!(MENU_RECT);
+    scale!(OPTIONS_MENU_RECT);
+    scale!(DIGIT_RECT);
+    scale!(CONS_HEADER_RECT);
+    scale!(CONS_MENU_RECT);
+    scale!(CONS_TEXT_RECT);
 
-    for block in &mut Cons_Menu_Rects {
+    for block in &mut CONS_MENU_RECTS {
         scale_rect(block, scale);
     }
 
-    scale!(ConsMenuItem_Rect);
+    scale!(CONS_MENU_ITEM_RECT);
 
-    scale!(LeftInfo_Rect);
-    scale!(RightInfo_Rect);
+    scale!(LEFT_INFO_RECT);
+    scale!(RIGHT_INFO_RECT);
 
     for block in &mut FILL_BLOCKS {
         scale_rect(block, scale);
@@ -593,7 +557,7 @@ pub unsafe fn ScaleStatRects(scale: c_float) {
     scale!(COLUMN_RECT);
 }
 
-pub unsafe fn ScalePic(pic: &mut *mut SDL_Surface, scale: c_float) {
+pub unsafe fn scale_pic(pic: &mut *mut SDL_Surface, scale: c_float) {
     if (scale - 1.0).abs() <= f32::EPSILON {
         return;
     }
@@ -603,20 +567,20 @@ pub unsafe fn ScalePic(pic: &mut *mut SDL_Surface, scale: c_float) {
     *pic = zoomSurface(tmp, scale, scale, 0);
     if pic.is_null() {
         error!("zoomSurface() failed for scale = {}.", scale);
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
     SDL_FreeSurface(tmp);
 }
 
-pub unsafe fn ScaleGraphics(scale: c_float) {
+pub unsafe fn scale_graphics(scale: c_float) {
     static INIT: std::sync::Once = std::sync::Once::new();
 
     /* For some reason we need to SetAlpha every time on OS X */
     /* Digits are only used in _internal_ blits ==> clear per-surf alpha */
-    for &surface in &InfluDigitSurfacePointer {
+    for &surface in &INFLU_DIGIT_SURFACE_POINTER {
         SDL_SetAlpha(surface, 0, 0);
     }
-    for &surface in &EnemyDigitSurfacePointer {
+    for &surface in &ENEMY_DIGIT_SURFACE_POINTER {
         SDL_SetAlpha(surface, 0, 0);
     }
     if (scale - 1.).abs() <= f32::EPSILON {
@@ -625,116 +589,116 @@ pub unsafe fn ScaleGraphics(scale: c_float) {
 
     // these are reset in a theme-change by the theme-config-file
     // therefore we need to rescale them each time again
-    scale_rect(&mut FirstDigit_Rect, scale);
-    scale_rect(&mut SecondDigit_Rect, scale);
-    scale_rect(&mut ThirdDigit_Rect, scale);
+    scale_rect(&mut FIRST_DIGIT_RECT, scale);
+    scale_rect(&mut SECOND_DIGIT_RECT, scale);
+    scale_rect(&mut THIRD_DIGIT_RECT, scale);
 
     // note: only rescale these rects the first time!!
     let mut init = false;
     INIT.call_once(|| {
         init = true;
-        ScaleStatRects(scale);
+        scale_stat_rects(scale);
     });
 
     //---------- rescale Map blocks
-    OrigMapBlockSurfacePointer
+    ORIG_MAP_BLOCK_SURFACE_POINTER
         .iter_mut()
         .flat_map(|surfaces| surfaces.iter_mut())
         .zip(
-            MapBlockSurfacePointer
+            MAP_BLOCK_SURFACE_POINTER
                 .iter_mut()
                 .flat_map(|surfaces| surfaces.iter_mut()),
         )
         .for_each(|(orig_surface, map_surface)| {
-            ScalePic(orig_surface, scale);
+            scale_pic(orig_surface, scale);
             *map_surface = *orig_surface;
         });
 
     //---------- rescale Droid-model  blocks
     /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
-    for surface in &mut InfluencerSurfacePointer {
-        ScalePic(surface, scale);
+    for surface in &mut INFLUENCER_SURFACE_POINTER {
+        scale_pic(surface, scale);
         SDL_SetAlpha(*surface, 0, 0);
     }
-    for surface in &mut EnemySurfacePointer {
-        ScalePic(surface, scale);
+    for surface in &mut ENEMY_SURFACE_POINTER {
+        scale_pic(surface, scale);
         SDL_SetAlpha(*surface, 0, 0);
     }
 
     //---------- rescale Bullet blocks
     let bulletmap =
-        std::slice::from_raw_parts_mut(Bulletmap, usize::try_from(Number_Of_Bullet_Types).unwrap());
+        std::slice::from_raw_parts_mut(BULLETMAP, usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap());
     bulletmap
         .iter_mut()
-        .flat_map(|bullet| bullet.SurfacePointer.iter_mut())
-        .for_each(|surface| ScalePic(surface, scale));
+        .flat_map(|bullet| bullet.surface_pointer.iter_mut())
+        .for_each(|surface| scale_pic(surface, scale));
 
     //---------- rescale Blast blocks
-    Blastmap
+    BLASTMAP
         .iter_mut()
-        .flat_map(|blast| blast.SurfacePointer.iter_mut())
-        .for_each(|surface| ScalePic(surface, scale));
+        .flat_map(|blast| blast.surface_pointer.iter_mut())
+        .for_each(|surface| scale_pic(surface, scale));
 
     //---------- rescale Digit blocks
-    for surface in &mut InfluDigitSurfacePointer {
-        ScalePic(surface, scale);
+    for surface in &mut INFLU_DIGIT_SURFACE_POINTER {
+        scale_pic(surface, scale);
         SDL_SetAlpha(*surface, 0, 0);
     }
-    for surface in &mut EnemyDigitSurfacePointer {
-        ScalePic(surface, scale);
+    for surface in &mut ENEMY_DIGIT_SURFACE_POINTER {
+        scale_pic(surface, scale);
         SDL_SetAlpha(*surface, 0, 0);
     }
 
     //---------- rescale Takeover pics
-    ScalePic(&mut TO_BLOCKS, scale);
+    scale_pic(&mut TO_BLOCKS, scale);
     //  printf_SDL (ne_screen, -1, -1, ".");
 
-    ScalePic(&mut ship_on_pic, scale);
-    ScalePic(&mut ship_off_pic, scale);
+    scale_pic(&mut SHIP_ON_PIC, scale);
+    scale_pic(&mut SHIP_OFF_PIC, scale);
 
     // the following are not theme-specific and are therefore only loaded once!
     if init {
         //  create a new tmp block-build storage
-        free_if_unused(BuildBlock);
+        free_if_unused(BUILD_BLOCK);
         let tmp = SDL_CreateRGBSurface(
             0,
-            Block_Rect.w.into(),
-            Block_Rect.h.into(),
-            vid_bpp,
+            BLOCK_RECT.w.into(),
+            BLOCK_RECT.h.into(),
+            VID_BPP,
             0,
             0,
             0,
             0,
         );
-        BuildBlock = SDL_DisplayFormatAlpha(tmp);
+        BUILD_BLOCK = SDL_DisplayFormatAlpha(tmp);
         SDL_FreeSurface(tmp);
 
         // takeover pics
-        ScalePic(&mut takeover_bg_pic, scale);
+        scale_pic(&mut TAKEOVER_BG_PIC, scale);
 
         //---------- Console pictures
-        ScalePic(&mut console_pic, scale);
-        ScalePic(&mut console_bg_pic1, scale);
-        ScalePic(&mut console_bg_pic2, scale);
-        ScalePic(&mut arrow_up, scale);
-        ScalePic(&mut arrow_down, scale);
-        ScalePic(&mut arrow_right, scale);
-        ScalePic(&mut arrow_left, scale);
+        scale_pic(&mut CONSOLE_PIC, scale);
+        scale_pic(&mut CONSOLE_BG_PIC1, scale);
+        scale_pic(&mut CONSOLE_BG_PIC2, scale);
+        scale_pic(&mut ARROW_UP, scale);
+        scale_pic(&mut ARROW_DOWN, scale);
+        scale_pic(&mut ARROW_RIGHT, scale);
+        scale_pic(&mut ARROW_LEFT, scale);
         //---------- Banner
-        ScalePic(&mut banner_pic, scale);
+        scale_pic(&mut BANNER_PIC, scale);
 
-        ScalePic(&mut pic999, scale);
+        scale_pic(&mut PIC999, scale);
 
         // get the Ashes pics
-        if !Decal_pics[0].is_null() {
-            ScalePic(&mut Decal_pics[0], scale);
+        if !DECAL_PICS[0].is_null() {
+            scale_pic(&mut DECAL_PICS[0], scale);
         }
-        if !Decal_pics[1].is_null() {
-            ScalePic(&mut Decal_pics[1], scale);
+        if !DECAL_PICS[1].is_null() {
+            scale_pic(&mut DECAL_PICS[1], scale);
         }
     }
 
-    printf_SDL(ne_screen, -1, -1, format_args!(" ok\n"));
+    printf_sdl(NE_SCREEN, -1, -1, format_args!(" ok\n"));
 }
 
 /// display "white noise" effect in Rect.
@@ -754,11 +718,11 @@ pub unsafe fn white_noise(bitmap: *mut SDL_Surface, rect: &mut Rect, timeout: c_
 
     let grey: [u32; NOISE_COLORS] = array_init(|index| {
         let color = (((index as f64 + 1.0) / (NOISE_COLORS as f64)) * 255.0) as u8;
-        SDL_MapRGB((*ne_screen).format, color, color, color)
+        SDL_MapRGB((*NE_SCREEN).format, color, color, color)
     });
 
     // produce the tiles
-    let tmp = SDL_CreateRGBSurface(0, rect.w.into(), rect.h.into(), vid_bpp, 0, 0, 0, 0);
+    let tmp = SDL_CreateRGBSurface(0, rect.w.into(), rect.h.into(), VID_BPP, 0, 0, 0, 0);
     let tmp2 = SDL_DisplayFormat(tmp);
     SDL_FreeSurface(tmp);
     SDL_UpperBlit(bitmap, rect, tmp2, null_mut());
@@ -770,7 +734,7 @@ pub unsafe fn white_noise(bitmap: *mut SDL_Surface, rect: &mut Rect, timeout: c_
             .flat_map(|x| (0..rect.h).map(move |y| (x, y)))
             .for_each(|(x, y)| {
                 if rng.gen_range(0, 100) > signal_strengh {
-                    PutPixel(&*tile, x.into(), y.into(), *grey.choose(&mut rng).unwrap());
+                    put_pixel(&*tile, x.into(), y.into(), *grey.choose(&mut rng).unwrap());
                 }
             });
         tile
@@ -779,7 +743,7 @@ pub unsafe fn white_noise(bitmap: *mut SDL_Surface, rect: &mut Rect, timeout: c_
 
     let mut used_tiles: [c_char; NOISE_TILES / 2 + 1] = [-1; NOISE_TILES / 2 + 1];
     // let's go
-    Play_Sound(Sound::WhiteNoise as c_int);
+    play_sound(Sound::WhiteNoise as c_int);
 
     let now = SDL_GetTicks();
 
@@ -805,17 +769,17 @@ pub unsafe fn white_noise(bitmap: *mut SDL_Surface, rect: &mut Rect, timeout: c_
         *used_tiles.last_mut().unwrap() = next_tile;
 
         // make sure we can blit the full rect without clipping! (would change *rect!)
-        SDL_GetClipRect(ne_screen, &mut clip_rect);
-        SDL_SetClipRect(ne_screen, null_mut());
+        SDL_GetClipRect(NE_SCREEN, &mut clip_rect);
+        SDL_SetClipRect(NE_SCREEN, null_mut());
         // set it
         SDL_UpperBlit(
             noise_tiles[usize::try_from(next_tile).unwrap()],
             null_mut(),
-            ne_screen,
+            NE_SCREEN,
             rect,
         );
         SDL_UpdateRect(
-            ne_screen,
+            NE_SCREEN,
             rect.x.into(),
             rect.y.into(),
             rect.w.into(),
@@ -833,15 +797,16 @@ pub unsafe fn white_noise(bitmap: *mut SDL_Surface, rect: &mut Rect, timeout: c_
     }
 
     //restore previous clip-rectange
-    SDL_SetClipRect(ne_screen, &clip_rect);
+    SDL_SetClipRect(NE_SCREEN, &clip_rect);
 
     for &tile in &noise_tiles {
         SDL_FreeSurface(tile);
     }
 }
 
-pub unsafe fn Duplicate_Font(in_font: &BFontInfo) -> *mut BFontInfo {
-    let out_font = MyMalloc(std::mem::size_of::<BFontInfo>().try_into().unwrap()) as *mut BFontInfo;
+pub unsafe fn duplicate_font(in_font: &BFontInfo) -> *mut BFontInfo {
+    let out_font =
+        my_malloc(std::mem::size_of::<BFontInfo>().try_into().unwrap()) as *mut BFontInfo;
 
     std::ptr::copy_nonoverlapping(in_font, out_font, 1);
     (*out_font).surface = SDL_ConvertSurface(
@@ -851,23 +816,23 @@ pub unsafe fn Duplicate_Font(in_font: &BFontInfo) -> *mut BFontInfo {
     );
     if (*out_font).surface.is_null() {
         error!("Duplicate_Font: failed to copy SDL_Surface using SDL_ConvertSurface()");
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
 
     out_font
 }
 
-pub unsafe fn Load_Fonts() -> c_int {
+pub unsafe fn load_fonts() -> c_int {
     let mut fpath = find_file(
         PARA_FONT_FILE_C.as_ptr(),
         GRAPHICS_DIR_C.as_ptr() as *mut c_char,
         Themed::NoTheme as c_int,
         Criticality::Critical as c_int,
     );
-    Para_BFont = LoadFont(fpath, GameConfig.scale);
-    if Para_BFont.is_null() {
+    PARA_B_FONT = load_font(fpath, GAME_CONFIG.scale);
+    if PARA_B_FONT.is_null() {
         error!("font file named {} was not found.", PARA_FONT_FILE);
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
 
     fpath = find_file(
@@ -876,10 +841,10 @@ pub unsafe fn Load_Fonts() -> c_int {
         Themed::NoTheme as c_int,
         Criticality::Critical as c_int,
     );
-    Font0_BFont = LoadFont(fpath, GameConfig.scale);
-    if Font0_BFont.is_null() {
+    FONT0_B_FONT = load_font(fpath, GAME_CONFIG.scale);
+    if FONT0_B_FONT.is_null() {
         error!("font file named {} was not found.\n", FONT0_FILE);
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
 
     fpath = find_file(
@@ -888,10 +853,10 @@ pub unsafe fn Load_Fonts() -> c_int {
         Themed::NoTheme as c_int,
         Criticality::Critical as c_int,
     );
-    Font1_BFont = LoadFont(fpath, GameConfig.scale);
-    if Font1_BFont.is_null() {
+    FONT1_B_FONT = load_font(fpath, GAME_CONFIG.scale);
+    if FONT1_B_FONT.is_null() {
         error!("font file named {} was not found.", FONT1_FILE);
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
 
     fpath = find_file(
@@ -900,63 +865,35 @@ pub unsafe fn Load_Fonts() -> c_int {
         Themed::NoTheme as c_int,
         Criticality::Critical as c_int,
     );
-    Font2_BFont = LoadFont(fpath, GameConfig.scale);
-    if Font2_BFont.is_null() {
+    FONT2_B_FONT = load_font(fpath, GAME_CONFIG.scale);
+    if FONT2_B_FONT.is_null() {
         error!("font file named {} was not found.", FONT2_FILE);
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
 
-    Menu_BFont = Duplicate_Font(&*Para_BFont);
-    Highscore_BFont = Duplicate_Font(&*Para_BFont);
+    MENU_B_FONT = duplicate_font(&*PARA_B_FONT);
+    HIGHSCORE_B_FONT = duplicate_font(&*PARA_B_FONT);
 
-    fonts_loaded = true.into();
+    FONTS_LOADED = true.into();
 
     defs::OK.into()
 }
 
-/// Return the pixel value at (x, y)
-/// NOTE: The surface must be locked before calling this!
-pub unsafe fn getpixel(surface: &SDL_Surface, x: c_int, y: c_int) -> u32 {
-    let bpp = (*surface.format).BytesPerPixel;
-    /* Here p is the address to the pixel we want to retrieve */
-    let p = surface.pixels.offset(
-        isize::try_from(y).unwrap() * isize::try_from(surface.pitch).unwrap()
-            + isize::try_from(x).unwrap() * isize::try_from(bpp).unwrap(),
-    );
-
-    match bpp {
-        1 => (*(p as *const u8)).into(),
-        2 => (*(p as *const u16)).into(),
-        3 => {
-            let p = std::slice::from_raw_parts(p as *const u8, 3);
-            if cfg!(target_endian = "big") {
-                u32::from(p[0]) << 16 | u32::from(p[1]) << 8 | u32::from(p[2])
-            } else {
-                u32::from(p[0]) | u32::from(p[1]) << 8 | u32::from(p[2]) << 16
-            }
-        }
-        4 => *(p as *const u32),
-        _ => {
-            unreachable!()
-        }
-    }
-}
-
-pub unsafe fn ClearGraphMem() {
+pub unsafe fn clear_graph_mem() {
     // One this function is done, the rahmen at the
     // top of the screen surely is destroyed.  We inform the
     // DisplayBanner function of the matter...
-    BannerIsDestroyed = true.into();
+    BANNER_IS_DESTROYED = true.into();
 
-    SDL_SetClipRect(ne_screen, null_mut());
+    SDL_SetClipRect(NE_SCREEN, null_mut());
 
     // Now we fill the screen with black color...
-    SDL_FillRect(ne_screen, null_mut(), 0);
-    SDL_Flip(ne_screen);
+    SDL_FillRect(NE_SCREEN, null_mut(), 0);
+    SDL_Flip(NE_SCREEN);
 }
 
 /// Initialise the Video display and graphics engine
-pub unsafe fn Init_Video() {
+pub unsafe fn init_video() {
     const YN: [&str; 2] = ["no", "yes"];
 
     /* Initialize the SDL library */
@@ -964,7 +901,7 @@ pub unsafe fn Init_Video() {
 
     if SDL_Init(SDL_INIT_VIDEO) == -1 {
         eprintln!("Couldn't initialize SDL: {}", get_error());
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     } else {
         info!("SDL Video initialisation successful.");
     }
@@ -973,7 +910,7 @@ pub unsafe fn Init_Video() {
 
     if SDL_InitSubSystem(SDL_INIT_TIMER) == -1 {
         eprintln!("Couldn't initialize SDL: {}", get_error());
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     } else {
         info!("SDL Timer initialisation successful.");
     }
@@ -981,15 +918,15 @@ pub unsafe fn Init_Video() {
     /* clean up on exit */
     libc::atexit(std::mem::transmute(SDL_Quit as unsafe extern "C" fn()));
 
-    vid_info = SDL_GetVideoInfo(); /* just curious */
+    VID_INFO = SDL_GetVideoInfo(); /* just curious */
     let mut vid_driver: [c_char; 81] = [0; 81];
     SDL_VideoDriverName(vid_driver.as_mut_ptr(), 80);
 
-    let vid_info_ref = *vid_info;
+    let vid_info_ref = *VID_INFO;
     if cfg!(os_target = "android") {
-        vid_bpp = 16; // Hardcoded Android default
+        VID_BPP = 16; // Hardcoded Android default
     } else {
-        vid_bpp = (*vid_info_ref.vfmt).BitsPerPixel.into();
+        VID_BPP = (*vid_info_ref.vfmt).BitsPerPixel.into();
     }
 
     macro_rules! flag {
@@ -1044,7 +981,7 @@ pub unsafe fn Init_Video() {
     );
     info!(
         "Pixel format of the video device: bpp = {}, bytes/pixel = {}",
-        vid_bpp,
+        VID_BPP,
         (*vid_info_ref.vfmt).BytesPerPixel
     );
     info!(
@@ -1053,7 +990,7 @@ pub unsafe fn Init_Video() {
     );
     info!("----------------------------------------------------------------------");
 
-    let vid_flags = if GameConfig.UseFullscreen != 0 {
+    let vid_flags = if GAME_CONFIG.use_fullscreen != 0 {
         VideoFlag::Fullscreen as u32
     } else {
         0
@@ -1084,23 +1021,23 @@ pub unsafe fn Init_Video() {
         }
     }
 
-    ne_screen = SDL_SetVideoMode(Screen_Rect.w.into(), Screen_Rect.h.into(), 0, vid_flags);
-    if ne_screen.is_null() {
+    NE_SCREEN = SDL_SetVideoMode(SCREEN_RECT.w.into(), SCREEN_RECT.h.into(), 0, vid_flags);
+    if NE_SCREEN.is_null() {
         error!(
             "Couldn't set {} x {} video mode. SDL: {}",
-            Screen_Rect.w,
-            Screen_Rect.h,
+            SCREEN_RECT.w,
+            SCREEN_RECT.h,
             get_error(),
         );
         std::process::exit(-1);
     }
 
-    vid_info = SDL_GetVideoInfo(); /* info about current video mode */
+    VID_INFO = SDL_GetVideoInfo(); /* info about current video mode */
 
     info!("Got video mode: ");
 
     SDL_SetGamma(1., 1., 1.);
-    GameConfig.Current_Gamma_Correction = 1.;
+    GAME_CONFIG.current_gamma_correction = 1.;
 }
 
 /// load a pic into memory and return the SDL_RWops pointer to it
@@ -1109,20 +1046,20 @@ pub unsafe fn load_raw_pic(fpath: *const c_char, raw_mem: *mut *mut c_char) -> *
 
     if raw_mem.is_null() || !(*raw_mem).is_null() {
         error!("Invalid input 'raw_mem': must be pointing to NULL pointer");
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
 
     // sanity check
     if fpath.is_null() {
         error!("load_raw_pic() called with NULL argument!");
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
 
     let fpath = match CStr::from_ptr(fpath).to_str() {
         Ok(fpath) => fpath,
         Err(err) => {
             error!("unable to convert path with invalid UTF-8 data: {}", err);
-            Terminate(defs::ERR.into());
+            terminate(defs::ERR.into());
         }
     };
     let fpath = Path::new(&fpath);
@@ -1130,7 +1067,7 @@ pub unsafe fn load_raw_pic(fpath: *const c_char, raw_mem: *mut *mut c_char) -> *
         Ok(file) => file,
         Err(_) => {
             error!("could not open file {}. Giving up", fpath.display());
-            Terminate(defs::ERR.into());
+            terminate(defs::ERR.into());
         }
     };
 
@@ -1138,16 +1075,16 @@ pub unsafe fn load_raw_pic(fpath: *const c_char, raw_mem: *mut *mut c_char) -> *
         Ok(metadata) => metadata,
         Err(err) => {
             error!("unable to get file metadata: {}", err);
-            Terminate(defs::ERR.into());
+            terminate(defs::ERR.into());
         }
     };
 
     let len = metadata.len().try_into().unwrap();
-    *raw_mem = MyMalloc(len) as *mut i8;
+    *raw_mem = my_malloc(len) as *mut i8;
     let buf = std::slice::from_raw_parts_mut(*raw_mem as *mut u8, len.try_into().unwrap());
     if file.read_exact(buf).is_err() {
         error!("cannot reading file {}. Giving up...", fpath.display());
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
     drop(file);
 
@@ -1160,7 +1097,7 @@ pub unsafe fn load_raw_pic(fpath: *const c_char, raw_mem: *mut *mut c_char) -> *
 /// the various structs
 ///
 /// Returns true/false
-pub unsafe fn InitPictures() -> c_int {
+pub unsafe fn init_pictures() -> c_int {
     use std::sync::Once;
 
     static DO_ONCE: Once = Once::new();
@@ -1169,19 +1106,19 @@ pub unsafe fn InitPictures() -> c_int {
     // Loading all these pictures might take a while...
     // and we do not want do deal with huge frametimes, which
     // could box the influencer out of the ship....
-    Activate_Conservative_Frame_Computation();
+    activate_conservative_frame_computation();
 
-    let oldfont = GetCurrentFont();
+    let oldfont = get_current_font();
 
-    if fonts_loaded == 0 {
-        Load_Fonts();
+    if FONTS_LOADED == 0 {
+        load_fonts();
     }
 
-    SetCurrentFont(Font0_BFont);
+    set_current_font(FONT0_B_FONT);
 
     init_progress(cstr!("Loading pictures").as_ptr() as *mut c_char);
 
-    LoadThemeConfigurationFile();
+    load_theme_configuration_file();
 
     update_progress(15);
 
@@ -1192,11 +1129,11 @@ pub unsafe fn InitPictures() -> c_int {
         Themed::UseTheme as c_int,
         Criticality::Critical as c_int,
     );
-    Load_Block(fpath, 0, 0, null_mut(), INIT_ONLY as i32); /* init function */
-    OrigMapBlockSurfacePointer
+    load_block(fpath, 0, 0, null_mut(), INIT_ONLY as i32); /* init function */
+    ORIG_MAP_BLOCK_SURFACE_POINTER
         .iter_mut()
         .enumerate()
-        .zip(MapBlockSurfacePointer.iter_mut())
+        .zip(MAP_BLOCK_SURFACE_POINTER.iter_mut())
         .flat_map(|((color_index, orig_color_map), color_map)| {
             orig_color_map
                 .iter_mut()
@@ -1206,11 +1143,11 @@ pub unsafe fn InitPictures() -> c_int {
         })
         .for_each(|((color_index, block_index, orig_surface), surface)| {
             free_if_unused(*orig_surface);
-            *orig_surface = Load_Block(
+            *orig_surface = load_block(
                 null_mut(),
                 color_index.try_into().unwrap(),
                 block_index.try_into().unwrap(),
-                &mut OrigBlock_Rect,
+                &mut ORIG_BLOCK_RECT,
                 0,
             );
             *surface = *orig_surface;
@@ -1224,17 +1161,17 @@ pub unsafe fn InitPictures() -> c_int {
         Themed::UseTheme as c_int,
         Criticality::Critical as c_int,
     );
-    Load_Block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
-    InfluencerSurfacePointer
+    load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+    INFLUENCER_SURFACE_POINTER
         .iter_mut()
         .enumerate()
         .for_each(|(index, influencer_surface)| {
             free_if_unused(*influencer_surface);
-            *influencer_surface = Load_Block(
+            *influencer_surface = load_block(
                 null_mut(),
                 0,
                 index.try_into().unwrap(),
-                &mut OrigBlock_Rect,
+                &mut ORIG_BLOCK_RECT,
                 0,
             );
 
@@ -1242,16 +1179,16 @@ pub unsafe fn InitPictures() -> c_int {
             SDL_SetAlpha(*influencer_surface, 0, 0);
         });
 
-    EnemySurfacePointer
+    ENEMY_SURFACE_POINTER
         .iter_mut()
         .enumerate()
         .for_each(|(index, enemy_surface)| {
             free_if_unused(*enemy_surface);
-            *enemy_surface = Load_Block(
+            *enemy_surface = load_block(
                 null_mut(),
                 1,
                 index.try_into().unwrap(),
-                &mut OrigBlock_Rect,
+                &mut ORIG_BLOCK_RECT,
                 0,
             );
 
@@ -1267,24 +1204,24 @@ pub unsafe fn InitPictures() -> c_int {
         Themed::UseTheme as c_int,
         Criticality::Critical as c_int,
     );
-    Load_Block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
-    std::slice::from_raw_parts_mut(Bulletmap, Number_Of_Bullet_Types.try_into().unwrap())
+    load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+    std::slice::from_raw_parts_mut(BULLETMAP, NUMBER_OF_BULLET_TYPES.try_into().unwrap())
         .iter_mut()
         .enumerate()
         .flat_map(|(bullet_type_index, bullet)| {
             bullet
-                .SurfacePointer
+                .surface_pointer
                 .iter_mut()
                 .enumerate()
                 .map(move |(phase_index, surface)| (bullet_type_index, phase_index, surface))
         })
         .for_each(|(bullet_type_index, phase_index, surface)| {
             free_if_unused(*surface);
-            *surface = Load_Block(
+            *surface = load_block(
                 null_mut(),
                 bullet_type_index.try_into().unwrap(),
                 phase_index.try_into().unwrap(),
-                &mut OrigBlock_Rect,
+                &mut ORIG_BLOCK_RECT,
                 0,
             );
         });
@@ -1298,24 +1235,24 @@ pub unsafe fn InitPictures() -> c_int {
         Themed::UseTheme as c_int,
         Criticality::Critical as c_int,
     );
-    Load_Block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
-    Blastmap
+    load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+    BLASTMAP
         .iter_mut()
         .enumerate()
         .flat_map(|(blast_type_index, blast)| {
             blast
-                .SurfacePointer
+                .surface_pointer
                 .iter_mut()
                 .enumerate()
                 .map(move |(surface_index, surface)| (blast_type_index, surface_index, surface))
         })
         .for_each(|(blast_type_index, surface_index, surface)| {
             free_if_unused(*surface);
-            *surface = Load_Block(
+            *surface = load_block(
                 null_mut(),
                 blast_type_index.try_into().unwrap(),
                 surface_index.try_into().unwrap(),
-                &mut OrigBlock_Rect,
+                &mut ORIG_BLOCK_RECT,
                 0,
             );
         });
@@ -1329,30 +1266,30 @@ pub unsafe fn InitPictures() -> c_int {
         Themed::UseTheme as c_int,
         Criticality::Critical as c_int,
     );
-    Load_Block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
-    InfluDigitSurfacePointer
+    load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+    INFLU_DIGIT_SURFACE_POINTER
         .iter_mut()
         .enumerate()
         .for_each(|(index, surface)| {
             free_if_unused(*surface);
-            *surface = Load_Block(
+            *surface = load_block(
                 null_mut(),
                 0,
                 index.try_into().unwrap(),
-                &mut OrigDigit_Rect,
+                &mut ORIG_DIGIT_RECT,
                 0,
             );
         });
-    EnemyDigitSurfacePointer
+    ENEMY_DIGIT_SURFACE_POINTER
         .iter_mut()
         .enumerate()
         .for_each(|(index, surface)| {
             free_if_unused(*surface);
-            *surface = Load_Block(
+            *surface = load_block(
                 null_mut(),
                 0,
                 (index + 10).try_into().unwrap(),
-                &mut OrigDigit_Rect,
+                &mut ORIG_DIGIT_RECT,
                 0,
             );
         });
@@ -1367,19 +1304,19 @@ pub unsafe fn InitPictures() -> c_int {
         Themed::UseTheme as c_int,
         Criticality::Critical as c_int,
     );
-    TO_BLOCKS = Load_Block(fpath, 0, 0, null_mut(), 0);
+    TO_BLOCKS = load_block(fpath, 0, 0, null_mut(), 0);
 
     update_progress(60);
 
-    free_if_unused(ship_on_pic);
-    ship_on_pic = IMG_Load(find_file(
+    free_if_unused(SHIP_ON_PIC);
+    SHIP_ON_PIC = IMG_Load(find_file(
         SHIP_ON_PIC_FILE_C.as_ptr() as *mut c_char,
         GRAPHICS_DIR_C.as_ptr() as *mut c_char,
         Themed::UseTheme as c_int,
         Criticality::Critical as c_int,
     ));
-    free_if_unused(ship_off_pic);
-    ship_off_pic = IMG_Load(find_file(
+    free_if_unused(SHIP_OFF_PIC);
+    SHIP_OFF_PIC = IMG_Load(find_file(
         SHIP_OFF_PIC_FILE_C.as_ptr() as *mut c_char,
         GRAPHICS_DIR_C.as_ptr() as *mut c_char,
         Themed::UseTheme as c_int,
@@ -1391,15 +1328,15 @@ pub unsafe fn InitPictures() -> c_int {
         //  create the tmp block-build storage
         let tmp = SDL_CreateRGBSurface(
             0,
-            Block_Rect.w.into(),
-            Block_Rect.h.into(),
-            vid_bpp,
+            BLOCK_RECT.w.into(),
+            BLOCK_RECT.h.into(),
+            VID_BPP,
             0,
             0,
             0,
             0,
         );
-        BuildBlock = SDL_DisplayFormatAlpha(tmp);
+        BUILD_BLOCK = SDL_DisplayFormatAlpha(tmp);
         SDL_FreeSurface(tmp);
 
         // takeover background pics
@@ -1409,12 +1346,12 @@ pub unsafe fn InitPictures() -> c_int {
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         );
-        takeover_bg_pic = Load_Block(fpath, 0, 0, null_mut(), 0);
+        TAKEOVER_BG_PIC = load_block(fpath, 0, 0, null_mut(), 0);
         set_takeover_rects(); // setup takeover rectangles
 
         // cursor shapes
-        arrow_cursor = init_system_cursor(&ARROW_XPM);
-        crosshair_cursor = init_system_cursor(&CROSSHAIR_XPM);
+        ARROW_CURSOR = init_system_cursor(&ARROW_XPM);
+        CROSSHAIR_CURSOR = init_system_cursor(&CROSSHAIR_XPM);
         //---------- get Console pictures
         let fpath = find_file(
             CONSOLE_PIC_FILE_C.as_ptr() as *mut c_char,
@@ -1422,43 +1359,43 @@ pub unsafe fn InitPictures() -> c_int {
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         );
-        console_pic = Load_Block(fpath, 0, 0, null_mut(), 0);
+        CONSOLE_PIC = load_block(fpath, 0, 0, null_mut(), 0);
         let fpath = find_file(
             CONSOLE_BG_PIC1_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         );
-        console_bg_pic1 = Load_Block(fpath, 0, 0, null_mut(), 0);
+        CONSOLE_BG_PIC1 = load_block(fpath, 0, 0, null_mut(), 0);
         let fpath = find_file(
             CONSOLE_BG_PIC2_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         );
-        console_bg_pic2 = Load_Block(fpath, 0, 0, null_mut(), 0);
+        CONSOLE_BG_PIC2 = load_block(fpath, 0, 0, null_mut(), 0);
 
         update_progress(80);
 
-        arrow_up = IMG_Load(find_file(
+        ARROW_UP = IMG_Load(find_file(
             cstr!("arrow_up.png").as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         ));
-        arrow_down = IMG_Load(find_file(
+        ARROW_DOWN = IMG_Load(find_file(
             cstr!("arrow_down.png").as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         ));
-        arrow_right = IMG_Load(find_file(
+        ARROW_RIGHT = IMG_Load(find_file(
             cstr!("arrow_right.png").as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         ));
-        arrow_left = IMG_Load(find_file(
+        ARROW_LEFT = IMG_Load(find_file(
             cstr!("arrow_left.png").as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -1471,15 +1408,15 @@ pub unsafe fn InitPictures() -> c_int {
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         );
-        banner_pic = Load_Block(fpath, 0, 0, null_mut(), 0);
+        BANNER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
 
         update_progress(90);
         //---------- get Droid images ----------
-        let droids = std::slice::from_raw_parts(Druidmap, Droid::NumDroids as usize);
+        let droids = std::slice::from_raw_parts(DRUIDMAP, Droid::NumDroids as usize);
         droids
             .iter()
-            .zip(packed_portraits.iter_mut())
-            .zip(portrait_raw_mem.iter_mut())
+            .zip(PACKED_PORTRAITS.iter_mut())
+            .zip(PORTRAIT_RAW_MEM.iter_mut())
             .for_each(|((droid, packed_portrait), raw_portrait)| {
                 // first check if we find a file with rotation-frames: first try .jpg
                 libc::strcpy(fname.as_mut_ptr(), droid.druidname.as_ptr());
@@ -1518,7 +1455,7 @@ pub unsafe fn InitPictures() -> c_int {
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         );
-        pic999 = Load_Block(fpath, 0, 0, null_mut(), 0);
+        PIC999 = load_block(fpath, 0, 0, null_mut(), 0);
 
         // get the Ashes pics
         libc::strcpy(fname.as_mut_ptr(), cstr!("Ashes.png").as_ptr());
@@ -1530,27 +1467,27 @@ pub unsafe fn InitPictures() -> c_int {
         );
         if fpath.is_null() {
             warn!("deactivated display of droid-decals");
-            GameConfig.ShowDecals = false.into();
+            GAME_CONFIG.show_decals = false.into();
         } else {
-            Load_Block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
-            Decal_pics[0] = Load_Block(null_mut(), 0, 0, &mut OrigBlock_Rect, 0);
-            Decal_pics[1] = Load_Block(null_mut(), 0, 1, &mut OrigBlock_Rect, 0);
+            load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+            DECAL_PICS[0] = load_block(null_mut(), 0, 0, &mut ORIG_BLOCK_RECT, 0);
+            DECAL_PICS[1] = load_block(null_mut(), 0, 1, &mut ORIG_BLOCK_RECT, 0);
         }
     });
 
     update_progress(96);
     // if scale != 1 then we need to rescale everything now
-    ScaleGraphics(GameConfig.scale);
+    scale_graphics(GAME_CONFIG.scale);
 
     update_progress(98);
 
     // make sure bullet-surfaces get re-generated!
-    AllBullets
+    ALL_BULLETS
         .iter_mut()
         .take(MAXBULLETS)
-        .for_each(|bullet| bullet.Surfaces_were_generated = false.into());
+        .for_each(|bullet| bullet.surfaces_were_generated = false.into());
 
-    SetCurrentFont(oldfont);
+    set_current_font(oldfont);
 
     true.into()
 }
@@ -1682,7 +1619,7 @@ fn init_system_cursor(image: &[&[u8]]) -> *mut SDL_Cursor {
     unsafe { SDL_CreateCursor(data.as_mut_ptr(), mask.as_mut_ptr(), 32, 32, hot_x, hot_y) }
 }
 
-pub unsafe fn LoadThemeConfigurationFile() {
+pub unsafe fn load_theme_configuration_file() {
     use bstr::ByteSlice;
 
     const END_OF_THEME_DATA_STRING: &CStr = cstr!("**** End of theme data section ****");
@@ -1695,7 +1632,7 @@ pub unsafe fn LoadThemeConfigurationFile() {
     );
 
     let data_ptr =
-        ReadAndMallocAndTerminateFile(fpath, END_OF_THEME_DATA_STRING.as_ptr() as *mut c_char);
+        read_and_malloc_and_terminate_file(fpath, END_OF_THEME_DATA_STRING.as_ptr() as *mut c_char);
     let data = CStr::from_ptr(data_ptr).to_bytes();
 
     //--------------------
@@ -1705,32 +1642,32 @@ pub unsafe fn LoadThemeConfigurationFile() {
     const BLAST_ONE_NUMBER_OF_PHASES_STRING: &CStr = cstr!("How many phases in Blast one :");
     const BLAST_TWO_NUMBER_OF_PHASES_STRING: &CStr = cstr!("How many phases in Blast two :");
 
-    ReadValueFromString(
+    read_value_from_string(
         data.as_ptr() as *mut c_char,
         BLAST_ONE_NUMBER_OF_PHASES_STRING.as_ptr() as *mut c_char,
         cstr!("%d").as_ptr() as *mut c_char,
-        &mut Blastmap[0].phases as *mut c_int as *mut c_void,
+        &mut BLASTMAP[0].phases as *mut c_int as *mut c_void,
     );
 
-    ReadValueFromString(
+    read_value_from_string(
         data.as_ptr() as *mut c_char,
         BLAST_TWO_NUMBER_OF_PHASES_STRING.as_ptr() as *mut c_char,
         cstr!("%d").as_ptr() as *mut c_char,
-        &mut Blastmap[1].phases as *mut c_int as *mut c_void,
+        &mut BLASTMAP[1].phases as *mut c_int as *mut c_void,
     );
 
     // Next we read in the number of phases that are to be used for each bullet type
-    let mut reader = &data[..];
+    let mut reader = data;
     while let Some(read_start) = reader.find(b"For Bullettype Nr.=") {
         let read = &reader[read_start..];
         let mut bullet_index: c_int = 0;
-        ReadValueFromString(
+        read_value_from_string(
             read.as_ptr() as *mut c_char,
             cstr!("For Bullettype Nr.=").as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
             &mut bullet_index as *mut c_int as *mut c_void,
         );
-        if bullet_index >= Number_Of_Bullet_Types {
+        if bullet_index >= NUMBER_OF_BULLET_TYPES {
             error!(
                 "----------------------------------------------------------------------\n\
                  Freedroid has encountered a problem:\n\
@@ -1752,20 +1689,20 @@ pub unsafe fn LoadThemeConfigurationFile() {
                  not resolve.... Sorry, if that interrupts a major game of yours.....\n\
                  ----------------------------------------------------------------------\n"
             );
-            Terminate(defs::ERR.into());
+            terminate(defs::ERR.into());
         }
-        ReadValueFromString(
+        read_value_from_string(
             read.as_ptr() as *mut c_char,
             cstr!("we will use number of phases=").as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
-            &mut (*Bulletmap.offset(bullet_index.try_into().unwrap())).phases as *mut c_int
+            &mut (*BULLETMAP.offset(bullet_index.try_into().unwrap())).phases as *mut c_int
                 as *mut c_void,
         );
-        ReadValueFromString(
+        read_value_from_string(
             read.as_ptr() as *mut c_char,
             cstr!("and number of phase changes per second=").as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
-            &mut (*Bulletmap.offset(bullet_index.try_into().unwrap())).phase_changes_per_second
+            &mut (*BULLETMAP.offset(bullet_index.try_into().unwrap())).phase_changes_per_second
                 as *mut c_float as *mut c_void,
         );
         reader = &reader[read_start + 1..];
@@ -1783,43 +1720,43 @@ pub unsafe fn LoadThemeConfigurationFile() {
     const DIGIT_THREE_POSITION_X_STRING: &CStr = cstr!("Third digit x :");
     const DIGIT_THREE_POSITION_Y_STRING: &CStr = cstr!("Third digit y :");
 
-    ReadValueFromString(
+    read_value_from_string(
         data.as_ptr() as *mut c_char,
         DIGIT_ONE_POSITION_X_STRING.as_ptr() as *mut c_char,
         cstr!("%hd").as_ptr() as *mut c_char,
-        &mut FirstDigit_Rect.x as *mut c_short as *mut c_void,
+        &mut FIRST_DIGIT_RECT.x as *mut c_short as *mut c_void,
     );
-    ReadValueFromString(
+    read_value_from_string(
         data.as_ptr() as *mut c_char,
         DIGIT_ONE_POSITION_Y_STRING.as_ptr() as *mut c_char,
         cstr!("%hd").as_ptr() as *mut c_char,
-        &mut FirstDigit_Rect.y as *mut c_short as *mut c_void,
+        &mut FIRST_DIGIT_RECT.y as *mut c_short as *mut c_void,
     );
 
-    ReadValueFromString(
+    read_value_from_string(
         data.as_ptr() as *mut c_char,
         DIGIT_TWO_POSITION_X_STRING.as_ptr() as *mut c_char,
         cstr!("%hd").as_ptr() as *mut c_char,
-        &mut SecondDigit_Rect.x as *mut c_short as *mut c_void,
+        &mut SECOND_DIGIT_RECT.x as *mut c_short as *mut c_void,
     );
-    ReadValueFromString(
+    read_value_from_string(
         data.as_ptr() as *mut c_char,
         DIGIT_TWO_POSITION_Y_STRING.as_ptr() as *mut c_char,
         cstr!("%hd").as_ptr() as *mut c_char,
-        &mut SecondDigit_Rect.y as *mut c_short as *mut c_void,
+        &mut SECOND_DIGIT_RECT.y as *mut c_short as *mut c_void,
     );
 
-    ReadValueFromString(
+    read_value_from_string(
         data.as_ptr() as *mut c_char,
         DIGIT_THREE_POSITION_X_STRING.as_ptr() as *mut c_char,
         cstr!("%hd").as_ptr() as *mut c_char,
-        &mut ThirdDigit_Rect.x as *mut i16 as *mut c_void,
+        &mut THIRD_DIGIT_RECT.x as *mut i16 as *mut c_void,
     );
-    ReadValueFromString(
+    read_value_from_string(
         data.as_ptr() as *mut c_char,
         DIGIT_THREE_POSITION_Y_STRING.as_ptr() as *mut c_char,
         cstr!("%hd").as_ptr() as *mut c_char,
-        &mut ThirdDigit_Rect.y as *mut c_short as *mut c_void,
+        &mut THIRD_DIGIT_RECT.y as *mut c_short as *mut c_void,
     );
 
     libc::free(data_ptr as *mut c_void);
@@ -1831,13 +1768,13 @@ pub unsafe fn LoadThemeConfigurationFile() {
 ///
 /// in the first call we assume the Block_Rect to be the original game-size
 /// and store this value for future rescalings
-pub unsafe fn SetCombatScaleTo(scale: c_float) {
+pub unsafe fn set_combat_scale_to(scale: c_float) {
     use once_cell::sync::Lazy;
-    static ORIG_BLOCK: Lazy<Rect> = Lazy::new(|| unsafe { Block_Rect });
+    static ORIG_BLOCK: Lazy<Rect> = Lazy::new(|| unsafe { BLOCK_RECT });
 
-    MapBlockSurfacePointer
+    MAP_BLOCK_SURFACE_POINTER
         .iter_mut()
-        .zip(OrigMapBlockSurfacePointer.iter())
+        .zip(ORIG_MAP_BLOCK_SURFACE_POINTER.iter())
         .flat_map(|(map_block, orig_map_block)| map_block.iter_mut().zip(orig_map_block.iter()))
         .for_each(|(surface, &orig_surface)| {
             // if there's already a rescaled version, free it
@@ -1848,15 +1785,15 @@ pub unsafe fn SetCombatScaleTo(scale: c_float) {
             let tmp = zoomSurface(orig_surface, scale.into(), scale.into(), 0);
             if tmp.is_null() {
                 error!("zoomSurface() failed for scale = {}.", scale);
-                Terminate(defs::ERR.into());
+                terminate(defs::ERR.into());
             }
             // and optimize
             *surface = SDL_DisplayFormat(tmp);
             SDL_FreeSurface(tmp); // free the old surface
         });
 
-    Block_Rect = *ORIG_BLOCK;
-    scale_rect(&mut Block_Rect, scale);
+    BLOCK_RECT = *ORIG_BLOCK;
+    scale_rect(&mut BLOCK_RECT, scale);
 }
 
 /// This function load an image and displays it directly to the ne_screen
@@ -1864,7 +1801,7 @@ pub unsafe fn SetCombatScaleTo(scale: c_float) {
 /// This might be very handy, especially in the Title() function to
 /// display the title image and perhaps also for displaying the ship
 /// and that.
-pub unsafe fn DisplayImage(datafile: *mut c_char) {
+pub unsafe fn display_image(datafile: *mut c_char) {
     let mut image = IMG_Load(datafile);
     if image.is_null() {
         error!(
@@ -1872,19 +1809,19 @@ pub unsafe fn DisplayImage(datafile: *mut c_char) {
             CStr::from_ptr(datafile).to_string_lossy(),
             get_error()
         );
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
 
-    if (GameConfig.scale - 1.).abs() > c_float::EPSILON {
-        ScalePic(&mut image, GameConfig.scale);
+    if (GAME_CONFIG.scale - 1.).abs() > c_float::EPSILON {
+        scale_pic(&mut image, GAME_CONFIG.scale);
     }
 
-    SDL_UpperBlit(image, null_mut(), ne_screen, null_mut());
+    SDL_UpperBlit(image, null_mut(), NE_SCREEN, null_mut());
 
     SDL_FreeSurface(image);
 }
 
-pub unsafe fn DrawLineBetweenTiles(
+pub unsafe fn draw_line_between_tiles(
     mut x1: c_float,
     mut y1: c_float,
     mut x2: c_float,
@@ -1905,28 +1842,28 @@ pub unsafe fn DrawLineBetweenTiles(
         }
 
         let mut i = 0.;
-        let max = (y2 - y1) * f32::from(Block_Rect.w);
+        let max = (y2 - y1) * f32::from(BLOCK_RECT.w);
         while i < max {
-            let pixx = f32::from(User_Rect.x) + f32::from(User_Rect.w / 2)
-                - f32::from(Block_Rect.w) * (Me.pos.x - x1);
+            let pixx = f32::from(USER_RECT.x) + f32::from(USER_RECT.w / 2)
+                - f32::from(BLOCK_RECT.w) * (ME.pos.x - x1);
             let user_center = get_user_center();
-            let pixy = f32::from(user_center.y) - f32::from(Block_Rect.h) * (Me.pos.y - y1) + i;
-            if pixx <= User_Rect.x.into()
-                || pixx >= f32::from(User_Rect.x) + f32::from(User_Rect.w) - 1.
-                || pixy <= f32::from(User_Rect.y)
-                || pixy >= f32::from(User_Rect.y) + f32::from(User_Rect.h) - 1.
+            let pixy = f32::from(user_center.y) - f32::from(BLOCK_RECT.h) * (ME.pos.y - y1) + i;
+            if pixx <= USER_RECT.x.into()
+                || pixx >= f32::from(USER_RECT.x) + f32::from(USER_RECT.w) - 1.
+                || pixy <= f32::from(USER_RECT.y)
+                || pixy >= f32::from(USER_RECT.y) + f32::from(USER_RECT.h) - 1.
             {
                 i += 1.;
                 continue;
             }
             putpixel(
-                ne_screen,
+                NE_SCREEN,
                 pixx as c_int,
                 pixy as c_int,
                 color.try_into().unwrap(),
             );
             putpixel(
-                ne_screen,
+                NE_SCREEN,
                 pixx as c_int - 1,
                 pixy as c_int,
                 color.try_into().unwrap(),
@@ -1951,29 +1888,29 @@ pub unsafe fn DrawLineBetweenTiles(
 
     let slope = (y2 - y1) / (x2 - x1);
     let mut i = 0.;
-    let max = (x2 - x1) * f32::from(Block_Rect.w);
+    let max = (x2 - x1) * f32::from(BLOCK_RECT.w);
     while i < max {
-        let pixx = f32::from(User_Rect.x) + f32::from(User_Rect.w / 2)
-            - f32::from(Block_Rect.w) * (Me.pos.x - x1)
+        let pixx = f32::from(USER_RECT.x) + f32::from(USER_RECT.w / 2)
+            - f32::from(BLOCK_RECT.w) * (ME.pos.x - x1)
             + i;
         let user_center = get_user_center();
-        let pixy = f32::from(user_center.y) - f32::from(Block_Rect.h) * (Me.pos.y - y1) + i * slope;
-        if pixx <= f32::from(User_Rect.x)
-            || pixx >= f32::from(User_Rect.x) + f32::from(User_Rect.w) - 1.
-            || pixy <= f32::from(User_Rect.y)
-            || pixy >= f32::from(User_Rect.y) + f32::from(User_Rect.h) - 1.
+        let pixy = f32::from(user_center.y) - f32::from(BLOCK_RECT.h) * (ME.pos.y - y1) + i * slope;
+        if pixx <= f32::from(USER_RECT.x)
+            || pixx >= f32::from(USER_RECT.x) + f32::from(USER_RECT.w) - 1.
+            || pixy <= f32::from(USER_RECT.y)
+            || pixy >= f32::from(USER_RECT.y) + f32::from(USER_RECT.h) - 1.
         {
             i += 1.;
             continue;
         }
         putpixel(
-            ne_screen,
+            NE_SCREEN,
             pixx as c_int,
             pixy as c_int,
             color.try_into().unwrap(),
         );
         putpixel(
-            ne_screen,
+            NE_SCREEN,
             pixx as c_int,
             pixy as c_int - 1,
             color.try_into().unwrap(),

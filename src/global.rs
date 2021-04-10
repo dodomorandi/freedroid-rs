@@ -1,17 +1,7 @@
-use crate::{
-    b_font::BFontInfo,
-    defs::{MAX_LEVELS, MAX_LIFT_ROWS},
-    structs::Config,
-};
+use crate::{b_font::BFontInfo, structs::Config};
 
 use cstr::cstr;
-use sdl::Rect;
 use std::{ffi::CStr, ptr::null_mut};
-
-pub static mut HideInvisibleMap: i32 = 0;
-/* (currently only 0 or !=0 is implemented) */
-pub static mut level_rect: [Rect; MAX_LEVELS] = [rect!(0, 0, 0, 0); MAX_LEVELS]; /* rect's of levels in side-view */
-pub static mut liftrow_rect: [Rect; MAX_LIFT_ROWS] = [rect!(0, 0, 0, 0); MAX_LIFT_ROWS]; /* the lift-row rect's in side-view*/
 
 pub const INFLUENCE_MODE_NAMES: [&CStr; 17] = [
     cstr!("Mobile"),
@@ -33,52 +23,39 @@ pub const INFLUENCE_MODE_NAMES: [&CStr; 17] = [
     cstr!("-- OUT --"),
 ];
 
-pub static mut GameConfig: Config = Config {
-    WantedTextVisibleTime: 0.,
-    Draw_Framerate: 0,
-    Draw_Energy: 0,
-    Draw_Position: 0,
-    Draw_DeathCount: 0,
-    Droid_Talk: 0,
-    Current_BG_Music_Volume: 0.,
-    Current_Sound_FX_Volume: 0.,
-    Current_Gamma_Correction: 0.,
-    Theme_Name: [0; 100],
-    FullUserRect: 0,
-    UseFullscreen: 0,
-    TakeoverActivates: 0,
-    FireHoldTakeover: 0,
-    ShowDecals: 0,
-    AllMapVisible: 0,
+pub static mut GAME_CONFIG: Config = Config {
+    wanted_text_visible_time: 0.,
+    draw_framerate: 0,
+    draw_energy: 0,
+    draw_position: 0,
+    draw_death_count: 0,
+    droid_talk: 0,
+    current_bg_music_volume: 0.,
+    current_sound_fx_volume: 0.,
+    current_gamma_correction: 0.,
+    theme_name: [0; 100],
+    full_user_rect: 0,
+    use_fullscreen: 0,
+    takeover_activates: 0,
+    fire_hold_takeover: 0,
+    show_decals: 0,
+    all_map_visible: 0,
     scale: 0.,
-    HogCPU: 0,
-    emptyLevelSpeedup: 0.,
+    hog_cpu: 0,
+    empty_level_speedup: 0.,
 };
 
-pub static mut Menu_BFont: *mut BFontInfo = null_mut();
-
-pub static mut Para_BFont: *mut BFontInfo = null_mut();
-
-pub static mut Highscore_BFont: *mut BFontInfo = null_mut();
-
-pub static mut Font0_BFont: *mut BFontInfo = null_mut();
-
-pub static mut Font1_BFont: *mut BFontInfo = null_mut();
-
-pub static mut Font2_BFont: *mut BFontInfo = null_mut();
-
-pub static mut SkipAFewFrames: i32 = 0;
-
-pub static mut LevelDoorsNotMovedTime: f32 = 0.;
-
-pub static mut Droid_Radius: f32 = 0.;
-
-pub static mut Time_For_Each_Phase_Of_Door_Movement: f32 = 0.;
-
-pub static mut Blast_Radius: f32 = 0.;
-
-pub static mut Blast_Damage_Per_Second: f32 = 0.;
-
-pub static mut CurrentCombatScaleFactor: f32 = 0.;
-
-pub static mut collision_lose_energy_calibrator: f32 = 0.;
+pub static mut MENU_B_FONT: *mut BFontInfo = null_mut();
+pub static mut PARA_B_FONT: *mut BFontInfo = null_mut();
+pub static mut HIGHSCORE_B_FONT: *mut BFontInfo = null_mut();
+pub static mut FONT0_B_FONT: *mut BFontInfo = null_mut();
+pub static mut FONT1_B_FONT: *mut BFontInfo = null_mut();
+pub static mut FONT2_B_FONT: *mut BFontInfo = null_mut();
+pub static mut SKIP_A_FEW_FRAMES: i32 = 0;
+pub static mut LEVEL_DOORS_NOT_MOVED_TIME: f32 = 0.;
+pub static mut DROID_RADIUS: f32 = 0.;
+pub static mut TIME_FOR_EACH_PHASE_OF_DOOR_MOVEMENT: f32 = 0.;
+pub static mut BLAST_RADIUS: f32 = 0.;
+pub static mut BLAST_DAMAGE_PER_SECOND: f32 = 0.;
+pub static mut CURRENT_COMBAT_SCALE_FACTOR: f32 = 0.;
+pub static mut COLLISION_LOSE_ENERGY_CALIBRATOR: f32 = 0.;

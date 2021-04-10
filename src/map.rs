@@ -1,23 +1,23 @@
 use crate::{
-    curShip,
     defs::{
         self, Criticality, Direction, MapTile, Status, Themed, DIRECTIONS, MAP_DIR_C, MAXWAYPOINTS,
         MAX_ALERTS_ON_LEVEL, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_REFRESHES_ON_LEVEL,
     },
-    enemy::ClearEnemys,
+    enemy::clear_enemys,
     global::{
-        Droid_Radius, GameConfig, LevelDoorsNotMovedTime, Time_For_Each_Phase_Of_Door_Movement,
+        DROID_RADIUS, GAME_CONFIG, LEVEL_DOORS_NOT_MOVED_TIME, TIME_FOR_EACH_PHASE_OF_DOOR_MOVEMENT,
     },
-    influencer::RefreshInfluencer,
+    influencer::refresh_influencer,
     menu::SHIP_EXT,
     misc::{
-        find_file, Frame_Time, LocateStringInData, MyMalloc, MyRandom,
-        ReadAndMallocAndTerminateFile, ReadAndMallocStringFromData, ReadValueFromString, Terminate,
+        find_file, frame_time, locate_string_in_data, my_malloc, my_random,
+        read_and_malloc_and_terminate_file, read_and_malloc_string_from_data,
+        read_value_from_string, terminate,
     },
-    ship::{EnterKonsole, EnterLift},
+    ship::{enter_konsole, enter_lift},
     structs::{Finepoint, GrobPoint, Level},
-    vars::{Block_Rect, Druidmap},
-    AllEnemys, CurLevel, Me, NumEnemys, Number_Of_Droid_Types,
+    vars::{BLOCK_RECT, DRUIDMAP},
+    ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, ME, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
 };
 
 use cstr::cstr;
@@ -55,7 +55,6 @@ const V_RANDBREITE: f32 = 5_f32 / 64.;
 const H_RANDSPACE: f32 = WALLPASS;
 const H_RANDBREITE: f32 = 5_f32 / 64.;
 
-const AREA_NAME_STRING: &str = "Area name=\"";
 const AREA_NAME_STRING_C: &CStr = cstr!("Area name=\"");
 const LEVEL_NAME_STRING: &str = "Name of this level=";
 const LEVEL_NAME_STRING_C: &CStr = cstr!("Name of this level=");
@@ -74,9 +73,9 @@ const CONNECTION_STRING: &str = "connections: ";
 const CONNECTION_STRING_C: &CStr = cstr!("connections: ");
 
 /// Determines wether object on x/y is visible to the 001 or not
-pub unsafe fn IsVisible(objpos: &Finepoint) -> c_int {
-    let influ_x = Me.pos.x;
-    let influ_y = Me.pos.y;
+pub unsafe fn is_visible(objpos: &Finepoint) -> c_int {
+    let influ_x = ME.pos.x;
+    let influ_y = ME.pos.y;
 
     let a_x = influ_x - objpos.x;
     let a_y = influ_y - objpos.y;
@@ -99,7 +98,7 @@ pub unsafe fn IsVisible(objpos: &Finepoint) -> c_int {
         testpos.x += step.x;
         testpos.y += step.y;
 
-        if IsPassable(testpos.x, testpos.y, Direction::Light as i32) != Direction::Center as i32 {
+        if is_passable(testpos.x, testpos.y, Direction::Light as i32) != Direction::Center as i32 {
             return false.into();
         }
     }
@@ -107,7 +106,7 @@ pub unsafe fn IsVisible(objpos: &Finepoint) -> c_int {
     true.into()
 }
 
-pub unsafe fn GetMapBrick(deck: &Level, x: c_float, y: c_float) -> c_uchar {
+pub unsafe fn get_map_brick(deck: &Level, x: c_float, y: c_float) -> c_uchar {
     let xx = x.round() as c_int;
     let yy = y.round() as c_int;
 
@@ -118,27 +117,27 @@ pub unsafe fn GetMapBrick(deck: &Level, x: c_float, y: c_float) -> c_uchar {
     }
 }
 
-pub unsafe fn FreeShipMemory() {
-    curShip
-        .AllLevels
+pub unsafe fn free_ship_memory() {
+    CUR_SHIP
+        .all_levels
         .iter_mut()
-        .take(usize::try_from(curShip.num_levels).unwrap())
+        .take(usize::try_from(CUR_SHIP.num_levels).unwrap())
         .map(|&mut level| level as *mut Level)
         .for_each(|level| {
-            FreeLevelMemory(level);
+            free_level_memory(level);
             libc::free(level as *mut c_void);
         });
 }
 
-pub unsafe fn FreeLevelMemory(level: *mut Level) {
+pub unsafe fn free_level_memory(level: *mut Level) {
     if level.is_null() {
         return;
     }
 
     let level = &mut *level;
-    libc::free(level.Levelname as *mut c_void);
-    libc::free(level.Background_Song_Name as *mut c_void);
-    libc::free(level.Level_Enter_Comment as *mut c_void);
+    libc::free(level.levelname as *mut c_void);
+    libc::free(level.background_song_name as *mut c_void);
+    libc::free(level.level_enter_comment as *mut c_void);
 
     level
         .map
@@ -148,14 +147,14 @@ pub unsafe fn FreeLevelMemory(level: *mut Level) {
         .for_each(|map| libc::free(map));
 }
 
-pub unsafe fn AnimateRefresh() {
+pub unsafe fn animate_refresh() {
     static mut INNER_WAIT_COUNTER: f32 = 0.;
 
     trace!("AnimateRefresh():  real function call confirmed.");
 
-    INNER_WAIT_COUNTER += Frame_Time() * 10.;
+    INNER_WAIT_COUNTER += frame_time() * 10.;
 
-    let cur_level = &*CurLevel;
+    let cur_level = &*CUR_LEVEL;
     cur_level
         .refreshes
         .iter()
@@ -172,8 +171,8 @@ pub unsafe fn AnimateRefresh() {
     trace!("AnimateRefresh():  end of function reached.");
 }
 
-pub unsafe fn IsPassable(x: c_float, y: c_float, check_pos: c_int) -> c_int {
-    let map_brick = GetMapBrick(&*CurLevel, x, y);
+pub unsafe fn is_passable(x: c_float, y: c_float, check_pos: c_int) -> c_int {
+    let map_brick = get_map_brick(&*CUR_LEVEL, x, y);
 
     let fx = (x - 0.5) - (x - 0.5).floor();
     let fy = (y - 0.5) - (y - 0.5).floor();
@@ -279,7 +278,7 @@ pub unsafe fn IsPassable(x: c_float, y: c_float, check_pos: c_int) -> c_int {
             }
         }
 
-        TO => {
+        To => {
             if fy < WALLPASS
                 || (fy > 1. - WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fx).not())
             {
@@ -289,7 +288,7 @@ pub unsafe fn IsPassable(x: c_float, y: c_float, check_pos: c_int) -> c_int {
             }
         }
 
-        TR => {
+        Tr => {
             if fx > 1. - WALLPASS
                 || (fx < WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fy).not())
             {
@@ -299,7 +298,7 @@ pub unsafe fn IsPassable(x: c_float, y: c_float, check_pos: c_int) -> c_int {
             }
         }
 
-        TU => {
+        Tu => {
             if fy > 1. - WALLPASS
                 || (fy < WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fx).not())
             {
@@ -309,7 +308,7 @@ pub unsafe fn IsPassable(x: c_float, y: c_float, check_pos: c_int) -> c_int {
             }
         }
 
-        TL => {
+        Tl => {
             if fx < WALLPASS
                 || (fx > 1. - WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fy).not())
             {
@@ -332,7 +331,7 @@ pub unsafe fn IsPassable(x: c_float, y: c_float, check_pos: c_int) -> c_int {
                     Ok(check_pos) => check_pos,
                     Err(_) => return -1,
                 };
-                if check_pos != Center && check_pos != Light && Me.speed.y != 0. {
+                if check_pos != Center && check_pos != Light && ME.speed.y != 0. {
                     match check_pos {
                         Rechtsoben | Rechtsunten | Rechts => {
                             if fx > 1. - H_RANDBREITE {
@@ -378,7 +377,7 @@ pub unsafe fn IsPassable(x: c_float, y: c_float, check_pos: c_int) -> c_int {
                     Ok(check_pos) => check_pos,
                     Err(_) => return -1,
                 };
-                if check_pos != Center && check_pos != Light && Me.speed.x != 0. {
+                if check_pos != Center && check_pos != Light && ME.speed.x != 0. {
                     match check_pos {
                         Rechtsoben | Linksoben | Oben => {
                             if fy < V_RANDBREITE {
@@ -413,8 +412,8 @@ pub unsafe fn IsPassable(x: c_float, y: c_float, check_pos: c_int) -> c_int {
     }
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[allow(dead_code)]
 pub enum ColorNames {
     Red,
     Yellow,
@@ -426,7 +425,7 @@ pub enum ColorNames {
 }
 
 /// Saves ship-data to disk
-pub unsafe fn SaveShip(shipname: *const c_char) -> c_int {
+pub unsafe fn save_ship(shipname: *const c_char) -> c_int {
     use std::{fs::File, io::Write, path::PathBuf};
 
     trace!("SaveShip(): real function call confirmed.");
@@ -438,8 +437,8 @@ pub unsafe fn SaveShip(shipname: *const c_char) -> c_int {
     ));
 
     /* count the levels */
-    let level_anz = curShip
-        .AllLevels
+    let level_anz = CUR_SHIP
+        .all_levels
         .iter()
         .take_while(|level| level.is_null().not())
         .count();
@@ -450,7 +449,7 @@ pub unsafe fn SaveShip(shipname: *const c_char) -> c_int {
         Ok(file) => file,
         Err(err) => {
             error!("Error opening ship file: {}. Terminating", err);
-            Terminate(defs::ERR.into());
+            terminate(defs::ERR.into());
         }
     };
 
@@ -476,7 +475,7 @@ freedroid-discussion@lists.sourceforge.net\n\
 
         const AREA_NAME_STRING: &str = "Area name=\"";
         ship_file.write_all(AREA_NAME_STRING.as_bytes())?;
-        ship_file.write_all(CStr::from_ptr(curShip.AreaName.as_ptr()).to_bytes())?;
+        ship_file.write_all(CStr::from_ptr(CUR_SHIP.area_name.as_ptr()).to_bytes())?;
         ship_file.write_all(b"\"\n\n  ")?;
 
         /* Save all Levels */
@@ -484,8 +483,8 @@ freedroid-discussion@lists.sourceforge.net\n\
         trace!("SaveShip(): now saving levels...");
 
         for i in 0..i32::try_from(level_anz).unwrap() {
-            let mut level_iter = curShip
-                .AllLevels
+            let mut level_iter = CUR_SHIP
+                .all_levels
                 .iter()
                 .copied()
                 .take_while(|level| level.is_null().not())
@@ -495,19 +494,19 @@ freedroid-discussion@lists.sourceforge.net\n\
                 Some(level) => level,
                 None => {
                     error!("Missing Levelnumber error in SaveShip.");
-                    Terminate(defs::ERR.into());
+                    terminate(defs::ERR.into());
                 }
             };
 
             if level_iter.next().is_some() {
                 error!("Identical Levelnumber Error in SaveShip.");
-                Terminate(defs::ERR.into());
+                terminate(defs::ERR.into());
             }
 
             //--------------------
             // Now comes the real saving part FOR ONE LEVEL.  First THE LEVEL is packed into a string and
             // then this string is wirtten to the file.  easy. simple.
-            let level_mem = StructToMem(level);
+            let level_mem = struct_to_mem(level);
             ship_file.write_all(CStr::from_ptr(level_mem).to_bytes())?;
 
             libc::free(level_mem as *mut c_void);
@@ -534,7 +533,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         Ok(()) => defs::OK.into(),
         Err(err) => {
             error!("Error writing to ship file: {}. Terminating", err);
-            Terminate(defs::ERR.into());
+            terminate(defs::ERR.into());
         }
     }
 }
@@ -546,16 +545,16 @@ freedroid-discussion@lists.sourceforge.net\n\
 /// DOES THE ANIMATION TOO QUICKLY.  So, the most reasonable way out seems
 /// to be to operate this function only from time to time, e.g. after a
 /// specified delay has passed.
-pub unsafe fn MoveLevelDoors() {
+pub unsafe fn move_level_doors() {
     // This prevents animation going too quick.
     // The constant should be replaced by a variable, that can be
     // set from within the theme, but that may be done later...
-    if LevelDoorsNotMovedTime < Time_For_Each_Phase_Of_Door_Movement {
+    if LEVEL_DOORS_NOT_MOVED_TIME < TIME_FOR_EACH_PHASE_OF_DOOR_MOVEMENT {
         return;
     }
-    LevelDoorsNotMovedTime = 0.;
+    LEVEL_DOORS_NOT_MOVED_TIME = 0.;
 
-    let cur_level = &*CurLevel;
+    let cur_level = &*CUR_LEVEL;
     for i in 0..MAX_DOORS_ON_LEVEL {
         let doorx = cur_level.doors[i].x;
         let doory = cur_level.doors[i].y;
@@ -572,8 +571,8 @@ pub unsafe fn MoveLevelDoors() {
         // NORMALISATION doory = doory * Block_Rect.h + Block_Rect.h / 2;
 
         /* first check Influencer gegen Tuer */
-        let xdist = Me.pos.x - f32::from(doorx);
-        let ydist = Me.pos.y - f32::from(doory);
+        let xdist = ME.pos.x - f32::from(doorx);
+        let ydist = ME.pos.y - f32::from(doory);
         let dist2 = xdist * xdist + ydist * ydist;
 
         const DOOROPENDIST2: f32 = 1.;
@@ -584,20 +583,20 @@ pub unsafe fn MoveLevelDoors() {
         } else {
             /* alle Enemys checken */
             let mut j = 0;
-            while j < usize::try_from(NumEnemys).unwrap() {
+            while j < usize::try_from(NUM_ENEMYS).unwrap() {
                 /* ignore druids that are dead or on other levels */
-                if AllEnemys[j].status == Status::Out as i32
-                    || AllEnemys[j].status == Status::Terminated as i32
-                    || AllEnemys[j].levelnum != cur_level.levelnum
+                if ALL_ENEMYS[j].status == Status::Out as i32
+                    || ALL_ENEMYS[j].status == Status::Terminated as i32
+                    || ALL_ENEMYS[j].levelnum != cur_level.levelnum
                 {
                     j += 1;
                     continue;
                 }
 
-                let xdist = (AllEnemys[j].pos.x - f32::from(doorx)).trunc().abs();
-                if xdist < Block_Rect.w.into() {
-                    let ydist = (AllEnemys[j].pos.y - f32::from(doory)).trunc().abs();
-                    if ydist < Block_Rect.h.into() {
+                let xdist = (ALL_ENEMYS[j].pos.x - f32::from(doorx)).trunc().abs();
+                if xdist < BLOCK_RECT.w.into() {
+                    let ydist = (ALL_ENEMYS[j].pos.y - f32::from(doory)).trunc().abs();
+                    if ydist < BLOCK_RECT.h.into() {
                         let dist2 = xdist * xdist + ydist * ydist;
                         if dist2 < DOOROPENDIST2 {
                             if *pos != MapTile::HGanztuere as i8
@@ -615,7 +614,7 @@ pub unsafe fn MoveLevelDoors() {
             }
 
             /* No druid near: close door if it isnt closed */
-            if j == usize::try_from(NumEnemys).unwrap()
+            if j == usize::try_from(NUM_ENEMYS).unwrap()
                 && *pos != MapTile::VZutuere as i8
                 && *pos != MapTile::HZutuere as i8
             {
@@ -626,7 +625,7 @@ pub unsafe fn MoveLevelDoors() {
 }
 
 /// Returns a pointer to Map in a memory field
-pub unsafe fn StructToMem(level: *mut Level) -> *mut c_char {
+pub unsafe fn struct_to_mem(level: *mut Level) -> *mut c_char {
     use std::io::Write;
 
     let level = &mut *level;
@@ -641,10 +640,10 @@ pub unsafe fn StructToMem(level: *mut Level) -> *mut c_char {
         + 50000; /* Map-memory; Puffer fuer Dimensionen, mark-strings .. */
 
     /* allocate some memory */
-    let level_mem = MyMalloc(i64::try_from(mem_amount).unwrap()) as *mut u8;
+    let level_mem = my_malloc(i64::try_from(mem_amount).unwrap()) as *mut u8;
     if level_mem.is_null() {
         error!("could not allocate memory, terminating.");
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
     let mut level_cursor =
         std::io::Cursor::new(std::slice::from_raw_parts_mut(level_mem, mem_amount));
@@ -659,21 +658,21 @@ pub unsafe fn StructToMem(level: *mut Level) -> *mut c_char {
         level_cursor,
         "{}{}",
         LEVEL_NAME_STRING,
-        CStr::from_ptr(level.Levelname).to_str().unwrap()
+        CStr::from_ptr(level.levelname).to_str().unwrap()
     )
     .unwrap();
     writeln!(
         level_cursor,
         "{}{}",
         LEVEL_ENTER_COMMENT_STRING,
-        CStr::from_ptr(level.Level_Enter_Comment).to_str().unwrap()
+        CStr::from_ptr(level.level_enter_comment).to_str().unwrap()
     )
     .unwrap();
     writeln!(
         level_cursor,
         "{}{}",
         BACKGROUND_SONG_NAME_STRING,
-        CStr::from_ptr(level.Background_Song_Name).to_str().unwrap()
+        CStr::from_ptr(level.background_song_name).to_str().unwrap()
     )
     .unwrap();
 
@@ -682,7 +681,7 @@ pub unsafe fn StructToMem(level: *mut Level) -> *mut c_char {
 
     // Now in the loop each line of map data should be saved as a whole
     for i in 0..usize::try_from(ylen).unwrap() {
-        ResetLevelMap(level); // make sure all doors are closed
+        reset_level_map(level); // make sure all doors are closed
         for j in 0..usize::try_from(xlen).unwrap() {
             write!(level_cursor, "{:02} ", *level.map[i].add(j)).unwrap();
         }
@@ -698,11 +697,11 @@ pub unsafe fn StructToMem(level: *mut Level) -> *mut c_char {
         write!(
             level_cursor,
             "Nr.={:3} x={:4} y={:4}\t {}",
-            i, level.AllWaypoints[i].x, level.AllWaypoints[i].y, CONNECTION_STRING
+            i, level.all_waypoints[i].x, level.all_waypoints[i].y, CONNECTION_STRING
         )
         .unwrap();
 
-        let this_wp = &level.AllWaypoints[i];
+        let this_wp = &level.all_waypoints[i];
         for j in 0..usize::try_from(this_wp.num_connections).unwrap() {
             write!(level_cursor, "{:2} ", this_wp.connections[j]).unwrap();
         }
@@ -719,7 +718,7 @@ pub unsafe fn StructToMem(level: *mut Level) -> *mut c_char {
     level_mem as *mut c_char
 }
 
-unsafe fn ResetLevelMap(level: &mut Level) {
+unsafe fn reset_level_map(level: &mut Level) {
     // Now in the game and in the level editor, it might have happend that some open
     // doors occur.  The make life easier for the saving routine, these doors should
     // be closed first.
@@ -744,39 +743,39 @@ unsafe fn ResetLevelMap(level: &mut Level) {
         });
 }
 
-pub unsafe fn DruidPassable(x: c_float, y: c_float) -> c_int {
+pub unsafe fn druid_passable(x: c_float, y: c_float) -> c_int {
     let testpos: [Finepoint; DIRECTIONS] = [
         Finepoint {
             x,
-            y: y - Droid_Radius,
+            y: y - DROID_RADIUS,
         },
         Finepoint {
-            x: x + Droid_Radius,
-            y: y - Droid_Radius,
+            x: x + DROID_RADIUS,
+            y: y - DROID_RADIUS,
         },
         Finepoint {
-            x: x + Droid_Radius,
+            x: x + DROID_RADIUS,
             y,
         },
         Finepoint {
-            x: x + Droid_Radius,
-            y: y + Droid_Radius,
+            x: x + DROID_RADIUS,
+            y: y + DROID_RADIUS,
         },
         Finepoint {
             x,
-            y: y + Droid_Radius,
+            y: y + DROID_RADIUS,
         },
         Finepoint {
-            x: x - Droid_Radius,
-            y: y + Droid_Radius,
+            x: x - DROID_RADIUS,
+            y: y + DROID_RADIUS,
         },
         Finepoint {
-            x: x - Droid_Radius,
+            x: x - DROID_RADIUS,
             y,
         },
         Finepoint {
-            x: x - Droid_Radius,
-            y: y - Droid_Radius,
+            x: x - DROID_RADIUS,
+            y: y - DROID_RADIUS,
         },
     ];
 
@@ -784,7 +783,7 @@ pub unsafe fn DruidPassable(x: c_float, y: c_float) -> c_int {
         .iter()
         .enumerate()
         .map(|(direction_index, test_pos)| {
-            IsPassable(
+            is_passable(
                 test_pos.x,
                 test_pos.y,
                 c_int::try_from(direction_index).unwrap(),
@@ -798,7 +797,7 @@ pub unsafe fn DruidPassable(x: c_float, y: c_float) -> c_int {
 /// in a already read in droids file and decodes all the contents of that
 /// droid section to fill the AllEnemys array with droid types accoriding
 /// to the specifications made in the file.
-pub unsafe fn GetThisLevelsDroids(section_pointer: *mut c_char) {
+pub unsafe fn get_this_levels_droids(section_pointer: *mut c_char) {
     const DROIDS_LEVEL_INDICATION_STRING: &CStr = cstr!("Level=");
     const DROIDS_LEVEL_END_INDICATION_STRING: &CStr = cstr!("** End of this levels droid data **");
     const DROIDS_MAXRAND_INDICATION_STRING: &CStr = cstr!("Maximum number of Random Droids=");
@@ -806,7 +805,7 @@ pub unsafe fn GetThisLevelsDroids(section_pointer: *mut c_char) {
     const ALLOWED_TYPE_INDICATION_STRING: &CStr =
         cstr!("Allowed Type of Random Droid for this level: ");
 
-    let end_of_this_level_data = LocateStringInData(
+    let end_of_this_level_data = locate_string_in_data(
         section_pointer,
         DROIDS_LEVEL_END_INDICATION_STRING.as_ptr() as *mut c_char,
     );
@@ -814,7 +813,7 @@ pub unsafe fn GetThisLevelsDroids(section_pointer: *mut c_char) {
 
     // Now we read in the level number for this level
     let mut our_level_number: c_int = 0;
-    ReadValueFromString(
+    read_value_from_string(
         section_pointer,
         DROIDS_LEVEL_INDICATION_STRING.as_ptr() as *mut c_char,
         cstr!("%d").as_ptr() as *mut c_char,
@@ -823,7 +822,7 @@ pub unsafe fn GetThisLevelsDroids(section_pointer: *mut c_char) {
 
     // Now we read in the maximal number of random droids for this level
     let mut max_rand: c_int = 0;
-    ReadValueFromString(
+    read_value_from_string(
         section_pointer,
         DROIDS_MAXRAND_INDICATION_STRING.as_ptr() as *mut c_char,
         cstr!("%d").as_ptr() as *mut c_char,
@@ -832,7 +831,7 @@ pub unsafe fn GetThisLevelsDroids(section_pointer: *mut c_char) {
 
     // Now we read in the minimal number of random droids for this level
     let mut min_rand: c_int = 0;
-    ReadValueFromString(
+    read_value_from_string(
         section_pointer,
         DROIDS_MINRAND_INDICATION_STRING.as_ptr() as *mut c_char,
         cstr!("%d").as_ptr() as *mut c_char,
@@ -853,9 +852,9 @@ pub unsafe fn GetThisLevelsDroids(section_pointer: *mut c_char) {
         // Now that we have got a type indication string, we only need to translate it
         // into a number corresponding to that droid in the droid list
         let mut list_index = 0;
-        while list_index < Number_Of_Droid_Types {
+        while list_index < NUMBER_OF_DROID_TYPES {
             if libc::strcmp(
-                (*Druidmap.add(usize::try_from(list_index).unwrap()))
+                (*DRUIDMAP.add(usize::try_from(list_index).unwrap()))
                     .druidname
                     .as_ptr(),
                 type_indication_string.as_ptr(),
@@ -865,13 +864,13 @@ pub unsafe fn GetThisLevelsDroids(section_pointer: *mut c_char) {
             }
             list_index += 1;
         }
-        if list_index >= Number_Of_Droid_Types {
+        if list_index >= NUMBER_OF_DROID_TYPES {
             error!(
                 "unknown droid type: {} found in data file for level {}",
                 CStr::from_ptr(type_indication_string.as_ptr()).to_string_lossy(),
                 our_level_number,
             );
-            Terminate(defs::ERR.into());
+            terminate(defs::ERR.into());
         } else {
             info!(
                 "Type indication string {} translated to type Nr.{}.",
@@ -898,14 +897,14 @@ pub unsafe fn GetThisLevelsDroids(section_pointer: *mut c_char) {
     // That means that now we can add the apropriate droid types into the list of existing
     // droids in that mission.
 
-    let mut real_number_of_random_droids = MyRandom(max_rand - min_rand) + min_rand;
+    let mut real_number_of_random_droids = my_random(max_rand - min_rand) + min_rand;
 
     while real_number_of_random_droids > 0 {
         real_number_of_random_droids -= 1;
 
         let mut free_all_enemys_position = 0;
         while free_all_enemys_position < MAX_ENEMYS_ON_SHIP {
-            if AllEnemys[free_all_enemys_position].status == Status::Out as c_int {
+            if ALL_ENEMYS[free_all_enemys_position].status == Status::Out as c_int {
                 break;
             }
             free_all_enemys_position += 1;
@@ -913,26 +912,26 @@ pub unsafe fn GetThisLevelsDroids(section_pointer: *mut c_char) {
 
         if free_all_enemys_position == MAX_ENEMYS_ON_SHIP {
             error!("No more free position to fill random droids into in GetCrew...Terminating....");
-            Terminate(defs::ERR.into());
+            terminate(defs::ERR.into());
         }
 
-        AllEnemys[free_all_enemys_position].ty = list_of_types_allowed[usize::try_from(MyRandom(
-            c_int::try_from(different_random_types).unwrap() - 1,
-        ))
+        ALL_ENEMYS[free_all_enemys_position].ty = list_of_types_allowed[usize::try_from(
+            my_random(c_int::try_from(different_random_types).unwrap() - 1),
+        )
         .unwrap()];
-        AllEnemys[free_all_enemys_position].levelnum = our_level_number;
-        AllEnemys[free_all_enemys_position].status = Status::Mobile as c_int;
+        ALL_ENEMYS[free_all_enemys_position].levelnum = our_level_number;
+        ALL_ENEMYS[free_all_enemys_position].status = Status::Mobile as c_int;
     }
 }
 
 /// This function initializes all enemys
-pub unsafe fn GetCrew(filename: *mut c_char) -> c_int {
+pub unsafe fn get_crew(filename: *mut c_char) -> c_int {
     const END_OF_DROID_DATA_STRING: &CStr = cstr!("*** End of Droid Data ***");
     const DROIDS_LEVEL_DESCRIPTION_START_STRING: &CStr = cstr!("** Beginning of new Level **");
     const DROIDS_LEVEL_DESCRIPTION_END_STRING: &CStr = cstr!("** End of this levels droid data **");
 
     /* Clear Enemy - Array */
-    ClearEnemys();
+    clear_enemys();
 
     //Now its time to start decoding the droids file.
     //For that, we must get it into memory first.
@@ -945,7 +944,7 @@ pub unsafe fn GetCrew(filename: *mut c_char) -> c_int {
     );
 
     let main_droids_file_pointer =
-        ReadAndMallocAndTerminateFile(fpath, END_OF_DROID_DATA_STRING.as_ptr() as *mut c_char);
+        read_and_malloc_and_terminate_file(fpath, END_OF_DROID_DATA_STRING.as_ptr() as *mut c_char);
 
     // The Droid crew file for this map is now completely read into memory
     // It's now time to decode the file and to fill the array of enemys with
@@ -965,9 +964,9 @@ pub unsafe fn GetCrew(filename: *mut c_char) -> c_int {
         );
         if end_of_this_droid_section_pointer.is_null() {
             error!("GetCrew: Unterminated droid section encountered!! Terminating.");
-            Terminate(defs::ERR.into());
+            terminate(defs::ERR.into());
         }
-        GetThisLevelsDroids(droid_section_pointer);
+        get_this_levels_droids(droid_section_pointer);
         droid_section_pointer = end_of_this_droid_section_pointer.add(2); // Move past the inserted String terminator
 
         droid_section_pointer = libc::strstr(
@@ -979,16 +978,16 @@ pub unsafe fn GetCrew(filename: *mut c_char) -> c_int {
     // Now that the correct crew types have been filled into the
     // right structure, it's time to set the energy of the corresponding
     // droids to "full" which means to the maximum of each type.
-    NumEnemys = 0;
-    for enemy in &mut AllEnemys {
+    NUM_ENEMYS = 0;
+    for enemy in &mut ALL_ENEMYS {
         let ty = enemy.ty;
         if ty == -1 {
             // Do nothing to unused entries
             continue;
         }
-        enemy.energy = (*Druidmap.add(usize::try_from(ty).unwrap())).maxenergy;
+        enemy.energy = (*DRUIDMAP.add(usize::try_from(ty).unwrap())).maxenergy;
         enemy.status = Status::Mobile as c_int;
-        NumEnemys += 1;
+        NUM_ENEMYS += 1;
     }
 
     libc::free(main_droids_file_pointer as *mut c_void);
@@ -996,10 +995,10 @@ pub unsafe fn GetCrew(filename: *mut c_char) -> c_int {
 }
 
 /// loads lift-connctions to cur-ship struct
-pub unsafe fn GetLiftConnections(filename: *mut c_char) -> c_int {
+pub unsafe fn get_lift_connections(filename: *mut c_char) -> c_int {
     macro_rules! read_int_from_string_into {
         ($ptr:expr, $str:tt, $value:expr) => {
-            ReadValueFromString(
+            read_value_from_string(
                 $ptr,
                 cstr!($str).as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
@@ -1019,7 +1018,6 @@ pub unsafe fn GetLiftConnections(filename: *mut c_char) -> c_int {
     const START_OF_LIFT_DATA_STRING: &CStr = cstr!("*** Beginning of Lift Data ***");
     const START_OF_LIFT_RECTANGLE_DATA_STRING: &CStr =
         cstr!("*** Beginning of elevator rectangles ***");
-    const END_OF_LIFT_CONNECTION_DATA_STRING: &CStr = cstr!("*** End of Lift Connection Data ***");
 
     /* Now get the lift-connection data from "FILE.elv" file */
     let fpath = find_file(
@@ -1030,12 +1028,12 @@ pub unsafe fn GetLiftConnections(filename: *mut c_char) -> c_int {
     );
 
     let data =
-        ReadAndMallocAndTerminateFile(fpath, END_OF_LIFT_DATA_STRING.as_ptr() as *mut c_char);
+        read_and_malloc_and_terminate_file(fpath, END_OF_LIFT_DATA_STRING.as_ptr() as *mut c_char);
 
     // At first we read in the rectangles that define where the colums of the
     // lift are, so that we can highlight them later.
-    curShip.num_lift_rows = 0;
-    let mut entry_pointer = LocateStringInData(
+    CUR_SHIP.num_lift_rows = 0;
+    let mut entry_pointer = locate_string_in_data(
         data,
         START_OF_LIFT_RECTANGLE_DATA_STRING.as_ptr() as *mut c_char,
     );
@@ -1054,13 +1052,13 @@ pub unsafe fn GetLiftConnections(filename: *mut c_char) -> c_int {
         read_int_from_string!(entry_pointer, "ElRowW=", w);
         read_int_from_string!(entry_pointer, "ElRowH=", h);
 
-        let rect = &mut curShip.LiftRow_Rect[usize::try_from(elevator_index).unwrap()];
+        let rect = &mut CUR_SHIP.lift_row_rect[usize::try_from(elevator_index).unwrap()];
         rect.x = x.try_into().unwrap();
         rect.y = y.try_into().unwrap();
         rect.w = w.try_into().unwrap();
         rect.h = h.try_into().unwrap();
 
-        curShip.num_lift_rows += 1;
+        CUR_SHIP.num_lift_rows += 1;
     }
 
     //--------------------
@@ -1068,7 +1066,7 @@ pub unsafe fn GetLiftConnections(filename: *mut c_char) -> c_int {
     // current area system are, so that we can highlight them later in the
     // elevator and console functions.
     //
-    curShip.num_level_rects.fill(0); // this initializes zeros for the number
+    CUR_SHIP.num_level_rects.fill(0); // this initializes zeros for the number
     entry_pointer = data;
 
     while {
@@ -1079,14 +1077,14 @@ pub unsafe fn GetLiftConnections(filename: *mut c_char) -> c_int {
         read_int_from_string!(entry_pointer, "RectNumber=", rect_index);
         entry_pointer = entry_pointer.add(1); // to prevent doubly taking this entry
 
-        curShip.num_level_rects[usize::try_from(deck_index).unwrap()] += 1; // count the number of rects for this deck one up
+        CUR_SHIP.num_level_rects[usize::try_from(deck_index).unwrap()] += 1; // count the number of rects for this deck one up
 
         read_int_from_string!(entry_pointer, "DeckX=", x);
         read_int_from_string!(entry_pointer, "DeckY=", y);
         read_int_from_string!(entry_pointer, "DeckW=", w);
         read_int_from_string!(entry_pointer, "DeckH=", h);
 
-        let rect = &mut curShip.Level_Rects[usize::try_from(deck_index).unwrap()]
+        let rect = &mut CUR_SHIP.level_rects[usize::try_from(deck_index).unwrap()]
             [usize::try_from(rect_index).unwrap()];
         rect.x = x.try_into().unwrap();
         rect.y = y.try_into().unwrap();
@@ -1097,7 +1095,7 @@ pub unsafe fn GetLiftConnections(filename: *mut c_char) -> c_int {
     entry_pointer = libc::strstr(data, START_OF_LIFT_DATA_STRING.as_ptr() as *mut c_char);
     if entry_pointer.is_null() {
         error!("START OF LIFT DATA STRING NOT FOUND!  Terminating...");
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
 
     let mut label: c_int = 0;
@@ -1107,7 +1105,7 @@ pub unsafe fn GetLiftConnections(filename: *mut c_char) -> c_int {
         entry_pointer.is_null().not()
     } {
         read_int_from_string_into!(entry_pointer, "Label=", label);
-        let cur_lift = &mut curShip.AllLifts[usize::try_from(label).unwrap()];
+        let cur_lift = &mut CUR_SHIP.all_lifts[usize::try_from(label).unwrap()];
         entry_pointer = entry_pointer.add(1); // to avoid doubly taking this entry
 
         read_int_from_string_into!(entry_pointer, "Deck=", cur_lift.level);
@@ -1118,22 +1116,22 @@ pub unsafe fn GetLiftConnections(filename: *mut c_char) -> c_int {
         read_int_from_string_into!(entry_pointer, "LiftRow=", cur_lift.lift_row);
     }
 
-    curShip.num_lifts = label;
+    CUR_SHIP.num_lifts = label;
 
     libc::free(data as *mut c_void);
     defs::OK.into()
 }
 
 /// initialize doors, refreshes and lifts for the given level-data
-pub unsafe fn InterpretMap(level: &mut Level) -> c_int {
+pub unsafe fn interpret_map(level: &mut Level) -> c_int {
     /* Get Doors Array */
-    GetDoors(level);
+    get_doors(level);
 
     // Get Refreshes
-    GetRefreshes(level);
+    get_refreshes(level);
 
     // Get Alerts
-    GetAlerts(level);
+    get_alerts(level);
 
     defs::OK.into()
 }
@@ -1141,7 +1139,7 @@ pub unsafe fn InterpretMap(level: &mut Level) -> c_int {
 /// initializes the Doors array of the given level structure
 /// Of course the level data must be in the structure already!!
 /// Returns the number of doors found or ERR
-pub unsafe fn GetDoors(level: &mut Level) -> c_int {
+pub unsafe fn get_doors(level: &mut Level) -> c_int {
     let mut curdoor = 0;
 
     let xlen = level.xlen;
@@ -1184,7 +1182,7 @@ Sorry...\n\
 \n",
                         level.levelnum, MAX_DOORS_ON_LEVEL
                     );
-                    Terminate(defs::ERR.into());
+                    terminate(defs::ERR.into());
                 }
             }
         }
@@ -1196,7 +1194,7 @@ Sorry...\n\
 /// This function initialized the array of Refreshes for animation
 /// within the level
 /// Returns the number of refreshes found or ERR
-pub unsafe fn GetRefreshes(level: &mut Level) -> c_int {
+pub unsafe fn get_refreshes(level: &mut Level) -> c_int {
     let xlen = level.xlen;
     let ylen = level.ylen;
 
@@ -1237,7 +1235,7 @@ Sorry...\n\
 \n",
                         level.levelnum, MAX_REFRESHES_ON_LEVEL
                     );
-                    Terminate(defs::ERR.into());
+                    terminate(defs::ERR.into());
                 }
             }
         }
@@ -1247,7 +1245,7 @@ Sorry...\n\
 }
 
 /// Find all alerts on this level and initialize their position-array
-pub unsafe fn GetAlerts(level: &mut Level) {
+pub unsafe fn get_alerts(level: &mut Level) {
     let xlen = level.xlen;
     let ylen = level.ylen;
 
@@ -1276,41 +1274,14 @@ pub unsafe fn GetAlerts(level: &mut Level) {
     }
 }
 
-/// Returns TRUE (1) for blocks classified as "Walls",
-/// 0 otherwise
-pub unsafe fn IsWallBlock(block: c_int) -> c_int {
-    use MapTile::*;
-    MapTile::try_from(block)
-        .map(|tile| {
-            matches!(
-                tile,
-                Kreuz
-                    | HWall
-                    | VWall
-                    | HZutuere
-                    | VZutuere
-                    | EckLu
-                    | TU
-                    | EckRu
-                    | TL
-                    | TR
-                    | EckLo
-                    | TO
-                    | EckRo
-            )
-        })
-        .unwrap_or(false)
-        .into()
-}
-
 /// This function is for LOADING map data!
 /// This function extracts the data from *data and writes them
 /// into a Level-struct:
 ///
 /// Doors and Waypoints Arrays are initialized too
-pub unsafe fn LevelToStruct(data: *mut c_char) -> *mut Level {
+pub unsafe fn level_to_struct(data: *mut c_char) -> *mut Level {
     /* Get the memory for one level */
-    let loadlevel_ptr = MyMalloc(std::mem::size_of::<Level>().try_into().unwrap()) as *mut Level;
+    let loadlevel_ptr = my_malloc(std::mem::size_of::<Level>().try_into().unwrap()) as *mut Level;
     let loadlevel = &mut *loadlevel_ptr;
 
     loadlevel.empty = false.into();
@@ -1321,7 +1292,7 @@ pub unsafe fn LevelToStruct(data: *mut c_char) -> *mut Level {
     let data_pointer = libc::strstr(data, cstr!("Levelnumber:").as_ptr() as *mut c_char);
     if data_pointer.is_null() {
         error!("No Levelnumber entry found! Terminating! ");
-        Terminate(defs::ERR.into());
+        terminate(defs::ERR.into());
     }
     libc::sscanf(
         data_pointer,
@@ -1341,17 +1312,17 @@ pub unsafe fn LevelToStruct(data: *mut c_char) -> *mut Level {
     info!("ylen of this level: {} ", loadlevel.ylen);
     info!("color of this level: {} ", loadlevel.ylen);
 
-    loadlevel.Levelname = ReadAndMallocStringFromData(
+    loadlevel.levelname = read_and_malloc_string_from_data(
         data,
         LEVEL_NAME_STRING_C.as_ptr() as *mut c_char,
         cstr!("\n").as_ptr() as *mut c_char,
     );
-    loadlevel.Background_Song_Name = ReadAndMallocStringFromData(
+    loadlevel.background_song_name = read_and_malloc_string_from_data(
         data,
         BACKGROUND_SONG_NAME_STRING_C.as_ptr() as *mut c_char,
         cstr!("\n").as_ptr() as *mut c_char,
     );
-    loadlevel.Level_Enter_Comment = ReadAndMallocStringFromData(
+    loadlevel.level_enter_comment = read_and_malloc_string_from_data(
         data,
         LEVEL_ENTER_COMMENT_STRING_C.as_ptr() as *mut c_char,
         cstr!("\n").as_ptr() as *mut c_char,
@@ -1385,7 +1356,7 @@ pub unsafe fn LevelToStruct(data: *mut c_char) -> *mut Level {
         if this_line.is_null() {
             return null_mut();
         }
-        loadlevel.map[i] = MyMalloc(loadlevel.xlen.try_into().unwrap()) as *mut c_char;
+        loadlevel.map[i] = my_malloc(loadlevel.xlen.try_into().unwrap()) as *mut c_char;
         let mut pos = this_line;
         pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace
 
@@ -1429,8 +1400,8 @@ pub unsafe fn LevelToStruct(data: *mut c_char) -> *mut Level {
             &mut y as *mut _ as *mut c_void,
         );
 
-        loadlevel.AllWaypoints[i].x = x.try_into().unwrap();
-        loadlevel.AllWaypoints[i].y = y.try_into().unwrap();
+        loadlevel.all_waypoints[i].x = x.try_into().unwrap();
+        loadlevel.all_waypoints[i].y = y.try_into().unwrap();
 
         let mut pos = libc::strstr(this_line, CONNECTION_STRING_C.as_ptr());
         pos = pos.add(libc::strlen(CONNECTION_STRING_C.as_ptr())); // skip connection-string
@@ -1450,7 +1421,7 @@ pub unsafe fn LevelToStruct(data: *mut c_char) -> *mut Level {
             if connection == -1 || res == 0 || res == libc::EOF {
                 break;
             }
-            loadlevel.AllWaypoints[i].connections[k] = connection;
+            loadlevel.all_waypoints[i].connections[k] = connection;
 
             pos = pos.add(libc::strcspn(pos, WHITE_SPACE.as_ptr())); // skip last token
             pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace for next one
@@ -1458,15 +1429,15 @@ pub unsafe fn LevelToStruct(data: *mut c_char) -> *mut Level {
             k += 1;
         }
 
-        loadlevel.AllWaypoints[i].num_connections = k.try_into().unwrap();
+        loadlevel.all_waypoints[i].num_connections = k.try_into().unwrap();
     }
 
     loadlevel_ptr
 }
 
-pub unsafe fn LoadShip(filename: *mut c_char) -> c_int {
+pub unsafe fn load_ship(filename: *mut c_char) -> c_int {
     let mut level_start: [*mut c_char; MAX_LEVELS] = [null_mut(); MAX_LEVELS];
-    FreeShipMemory(); // clear vestiges of previous ship data, if any
+    free_ship_memory(); // clear vestiges of previous ship data, if any
 
     /* Read the whole ship-data to memory */
     const END_OF_SHIP_DATA_STRING: &CStr = cstr!("*** End of Ship Data ***");
@@ -1477,16 +1448,16 @@ pub unsafe fn LoadShip(filename: *mut c_char) -> c_int {
         Criticality::Critical as c_int,
     );
     let ship_data =
-        ReadAndMallocAndTerminateFile(fpath, END_OF_SHIP_DATA_STRING.as_ptr() as *mut c_char);
+        read_and_malloc_and_terminate_file(fpath, END_OF_SHIP_DATA_STRING.as_ptr() as *mut c_char);
 
     // Now we read the Area-name from the loaded data
-    let buffer = ReadAndMallocStringFromData(
+    let buffer = read_and_malloc_string_from_data(
         ship_data,
         AREA_NAME_STRING_C.as_ptr() as *mut c_char,
         cstr!("\"").as_ptr() as *mut c_char,
     );
-    libc::strncpy(curShip.AreaName.as_mut_ptr(), buffer, 99);
-    curShip.AreaName[99] = 0;
+    libc::strncpy(CUR_SHIP.area_name.as_mut_ptr(), buffer, 99);
+    CUR_SHIP.area_name[99] = 0;
     libc::free(buffer as *mut c_void);
 
     // Now we count the number of levels and remember their start-addresses.
@@ -1507,22 +1478,22 @@ pub unsafe fn LoadShip(filename: *mut c_char) -> c_int {
     }
 
     /* init the level-structs */
-    curShip.num_levels = level_anz.try_into().unwrap();
+    CUR_SHIP.num_levels = level_anz.try_into().unwrap();
 
-    let result = curShip
-        .AllLevels
+    let result = CUR_SHIP
+        .all_levels
         .iter_mut()
         .zip(level_start.iter().copied())
         .enumerate()
         .take(level_anz)
         .try_for_each(|(index, (level, start))| {
-            *level = LevelToStruct(start);
+            *level = level_to_struct(start);
 
             if level.is_null() {
                 error!("reading of level {} failed", index);
                 return None;
             }
-            InterpretMap(&mut **level); // initialize doors, refreshes and lifts
+            interpret_map(&mut **level); // initialize doors, refreshes and lifts
             Some(())
         });
     if result.is_none() {
@@ -1536,76 +1507,76 @@ pub unsafe fn LoadShip(filename: *mut c_char) -> c_int {
 
 /// ActSpecialField: checks Influencer on SpecialFields like
 /// Lifts and Konsoles and acts on it
-pub unsafe fn ActSpecialField(x: c_float, y: c_float) {
-    let map_tile = GetMapBrick(&*CurLevel, x, y);
+pub unsafe fn act_special_field(x: c_float, y: c_float) {
+    let map_tile = get_map_brick(&*CUR_LEVEL, x, y);
 
-    let myspeed2 = Me.speed.x * Me.speed.x + Me.speed.y * Me.speed.y;
+    let myspeed2 = ME.speed.x * ME.speed.x + ME.speed.y * ME.speed.y;
 
     if let Ok(map_tile) = MapTile::try_from(map_tile) {
         use MapTile::*;
         match map_tile {
             Lift => {
                 if myspeed2 <= 1.0
-                    && (Me.status == Status::Activate as c_int
-                        || (GameConfig.TakeoverActivates != 0
-                            && Me.status == Status::Transfermode as c_int))
+                    && (ME.status == Status::Activate as c_int
+                        || (GAME_CONFIG.takeover_activates != 0
+                            && ME.status == Status::Transfermode as c_int))
                 {
                     let cx = x.round() - x;
                     let cy = y.round() - y;
 
-                    if cx * cx + cy * cy < Droid_Radius * Droid_Radius {
-                        EnterLift();
+                    if cx * cx + cy * cy < DROID_RADIUS * DROID_RADIUS {
+                        enter_lift();
                     }
                 }
             }
 
             KonsoleR | KonsoleL | KonsoleO | KonsoleU => {
                 if myspeed2 <= 1.0
-                    && (Me.status == Status::Activate as c_int
-                        || (GameConfig.TakeoverActivates != 0
-                            && Me.status == Status::Transfermode as c_int))
+                    && (ME.status == Status::Activate as c_int
+                        || (GAME_CONFIG.takeover_activates != 0
+                            && ME.status == Status::Transfermode as c_int))
                 {
-                    EnterKonsole();
+                    enter_konsole();
                 }
             }
-            Refresh1 | Refresh2 | Refresh3 | Refresh4 => RefreshInfluencer(),
+            Refresh1 | Refresh2 | Refresh3 | Refresh4 => refresh_influencer(),
             _ => {}
         }
     }
 }
 
-pub unsafe fn GetCurrentLift() -> c_int {
-    let curlev = (*CurLevel).levelnum;
+pub unsafe fn get_current_lift() -> c_int {
+    let curlev = (*CUR_LEVEL).levelnum;
 
-    let gx = Me.pos.x.round() as c_int;
-    let gy = Me.pos.y.round() as c_int;
+    let gx = ME.pos.x.round() as c_int;
+    let gy = ME.pos.y.round() as c_int;
 
     info!("curlev={} gx={} gy={}", curlev, gx, gy);
     info!("List of elevators:");
-    for i in 0..usize::try_from(curShip.num_lifts).unwrap() + 1 {
+    for i in 0..usize::try_from(CUR_SHIP.num_lifts).unwrap() + 1 {
         info!(
             "Index={} level={} gx={} gy={}",
-            i, curShip.AllLifts[i].level, curShip.AllLifts[i].x, curShip.AllLifts[i].y
+            i, CUR_SHIP.all_lifts[i].level, CUR_SHIP.all_lifts[i].x, CUR_SHIP.all_lifts[i].y
         );
     }
 
     let mut i = 0;
-    while i < usize::try_from(curShip.num_lifts).unwrap() + 1
+    while i < usize::try_from(CUR_SHIP.num_lifts).unwrap() + 1
     // we check for one more than present, so the last reached
     // will really mean: NONE FOUND.
     {
-        if curShip.AllLifts[i].level != curlev {
+        if CUR_SHIP.all_lifts[i].level != curlev {
             i += 1;
             continue;
         }
-        if curShip.AllLifts[i].x == gx && curShip.AllLifts[i].y == gy {
+        if CUR_SHIP.all_lifts[i].x == gx && CUR_SHIP.all_lifts[i].y == gy {
             break;
         }
 
         i += 1;
     }
 
-    if i == usize::try_from(curShip.num_lifts).unwrap() + 1 {
+    if i == usize::try_from(CUR_SHIP.num_lifts).unwrap() + 1 {
         // none found
         -1
     } else {

@@ -31,31 +31,33 @@ mod text;
 mod vars;
 mod view;
 
-use bullet::{CheckBulletCollisions, ExplodeBlasts, MoveBullets};
+use bullet::{check_bullet_collisions, explode_blasts, move_bullets};
 use defs::{
-    scale_rect, AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, FirePressedR, Status,
+    fire_pressed_r, scale_rect, AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Status,
     BYCOLOR, DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, MAX_LEVELS,
     MAX_LEVEL_RECTS, MAX_LIFTS, MAX_LIFT_ROWS, RESET, SHOW_WAIT, STANDARD_MISSION_C,
 };
-use enemy::MoveEnemys;
-use global::{GameConfig, LevelDoorsNotMovedTime, SkipAFewFrames};
-use graphics::{crosshair_cursor, ne_screen, ClearGraphMem};
-use influencer::{CheckInfluenceEnemyCollision, CheckInfluenceWallCollisions, MoveInfluence};
-use init::{CheckIfMissionIsComplete, InitFreedroid, InitNewMission};
+use enemy::move_enemys;
+use global::{GAME_CONFIG, LEVEL_DOORS_NOT_MOVED_TIME, SKIP_A_FEW_FRAMES};
+use graphics::{clear_graph_mem, CROSSHAIR_CURSOR, NE_SCREEN};
+use influencer::{
+    check_influence_enemy_collision, check_influence_wall_collisions, move_influence,
+};
+use init::{check_if_mission_is_complete, init_freedroid, init_new_mission};
 use input::{
-    init_keystr, joy_sensitivity, show_cursor, wait_for_all_keys_released, ReactToSpecialKeys,
-    SDL_Delay,
+    init_keystr, react_to_special_keys, wait_for_all_keys_released, SDL_Delay, JOY_SENSITIVITY,
+    SHOW_CURSOR,
 };
-use map::{AnimateRefresh, ColorNames, MoveLevelDoors};
+use map::{animate_refresh, move_level_doors, ColorNames};
 use misc::{
-    set_time_factor, ComputeFPSForThisFrame, Frame_Time, StartTakingTimeForFPSCalculation,
-    Terminate,
+    compute_fps_for_this_frame, frame_time, set_time_factor, start_taking_time_for_fps_calculation,
+    terminate,
 };
-use ship::{show_droid_info, show_droid_portrait, AlertLevelWarning};
-use sound::Switch_Background_Music_To;
+use ship::{alert_level_warning, show_droid_info, show_droid_portrait};
+use sound::switch_background_music_to;
 use structs::{Blast, Bullet, Enemy, Finepoint, Level, Lift, Ship};
-use vars::{Cons_Droid_Rect, Me, ShipEmptyCounter};
-use view::{Assemble_Combat_Picture, DisplayBanner};
+use vars::{CONS_DROID_RECT, ME, SHIP_EMPTY_COUNTER};
+use view::{assemble_combat_picture, display_banner};
 
 use sdl::{
     mouse::ll::{SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE},
@@ -65,9 +67,7 @@ use sdl::{
 };
 use std::{
     convert::TryFrom,
-    env,
-    ffi::CString,
-    os::raw::{c_char, c_float, c_int},
+    os::raw::{c_char, c_float},
     ptr::null_mut,
 };
 
@@ -78,19 +78,16 @@ const RECT_ZERO: Rect = Rect {
     w: 0,
 };
 
-static mut LastGotIntoBlastSound: c_float = 2.;
-
-static mut LastRefreshSound: c_float = 2.;
-
-static mut CurLevel: *mut Level = null_mut(); /* the current level data */
-
-static mut curShip: Ship = Ship {
+static mut LAST_GOT_INTO_BLAST_SOUND: c_float = 2.;
+static mut LAST_REFRESH_SOUND: c_float = 2.;
+static mut CUR_LEVEL: *mut Level = null_mut(); /* the current level data */
+static mut CUR_SHIP: Ship = Ship {
     num_levels: 0,
     num_lifts: 0,
     num_lift_rows: 0,
-    AreaName: [0; 100],
-    AllLevels: [null_mut(); MAX_LEVELS],
-    AllLifts: [Lift {
+    area_name: [0; 100],
+    all_levels: [null_mut(); MAX_LEVELS],
+    all_lifts: [Lift {
         level: 0,
         x: 0,
         y: 0,
@@ -98,36 +95,24 @@ static mut curShip: Ship = Ship {
         down: 0,
         lift_row: 0,
     }; MAX_LIFTS],
-    LiftRow_Rect: [RECT_ZERO; MAX_LIFT_ROWS], /* the lift-row rectangles */
-    Level_Rects: [[RECT_ZERO; MAX_LEVEL_RECTS]; MAX_LEVELS], /* level rectangles */
-    num_level_rects: [0; MAX_LEVELS],         /* how many rects has a level */
+    lift_row_rect: [RECT_ZERO; MAX_LIFT_ROWS], /* the lift-row rectangles */
+    level_rects: [[RECT_ZERO; MAX_LEVEL_RECTS]; MAX_LEVELS], /* level rectangles */
+    num_level_rects: [0; MAX_LEVELS],          /* how many rects has a level */
 }; /* the current ship-data */
 
-static mut GameOver: i32 = 0;
-
-static mut QuitProgram: i32 = 0;
-
-static mut debug_level: i32 = 0; /* 0=no debug 1=some debug messages 2=...etc */
-
-static mut sound_on: i32 = 1; /* Toggle TRUE/FALSE for turning sounds on/off */
-
-static mut ThisMessageTime: i32 = 0;
-
-static mut ShowScore: i64 = 0;
-
-static mut RealScore: f32 = 0.;
-
-static mut DeathCount: f32 = 0.; // a cumulative/draining counter of kills->determines Alert!
-
-static mut DeathCountDrainSpeed: f32 = 0.; // drain per second
-
-static mut AlertLevel: i32 = 0;
-
-static mut AlertThreshold: i32 = 0; // threshold for FIRST Alert-color (yellow), the others are 2*, 3*..
-
-static mut AlertBonusPerSec: f32 = 0.; // bonus/sec for FIRST Alert-color, the others are 2*, 3*,...
-
-static mut AllEnemys: [Enemy; MAX_ENEMYS_ON_SHIP] = [Enemy {
+static mut GAME_OVER: i32 = 0;
+static mut QUIT_PROGRAM: i32 = 0;
+static mut DEBUG_LEVEL: i32 = 0; /* 0=no debug 1=some debug messages 2=...etc */
+static mut SOUND_ON: i32 = 1; /* Toggle TRUE/FALSE for turning sounds on/off */
+static mut THIS_MESSAGE_TIME: i32 = 0;
+static mut SHOW_SCORE: i64 = 0;
+static mut REAL_SCORE: f32 = 0.;
+static mut DEATH_COUNT: f32 = 0.; // a cumulative/draining counter of kills->determines Alert!
+static mut DEATH_COUNT_DRAIN_SPEED: f32 = 0.; // drain per second
+static mut ALERT_LEVEL: i32 = 0;
+static mut ALERT_THRESHOLD: i32 = 0; // threshold for FIRST Alert-color (yellow), the others are 2*, 3*..
+static mut ALERT_BONUS_PER_SEC: f32 = 0.; // bonus/sec for FIRST Alert-color, the others are 2*, 3*,...
+static mut ALL_ENEMYS: [Enemy; MAX_ENEMYS_ON_SHIP] = [Enemy {
     ty: 0,
     levelnum: 0,
     pos: Finepoint { x: 0., y: 0. },
@@ -140,80 +125,69 @@ static mut AllEnemys: [Enemy; MAX_ENEMYS_ON_SHIP] = [Enemy {
     warten: 0.,
     passable: 0,
     firewait: 0.,
-    TextVisibleTime: 0.,
-    TextToBeDisplayed: null_mut(),
-    NumberOfPeriodicSpecialStatements: 0,
-    PeriodicSpecialStatements: null_mut(),
+    text_visible_time: 0.,
+    text_to_be_displayed: null_mut(),
+    number_of_periodic_special_statements: 0,
+    periodic_special_statements: null_mut(),
 }; MAX_ENEMYS_ON_SHIP];
 
-static mut ConfigDir: [i8; 255] = [0; 255];
-
-static mut InvincibleMode: i32 = 0;
-
-static mut show_all_droids: i32 = 0; /* display enemys regardless of IsVisible() */
-
-static mut stop_influencer: i32 = 0; /* for bullet debugging: stop where u are */
-
-static mut NumEnemys: i32 = 0;
-
-static mut Number_Of_Droid_Types: i32 = 0;
-
-static mut PreTakeEnergy: i32 = 0;
-
-static mut AllBullets: [Bullet; MAXBULLETS + 10] = [Bullet::default_const(); MAXBULLETS + 10];
-
-static mut AllBlasts: [Blast; MAXBLASTS + 10] = [Blast {
-    PX: 0.,
-    PY: 0.,
+static mut CONFIG_DIR: [i8; 255] = [0; 255];
+static mut INVINCIBLE_MODE: i32 = 0;
+static mut SHOW_ALL_DROIDS: i32 = 0; /* display enemys regardless of IsVisible() */
+static mut STOP_INFLUENCER: i32 = 0; /* for bullet debugging: stop where u are */
+static mut NUM_ENEMYS: i32 = 0;
+static mut NUMBER_OF_DROID_TYPES: i32 = 0;
+static mut PRE_TAKE_ENERGY: i32 = 0;
+static mut ALL_BULLETS: [Bullet; MAXBULLETS + 10] = [Bullet::default_const(); MAXBULLETS + 10];
+static mut ALL_BLASTS: [Blast; MAXBLASTS + 10] = [Blast {
+    px: 0.,
+    py: 0.,
     ty: 0,
     phase: 0.,
-    MessageWasDone: 0,
+    message_was_done: 0,
     mine: false,
 }; MAXBLASTS + 10];
 
-static mut FirstDigit_Rect: Rect = RECT_ZERO;
-
-static mut SecondDigit_Rect: Rect = RECT_ZERO;
-
-static mut ThirdDigit_Rect: Rect = RECT_ZERO;
-
-static mut FPSover1: f32 = 0.;
+static mut FIRST_DIGIT_RECT: Rect = RECT_ZERO;
+static mut SECOND_DIGIT_RECT: Rect = RECT_ZERO;
+static mut THIRD_DIGIT_RECT: Rect = RECT_ZERO;
+static mut F_P_SOVER1: f32 = 0.;
 
 fn main() {
     env_logger::init();
 
     unsafe {
-        joy_sensitivity = 1;
+        JOY_SENSITIVITY = 1;
 
         init_keystr();
 
-        InitFreedroid(); // Initialisation of global variables and arrays
+        init_freedroid(); // Initialisation of global variables and arrays
 
         SDL_ShowCursor(SDL_DISABLE);
 
         #[cfg(target_os = "windows")]
         {
             // spread the word :)
-            Win32Disclaimer();
+            win32_disclaimer();
         }
 
-        while QuitProgram == 0 {
-            InitNewMission(STANDARD_MISSION_C.as_ptr() as *mut c_char);
+        while QUIT_PROGRAM == 0 {
+            init_new_mission(STANDARD_MISSION_C.as_ptr() as *mut c_char);
 
             // scale Level-pic rects
-            let scale = GameConfig.scale;
+            let scale = GAME_CONFIG.scale;
             #[allow(clippy::clippy::float_cmp)]
             if scale != 1.0 {
-                curShip.Level_Rects[0..usize::try_from(curShip.num_levels).unwrap()]
+                CUR_SHIP.level_rects[0..usize::try_from(CUR_SHIP.num_levels).unwrap()]
                     .iter_mut()
-                    .zip(curShip.num_level_rects.iter())
+                    .zip(CUR_SHIP.num_level_rects.iter())
                     .flat_map(|(rects, &num_rects)| {
                         rects[0..usize::try_from(num_rects).unwrap()].iter_mut()
                     })
                     .for_each(|rect| scale_rect(rect, scale));
 
                 for rect in
-                    &mut curShip.LiftRow_Rect[0..usize::try_from(curShip.num_lift_rows).unwrap()]
+                    &mut CUR_SHIP.lift_row_rect[0..usize::try_from(CUR_SHIP.num_lift_rows).unwrap()]
                 {
                     scale_rect(rect, scale);
                 }
@@ -222,93 +196,93 @@ fn main() {
             // release all keys
             wait_for_all_keys_released();
 
-            show_droid_info(Me.ty, -3, 0); // show unit-intro page
-            show_droid_portrait(Cons_Droid_Rect, Me.ty, DROID_ROTATION_TIME, RESET);
+            show_droid_info(ME.ty, -3, 0); // show unit-intro page
+            show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, RESET);
             let now = SDL_GetTicks();
-            while SDL_GetTicks() - now < SHOW_WAIT && !FirePressedR() {
-                show_droid_portrait(Cons_Droid_Rect, Me.ty, DROID_ROTATION_TIME, 0);
+            while SDL_GetTicks() - now < SHOW_WAIT && !fire_pressed_r() {
+                show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, 0);
                 SDL_Delay(1);
             }
 
-            ClearGraphMem();
-            DisplayBanner(
+            clear_graph_mem();
+            display_banner(
                 null_mut(),
                 null_mut(),
                 (DisplayBannerFlags::FORCE_UPDATE | DisplayBannerFlags::NO_SDL_UPDATE)
                     .bits()
                     .into(),
             );
-            SDL_Flip(ne_screen);
+            SDL_Flip(NE_SCREEN);
 
-            GameOver = false.into();
+            GAME_OVER = false.into();
 
-            SDL_SetCursor(crosshair_cursor); // default cursor is a crosshair
+            SDL_SetCursor(CROSSHAIR_CURSOR); // default cursor is a crosshair
             SDL_ShowCursor(SDL_ENABLE);
 
-            while GameOver == 0 && QuitProgram == 0 {
-                StartTakingTimeForFPSCalculation();
+            while GAME_OVER == 0 && QUIT_PROGRAM == 0 {
+                start_taking_time_for_fps_calculation();
 
-                UpdateCountersForThisFrame();
+                update_counters_for_this_frame();
 
-                ReactToSpecialKeys();
+                react_to_special_keys();
 
-                if show_cursor {
+                if SHOW_CURSOR {
                     SDL_ShowCursor(SDL_ENABLE);
                 } else {
                     SDL_ShowCursor(SDL_DISABLE);
                 }
 
-                MoveLevelDoors();
+                move_level_doors();
 
-                AnimateRefresh();
+                animate_refresh();
 
-                ExplodeBlasts(); // move blasts to the right current "phase" of the blast
+                explode_blasts(); // move blasts to the right current "phase" of the blast
 
-                AlertLevelWarning(); // tout tout, blink blink... Alert!!
+                alert_level_warning(); // tout tout, blink blink... Alert!!
 
-                DisplayBanner(null_mut(), null_mut(), 0);
+                display_banner(null_mut(), null_mut(), 0);
 
-                MoveBullets(); // leave this in front of graphics output: time_in_frames should start with 1
+                move_bullets(); // leave this in front of graphics output: time_in_frames should start with 1
 
-                Assemble_Combat_Picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+                assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
 
                 for bullet in 0..i32::try_from(MAXBULLETS).unwrap() {
-                    CheckBulletCollisions(bullet);
+                    check_bullet_collisions(bullet);
                 }
 
-                MoveInfluence(); // change Influ-speed depending on keys pressed, but
-                                 // also change his status and position and "phase" of rotation
+                move_influence(); // change Influ-speed depending on keys pressed, but
+                                  // also change his status and position and "phase" of rotation
 
-                MoveEnemys(); // move all the enemys:
-                              // also do attacks on influ and also move "phase" or their rotation
+                move_enemys(); // move all the enemys:
+                               // also do attacks on influ and also move "phase" or their rotation
 
-                CheckInfluenceWallCollisions(); /* Testen ob der Weg nicht durch Mauern verstellt ist */
-                CheckInfluenceEnemyCollision();
+                check_influence_wall_collisions(); /* Testen ob der Weg nicht durch Mauern verstellt ist */
+                check_influence_enemy_collision();
 
                 // control speed of time-flow: dark-levels=emptyLevelSpeedup, normal-levels=1.0
-                if (*CurLevel).empty == 0 {
+                if (*CUR_LEVEL).empty == 0 {
                     set_time_factor(1.0);
-                } else if (*CurLevel).color == ColorNames::Dark as i32 {
+                } else if (*CUR_LEVEL).color == ColorNames::Dark as i32 {
                     // if level is already dark
-                    set_time_factor(GameConfig.emptyLevelSpeedup);
-                } else if (*CurLevel).timer <= 0. {
+                    set_time_factor(GAME_CONFIG.empty_level_speedup);
+                } else if (*CUR_LEVEL).timer <= 0. {
                     // time to switch off the lights ...
-                    (*CurLevel).color = ColorNames::Dark as i32;
-                    Switch_Background_Music_To(BYCOLOR.as_ptr()); // start new background music
+                    (*CUR_LEVEL).color = ColorNames::Dark as i32;
+                    switch_background_music_to(BYCOLOR.as_ptr()); // start new background music
                 }
 
-                CheckIfMissionIsComplete();
+                check_if_mission_is_complete();
 
-                if GameConfig.HogCPU == 0 {
+                if GAME_CONFIG.hog_cpu == 0 {
                     // don't use up 100% CPU unless requested
                     SDL_Delay(1);
                 }
 
-                ComputeFPSForThisFrame();
+                compute_fps_for_this_frame();
             }
         }
 
-        Terminate(0);
+        terminate(0);
     }
 }
 
@@ -323,81 +297,81 @@ fn sdl_must_lock(surface: &SDL_Surface) -> bool {
 /// The counters include timers, but framerate-independence of game speed
 /// is preserved because everything is weighted with the Frame_Time()
 /// function.
-unsafe fn UpdateCountersForThisFrame() {
+unsafe fn update_counters_for_this_frame() {
     // Here are some things, that were previously done by some periodic */
     // interrupt function
-    ThisMessageTime += 1;
+    THIS_MESSAGE_TIME += 1;
 
-    LastGotIntoBlastSound += Frame_Time();
-    LastRefreshSound += Frame_Time();
-    Me.LastCrysoundTime += Frame_Time();
-    Me.timer += Frame_Time();
+    LAST_GOT_INTO_BLAST_SOUND += frame_time();
+    LAST_REFRESH_SOUND += frame_time();
+    ME.last_crysound_time += frame_time();
+    ME.timer += frame_time();
 
-    let cur_level = &mut *CurLevel;
+    let cur_level = &mut *CUR_LEVEL;
     if cur_level.timer >= 0.0 {
-        cur_level.timer -= Frame_Time();
+        cur_level.timer -= frame_time();
     }
 
-    Me.LastTransferSoundTime += Frame_Time();
-    Me.TextVisibleTime += Frame_Time();
-    LevelDoorsNotMovedTime += Frame_Time();
-    if SkipAFewFrames != 0 {
-        SkipAFewFrames = 0;
+    ME.last_transfer_sound_time += frame_time();
+    ME.text_visible_time += frame_time();
+    LEVEL_DOORS_NOT_MOVED_TIME += frame_time();
+    if SKIP_A_FEW_FRAMES != 0 {
+        SKIP_A_FEW_FRAMES = 0;
     }
 
-    if Me.firewait > 0. {
-        Me.firewait -= Frame_Time();
-        if Me.firewait < 0. {
-            Me.firewait = 0.;
+    if ME.firewait > 0. {
+        ME.firewait -= frame_time();
+        if ME.firewait < 0. {
+            ME.firewait = 0.;
         }
     }
-    if ShipEmptyCounter > 1 {
-        ShipEmptyCounter -= 1;
+    if SHIP_EMPTY_COUNTER > 1 {
+        SHIP_EMPTY_COUNTER -= 1;
     }
     if cur_level.empty > 2 {
         cur_level.empty -= 1;
     }
-    if RealScore > ShowScore as f32 {
-        ShowScore += 1;
+    if REAL_SCORE > SHOW_SCORE as f32 {
+        SHOW_SCORE += 1;
     }
-    if RealScore < ShowScore as f32 {
-        ShowScore -= 1;
+    if REAL_SCORE < SHOW_SCORE as f32 {
+        SHOW_SCORE -= 1;
     }
 
     // drain Death-count, responsible for Alert-state
-    if DeathCount > 0. {
-        DeathCount -= DeathCountDrainSpeed * Frame_Time();
+    if DEATH_COUNT > 0. {
+        DEATH_COUNT -= DEATH_COUNT_DRAIN_SPEED * frame_time();
     }
-    if DeathCount < 0. {
-        DeathCount = 0.;
+    if DEATH_COUNT < 0. {
+        DEATH_COUNT = 0.;
     }
     // and switch Alert-level according to DeathCount
-    AlertLevel = (DeathCount / AlertThreshold as f32) as i32;
-    if AlertLevel > AlertNames::Red as i32 {
-        AlertLevel = AlertNames::Red as i32;
+    ALERT_LEVEL = (DEATH_COUNT / ALERT_THRESHOLD as f32) as i32;
+    if ALERT_LEVEL > AlertNames::Red as i32 {
+        ALERT_LEVEL = AlertNames::Red as i32;
     }
     // player gets a bonus/second in AlertLevel
-    RealScore += AlertLevel as f32 * AlertBonusPerSec * Frame_Time();
+    REAL_SCORE += ALERT_LEVEL as f32 * ALERT_BONUS_PER_SEC * frame_time();
 
-    for enemy in &mut AllEnemys {
+    for enemy in &mut ALL_ENEMYS {
         if enemy.status == Status::Out as i32 {
             continue;
         }
 
         if enemy.warten > 0. {
-            enemy.warten -= Frame_Time();
+            enemy.warten -= frame_time();
             if enemy.warten < 0. {
                 enemy.warten = 0.;
             }
         }
 
         if enemy.firewait > 0. {
-            enemy.firewait -= Frame_Time();
+            enemy.firewait -= frame_time();
             if enemy.firewait <= 0. {
                 enemy.firewait = 0.;
             }
         }
 
-        enemy.TextVisibleTime += Frame_Time();
+        enemy.text_visible_time += frame_time();
     }
 }

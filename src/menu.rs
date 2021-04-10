@@ -1,5 +1,5 @@
 #[cfg(not(feature = "gcw0"))]
-use crate::input::{key_cmds, wait_for_all_keys_released, wait_for_key_pressed};
+use crate::input::{wait_for_all_keys_released, wait_for_key_pressed, KEY_CMDS};
 
 #[cfg(feature = "gcw0")]
 use crate::{
@@ -9,49 +9,47 @@ use crate::{
 
 use crate::{
     b_font::{
-        CenteredPutString, CharWidth, FontHeight, GetCurrentFont, PrintStringFont, PutString,
-        SetCurrentFont, TextWidth,
+        centered_put_string, char_width, font_height, get_current_font, print_string_font,
+        put_string, set_current_font, text_width,
     },
-    curShip,
     defs::{
-        self, get_user_center, AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags,
-        DownPressed, Droid, FirePressed, LeftPressed, MapTile, MenuAction, ReturnPressedR,
-        RightPressed, Status, Themed, UpPressed, BYCOLOR, CREDITS_PIC_FILE_C, GRAPHICS_DIR_C,
-        MAX_MAP_COLS, MAX_MAP_ROWS,
+        self, down_pressed, fire_pressed, get_user_center, left_pressed, return_pressed_r,
+        right_pressed, up_pressed, AssembleCombatWindowFlags, Cmds, Criticality,
+        DisplayBannerFlags, Droid, MapTile, MenuAction, Status, Themed, BYCOLOR,
+        CREDITS_PIC_FILE_C, GRAPHICS_DIR_C, MAX_MAP_COLS, MAX_MAP_ROWS,
     },
     global::{
-        CurrentCombatScaleFactor, Font0_BFont, Font1_BFont, Font2_BFont, GameConfig, Menu_BFont,
-        INFLUENCE_MODE_NAMES,
+        CURRENT_COMBAT_SCALE_FACTOR, FONT0_B_FONT, FONT1_B_FONT, FONT2_B_FONT, GAME_CONFIG,
+        INFLUENCE_MODE_NAMES, MENU_B_FONT,
     },
     graphics::{
-        classic_theme_index, ne_screen, toggle_fullscreen, AllThemes, BannerIsDestroyed,
-        ClearGraphMem, DisplayImage, InitPictures, MakeGridOnScreen, SetCombatScaleTo,
+        clear_graph_mem, display_image, init_pictures, make_grid_on_screen, set_combat_scale_to,
+        toggle_fullscreen, ALL_THEMES, BANNER_IS_DESTROYED, CLASSIC_THEME_INDEX, NE_SCREEN,
     },
-    highscore::ShowHighscores,
+    highscore::show_highscores,
     input::{
-        any_key_is_pressedR, cmd_is_activeR, cmd_strings, keystr, update_input, KeyIsPressed,
-        KeyIsPressedR, SDL_Delay, WheelDownPressed, WheelUpPressed,
+        any_key_is_pressed_r, cmd_is_active_r, key_is_pressed, key_is_pressed_r, update_input,
+        wheel_down_pressed, wheel_up_pressed, SDL_Delay, CMD_STRINGS, KEYSTR,
     },
-    level_editor::LevelEditor,
-    map::{SaveShip, COLOR_NAMES},
+    level_editor::level_editor,
+    map::{save_ship, COLOR_NAMES},
     misc::{
-        find_file, Activate_Conservative_Frame_Computation, Armageddon, MyMalloc, Teleport,
-        Terminate,
+        activate_conservative_frame_computation, armageddon, find_file, my_malloc, teleport,
+        terminate,
     },
-    ship::ShowDeckMap,
-    show_all_droids,
+    ship::show_deck_map,
     sound::{
-        MenuItemSelectedSound, MoveLiftSound, MoveMenuPositionSound, Set_BG_Music_Volume,
-        Set_Sound_FX_Volume, Switch_Background_Music_To,
+        menu_item_selected_sound, move_lift_sound, move_menu_position_sound, set_bg_music_volume,
+        set_sound_f_x_volume, switch_background_music_to,
     },
-    sound_on, stop_influencer,
-    text::{getchar_raw, printf_SDL, DisplayText, GetString},
+    text::{display_text, get_string, getchar_raw, printf_sdl},
     vars::{
-        Block_Rect, Classic_User_Rect, Druidmap, Full_User_Rect, Me, Menu_Rect, Screen_Rect,
-        User_Rect,
+        BLOCK_RECT, CLASSIC_USER_RECT, DRUIDMAP, FULL_USER_RECT, ME, MENU_RECT, SCREEN_RECT,
+        USER_RECT,
     },
-    view::{Assemble_Combat_Picture, DisplayBanner, PutInfluence},
-    AllEnemys, CurLevel, InvincibleMode, NumEnemys, Number_Of_Droid_Types,
+    view::{assemble_combat_picture, display_banner, put_influence},
+    ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, INVINCIBLE_MODE, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
+    SHOW_ALL_DROIDS, SOUND_ON, STOP_INFLUENCER,
 };
 
 use cstr::cstr;
@@ -77,7 +75,7 @@ static mut FONT_HEIGHT: i32 = 0;
 static mut MENU_BACKGROUND: *mut SDL_Surface = null_mut();
 static mut QUIT_MENU: bool = false;
 
-pub static mut quit_LevelEditor: bool = false;
+pub static mut QUIT_LEVEL_EDITOR: bool = false;
 
 // const FILENAME_LEN: u8 = 128;
 const SHIP_EXT_C: &CStr = cstr!(".shp");
@@ -139,42 +137,42 @@ const LEGACY_MENU: [MenuEntry; 10] = [
 #[cfg(not(target_os = "android"))]
 const LEGACY_MENU: [MenuEntry; 11] = [
     menu_entry! { "Back"},
-    menu_entry! { "Set Strictly Classic", handle_StrictlyClassic},
-    menu_entry! { "Combat Window: ", handle_WindowType},
-    menu_entry! { "Graphics Theme: ", handle_Theme},
-    menu_entry! { "Droid Talk: ", handle_DroidTalk},
-    menu_entry! { "Show Decals: ", handle_ShowDecals},
-    menu_entry! { "All Map Visible: ", handle_AllMapVisible},
-    menu_entry! { "Transfer = Activate: ", handle_TransferIsActivate},
-    menu_entry! { "Hold Fire to Transfer: ", handle_FireIsTransfer},
-    menu_entry! { "Empty Level Speedup: ", handle_EmptyLevelSpeedup},
+    menu_entry! { "Set Strictly Classic", handle_strictly_classic},
+    menu_entry! { "Combat Window: ", handle_window_type},
+    menu_entry! { "Graphics Theme: ", handle_theme},
+    menu_entry! { "Droid Talk: ", handle_droid_talk},
+    menu_entry! { "Show Decals: ", handle_show_decals},
+    menu_entry! { "All Map Visible: ", handle_all_map_visible},
+    menu_entry! { "Transfer = Activate: ", handle_transfer_is_activate},
+    menu_entry! { "Hold Fire to Transfer: ", handle_fire_is_transfer},
+    menu_entry! { "Empty Level Speedup: ", handle_empty_level_speedup},
     menu_entry! {},
 ];
 
 const GRAPHICS_SOUND_MENU: [MenuEntry; 5] = [
     menu_entry! { "Back"},
-    menu_entry! { "Music Volume: ", handle_MusicVolume},
-    menu_entry! { "Sound Volume: ", handle_SoundVolume},
-    menu_entry! { "Fullscreen Mode: ", handle_Fullscreen},
+    menu_entry! { "Music Volume: ", handle_music_volume},
+    menu_entry! { "Sound Volume: ", handle_sound_volume},
+    menu_entry! { "Fullscreen Mode: ", handle_fullscreen},
     menu_entry! {},
 ];
 
 const HUD_MENU: [MenuEntry; 5] = [
     menu_entry! { "Back"},
-    menu_entry! { "Show Position: ", handle_ShowPosition},
-    menu_entry! { "Show Framerate: ", handle_ShowFramerate},
-    menu_entry! { "Show Energy: ", handle_ShowEnergy},
+    menu_entry! { "Show Position: ", handle_show_position},
+    menu_entry! { "Show Framerate: ", handle_show_framerate},
+    menu_entry! { "Show Energy: ", handle_show_energy},
     menu_entry! {},
 ];
 
 const LEVEL_EDITOR_MENU: [MenuEntry; 8] = [
-    menu_entry! { "Exit Level Editor", 	handle_LE_Exit},
-    menu_entry! { "Current Level: ", handle_LE_LevelNumber},
-    menu_entry! { "Level Color: ", handle_LE_Color},
-    menu_entry! { "Levelsize X: ", handle_LE_SizeX},
-    menu_entry! { "Levelsize Y: ", handle_LE_SizeY},
-    menu_entry! { "Level Name: ", handle_LE_Name},
-    menu_entry! { "Save ship: ", handle_LE_SaveShip},
+    menu_entry! { "Exit Level Editor", 	handle_le_exit},
+    menu_entry! { "Current Level: ", handle_le_level_number},
+    menu_entry! { "Level Color: ", handle_le_color},
+    menu_entry! { "Levelsize X: ", handle_le_size_x},
+    menu_entry! { "Levelsize Y: ", handle_le_size_y},
+    menu_entry! { "Level Name: ", handle_le_name},
+    menu_entry! { "Save ship: ", handle_le_save_ship},
     menu_entry! {},
 ];
 
@@ -196,28 +194,27 @@ const MAIN_MENU: [MenuEntry; 10] = [
     menu_entry! { "Graphics & Sound", None, GRAPHICS_SOUND_MENU },
     menu_entry! { "Legacy Options", None, LEGACY_MENU },
     menu_entry! { "HUD Settings", None, HUD_MENU },
-    menu_entry! { "Level Editor", handle_OpenLevelEditor},
-    menu_entry! { "Highscores", handle_Highscores},
-    menu_entry! { "Credits", handle_Credits},
-    menu_entry! { "Configure Keys", handle_ConfigureKeys},
-    menu_entry! { "Quit Game", handle_QuitGame},
+    menu_entry! { "Level Editor", handle_open_level_editor},
+    menu_entry! { "Highscores", handle_highscores},
+    menu_entry! { "Credits", handle_credits},
+    menu_entry! { "Configure Keys", handle_configure_keys},
+    menu_entry! { "Quit Game", handle_quit_game},
     menu_entry! {},
 ];
 
-#[repr(C)]
 pub struct MenuEntry {
     name: *const c_char,
     handler: Option<unsafe fn(MenuAction) -> *const c_char>,
     submenu: *const MenuEntry,
 }
 
-pub unsafe fn handle_QuitGame(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_quit_game(action: MenuAction) -> *const c_char {
     if action != MenuAction::CLICK {
         return null_mut();
     }
 
-    MenuItemSelectedSound();
-    InitiateMenu(false);
+    menu_item_selected_sound();
+    initiate_menu(false);
 
     #[cfg(feature = "gcw0")]
     const QUIT_STRING: &CStr = cstr!("Press A to quit");
@@ -225,11 +222,11 @@ pub unsafe fn handle_QuitGame(action: MenuAction) -> *const c_char {
     #[cfg(not(feature = "gcw0"))]
     const QUIT_STRING: &[u8] = b"Hit 'y' or press Fire to quit";
 
-    let text_width = TextWidth(QUIT_STRING);
-    let text_x = i32::from(User_Rect.x) + (i32::from(User_Rect.w) - text_width) / 2;
-    let text_y = i32::from(User_Rect.y) + (i32::from(User_Rect.h) - FONT_HEIGHT) / 2;
-    PutString(ne_screen, text_x, text_y, QUIT_STRING);
-    SDL_Flip(ne_screen);
+    let text_width = text_width(QUIT_STRING);
+    let text_x = i32::from(USER_RECT.x) + (i32::from(USER_RECT.w) - text_width) / 2;
+    let text_y = i32::from(USER_RECT.y) + (i32::from(USER_RECT.h) - FONT_HEIGHT) / 2;
+    put_string(NE_SCREEN, text_x, text_y, QUIT_STRING);
+    SDL_Flip(NE_SCREEN);
 
     #[cfg(feature = "gcw0")]
     {
@@ -251,11 +248,11 @@ pub unsafe fn handle_QuitGame(action: MenuAction) -> *const c_char {
         wait_for_all_keys_released();
         let key = wait_for_key_pressed();
         if key == b'y'.into()
-            || key == key_cmds[Cmds::Fire as usize][0]
-            || key == key_cmds[Cmds::Fire as usize][1]
-            || key == key_cmds[Cmds::Fire as usize][2]
+            || key == KEY_CMDS[Cmds::Fire as usize][0]
+            || key == KEY_CMDS[Cmds::Fire as usize][1]
+            || key == KEY_CMDS[Cmds::Fire as usize][2]
         {
-            Terminate(defs::OK.into());
+            terminate(defs::OK.into());
         }
     }
 
@@ -263,24 +260,24 @@ pub unsafe fn handle_QuitGame(action: MenuAction) -> *const c_char {
 }
 
 /// simple wrapper to ShowMenu() to provide the external entry point into the main menu
-pub unsafe fn showMainMenu() {
-    ShowMenu(MAIN_MENU.as_ptr());
+pub unsafe fn show_main_menu() {
+    show_menu(MAIN_MENU.as_ptr());
 }
 
-pub unsafe fn FreeMenuData() {
+pub unsafe fn free_menu_data() {
     SDL_FreeSurface(MENU_BACKGROUND);
 }
 
-pub unsafe fn InitiateMenu(with_droids: bool) {
+pub unsafe fn initiate_menu(with_droids: bool) {
     // Here comes the standard initializer for all the menus and submenus
     // of the big escape menu.  This prepares the screen, so that we can
     // write on it further down.
-    Activate_Conservative_Frame_Computation();
+    activate_conservative_frame_computation();
 
-    SDL_SetClipRect(ne_screen, null_mut());
-    Me.status = Status::Menu as i32;
-    ClearGraphMem();
-    DisplayBanner(
+    SDL_SetClipRect(NE_SCREEN, null_mut());
+    ME.status = Status::Menu as i32;
+    clear_graph_mem();
+    display_banner(
         null_mut(),
         null_mut(),
         (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
@@ -288,171 +285,171 @@ pub unsafe fn InitiateMenu(with_droids: bool) {
             .into(),
     );
     if with_droids {
-        Assemble_Combat_Picture(0);
+        assemble_combat_picture(0);
     } else {
-        Assemble_Combat_Picture(AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits().into());
+        assemble_combat_picture(AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits().into());
     }
 
-    SDL_SetClipRect(ne_screen, null_mut());
-    MakeGridOnScreen(None);
+    SDL_SetClipRect(NE_SCREEN, null_mut());
+    make_grid_on_screen(None);
 
     if !MENU_BACKGROUND.is_null() {
         SDL_FreeSurface(MENU_BACKGROUND);
     }
-    MENU_BACKGROUND = SDL_DisplayFormat(ne_screen); // keep a global copy of background
+    MENU_BACKGROUND = SDL_DisplayFormat(NE_SCREEN); // keep a global copy of background
 
     SDL_ShowCursor(SDL_DISABLE); // deactivate mouse-cursor in menus
-    SetCurrentFont(Menu_BFont);
-    FONT_HEIGHT = FontHeight(&*GetCurrentFont()) + 2;
+    set_current_font(MENU_B_FONT);
+    FONT_HEIGHT = font_height(&*get_current_font()) + 2;
 }
 
-pub unsafe fn Cheatmenu() {
+pub unsafe fn cheatmenu() {
     // Prevent distortion of framerate by the delay coming from
     // the time spend in the menu.
-    Activate_Conservative_Frame_Computation();
+    activate_conservative_frame_computation();
 
-    let font = Font0_BFont;
+    let font = FONT0_B_FONT;
 
-    SetCurrentFont(font); /* not the ideal one, but there's currently */
+    set_current_font(font); /* not the ideal one, but there's currently */
     /* no other it seems.. */
     const X0: i32 = 50;
     const Y0: i32 = 20;
 
-    let cur_level = &mut *CurLevel;
-    let droid_map = std::slice::from_raw_parts(Druidmap, Droid::NumDroids as usize);
+    let cur_level = &mut *CUR_LEVEL;
+    let droid_map = std::slice::from_raw_parts(DRUIDMAP, Droid::NumDroids as usize);
     let mut resume = false;
     while !resume {
-        ClearGraphMem();
-        printf_SDL(
-            ne_screen,
+        clear_graph_mem();
+        printf_sdl(
+            NE_SCREEN,
             X0,
             Y0,
             format_args!(
                 "Current position: Level={}, X={:.0}, Y={:.0}\n",
-                cur_level.levelnum, Me.pos.x, Me.pos.y,
+                cur_level.levelnum, ME.pos.x, ME.pos.y,
             ),
         );
-        printf_SDL(
-            ne_screen,
+        printf_sdl(
+            NE_SCREEN,
             -1,
             -1,
             format_args!(" a. Armageddon (alle Robots sprengen)\n"),
         );
-        printf_SDL(
-            ne_screen,
+        printf_sdl(
+            NE_SCREEN,
             -1,
             -1,
             format_args!(" l. robot list of current level\n"),
         );
-        printf_SDL(ne_screen, -1, -1, format_args!(" g. complete robot list\n"));
-        printf_SDL(
-            ne_screen,
+        printf_sdl(NE_SCREEN, -1, -1, format_args!(" g. complete robot list\n"));
+        printf_sdl(
+            NE_SCREEN,
             -1,
             -1,
             format_args!(" d. destroy robots on current level\n"),
         );
-        printf_SDL(ne_screen, -1, -1, format_args!(" t. Teleportation\n"));
-        printf_SDL(
-            ne_screen,
+        printf_sdl(NE_SCREEN, -1, -1, format_args!(" t. Teleportation\n"));
+        printf_sdl(
+            NE_SCREEN,
             -1,
             -1,
             format_args!(" r. change to new robot type\n"),
         );
-        printf_SDL(
-            ne_screen,
+        printf_sdl(
+            NE_SCREEN,
             -1,
             -1,
             format_args!(
                 " i. Invinciblemode: {}\n",
-                if InvincibleMode != 0 { "ON" } else { "OFF" },
+                if INVINCIBLE_MODE != 0 { "ON" } else { "OFF" },
             ),
         );
-        printf_SDL(ne_screen, -1, -1, format_args!(" e. set energy\n"));
-        printf_SDL(
-            ne_screen,
+        printf_sdl(NE_SCREEN, -1, -1, format_args!(" e. set energy\n"));
+        printf_sdl(
+            NE_SCREEN,
             -1,
             -1,
             format_args!(
                 " n. No hidden droids: {}\n",
-                if show_all_droids != 0 { "ON" } else { "OFF" },
+                if SHOW_ALL_DROIDS != 0 { "ON" } else { "OFF" },
             ),
         );
-        printf_SDL(ne_screen, -1, -1, format_args!(" m. Map of Deck xy\n"));
-        printf_SDL(
-            ne_screen,
+        printf_sdl(NE_SCREEN, -1, -1, format_args!(" m. Map of Deck xy\n"));
+        printf_sdl(
+            NE_SCREEN,
             -1,
             -1,
-            format_args!(" s. Sound: {}\n", if sound_on != 0 { "ON" } else { "OFF" }),
+            format_args!(" s. Sound: {}\n", if SOUND_ON != 0 { "ON" } else { "OFF" }),
         );
-        printf_SDL(
-            ne_screen,
+        printf_sdl(
+            NE_SCREEN,
             -1,
             -1,
             format_args!(" w. Print current waypoints\n"),
         );
-        printf_SDL(ne_screen, -1, -1, format_args!(" z. change Zoom factor\n"));
-        printf_SDL(
-            ne_screen,
+        printf_sdl(NE_SCREEN, -1, -1, format_args!(" z. change Zoom factor\n"));
+        printf_sdl(
+            NE_SCREEN,
             -1,
             -1,
             format_args!(
                 " f. Freeze on this positon: {}\n",
-                if stop_influencer != 0 { "ON" } else { "OFF" },
+                if STOP_INFLUENCER != 0 { "ON" } else { "OFF" },
             ),
         );
-        printf_SDL(ne_screen, -1, -1, format_args!(" q. RESUME game\n"));
+        printf_sdl(NE_SCREEN, -1, -1, format_args!(" q. RESUME game\n"));
 
         match u8::try_from(getchar_raw()).ok() {
             Some(b'f') => {
-                stop_influencer = !stop_influencer;
+                STOP_INFLUENCER = !STOP_INFLUENCER;
             }
 
             Some(b'z') => {
-                ClearGraphMem();
-                printf_SDL(
-                    ne_screen,
+                clear_graph_mem();
+                printf_sdl(
+                    NE_SCREEN,
                     X0,
                     Y0,
-                    format_args!("Current Zoom factor: {}\n", CurrentCombatScaleFactor),
+                    format_args!("Current Zoom factor: {}\n", CURRENT_COMBAT_SCALE_FACTOR),
                 );
-                printf_SDL(ne_screen, -1, -1, format_args!("New zoom factor: "));
-                let input = GetString(40, 2);
+                printf_sdl(NE_SCREEN, -1, -1, format_args!("New zoom factor: "));
+                let input = get_string(40, 2);
                 libc::sscanf(
                     input,
                     cstr!("%f").as_ptr() as *mut c_char,
-                    &mut CurrentCombatScaleFactor,
+                    &mut CURRENT_COMBAT_SCALE_FACTOR,
                 );
                 libc::free(input as *mut c_void);
-                SetCombatScaleTo(CurrentCombatScaleFactor);
+                set_combat_scale_to(CURRENT_COMBAT_SCALE_FACTOR);
             }
 
             Some(b'a') => {
                 /* armageddon */
                 resume = true;
-                Armageddon();
+                armageddon();
             }
 
             Some(b'l') => {
                 /* robot list of this deck */
                 let mut l = 0; /* line counter for enemy output */
-                for i in 0..usize::try_from(NumEnemys).unwrap() {
-                    if AllEnemys[i].levelnum == cur_level.levelnum {
+                for i in 0..usize::try_from(NUM_ENEMYS).unwrap() {
+                    if ALL_ENEMYS[i].levelnum == cur_level.levelnum {
                         if l != 0 && l % 20 == 0 {
-                            printf_SDL(ne_screen, -1, -1, format_args!(" --- MORE --- \n"));
+                            printf_sdl(NE_SCREEN, -1, -1, format_args!(" --- MORE --- \n"));
                             if getchar_raw() == b'q'.into() {
                                 break;
                             }
                         }
                         if l % 20 == 0 {
-                            ClearGraphMem();
-                            printf_SDL(
-                                ne_screen,
+                            clear_graph_mem();
+                            printf_sdl(
+                                NE_SCREEN,
                                 X0,
                                 Y0,
                                 format_args!(" NR.   ID  X    Y   ENERGY   Status\n"),
                             );
-                            printf_SDL(
-                                ne_screen,
+                            printf_sdl(
+                                NE_SCREEN,
                                 -1,
                                 -1,
                                 format_args!("---------------------------------------------\n"),
@@ -460,51 +457,51 @@ pub unsafe fn Cheatmenu() {
                         }
 
                         l += 1;
-                        let status = if AllEnemys[i].status == Status::Out as i32 {
+                        let status = if ALL_ENEMYS[i].status == Status::Out as i32 {
                             "OUT"
-                        } else if AllEnemys[i].status == Status::Terminated as i32 {
+                        } else if ALL_ENEMYS[i].status == Status::Terminated as i32 {
                             "DEAD"
                         } else {
                             "ACTIVE"
                         };
 
-                        printf_SDL(
-                            ne_screen,
+                        printf_sdl(
+                            NE_SCREEN,
                             -1,
                             -1,
                             format_args!(
                                 "{}.   {}   {:.0}   {:.0}   {:.0}    {}.\n",
                                 i,
                                 CStr::from_ptr(
-                                    droid_map[usize::try_from(AllEnemys[i].ty).unwrap()]
+                                    droid_map[usize::try_from(ALL_ENEMYS[i].ty).unwrap()]
                                         .druidname
                                         .as_ptr()
                                 )
                                 .to_str()
                                 .unwrap(),
-                                AllEnemys[i].pos.x,
-                                AllEnemys[i].pos.y,
-                                AllEnemys[i].energy,
+                                ALL_ENEMYS[i].pos.x,
+                                ALL_ENEMYS[i].pos.y,
+                                ALL_ENEMYS[i].energy,
                                 status,
                             ),
                         );
                     }
                 }
 
-                printf_SDL(ne_screen, -1, -1, format_args!(" --- END --- \n"));
+                printf_sdl(NE_SCREEN, -1, -1, format_args!(" --- END --- \n"));
                 getchar_raw();
             }
 
             Some(b'g') => {
                 /* complete robot list of this ship */
-                for i in 0..usize::try_from(NumEnemys).unwrap() {
-                    if AllEnemys[i].ty == -1 {
+                for i in 0..usize::try_from(NUM_ENEMYS).unwrap() {
+                    if ALL_ENEMYS[i].ty == -1 {
                         continue;
                     }
 
                     if i != 0 && !i % 13 == 0 {
-                        printf_SDL(
-                            ne_screen,
+                        printf_sdl(
+                            NE_SCREEN,
                             -1,
                             -1,
                             format_args!(" --- MORE --- ('q' to quit)\n"),
@@ -514,57 +511,57 @@ pub unsafe fn Cheatmenu() {
                         }
                     }
                     if i % 13 == 0 {
-                        ClearGraphMem();
-                        printf_SDL(
-                            ne_screen,
+                        clear_graph_mem();
+                        printf_sdl(
+                            NE_SCREEN,
                             X0,
                             Y0,
                             format_args!("Nr.  Lev. ID  Energy  Status.\n"),
                         );
-                        printf_SDL(
-                            ne_screen,
+                        printf_sdl(
+                            NE_SCREEN,
                             -1,
                             -1,
                             format_args!("------------------------------\n"),
                         );
                     }
 
-                    printf_SDL(
-                        ne_screen,
+                    printf_sdl(
+                        NE_SCREEN,
                         -1,
                         -1,
                         format_args!(
                             "{}  {}  {}  {:.0}  {}\n",
                             i,
-                            AllEnemys[i].levelnum,
+                            ALL_ENEMYS[i].levelnum,
                             CStr::from_ptr(
-                                droid_map[usize::try_from(AllEnemys[i].ty).unwrap()]
+                                droid_map[usize::try_from(ALL_ENEMYS[i].ty).unwrap()]
                                     .druidname
                                     .as_ptr()
                             )
                             .to_str()
                             .unwrap(),
-                            AllEnemys[i].energy,
-                            INFLUENCE_MODE_NAMES[usize::try_from(AllEnemys[i].status).unwrap()]
+                            ALL_ENEMYS[i].energy,
+                            INFLUENCE_MODE_NAMES[usize::try_from(ALL_ENEMYS[i].status).unwrap()]
                                 .to_str()
                                 .unwrap(),
                         ),
                     );
                 }
 
-                printf_SDL(ne_screen, -1, -1, format_args!(" --- END ---\n"));
+                printf_sdl(NE_SCREEN, -1, -1, format_args!(" --- END ---\n"));
                 getchar_raw();
             }
 
             Some(b'd') => {
                 /* destroy all robots on this level, haha */
-                for enemy in &mut AllEnemys {
+                for enemy in &mut ALL_ENEMYS {
                     if enemy.levelnum == cur_level.levelnum {
                         enemy.energy = -100.;
                     }
                 }
-                printf_SDL(
-                    ne_screen,
+                printf_sdl(
+                    NE_SCREEN,
                     -1,
                     -1,
                     format_args!("All robots on this deck killed!\n"),
@@ -574,9 +571,9 @@ pub unsafe fn Cheatmenu() {
 
             Some(b't') => {
                 /* Teleportation */
-                ClearGraphMem();
-                printf_SDL(ne_screen, X0, Y0, format_args!("Enter Level, X, Y: "));
-                let input = GetString(40, 2);
+                clear_graph_mem();
+                printf_sdl(NE_SCREEN, X0, Y0, format_args!("Enter Level, X, Y: "));
+                let input = get_string(40, 2);
                 let mut l_num = 0;
                 let mut x = 0;
                 let mut y = 0;
@@ -589,30 +586,30 @@ pub unsafe fn Cheatmenu() {
                     &mut y,
                 );
                 libc::free(input as *mut c_void);
-                Teleport(l_num, x, y);
+                teleport(l_num, x, y);
             }
 
             Some(b'r') => {
                 /* change to new robot type */
-                ClearGraphMem();
-                printf_SDL(
-                    ne_screen,
+                clear_graph_mem();
+                printf_sdl(
+                    NE_SCREEN,
                     X0,
                     Y0,
                     format_args!("Type number of new robot: "),
                 );
-                let input = GetString(40, 2);
+                let input = get_string(40, 2);
                 let mut i = 0;
-                for _ in 0..u32::try_from(Number_Of_Droid_Types).unwrap() {
+                for _ in 0..u32::try_from(NUMBER_OF_DROID_TYPES).unwrap() {
                     if libc::strcmp(droid_map[i].druidname.as_ptr(), input) != 0 {
                         break;
                     }
                     i += 1;
                 }
 
-                if i == usize::try_from(Number_Of_Droid_Types).unwrap() {
-                    printf_SDL(
-                        ne_screen,
+                if i == usize::try_from(NUMBER_OF_DROID_TYPES).unwrap() {
+                    printf_sdl(
+                        NE_SCREEN,
                         X0,
                         Y0 + 20,
                         format_args!(
@@ -621,13 +618,13 @@ pub unsafe fn Cheatmenu() {
                         ),
                     );
                     getchar_raw();
-                    ClearGraphMem();
+                    clear_graph_mem();
                 } else {
-                    Me.ty = i.try_into().unwrap();
-                    Me.energy = droid_map[usize::try_from(Me.ty).unwrap()].maxenergy;
-                    Me.health = Me.energy;
-                    printf_SDL(
-                        ne_screen,
+                    ME.ty = i.try_into().unwrap();
+                    ME.energy = droid_map[usize::try_from(ME.ty).unwrap()].maxenergy;
+                    ME.health = ME.energy;
+                    printf_sdl(
+                        NE_SCREEN,
                         X0,
                         Y0 + 20,
                         format_args!(
@@ -642,76 +639,76 @@ pub unsafe fn Cheatmenu() {
 
             Some(b'i') => {
                 /* togge Invincible mode */
-                InvincibleMode = !InvincibleMode;
+                INVINCIBLE_MODE = !INVINCIBLE_MODE;
             }
 
             Some(b'e') => {
                 /* complete heal */
-                ClearGraphMem();
-                printf_SDL(
-                    ne_screen,
+                clear_graph_mem();
+                printf_sdl(
+                    NE_SCREEN,
                     X0,
                     Y0,
-                    format_args!("Current energy: {}\n", Me.energy,),
+                    format_args!("Current energy: {}\n", ME.energy,),
                 );
-                printf_SDL(ne_screen, -1, -1, format_args!("Enter your new energy: "));
-                let input = GetString(40, 2);
+                printf_sdl(NE_SCREEN, -1, -1, format_args!("Enter your new energy: "));
+                let input = get_string(40, 2);
                 let mut num = 0;
                 libc::sscanf(input, cstr!("%d").as_ptr() as *mut c_char, &mut num);
                 libc::free(input as *mut c_void);
-                Me.energy = num as f32;
-                if Me.energy > Me.health {
-                    Me.health = Me.energy;
+                ME.energy = num as f32;
+                if ME.energy > ME.health {
+                    ME.health = ME.energy;
                 }
             }
 
             Some(b'n') => {
                 /* toggle display of all droids */
-                show_all_droids = !show_all_droids;
+                SHOW_ALL_DROIDS = !SHOW_ALL_DROIDS;
             }
 
             Some(b's') => {
                 /* toggle sound on/off */
-                sound_on = !sound_on;
+                SOUND_ON = !SOUND_ON;
             }
 
             Some(b'm') => {
                 /* Show deck map in Concept view */
-                printf_SDL(ne_screen, -1, -1, format_args!("\nLevelnum: "));
-                let input = GetString(40, 2);
+                printf_sdl(NE_SCREEN, -1, -1, format_args!("\nLevelnum: "));
+                let input = get_string(40, 2);
                 let mut l_num = 0;
                 libc::sscanf(input, cstr!("%d").as_ptr() as *mut c_char, &mut l_num);
                 libc::free(input as *mut c_void);
-                ShowDeckMap();
+                show_deck_map();
                 getchar_raw();
             }
 
             Some(b'w') => {
                 /* print waypoint info of current level */
-                for (i, waypoint) in cur_level.AllWaypoints.iter_mut().enumerate() {
+                for (i, waypoint) in cur_level.all_waypoints.iter_mut().enumerate() {
                     if i != 0 && i % 20 == 0 {
-                        printf_SDL(ne_screen, -1, -1, format_args!(" ---- MORE -----\n"));
+                        printf_sdl(NE_SCREEN, -1, -1, format_args!(" ---- MORE -----\n"));
                         if getchar_raw() == b'q'.into() {
                             break;
                         }
                     }
                     if i % 20 == 0 {
-                        ClearGraphMem();
-                        printf_SDL(
-                            ne_screen,
+                        clear_graph_mem();
+                        printf_sdl(
+                            NE_SCREEN,
                             X0,
                             Y0,
                             format_args!("Nr.   X   Y      C1  C2  C3  C4\n"),
                         );
-                        printf_SDL(
-                            ne_screen,
+                        printf_sdl(
+                            NE_SCREEN,
                             -1,
                             -1,
                             format_args!("------------------------------------\n"),
                         );
                     }
-                    printf_SDL(
-                        ne_screen,
+                    printf_sdl(
+                        NE_SCREEN,
                         -1,
                         -1,
                         format_args!(
@@ -726,7 +723,7 @@ pub unsafe fn Cheatmenu() {
                         ),
                     );
                 }
-                printf_SDL(ne_screen, -1, -1, format_args!(" --- END ---\n"));
+                printf_sdl(NE_SCREEN, -1, -1, format_args!(" --- END ---\n"));
                 getchar_raw();
             }
 
@@ -738,7 +735,7 @@ pub unsafe fn Cheatmenu() {
         }
     }
 
-    ClearGraphMem();
+    clear_graph_mem();
 
     update_input(); /* treat all pending keyboard events */
 }
@@ -749,22 +746,22 @@ pub unsafe fn Cheatmenu() {
 /// such as from touchpad 'wheel' or android joystic emulation
 /// don't create unexpected menu movements:
 /// ==> ignore all movement commands withing delay_ms milliseconds of each other
-pub unsafe fn getMenuAction(wait_repeat_ticks: u32) -> MenuAction {
+pub unsafe fn get_menu_action(wait_repeat_ticks: u32) -> MenuAction {
     let mut action = MenuAction::empty();
 
     // 'normal' menu action keys get released
-    if KeyIsPressedR(SDLK_BACKSPACE as c_int) {
+    if key_is_pressed_r(SDLK_BACKSPACE as c_int) {
         {
             action = MenuAction::DELETE;
         }
     }
-    if cmd_is_activeR(Cmds::Back) || KeyIsPressedR(SDLK_ESCAPE as c_int) {
+    if cmd_is_active_r(Cmds::Back) || key_is_pressed_r(SDLK_ESCAPE as c_int) {
         {
             action = MenuAction::BACK;
         }
     }
 
-    if FirePressed() || ReturnPressedR() {
+    if fire_pressed() || return_pressed_r() {
         {
             action = MenuAction::CLICK;
         }
@@ -779,37 +776,37 @@ pub unsafe fn getMenuAction(wait_repeat_ticks: u32) -> MenuAction {
     static mut RIGHT: bool = false;
 
     // we register if there have been key-press events in the "waiting period" between move-ticks
-    if !UP && (UpPressed() || KeyIsPressed(SDLK_UP as c_int)) {
+    if !UP && (up_pressed() || key_is_pressed(SDLK_UP as c_int)) {
         UP = true;
         LAST_MOVEKEY_TIME = SDL_GetTicks();
         action |= MenuAction::UP;
     }
-    if !DOWN && (DownPressed() || KeyIsPressed(SDLK_DOWN as c_int)) {
+    if !DOWN && (down_pressed() || key_is_pressed(SDLK_DOWN as c_int)) {
         DOWN = true;
         LAST_MOVEKEY_TIME = SDL_GetTicks();
         action |= MenuAction::DOWN;
     }
-    if !LEFT && (LeftPressed() || KeyIsPressed(SDLK_LEFT as c_int)) {
+    if !LEFT && (left_pressed() || key_is_pressed(SDLK_LEFT as c_int)) {
         LEFT = true;
         LAST_MOVEKEY_TIME = SDL_GetTicks();
         action |= MenuAction::LEFT;
     }
-    if !RIGHT && (RightPressed() || KeyIsPressed(SDLK_RIGHT as c_int)) {
+    if !RIGHT && (right_pressed() || key_is_pressed(SDLK_RIGHT as c_int)) {
         RIGHT = true;
         LAST_MOVEKEY_TIME = SDL_GetTicks();
         action |= MenuAction::RIGHT;
     }
 
-    if !(UpPressed() || KeyIsPressed(SDLK_UP as c_int)) {
+    if !(up_pressed() || key_is_pressed(SDLK_UP as c_int)) {
         UP = false;
     }
-    if !(DownPressed() || KeyIsPressed(SDLK_DOWN as c_int)) {
+    if !(down_pressed() || key_is_pressed(SDLK_DOWN as c_int)) {
         DOWN = false;
     }
-    if !(LeftPressed() || KeyIsPressed(SDLK_LEFT as c_int)) {
+    if !(left_pressed() || key_is_pressed(SDLK_LEFT as c_int)) {
         LEFT = false;
     }
-    if !(RightPressed() || KeyIsPressed(SDLK_RIGHT as c_int)) {
+    if !(right_pressed() || key_is_pressed(SDLK_RIGHT as c_int)) {
         RIGHT = false;
     }
 
@@ -829,10 +826,10 @@ pub unsafe fn getMenuAction(wait_repeat_ticks: u32) -> MenuAction {
         }
     }
     // special handling of mouse wheel: register every event, no need for key-repeat delays
-    if WheelUpPressed() {
+    if wheel_up_pressed() {
         action |= MenuAction::UP_WHEEL;
     }
-    if WheelDownPressed() {
+    if wheel_down_pressed() {
         action |= MenuAction::DOWN_WHEEL;
     }
 
@@ -840,10 +837,10 @@ pub unsafe fn getMenuAction(wait_repeat_ticks: u32) -> MenuAction {
 }
 
 /// Generic menu handler
-pub unsafe fn ShowMenu(menu_entries: *const MenuEntry) {
+pub unsafe fn show_menu(menu_entries: *const MenuEntry) {
     use std::io::Write;
 
-    InitiateMenu(false);
+    initiate_menu(false);
     wait_for_all_keys_released();
 
     // figure out menu-start point to make it centered
@@ -855,7 +852,7 @@ pub unsafe fn ShowMenu(menu_entries: *const MenuEntry) {
             break;
         }
 
-        let width = TextWidth(CStr::from_ptr(entry.name).to_bytes());
+        let width = text_width(CStr::from_ptr(entry.name).to_bytes());
         menu_width = Some(
             menu_width
                 .map(|menu_width| menu_width.max(width))
@@ -868,9 +865,9 @@ pub unsafe fn ShowMenu(menu_entries: *const MenuEntry) {
     let menu_width = menu_width.unwrap();
 
     let menu_height = i32::try_from(num_entries).unwrap() * FONT_HEIGHT;
-    let menu_x = i32::from(Full_User_Rect.x) + (i32::from(Full_User_Rect.w) - menu_width) / 2;
-    let menu_y = i32::from(Full_User_Rect.y) + (i32::from(Full_User_Rect.h) - menu_height) / 2;
-    let influ_x = menu_x - i32::from(Block_Rect.w) - FONT_HEIGHT;
+    let menu_x = i32::from(FULL_USER_RECT.x) + (i32::from(FULL_USER_RECT.w) - menu_width) / 2;
+    let menu_y = i32::from(FULL_USER_RECT.y) + (i32::from(FULL_USER_RECT.h) - menu_height) / 2;
+    let influ_x = menu_x - i32::from(BLOCK_RECT.w) - FONT_HEIGHT;
 
     let mut menu_pos = 0;
 
@@ -884,7 +881,7 @@ pub unsafe fn ShowMenu(menu_entries: *const MenuEntry) {
         let submenu = menu_entries[menu_pos].submenu;
 
         if need_update {
-            SDL_UpperBlit(MENU_BACKGROUND, null_mut(), ne_screen, null_mut());
+            SDL_UpperBlit(MENU_BACKGROUND, null_mut(), NE_SCREEN, null_mut());
             // print menu
             menu_entries.iter().enumerate().for_each(|(i, entry)| {
                 let arg = entry
@@ -908,20 +905,20 @@ pub unsafe fn ShowMenu(menu_entries: *const MenuEntry) {
                 )
                 .unwrap();
                 let position = usize::try_from(cursor.position()).unwrap();
-                PutString(
-                    ne_screen,
+                put_string(
+                    NE_SCREEN,
                     menu_x,
                     menu_y + i32::try_from(i).unwrap() * FONT_HEIGHT,
                     &full_name[..position],
                 );
             });
-            PutInfluence(
+            put_influence(
                 influ_x,
                 menu_y + ((menu_pos as f64 - 0.5) * f64::from(FONT_HEIGHT)) as c_int,
             );
 
             #[cfg(not(target_os = "android"))]
-            SDL_Flip(ne_screen);
+            SDL_Flip(NE_SCREEN);
 
             need_update = false;
         }
@@ -929,7 +926,7 @@ pub unsafe fn ShowMenu(menu_entries: *const MenuEntry) {
         #[cfg(target_os = "android")]
         SDL_Flip(ne_screen); // for responsive input on Android, we need to run this every cycle
 
-        let action = getMenuAction(250);
+        let action = get_menu_action(250);
 
         let time_for_move = SDL_GetTicks() - LAST_MOVE_TICK > wait_move_ticks;
         match action {
@@ -940,7 +937,7 @@ pub unsafe fn ShowMenu(menu_entries: *const MenuEntry) {
 
             MenuAction::CLICK => {
                 if handler.is_none() && submenu.is_null() {
-                    MenuItemSelectedSound();
+                    menu_item_selected_sound();
                     finished = true;
                 } else {
                     if let Some(handler) = handler {
@@ -949,10 +946,10 @@ pub unsafe fn ShowMenu(menu_entries: *const MenuEntry) {
                     }
 
                     if submenu.is_null().not() {
-                        MenuItemSelectedSound();
+                        menu_item_selected_sound();
                         wait_for_all_keys_released();
-                        ShowMenu(submenu);
-                        InitiateMenu(false);
+                        show_menu(submenu);
+                        initiate_menu(false);
                     }
                     need_update = true;
                 }
@@ -975,7 +972,7 @@ pub unsafe fn ShowMenu(menu_entries: *const MenuEntry) {
                     continue;
                 }
 
-                MoveMenuPositionSound();
+                move_menu_position_sound();
                 if menu_pos > 0 {
                     menu_pos -= 1;
                 } else {
@@ -990,7 +987,7 @@ pub unsafe fn ShowMenu(menu_entries: *const MenuEntry) {
                     continue;
                 }
 
-                MoveMenuPositionSound();
+                move_menu_position_sound();
                 if menu_pos < num_entries - 1 {
                     menu_pos += 1;
                 } else {
@@ -1010,14 +1007,14 @@ pub unsafe fn ShowMenu(menu_entries: *const MenuEntry) {
         SDL_Delay(1); // don't hog CPU
     }
 
-    ClearGraphMem();
+    clear_graph_mem();
     SDL_ShowCursor(SDL_ENABLE); // reactivate mouse-cursor for game
                                 // Since we've faded out the whole scren, it can't hurt
                                 // to have the top status bar redrawn...
-    BannerIsDestroyed = true.into();
-    Me.status = Status::Mobile as i32;
+    BANNER_IS_DESTROYED = true.into();
+    ME.status = Status::Mobile as i32;
 
-    while any_key_is_pressedR()
+    while any_key_is_pressed_r()
     // wait for all key/controller-release
     {
         SDL_Delay(1);
@@ -1025,15 +1022,15 @@ pub unsafe fn ShowMenu(menu_entries: *const MenuEntry) {
 }
 
 /// subroutine to display the current key-config and highlight current selection
-pub unsafe fn Display_Key_Config(selx: c_int, sely: c_int) {
-    let startx = i32::from(Full_User_Rect.x) + (1.2 * f32::from(Block_Rect.w)) as i32;
-    let starty = i32::from(Full_User_Rect.y) + FontHeight(&*GetCurrentFont());
-    let col1 = startx + (7.5 * f64::from(CharWidth(&*GetCurrentFont(), b'O'.into()))) as i32;
-    let col2 = col1 + (6.5 * f64::from(CharWidth(&*GetCurrentFont(), b'O'.into()))) as i32;
-    let col3 = col2 + (6.5 * f64::from(CharWidth(&*GetCurrentFont(), b'O'.into()))) as i32;
-    let lheight = FontHeight(&*Font0_BFont) + 2;
+pub unsafe fn display_key_config(selx: c_int, sely: c_int) {
+    let startx = i32::from(FULL_USER_RECT.x) + (1.2 * f32::from(BLOCK_RECT.w)) as i32;
+    let starty = i32::from(FULL_USER_RECT.y) + font_height(&*get_current_font());
+    let col1 = startx + (7.5 * f64::from(char_width(&*get_current_font(), b'O'))) as i32;
+    let col2 = col1 + (6.5 * f64::from(char_width(&*get_current_font(), b'O'))) as i32;
+    let col3 = col2 + (6.5 * f64::from(char_width(&*get_current_font(), b'O'))) as i32;
+    let lheight = font_height(&*FONT0_B_FONT) + 2;
 
-    SDL_UpperBlit(MENU_BACKGROUND, null_mut(), ne_screen, null_mut());
+    SDL_UpperBlit(MENU_BACKGROUND, null_mut(), NE_SCREEN, null_mut());
 
     #[cfg(feature = "gcw0")]
     PrintStringFont(
@@ -1046,16 +1043,16 @@ pub unsafe fn Display_Key_Config(selx: c_int, sely: c_int) {
 
     #[cfg(not(feature = "gcw0"))]
     {
-        PrintStringFont(
-            ne_screen,
-            Font0_BFont,
+        print_string_font(
+            NE_SCREEN,
+            FONT0_B_FONT,
             col1,
             starty,
             format_args!("(RShldr to clear an entry)"),
         );
-        PrintStringFont(
-            ne_screen,
-            Font0_BFont,
+        print_string_font(
+            NE_SCREEN,
+            FONT0_B_FONT,
             col1,
             starty,
             format_args!("(Backspace to clear an entry)"),
@@ -1063,30 +1060,30 @@ pub unsafe fn Display_Key_Config(selx: c_int, sely: c_int) {
     }
 
     let mut posy = 1;
-    PrintStringFont(
-        ne_screen,
-        Font0_BFont,
+    print_string_font(
+        NE_SCREEN,
+        FONT0_B_FONT,
         startx,
         starty + (posy) * lheight,
         format_args!("Command"),
     );
-    PrintStringFont(
-        ne_screen,
-        Font0_BFont,
+    print_string_font(
+        NE_SCREEN,
+        FONT0_B_FONT,
         col1,
         starty + (posy) * lheight,
         format_args!("Key1"),
     );
-    PrintStringFont(
-        ne_screen,
-        Font0_BFont,
+    print_string_font(
+        NE_SCREEN,
+        FONT0_B_FONT,
         col2,
         starty + (posy) * lheight,
         format_args!("Key2"),
     );
-    PrintStringFont(
-        ne_screen,
-        Font0_BFont,
+    print_string_font(
+        NE_SCREEN,
+        FONT0_B_FONT,
         col3,
         starty + (posy) * lheight,
         format_args!("Key3"),
@@ -1096,51 +1093,51 @@ pub unsafe fn Display_Key_Config(selx: c_int, sely: c_int) {
     for i in 0..Cmds::Last as usize {
         let pos_font = |x, y| {
             if x != selx || i32::try_from(y).unwrap() != sely {
-                Font1_BFont
+                FONT1_B_FONT
             } else {
-                Font2_BFont
+                FONT2_B_FONT
             }
         };
 
-        PrintStringFont(
-            ne_screen,
-            Font0_BFont,
+        print_string_font(
+            NE_SCREEN,
+            FONT0_B_FONT,
             startx,
             starty + (posy) * lheight,
-            format_args!("{}", CStr::from_ptr(cmd_strings[i]).to_str().unwrap()),
+            format_args!("{}", CStr::from_ptr(CMD_STRINGS[i]).to_str().unwrap()),
         );
-        PrintStringFont(
-            ne_screen,
+        print_string_font(
+            NE_SCREEN,
             pos_font(1, 1 + i),
             col1,
             starty + (posy) * lheight,
             format_args!(
                 "{}",
-                CStr::from_ptr(keystr[usize::try_from(key_cmds[i][0]).unwrap()])
+                CStr::from_ptr(KEYSTR[usize::try_from(KEY_CMDS[i][0]).unwrap()])
                     .to_str()
                     .unwrap()
             ),
         );
-        PrintStringFont(
-            ne_screen,
+        print_string_font(
+            NE_SCREEN,
             pos_font(2, 1 + i),
             col2,
             starty + (posy) * lheight,
             format_args!(
                 "{}",
-                CStr::from_ptr(keystr[usize::try_from(key_cmds[i][1]).unwrap()])
+                CStr::from_ptr(KEYSTR[usize::try_from(KEY_CMDS[i][1]).unwrap()])
                     .to_str()
                     .unwrap()
             ),
         );
-        PrintStringFont(
-            ne_screen,
+        print_string_font(
+            NE_SCREEN,
             pos_font(3, 1 + i),
             col3,
             starty + (posy) * lheight,
             format_args!(
                 "{}",
-                CStr::from_ptr(keystr[usize::try_from(key_cmds[i][2]).unwrap()])
+                CStr::from_ptr(KEYSTR[usize::try_from(KEY_CMDS[i][2]).unwrap()])
                     .to_str()
                     .unwrap()
             ),
@@ -1148,10 +1145,10 @@ pub unsafe fn Display_Key_Config(selx: c_int, sely: c_int) {
         posy += 1;
     }
 
-    SDL_Flip(ne_screen);
+    SDL_Flip(NE_SCREEN);
 }
 
-pub unsafe fn Key_Config_Menu() {
+pub unsafe fn key_config_menu() {
     let mut selx = 1;
     let mut sely = 1; // currently selected menu-position
     const WAIT_MOVE_TICKS: u32 = 100;
@@ -1159,9 +1156,9 @@ pub unsafe fn Key_Config_Menu() {
 
     let mut finished = false;
     while !finished {
-        Display_Key_Config(i32::try_from(selx).unwrap(), i32::try_from(sely).unwrap());
+        display_key_config(i32::try_from(selx).unwrap(), i32::try_from(sely).unwrap());
 
-        let action = getMenuAction(250);
+        let action = get_menu_action(250);
         let time_for_move = SDL_GetTicks() - LAST_MOVE_TICK > WAIT_MOVE_TICKS;
 
         match action {
@@ -1171,11 +1168,11 @@ pub unsafe fn Key_Config_Menu() {
             }
 
             MenuAction::CLICK => {
-                MenuItemSelectedSound();
+                menu_item_selected_sound();
 
-                key_cmds[sely - 1][selx - 1] = b'_'.into();
-                Display_Key_Config(i32::try_from(selx).unwrap(), i32::try_from(sely).unwrap());
-                key_cmds[sely - 1][selx - 1] = getchar_raw(); // includes joystick input!;
+                KEY_CMDS[sely - 1][selx - 1] = b'_'.into();
+                display_key_config(i32::try_from(selx).unwrap(), i32::try_from(sely).unwrap());
+                KEY_CMDS[sely - 1][selx - 1] = getchar_raw(); // includes joystick input!;
                 wait_for_all_keys_released();
                 LAST_MOVE_TICK = SDL_GetTicks();
             }
@@ -1189,7 +1186,7 @@ pub unsafe fn Key_Config_Menu() {
                 } else {
                     sely = Cmds::Last as usize;
                 }
-                MoveMenuPositionSound();
+                move_menu_position_sound();
                 LAST_MOVE_TICK = SDL_GetTicks();
             }
 
@@ -1202,7 +1199,7 @@ pub unsafe fn Key_Config_Menu() {
                 } else {
                     sely = 1;
                 }
-                MoveMenuPositionSound();
+                move_menu_position_sound();
                 LAST_MOVE_TICK = SDL_GetTicks();
             }
 
@@ -1216,7 +1213,7 @@ pub unsafe fn Key_Config_Menu() {
                 } else {
                     selx = 1;
                 }
-                MoveMenuPositionSound();
+                move_menu_position_sound();
                 LAST_MOVE_TICK = SDL_GetTicks();
             }
 
@@ -1230,13 +1227,13 @@ pub unsafe fn Key_Config_Menu() {
                 } else {
                     selx = 3;
                 }
-                MoveMenuPositionSound();
+                move_menu_position_sound();
                 LAST_MOVE_TICK = SDL_GetTicks();
             }
 
             MenuAction::DELETE => {
-                key_cmds[sely - 1][selx - 1] = 0;
-                MenuItemSelectedSound();
+                KEY_CMDS[sely - 1][selx - 1] = 0;
+                menu_item_selected_sound();
             }
             _ => {}
         }
@@ -1245,107 +1242,107 @@ pub unsafe fn Key_Config_Menu() {
     }
 }
 
-pub unsafe fn ShowCredits() {
-    let col2 = 2 * i32::from(User_Rect.w) / 3;
+pub unsafe fn show_credits() {
+    let col2 = 2 * i32::from(USER_RECT.w) / 3;
 
-    let h = FontHeight(&*Menu_BFont);
-    let em = CharWidth(&*Menu_BFont, b'm'.into());
+    let h = font_height(&*MENU_B_FONT);
+    let em = char_width(&*MENU_B_FONT, b'm');
 
-    let screen = Screen_Rect;
-    SDL_SetClipRect(ne_screen, null_mut());
-    DisplayImage(find_file(
+    let screen = SCREEN_RECT;
+    SDL_SetClipRect(NE_SCREEN, null_mut());
+    display_image(find_file(
         CREDITS_PIC_FILE_C.as_ptr() as *mut c_char,
         GRAPHICS_DIR_C.as_ptr() as *mut c_char,
         Themed::NoTheme as i32,
         Criticality::Critical as i32,
     ));
-    MakeGridOnScreen(Some(&screen));
+    make_grid_on_screen(Some(&screen));
 
-    let oldfont = GetCurrentFont();
-    SetCurrentFont(Font1_BFont);
+    let oldfont = get_current_font();
+    set_current_font(FONT1_B_FONT);
 
-    printf_SDL(
-        ne_screen,
+    printf_sdl(
+        NE_SCREEN,
         i32::from(get_user_center().x) - 2 * em,
         h,
         format_args!("CREDITS\n"),
     );
 
-    printf_SDL(ne_screen, em, -1, format_args!("PROGRAMMING:"));
-    printf_SDL(ne_screen, col2, -1, format_args!("Johannes Prix\n"));
-    printf_SDL(ne_screen, -1, -1, format_args!("Reinhard Prix\n"));
-    printf_SDL(ne_screen, -1, -1, format_args!("\n"));
+    printf_sdl(NE_SCREEN, em, -1, format_args!("PROGRAMMING:"));
+    printf_sdl(NE_SCREEN, col2, -1, format_args!("Johannes Prix\n"));
+    printf_sdl(NE_SCREEN, -1, -1, format_args!("Reinhard Prix\n"));
+    printf_sdl(NE_SCREEN, -1, -1, format_args!("\n"));
 
-    printf_SDL(ne_screen, em, -1, format_args!("ARTWORK:"));
-    printf_SDL(ne_screen, col2, -1, format_args!("Bastian Salmela\n"));
-    printf_SDL(ne_screen, -1, -1, format_args!("\n"));
-    printf_SDL(ne_screen, em, -1, format_args!("ADDITIONAL THEMES:\n"));
-    printf_SDL(ne_screen, 2 * em, -1, format_args!("Lanzz-theme"));
-    printf_SDL(ne_screen, col2, -1, format_args!("Lanzz\n"));
-    printf_SDL(ne_screen, 2 * em, -1, format_args!("Para90-theme"));
-    printf_SDL(ne_screen, col2, -1, format_args!("Andreas Wedemeyer\n"));
+    printf_sdl(NE_SCREEN, em, -1, format_args!("ARTWORK:"));
+    printf_sdl(NE_SCREEN, col2, -1, format_args!("Bastian Salmela\n"));
+    printf_sdl(NE_SCREEN, -1, -1, format_args!("\n"));
+    printf_sdl(NE_SCREEN, em, -1, format_args!("ADDITIONAL THEMES:\n"));
+    printf_sdl(NE_SCREEN, 2 * em, -1, format_args!("Lanzz-theme"));
+    printf_sdl(NE_SCREEN, col2, -1, format_args!("Lanzz\n"));
+    printf_sdl(NE_SCREEN, 2 * em, -1, format_args!("Para90-theme"));
+    printf_sdl(NE_SCREEN, col2, -1, format_args!("Andreas Wedemeyer\n"));
 
-    printf_SDL(ne_screen, -1, -1, format_args!("\n"));
-    printf_SDL(ne_screen, em, -1, format_args!("C64 LEGACY MODS:\n"));
+    printf_sdl(NE_SCREEN, -1, -1, format_args!("\n"));
+    printf_sdl(NE_SCREEN, em, -1, format_args!("C64 LEGACY MODS:\n"));
 
-    printf_SDL(
-        ne_screen,
+    printf_sdl(
+        NE_SCREEN,
         2 * em,
         -1,
         format_args!("Green Beret, Sanxion, Uridium2"),
     );
-    printf_SDL(ne_screen, col2, -1, format_args!("#dreamfish/trsi\n"));
+    printf_sdl(NE_SCREEN, col2, -1, format_args!("#dreamfish/trsi\n"));
 
-    printf_SDL(ne_screen, 2 * em, -1, format_args!("The last V8, Anarchy"));
-    printf_SDL(ne_screen, col2, -1, format_args!("4-mat\n"));
+    printf_sdl(NE_SCREEN, 2 * em, -1, format_args!("The last V8, Anarchy"));
+    printf_sdl(NE_SCREEN, col2, -1, format_args!("4-mat\n"));
 
-    printf_SDL(ne_screen, 2 * em, -1, format_args!("Tron"));
-    printf_SDL(ne_screen, col2, -1, format_args!("Kollaps\n"));
+    printf_sdl(NE_SCREEN, 2 * em, -1, format_args!("Tron"));
+    printf_sdl(NE_SCREEN, col2, -1, format_args!("Kollaps\n"));
 
-    printf_SDL(ne_screen, 2 * em, -1, format_args!("Starpaws"));
-    printf_SDL(ne_screen, col2, -1, format_args!("Nashua\n"));
+    printf_sdl(NE_SCREEN, 2 * em, -1, format_args!("Starpaws"));
+    printf_sdl(NE_SCREEN, col2, -1, format_args!("Nashua\n"));
 
-    printf_SDL(ne_screen, 2 * em, -1, format_args!("Commando"));
-    printf_SDL(ne_screen, col2, -1, format_args!("Android"));
+    printf_sdl(NE_SCREEN, 2 * em, -1, format_args!("Commando"));
+    printf_sdl(NE_SCREEN, col2, -1, format_args!("Android"));
 
-    SDL_Flip(ne_screen);
+    SDL_Flip(NE_SCREEN);
     wait_for_key_pressed();
-    SetCurrentFont(oldfont);
+    set_current_font(oldfont);
 }
 
 /// simple wrapper to ShowMenu() to provide the external entry point into the Level Editor menu
-pub unsafe fn showLevelEditorMenu() {
-    quit_LevelEditor = false;
-    ShowMenu(LEVEL_EDITOR_MENU.as_ptr());
+pub unsafe fn show_level_editor_menu() {
+    QUIT_LEVEL_EDITOR = false;
+    show_menu(LEVEL_EDITOR_MENU.as_ptr());
 }
 
-pub unsafe fn handle_ConfigureKeys(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_configure_keys(action: MenuAction) -> *const c_char {
     if action == MenuAction::CLICK {
-        MenuItemSelectedSound();
-        Key_Config_Menu();
+        menu_item_selected_sound();
+        key_config_menu();
     }
 
     null_mut()
 }
 
-pub unsafe fn handle_Highscores(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_highscores(action: MenuAction) -> *const c_char {
     if action == MenuAction::CLICK {
-        MenuItemSelectedSound();
-        ShowHighscores();
+        menu_item_selected_sound();
+        show_highscores();
     }
     null_mut()
 }
 
-pub unsafe fn handle_Credits(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_credits(action: MenuAction) -> *const c_char {
     if action == MenuAction::CLICK {
-        MenuItemSelectedSound();
-        ShowCredits();
+        menu_item_selected_sound();
+        show_credits();
     }
 
     null_mut()
 }
 
-pub unsafe fn handle_LE_SaveShip(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_le_save_ship(action: MenuAction) -> *const c_char {
     use std::io::Write;
 
     const SHIPNAME: &CStr = cstr!("Testship");
@@ -1363,96 +1360,71 @@ pub unsafe fn handle_LE_SaveShip(action: MenuAction) -> *const c_char {
     }
 
     if action == MenuAction::CLICK {
-        SaveShip(SHIPNAME.as_ptr());
+        save_ship(SHIPNAME.as_ptr());
         let mut output = [0; 255];
         let mut cursor = Cursor::new(output.as_mut());
         write!(
             cursor,
             "Ship saved as '{}'",
             CStr::from_ptr(FNAME.as_ptr()).to_str().unwrap()
-        );
+        )
+        .unwrap();
         let position = usize::try_from(cursor.position()).unwrap();
-        CenteredPutString(ne_screen, 3 * FontHeight(&*Menu_BFont), &output[..position]);
-        SDL_Flip(ne_screen);
+        centered_put_string(
+            NE_SCREEN,
+            3 * font_height(&*MENU_B_FONT),
+            &output[..position],
+        );
+        SDL_Flip(NE_SCREEN);
         wait_for_key_pressed();
-        InitiateMenu(false);
+        initiate_menu(false);
     }
 
     null_mut()
 }
 
-pub unsafe fn handle_LE_Comment(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_le_name(action: MenuAction) -> *const c_char {
+    let cur_level = &mut *CUR_LEVEL;
     if action == MenuAction::INFO {
-        (*CurLevel).Level_Enter_Comment
-    } else {
-        null_mut()
-    }
-}
-
-pub unsafe fn handle_LE_Music(action: MenuAction) -> *const c_char {
-    let cur_level = &mut *CurLevel;
-    if action == MenuAction::INFO {
-        return cur_level.Background_Song_Name;
+        return cur_level.levelname;
     }
 
     if action == MenuAction::CLICK {
-        DisplayText(
-            cstr!("Music filename: ").as_ptr() as *mut c_char,
-            i32::from(Menu_Rect.x) - 2 * FONT_HEIGHT,
-            i32::from(Menu_Rect.y) - 3 * FONT_HEIGHT,
-            &Full_User_Rect,
-        );
-        SDL_Flip(ne_screen);
-        libc::free(cur_level.Background_Song_Name as *mut c_void);
-        cur_level.Background_Song_Name = GetString(20, 2);
-        Switch_Background_Music_To(cur_level.Background_Song_Name);
-    }
-
-    null_mut()
-}
-
-pub unsafe fn handle_LE_Name(action: MenuAction) -> *const c_char {
-    let cur_level = &mut *CurLevel;
-    if action == MenuAction::INFO {
-        return cur_level.Levelname;
-    }
-
-    if action == MenuAction::CLICK {
-        DisplayText(
+        display_text(
             cstr!("New level name: ").as_ptr() as *mut c_char,
-            i32::from(Menu_Rect.x) - 2 * FONT_HEIGHT,
-            i32::from(Menu_Rect.y) - 3 * FONT_HEIGHT,
-            &Full_User_Rect,
+            i32::from(MENU_RECT.x) - 2 * FONT_HEIGHT,
+            i32::from(MENU_RECT.y) - 3 * FONT_HEIGHT,
+            &FULL_USER_RECT,
         );
-        SDL_Flip(ne_screen);
-        libc::free(cur_level.Levelname as *mut c_void);
-        cur_level.Levelname = GetString(15, 2);
-        InitiateMenu(false);
+        SDL_Flip(NE_SCREEN);
+        libc::free(cur_level.levelname as *mut c_void);
+        cur_level.levelname = get_string(15, 2);
+        initiate_menu(false);
     }
 
     null_mut()
 }
 
-pub unsafe fn handle_OpenLevelEditor(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_open_level_editor(action: MenuAction) -> *const c_char {
     if action == MenuAction::CLICK {
-        MenuItemSelectedSound();
-        LevelEditor();
+        menu_item_selected_sound();
+        level_editor();
     }
     null_mut()
 }
 
-pub unsafe fn handle_LE_Exit(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_le_exit(action: MenuAction) -> *const c_char {
     if action == MenuAction::CLICK {
-        MenuItemSelectedSound();
-        quit_LevelEditor = true;
+        menu_item_selected_sound();
+        QUIT_LEVEL_EDITOR = true;
         QUIT_MENU = true;
     }
     null_mut()
 }
 
-pub unsafe fn handle_LE_LevelNumber(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_le_level_number(action: MenuAction) -> *const c_char {
     static mut BUF: [c_char; 256] = [0; 256];
-    let cur_level = &*CurLevel;
+    let cur_level = &*CUR_LEVEL;
     if action == MenuAction::INFO {
         libc::sprintf(
             BUF.as_mut_ptr(),
@@ -1463,35 +1435,35 @@ pub unsafe fn handle_LE_LevelNumber(action: MenuAction) -> *const c_char {
     }
 
     let mut curlevel = cur_level.levelnum;
-    menuChangeInt(action, &mut curlevel, 1, 0, curShip.num_levels - 1);
-    Teleport(curlevel, 3, 3);
-    Switch_Background_Music_To(BYCOLOR.as_ptr());
-    InitiateMenu(false);
+    menu_change_int(action, &mut curlevel, 1, 0, CUR_SHIP.num_levels - 1);
+    teleport(curlevel, 3, 3);
+    switch_background_music_to(BYCOLOR.as_ptr());
+    initiate_menu(false);
 
     null_mut()
 }
 
-pub unsafe fn handle_LE_Color(action: MenuAction) -> *const c_char {
-    let cur_level = &mut *CurLevel;
+pub unsafe fn handle_le_color(action: MenuAction) -> *const c_char {
+    let cur_level = &mut *CUR_LEVEL;
     if action == MenuAction::INFO {
         return COLOR_NAMES[usize::try_from(cur_level.color).unwrap()].as_ptr();
     }
-    menuChangeInt(
+    menu_change_int(
         action,
         &mut cur_level.color,
         1,
         0,
         c_int::try_from(COLOR_NAMES.len()).unwrap() - 1,
     );
-    Switch_Background_Music_To(BYCOLOR.as_ptr());
-    InitiateMenu(false);
+    switch_background_music_to(BYCOLOR.as_ptr());
+    initiate_menu(false);
 
     null_mut()
 }
 
-pub unsafe fn handle_LE_SizeX(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_le_size_x(action: MenuAction) -> *const c_char {
     static mut BUF: [c_char; 256] = [0; 256];
-    let cur_level = &mut *CurLevel;
+    let cur_level = &mut *CUR_LEVEL;
     if action == MenuAction::INFO {
         libc::sprintf(
             BUF.as_mut_ptr(),
@@ -1502,7 +1474,7 @@ pub unsafe fn handle_LE_SizeX(action: MenuAction) -> *const c_char {
     }
 
     let oldxlen = cur_level.xlen;
-    menuChangeInt(
+    menu_change_int(
         action,
         &mut cur_level.xlen,
         1,
@@ -1518,7 +1490,7 @@ pub unsafe fn handle_LE_SizeX(action: MenuAction) -> *const c_char {
                 "Failed to re-allocate to {} bytes in map row {}",
                 newmem, row,
             );
-            Terminate(defs::ERR.into());
+            terminate(defs::ERR.into());
         }
         if cur_level.xlen > oldxlen {
             // fill new map area with VOID
@@ -1526,15 +1498,15 @@ pub unsafe fn handle_LE_SizeX(action: MenuAction) -> *const c_char {
                 MapTile::Void as i8;
         }
     }
-    InitiateMenu(false);
+    initiate_menu(false);
     null_mut()
 }
 
-pub unsafe fn handle_LE_SizeY(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_le_size_y(action: MenuAction) -> *const c_char {
     use std::cmp::Ordering;
 
     static mut BUF: [c_char; 256] = [0; 256];
-    let cur_level = &mut *CurLevel;
+    let cur_level = &mut *CUR_LEVEL;
     if action == MenuAction::INFO {
         libc::sprintf(
             BUF.as_mut_ptr(),
@@ -1545,7 +1517,7 @@ pub unsafe fn handle_LE_SizeY(action: MenuAction) -> *const c_char {
     }
 
     let oldylen = cur_level.ylen;
-    menuChangeInt(
+    menu_change_int(
         action,
         &mut cur_level.ylen,
         1,
@@ -1559,7 +1531,7 @@ pub unsafe fn handle_LE_SizeY(action: MenuAction) -> *const c_char {
         }
         Ordering::Less => {
             cur_level.map[usize::try_from(cur_level.ylen - 1).unwrap()] =
-                MyMalloc(cur_level.xlen.into()) as *mut i8;
+                my_malloc(cur_level.xlen.into()) as *mut i8;
             std::ptr::write_bytes(
                 cur_level.map[usize::try_from(cur_level.ylen - 1).unwrap()],
                 MapTile::Void as u8,
@@ -1569,34 +1541,34 @@ pub unsafe fn handle_LE_SizeY(action: MenuAction) -> *const c_char {
         Ordering::Equal => {}
     }
 
-    InitiateMenu(false);
+    initiate_menu(false);
     null_mut()
 }
 
-pub unsafe fn handle_StrictlyClassic(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_strictly_classic(action: MenuAction) -> *const c_char {
     if action == MenuAction::CLICK {
-        MenuItemSelectedSound();
-        GameConfig.Droid_Talk = false.into();
-        GameConfig.ShowDecals = false.into();
-        GameConfig.TakeoverActivates = true.into();
-        GameConfig.FireHoldTakeover = true.into();
-        GameConfig.AllMapVisible = true.into();
-        GameConfig.emptyLevelSpeedup = 1.0;
+        menu_item_selected_sound();
+        GAME_CONFIG.droid_talk = false.into();
+        GAME_CONFIG.show_decals = false.into();
+        GAME_CONFIG.takeover_activates = true.into();
+        GAME_CONFIG.fire_hold_takeover = true.into();
+        GAME_CONFIG.all_map_visible = true.into();
+        GAME_CONFIG.empty_level_speedup = 1.0;
 
         // set window type
-        GameConfig.FullUserRect = false.into();
-        User_Rect = Classic_User_Rect;
+        GAME_CONFIG.full_user_rect = false.into();
+        USER_RECT = CLASSIC_USER_RECT;
         // set theme
-        setTheme(classic_theme_index);
-        InitiateMenu(false);
+        set_theme(CLASSIC_THEME_INDEX);
+        initiate_menu(false);
     }
 
     null_mut()
 }
 
-pub unsafe fn handle_WindowType(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_window_type(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
-        return if GameConfig.FullUserRect != 0 {
+        return if GAME_CONFIG.full_user_rect != 0 {
             cstr!("Full").as_ptr()
         } else {
             cstr!("Classic").as_ptr()
@@ -1604,26 +1576,27 @@ pub unsafe fn handle_WindowType(action: MenuAction) -> *const c_char {
     }
 
     if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
-        flipToggle(&mut GameConfig.FullUserRect);
-        if GameConfig.FullUserRect != 0 {
-            User_Rect = Full_User_Rect;
+        flip_toggle(&mut GAME_CONFIG.full_user_rect);
+        if GAME_CONFIG.full_user_rect != 0 {
+            USER_RECT = FULL_USER_RECT;
         } else {
-            User_Rect = Classic_User_Rect;
+            USER_RECT = CLASSIC_USER_RECT;
         }
 
-        InitiateMenu(false);
+        initiate_menu(false);
     }
     null_mut()
 }
 
-pub unsafe fn handle_Theme(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_theme(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
-        return AllThemes.theme_name[usize::try_from(AllThemes.cur_tnum).unwrap()] as *const c_char;
+        return ALL_THEMES.theme_name[usize::try_from(ALL_THEMES.cur_tnum).unwrap()]
+            as *const c_char;
     }
 
     if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
-        MoveLiftSound();
-        let mut tnum = AllThemes.cur_tnum;
+        move_lift_sound();
+        let mut tnum = ALL_THEMES.cur_tnum;
         if action == MenuAction::CLICK && action == MenuAction::RIGHT {
             tnum += 1;
         } else {
@@ -1631,181 +1604,170 @@ pub unsafe fn handle_Theme(action: MenuAction) -> *const c_char {
         }
 
         if tnum < 0 {
-            tnum = AllThemes.num_themes - 1;
+            tnum = ALL_THEMES.num_themes - 1;
         }
-        if tnum > AllThemes.num_themes - 1 {
+        if tnum > ALL_THEMES.num_themes - 1 {
             tnum = 0;
         }
 
-        setTheme(tnum);
-        InitiateMenu(false);
+        set_theme(tnum);
+        initiate_menu(false);
     }
 
     null_mut()
 }
 
-pub unsafe fn handle_DroidTalk(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_droid_talk(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
-        return isToggleOn(GameConfig.Droid_Talk);
+        return is_toggle_on(GAME_CONFIG.droid_talk);
     }
     if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
-        flipToggle(&mut GameConfig.Droid_Talk);
+        flip_toggle(&mut GAME_CONFIG.droid_talk);
     }
     null_mut()
 }
 
-pub unsafe fn handle_AllMapVisible(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_all_map_visible(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
-        return isToggleOn(GameConfig.AllMapVisible);
+        return is_toggle_on(GAME_CONFIG.all_map_visible);
     }
     if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
-        flipToggle(&mut GameConfig.AllMapVisible);
-        InitiateMenu(false);
+        flip_toggle(&mut GAME_CONFIG.all_map_visible);
+        initiate_menu(false);
     }
     null_mut()
 }
 
-pub unsafe fn handle_ShowDecals(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_show_decals(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
-        return isToggleOn(GameConfig.ShowDecals);
+        return is_toggle_on(GAME_CONFIG.show_decals);
     }
     if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
-        flipToggle(&mut GameConfig.ShowDecals);
-        InitiateMenu(false);
+        flip_toggle(&mut GAME_CONFIG.show_decals);
+        initiate_menu(false);
     }
     null_mut()
 }
 
-pub unsafe fn handle_TransferIsActivate(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_transfer_is_activate(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
-        return isToggleOn(GameConfig.TakeoverActivates);
+        return is_toggle_on(GAME_CONFIG.takeover_activates);
     }
     if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
-        flipToggle(&mut GameConfig.TakeoverActivates);
+        flip_toggle(&mut GAME_CONFIG.takeover_activates);
     }
     null_mut()
 }
 
-pub unsafe fn handle_FireIsTransfer(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_fire_is_transfer(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
-        return isToggleOn(GameConfig.FireHoldTakeover);
+        return is_toggle_on(GAME_CONFIG.fire_hold_takeover);
     }
     if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
-        flipToggle(&mut GameConfig.FireHoldTakeover);
+        flip_toggle(&mut GAME_CONFIG.fire_hold_takeover);
     }
     null_mut()
 }
 
-pub unsafe fn handle_EmptyLevelSpeedup(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_empty_level_speedup(action: MenuAction) -> *const c_char {
     static mut BUF: [c_char; 256] = [0; 256];
     if action == MenuAction::INFO {
         libc::sprintf(
             BUF.as_mut_ptr(),
             cstr!("%3.1f").as_ptr() as *mut c_char,
-            f64::from(GameConfig.emptyLevelSpeedup),
+            f64::from(GAME_CONFIG.empty_level_speedup),
         );
         return BUF.as_ptr();
     }
 
-    menuChangeFloat(action, &mut GameConfig.emptyLevelSpeedup, 0.1, 0.5, 2.0);
+    menu_change_float(action, &mut GAME_CONFIG.empty_level_speedup, 0.1, 0.5, 2.0);
     null_mut()
 }
 
-pub unsafe fn handle_MusicVolume(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_music_volume(action: MenuAction) -> *const c_char {
     static mut BUF: [c_char; 256] = [0; 256];
     if action == MenuAction::INFO {
         libc::sprintf(
             BUF.as_mut_ptr(),
             cstr!("%4.2f").as_ptr() as *mut c_char,
-            f64::from(GameConfig.Current_BG_Music_Volume),
+            f64::from(GAME_CONFIG.current_bg_music_volume),
         );
         return BUF.as_ptr();
     }
 
-    menuChangeFloat(
+    menu_change_float(
         action,
-        &mut GameConfig.Current_BG_Music_Volume,
+        &mut GAME_CONFIG.current_bg_music_volume,
         0.05,
         0.,
         1.,
     );
-    Set_BG_Music_Volume(GameConfig.Current_BG_Music_Volume);
+    set_bg_music_volume(GAME_CONFIG.current_bg_music_volume);
     null_mut()
 }
 
-pub unsafe fn handle_SoundVolume(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_sound_volume(action: MenuAction) -> *const c_char {
     static mut BUF: [c_char; 256] = [0; 256];
     if action == MenuAction::INFO {
         libc::sprintf(
             BUF.as_mut_ptr(),
             cstr!("%4.2f").as_ptr() as *mut c_char,
-            f64::from(GameConfig.Current_Sound_FX_Volume),
+            f64::from(GAME_CONFIG.current_sound_fx_volume),
         );
         return BUF.as_ptr();
     }
 
-    menuChangeFloat(
+    menu_change_float(
         action,
-        &mut GameConfig.Current_Sound_FX_Volume,
+        &mut GAME_CONFIG.current_sound_fx_volume,
         0.05,
         0.,
         1.,
     );
-    Set_Sound_FX_Volume(GameConfig.Current_Sound_FX_Volume);
+    set_sound_f_x_volume(GAME_CONFIG.current_sound_fx_volume);
     null_mut()
 }
 
-pub unsafe fn handle_Fullscreen(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_fullscreen(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
-        return isToggleOn(GameConfig.UseFullscreen);
+        return is_toggle_on(GAME_CONFIG.use_fullscreen);
     }
     if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
         toggle_fullscreen();
-        MenuItemSelectedSound();
+        menu_item_selected_sound();
     }
     null_mut()
 }
 
-pub unsafe fn handle_ShowPosition(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_show_position(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
-        return isToggleOn(GameConfig.Draw_Position);
+        return is_toggle_on(GAME_CONFIG.draw_position);
     }
     if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
-        flipToggle(&mut GameConfig.Draw_Position);
-        InitiateMenu(false);
+        flip_toggle(&mut GAME_CONFIG.draw_position);
+        initiate_menu(false);
     }
     null_mut()
 }
 
-pub unsafe fn handle_ShowFramerate(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_show_framerate(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
-        return isToggleOn(GameConfig.Draw_Framerate);
+        return is_toggle_on(GAME_CONFIG.draw_framerate);
     }
     if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
-        flipToggle(&mut GameConfig.Draw_Framerate);
-        InitiateMenu(false);
+        flip_toggle(&mut GAME_CONFIG.draw_framerate);
+        initiate_menu(false);
     }
     null_mut()
 }
 
-pub unsafe fn handle_ShowEnergy(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_show_energy(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
-        return isToggleOn(GameConfig.Draw_Energy);
+        return is_toggle_on(GAME_CONFIG.draw_energy);
     }
     if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
-        flipToggle(&mut GameConfig.Draw_Energy);
-        InitiateMenu(false);
-    }
-    null_mut()
-}
-
-pub unsafe fn handle_ShowDeathCount(action: MenuAction) -> *const c_char {
-    if action == MenuAction::INFO {
-        return isToggleOn(GameConfig.Draw_DeathCount);
-    }
-    if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT {
-        flipToggle(&mut GameConfig.Draw_DeathCount);
-        InitiateMenu(false);
+        flip_toggle(&mut GAME_CONFIG.draw_energy);
+        initiate_menu(false);
     }
     null_mut()
 }
@@ -1815,13 +1777,13 @@ where
     T: PartialOrd + AddAssign + SubAssign,
 {
     if action == MenuAction::RIGHT && *val < max_value {
-        MoveLiftSound();
+        move_lift_sound();
         *val += step;
         if *val > max_value {
             *val = max_value;
         }
     } else if action == MenuAction::LEFT && *val > min_value {
-        MoveLiftSound();
+        move_lift_sound();
         *val -= step;
         if *val <= min_value {
             *val = min_value;
@@ -1829,7 +1791,7 @@ where
     }
 }
 
-pub unsafe fn menuChangeFloat(
+pub unsafe fn menu_change_float(
     action: MenuAction,
     val: &mut c_float,
     step: c_float,
@@ -1839,7 +1801,7 @@ pub unsafe fn menuChangeFloat(
     menu_change(action, val, step, min_value, max_value)
 }
 
-pub unsafe fn menuChangeInt(
+pub unsafe fn menu_change_int(
     action: MenuAction,
     val: &mut c_int,
     step: c_int,
@@ -1849,7 +1811,7 @@ pub unsafe fn menuChangeInt(
     menu_change(action, val, step, min_value, max_value)
 }
 
-pub fn isToggleOn(toggle: c_int) -> *const c_char {
+pub fn is_toggle_on(toggle: c_int) -> *const c_char {
     if toggle != 0 {
         cstr!("YES").as_ptr()
     } else {
@@ -1857,20 +1819,20 @@ pub fn isToggleOn(toggle: c_int) -> *const c_char {
     }
 }
 
-pub unsafe fn flipToggle(toggle: *mut c_int) {
+pub unsafe fn flip_toggle(toggle: *mut c_int) {
     if toggle.is_null().not() {
-        MenuItemSelectedSound();
+        menu_item_selected_sound();
         *toggle = !*toggle;
     }
 }
 
-pub unsafe fn setTheme(theme_index: c_int) {
-    assert!(theme_index >= 0 && theme_index < AllThemes.num_themes);
+pub unsafe fn set_theme(theme_index: c_int) {
+    assert!(theme_index >= 0 && theme_index < ALL_THEMES.num_themes);
 
-    AllThemes.cur_tnum = theme_index;
+    ALL_THEMES.cur_tnum = theme_index;
     libc::strcpy(
-        GameConfig.Theme_Name.as_mut_ptr(),
-        AllThemes.theme_name[usize::try_from(AllThemes.cur_tnum).unwrap()] as *const c_char,
+        GAME_CONFIG.theme_name.as_mut_ptr(),
+        ALL_THEMES.theme_name[usize::try_from(ALL_THEMES.cur_tnum).unwrap()] as *const c_char,
     );
-    InitPictures();
+    init_pictures();
 }
