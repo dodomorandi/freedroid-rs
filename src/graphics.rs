@@ -186,8 +186,12 @@ pub static mut AllThemes: ThemeList = ThemeList {
 #[no_mangle]
 pub static mut classic_theme_index: i32 = 0;
 
+#[link(name = "SDL_image")]
 extern "C" {
     pub fn IMG_Load(file: *const c_char) -> *mut SDL_Surface;
+}
+
+extern "C" {
     pub fn zoomSurface(
         src: *mut SDL_Surface,
         zoomx: c_double,

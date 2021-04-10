@@ -42,6 +42,7 @@ use std::{
     ptr::null_mut,
 };
 
+#[link(name = "SDL_gfx")]
 extern "C" {
     pub fn rotozoomSurface(
         src: *mut SDL_Surface,

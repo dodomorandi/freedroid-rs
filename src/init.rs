@@ -64,6 +64,7 @@ use std::{
     ptr::null_mut,
 };
 
+#[link(name = "SDL_mixer")]
 extern "C" {
     pub fn Mix_HaltMusic() -> c_int;
 }
