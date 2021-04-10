@@ -12,7 +12,7 @@ use crate::{
     },
     input::{cmd_is_activeR, KeyIsPressedR, SDL_Delay},
     menu::{quit_LevelEditor, showLevelEditorMenu},
-    structs::Level,
+    structs::{Level, Waypoint},
     text::GetString,
     vars::{Full_User_Rect, Screen_Rect, User_Rect},
     view::{Assemble_Combat_Picture, Black, Fill_Rect},
@@ -30,6 +30,7 @@ use sdl::{
     video::ll::SDL_Flip,
 };
 use std::{
+    cmp::Ordering,
     convert::{TryFrom, TryInto},
     ops::Not,
     os::raw::{c_char, c_int},
@@ -41,7 +42,6 @@ const HIGHLIGHTCOLOR2: i32 = 100;
 extern "C" {
     fn Highlight_Current_Block();
     fn Show_Waypoints();
-    fn DeleteWaypoint(level: *mut Level, num: c_int);
 }
 
 /// This function is provides the Level Editor integrated into
@@ -268,7 +268,7 @@ pub unsafe extern "C" fn LevelEditor() {
 
             // if its waypoint already, this waypoint must be deleted.
             if i < usize::try_from((*CurLevel).num_waypoints).unwrap() {
-                DeleteWaypoint(CurLevel, i.try_into().unwrap());
+                delete_waypoint(&mut *CurLevel, i.try_into().unwrap());
             } else {
                 // if its not a waypoint already, it must be made into one
                 create_waypoint(&mut *CurLevel, block_x, block_y);
@@ -441,4 +441,53 @@ fn create_waypoint(level: &mut Level, block_x: c_int, block_y: c_int) {
     level.AllWaypoints[num].x = block_x.try_into().unwrap();
     level.AllWaypoints[num].y = block_y.try_into().unwrap();
     level.AllWaypoints[num].num_connections = 0;
+}
+
+/// delete given waypoint num (and all its connections) on level Lev
+fn delete_waypoint(level: &mut Level, num: c_int) {
+    let wp_list = &mut level.AllWaypoints;
+    let wpmax = level.num_waypoints - 1;
+
+    // is this the last one? then just delete
+    if num == wpmax {
+        wp_list[usize::try_from(num).unwrap()].num_connections = 0;
+    } else {
+        // otherwise shift down all higher waypoints
+        let num: usize = num.try_into().unwrap();
+        wp_list.copy_within((num + 1)..=usize::try_from(wpmax).unwrap(), num);
+    }
+
+    // now there's one less:
+    level.num_waypoints -= 1;
+
+    // now adjust the remaining wp-list to the changes:
+    for waypoint in &mut wp_list[..usize::try_from(level.num_waypoints).unwrap()] {
+        let Waypoint {
+            connections,
+            num_connections,
+            ..
+        } = waypoint;
+
+        let mut connection_index = 0;
+        while connection_index < usize::try_from(*num_connections).unwrap() {
+            let connection = &mut connections[connection_index];
+            // eliminate all references to this waypoint
+            match (*connection).cmp(&num) {
+                Ordering::Equal => {
+                    // move all connections after this one down
+                    connections.copy_within(
+                        (connection_index + 1)..usize::try_from(*num_connections).unwrap(),
+                        connection_index,
+                    );
+                    *num_connections -= 1;
+                }
+                Ordering::Greater => {
+                    // adjust all connections to the shifted waypoint-numbers
+                    *connection -= 1;
+                    connection_index += 1;
+                }
+                Ordering::Less => connection_index += 1,
+            }
+        }
+    }
 }

@@ -491,48 +491,48 @@ Show_Waypoints(void)
 
 
 // delete given waypoint num (and all its connections) on level Lev
-void
-DeleteWaypoint (level *Lev, int num)
-{
-  int i, j;
-  waypoint *WpList, *ThisWp;
-  int wpmax;
-
-  WpList = Lev->AllWaypoints;
-  wpmax = Lev->num_waypoints - 1;
-
-  // is this the last one? then just delete
-  if (num == wpmax)
-    WpList[num].num_connections = 0;
-  else // otherwise shift down all higher waypoints
-    memcpy (&WpList[num], &WpList[num+1], (wpmax - num) * sizeof(waypoint) );
-
-  // now there's one less:
-  Lev->num_waypoints --;
-  wpmax --;
-
-  // now adjust the remaining wp-list to the changes:
-  ThisWp = WpList;
-  for (i=0; i < Lev->num_waypoints; i++, ThisWp++)
-    for (j=0; j < ThisWp->num_connections; j++)
-      {
-	// eliminate all references to this waypoint
-	if (ThisWp->connections[j] == num)
-	  {
-	    // move all connections after this one down
-	    memcpy (&(ThisWp->connections[j]), &(ThisWp->connections[j+1]),
-		    (ThisWp->num_connections-1 - j)*sizeof(int));
-	    ThisWp->num_connections --;
-	    j --;  // just to be sure... check the next connection as well...(they have been shifted!)
-	    continue;
-	  }
-	// adjust all connections to the shifted waypoint-numbers
-	else if (ThisWp->connections[j] > num)
-	  ThisWp->connections[j] --;
-
-      } // for j < num_connections
-
-} // DeleteWaypoint()
+// void
+// DeleteWaypoint (level *Lev, int num)
+// {
+//   int i, j;
+//   waypoint *WpList, *ThisWp;
+//   int wpmax;
+// 
+//   WpList = Lev->AllWaypoints;
+//   wpmax = Lev->num_waypoints - 1;
+// 
+//   // is this the last one? then just delete
+//   if (num == wpmax)
+//     WpList[num].num_connections = 0;
+//   else // otherwise shift down all higher waypoints
+//     memcpy (&WpList[num], &WpList[num+1], (wpmax - num) * sizeof(waypoint) );
+// 
+//   // now there's one less:
+//   Lev->num_waypoints --;
+//   wpmax --;
+// 
+//   // now adjust the remaining wp-list to the changes:
+//   ThisWp = WpList;
+//   for (i=0; i < Lev->num_waypoints; i++, ThisWp++)
+//     for (j=0; j < ThisWp->num_connections; j++)
+//       {
+// 	// eliminate all references to this waypoint
+// 	if (ThisWp->connections[j] == num)
+// 	  {
+// 	    // move all connections after this one down
+// 	    memcpy (&(ThisWp->connections[j]), &(ThisWp->connections[j+1]),
+// 		    (ThisWp->num_connections-1 - j)*sizeof(int));
+// 	    ThisWp->num_connections --;
+// 	    j --;  // just to be sure... check the next connection as well...(they have been shifted!)
+// 	    continue;
+// 	  }
+// 	// adjust all connections to the shifted waypoint-numbers
+// 	else if (ThisWp->connections[j] > num)
+// 	  ThisWp->connections[j] --;
+// 
+//       } // for j < num_connections
+// 
+// } // DeleteWaypoint()
 
 /*----------------------------------------------------------------------
  * create a new empty waypoint on position x/y
