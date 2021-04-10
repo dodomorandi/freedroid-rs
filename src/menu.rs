@@ -67,6 +67,7 @@ use sdl::{
 use std::{
     convert::{TryFrom, TryInto},
     ffi::CStr,
+    io::Cursor,
     ops::{AddAssign, Not, SubAssign},
     os::raw::{c_char, c_float, c_int, c_void},
     ptr::null_mut,
@@ -76,7 +77,6 @@ static mut FONT_HEIGHT: i32 = 0;
 static mut MENU_BACKGROUND: *mut SDL_Surface = null_mut();
 static mut QUIT_MENU: bool = false;
 
-#[no_mangle]
 pub static mut quit_LevelEditor: bool = false;
 
 // const FILENAME_LEN: u8 = 128;
@@ -207,12 +207,11 @@ const MAIN_MENU: [MenuEntry; 10] = [
 #[repr(C)]
 pub struct MenuEntry {
     name: *const c_char,
-    handler: Option<unsafe extern "C" fn(MenuAction) -> *const c_char>,
+    handler: Option<unsafe fn(MenuAction) -> *const c_char>,
     submenu: *const MenuEntry,
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_QuitGame(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_QuitGame(action: MenuAction) -> *const c_char {
     if action != MenuAction::CLICK {
         return null_mut();
     }
@@ -224,12 +223,12 @@ pub unsafe extern "C" fn handle_QuitGame(action: MenuAction) -> *const c_char {
     const QUIT_STRING: &CStr = cstr!("Press A to quit");
 
     #[cfg(not(feature = "gcw0"))]
-    const QUIT_STRING: &CStr = cstr!("Hit 'y' or press Fire to quit");
+    const QUIT_STRING: &[u8] = b"Hit 'y' or press Fire to quit";
 
-    let text_width = TextWidth(QUIT_STRING.as_ptr());
+    let text_width = TextWidth(QUIT_STRING);
     let text_x = i32::from(User_Rect.x) + (i32::from(User_Rect.w) - text_width) / 2;
     let text_y = i32::from(User_Rect.y) + (i32::from(User_Rect.h) - FONT_HEIGHT) / 2;
-    PutString(ne_screen, text_x, text_y, QUIT_STRING.as_ptr());
+    PutString(ne_screen, text_x, text_y, QUIT_STRING);
     SDL_Flip(ne_screen);
 
     #[cfg(feature = "gcw0")]
@@ -264,18 +263,15 @@ pub unsafe extern "C" fn handle_QuitGame(action: MenuAction) -> *const c_char {
 }
 
 /// simple wrapper to ShowMenu() to provide the external entry point into the main menu
-#[no_mangle]
-pub unsafe extern "C" fn showMainMenu() {
+pub unsafe fn showMainMenu() {
     ShowMenu(MAIN_MENU.as_ptr());
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn FreeMenuData() {
+pub unsafe fn FreeMenuData() {
     SDL_FreeSurface(MENU_BACKGROUND);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn InitiateMenu(with_droids: bool) {
+pub unsafe fn InitiateMenu(with_droids: bool) {
     // Here comes the standard initializer for all the menus and submenus
     // of the big escape menu.  This prepares the screen, so that we can
     // write on it further down.
@@ -310,8 +306,7 @@ pub unsafe extern "C" fn InitiateMenu(with_droids: bool) {
     FONT_HEIGHT = FontHeight(&*GetCurrentFont()) + 2;
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Cheatmenu() {
+pub unsafe fn Cheatmenu() {
     // Prevent distortion of framerate by the delay coming from
     // the time spend in the menu.
     Activate_Conservative_Frame_Computation();
@@ -332,121 +327,80 @@ pub unsafe extern "C" fn Cheatmenu() {
             ne_screen,
             X0,
             Y0,
-            cstr!("Current position: Level=%d, X=%d, Y=%d\n").as_ptr() as *mut c_char,
-            cur_level.levelnum,
-            Me.pos.x as c_int,
-            Me.pos.y as c_int,
+            format_args!(
+                "Current position: Level={}, X={:.0}, Y={:.0}\n",
+                cur_level.levelnum, Me.pos.x, Me.pos.y,
+            ),
         );
         printf_SDL(
             ne_screen,
             -1,
             -1,
-            cstr!(" a. Armageddon (alle Robots sprengen)\n").as_ptr() as *mut c_char,
+            format_args!(" a. Armageddon (alle Robots sprengen)\n"),
         );
         printf_SDL(
             ne_screen,
             -1,
             -1,
-            cstr!(" l. robot list of current level\n").as_ptr() as *mut c_char,
+            format_args!(" l. robot list of current level\n"),
+        );
+        printf_SDL(ne_screen, -1, -1, format_args!(" g. complete robot list\n"));
+        printf_SDL(
+            ne_screen,
+            -1,
+            -1,
+            format_args!(" d. destroy robots on current level\n"),
+        );
+        printf_SDL(ne_screen, -1, -1, format_args!(" t. Teleportation\n"));
+        printf_SDL(
+            ne_screen,
+            -1,
+            -1,
+            format_args!(" r. change to new robot type\n"),
         );
         printf_SDL(
             ne_screen,
             -1,
             -1,
-            cstr!(" g. complete robot list\n").as_ptr() as *mut c_char,
+            format_args!(
+                " i. Invinciblemode: {}\n",
+                if InvincibleMode != 0 { "ON" } else { "OFF" },
+            ),
+        );
+        printf_SDL(ne_screen, -1, -1, format_args!(" e. set energy\n"));
+        printf_SDL(
+            ne_screen,
+            -1,
+            -1,
+            format_args!(
+                " n. No hidden droids: {}\n",
+                if show_all_droids != 0 { "ON" } else { "OFF" },
+            ),
+        );
+        printf_SDL(ne_screen, -1, -1, format_args!(" m. Map of Deck xy\n"));
+        printf_SDL(
+            ne_screen,
+            -1,
+            -1,
+            format_args!(" s. Sound: {}\n", if sound_on != 0 { "ON" } else { "OFF" }),
         );
         printf_SDL(
             ne_screen,
             -1,
             -1,
-            cstr!(" d. destroy robots on current level\n").as_ptr() as *mut c_char,
+            format_args!(" w. Print current waypoints\n"),
         );
+        printf_SDL(ne_screen, -1, -1, format_args!(" z. change Zoom factor\n"));
         printf_SDL(
             ne_screen,
             -1,
             -1,
-            cstr!(" t. Teleportation\n").as_ptr() as *mut c_char,
+            format_args!(
+                " f. Freeze on this positon: {}\n",
+                if stop_influencer != 0 { "ON" } else { "OFF" },
+            ),
         );
-        printf_SDL(
-            ne_screen,
-            -1,
-            -1,
-            cstr!(" r. change to new robot type\n").as_ptr() as *mut c_char,
-        );
-        printf_SDL(
-            ne_screen,
-            -1,
-            -1,
-            cstr!(" i. Invinciblemode: %s").as_ptr() as *mut c_char,
-            if InvincibleMode != 0 {
-                cstr!("ON\n").as_ptr() as *mut c_char
-            } else {
-                cstr!("OFF\n").as_ptr() as *mut c_char
-            },
-        );
-        printf_SDL(
-            ne_screen,
-            -1,
-            -1,
-            cstr!(" e. set energy\n").as_ptr() as *mut c_char,
-        );
-        printf_SDL(
-            ne_screen,
-            -1,
-            -1,
-            cstr!(" n. No hidden droids: %s").as_ptr() as *mut c_char,
-            if show_all_droids != 0 {
-                cstr!("ON\n").as_ptr() as *mut c_char
-            } else {
-                cstr!("OFF\n").as_ptr() as *mut c_char
-            },
-        );
-        printf_SDL(
-            ne_screen,
-            -1,
-            -1,
-            cstr!(" m. Map of Deck xy\n").as_ptr() as *mut c_char,
-        );
-        printf_SDL(
-            ne_screen,
-            -1,
-            -1,
-            cstr!(" s. Sound: %s").as_ptr() as *mut c_char,
-            if sound_on != 0 {
-                cstr!("ON\n").as_ptr() as *mut c_char
-            } else {
-                cstr!("OFF\n").as_ptr() as *mut c_char
-            },
-        );
-        printf_SDL(
-            ne_screen,
-            -1,
-            -1,
-            cstr!(" w. Print current waypoints\n").as_ptr() as *mut c_char,
-        );
-        printf_SDL(
-            ne_screen,
-            -1,
-            -1,
-            cstr!(" z. change Zoom factor\n").as_ptr() as *mut c_char,
-        );
-        printf_SDL(
-            ne_screen,
-            -1,
-            -1,
-            cstr!(" f. Freeze on this positon: %s").as_ptr() as *mut c_char,
-            if stop_influencer != 0 {
-                cstr!("ON\n").as_ptr() as *mut c_char
-            } else {
-                cstr!("OFF\n").as_ptr() as *mut c_char
-            },
-        );
-        printf_SDL(
-            ne_screen,
-            -1,
-            -1,
-            cstr!(" q. RESUME game\n").as_ptr() as *mut c_char,
-        );
+        printf_SDL(ne_screen, -1, -1, format_args!(" q. RESUME game\n"));
 
         match u8::try_from(getchar_raw()).ok() {
             Some(b'f') => {
@@ -459,15 +413,9 @@ pub unsafe extern "C" fn Cheatmenu() {
                     ne_screen,
                     X0,
                     Y0,
-                    cstr!("Current Zoom factor: %f\n").as_ptr() as *mut c_char,
-                    CurrentCombatScaleFactor as f64,
+                    format_args!("Current Zoom factor: {}\n", CurrentCombatScaleFactor),
                 );
-                printf_SDL(
-                    ne_screen,
-                    -1,
-                    -1,
-                    cstr!("New zoom factor: ").as_ptr() as *mut c_char,
-                );
+                printf_SDL(ne_screen, -1, -1, format_args!("New zoom factor: "));
                 let input = GetString(40, 2);
                 libc::sscanf(
                     input,
@@ -490,12 +438,7 @@ pub unsafe extern "C" fn Cheatmenu() {
                 for i in 0..usize::try_from(NumEnemys).unwrap() {
                     if AllEnemys[i].levelnum == cur_level.levelnum {
                         if l != 0 && l % 20 == 0 {
-                            printf_SDL(
-                                ne_screen,
-                                -1,
-                                -1,
-                                cstr!(" --- MORE --- \n").as_ptr() as *mut c_char,
-                            );
+                            printf_SDL(ne_screen, -1, -1, format_args!(" --- MORE --- \n"));
                             if getchar_raw() == b'q'.into() {
                                 break;
                             }
@@ -506,50 +449,49 @@ pub unsafe extern "C" fn Cheatmenu() {
                                 ne_screen,
                                 X0,
                                 Y0,
-                                cstr!(" NR.   ID  X    Y   ENERGY   Status\n").as_ptr()
-                                    as *mut c_char,
+                                format_args!(" NR.   ID  X    Y   ENERGY   Status\n"),
                             );
                             printf_SDL(
                                 ne_screen,
                                 -1,
                                 -1,
-                                cstr!("---------------------------------------------\n").as_ptr()
-                                    as *mut c_char,
+                                format_args!("---------------------------------------------\n"),
                             );
                         }
 
                         l += 1;
                         let status = if AllEnemys[i].status == Status::Out as i32 {
-                            cstr!("OUT").as_ptr() as *mut c_char
+                            "OUT"
                         } else if AllEnemys[i].status == Status::Terminated as i32 {
-                            cstr!("DEAD").as_ptr() as *mut c_char
+                            "DEAD"
                         } else {
-                            cstr!("ACTIVE").as_ptr() as *mut c_char
+                            "ACTIVE"
                         };
 
                         printf_SDL(
                             ne_screen,
                             -1,
                             -1,
-                            cstr!("%d.   %s   %d   %d   %d    %s.\n").as_ptr() as *mut c_char,
-                            i as i32,
-                            droid_map[usize::try_from(AllEnemys[i].ty).unwrap()]
-                                .druidname
-                                .as_ptr(),
-                            AllEnemys[i].pos.x as c_int,
-                            AllEnemys[i].pos.y as c_int,
-                            AllEnemys[i].energy as c_int,
-                            status,
+                            format_args!(
+                                "{}.   {}   {:.0}   {:.0}   {:.0}    {}.\n",
+                                i,
+                                CStr::from_ptr(
+                                    droid_map[usize::try_from(AllEnemys[i].ty).unwrap()]
+                                        .druidname
+                                        .as_ptr()
+                                )
+                                .to_str()
+                                .unwrap(),
+                                AllEnemys[i].pos.x,
+                                AllEnemys[i].pos.y,
+                                AllEnemys[i].energy,
+                                status,
+                            ),
                         );
                     }
                 }
 
-                printf_SDL(
-                    ne_screen,
-                    -1,
-                    -1,
-                    cstr!(" --- END --- \n").as_ptr() as *mut c_char,
-                );
+                printf_SDL(ne_screen, -1, -1, format_args!(" --- END --- \n"));
                 getchar_raw();
             }
 
@@ -565,7 +507,7 @@ pub unsafe extern "C" fn Cheatmenu() {
                             ne_screen,
                             -1,
                             -1,
-                            cstr!(" --- MORE --- ('q' to quit)\n").as_ptr() as *mut c_char,
+                            format_args!(" --- MORE --- ('q' to quit)\n"),
                         );
                         if getchar_raw() == b'q'.into() {
                             break;
@@ -577,13 +519,13 @@ pub unsafe extern "C" fn Cheatmenu() {
                             ne_screen,
                             X0,
                             Y0,
-                            cstr!("Nr.  Lev. ID  Energy  Status.\n").as_ptr() as *mut c_char,
+                            format_args!("Nr.  Lev. ID  Energy  Status.\n"),
                         );
                         printf_SDL(
                             ne_screen,
                             -1,
                             -1,
-                            cstr!("------------------------------\n").as_ptr() as *mut c_char,
+                            format_args!("------------------------------\n"),
                         );
                     }
 
@@ -591,23 +533,26 @@ pub unsafe extern "C" fn Cheatmenu() {
                         ne_screen,
                         -1,
                         -1,
-                        cstr!("%d  %d  %s  %d  %s\n").as_ptr() as *mut c_char,
-                        i as i32,
-                        AllEnemys[i].levelnum,
-                        droid_map[usize::try_from(AllEnemys[i].ty).unwrap()]
-                            .druidname
-                            .as_ptr(),
-                        AllEnemys[i].energy as c_int,
-                        INFLUENCE_MODE_NAMES[usize::try_from(AllEnemys[i].status).unwrap()],
+                        format_args!(
+                            "{}  {}  {}  {:.0}  {}\n",
+                            i,
+                            AllEnemys[i].levelnum,
+                            CStr::from_ptr(
+                                droid_map[usize::try_from(AllEnemys[i].ty).unwrap()]
+                                    .druidname
+                                    .as_ptr()
+                            )
+                            .to_str()
+                            .unwrap(),
+                            AllEnemys[i].energy,
+                            INFLUENCE_MODE_NAMES[usize::try_from(AllEnemys[i].status).unwrap()]
+                                .to_str()
+                                .unwrap(),
+                        ),
                     );
                 }
 
-                printf_SDL(
-                    ne_screen,
-                    -1,
-                    -1,
-                    cstr!(" --- END ---\n").as_ptr() as *mut c_char,
-                );
+                printf_SDL(ne_screen, -1, -1, format_args!(" --- END ---\n"));
                 getchar_raw();
             }
 
@@ -622,7 +567,7 @@ pub unsafe extern "C" fn Cheatmenu() {
                     ne_screen,
                     -1,
                     -1,
-                    cstr!("All robots on this deck killed!\n").as_ptr() as *mut c_char,
+                    format_args!("All robots on this deck killed!\n"),
                 );
                 getchar_raw();
             }
@@ -630,12 +575,7 @@ pub unsafe extern "C" fn Cheatmenu() {
             Some(b't') => {
                 /* Teleportation */
                 ClearGraphMem();
-                printf_SDL(
-                    ne_screen,
-                    X0,
-                    Y0,
-                    cstr!("Enter Level, X, Y: ").as_ptr() as *mut c_char,
-                );
+                printf_SDL(ne_screen, X0, Y0, format_args!("Enter Level, X, Y: "));
                 let input = GetString(40, 2);
                 let mut l_num = 0;
                 let mut x = 0;
@@ -659,7 +599,7 @@ pub unsafe extern "C" fn Cheatmenu() {
                     ne_screen,
                     X0,
                     Y0,
-                    cstr!("Type number of new robot: ").as_ptr() as *mut c_char,
+                    format_args!("Type number of new robot: "),
                 );
                 let input = GetString(40, 2);
                 let mut i = 0;
@@ -675,8 +615,10 @@ pub unsafe extern "C" fn Cheatmenu() {
                         ne_screen,
                         X0,
                         Y0 + 20,
-                        cstr!("Unrecognized robot-type: %s").as_ptr() as *mut c_char,
-                        input,
+                        format_args!(
+                            "Unrecognized robot-type: {}",
+                            CStr::from_ptr(input).to_str().unwrap(),
+                        ),
                     );
                     getchar_raw();
                     ClearGraphMem();
@@ -688,8 +630,10 @@ pub unsafe extern "C" fn Cheatmenu() {
                         ne_screen,
                         X0,
                         Y0 + 20,
-                        cstr!("You are now a %s. Have fun!\n").as_ptr() as *mut c_char,
-                        input,
+                        format_args!(
+                            "You are now a {}. Have fun!\n",
+                            CStr::from_ptr(input).to_str().unwrap(),
+                        ),
                     );
                     getchar_raw();
                 }
@@ -708,15 +652,9 @@ pub unsafe extern "C" fn Cheatmenu() {
                     ne_screen,
                     X0,
                     Y0,
-                    cstr!("Current energy: %f\n").as_ptr() as *mut c_char,
-                    Me.energy as f64,
+                    format_args!("Current energy: {}\n", Me.energy,),
                 );
-                printf_SDL(
-                    ne_screen,
-                    -1,
-                    -1,
-                    cstr!("Enter your new energy: ").as_ptr() as *mut c_char,
-                );
+                printf_SDL(ne_screen, -1, -1, format_args!("Enter your new energy: "));
                 let input = GetString(40, 2);
                 let mut num = 0;
                 libc::sscanf(input, cstr!("%d").as_ptr() as *mut c_char, &mut num);
@@ -739,12 +677,7 @@ pub unsafe extern "C" fn Cheatmenu() {
 
             Some(b'm') => {
                 /* Show deck map in Concept view */
-                printf_SDL(
-                    ne_screen,
-                    -1,
-                    -1,
-                    cstr!("\nLevelnum: ").as_ptr() as *mut c_char,
-                );
+                printf_SDL(ne_screen, -1, -1, format_args!("\nLevelnum: "));
                 let input = GetString(40, 2);
                 let mut l_num = 0;
                 libc::sscanf(input, cstr!("%d").as_ptr() as *mut c_char, &mut l_num);
@@ -757,12 +690,7 @@ pub unsafe extern "C" fn Cheatmenu() {
                 /* print waypoint info of current level */
                 for (i, waypoint) in cur_level.AllWaypoints.iter_mut().enumerate() {
                     if i != 0 && i % 20 == 0 {
-                        printf_SDL(
-                            ne_screen,
-                            -1,
-                            -1,
-                            cstr!(" ---- MORE -----\n").as_ptr() as *mut c_char,
-                        );
+                        printf_SDL(ne_screen, -1, -1, format_args!(" ---- MORE -----\n"));
                         if getchar_raw() == b'q'.into() {
                             break;
                         }
@@ -773,35 +701,32 @@ pub unsafe extern "C" fn Cheatmenu() {
                             ne_screen,
                             X0,
                             Y0,
-                            cstr!("Nr.   X   Y      C1  C2  C3  C4\n").as_ptr() as *mut c_char,
+                            format_args!("Nr.   X   Y      C1  C2  C3  C4\n"),
                         );
                         printf_SDL(
                             ne_screen,
                             -1,
                             -1,
-                            cstr!("------------------------------------\n").as_ptr() as *mut c_char,
+                            format_args!("------------------------------------\n"),
                         );
                     }
                     printf_SDL(
                         ne_screen,
                         -1,
                         -1,
-                        cstr!("%2d   %2d  %2d      %2d  %2d  %2d  %2d\n").as_ptr() as *mut c_char,
-                        i as i32,
-                        i32::from(waypoint.x),
-                        i32::from(waypoint.y),
-                        waypoint.connections[0],
-                        waypoint.connections[1],
-                        waypoint.connections[2],
-                        waypoint.connections[3],
+                        format_args!(
+                            "{:2}   {:2}  {:2}      {:2}  {:2}  {:2}  {:2}\n",
+                            i,
+                            waypoint.x,
+                            waypoint.y,
+                            waypoint.connections[0],
+                            waypoint.connections[1],
+                            waypoint.connections[2],
+                            waypoint.connections[3],
+                        ),
                     );
                 }
-                printf_SDL(
-                    ne_screen,
-                    -1,
-                    -1,
-                    cstr!(" --- END ---\n").as_ptr() as *mut c_char,
-                );
+                printf_SDL(ne_screen, -1, -1, format_args!(" --- END ---\n"));
                 getchar_raw();
             }
 
@@ -824,8 +749,7 @@ pub unsafe extern "C" fn Cheatmenu() {
 /// such as from touchpad 'wheel' or android joystic emulation
 /// don't create unexpected menu movements:
 /// ==> ignore all movement commands withing delay_ms milliseconds of each other
-#[no_mangle]
-pub unsafe extern "C" fn getMenuAction(wait_repeat_ticks: u32) -> MenuAction {
+pub unsafe fn getMenuAction(wait_repeat_ticks: u32) -> MenuAction {
     let mut action = MenuAction::empty();
 
     // 'normal' menu action keys get released
@@ -916,8 +840,9 @@ pub unsafe extern "C" fn getMenuAction(wait_repeat_ticks: u32) -> MenuAction {
 }
 
 /// Generic menu handler
-#[no_mangle]
-pub unsafe extern "C" fn ShowMenu(menu_entries: *const MenuEntry) {
+pub unsafe fn ShowMenu(menu_entries: *const MenuEntry) {
+    use std::io::Write;
+
     InitiateMenu(false);
     wait_for_all_keys_released();
 
@@ -930,7 +855,7 @@ pub unsafe extern "C" fn ShowMenu(menu_entries: *const MenuEntry) {
             break;
         }
 
-        let width = TextWidth(entry.name);
+        let width = TextWidth(CStr::from_ptr(entry.name).to_bytes());
         menu_width = Some(
             menu_width
                 .map(|menu_width| menu_width.max(width))
@@ -973,18 +898,21 @@ pub unsafe extern "C" fn ShowMenu(menu_entries: *const MenuEntry) {
                     arg
                 };
 
-                let mut full_name: [c_char; 256] = [0; 256];
-                libc::sprintf(
-                    full_name.as_mut_ptr(),
-                    cstr!("%s%s").as_ptr(),
-                    entry.name,
-                    arg,
-                );
+                let mut full_name: [u8; 256] = [0; 256];
+                let mut cursor = Cursor::new(full_name.as_mut());
+                write!(
+                    cursor,
+                    "{}{}",
+                    CStr::from_ptr(entry.name).to_str().unwrap(),
+                    CStr::from_ptr(arg).to_str().unwrap()
+                )
+                .unwrap();
+                let position = usize::try_from(cursor.position()).unwrap();
                 PutString(
                     ne_screen,
                     menu_x,
                     menu_y + i32::try_from(i).unwrap() * FONT_HEIGHT,
-                    full_name.as_ptr(),
+                    &full_name[..position],
                 );
             });
             PutInfluence(
@@ -1097,8 +1025,7 @@ pub unsafe extern "C" fn ShowMenu(menu_entries: *const MenuEntry) {
 }
 
 /// subroutine to display the current key-config and highlight current selection
-#[no_mangle]
-pub unsafe extern "C" fn Display_Key_Config(selx: c_int, sely: c_int) {
+pub unsafe fn Display_Key_Config(selx: c_int, sely: c_int) {
     let startx = i32::from(Full_User_Rect.x) + (1.2 * f32::from(Block_Rect.w)) as i32;
     let starty = i32::from(Full_User_Rect.y) + FontHeight(&*GetCurrentFont());
     let col1 = startx + (7.5 * f64::from(CharWidth(&*GetCurrentFont(), b'O'.into()))) as i32;
@@ -1114,7 +1041,7 @@ pub unsafe extern "C" fn Display_Key_Config(selx: c_int, sely: c_int) {
         Font0_BFont,
         col1,
         starty,
-        cstr!("(RShldr to clear an entry)").as_ptr() as *mut c_char,
+        format_args!("(RShldr to clear an entry)"),
     );
 
     #[cfg(not(feature = "gcw0"))]
@@ -1124,14 +1051,14 @@ pub unsafe extern "C" fn Display_Key_Config(selx: c_int, sely: c_int) {
             Font0_BFont,
             col1,
             starty,
-            cstr!("(RShldr to clear an entry)").as_ptr() as *mut c_char,
+            format_args!("(RShldr to clear an entry)"),
         );
         PrintStringFont(
             ne_screen,
             Font0_BFont,
             col1,
             starty,
-            cstr!("(Backspace to clear an entry)").as_ptr() as *mut c_char,
+            format_args!("(Backspace to clear an entry)"),
         );
     }
 
@@ -1141,28 +1068,28 @@ pub unsafe extern "C" fn Display_Key_Config(selx: c_int, sely: c_int) {
         Font0_BFont,
         startx,
         starty + (posy) * lheight,
-        cstr!("Command").as_ptr() as *mut c_char,
+        format_args!("Command"),
     );
     PrintStringFont(
         ne_screen,
         Font0_BFont,
         col1,
         starty + (posy) * lheight,
-        cstr!("Key1").as_ptr() as *mut c_char,
+        format_args!("Key1"),
     );
     PrintStringFont(
         ne_screen,
         Font0_BFont,
         col2,
         starty + (posy) * lheight,
-        cstr!("Key2").as_ptr() as *mut c_char,
+        format_args!("Key2"),
     );
     PrintStringFont(
         ne_screen,
         Font0_BFont,
         col3,
         starty + (posy) * lheight,
-        cstr!("Key3").as_ptr() as *mut c_char,
+        format_args!("Key3"),
     );
     posy += 1;
 
@@ -1180,28 +1107,43 @@ pub unsafe extern "C" fn Display_Key_Config(selx: c_int, sely: c_int) {
             Font0_BFont,
             startx,
             starty + (posy) * lheight,
-            cmd_strings[i] as *mut c_char,
+            format_args!("{}", CStr::from_ptr(cmd_strings[i]).to_str().unwrap()),
         );
         PrintStringFont(
             ne_screen,
             pos_font(1, 1 + i),
             col1,
             starty + (posy) * lheight,
-            keystr[usize::try_from(key_cmds[i][0]).unwrap()] as *mut c_char,
+            format_args!(
+                "{}",
+                CStr::from_ptr(keystr[usize::try_from(key_cmds[i][0]).unwrap()])
+                    .to_str()
+                    .unwrap()
+            ),
         );
         PrintStringFont(
             ne_screen,
             pos_font(2, 1 + i),
             col2,
             starty + (posy) * lheight,
-            keystr[usize::try_from(key_cmds[i][1]).unwrap()] as *mut c_char,
+            format_args!(
+                "{}",
+                CStr::from_ptr(keystr[usize::try_from(key_cmds[i][1]).unwrap()])
+                    .to_str()
+                    .unwrap()
+            ),
         );
         PrintStringFont(
             ne_screen,
             pos_font(3, 1 + i),
             col3,
             starty + (posy) * lheight,
-            keystr[usize::try_from(key_cmds[i][2]).unwrap()] as *mut c_char,
+            format_args!(
+                "{}",
+                CStr::from_ptr(keystr[usize::try_from(key_cmds[i][2]).unwrap()])
+                    .to_str()
+                    .unwrap()
+            ),
         );
         posy += 1;
     }
@@ -1209,8 +1151,7 @@ pub unsafe extern "C" fn Display_Key_Config(selx: c_int, sely: c_int) {
     SDL_Flip(ne_screen);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Key_Config_Menu() {
+pub unsafe fn Key_Config_Menu() {
     let mut selx = 1;
     let mut sely = 1; // currently selected menu-position
     const WAIT_MOVE_TICKS: u32 = 100;
@@ -1304,8 +1245,7 @@ pub unsafe extern "C" fn Key_Config_Menu() {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn ShowCredits() {
+pub unsafe fn ShowCredits() {
     let col2 = 2 * i32::from(User_Rect.w) / 3;
 
     let h = FontHeight(&*Menu_BFont);
@@ -1328,135 +1268,45 @@ pub unsafe extern "C" fn ShowCredits() {
         ne_screen,
         i32::from(get_user_center().x) - 2 * em,
         h,
-        cstr!("CREDITS\n").as_ptr() as *mut c_char,
+        format_args!("CREDITS\n"),
     );
 
-    printf_SDL(
-        ne_screen,
-        em,
-        -1,
-        cstr!("PROGRAMMING:").as_ptr() as *mut c_char,
-    );
-    printf_SDL(
-        ne_screen,
-        col2,
-        -1,
-        cstr!("Johannes Prix\n").as_ptr() as *mut c_char,
-    );
-    printf_SDL(
-        ne_screen,
-        -1,
-        -1,
-        cstr!("Reinhard Prix\n").as_ptr() as *mut c_char,
-    );
-    printf_SDL(ne_screen, -1, -1, cstr!("\n").as_ptr() as *mut c_char);
+    printf_SDL(ne_screen, em, -1, format_args!("PROGRAMMING:"));
+    printf_SDL(ne_screen, col2, -1, format_args!("Johannes Prix\n"));
+    printf_SDL(ne_screen, -1, -1, format_args!("Reinhard Prix\n"));
+    printf_SDL(ne_screen, -1, -1, format_args!("\n"));
 
-    printf_SDL(ne_screen, em, -1, cstr!("ARTWORK:").as_ptr() as *mut c_char);
-    printf_SDL(
-        ne_screen,
-        col2,
-        -1,
-        cstr!("Bastian Salmela\n").as_ptr() as *mut c_char,
-    );
-    printf_SDL(ne_screen, -1, -1, cstr!("\n").as_ptr() as *mut c_char);
-    printf_SDL(
-        ne_screen,
-        em,
-        -1,
-        cstr!("ADDITIONAL THEMES:\n").as_ptr() as *mut c_char,
-    );
-    printf_SDL(
-        ne_screen,
-        2 * em,
-        -1,
-        cstr!("Lanzz-theme").as_ptr() as *mut c_char,
-    );
-    printf_SDL(
-        ne_screen,
-        col2,
-        -1,
-        cstr!("Lanzz\n").as_ptr() as *mut c_char,
-    );
-    printf_SDL(
-        ne_screen,
-        2 * em,
-        -1,
-        cstr!("Para90-theme").as_ptr() as *mut c_char,
-    );
-    printf_SDL(
-        ne_screen,
-        col2,
-        -1,
-        cstr!("Andreas Wedemeyer\n").as_ptr() as *mut c_char,
-    );
+    printf_SDL(ne_screen, em, -1, format_args!("ARTWORK:"));
+    printf_SDL(ne_screen, col2, -1, format_args!("Bastian Salmela\n"));
+    printf_SDL(ne_screen, -1, -1, format_args!("\n"));
+    printf_SDL(ne_screen, em, -1, format_args!("ADDITIONAL THEMES:\n"));
+    printf_SDL(ne_screen, 2 * em, -1, format_args!("Lanzz-theme"));
+    printf_SDL(ne_screen, col2, -1, format_args!("Lanzz\n"));
+    printf_SDL(ne_screen, 2 * em, -1, format_args!("Para90-theme"));
+    printf_SDL(ne_screen, col2, -1, format_args!("Andreas Wedemeyer\n"));
 
-    printf_SDL(ne_screen, -1, -1, cstr!("\n").as_ptr() as *mut c_char);
-    printf_SDL(
-        ne_screen,
-        em,
-        -1,
-        cstr!("C64 LEGACY MODS:\n").as_ptr() as *mut c_char,
-    );
+    printf_SDL(ne_screen, -1, -1, format_args!("\n"));
+    printf_SDL(ne_screen, em, -1, format_args!("C64 LEGACY MODS:\n"));
 
     printf_SDL(
         ne_screen,
         2 * em,
         -1,
-        cstr!("Green Beret, Sanxion, Uridium2").as_ptr() as *mut c_char,
+        format_args!("Green Beret, Sanxion, Uridium2"),
     );
-    printf_SDL(
-        ne_screen,
-        col2,
-        -1,
-        cstr!("#dreamfish/trsi\n").as_ptr() as *mut c_char,
-    );
+    printf_SDL(ne_screen, col2, -1, format_args!("#dreamfish/trsi\n"));
 
-    printf_SDL(
-        ne_screen,
-        2 * em,
-        -1,
-        cstr!("The last V8, Anarchy").as_ptr() as *mut c_char,
-    );
-    printf_SDL(
-        ne_screen,
-        col2,
-        -1,
-        cstr!("4-mat\n").as_ptr() as *mut c_char,
-    );
+    printf_SDL(ne_screen, 2 * em, -1, format_args!("The last V8, Anarchy"));
+    printf_SDL(ne_screen, col2, -1, format_args!("4-mat\n"));
 
-    printf_SDL(ne_screen, 2 * em, -1, cstr!("Tron").as_ptr() as *mut c_char);
-    printf_SDL(
-        ne_screen,
-        col2,
-        -1,
-        cstr!("Kollaps\n").as_ptr() as *mut c_char,
-    );
+    printf_SDL(ne_screen, 2 * em, -1, format_args!("Tron"));
+    printf_SDL(ne_screen, col2, -1, format_args!("Kollaps\n"));
 
-    printf_SDL(
-        ne_screen,
-        2 * em,
-        -1,
-        cstr!("Starpaws").as_ptr() as *mut c_char,
-    );
-    printf_SDL(
-        ne_screen,
-        col2,
-        -1,
-        cstr!("Nashua\n").as_ptr() as *mut c_char,
-    );
+    printf_SDL(ne_screen, 2 * em, -1, format_args!("Starpaws"));
+    printf_SDL(ne_screen, col2, -1, format_args!("Nashua\n"));
 
-    printf_SDL(
-        ne_screen,
-        2 * em,
-        -1,
-        cstr!("Commando").as_ptr() as *mut c_char,
-    );
-    printf_SDL(
-        ne_screen,
-        col2,
-        -1,
-        cstr!("Android").as_ptr() as *mut c_char,
-    );
+    printf_SDL(ne_screen, 2 * em, -1, format_args!("Commando"));
+    printf_SDL(ne_screen, col2, -1, format_args!("Android"));
 
     SDL_Flip(ne_screen);
     wait_for_key_pressed();
@@ -1464,14 +1314,12 @@ pub unsafe extern "C" fn ShowCredits() {
 }
 
 /// simple wrapper to ShowMenu() to provide the external entry point into the Level Editor menu
-#[no_mangle]
-pub unsafe extern "C" fn showLevelEditorMenu() {
+pub unsafe fn showLevelEditorMenu() {
     quit_LevelEditor = false;
     ShowMenu(LEVEL_EDITOR_MENU.as_ptr());
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_ConfigureKeys(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_ConfigureKeys(action: MenuAction) -> *const c_char {
     if action == MenuAction::CLICK {
         MenuItemSelectedSound();
         Key_Config_Menu();
@@ -1480,8 +1328,7 @@ pub unsafe extern "C" fn handle_ConfigureKeys(action: MenuAction) -> *const c_ch
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_Highscores(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_Highscores(action: MenuAction) -> *const c_char {
     if action == MenuAction::CLICK {
         MenuItemSelectedSound();
         ShowHighscores();
@@ -1489,8 +1336,7 @@ pub unsafe extern "C" fn handle_Highscores(action: MenuAction) -> *const c_char 
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_Credits(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_Credits(action: MenuAction) -> *const c_char {
     if action == MenuAction::CLICK {
         MenuItemSelectedSound();
         ShowCredits();
@@ -1499,8 +1345,9 @@ pub unsafe extern "C" fn handle_Credits(action: MenuAction) -> *const c_char {
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_LE_SaveShip(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_LE_SaveShip(action: MenuAction) -> *const c_char {
+    use std::io::Write;
+
     const SHIPNAME: &CStr = cstr!("Testship");
     static mut FNAME: [c_char; 255] = [0; 255];
     libc::snprintf(
@@ -1518,13 +1365,14 @@ pub unsafe extern "C" fn handle_LE_SaveShip(action: MenuAction) -> *const c_char
     if action == MenuAction::CLICK {
         SaveShip(SHIPNAME.as_ptr());
         let mut output = [0; 255];
-        libc::snprintf(
-            output.as_mut_ptr(),
-            output.len() - 1,
-            cstr!("Ship saved as '%s'").as_ptr() as *mut c_char,
-            FNAME.as_ptr(),
+        let mut cursor = Cursor::new(output.as_mut());
+        write!(
+            cursor,
+            "Ship saved as '{}'",
+            CStr::from_ptr(FNAME.as_ptr()).to_str().unwrap()
         );
-        CenteredPutString(ne_screen, 3 * FontHeight(&*Menu_BFont), output.as_mut_ptr());
+        let position = usize::try_from(cursor.position()).unwrap();
+        CenteredPutString(ne_screen, 3 * FontHeight(&*Menu_BFont), &output[..position]);
         SDL_Flip(ne_screen);
         wait_for_key_pressed();
         InitiateMenu(false);
@@ -1533,8 +1381,7 @@ pub unsafe extern "C" fn handle_LE_SaveShip(action: MenuAction) -> *const c_char
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_LE_Comment(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_LE_Comment(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
         (*CurLevel).Level_Enter_Comment
     } else {
@@ -1542,8 +1389,7 @@ pub unsafe extern "C" fn handle_LE_Comment(action: MenuAction) -> *const c_char 
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_LE_Music(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_LE_Music(action: MenuAction) -> *const c_char {
     let cur_level = &mut *CurLevel;
     if action == MenuAction::INFO {
         return cur_level.Background_Song_Name;
@@ -1565,8 +1411,7 @@ pub unsafe extern "C" fn handle_LE_Music(action: MenuAction) -> *const c_char {
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_LE_Name(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_LE_Name(action: MenuAction) -> *const c_char {
     let cur_level = &mut *CurLevel;
     if action == MenuAction::INFO {
         return cur_level.Levelname;
@@ -1588,8 +1433,7 @@ pub unsafe extern "C" fn handle_LE_Name(action: MenuAction) -> *const c_char {
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_OpenLevelEditor(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_OpenLevelEditor(action: MenuAction) -> *const c_char {
     if action == MenuAction::CLICK {
         MenuItemSelectedSound();
         LevelEditor();
@@ -1597,8 +1441,7 @@ pub unsafe extern "C" fn handle_OpenLevelEditor(action: MenuAction) -> *const c_
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_LE_Exit(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_LE_Exit(action: MenuAction) -> *const c_char {
     if action == MenuAction::CLICK {
         MenuItemSelectedSound();
         quit_LevelEditor = true;
@@ -1607,8 +1450,7 @@ pub unsafe extern "C" fn handle_LE_Exit(action: MenuAction) -> *const c_char {
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_LE_LevelNumber(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_LE_LevelNumber(action: MenuAction) -> *const c_char {
     static mut BUF: [c_char; 256] = [0; 256];
     let cur_level = &*CurLevel;
     if action == MenuAction::INFO {
@@ -1629,8 +1471,7 @@ pub unsafe extern "C" fn handle_LE_LevelNumber(action: MenuAction) -> *const c_c
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_LE_Color(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_LE_Color(action: MenuAction) -> *const c_char {
     let cur_level = &mut *CurLevel;
     if action == MenuAction::INFO {
         return COLOR_NAMES[usize::try_from(cur_level.color).unwrap()].as_ptr();
@@ -1648,8 +1489,7 @@ pub unsafe extern "C" fn handle_LE_Color(action: MenuAction) -> *const c_char {
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_LE_SizeX(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_LE_SizeX(action: MenuAction) -> *const c_char {
     static mut BUF: [c_char; 256] = [0; 256];
     let cur_level = &mut *CurLevel;
     if action == MenuAction::INFO {
@@ -1690,8 +1530,7 @@ pub unsafe extern "C" fn handle_LE_SizeX(action: MenuAction) -> *const c_char {
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_LE_SizeY(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_LE_SizeY(action: MenuAction) -> *const c_char {
     use std::cmp::Ordering;
 
     static mut BUF: [c_char; 256] = [0; 256];
@@ -1734,8 +1573,7 @@ pub unsafe extern "C" fn handle_LE_SizeY(action: MenuAction) -> *const c_char {
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_StrictlyClassic(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_StrictlyClassic(action: MenuAction) -> *const c_char {
     if action == MenuAction::CLICK {
         MenuItemSelectedSound();
         GameConfig.Droid_Talk = false.into();
@@ -1756,8 +1594,7 @@ pub unsafe extern "C" fn handle_StrictlyClassic(action: MenuAction) -> *const c_
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_WindowType(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_WindowType(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
         return if GameConfig.FullUserRect != 0 {
             cstr!("Full").as_ptr()
@@ -1779,8 +1616,7 @@ pub unsafe extern "C" fn handle_WindowType(action: MenuAction) -> *const c_char 
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_Theme(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_Theme(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
         return AllThemes.theme_name[usize::try_from(AllThemes.cur_tnum).unwrap()] as *const c_char;
     }
@@ -1808,8 +1644,7 @@ pub unsafe extern "C" fn handle_Theme(action: MenuAction) -> *const c_char {
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_DroidTalk(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_DroidTalk(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
         return isToggleOn(GameConfig.Droid_Talk);
     }
@@ -1819,8 +1654,7 @@ pub unsafe extern "C" fn handle_DroidTalk(action: MenuAction) -> *const c_char {
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_AllMapVisible(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_AllMapVisible(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
         return isToggleOn(GameConfig.AllMapVisible);
     }
@@ -1831,8 +1665,7 @@ pub unsafe extern "C" fn handle_AllMapVisible(action: MenuAction) -> *const c_ch
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_ShowDecals(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_ShowDecals(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
         return isToggleOn(GameConfig.ShowDecals);
     }
@@ -1843,8 +1676,7 @@ pub unsafe extern "C" fn handle_ShowDecals(action: MenuAction) -> *const c_char 
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_TransferIsActivate(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_TransferIsActivate(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
         return isToggleOn(GameConfig.TakeoverActivates);
     }
@@ -1854,8 +1686,7 @@ pub unsafe extern "C" fn handle_TransferIsActivate(action: MenuAction) -> *const
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_FireIsTransfer(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_FireIsTransfer(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
         return isToggleOn(GameConfig.FireHoldTakeover);
     }
@@ -1865,8 +1696,7 @@ pub unsafe extern "C" fn handle_FireIsTransfer(action: MenuAction) -> *const c_c
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_EmptyLevelSpeedup(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_EmptyLevelSpeedup(action: MenuAction) -> *const c_char {
     static mut BUF: [c_char; 256] = [0; 256];
     if action == MenuAction::INFO {
         libc::sprintf(
@@ -1881,8 +1711,7 @@ pub unsafe extern "C" fn handle_EmptyLevelSpeedup(action: MenuAction) -> *const 
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_MusicVolume(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_MusicVolume(action: MenuAction) -> *const c_char {
     static mut BUF: [c_char; 256] = [0; 256];
     if action == MenuAction::INFO {
         libc::sprintf(
@@ -1904,8 +1733,7 @@ pub unsafe extern "C" fn handle_MusicVolume(action: MenuAction) -> *const c_char
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_SoundVolume(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_SoundVolume(action: MenuAction) -> *const c_char {
     static mut BUF: [c_char; 256] = [0; 256];
     if action == MenuAction::INFO {
         libc::sprintf(
@@ -1927,8 +1755,7 @@ pub unsafe extern "C" fn handle_SoundVolume(action: MenuAction) -> *const c_char
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_Fullscreen(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_Fullscreen(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
         return isToggleOn(GameConfig.UseFullscreen);
     }
@@ -1939,8 +1766,7 @@ pub unsafe extern "C" fn handle_Fullscreen(action: MenuAction) -> *const c_char 
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_ShowPosition(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_ShowPosition(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
         return isToggleOn(GameConfig.Draw_Position);
     }
@@ -1951,8 +1777,7 @@ pub unsafe extern "C" fn handle_ShowPosition(action: MenuAction) -> *const c_cha
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_ShowFramerate(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_ShowFramerate(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
         return isToggleOn(GameConfig.Draw_Framerate);
     }
@@ -1963,8 +1788,7 @@ pub unsafe extern "C" fn handle_ShowFramerate(action: MenuAction) -> *const c_ch
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_ShowEnergy(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_ShowEnergy(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
         return isToggleOn(GameConfig.Draw_Energy);
     }
@@ -1975,8 +1799,7 @@ pub unsafe extern "C" fn handle_ShowEnergy(action: MenuAction) -> *const c_char 
     null_mut()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn handle_ShowDeathCount(action: MenuAction) -> *const c_char {
+pub unsafe fn handle_ShowDeathCount(action: MenuAction) -> *const c_char {
     if action == MenuAction::INFO {
         return isToggleOn(GameConfig.Draw_DeathCount);
     }
@@ -2006,8 +1829,7 @@ where
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn menuChangeFloat(
+pub unsafe fn menuChangeFloat(
     action: MenuAction,
     val: &mut c_float,
     step: c_float,
@@ -2017,8 +1839,7 @@ pub unsafe extern "C" fn menuChangeFloat(
     menu_change(action, val, step, min_value, max_value)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn menuChangeInt(
+pub unsafe fn menuChangeInt(
     action: MenuAction,
     val: &mut c_int,
     step: c_int,
@@ -2028,8 +1849,7 @@ pub unsafe extern "C" fn menuChangeInt(
     menu_change(action, val, step, min_value, max_value)
 }
 
-#[no_mangle]
-pub extern "C" fn isToggleOn(toggle: c_int) -> *const c_char {
+pub fn isToggleOn(toggle: c_int) -> *const c_char {
     if toggle != 0 {
         cstr!("YES").as_ptr()
     } else {
@@ -2037,16 +1857,14 @@ pub extern "C" fn isToggleOn(toggle: c_int) -> *const c_char {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn flipToggle(toggle: *mut c_int) {
+pub unsafe fn flipToggle(toggle: *mut c_int) {
     if toggle.is_null().not() {
         MenuItemSelectedSound();
         *toggle = !*toggle;
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn setTheme(theme_index: c_int) {
+pub unsafe fn setTheme(theme_index: c_int) {
     assert!(theme_index >= 0 && theme_index < AllThemes.num_themes);
 
     AllThemes.cur_tnum = theme_index;

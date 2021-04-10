@@ -54,7 +54,6 @@ extern "C" {
 
 const BLINK_LEN: f32 = 1.0;
 
-#[no_mangle]
 pub static Black: SDL_Color = SDL_Color {
     r: 0,
     g: 0,
@@ -75,8 +74,7 @@ const FLASH_DARK: SDL_Color = SDL_Color {
     unused: 0,
 };
 
-#[no_mangle]
-pub unsafe extern "C" fn Fill_Rect(mut rect: Rect, color: SDL_Color) {
+pub unsafe fn Fill_Rect(mut rect: Rect, color: SDL_Color) {
     let pixcolor = SDL_MapRGB((*ne_screen).format, color.r, color.g, color.b);
 
     SDL_FillRect(ne_screen, &mut rect, pixcolor);
@@ -95,8 +93,7 @@ pub unsafe extern "C" fn Fill_Rect(mut rect: Rect, color: SDL_Color) {
 ///     that has been modified
 ///
 /// (*) SHOW_FULL_MAP = 0x04: show complete map, disregard visibility
-#[no_mangle]
-pub unsafe extern "C" fn Assemble_Combat_Picture(mask: c_int) {
+pub unsafe fn Assemble_Combat_Picture(mask: c_int) {
     thread_local! {
         static TIME_SINCE_LAST_FPS_UPDATE: Cell<f32> = Cell::new(10.);
         static FPS_DISPLAYED: Cell<i32>=Cell::new(1);
@@ -200,10 +197,12 @@ pub unsafe extern "C" fn Assemble_Combat_Picture(mask: c_int) {
             (Full_User_Rect.x + (Full_User_Rect.w / 6) as i16).into(),
             i32::from(Full_User_Rect.y) + i32::from(Full_User_Rect.h)
                 - i32::from(FontHeight(&*Font0_BFont)),
-            cstr!("GPS: X=%d Y=%d Lev=%d").as_ptr() as *mut i8,
-            (Me.pos.x).round() as i32,
-            (Me.pos.y).round() as i32,
-            (*CurLevel).levelnum,
+            format_args!(
+                "GPS: X={:.0} Y={:.0} Lev={}",
+                Me.pos.x.round(),
+                Me.pos.y.round(),
+                (*CurLevel).levelnum,
+            ),
         );
     }
 
@@ -231,8 +230,7 @@ pub unsafe extern "C" fn Assemble_Combat_Picture(mask: c_int) {
                     (Full_User_Rect.y as i32 + Full_User_Rect.h as i32
                         - FontHeight(&*Font0_BFont) as i32)
                         .into(),
-                    cstr!("FPS: %d ").as_ptr() as *mut i8,
-                    fps_displayed.get(),
+                    format_args!("FPS: {} ", fps_displayed.get()),
                 );
             });
         }
@@ -244,8 +242,7 @@ pub unsafe extern "C" fn Assemble_Combat_Picture(mask: c_int) {
                 i32::from(Full_User_Rect.x) + i32::from(Full_User_Rect.w) / 2,
                 i32::from(Full_User_Rect.y) + i32::from(Full_User_Rect.h)
                     - i32::from(FontHeight(&*Font0_BFont)),
-                cstr!("Energy: %d").as_ptr() as *mut i8,
-                Me.energy as i32,
+                format_args!("Energy: {:.0}", Me.energy),
             );
         }
         if GameConfig.Draw_DeathCount != 0 {
@@ -255,8 +252,7 @@ pub unsafe extern "C" fn Assemble_Combat_Picture(mask: c_int) {
                 i32::from(Full_User_Rect.x) + 2 * i32::from(Full_User_Rect.w) / 3,
                 i32::from(Full_User_Rect.y) + i32::from(Full_User_Rect.h)
                     - i32::from(FontHeight(&*Font0_BFont)),
-                cstr!("Deathcount: %d").as_ptr() as *mut i8,
-                DeathCount as i32,
+                format_args!("Deathcount: {:.0}", DeathCount,),
             );
         }
 
@@ -325,8 +321,7 @@ pub unsafe extern "C" fn Assemble_Combat_Picture(mask: c_int) {
 }
 
 /// put some ashes at (x,y)
-#[no_mangle]
-pub unsafe extern "C" fn PutAshes(x: f32, y: f32) {
+pub unsafe fn PutAshes(x: f32, y: f32) {
     if GameConfig.ShowDecals == 0 {
         return;
     }
@@ -343,8 +338,7 @@ pub unsafe extern "C" fn PutAshes(x: f32, y: f32) {
     SDL_UpperBlit(Decal_pics[0], null_mut(), ne_screen, &mut dst);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn PutEnemy(enemy_index: c_int, x: c_int, y: c_int) {
+pub unsafe fn PutEnemy(enemy_index: c_int, x: c_int, y: c_int) {
     let droid: &mut Enemy = &mut AllEnemys[usize::try_from(enemy_index).unwrap()];
     let ty = droid.ty;
     let phase = droid.phase;
@@ -437,7 +431,7 @@ pub unsafe extern "C" fn PutEnemy(enemy_index: c_int, x: c_int, y: c_int) {
                 + (droid.pos.x - Me.pos.x) * f32::from(Block_Rect.w)) as i32,
             (f32::from(User_Rect.y) + f32::from(User_Rect.h / 2) - f32::from(Block_Rect.h / 2)
                 + (droid.pos.y - Me.pos.y) * f32::from(Block_Rect.h)) as i32,
-            droid.TextToBeDisplayed,
+            CStr::from_ptr(droid.TextToBeDisplayed).to_bytes(),
         );
     }
 
@@ -448,8 +442,7 @@ pub unsafe extern "C" fn PutEnemy(enemy_index: c_int, x: c_int, y: c_int) {
 /// to the center of the combat window if (-1,-1) was specified, or
 /// to the specified coordinates anywhere on the screen, useful e.g.
 /// for using the influencer as a cursor in the menus.
-#[no_mangle]
-pub unsafe extern "C" fn PutInfluence(x: c_int, y: c_int) {
+pub unsafe fn PutInfluence(x: c_int, y: c_int) {
     let text_rect = Rect::new(
         User_Rect.x + (User_Rect.w / 2) as i16 + (Block_Rect.w / 3) as i16,
         User_Rect.y + (User_Rect.h / 2) as i16 - (Block_Rect.h / 2) as i16,
@@ -575,8 +568,7 @@ pub unsafe extern "C" fn PutInfluence(x: c_int, y: c_int) {
 /// PutBullet: draws a Bullet into the combat window.  The only
 /// parameter given is the number of the bullet in the AllBullets
 /// array. Everything else is computed in here.
-#[no_mangle]
-pub unsafe extern "C" fn PutBullet(bullet_number: c_int) {
+pub unsafe fn PutBullet(bullet_number: c_int) {
     let cur_bullet = &mut AllBullets[usize::try_from(bullet_number).unwrap()];
 
     trace!("PutBullet: real function call confirmed.");
@@ -660,8 +652,7 @@ pub unsafe extern "C" fn PutBullet(bullet_number: c_int) {
     trace!("PutBullet: end of function reached.");
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn PutBlast(blast_number: c_int) {
+pub unsafe fn PutBlast(blast_number: c_int) {
     trace!("PutBlast: real function call confirmed.");
 
     let cur_blast = &mut AllBlasts[usize::try_from(blast_number).unwrap()];
@@ -697,8 +688,7 @@ pub unsafe extern "C" fn PutBlast(blast_number: c_int) {
 /// This function fills the whole combat window with the one color
 /// given as the only parameter to the function.  For this purpose
 /// a fast SDL basic function is used.
-#[no_mangle]
-pub unsafe extern "C" fn SetUserfenster(color: c_int) {
+pub unsafe fn SetUserfenster(color: c_int) {
     SDL_FillRect(ne_screen, &mut User_Rect.clone(), color as u32);
 }
 
@@ -714,12 +704,7 @@ pub unsafe extern "C" fn SetUserfenster(color: c_int) {
 /// text.
 ///
 /// BANNER_NO_SDL_UPDATE=4: Prevents any SDL_Update calls.
-#[no_mangle]
-pub unsafe extern "C" fn DisplayBanner(
-    mut left: *const c_char,
-    mut right: *const c_char,
-    flags: c_int,
-) {
+pub unsafe fn DisplayBanner(mut left: *const c_char, mut right: *const c_char, flags: c_int) {
     use std::io::Write;
 
     let mut dummy: [u8; 80];
@@ -816,7 +801,12 @@ pub unsafe extern "C" fn DisplayBanner(
                 Para_BFont,
                 dst.x.into(),
                 dst.y.into(),
-                left_box.as_mut_ptr() as *mut c_char,
+                format_args!(
+                    "{}",
+                    CStr::from_ptr(left_box.as_ptr() as *const c_char)
+                        .to_str()
+                        .unwrap()
+                ),
             );
             let left_box_len = left_box.iter().position(|&c| c == 0).unwrap();
             PREVIOUS_LEFT_BOX.with(|previous_left_box| {
@@ -832,7 +822,12 @@ pub unsafe extern "C" fn DisplayBanner(
                 Para_BFont,
                 dst.x.into(),
                 dst.y.into(),
-                right_box.as_mut_ptr() as *mut c_char,
+                format_args!(
+                    "{}",
+                    CStr::from_ptr(right_box.as_ptr() as *const c_char)
+                        .to_str()
+                        .unwrap()
+                ),
             );
             let right_box_len = right_box.iter().position(|&c| c == 0).unwrap();
             PREVIOUS_RIGHT_BOX.with(|previous_right_box| {
@@ -850,10 +845,4 @@ pub unsafe extern "C" fn DisplayBanner(
         BannerIsDestroyed = false.into();
         return;
     }
-}
-
-/// Translate a map-pos (x,y) to screen-coords (X,Y) using influ-position Me.pos
-#[no_mangle]
-pub extern "C" fn Map2ScreenXY(_map_pos: Finepoint, _screen_pos: *mut Point) {
-    todo!()
 }

@@ -46,34 +46,33 @@ extern "C" {
     pub fn SDL_Delay(ms: u32);
 }
 
-#[no_mangle]
 pub static mut show_cursor: bool = false;
-#[no_mangle]
+
 pub static mut WheelUpEvents: c_int = 0;
-#[no_mangle]
+
 pub static mut WheelDownEvents: c_int = 0;
-#[no_mangle]
+
 pub static mut last_mouse_event: u32 = 0;
-#[no_mangle]
+
 pub static mut current_modifiers: SDLMod = 0;
-#[no_mangle]
+
 pub static mut input_state: [c_int; PointerStates::Last as usize] =
     [0; PointerStates::Last as usize];
-#[no_mangle]
+
 pub static mut event: SDL_Event = SDL_Event { data: [0; 24] };
-#[no_mangle]
+
 pub static mut joy_sensitivity: c_int = 0;
-#[no_mangle]
+
 pub static mut input_axis: Point = Point { x: 0, y: 0 }; /* joystick (and mouse) axis values */
-#[no_mangle]
+
 pub static mut joy: *mut SDL_Joystick = null_mut();
-#[no_mangle]
+
 pub static mut joy_num_axes: i32 = 0; /* number of joystick axes */
-#[no_mangle]
+
 pub static mut axis_is_active: i32 = 0; /* is firing to use axis-values or not */
 
 #[cfg(feature = "gcw0")]
-#[no_mangle]
+
 pub static mut key_cmds: [[c_int; 3]; Cmds::Last as usize] = [
     [SDLK_UP as c_int, PointerStates::JoyUp as c_int, 0], // CMD_UP
     [SDLK_DOWN as c_int, PointerStates::JoyDown as c_int, 0], // CMD_DOWN
@@ -95,7 +94,7 @@ pub static mut key_cmds: [[c_int; 3]; Cmds::Last as usize] = [
 ];
 
 #[cfg(not(feature = "gcw0"))]
-#[no_mangle]
+
 pub static mut key_cmds: [[c_int; 3]; Cmds::Last as usize] = [
     [
         SDLK_UP as c_int,
@@ -140,7 +139,6 @@ pub static mut key_cmds: [[c_int; 3]; Cmds::Last as usize] = [
     ], // CMD_BACK
 ];
 
-#[no_mangle]
 pub static mut cmd_strings: [*const c_char; Cmds::Last as usize] = [
     cstr!("UP").as_ptr(),
     cstr!("DOWN").as_ptr(),
@@ -159,13 +157,11 @@ pub static mut cmd_strings: [*const c_char; Cmds::Last as usize] = [
 
 pub const CURSOR_KEEP_VISIBLE: u32 = 3000; // ticks to keep mouse-cursor visible without mouse-input
 
-#[no_mangle]
 pub static mut keystr: [*const c_char; PointerStates::Last as usize] =
     [null(); PointerStates::Last as usize];
 
 /// Check if any keys have been 'freshly' pressed. If yes, return key-code, otherwise 0.
-#[no_mangle]
-pub extern "C" fn wait_for_key_pressed() -> c_int {
+pub fn wait_for_key_pressed() -> c_int {
     loop {
         match any_key_just_pressed() {
             0 => unsafe { SDL_Delay(1) },
@@ -174,8 +170,7 @@ pub extern "C" fn wait_for_key_pressed() -> c_int {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn any_key_just_pressed() -> c_int {
+pub fn any_key_just_pressed() -> c_int {
     #[cfg(target_os = "android")]
     unsafe {
         SDL_Flip(ne_screen)
@@ -210,8 +205,7 @@ fn clear_fresh(key_flags: &mut c_int) {
     *key_flags &= !FRESH_BIT;
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn update_input() -> c_int {
+pub unsafe fn update_input() -> c_int {
     // switch mouse-cursor visibility as a function of time of last activity
     if SDL_GetTicks() - last_mouse_event > CURSOR_KEEP_VISIBLE {
         show_cursor = false;
@@ -391,29 +385,25 @@ pub unsafe extern "C" fn update_input() -> c_int {
     0
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn KeyIsPressed(key: c_int) -> bool {
+pub unsafe fn KeyIsPressed(key: c_int) -> bool {
     update_input();
 
     (input_state[usize::try_from(key).unwrap()] & PRESSED) == PRESSED
 }
 
 /// Does the same as KeyIsPressed, but automatically releases the key as well..
-#[no_mangle]
-pub unsafe extern "C" fn KeyIsPressedR(key: c_int) -> bool {
+pub unsafe fn KeyIsPressedR(key: c_int) -> bool {
     let ret = KeyIsPressed(key);
 
     ReleaseKey(key);
     ret
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn ReleaseKey(key: c_int) {
+pub unsafe fn ReleaseKey(key: c_int) {
     input_state[usize::try_from(key).unwrap()] = false.into();
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn WheelUpPressed() -> bool {
+pub unsafe fn WheelUpPressed() -> bool {
     update_input();
     if WheelUpEvents != 0 {
         WheelUpEvents -= 1;
@@ -423,8 +413,7 @@ pub unsafe extern "C" fn WheelUpPressed() -> bool {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn WheelDownPressed() -> bool {
+pub unsafe fn WheelDownPressed() -> bool {
     update_input();
     if WheelDownEvents != 0 {
         WheelDownEvents -= 1;
@@ -434,8 +423,7 @@ pub unsafe extern "C" fn WheelDownPressed() -> bool {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn cmd_is_active(cmd: Cmds) -> bool {
+pub unsafe fn cmd_is_active(cmd: Cmds) -> bool {
     let cmd = cmd as usize;
     KeyIsPressed(key_cmds[cmd][0])
         || KeyIsPressed(key_cmds[cmd][1])
@@ -443,8 +431,7 @@ pub unsafe extern "C" fn cmd_is_active(cmd: Cmds) -> bool {
 }
 
 /// the same but release the keys: use only for menus!
-#[no_mangle]
-pub unsafe extern "C" fn cmd_is_activeR(cmd: Cmds) -> bool {
+pub unsafe fn cmd_is_activeR(cmd: Cmds) -> bool {
     let cmd = cmd as usize;
 
     let c1 = KeyIsPressedR(key_cmds[cmd][0]);
@@ -454,16 +441,14 @@ pub unsafe extern "C" fn cmd_is_activeR(cmd: Cmds) -> bool {
     c1 || c2 || c3
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn wait_for_all_keys_released() {
+pub unsafe fn wait_for_all_keys_released() {
     while any_key_is_pressedR() {
         SDL_Delay(1);
     }
     ResetMouseWheel();
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn any_key_is_pressedR() -> bool {
+pub unsafe fn any_key_is_pressedR() -> bool {
     #[cfg(target_os = "android")]
     SDL_Flip(ne_screen); // make sure we keep updating screen to read out Android inputs
 
@@ -480,20 +465,18 @@ pub unsafe extern "C" fn any_key_is_pressedR() -> bool {
 }
 
 // forget the wheel-counters
-#[no_mangle]
-pub unsafe extern "C" fn ResetMouseWheel() {
+
+pub unsafe fn ResetMouseWheel() {
     WheelUpEvents = 0;
     WheelDownEvents = 0;
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn ModIsPressed(sdl_mod: SDLMod) -> bool {
+pub unsafe fn ModIsPressed(sdl_mod: SDLMod) -> bool {
     update_input();
     (current_modifiers & sdl_mod) != 0
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn NoDirectionPressed() -> bool {
+pub unsafe fn NoDirectionPressed() -> bool {
     !((axis_is_active != 0 && (input_axis.x != 0 || input_axis.y != 0))
         || DownPressed()
         || UpPressed()
@@ -501,8 +484,7 @@ pub unsafe extern "C" fn NoDirectionPressed() -> bool {
         || RightPressed())
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn JoyAxisMotion() -> c_int {
+pub unsafe fn JoyAxisMotion() -> c_int {
     update_input();
     (input_state[PointerStates::JoyUp as usize] != 0
         || input_state[PointerStates::JoyDown as usize] != 0
@@ -511,8 +493,7 @@ pub unsafe extern "C" fn JoyAxisMotion() -> c_int {
         .into()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn ReactToSpecialKeys() {
+pub unsafe fn ReactToSpecialKeys() {
     if cmd_is_activeR(Cmds::Quit) {
         handle_QuitGame(MenuAction::CLICK);
     }
@@ -539,8 +520,7 @@ pub unsafe extern "C" fn ReactToSpecialKeys() {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Init_Joy() {
+pub unsafe fn Init_Joy() {
     if SDL_InitSubSystem(SDL_INIT_JOYSTICK) == -1 {
         eprintln!("Couldn't initialize SDL-Joystick: {}", sdl::get_error(),);
         Terminate(defs::ERR.into());
@@ -572,8 +552,7 @@ pub unsafe extern "C" fn Init_Joy() {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn init_keystr() {
+pub unsafe fn init_keystr() {
     use sdl::keysym::*;
 
     keystr[0] = cstr!("NONE").as_ptr(); // Empty bind will otherwise crash on some platforms - also, we choose "NONE" as a placeholder...

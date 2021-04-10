@@ -68,122 +68,88 @@ use std::{
     ptr::null_mut,
 };
 
-#[no_mangle]
 pub static mut vid_info: *const SDL_VideoInfo = null_mut();
 
-#[no_mangle]
 pub static mut vid_bpp: c_int = 0;
 
-#[no_mangle]
 pub static mut portrait_raw_mem: [*mut c_char; Droid::NumDroids as usize] =
     [null_mut(); Droid::NumDroids as usize];
 
-#[no_mangle]
 pub static mut fonts_loaded: c_int = 0;
 
-#[no_mangle]
 pub static mut MapBlockSurfacePointer: [[*mut SDL_Surface; NUM_MAP_BLOCKS]; NUM_COLORS] =
     [[null_mut(); NUM_MAP_BLOCKS]; NUM_COLORS]; // A pointer to the surfaces containing the map-pics, which may be rescaled with respect to
 
-#[no_mangle]
 pub static mut OrigMapBlockSurfacePointer: [[*mut SDL_Surface; NUM_MAP_BLOCKS]; NUM_COLORS] =
     [[null_mut(); NUM_MAP_BLOCKS]; NUM_COLORS]; // A pointer to the surfaces containing the original map-pics as read from disk
 
-#[no_mangle]
 pub static mut BuildBlock: *mut SDL_Surface = null_mut(); // a block for temporary pic-construction
 
-#[no_mangle]
 pub static mut BannerIsDestroyed: i32 = 0;
 
-#[no_mangle]
 pub static mut banner_pic: *mut SDL_Surface = null_mut(); /* the banner pic */
 
-#[no_mangle]
 pub static mut pic999: *mut SDL_Surface = null_mut();
 
-#[no_mangle]
 pub static mut packed_portraits: [*mut SDL_RWops; Droid::NumDroids as usize] =
     [null_mut(); Droid::NumDroids as usize];
 
-#[no_mangle]
 pub static mut Decal_pics: [*mut SDL_Surface; NUM_DECAL_PICS] = [null_mut(); NUM_DECAL_PICS];
 
-#[no_mangle]
 pub static mut takeover_bg_pic: *mut SDL_Surface = null_mut();
 
-#[no_mangle]
 pub static mut console_pic: *mut SDL_Surface = null_mut();
 
-#[no_mangle]
 pub static mut console_bg_pic1: *mut SDL_Surface = null_mut();
 
-#[no_mangle]
 pub static mut console_bg_pic2: *mut SDL_Surface = null_mut();
 
-#[no_mangle]
 pub static mut arrow_up: *mut SDL_Surface = null_mut();
 
-#[no_mangle]
 pub static mut arrow_down: *mut SDL_Surface = null_mut();
 
-#[no_mangle]
 pub static mut arrow_right: *mut SDL_Surface = null_mut();
 
-#[no_mangle]
 pub static mut arrow_left: *mut SDL_Surface = null_mut();
 
-#[no_mangle]
 pub static mut ship_off_pic: *mut SDL_Surface = null_mut(); /* Side-view of ship: lights off */
 
-#[no_mangle]
 pub static mut ship_on_pic: *mut SDL_Surface = null_mut(); /* Side-view of ship: lights on */
 
-#[no_mangle]
 pub static mut progress_meter_pic: *mut SDL_Surface = null_mut();
 
-#[no_mangle]
 pub static mut progress_filler_pic: *mut SDL_Surface = null_mut();
 
-#[no_mangle]
 pub static mut ne_screen: *mut SDL_Surface = null_mut(); /* the graphics display */
 
-#[no_mangle]
 pub static mut EnemySurfacePointer: [*mut SDL_Surface; ENEMYPHASES as usize] =
     [null_mut(); ENEMYPHASES as usize]; // A pointer to the surfaces containing the pictures of the
                                         // enemys in different phases of rotation
 
-#[no_mangle]
 pub static mut InfluencerSurfacePointer: [*mut SDL_Surface; ENEMYPHASES as usize] =
     [null_mut(); ENEMYPHASES as usize]; // A pointer to the surfaces containing the pictures of the
                                         // influencer in different phases of rotation
 
-#[no_mangle]
 pub static mut InfluDigitSurfacePointer: [*mut SDL_Surface; DIGITNUMBER] =
     [null_mut(); DIGITNUMBER]; // A pointer to the surfaces containing the pictures of the
                                // influencer in different phases of rotation
 
-#[no_mangle]
 pub static mut EnemyDigitSurfacePointer: [*mut SDL_Surface; DIGITNUMBER] =
     [null_mut(); DIGITNUMBER]; // A pointer to the surfaces containing the pictures of the
                                // influencer in different phases of rotation
 
-#[no_mangle]
 pub static mut crosshair_cursor: *mut SDL_Cursor = null_mut();
 
-#[no_mangle]
 pub static mut arrow_cursor: *mut SDL_Cursor = null_mut();
 
-#[no_mangle]
 pub static mut Number_Of_Bullet_Types: i32 = 0;
 
-#[no_mangle]
 pub static mut AllThemes: ThemeList = ThemeList {
     num_themes: 0,
     cur_tnum: 0,
     theme_name: [null_mut(); MAX_THEMES],
 };
 
-#[no_mangle]
 pub static mut classic_theme_index: i32 = 0;
 
 #[link(name = "SDL_image")]
@@ -207,8 +173,7 @@ extern "C" {
 /// "second" pixel is blacked out, thereby generation a fading
 /// effect.  This function was created to fade the background of the
 /// Escape menu and its submenus.
-#[no_mangle]
-pub unsafe extern "C" fn MakeGridOnScreen(grid_rectangle: Option<&SDL_Rect>) {
+pub unsafe fn MakeGridOnScreen(grid_rectangle: Option<&SDL_Rect>) {
     let grid_rectangle = grid_rectangle.unwrap_or(&User_Rect);
 
     trace!("MakeGridOnScreen(...): real function call confirmed.");
@@ -224,8 +189,7 @@ pub unsafe extern "C" fn MakeGridOnScreen(grid_rectangle: Option<&SDL_Rect>) {
     trace!("MakeGridOnScreen(...): end of function reached.");
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn ApplyFilter(
+pub unsafe fn ApplyFilter(
     surface: &mut SDL_Surface,
     fred: c_float,
     fgreen: c_float,
@@ -260,8 +224,7 @@ pub unsafe extern "C" fn ApplyFilter(
     defs::OK.into()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn toggle_fullscreen() {
+pub unsafe fn toggle_fullscreen() {
     let mut vid_flags = (*ne_screen).flags;
 
     if GameConfig.UseFullscreen != 0 {
@@ -295,8 +258,7 @@ pub unsafe extern "C" fn toggle_fullscreen() {
 /// NOTE:  This function does NOT check for existing screenshots,
 ///        but will silently overwrite them.  No problem in most
 ///        cases I think.
-#[no_mangle]
-pub unsafe extern "C" fn TakeScreenshot() {
+pub unsafe fn TakeScreenshot() {
     static mut NUMBER_OF_SCREENSHOT: u32 = 0;
 
     Activate_Conservative_Frame_Computation();
@@ -340,14 +302,13 @@ unsafe fn free_surface_array(surfaces: &[*mut SDL_Surface]) {
         .for_each(|&surface| SDL_FreeSurface(surface));
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn FreeGraphics() {
+pub unsafe fn FreeGraphics() {
     // free RWops structures
     packed_portraits
         .iter()
         .filter(|packed_portrait| !packed_portrait.is_null())
         .for_each(|&packed_portrait| {
-            let close: unsafe extern "C" fn(context: *mut SDL_RWops) -> c_int =
+            let close: unsafe fn(context: *mut SDL_RWops) -> c_int =
                 std::mem::transmute((*packed_portrait).close);
             close(packed_portrait);
         });
@@ -415,8 +376,7 @@ pub unsafe extern "C" fn FreeGraphics() {
 
 /// Set the pixel at (x, y) to the given value
 /// NOTE: The surface must be locked before calling this!
-#[no_mangle]
-pub unsafe extern "C" fn putpixel(surface: *const SDL_Surface, x: c_int, y: c_int, pixel: u32) {
+pub unsafe fn putpixel(surface: *const SDL_Surface, x: c_int, y: c_int, pixel: u32) {
     if surface.is_null() || x < 0 || y < 0 {
         return;
     }
@@ -452,8 +412,7 @@ pub unsafe extern "C" fn putpixel(surface: *const SDL_Surface, x: c_int, y: c_in
 
 /// This function gives the green component of a pixel, using a value of
 /// 255 for the most green pixel and 0 for the least green pixel.
-#[no_mangle]
-pub unsafe extern "C" fn GetRGBA(
+pub unsafe fn GetRGBA(
     surface: &SDL_Surface,
     x: c_int,
     y: c_int,
@@ -480,8 +439,7 @@ pub unsafe extern "C" fn GetRGBA(
 /// NOTE: to avoid memory-leaks, use (flags | INIT_ONLY) if you only
 ///       call this function to set up a new pic-file to be read.
 ///       This will avoid copying & mallocing a new pic, NULL will be returned
-#[no_mangle]
-pub unsafe extern "C" fn Load_Block(
+pub unsafe fn Load_Block(
     fpath: *mut c_char,
     line: c_int,
     col: c_int,
@@ -555,8 +513,7 @@ pub unsafe extern "C" fn Load_Block(
 }
 
 /// scale all "static" rectangles, which are theme-independent
-#[no_mangle]
-pub unsafe extern "C" fn ScaleStatRects(scale: c_float) {
+pub unsafe fn ScaleStatRects(scale: c_float) {
     macro_rules! scale {
         ($rect:ident) => {
             scale_rect(&mut $rect, scale);
@@ -636,8 +593,7 @@ pub unsafe extern "C" fn ScaleStatRects(scale: c_float) {
     scale!(COLUMN_RECT);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn ScalePic(pic: &mut *mut SDL_Surface, scale: c_float) {
+pub unsafe fn ScalePic(pic: &mut *mut SDL_Surface, scale: c_float) {
     if (scale - 1.0).abs() <= f32::EPSILON {
         return;
     }
@@ -652,8 +608,7 @@ pub unsafe extern "C" fn ScalePic(pic: &mut *mut SDL_Surface, scale: c_float) {
     SDL_FreeSurface(tmp);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn ScaleGraphics(scale: c_float) {
+pub unsafe fn ScaleGraphics(scale: c_float) {
     static INIT: std::sync::Once = std::sync::Once::new();
 
     /* For some reason we need to SetAlpha every time on OS X */
@@ -779,7 +734,7 @@ pub unsafe extern "C" fn ScaleGraphics(scale: c_float) {
         }
     }
 
-    printf_SDL(ne_screen, -1, -1, cstr!(" ok\n").as_ptr() as *mut c_char);
+    printf_SDL(ne_screen, -1, -1, format_args!(" ok\n"));
 }
 
 /// display "white noise" effect in Rect.
@@ -787,8 +742,7 @@ pub unsafe extern "C" fn ScaleGraphics(scale: c_float) {
 /// Greg Knauss's "xteevee" hack in xscreensavers.
 ///
 /// timeout is in ms
-#[no_mangle]
-pub unsafe extern "C" fn white_noise(bitmap: *mut SDL_Surface, rect: &mut Rect, timeout: c_int) {
+pub unsafe fn white_noise(bitmap: *mut SDL_Surface, rect: &mut Rect, timeout: c_int) {
     use rand::{
         seq::{IteratorRandom, SliceRandom},
         Rng,
@@ -886,8 +840,7 @@ pub unsafe extern "C" fn white_noise(bitmap: *mut SDL_Surface, rect: &mut Rect, 
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Duplicate_Font(in_font: &BFontInfo) -> *mut BFontInfo {
+pub unsafe fn Duplicate_Font(in_font: &BFontInfo) -> *mut BFontInfo {
     let out_font = MyMalloc(std::mem::size_of::<BFontInfo>().try_into().unwrap()) as *mut BFontInfo;
 
     std::ptr::copy_nonoverlapping(in_font, out_font, 1);
@@ -904,8 +857,7 @@ pub unsafe extern "C" fn Duplicate_Font(in_font: &BFontInfo) -> *mut BFontInfo {
     out_font
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Load_Fonts() -> c_int {
+pub unsafe fn Load_Fonts() -> c_int {
     let mut fpath = find_file(
         PARA_FONT_FILE_C.as_ptr(),
         GRAPHICS_DIR_C.as_ptr() as *mut c_char,
@@ -964,8 +916,7 @@ pub unsafe extern "C" fn Load_Fonts() -> c_int {
 
 /// Return the pixel value at (x, y)
 /// NOTE: The surface must be locked before calling this!
-#[no_mangle]
-pub unsafe extern "C" fn getpixel(surface: &SDL_Surface, x: c_int, y: c_int) -> u32 {
+pub unsafe fn getpixel(surface: &SDL_Surface, x: c_int, y: c_int) -> u32 {
     let bpp = (*surface.format).BytesPerPixel;
     /* Here p is the address to the pixel we want to retrieve */
     let p = surface.pixels.offset(
@@ -991,8 +942,7 @@ pub unsafe extern "C" fn getpixel(surface: &SDL_Surface, x: c_int, y: c_int) -> 
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn ClearGraphMem() {
+pub unsafe fn ClearGraphMem() {
     // One this function is done, the rahmen at the
     // top of the screen surely is destroyed.  We inform the
     // DisplayBanner function of the matter...
@@ -1006,8 +956,7 @@ pub unsafe extern "C" fn ClearGraphMem() {
 }
 
 /// Initialise the Video display and graphics engine
-#[no_mangle]
-pub unsafe extern "C" fn Init_Video() {
+pub unsafe fn Init_Video() {
     const YN: [&str; 2] = ["no", "yes"];
 
     /* Initialize the SDL library */
@@ -1155,11 +1104,7 @@ pub unsafe extern "C" fn Init_Video() {
 }
 
 /// load a pic into memory and return the SDL_RWops pointer to it
-#[no_mangle]
-pub unsafe extern "C" fn load_raw_pic(
-    fpath: *const c_char,
-    raw_mem: *mut *mut c_char,
-) -> *mut SDL_RWops {
+pub unsafe fn load_raw_pic(fpath: *const c_char, raw_mem: *mut *mut c_char) -> *mut SDL_RWops {
     use std::{fs::File, io::Read, path::Path};
 
     if raw_mem.is_null() || !(*raw_mem).is_null() {
@@ -1215,8 +1160,7 @@ pub unsafe extern "C" fn load_raw_pic(
 /// the various structs
 ///
 /// Returns true/false
-#[no_mangle]
-pub unsafe extern "C" fn InitPictures() -> c_int {
+pub unsafe fn InitPictures() -> c_int {
     use std::sync::Once;
 
     static DO_ONCE: Once = Once::new();
@@ -1738,8 +1682,7 @@ fn init_system_cursor(image: &[&[u8]]) -> *mut SDL_Cursor {
     unsafe { SDL_CreateCursor(data.as_mut_ptr(), mask.as_mut_ptr(), 32, 32, hot_x, hot_y) }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn LoadThemeConfigurationFile() {
+pub unsafe fn LoadThemeConfigurationFile() {
     use bstr::ByteSlice;
 
     const END_OF_THEME_DATA_STRING: &CStr = cstr!("**** End of theme data section ****");
@@ -1888,8 +1831,7 @@ pub unsafe extern "C" fn LoadThemeConfigurationFile() {
 ///
 /// in the first call we assume the Block_Rect to be the original game-size
 /// and store this value for future rescalings
-#[no_mangle]
-pub unsafe extern "C" fn SetCombatScaleTo(scale: c_float) {
+pub unsafe fn SetCombatScaleTo(scale: c_float) {
     use once_cell::sync::Lazy;
     static ORIG_BLOCK: Lazy<Rect> = Lazy::new(|| unsafe { Block_Rect });
 
@@ -1922,8 +1864,7 @@ pub unsafe extern "C" fn SetCombatScaleTo(scale: c_float) {
 /// This might be very handy, especially in the Title() function to
 /// display the title image and perhaps also for displaying the ship
 /// and that.
-#[no_mangle]
-pub unsafe extern "C" fn DisplayImage(datafile: *mut c_char) {
+pub unsafe fn DisplayImage(datafile: *mut c_char) {
     let mut image = IMG_Load(datafile);
     if image.is_null() {
         error!(
@@ -1943,8 +1884,7 @@ pub unsafe extern "C" fn DisplayImage(datafile: *mut c_char) {
     SDL_FreeSurface(image);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn DrawLineBetweenTiles(
+pub unsafe fn DrawLineBetweenTiles(
     mut x1: c_float,
     mut y1: c_float,
     mut x2: c_float,

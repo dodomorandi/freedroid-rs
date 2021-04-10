@@ -1,5 +1,5 @@
 use crate::{
-    b_font::{FontHeight, GetCurrentFont, Para_BFont, SetCurrentFont},
+    b_font::{FontHeight, GetCurrentFont, SetCurrentFont},
     bullet::{DeleteBullet, ExplodeBlasts, MoveBullets},
     curShip, debug_level,
     defs::{
@@ -10,8 +10,8 @@ use crate::{
     enemy::{MoveEnemys, ShuffleEnemys},
     global::{
         collision_lose_energy_calibrator, Blast_Damage_Per_Second, Blast_Radius,
-        CurrentCombatScaleFactor, Droid_Radius, Font0_BFont, GameConfig, SkipAFewFrames,
-        Time_For_Each_Phase_Of_Door_Movement,
+        CurrentCombatScaleFactor, Droid_Radius, Font0_BFont, GameConfig, Para_BFont,
+        SkipAFewFrames, Time_For_Each_Phase_Of_Door_Movement,
     },
     graphics::{
         ne_screen, pic999, white_noise, AllThemes, ClearGraphMem, DisplayImage, InitPictures,
@@ -80,8 +80,7 @@ You may redistribute copies of Freedroid under the terms of the\n\
 GNU General Public License.\n\
 For more information about these matters, see the file named COPYING.";
 
-#[no_mangle]
-pub unsafe extern "C" fn FreeGameMem() {
+pub unsafe fn FreeGameMem() {
     // free bullet map
     if Bulletmap.is_null().not() {
         let bullet_map = std::slice::from_raw_parts_mut(
@@ -124,8 +123,7 @@ pub unsafe extern "C" fn FreeGameMem() {
     DEBRIEFING_TEXT = null_mut();
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn FreeDruidmap() {
+pub unsafe fn FreeDruidmap() {
     if Druidmap.is_null() {
         return;
     }
@@ -140,8 +138,7 @@ pub unsafe extern "C" fn FreeDruidmap() {
 }
 
 /// put some ideology message for our poor friends enslaved by M$-Win32 ;)
-#[no_mangle]
-pub unsafe extern "C" fn Win32Disclaimer() {
+pub unsafe fn Win32Disclaimer() {
     SDL_SetClipRect(ne_screen, null_mut());
     DisplayImage(find_file(
         TITLE_PIC_FILE_C.as_ptr() as *mut c_char,
@@ -174,8 +171,7 @@ pub unsafe extern "C" fn Win32Disclaimer() {
 
 /// This function checks, if the influencer has succeeded in his given
 /// mission.  If not it returns, if yes the Debriefing is started.
-#[no_mangle]
-pub unsafe extern "C" fn CheckIfMissionIsComplete() {
+pub unsafe fn CheckIfMissionIsComplete() {
     for enemy in AllEnemys.iter().take(NumEnemys.try_into().unwrap()) {
         if enemy.status != Status::Out as c_int && enemy.status != Status::Terminated as c_int {
             return;
@@ -188,8 +184,7 @@ pub unsafe extern "C" fn CheckIfMissionIsComplete() {
     GameOver = true.into();
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn ThouArtVictorious() {
+pub unsafe fn ThouArtVictorious() {
     Switch_Background_Music_To(DEBRIEFING_SONG.as_ptr());
 
     SDL_ShowCursor(SDL_DISABLE);
@@ -229,8 +224,7 @@ pub unsafe extern "C" fn ThouArtVictorious() {
 ///
 /// This must not be confused with initnewgame, which
 /// only initializes a new mission for the game.
-#[no_mangle]
-pub unsafe extern "C" fn InitFreedroid() {
+pub unsafe fn InitFreedroid() {
     Bulletmap = null_mut(); // That will cause the memory to be allocated later
 
     for bullet in &mut AllBullets {
@@ -404,8 +398,7 @@ unsafe fn parse_command_line() {
 }
 
 /// find all themes and put them in AllThemes
-#[no_mangle]
-pub unsafe extern "C" fn FindAllThemes() {
+pub unsafe fn FindAllThemes() {
     use std::fs;
 
     let mut classic_theme_index: usize = 0; // default: override when we actually find 'classic' theme
@@ -577,8 +570,7 @@ pub unsafe extern "C" fn FindAllThemes() {
     );
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn InitNewMission(mission_name: *mut c_char) {
+pub unsafe fn InitNewMission(mission_name: *mut c_char) {
     const END_OF_MISSION_DATA_STRING: &CStr = cstr!("*** End of Mission File ***");
     const MISSION_BRIEFING_BEGIN_STRING: &CStr =
         cstr!("** Start of Mission Briefing Text Section **");
@@ -878,8 +870,7 @@ pub unsafe extern "C" fn InitNewMission(mission_name: *mut c_char) {
 ///  that a mission file has already been successfully loaded into
 ///  memory.  The briefing texts will be extracted and displayed in
 ///  scrolling font.
-#[no_mangle]
-pub unsafe extern "C" fn Title(mission_briefing_pointer: *mut c_char) {
+pub unsafe fn Title(mission_briefing_pointer: *mut c_char) {
     const BRIEFING_TITLE_PICTURE_STRING: &CStr =
         cstr!("The title picture in the graphics subdirectory for this mission is : ");
     const BRIEFING_TITLE_SONG_STRING: &CStr =
@@ -970,8 +961,7 @@ pub unsafe extern "C" fn Title(mission_briefing_pointer: *mut c_char) {
 
 /// This function loads all the constant variables of the game from
 /// a dat file, that should be optimally human readable.
-#[no_mangle]
-pub unsafe extern "C" fn Init_Game_Data(data_filename: *mut c_char) {
+pub unsafe fn Init_Game_Data(data_filename: *mut c_char) {
     const END_OF_GAME_DAT_STRING: &CStr = cstr!("*** End of game.dat File ***");
 
     /* Read the whole game data to memory */
@@ -1012,8 +1002,7 @@ pub unsafe extern "C" fn Init_Game_Data(data_filename: *mut c_char) {
 
 /// This function loads all the constant variables of the game from
 /// a dat file, that should be optimally human readable.
-#[no_mangle]
-pub unsafe extern "C" fn Get_Robot_Data(data_pointer: *mut c_void) {
+pub unsafe fn Get_Robot_Data(data_pointer: *mut c_void) {
     const MAXSPEED_CALIBRATOR_STRING: &CStr =
         cstr!("Common factor for all droids maxspeed values: ");
     const ACCELERATION_CALIBRATOR_STRING: &CStr =
@@ -1310,8 +1299,7 @@ pub unsafe extern "C" fn Get_Robot_Data(data_pointer: *mut c_void) {
 /// but IT DOES NOT LOAD THE FILE, IT ASSUMES IT IS ALREADY LOADED and
 /// it only receives a pointer to the start of the bullet section from
 /// the calling function.
-#[no_mangle]
-pub unsafe extern "C" fn Get_Bullet_Data(data_pointer: *mut c_void) {
+pub unsafe fn Get_Bullet_Data(data_pointer: *mut c_void) {
     // const BULLET_SECTION_BEGIN_STRING: &CStr = cstr!("*** Start of Bullet Data Section: ***");
     // const BULLET_SECTION_END_STRING: &CStr = cstr!("*** End of Bullet Data Section: ***");
     const NEW_BULLET_TYPE_BEGIN_STRING: &CStr =
@@ -1455,8 +1443,7 @@ pub unsafe extern "C" fn Get_Bullet_Data(data_pointer: *mut c_void) {
 
 /// This function loads all the constant variables of the game from
 /// a dat file, that should be optimally human readable.
-#[no_mangle]
-pub unsafe extern "C" fn Get_General_Game_Constants(data: *mut c_char) {
+pub unsafe fn Get_General_Game_Constants(data: *mut c_char) {
     // const CONSTANTS_SECTION_BEGIN_STRING: &CStr =
     //     cstr!("*** Start of General Game Constants Section: ***");
     // const CONSTANTS_SECTION_END_STRING: &CStr =
@@ -1539,8 +1526,7 @@ pub unsafe extern "C" fn Get_General_Game_Constants(data: *mut c_char) {
 }
 
 /// Show end-screen
-#[no_mangle]
-pub unsafe extern "C" fn ThouArtDefeated() {
+pub unsafe fn ThouArtDefeated() {
     Me.status = Status::Terminated as c_int;
     SDL_ShowCursor(SDL_DISABLE);
 
@@ -1604,7 +1590,7 @@ pub unsafe extern "C" fn ThouArtDefeated() {
         i32::from(dst.y) + i32::from(dst.h),
         &User_Rect,
     );
-    printf_SDL(ne_screen, -1, -1, cstr!("\n").as_ptr() as *mut c_char);
+    printf_SDL(ne_screen, -1, -1, format_args!("\n"));
     SDL_Flip(ne_screen);
 
     now = SDL_GetTicks();

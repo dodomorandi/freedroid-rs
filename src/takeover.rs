@@ -1418,8 +1418,7 @@ unsafe fn choose_color() {
 /// play takeover-game against a druid
 ///
 /// Returns true if the user won, false otherwise
-#[no_mangle]
-pub unsafe extern "C" fn Takeover(enemynum: c_int) -> c_int {
+pub unsafe fn Takeover(enemynum: c_int) -> c_int {
     static mut REJECT_ENERGY: c_int = 0; /* your energy if you're rejected */
 
     /* Prevent distortion of framerate by the delay coming from

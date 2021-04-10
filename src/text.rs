@@ -41,7 +41,9 @@ use sdl::{
 };
 use std::{
     convert::{TryFrom, TryInto},
-    ffi::{CStr, VaList},
+    ffi::CStr,
+    fmt,
+    io::Cursor,
     os::raw::{c_char, c_int, c_uchar},
     ptr::null_mut,
 };
@@ -50,7 +52,6 @@ extern "C" {
     fn SDL_PushEvent(event: *mut SDL_Event) -> c_int;
     fn SDL_GetClipRect(surface: *mut SDL_Surface, rect: *mut SDL_Rect);
     fn SDL_SetClipRect(surface: *mut SDL_Surface, rect: *const SDL_Rect) -> bool;
-    fn vsprintf(str: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
 }
 
 #[cfg(feature = "arcade-input")]
@@ -61,12 +62,11 @@ const ARCADE_INPUT_CHARS: [c_int; 70] = [
     119, 120, 121, 122,
 ];
 
-#[no_mangle]
 static mut MyCursorX: c_int = 0;
-#[no_mangle]
+
 static mut MyCursorY: c_int = 0;
-#[no_mangle]
-static mut TextBuffer: [c_char; 10000] = [0; 10000];
+
+static mut TextBuffer: [u8; 10000] = [0; 10000];
 
 /// Reads a string of "MaxLen" from User-input, and echos it
 /// either to stdout or using graphics-text, depending on the
@@ -76,8 +76,7 @@ static mut TextBuffer: [c_char; 10000] = [0; 10000];
 /// * echo=2    print using graphics-text
 ///
 /// values of echo > 2 are ignored and treated like echo=0
-#[no_mangle]
-pub unsafe extern "C" fn GetString(max_len: c_int, echo: c_int) -> *mut c_char {
+pub unsafe fn GetString(max_len: c_int, echo: c_int) -> *mut c_char {
     let max_len: usize = max_len.try_into().unwrap();
 
     if echo == 1 {
@@ -119,7 +118,7 @@ pub unsafe extern "C" fn GetString(max_len: c_int, echo: c_int) -> *mut c_char {
     while !finished {
         let mut tmp_rect = store_rect;
         SDL_UpperBlit(store, null_mut(), ne_screen, &mut tmp_rect);
-        PutString(ne_screen, x0, y0, input.as_mut_ptr());
+        PutString(ne_screen, x0, y0, CStr::from_ptr(input.as_ptr()).to_bytes());
         SDL_Flip(ne_screen);
 
         #[cfg(feature = "arcade-input")]
@@ -213,8 +212,7 @@ pub unsafe extern "C" fn GetString(max_len: c_int, echo: c_int) -> *mut c_char {
 /// Should do roughly what getchar() does, but in raw (SLD) keyboard mode.
 ///
 /// Return the (SDLKey) of the next key-pressed event cast to
-#[no_mangle]
-pub unsafe extern "C" fn getchar_raw() -> c_int {
+pub unsafe fn getchar_raw() -> c_int {
     let mut event = SDL_Event {
         data: Default::default(),
     };
@@ -316,15 +314,14 @@ pub unsafe extern "C" fn getchar_raw() -> c_int {
 /// Added functionality to PrintString() is:
 ///  o) passing -1 as coord uses previous x and next-line y for printing
 ///  o) Screen is updated immediatly after print, using SDL_flip()
-#[no_mangle]
-pub unsafe extern "C" fn printf_SDL(
+pub unsafe fn printf_SDL(
     screen: *mut SDL_Surface,
     mut x: c_int,
     mut y: c_int,
-    fmt: *mut c_char,
-    args: ...
+    format_args: fmt::Arguments,
 ) {
-    let mut args = args.clone();
+    use std::io::Write;
+
     if x == -1 {
         x = MyCursorX;
     } else {
@@ -337,14 +334,15 @@ pub unsafe extern "C" fn printf_SDL(
         MyCursorY = y;
     }
 
-    assert!(vsprintf(TextBuffer.as_mut_ptr(), fmt, args.as_va_list()) >= 0);
-    let text_buffer = CStr::from_ptr(TextBuffer.as_mut_ptr()).to_bytes();
+    let mut cursor = Cursor::new(TextBuffer.as_mut());
+    cursor.write_fmt(format_args).unwrap();
+    let text_buffer = &TextBuffer[..usize::try_from(cursor.position()).unwrap()];
     let textlen: c_int = text_buffer
         .iter()
-        .map(|&c| CharWidth(&*GetCurrentFont(), c.into()))
+        .map(|&c| CharWidth(&*GetCurrentFont(), c))
         .sum();
 
-    PutString(screen, x, y, TextBuffer.as_mut_ptr());
+    PutString(screen, x, y, text_buffer);
     let h = FontHeight(&*GetCurrentFont()) + 2;
 
     SDL_UpdateRect(
@@ -378,8 +376,7 @@ pub unsafe extern "C" fn printf_SDL(
 /// Return TRUE if some characters where written inside the clip rectangle,
 /// FALSE if not (used by ScrollText to know if Text has been scrolled
 /// out of clip-rect completely)
-#[no_mangle]
-pub unsafe extern "C" fn DisplayText(
+pub unsafe fn DisplayText(
     text: *const c_char,
     startx: c_int,
     starty: c_int,
@@ -444,8 +441,7 @@ pub unsafe extern "C" fn DisplayText(
 
 /// This function displays a char. It uses Menu_BFont now
 /// to do this.  MyCursorX is  updated to new position.
-#[no_mangle]
-pub unsafe extern "C" fn DisplayChar(c: c_uchar) {
+pub unsafe fn DisplayChar(c: c_uchar) {
     // don't accept non-printable characters
     if !(c.is_ascii_graphic() || c.is_ascii_whitespace()) {
         println!("Illegal char passed to DisplayChar(): {}", c);
@@ -493,8 +489,7 @@ pub unsafe fn is_linebreak_needed(textpos: &[u8], clip: &Rect) -> bool {
     false
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn EnemyHitByBulletText(enemy: c_int) {
+pub unsafe fn EnemyHitByBulletText(enemy: c_int) {
     let robot = &mut AllEnemys[usize::try_from(enemy).unwrap()];
 
     if GameConfig.Droid_Talk == 0 {
@@ -527,8 +522,7 @@ pub unsafe extern "C" fn EnemyHitByBulletText(enemy: c_int) {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn EnemyInfluCollisionText(enemy: c_int) {
+pub unsafe fn EnemyInfluCollisionText(enemy: c_int) {
     let robot = &mut AllEnemys[usize::try_from(enemy).unwrap()];
 
     if GameConfig.Droid_Talk == 0 {
@@ -549,8 +543,7 @@ pub unsafe extern "C" fn EnemyInfluCollisionText(enemy: c_int) {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn AddStandingAndAimingText(enemy: c_int) {
+pub unsafe fn AddStandingAndAimingText(enemy: c_int) {
     let robot = &mut AllEnemys[usize::try_from(enemy).unwrap()];
 
     if GameConfig.Droid_Talk == 0 {
@@ -566,8 +559,7 @@ pub unsafe extern "C" fn AddStandingAndAimingText(enemy: c_int) {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn AddInfluBurntText() {
+pub unsafe fn AddInfluBurntText() {
     if GameConfig.Droid_Talk == 0 {
         return;
     }
@@ -606,8 +598,7 @@ pub unsafe extern "C" fn AddInfluBurntText() {
 ///
 /// sets MyCursor[XY], and allows passing (-1,-1) as coords to indicate
 /// using the current cursor position.
-#[no_mangle]
-pub unsafe extern "C" fn putchar_SDL(
+pub unsafe fn putchar_SDL(
     surface: *mut SDL_Surface,
     mut x: c_int,
     mut y: c_int,
@@ -620,10 +611,10 @@ pub unsafe extern "C" fn putchar_SDL(
         y = MyCursorY;
     }
 
-    MyCursorX = x + CharWidth(&*GetCurrentFont(), c);
+    MyCursorX = x + CharWidth(&*GetCurrentFont(), c.try_into().unwrap());
     MyCursorY = y;
 
-    let ret = PutChar(surface, x, y, c);
+    let ret = PutChar(surface, x, y, c.try_into().unwrap());
 
     SDL_Flip(surface);
 
@@ -633,8 +624,7 @@ pub unsafe extern "C" fn putchar_SDL(
 /// Scrolls a given text down inside the given rect
 ///
 /// returns 0 if end of text was scolled out, 1 if user pressed fire
-#[no_mangle]
-pub unsafe extern "C" fn ScrollText(
+pub unsafe fn ScrollText(
     text: *mut c_char,
     rect: &mut SDL_Rect,
     _seconds_minimum_duration: c_int,

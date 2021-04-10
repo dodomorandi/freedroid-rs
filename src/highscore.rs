@@ -2,13 +2,13 @@
 use crate::input::wait_for_key_pressed;
 use crate::{
     b_font::{
-        CenteredPrintString, CharWidth, FontHeight, GetCurrentFont, Highscore_BFont, Para_BFont,
-        PrintString, SetCurrentFont,
+        CenteredPrintString, CharWidth, FontHeight, GetCurrentFont, PrintString, SetCurrentFont,
     },
     defs::{
         self, Criticality, DisplayBannerFlags, Status, Themed, DATE_LEN, GRAPHICS_DIR_C,
         HS_BACKGROUND_FILE_C, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
     },
+    global::{Highscore_BFont, Para_BFont},
     graphics::{ne_screen, pic999, DisplayImage, MakeGridOnScreen},
     input::wait_for_key_pressed,
     misc::find_file,
@@ -263,7 +263,7 @@ fn update_highscores() {
             new_entry
         };
 
-        printf_SDL(ne_screen, -1, -1, cstr!("\n").as_ptr() as *mut c_char);
+        printf_SDL(ne_screen, -1, -1, format_args!("\n"));
 
         hightscores[entry_pos..]
             .iter_mut()
@@ -285,28 +285,24 @@ fn get_config_dir() -> Option<&'static Path> {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn InitHighscores() {
+pub fn InitHighscores() {
     init_highscores(get_config_dir());
 }
 
-#[no_mangle]
-pub extern "C" fn SaveHighscores() -> c_int {
+pub fn SaveHighscores() -> c_int {
     match save_highscores(get_config_dir()) {
         Ok(()) => defs::OK.into(),
         Err(()) => defs::ERR.into(),
     }
 }
 
-#[no_mangle]
-pub extern "C" fn UpdateHighscores() {
+pub fn UpdateHighscores() {
     update_highscores()
 }
 
 /// Display the high scores of the single player game.
 /// This function is actually a submenu of the MainMenu.
-#[no_mangle]
-pub unsafe extern "C" fn ShowHighscores() {
+pub unsafe fn ShowHighscores() {
     let fpath = find_file(
         HS_BACKGROUND_FILE_C.as_ptr() as *mut c_char,
         GRAPHICS_DIR_C.as_ptr() as *mut c_char,
@@ -340,8 +336,7 @@ pub unsafe extern "C" fn ShowHighscores() {
     CenteredPrintString(
         ne_screen,
         y0,
-        cstr!("Top %d  scores\n").as_ptr() as *mut c_char,
-        NUM_HIGHSCORES,
+        format_args!("Top {}  scores\n", NUM_HIGHSCORES),
     );
 
     let highscores =
@@ -352,32 +347,34 @@ pub unsafe extern "C" fn ShowHighscores() {
             ne_screen,
             x0,
             y0 + (i + 2) * height,
-            cstr!("%d").as_ptr() as *mut c_char,
-            i + 1,
+            format_args!("{}", i + 1),
         );
         if (*highscore).score >= 0 {
             PrintString(
                 ne_screen,
                 x1,
                 y0 + (i + 2) * height,
-                cstr!("%s").as_ptr() as *mut c_char,
-                (*highscore).date.as_ptr(),
+                format_args!(
+                    "{}",
+                    CStr::from_ptr((*highscore).date.as_ptr()).to_str().unwrap()
+                ),
             );
         }
         PrintString(
             ne_screen,
             x2,
             y0 + (i + 2) * height,
-            cstr!("%s").as_ptr() as *mut c_char,
-            (*highscore).name.as_ptr(),
+            format_args!(
+                "{}",
+                CStr::from_ptr((*highscore).name.as_ptr()).to_str().unwrap()
+            ),
         );
         if (*highscore).score >= 0 {
             PrintString(
                 ne_screen,
                 x3,
                 y0 + (i + 2) * height,
-                cstr!("%ld").as_ptr() as *mut c_char,
-                (*highscore).score,
+                format_args!("{}", (*highscore).score),
             );
         }
     }

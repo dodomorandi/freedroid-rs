@@ -1,7 +1,3 @@
-#![feature(c_variadic)]
-#![feature(const_maybe_uninit_assume_init)]
-#![feature(extern_types)]
-
 macro_rules! rect {
     ($x:expr, $y:expr, $w:expr, $h:expr) => {
         ::sdl::Rect {
@@ -82,16 +78,12 @@ const RECT_ZERO: Rect = Rect {
     w: 0,
 };
 
-#[no_mangle]
 static mut LastGotIntoBlastSound: c_float = 2.;
 
-#[no_mangle]
 static mut LastRefreshSound: c_float = 2.;
 
-#[no_mangle]
 static mut CurLevel: *mut Level = null_mut(); /* the current level data */
 
-#[no_mangle]
 static mut curShip: Ship = Ship {
     num_levels: 0,
     num_lifts: 0,
@@ -111,43 +103,30 @@ static mut curShip: Ship = Ship {
     num_level_rects: [0; MAX_LEVELS],         /* how many rects has a level */
 }; /* the current ship-data */
 
-#[no_mangle]
 static mut GameOver: i32 = 0;
 
-#[no_mangle]
 static mut QuitProgram: i32 = 0;
 
-#[no_mangle]
 static mut debug_level: i32 = 0; /* 0=no debug 1=some debug messages 2=...etc */
 
-#[no_mangle]
 static mut sound_on: i32 = 1; /* Toggle TRUE/FALSE for turning sounds on/off */
 
-#[no_mangle]
 static mut ThisMessageTime: i32 = 0;
 
-#[no_mangle]
 static mut ShowScore: i64 = 0;
 
-#[no_mangle]
 static mut RealScore: f32 = 0.;
 
-#[no_mangle]
 static mut DeathCount: f32 = 0.; // a cumulative/draining counter of kills->determines Alert!
 
-#[no_mangle]
 static mut DeathCountDrainSpeed: f32 = 0.; // drain per second
 
-#[no_mangle]
 static mut AlertLevel: i32 = 0;
 
-#[no_mangle]
 static mut AlertThreshold: i32 = 0; // threshold for FIRST Alert-color (yellow), the others are 2*, 3*..
 
-#[no_mangle]
 static mut AlertBonusPerSec: f32 = 0.; // bonus/sec for FIRST Alert-color, the others are 2*, 3*,...
 
-#[no_mangle]
 static mut AllEnemys: [Enemy; MAX_ENEMYS_ON_SHIP] = [Enemy {
     ty: 0,
     levelnum: 0,
@@ -167,31 +146,22 @@ static mut AllEnemys: [Enemy; MAX_ENEMYS_ON_SHIP] = [Enemy {
     PeriodicSpecialStatements: null_mut(),
 }; MAX_ENEMYS_ON_SHIP];
 
-#[no_mangle]
 static mut ConfigDir: [i8; 255] = [0; 255];
 
-#[no_mangle]
 static mut InvincibleMode: i32 = 0;
 
-#[no_mangle]
 static mut show_all_droids: i32 = 0; /* display enemys regardless of IsVisible() */
 
-#[no_mangle]
 static mut stop_influencer: i32 = 0; /* for bullet debugging: stop where u are */
 
-#[no_mangle]
 static mut NumEnemys: i32 = 0;
 
-#[no_mangle]
 static mut Number_Of_Droid_Types: i32 = 0;
 
-#[no_mangle]
 static mut PreTakeEnergy: i32 = 0;
 
-#[no_mangle]
 static mut AllBullets: [Bullet; MAXBULLETS + 10] = [Bullet::default_const(); MAXBULLETS + 10];
 
-#[no_mangle]
 static mut AllBlasts: [Blast; MAXBLASTS + 10] = [Blast {
     PX: 0.,
     PY: 0.,
@@ -201,16 +171,12 @@ static mut AllBlasts: [Blast; MAXBLASTS + 10] = [Blast {
     mine: false,
 }; MAXBLASTS + 10];
 
-#[no_mangle]
 static mut FirstDigit_Rect: Rect = RECT_ZERO;
 
-#[no_mangle]
 static mut SecondDigit_Rect: Rect = RECT_ZERO;
 
-#[no_mangle]
 static mut ThirdDigit_Rect: Rect = RECT_ZERO;
 
-#[no_mangle]
 static mut FPSover1: f32 = 0.;
 
 fn main() {
@@ -357,8 +323,7 @@ fn sdl_must_lock(surface: &SDL_Surface) -> bool {
 /// The counters include timers, but framerate-independence of game speed
 /// is preserved because everything is weighted with the Frame_Time()
 /// function.
-#[no_mangle]
-unsafe extern "C" fn UpdateCountersForThisFrame() {
+unsafe fn UpdateCountersForThisFrame() {
     // Here are some things, that were previously done by some periodic */
     // interrupt function
     ThisMessageTime += 1;

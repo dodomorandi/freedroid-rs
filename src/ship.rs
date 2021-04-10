@@ -1,5 +1,5 @@
 use crate::{
-    b_font::{FontHeight, GetCurrentFont, Para_BFont, SetCurrentFont},
+    b_font::{FontHeight, GetCurrentFont, SetCurrentFont},
     bullet::{DeleteBlast, DeleteBullet},
     curShip,
     defs::{
@@ -7,6 +7,7 @@ use crate::{
         MouseLeftPressedR, Sound, Status, DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET,
         TEXT_STRETCH, UPDATE,
     },
+    global::Para_BFont,
     graphics::{
         arrow_cursor, arrow_down, arrow_left, arrow_right, arrow_up, console_bg_pic1,
         console_bg_pic2, console_pic, crosshair_cursor, packed_portraits, ship_off_pic,
@@ -57,7 +58,6 @@ use std::{
 const UPDATE_ONLY: u8 = 0x01;
 
 extern "C" {
-
     pub fn IMG_Load_RW(src: *mut SDL_RWops, freesrc: c_int) -> *mut SDL_Surface;
     pub fn IMG_isJPG(src: *mut SDL_RWops) -> c_int;
 }
@@ -71,20 +71,17 @@ pub static mut RIGHT_RECT: Rect = rect!(0, 0, 0, 0);
 
 #[inline]
 pub unsafe fn sdl_rw_seek(ctx: *mut SDL_RWops, offset: c_int, whence: c_int) -> c_int {
-    let seek: unsafe extern "C" fn(*mut SDL_RWops, c_int, c_int) -> c_int =
-        std::mem::transmute((*ctx).seek);
+    let seek: unsafe fn(*mut SDL_RWops, c_int, c_int) -> c_int = std::mem::transmute((*ctx).seek);
     seek(ctx, offset, whence)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn FreeDroidPics() {
+pub unsafe fn FreeDroidPics() {
     SDL_FreeSurface(DROID_PICS);
     SDL_FreeSurface(DROID_BACKGROUND);
 }
 
 /// do all alert-related agitations: alert-sirens and alert-lights
-#[no_mangle]
-pub unsafe extern "C" fn AlertLevelWarning() {
+pub unsafe fn AlertLevelWarning() {
     const SIREN_WAIT: f32 = 2.5;
 
     static mut LAST_SIREN: u32 = 0;
@@ -144,8 +141,7 @@ pub unsafe extern "C" fn AlertLevelWarning() {
 ///
 /// cycle_time is the time in seconds for a full animation-cycle,
 /// if cycle_time == 0 : display static pic, using only first frame
-#[no_mangle]
-pub unsafe extern "C" fn show_droid_portrait(
+pub unsafe fn show_droid_portrait(
     mut dst: Rect,
     droid_type: c_int,
     cycle_time: c_float,
@@ -258,8 +254,7 @@ pub unsafe extern "C" fn show_droid_portrait(
 ///                           only  update the text-regions
 ///
 ///  does update the screen: all if flags=0, text-rect if flags=UPDATE_ONLY
-#[no_mangle]
-pub unsafe extern "C" fn show_droid_info(droid_type: c_int, page: c_int, flags: c_int) {
+pub unsafe fn show_droid_info(droid_type: c_int, page: c_int, flags: c_int) {
     use std::io::Write;
 
     SDL_SetClipRect(ne_screen, null_mut());
@@ -464,8 +459,7 @@ Paradroid to eliminate all rogue robots.\0",
 ///
 /// Note: we no longer wait here for a key-press, but return
 /// immediately
-#[no_mangle]
-pub unsafe extern "C" fn ShowDeckMap() {
+pub unsafe fn ShowDeckMap() {
     let tmp = Me.pos;
 
     let cur_level = &*CurLevel;
@@ -497,8 +491,7 @@ pub unsafe extern "C" fn ShowDeckMap() {
 /// 3 * Show a side-elevation on the ship
 /// 1 * Give all available data on lower druid types
 /// 0 * Reenter the game without squashing the colortable
-#[no_mangle]
-pub unsafe extern "C" fn EnterKonsole() {
+pub unsafe fn EnterKonsole() {
     // Prevent distortion of framerate by the delay coming from
     // the time spend in the menu.
     Activate_Conservative_Frame_Computation();
@@ -676,8 +669,7 @@ pub unsafe extern "C" fn EnterKonsole() {
 
 /// This function does the robot show when the user has selected robot
 /// show from the console menu.
-#[no_mangle]
-pub unsafe extern "C" fn GreatDruidShow() {
+pub unsafe fn GreatDruidShow() {
     let mut finished = false;
 
     let mut droidtype = Me.ty;
@@ -787,8 +779,7 @@ pub unsafe extern "C" fn GreatDruidShow() {
 }
 
 /// This function should check if the mouse cursor is in the given Rectangle
-#[no_mangle]
-pub unsafe extern "C" fn CursorIsOnRect(rect: &Rect) -> c_int {
+pub unsafe fn CursorIsOnRect(rect: &Rect) -> c_int {
     let user_center = get_user_center();
     let cur_pos = Point {
         x: input_axis.x + (i32::from(user_center.x) - 16),
@@ -807,8 +798,7 @@ pub unsafe extern "C" fn CursorIsOnRect(rect: &Rect) -> c_int {
 ///
 ///  if level==-1: don't highlight any level
 ///  if liftrow==-1: dont' highlight any liftrows
-#[no_mangle]
-pub unsafe extern "C" fn ShowLifts(level: c_int, liftrow: c_int) {
+pub unsafe fn ShowLifts(level: c_int, liftrow: c_int) {
     let lift_bg_color = SDL_Color {
         r: 0,
         g: 0,
@@ -860,8 +850,7 @@ pub unsafe extern "C" fn ShowLifts(level: c_int, liftrow: c_int) {
 ///       to call SDL_Flip() to display the result!
 /// pos  : 0<=pos<=3: which menu-position is currently active?
 /// flag : UPDATE_ONLY  only update the console-menu bar, not text & background
-#[no_mangle]
-pub unsafe extern "C" fn PaintConsoleMenu(pos: c_int, flag: c_int) {
+pub unsafe fn PaintConsoleMenu(pos: c_int, flag: c_int) {
     use std::io::Write;
     let mut menu_text: [u8; 200] = [0; 200];
 
@@ -915,8 +904,7 @@ pub unsafe extern "C" fn PaintConsoleMenu(pos: c_int, flag: c_int) {
 }
 
 /// does all the work when we enter a lift
-#[no_mangle]
-pub unsafe extern "C" fn EnterLift() {
+pub unsafe fn EnterLift() {
     /* Prevent distortion of framerate by the delay coming from
      * the time spend in the menu. */
     Activate_Conservative_Frame_Computation();
@@ -1055,8 +1043,7 @@ pub unsafe extern "C" fn EnterLift() {
     Me.TextToBeDisplayed = cur_level.Level_Enter_Comment;
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn LevelEmpty() -> c_int {
+pub unsafe fn LevelEmpty() -> c_int {
     let cur_level = &*CurLevel;
     if cur_level.empty != 0 {
         return true.into();

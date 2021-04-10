@@ -29,8 +29,7 @@ const FIREDIST2: f32 = 8.;
 
 const COL_SPEED: f32 = 3.;
 
-#[no_mangle]
-pub unsafe extern "C" fn ClassOfDruid(druid_type: c_int) -> c_int {
+pub unsafe fn ClassOfDruid(druid_type: c_int) -> c_int {
     /* first digit is class */
     let class_char = (*Druidmap.add(usize::try_from(druid_type).unwrap())).druidname[0] as u8;
     match class_char {
@@ -39,8 +38,7 @@ pub unsafe extern "C" fn ClassOfDruid(druid_type: c_int) -> c_int {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn AnimateEnemys() {
+pub unsafe fn AnimateEnemys() {
     for enemy in &mut AllEnemys[..usize::try_from(NumEnemys).unwrap()] {
         /* ignore enemys that are dead or on other levels or dummys */
         if enemy.levelnum != (*CurLevel).levelnum {
@@ -63,8 +61,7 @@ pub unsafe extern "C" fn AnimateEnemys() {
 
 /// This is the function, that move each of the enemys according to
 /// their orders and their program
-#[no_mangle]
-pub unsafe extern "C" fn MoveEnemys() {
+pub unsafe fn MoveEnemys() {
     PermanentHealRobots(); // enemy robots heal as time passes...
 
     AnimateEnemys(); // move the "phase" of the rotation of enemys
@@ -92,8 +89,7 @@ pub unsafe extern "C" fn MoveEnemys() {
 /// AttackInfluence(): This function sometimes fires a bullet from
 /// enemy number enemynum directly into the direction of the influencer,
 /// but of course only if the odds are good i.e. requirements are met.
-#[no_mangle]
-pub unsafe extern "C" fn AttackInfluence(enemy_num: c_int) {
+pub unsafe fn AttackInfluence(enemy_num: c_int) {
     let this_robot = &mut AllEnemys[usize::try_from(enemy_num).unwrap()];
     // At first, we check for a lot of cases in which we do not
     // need to move anything for this reason or for that
@@ -203,8 +199,7 @@ pub unsafe extern "C" fn AttackInfluence(enemy_num: c_int) {
     cur_bullet.time_in_seconds = 0.;
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn MoveThisEnemy(enemy_num: c_int) {
+pub unsafe fn MoveThisEnemy(enemy_num: c_int) {
     let this_robot = &mut AllEnemys[usize::try_from(enemy_num).unwrap()];
 
     // Now check if the robot is still alive
@@ -247,8 +242,7 @@ pub unsafe extern "C" fn MoveThisEnemy(enemy_num: c_int) {
     SelectNextWaypointClassical(enemy_num);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn CheckEnemyEnemyCollision(enemy_num: c_int) -> c_int {
+pub unsafe fn CheckEnemyEnemyCollision(enemy_num: c_int) -> c_int {
     let curlev = (*CurLevel).levelnum;
 
     let enemy_num: usize = enemy_num.try_into().unwrap();
@@ -313,8 +307,7 @@ pub unsafe extern "C" fn CheckEnemyEnemyCollision(enemy_num: c_int) -> c_int {
 /// droids.
 ///
 /// Map tiles are not taken into consideration, only droids.
-#[no_mangle]
-pub unsafe extern "C" fn SelectNextWaypointClassical(enemy_num: c_int) {
+pub unsafe fn SelectNextWaypointClassical(enemy_num: c_int) {
     let this_robot = &mut AllEnemys[usize::try_from(enemy_num).unwrap()];
 
     // We do some definitions to save us some more typing later...
@@ -342,8 +335,7 @@ pub unsafe extern "C" fn SelectNextWaypointClassical(enemy_num: c_int) {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn ShuffleEnemys() {
+pub unsafe fn ShuffleEnemys() {
     let cur_level = &*CurLevel;
     let cur_level_num = cur_level.levelnum;
     let mut used_wp: [bool; MAXWAYPOINTS] = [false; MAXWAYPOINTS];
@@ -392,8 +384,7 @@ pub unsafe extern "C" fn ShuffleEnemys() {
 
 /// This function moves one robot thowards his next waypoint.  If already
 /// there, the function does nothing more.
-#[no_mangle]
-pub unsafe extern "C" fn MoveThisRobotThowardsHisWaypoint(enemy_num: c_int) {
+pub unsafe fn MoveThisRobotThowardsHisWaypoint(enemy_num: c_int) {
     let this_robot = &mut AllEnemys[usize::try_from(enemy_num).unwrap()];
 
     // We do some definitions to save us some more typing later...
@@ -431,8 +422,7 @@ pub unsafe extern "C" fn MoveThisRobotThowardsHisWaypoint(enemy_num: c_int) {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn ClearEnemys() {
+pub unsafe fn ClearEnemys() {
     for enemy in &mut AllEnemys[..MAX_ENEMYS_ON_SHIP] {
         enemy.ty = -1;
         enemy.levelnum = -1;
@@ -450,8 +440,7 @@ pub unsafe extern "C" fn ClearEnemys() {
     NumEnemys = 0;
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn PermanentHealRobots() {
+pub unsafe fn PermanentHealRobots() {
     AllEnemys[0..usize::try_from(NumEnemys).unwrap()]
         .iter_mut()
         .filter(|enemy| {

@@ -22,8 +22,15 @@ use std::{
     ptr::null_mut,
 };
 
+mod inner {
+    #[repr(C)]
+    pub struct MixMusic {
+        _private: [u8; 0],
+    }
+}
+use inner::MixMusic;
+
 extern "C" {
-    pub type Mix_Music;
     fn Mix_PlayChannelTimed(
         channel: c_int,
         chunk: *mut Mix_Chunk,
@@ -31,13 +38,13 @@ extern "C" {
         ticks: c_int,
     ) -> c_int;
     fn Mix_FreeChunk(chunk: *mut Mix_Chunk);
-    fn Mix_FreeMusic(music: *mut Mix_Music);
+    fn Mix_FreeMusic(music: *mut MixMusic);
     fn Mix_PauseMusic();
     fn Mix_ResumeMusic();
     fn Mix_CloseAudio();
-    fn Mix_PlayMusic(music: *mut Mix_Music, loops: c_int) -> c_int;
+    fn Mix_PlayMusic(music: *mut MixMusic, loops: c_int) -> c_int;
     fn Mix_VolumeMusic(volume: c_int) -> c_int;
-    fn Mix_LoadMUS(file: *const c_char) -> *mut Mix_Music;
+    fn Mix_LoadMUS(file: *const c_char) -> *mut MixMusic;
     fn Mix_VolumeChunk(chunk: *mut Mix_Chunk, volume: c_int) -> c_int;
     fn Mix_OpenAudio(frequency: c_int, format: u16, channels: c_int, chunksize: c_int) -> c_int;
     fn Mix_AllocateChannels(num_chans: c_int) -> c_int;
@@ -115,9 +122,9 @@ const MUSIC_FILES: [&CStr; NUM_COLORS] = [
     cstr!("dreamfish-uridium2_loader.mod"), // DARK
 ];
 
-static mut MUSIC_SONGS: [*mut Mix_Music; NUM_COLORS] =
-    [null_mut::<c_void>() as *mut Mix_Music; NUM_COLORS];
-static mut TMP_MOD_FILE: *mut Mix_Music = null_mut::<c_void>() as *mut Mix_Music;
+static mut MUSIC_SONGS: [*mut MixMusic; NUM_COLORS] =
+    [null_mut::<c_void>() as *mut MixMusic; NUM_COLORS];
+static mut TMP_MOD_FILE: *mut MixMusic = null_mut::<c_void>() as *mut MixMusic;
 
 #[repr(C)]
 struct Mix_Chunk {
@@ -132,18 +139,15 @@ unsafe fn mix_play_channel(channel: c_int, chunk: *mut Mix_Chunk, loops: c_int) 
     Mix_PlayChannelTimed(channel, chunk, loops, -1)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn CrySound() {
+pub unsafe fn CrySound() {
     Play_Sound(Sound::Cry as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn TransferSound() {
+pub unsafe fn TransferSound() {
     Play_Sound(Sound::Transfer as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Play_Sound(tune: c_int) {
+pub unsafe fn Play_Sound(tune: c_int) {
     if sound_on == 0 {
         return;
     }
@@ -165,8 +169,7 @@ pub unsafe extern "C" fn Play_Sound(tune: c_int) {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn FreeSounds() {
+pub unsafe fn FreeSounds() {
     LOADED_WAV_FILES
         .iter()
         .filter(|file| !file.is_null())
@@ -185,8 +188,7 @@ pub unsafe extern "C" fn FreeSounds() {
     SDL_CloseAudio();
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Takeover_Set_Capsule_Sound() {
+pub unsafe fn Takeover_Set_Capsule_Sound() {
     if sound_on == 0 {
         return;
     }
@@ -194,8 +196,7 @@ pub unsafe extern "C" fn Takeover_Set_Capsule_Sound() {
     Play_Sound(Sound::TakeoverSetCapsule as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Takeover_Game_Won_Sound() {
+pub unsafe fn Takeover_Game_Won_Sound() {
     if sound_on == 0 {
         return;
     }
@@ -203,8 +204,7 @@ pub unsafe extern "C" fn Takeover_Game_Won_Sound() {
     Play_Sound(Sound::TakeoverGameWon as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Takeover_Game_Deadlock_Sound() {
+pub unsafe fn Takeover_Game_Deadlock_Sound() {
     if sound_on == 0 {
         return;
     }
@@ -212,8 +212,7 @@ pub unsafe extern "C" fn Takeover_Game_Deadlock_Sound() {
     Play_Sound(Sound::TakeoverGameDeadlock as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Takeover_Game_Lost_Sound() {
+pub unsafe fn Takeover_Game_Lost_Sound() {
     if sound_on == 0 {
         return;
     }
@@ -221,8 +220,7 @@ pub unsafe extern "C" fn Takeover_Game_Lost_Sound() {
     Play_Sound(Sound::TakeoverGameLost as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn CollisionGotDamagedSound() {
+pub unsafe fn CollisionGotDamagedSound() {
     if sound_on == 0 {
         return;
     }
@@ -230,8 +228,7 @@ pub unsafe extern "C" fn CollisionGotDamagedSound() {
     Play_Sound(Sound::CollisionGotDamaged as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn CollisionDamagedEnemySound() {
+pub unsafe fn CollisionDamagedEnemySound() {
     if sound_on == 0 {
         return;
     }
@@ -239,8 +236,7 @@ pub unsafe extern "C" fn CollisionDamagedEnemySound() {
     Play_Sound(Sound::CollisionDamagedEnemy as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn BounceSound() {
+pub unsafe fn BounceSound() {
     if sound_on == 0 {
         return;
     }
@@ -248,8 +244,7 @@ pub unsafe extern "C" fn BounceSound() {
     Play_Sound(Sound::Collision as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn DruidBlastSound() {
+pub unsafe fn DruidBlastSound() {
     if sound_on == 0 {
         return;
     }
@@ -257,8 +252,7 @@ pub unsafe extern "C" fn DruidBlastSound() {
     Play_Sound(Sound::Blast as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn GotHitSound() {
+pub unsafe fn GotHitSound() {
     if sound_on == 0 {
         return;
     }
@@ -266,8 +260,7 @@ pub unsafe extern "C" fn GotHitSound() {
     Play_Sound(Sound::GotHit as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn GotIntoBlastSound() {
+pub unsafe fn GotIntoBlastSound() {
     if sound_on == 0 {
         return;
     }
@@ -275,8 +268,7 @@ pub unsafe extern "C" fn GotIntoBlastSound() {
     Play_Sound(Sound::GotIntoBlast as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn RefreshSound() {
+pub unsafe fn RefreshSound() {
     if sound_on == 0 {
         return;
     }
@@ -284,8 +276,7 @@ pub unsafe extern "C" fn RefreshSound() {
     Play_Sound(Sound::Refresh as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn MoveLiftSound() {
+pub unsafe fn MoveLiftSound() {
     if sound_on == 0 {
         return;
     }
@@ -293,8 +284,7 @@ pub unsafe extern "C" fn MoveLiftSound() {
     Play_Sound(Sound::MoveElevator as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn MenuItemSelectedSound() {
+pub unsafe fn MenuItemSelectedSound() {
     if sound_on == 0 {
         return;
     }
@@ -302,8 +292,7 @@ pub unsafe extern "C" fn MenuItemSelectedSound() {
     Play_Sound(Sound::MenuItemSelected as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn MoveMenuPositionSound() {
+pub unsafe fn MoveMenuPositionSound() {
     if sound_on == 0 {
         return;
     }
@@ -311,16 +300,14 @@ pub unsafe extern "C" fn MoveMenuPositionSound() {
     Play_Sound(Sound::MoveMenuPosition as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn ThouArtDefeatedSound() {
+pub unsafe fn ThouArtDefeatedSound() {
     if sound_on == 0 {
         return;
     }
     Play_Sound(Sound::ThouArtDefeated as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn EnterLiftSound() {
+pub unsafe fn EnterLiftSound() {
     if sound_on == 0 {
         return;
     }
@@ -328,8 +315,7 @@ pub unsafe extern "C" fn EnterLiftSound() {
     Play_Sound(Sound::EnterElevator as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn LeaveLiftSound() {
+pub unsafe fn LeaveLiftSound() {
     if sound_on == 0 {
         return;
     }
@@ -337,8 +323,7 @@ pub unsafe extern "C" fn LeaveLiftSound() {
     Play_Sound(Sound::LeaveElevator as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Fire_Bullet_Sound(bullet_type: c_int) {
+pub unsafe fn Fire_Bullet_Sound(bullet_type: c_int) {
     if sound_on == 0 {
         return;
     }
@@ -364,8 +349,7 @@ pub unsafe extern "C" fn Fire_Bullet_Sound(bullet_type: c_int) {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Switch_Background_Music_To(filename_raw: *const c_char) {
+pub unsafe fn Switch_Background_Music_To(filename_raw: *const c_char) {
     static mut PREV_COLOR: c_int = -1;
     static mut PAUSED: bool = false;
 
@@ -426,18 +410,15 @@ pub unsafe extern "C" fn Switch_Background_Music_To(filename_raw: *const c_char)
     Mix_VolumeMusic((GameConfig.Current_BG_Music_Volume * f32::from(MIX_MAX_VOLUME)) as c_int);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn CountdownSound() {
+pub unsafe fn CountdownSound() {
     Play_Sound(Sound::Countdown as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn EndCountdownSound() {
+pub unsafe fn EndCountdownSound() {
     Play_Sound(Sound::Endcountdown as i32);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Set_Sound_FX_Volume(new_volume: c_float) {
+pub unsafe fn Set_Sound_FX_Volume(new_volume: c_float) {
     if sound_on == 0 {
         return;
     }
@@ -450,8 +431,7 @@ pub unsafe extern "C" fn Set_Sound_FX_Volume(new_volume: c_float) {
     });
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Set_BG_Music_Volume(new_volume: c_float) {
+pub unsafe fn Set_BG_Music_Volume(new_volume: c_float) {
     if sound_on == 0 {
         return;
     }
@@ -459,8 +439,7 @@ pub unsafe extern "C" fn Set_BG_Music_Volume(new_volume: c_float) {
     Mix_VolumeMusic((new_volume * f32::from(MIX_MAX_VOLUME)) as c_int);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Init_Audio() {
+pub unsafe fn Init_Audio() {
     info!("Initializing SDL Audio Systems");
 
     if sound_on == 0 {

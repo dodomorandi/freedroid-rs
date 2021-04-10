@@ -46,8 +46,7 @@ const MAXIMAL_STEP_SIZE: f32 = 7.0 / 20.;
 /// loss of health in PermanentLoseEnergy.
 ///
 /// This function now takes into account the framerates.
-#[no_mangle]
-pub unsafe extern "C" fn RefreshInfluencer() {
+pub unsafe fn RefreshInfluencer() {
     static mut TIME_COUNTER: c_int = 3; /* to slow down healing process */
 
     TIME_COUNTER -= 1;
@@ -88,8 +87,7 @@ pub unsafe extern "C" fn RefreshInfluencer() {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn CheckInfluenceEnemyCollision() {
+pub unsafe fn CheckInfluenceEnemyCollision() {
     for (i, enemy) in AllEnemys[..usize::try_from(NumEnemys).unwrap()]
         .iter_mut()
         .enumerate()
@@ -165,8 +163,7 @@ pub unsafe extern "C" fn CheckInfluenceEnemyCollision() {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn InfluEnemyCollisionLoseEnergy(enemy_num: c_int) {
+pub unsafe fn InfluEnemyCollisionLoseEnergy(enemy_num: c_int) {
     let enemy_type = AllEnemys[usize::try_from(enemy_num).unwrap()].ty;
 
     let damage = ((*Druidmap.add(usize::try_from(Me.ty).unwrap())).class
@@ -189,8 +186,7 @@ pub unsafe extern "C" fn InfluEnemyCollisionLoseEnergy(enemy_num: c_int) {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn ExplodeInfluencer() {
+pub unsafe fn ExplodeInfluencer() {
     Me.status = Status::Terminated as c_int;
 
     for i in 0..10 {
@@ -223,8 +219,7 @@ pub unsafe extern "C" fn ExplodeInfluencer() {
 /// In case of a collision, the position and speed of the influencer are
 /// adapted accordingly.
 /// NOTE: Of course this functions HAS to take into account the current framerate!
-#[no_mangle]
-pub unsafe extern "C" fn CheckInfluenceWallCollisions() {
+pub unsafe fn CheckInfluenceWallCollisions() {
     let sx = Me.speed.x * Frame_Time();
     let sy = Me.speed.y * Frame_Time();
     let mut h_door_sliding_active = false;
@@ -348,8 +343,7 @@ pub unsafe extern "C" fn CheckInfluenceWallCollisions() {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn AnimateInfluence() {
+pub unsafe fn AnimateInfluence() {
     if Me.ty != Droid::Droid001 as c_int {
         Me.phase += (Me.energy
             / ((*Druidmap.add(usize::try_from(Me.ty).unwrap())).maxenergy
@@ -371,8 +365,7 @@ pub unsafe extern "C" fn AnimateInfluence() {
 
 /// This function moves the influencer, adjusts his speed according to
 /// keys pressed and also adjusts his status and current "phase" of his rotation.
-#[no_mangle]
-pub unsafe extern "C" fn MoveInfluence() {
+pub unsafe fn MoveInfluence() {
     static mut TRANSFER_COUNTER: c_float = 0.;
 
     let accel = (*Druidmap.add(usize::try_from(Me.ty).unwrap())).accel * Frame_Time();
@@ -503,8 +496,7 @@ pub unsafe extern "C" fn MoveInfluence() {
     AnimateInfluence(); // move the "phase" of influencers rotation
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn PermanentLoseEnergy() {
+pub unsafe fn PermanentLoseEnergy() {
     // Of course if in invincible mode, no energy will ever be lost...
     if InvincibleMode != 0 {
         return;
@@ -520,8 +512,7 @@ pub unsafe extern "C" fn PermanentLoseEnergy() {
 }
 
 /// Fire-Routine for the Influencer only !! (should be changed)
-#[no_mangle]
-pub unsafe extern "C" fn FireBullet() {
+pub unsafe fn FireBullet() {
     let guntype = (*Druidmap.add(usize::try_from(Me.ty).unwrap())).gun; /* which gun do we have ? */
     let bullet_speed = (*Bulletmap.add(usize::try_from(guntype).unwrap())).speed;
 
@@ -587,8 +578,7 @@ pub unsafe extern "C" fn FireBullet() {
     cur_bullet.time_in_seconds = 0.;
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn InfluenceFrictionWithAir() {
+pub unsafe fn InfluenceFrictionWithAir() {
     const DECELERATION: f32 = 7.0;
 
     if !RightPressed() && !LeftPressed() {
@@ -616,8 +606,7 @@ pub unsafe extern "C" fn InfluenceFrictionWithAir() {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn AdjustSpeed() {
+pub unsafe fn AdjustSpeed() {
     let maxspeed = (*Druidmap.add(usize::try_from(Me.ty).unwrap())).maxspeed;
     Me.speed.x = Me.speed.x.clamp(-maxspeed, maxspeed);
     Me.speed.y = Me.speed.y.clamp(-maxspeed, maxspeed);
@@ -632,18 +621,15 @@ pub unsafe fn get_position_history(how_long_past: c_int) -> &'static Gps {
     &Me.Position_History_Ring_Buffer[ring_position]
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn GetInfluPositionHistoryX(how_long_past: c_int) -> c_float {
+pub unsafe fn GetInfluPositionHistoryX(how_long_past: c_int) -> c_float {
     get_position_history(how_long_past).x
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn GetInfluPositionHistoryY(how_long_past: c_int) -> c_float {
+pub unsafe fn GetInfluPositionHistoryY(how_long_past: c_int) -> c_float {
     get_position_history(how_long_past).y
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn InitInfluPositionHistory() {
+pub unsafe fn InitInfluPositionHistory() {
     Me.Position_History_Ring_Buffer.fill(Gps {
         x: Me.pos.x,
         y: Me.pos.y,

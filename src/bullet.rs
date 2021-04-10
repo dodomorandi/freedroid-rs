@@ -27,8 +27,7 @@ unsafe fn get_druid_hit_dist_squared() -> f32 {
     (0.3 + 4. / 64.) * (Droid_Radius + 4. / 64.)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn CheckBulletCollisions(num: c_int) {
+pub unsafe fn CheckBulletCollisions(num: c_int) {
     let level = (*CurLevel).levelnum;
     let cur_bullet = &mut AllBullets[usize::try_from(num).unwrap()];
     static mut FBT_COUNTER: c_int = 0;
@@ -214,13 +213,11 @@ pub unsafe extern "C" fn CheckBulletCollisions(num: c_int) {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn DeleteBlast(num: c_int) {
+pub unsafe fn DeleteBlast(num: c_int) {
     AllBlasts[usize::try_from(num).unwrap()].ty = Status::Out as c_int;
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn ExplodeBlasts() {
+pub unsafe fn ExplodeBlasts() {
     AllBlasts[..MAXBLASTS]
         .iter_mut()
         .enumerate()
@@ -239,8 +236,7 @@ pub unsafe extern "C" fn ExplodeBlasts() {
         });
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn CheckBlastCollisions(num: c_int) {
+pub unsafe fn CheckBlastCollisions(num: c_int) {
     let level = (*CurLevel).levelnum;
     let cur_blast = &mut AllBlasts[usize::try_from(num).unwrap()];
 
@@ -317,8 +313,7 @@ pub unsafe extern "C" fn CheckBlastCollisions(num: c_int) {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn StartBlast(x: c_float, y: c_float, mut ty: c_int) {
+pub unsafe fn StartBlast(x: c_float, y: c_float, mut ty: c_int) {
     let mut i = 0;
     while i < MAXBLASTS {
         if AllBlasts[i].ty == Status::Out as c_int {
@@ -357,8 +352,7 @@ pub unsafe extern "C" fn StartBlast(x: c_float, y: c_float, mut ty: c_int) {
 
 /// delete bullet of given number, set it type=OUT, put it at x/y=-1/-1
 /// and create a Bullet-blast if with_blast==TRUE
-#[no_mangle]
-pub unsafe extern "C" fn DeleteBullet(bullet_number: c_int) {
+pub unsafe fn DeleteBullet(bullet_number: c_int) {
     let cur_bullet = &mut AllBullets[usize::try_from(bullet_number).unwrap()];
 
     if cur_bullet.ty == Status::Out as u8 {
@@ -406,8 +400,7 @@ pub unsafe extern "C" fn DeleteBullet(bullet_number: c_int) {
 /// This function moves all the bullets according to their speeds.
 ///
 /// NEW: this function also takes into accoung the current framerate.
-#[no_mangle]
-pub unsafe extern "C" fn MoveBullets() {
+pub unsafe fn MoveBullets() {
     for cur_bullet in &mut AllBullets[..MAXBULLETS] {
         if cur_bullet.ty == Status::Out as u8 {
             continue;

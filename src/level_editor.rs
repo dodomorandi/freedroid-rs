@@ -41,15 +41,12 @@ use std::{
 const HIGHLIGHTCOLOR: u32 = 255;
 const HIGHLIGHTCOLOR2: i32 = 100;
 
-extern "C" {}
-
 /// This function is provides the Level Editor integrated into
 /// freedroid.  Actually this function is a submenu of the big
 /// Escape Menu.  In here you can edit the level and upon pressing
 /// escape enter a further submenu where you can save the level,
 /// change level name and quit from level editing.
-#[no_mangle]
-pub unsafe extern "C" fn LevelEditor() {
+pub unsafe fn LevelEditor() {
     let mut done = false;
     let mut origin_waypoint: c_int = -1;
 
@@ -99,7 +96,7 @@ pub unsafe extern "C" fn LevelEditor() {
             Font0_BFont,
             i32::from(Full_User_Rect.x) + i32::from(Full_User_Rect.w) / 3,
             i32::from(Full_User_Rect.y) + i32::from(Full_User_Rect.h) - FontHeight(&*Font0_BFont),
-            cstr!("Press F1 for keymap").as_ptr() as *mut c_char,
+            format_args!("Press F1 for keymap"),
         );
 
         SDL_Flip(ne_screen);
@@ -129,56 +126,56 @@ pub unsafe extern "C" fn LevelEditor() {
             CenteredPutString(
                 ne_screen,
                 k * FontHeight(&*Menu_BFont),
-                cstr!("Level Editor Keymap").as_ptr() as *mut c_char,
+                b"Level Editor Keymap",
             );
             k += 2;
             PutString(
                 ne_screen,
                 keymap_offset,
                 (k) * FontHeight(&*Menu_BFont),
-                cstr!("Use cursor keys to move around.").as_ptr() as *mut c_char,
+                b"Use cursor keys to move around.",
             );
             k += 1;
             PutString(
                 ne_screen,
                 keymap_offset,
                 (k) * FontHeight(&*Menu_BFont),
-                cstr!("Use number pad to plant walls.").as_ptr() as *mut c_char,
+                b"Use number pad to plant walls.",
             );
             k += 1;
             PutString(
                 ne_screen,
                 keymap_offset,
                 (k) * FontHeight(&*Menu_BFont),
-                cstr!("Use shift and number pad to plant extras.").as_ptr() as *mut c_char,
+                b"Use shift and number pad to plant extras.",
             );
             k += 1;
             PutString(
                 ne_screen,
                 keymap_offset,
                 (k) * FontHeight(&*Menu_BFont),
-                cstr!("R...Refresh, 1-5...Blocktype 1-5, L...Lift").as_ptr() as *mut c_char,
+                b"R...Refresh, 1-5...Blocktype 1-5, L...Lift",
             );
             k += 1;
             PutString(
                 ne_screen,
                 keymap_offset,
                 (k) * FontHeight(&*Menu_BFont),
-                cstr!("F...Fine grid, T/SHIFT + T...Doors").as_ptr() as *mut c_char,
+                b"F...Fine grid, T/SHIFT + T...Doors",
             );
             k += 1;
             PutString(
                 ne_screen,
                 keymap_offset,
                 (k) * FontHeight(&*Menu_BFont),
-                cstr!("M...Alert, E...Enter tile by number").as_ptr() as *mut c_char,
+                b"M...Alert, E...Enter tile by number",
             );
             k += 1;
             PutString(
                 ne_screen,
                 keymap_offset,
                 (k) * FontHeight(&*Menu_BFont),
-                cstr!("Space/Enter...Floor").as_ptr() as *mut c_char,
+                b"Space/Enter...Floor",
             );
             k += 2;
 
@@ -186,21 +183,21 @@ pub unsafe extern "C" fn LevelEditor() {
                 ne_screen,
                 keymap_offset,
                 (k) * FontHeight(&*Menu_BFont),
-                cstr!("I/O...zoom INTO/OUT OF the map").as_ptr() as *mut c_char,
+                b"I/O...zoom INTO/OUT OF the map",
             );
             k += 2;
             PutString(
                 ne_screen,
                 keymap_offset,
                 (k) * FontHeight(&*Menu_BFont),
-                cstr!("P...toggle wayPOINT on/off").as_ptr() as *mut c_char,
+                b"P...toggle wayPOINT on/off",
             );
             k += 1;
             PutString(
                 ne_screen,
                 keymap_offset,
                 (k) * FontHeight(&*Menu_BFont),
-                cstr!("C...start/end waypoint CONNECTION").as_ptr() as *mut c_char,
+                b"C...start/end waypoint CONNECTION",
             );
 
             SDL_Flip(ne_screen);
@@ -220,7 +217,7 @@ pub unsafe extern "C" fn LevelEditor() {
             CenteredPutString(
                 ne_screen,
                 6 * FontHeight(&*Menu_BFont),
-                cstr!("Please enter new value: ").as_ptr() as *mut c_char,
+                b"Please enter new value: ",
             );
             SDL_Flip(ne_screen);
             let numeric_input_string = GetString(10, 2);

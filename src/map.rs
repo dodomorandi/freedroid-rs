@@ -74,8 +74,7 @@ const CONNECTION_STRING: &str = "connections: ";
 const CONNECTION_STRING_C: &CStr = cstr!("connections: ");
 
 /// Determines wether object on x/y is visible to the 001 or not
-#[no_mangle]
-pub unsafe extern "C" fn IsVisible(objpos: &Finepoint) -> c_int {
+pub unsafe fn IsVisible(objpos: &Finepoint) -> c_int {
     let influ_x = Me.pos.x;
     let influ_y = Me.pos.y;
 
@@ -108,8 +107,7 @@ pub unsafe extern "C" fn IsVisible(objpos: &Finepoint) -> c_int {
     true.into()
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn GetMapBrick(deck: &Level, x: c_float, y: c_float) -> c_uchar {
+pub unsafe fn GetMapBrick(deck: &Level, x: c_float, y: c_float) -> c_uchar {
     let xx = x.round() as c_int;
     let yy = y.round() as c_int;
 
@@ -120,8 +118,7 @@ pub unsafe extern "C" fn GetMapBrick(deck: &Level, x: c_float, y: c_float) -> c_
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn FreeShipMemory() {
+pub unsafe fn FreeShipMemory() {
     curShip
         .AllLevels
         .iter_mut()
@@ -133,8 +130,7 @@ pub unsafe extern "C" fn FreeShipMemory() {
         });
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn FreeLevelMemory(level: *mut Level) {
+pub unsafe fn FreeLevelMemory(level: *mut Level) {
     if level.is_null() {
         return;
     }
@@ -152,8 +148,7 @@ pub unsafe extern "C" fn FreeLevelMemory(level: *mut Level) {
         .for_each(|map| libc::free(map));
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn AnimateRefresh() {
+pub unsafe fn AnimateRefresh() {
     static mut INNER_WAIT_COUNTER: f32 = 0.;
 
     trace!("AnimateRefresh():  real function call confirmed.");
@@ -177,8 +172,7 @@ pub unsafe extern "C" fn AnimateRefresh() {
     trace!("AnimateRefresh():  end of function reached.");
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn IsPassable(x: c_float, y: c_float, check_pos: c_int) -> c_int {
+pub unsafe fn IsPassable(x: c_float, y: c_float, check_pos: c_int) -> c_int {
     let map_brick = GetMapBrick(&*CurLevel, x, y);
 
     let fx = (x - 0.5) - (x - 0.5).floor();
@@ -432,8 +426,7 @@ pub enum ColorNames {
 }
 
 /// Saves ship-data to disk
-#[no_mangle]
-pub unsafe extern "C" fn SaveShip(shipname: *const c_char) -> c_int {
+pub unsafe fn SaveShip(shipname: *const c_char) -> c_int {
     use std::{fs::File, io::Write, path::PathBuf};
 
     trace!("SaveShip(): real function call confirmed.");
@@ -553,8 +546,7 @@ freedroid-discussion@lists.sourceforge.net\n\
 /// DOES THE ANIMATION TOO QUICKLY.  So, the most reasonable way out seems
 /// to be to operate this function only from time to time, e.g. after a
 /// specified delay has passed.
-#[no_mangle]
-pub unsafe extern "C" fn MoveLevelDoors() {
+pub unsafe fn MoveLevelDoors() {
     // This prevents animation going too quick.
     // The constant should be replaced by a variable, that can be
     // set from within the theme, but that may be done later...
@@ -634,8 +626,7 @@ pub unsafe extern "C" fn MoveLevelDoors() {
 }
 
 /// Returns a pointer to Map in a memory field
-#[no_mangle]
-pub unsafe extern "C" fn StructToMem(level: *mut Level) -> *mut c_char {
+pub unsafe fn StructToMem(level: *mut Level) -> *mut c_char {
     use std::io::Write;
 
     let level = &mut *level;
@@ -728,8 +719,7 @@ pub unsafe extern "C" fn StructToMem(level: *mut Level) -> *mut c_char {
     level_mem as *mut c_char
 }
 
-#[no_mangle]
-unsafe extern "C" fn ResetLevelMap(level: &mut Level) {
+unsafe fn ResetLevelMap(level: &mut Level) {
     // Now in the game and in the level editor, it might have happend that some open
     // doors occur.  The make life easier for the saving routine, these doors should
     // be closed first.
@@ -754,8 +744,7 @@ unsafe extern "C" fn ResetLevelMap(level: &mut Level) {
         });
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn DruidPassable(x: c_float, y: c_float) -> c_int {
+pub unsafe fn DruidPassable(x: c_float, y: c_float) -> c_int {
     let testpos: [Finepoint; DIRECTIONS] = [
         Finepoint {
             x,
@@ -809,8 +798,7 @@ pub unsafe extern "C" fn DruidPassable(x: c_float, y: c_float) -> c_int {
 /// in a already read in droids file and decodes all the contents of that
 /// droid section to fill the AllEnemys array with droid types accoriding
 /// to the specifications made in the file.
-#[no_mangle]
-pub unsafe extern "C" fn GetThisLevelsDroids(section_pointer: *mut c_char) {
+pub unsafe fn GetThisLevelsDroids(section_pointer: *mut c_char) {
     const DROIDS_LEVEL_INDICATION_STRING: &CStr = cstr!("Level=");
     const DROIDS_LEVEL_END_INDICATION_STRING: &CStr = cstr!("** End of this levels droid data **");
     const DROIDS_MAXRAND_INDICATION_STRING: &CStr = cstr!("Maximum number of Random Droids=");
@@ -938,8 +926,7 @@ pub unsafe extern "C" fn GetThisLevelsDroids(section_pointer: *mut c_char) {
 }
 
 /// This function initializes all enemys
-#[no_mangle]
-pub unsafe extern "C" fn GetCrew(filename: *mut c_char) -> c_int {
+pub unsafe fn GetCrew(filename: *mut c_char) -> c_int {
     const END_OF_DROID_DATA_STRING: &CStr = cstr!("*** End of Droid Data ***");
     const DROIDS_LEVEL_DESCRIPTION_START_STRING: &CStr = cstr!("** Beginning of new Level **");
     const DROIDS_LEVEL_DESCRIPTION_END_STRING: &CStr = cstr!("** End of this levels droid data **");
@@ -1009,8 +996,7 @@ pub unsafe extern "C" fn GetCrew(filename: *mut c_char) -> c_int {
 }
 
 /// loads lift-connctions to cur-ship struct
-#[no_mangle]
-pub unsafe extern "C" fn GetLiftConnections(filename: *mut c_char) -> c_int {
+pub unsafe fn GetLiftConnections(filename: *mut c_char) -> c_int {
     macro_rules! read_int_from_string_into {
         ($ptr:expr, $str:tt, $value:expr) => {
             ReadValueFromString(
@@ -1139,8 +1125,7 @@ pub unsafe extern "C" fn GetLiftConnections(filename: *mut c_char) -> c_int {
 }
 
 /// initialize doors, refreshes and lifts for the given level-data
-#[no_mangle]
-pub unsafe extern "C" fn InterpretMap(level: &mut Level) -> c_int {
+pub unsafe fn InterpretMap(level: &mut Level) -> c_int {
     /* Get Doors Array */
     GetDoors(level);
 
@@ -1156,8 +1141,7 @@ pub unsafe extern "C" fn InterpretMap(level: &mut Level) -> c_int {
 /// initializes the Doors array of the given level structure
 /// Of course the level data must be in the structure already!!
 /// Returns the number of doors found or ERR
-#[no_mangle]
-pub unsafe extern "C" fn GetDoors(level: &mut Level) -> c_int {
+pub unsafe fn GetDoors(level: &mut Level) -> c_int {
     let mut curdoor = 0;
 
     let xlen = level.xlen;
@@ -1212,8 +1196,7 @@ Sorry...\n\
 /// This function initialized the array of Refreshes for animation
 /// within the level
 /// Returns the number of refreshes found or ERR
-#[no_mangle]
-pub unsafe extern "C" fn GetRefreshes(level: &mut Level) -> c_int {
+pub unsafe fn GetRefreshes(level: &mut Level) -> c_int {
     let xlen = level.xlen;
     let ylen = level.ylen;
 
@@ -1264,8 +1247,7 @@ Sorry...\n\
 }
 
 /// Find all alerts on this level and initialize their position-array
-#[no_mangle]
-pub unsafe extern "C" fn GetAlerts(level: &mut Level) {
+pub unsafe fn GetAlerts(level: &mut Level) {
     let xlen = level.xlen;
     let ylen = level.ylen;
 
@@ -1296,8 +1278,7 @@ pub unsafe extern "C" fn GetAlerts(level: &mut Level) {
 
 /// Returns TRUE (1) for blocks classified as "Walls",
 /// 0 otherwise
-#[no_mangle]
-pub unsafe extern "C" fn IsWallBlock(block: c_int) -> c_int {
+pub unsafe fn IsWallBlock(block: c_int) -> c_int {
     use MapTile::*;
     MapTile::try_from(block)
         .map(|tile| {
@@ -1327,8 +1308,7 @@ pub unsafe extern "C" fn IsWallBlock(block: c_int) -> c_int {
 /// into a Level-struct:
 ///
 /// Doors and Waypoints Arrays are initialized too
-#[no_mangle]
-pub unsafe extern "C" fn LevelToStruct(data: *mut c_char) -> *mut Level {
+pub unsafe fn LevelToStruct(data: *mut c_char) -> *mut Level {
     /* Get the memory for one level */
     let loadlevel_ptr = MyMalloc(std::mem::size_of::<Level>().try_into().unwrap()) as *mut Level;
     let loadlevel = &mut *loadlevel_ptr;
@@ -1484,8 +1464,7 @@ pub unsafe extern "C" fn LevelToStruct(data: *mut c_char) -> *mut Level {
     loadlevel_ptr
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn LoadShip(filename: *mut c_char) -> c_int {
+pub unsafe fn LoadShip(filename: *mut c_char) -> c_int {
     let mut level_start: [*mut c_char; MAX_LEVELS] = [null_mut(); MAX_LEVELS];
     FreeShipMemory(); // clear vestiges of previous ship data, if any
 
@@ -1557,8 +1536,7 @@ pub unsafe extern "C" fn LoadShip(filename: *mut c_char) -> c_int {
 
 /// ActSpecialField: checks Influencer on SpecialFields like
 /// Lifts and Konsoles and acts on it
-#[no_mangle]
-pub unsafe extern "C" fn ActSpecialField(x: c_float, y: c_float) {
+pub unsafe fn ActSpecialField(x: c_float, y: c_float) {
     let map_tile = GetMapBrick(&*CurLevel, x, y);
 
     let myspeed2 = Me.speed.x * Me.speed.x + Me.speed.y * Me.speed.y;
@@ -1596,8 +1574,7 @@ pub unsafe extern "C" fn ActSpecialField(x: c_float, y: c_float) {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn GetCurrentLift() -> c_int {
+pub unsafe fn GetCurrentLift() -> c_int {
     let curlev = (*CurLevel).levelnum;
 
     let gx = Me.pos.x.round() as c_int;

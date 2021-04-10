@@ -30,7 +30,6 @@ use crate::{
 
 use cstr::cstr;
 use defs::MAXBULLETS;
-use libc_extra::unix::stdio::stderr;
 use log::{error, info, warn};
 use once_cell::sync::Lazy;
 use sdl::{
@@ -44,7 +43,7 @@ use std::{
     borrow::Cow,
     convert::{TryFrom, TryInto},
     env,
-    ffi::{CStr, VaList, VaListImpl},
+    ffi::CStr,
     fs::{self, File},
     os::raw::{c_char, c_float, c_int, c_long, c_void},
     path::Path,
@@ -53,32 +52,21 @@ use std::{
     sync::RwLock,
 };
 
-extern "C" {
-    pub fn vsnprintf(s: *mut c_char, size: usize, format: *const c_char, ap: VaList) -> c_int;
-}
-
-#[no_mangle]
 static mut oneframedelay: c_long = 0;
 
-#[no_mangle]
 static mut tenframedelay: c_long = 0;
 
-#[no_mangle]
 static mut onehundredframedelay: c_long = 0;
 
-#[no_mangle]
 static mut Now_SDL_Ticks: u32 = 0;
 
-#[no_mangle]
 static mut One_Frame_SDL_Ticks: u32 = 0;
 
-#[no_mangle]
 static mut framenr: c_int = 0;
 
 static CURRENT_TIME_FACTOR: Lazy<RwLock<f32>> = Lazy::new(|| RwLock::new(1.));
 
-#[no_mangle]
-pub unsafe extern "C" fn update_progress(percent: c_int) {
+pub unsafe fn update_progress(percent: c_int) {
     let h = (f64::from(ProgressBar_Rect.h) * f64::from(percent) / 100.) as u16;
     let mut dst = Rect::new(
         ProgressBar_Rect.x + ProgressMeter_Rect.x,
@@ -109,8 +97,7 @@ pub unsafe extern "C" fn update_progress(percent: c_int) {
 ///
 /// This counter is most conveniently set via the function Activate_Conservative_Frame_Computation,
 /// which can be conveniently called from eveywhere.
-#[no_mangle]
-pub unsafe extern "C" fn Frame_Time() -> c_float {
+pub unsafe fn Frame_Time() -> c_float {
     static mut PREVIOUS_TIME: c_float = 0.1;
 
     if SkipAFewFrames != 0 {
@@ -125,15 +112,13 @@ pub unsafe extern "C" fn Frame_Time() -> c_float {
 }
 
 /// Update the factor affecting the current speed of 'time flow'
-#[no_mangle]
-pub unsafe extern "C" fn set_time_factor(time_factor: c_float) {
+pub unsafe fn set_time_factor(time_factor: c_float) {
     *CURRENT_TIME_FACTOR.write().unwrap() = time_factor;
 }
 
 /// This function is used for terminating freedroid.  It will close
 /// the SDL submodules and exit.
-#[no_mangle]
-pub unsafe extern "C" fn Terminate(exit_code: c_int) -> ! {
+pub unsafe fn Terminate(exit_code: c_int) -> ! {
     info!("Termination of Freedroid initiated.");
 
     if exit_code == defs::OK.into() {
@@ -159,8 +144,7 @@ pub unsafe extern "C" fn Terminate(exit_code: c_int) -> ! {
 
 /// This function is used to generate a random integer in the range
 /// from [0 to upper_bound] (inclusive), distributed uniformly.
-#[no_mangle]
-pub unsafe extern "C" fn MyRandom(upper_bound: c_int) -> c_int {
+pub unsafe fn MyRandom(upper_bound: c_int) -> c_int {
     // random float in [0,upper_bound+1)
     let tmp = (f64::from(upper_bound) + 1.0)
         * (f64::from(libc::rand()) / (f64::from(libc::RAND_MAX) + 1.0));
@@ -178,8 +162,7 @@ pub unsafe extern "C" fn MyRandom(upper_bound: c_int) -> c_int {
 /// can further be toggled from PAUSE to CHEESE, which is
 /// a feature from the original program that should probably
 /// allow for better screenshots.
-#[no_mangle]
-pub unsafe extern "C" fn Pause() {
+pub unsafe fn Pause() {
     Me.status = Status::Pause as i32;
     Assemble_Combat_Picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
 
@@ -244,8 +227,7 @@ const VID_SCALE_FACTOR: &str = "Vid_ScaleFactor";
 const HOG_CPU: &str = "Hog_Cpu";
 const EMPTY_LEVEL_SPEEDUP: &str = "EmptyLevelSpeedup";
 
-#[no_mangle]
-pub unsafe extern "C" fn SaveGameConfig() -> c_int {
+pub unsafe fn SaveGameConfig() -> c_int {
     use std::io::Write;
     if ConfigDir[0] == b'\0' as c_char {
         return defs::ERR.into();
@@ -353,8 +335,7 @@ pub unsafe extern "C" fn SaveGameConfig() -> c_int {
 
 /// This function starts the time-taking process.  Later the results
 /// of this function will be used to calculate the current framerate
-#[no_mangle]
-pub unsafe extern "C" fn StartTakingTimeForFPSCalculation() {
+pub unsafe fn StartTakingTimeForFPSCalculation() {
     /* This ensures, that 0 is never an encountered framenr,
      * therefore count to 100 here
      * Take the time now for calculating the frame rate
@@ -364,8 +345,7 @@ pub unsafe extern "C" fn StartTakingTimeForFPSCalculation() {
     One_Frame_SDL_Ticks = SDL_GetTicks();
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn ComputeFPSForThisFrame() {
+pub unsafe fn ComputeFPSForThisFrame() {
     // In the following paragraph the framerate calculation is done.
     // There are basically two ways to do this:
     // The first way is to use SDL_GetTicks(), a function measuring milliseconds
@@ -389,8 +369,7 @@ pub unsafe extern "C" fn ComputeFPSForThisFrame() {
     FPSover1 = (1000. / oneframedelay as f64) as f32;
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn Activate_Conservative_Frame_Computation() {
+pub unsafe fn Activate_Conservative_Frame_Computation() {
     SkipAFewFrames = true.into();
 
     // Now we are in some form of pause.  It can't
@@ -402,8 +381,7 @@ pub unsafe extern "C" fn Activate_Conservative_Frame_Computation() {
 /// This function usese calloc, so memory is automatically 0-initialized!
 /// The function also checks for success and terminates in case of
 /// "out of memory", so we dont need to do this always in the code.
-#[no_mangle]
-pub unsafe extern "C" fn MyMalloc(mut size: c_long) -> *mut c_void {
+pub unsafe fn MyMalloc(mut size: c_long) -> *mut c_void {
     // make Gnu-compatible even if on a broken system:
     if size == 0 {
         size = 1;
@@ -434,8 +412,7 @@ pub unsafe extern "C" fn MyMalloc(mut size: c_long) -> *mut c_void {
 ///
 /// !! do never try to free the returned string !!
 /// or to keep using it after a new call to find_file!
-#[no_mangle]
-pub unsafe extern "C" fn find_file(
+pub unsafe fn find_file(
     fname: *const c_char,
     mut subdir: *mut c_char,
     use_theme: c_int,
@@ -539,8 +516,7 @@ pub unsafe extern "C" fn find_file(
 }
 
 /// show_progress: display empty progress meter with given text
-#[no_mangle]
-pub unsafe extern "C" fn init_progress(mut text: *mut c_char) {
+pub unsafe fn init_progress(mut text: *mut c_char) {
     if text.is_null() {
         text = cstr!("Progress...").as_ptr() as *mut c_char;
     }
@@ -580,7 +556,12 @@ pub unsafe extern "C" fn init_progress(mut text: *mut c_char) {
     dst.x += ProgressMeter_Rect.x;
     dst.y += ProgressMeter_Rect.y;
 
-    printf_SDL(ne_screen, dst.x.into(), dst.y.into(), text);
+    printf_SDL(
+        ne_screen,
+        dst.x.into(),
+        dst.y.into(),
+        format_args!("{}", CStr::from_ptr(text).to_str().unwrap()),
+    );
 
     SDL_Flip(ne_screen);
 }
@@ -589,8 +570,7 @@ pub unsafe extern "C" fn init_progress(mut text: *mut c_char) {
 /// memory for it of course, looks for the file end string and then
 /// terminates the whole read in file with a 0 character, so that it
 /// can easily be treated like a common string.
-#[no_mangle]
-pub unsafe extern "C" fn ReadAndMallocAndTerminateFile(
+pub unsafe fn ReadAndMallocAndTerminateFile(
     filename: *mut c_char,
     file_end_string: *mut c_char,
 ) -> *mut c_char {
@@ -724,8 +704,7 @@ pub unsafe extern "C" fn ReadAndMallocAndTerminateFile(
 ///
 /// NOTE!!: be sure dst is large enough for data read by FormatString, or
 /// sscanf will crash!!
-#[no_mangle]
-pub unsafe extern "C" fn ReadValueFromString(
+pub unsafe fn ReadValueFromString(
     data: *mut c_char,
     label: *mut c_char,
     format_string: *mut c_char,
@@ -754,8 +733,7 @@ pub unsafe extern "C" fn ReadValueFromString(
 ///
 /// The return value is a pointer to the first instance where the substring
 /// we are searching is found in the main text.
-#[no_mangle]
-pub unsafe extern "C" fn LocateStringInData(
+pub unsafe fn LocateStringInData(
     search_begin_pointer: *mut c_char,
     search_text_pointer: *mut c_char,
 ) -> *mut c_char {
@@ -800,8 +778,7 @@ pub unsafe extern "C" fn LocateStringInData(
 /// FS_filelength().. (taken from quake2)
 ///
 /// contrary to stat() this fct is nice and portable,
-#[no_mangle]
-pub unsafe extern "C" fn FS_filelength(file: *mut libc::FILE) -> c_int {
+pub unsafe fn FS_filelength(file: *mut libc::FILE) -> c_int {
     use libc::{fseek, ftell, SEEK_END, SEEK_SET};
     let pos = ftell(file);
     assert_ne!(fseek(file, 0, SEEK_END), -1);
@@ -814,8 +791,7 @@ pub unsafe extern "C" fn FS_filelength(file: *mut libc::FILE) -> c_int {
 
 /// This function teleports the influencer to a new position on the
 /// ship.  THIS CAN BE A POSITION ON A DIFFERENT LEVEL.
-#[no_mangle]
-pub unsafe extern "C" fn Teleport(level_num: c_int, x: c_int, y: c_int) {
+pub unsafe fn Teleport(level_num: c_int, x: c_int, y: c_int) {
     let cur_level = level_num;
     let mut array_num = 0;
 
@@ -864,8 +840,7 @@ pub unsafe extern "C" fn Teleport(level_num: c_int, x: c_int, y: c_int) {
 
 /// This function is kills all enemy robots on the whole ship.
 /// It querys the user once for safety.
-#[no_mangle]
-pub unsafe extern "C" fn Armageddon() {
+pub unsafe fn Armageddon() {
     AllEnemys
         .iter_mut()
         .take(NumEnemys.try_into().unwrap())
@@ -875,57 +850,9 @@ pub unsafe extern "C" fn Armageddon() {
         });
 }
 
-/// This function is used for debugging purposes.  It writes the
-/// given string either into a file, on the screen, or simply does
-/// nothing according to currently set debug level.
-#[no_mangle]
-pub unsafe extern "C" fn DebugPrintf(db_level: c_int, fmt: *mut c_char, args: ...) {
-    static mut BUFFER: [c_char; 5000 + 1] = [0; 5000 + 1];
-    let mut args: VaListImpl = args.clone();
-
-    if db_level <= debug_level {
-        vsnprintf(BUFFER.as_mut_ptr(), 5000, fmt, args.as_va_list());
-
-        #[cfg(not(target_os = "android"))]
-        {
-            libc::fprintf(
-                stderr as *mut libc::FILE,
-                cstr!("%s").as_ptr() as *mut c_char,
-                BUFFER.as_mut_ptr(),
-            );
-            libc::fflush(stderr as *mut libc::FILE);
-        };
-
-        #[cfg(target_os = "android")]
-        {
-            #[repr(C)]
-            #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-            enum AndroidLogPriority {
-                Unknown = 0,
-                Default,
-                Verbose,
-                Debug,
-                Info,
-                Warn,
-                Error,
-                Fatal,
-                Silent,
-            };
-
-            android_log_sys::__android_log_print(
-                AndroidLogPriority::Info,
-                "FreeDroid",
-                cstr!("%s").as_ptr() as *mut c_char,
-                BUFFER.as_mut_ptr(),
-            );
-        }
-    }
-}
-
 /// This function counts the number of occurences of a string in a given
 /// other string.
-#[no_mangle]
-pub unsafe extern "C" fn CountStringOccurences(
+pub unsafe fn CountStringOccurences(
     search_string: *mut c_char,
     target_string: *mut c_char,
 ) -> c_int {
@@ -947,8 +874,7 @@ pub unsafe extern "C" fn CountStringOccurences(
 /// from after there up to a sting end indicator and mallocs memory for
 /// it, copys it there and returns it.
 /// The original source string specified should in no way be modified.
-#[no_mangle]
-pub unsafe extern "C" fn ReadAndMallocStringFromData(
+pub unsafe fn ReadAndMallocStringFromData(
     search_string: *mut c_char,
     start_indication_string: *mut c_char,
     end_indication_string: *mut c_char,
@@ -1035,8 +961,7 @@ pub unsafe extern "C" fn ReadAndMallocStringFromData(
 ///
 /// this should be the first of all load/save functions called
 /// as here we read the $HOME-dir and create the config-subdir if neccessary
-#[no_mangle]
-pub unsafe extern "C" fn LoadGameConfig() -> c_int {
+pub unsafe fn LoadGameConfig() -> c_int {
     // ----------------------------------------------------------------------
     // Game-config maker-strings for config-file:
 
@@ -1185,8 +1110,7 @@ fn read_variable<'a>(data: &'a [u8], var_name: &str) -> Option<&'a [u8]> {
 }
 
 /// just a plain old sign-function
-#[no_mangle]
-pub extern "C" fn sign(x: c_float) -> c_int {
+pub fn sign(x: c_float) -> c_int {
     if x == 0.0 {
         0
     } else if x > 0.0 {
