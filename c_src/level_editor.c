@@ -57,73 +57,73 @@ void CreateWaypoint (level *level, int BlockX, int BlockY);
 
 @Ret:  none
 * $Function----------------------------------------------------------*/
-void
-Highlight_Current_Block(void)
-{
-  int i;
-
-  SDL_LockSurface( ne_screen );
-
-  for (i=0; i<Block_Rect.w; i++)
-    {
-      // This draws a (double) line at the upper border of the current block
-      putpixel( ne_screen ,
-		i + User_Rect.x + (User_Rect.w/2) + (rintf(Me.pos.x)-Me.pos.x - 0.5) * Block_Rect.w ,
-		UserCenter_y + ( rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h ,
-		HIGHLIGHTCOLOR );
-      putpixel( ne_screen ,
-		i + User_Rect.x + (User_Rect.w/2) + (rintf(Me.pos.x)-Me.pos.x - 0.5) * Block_Rect.w ,
-		UserCenter_y + ( rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h + 1 ,
-		HIGHLIGHTCOLOR );
-
-      // This draws a line at the lower border of the current block
-      putpixel( ne_screen ,
-		i + User_Rect.x + (User_Rect.w/2) + (rintf(Me.pos.x)-Me.pos.x - 0.5) * Block_Rect.w ,
-		UserCenter_y + ( rintf(Me.pos.y)-Me.pos.y + 0.5 ) * Block_Rect.h - 1,
-		HIGHLIGHTCOLOR );
-      putpixel( ne_screen ,
-		i + User_Rect.x + (User_Rect.w/2) + (rintf(Me.pos.x)-Me.pos.x - 0.5) * Block_Rect.w ,
-		UserCenter_y + ( rintf(Me.pos.y)-Me.pos.y + 0.5 ) * Block_Rect.h - 2,
-		HIGHLIGHTCOLOR );
-
-      // This draws a line at the left border of the current block
-      putpixel( ne_screen ,
-		0 + User_Rect.x + (User_Rect.w/2) + (rintf(Me.pos.x)-Me.pos.x - 0.5) * Block_Rect.w ,
-		UserCenter_y + ( rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h + i ,
-		// User_Rect.y + User_Rect.h/2 + (rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h + i ,
-		HIGHLIGHTCOLOR );
-      putpixel( ne_screen ,
-		1 + User_Rect.x + (User_Rect.w/2) + (rintf(Me.pos.x)-Me.pos.x - 0.5) * Block_Rect.w ,
-		UserCenter_y + ( rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h + i ,
-		// User_Rect.y + User_Rect.h/2 + (rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h + i ,
-		HIGHLIGHTCOLOR );
-
-      // This draws a line at the right border of the current block
-      putpixel( ne_screen ,
-		-1 + User_Rect.x + (User_Rect.w/2) + (rintf(Me.pos.x)-Me.pos.x + 0.5) * Block_Rect.w ,
-		UserCenter_y + ( rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h + i ,
-		// User_Rect.y + User_Rect.h/2 + (rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h + i ,
-		HIGHLIGHTCOLOR );
-      putpixel( ne_screen ,
-		-2 + User_Rect.x + (User_Rect.w/2) + (rintf(Me.pos.x)-Me.pos.x + 0.5) * Block_Rect.w ,
-		UserCenter_y + ( rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h + i ,
-		// User_Rect.y + User_Rect.h/2 + (rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h + i ,
-		HIGHLIGHTCOLOR );
-
-      /*
-	      TargetRectangle.x = UserCenter_x
-		+ ( -Me.pos.x+col-0.5 )*Block_Rect.w;
-	      TargetRectangle.y = UserCenter_y
-		+ ( -Me.pos.y+line-0.5 )*Block_Rect.h;
-	      SDL_BlitSurface( MapBlockSurfacePointer[ CurLevel->color ][MapBrick] , NULL ,
- 			       ne_screen, &TargetRectangle);
-      */
-
-
-    }
-
-  SDL_UnlockSurface( ne_screen );
-} // void Highlight_Current_Block(void)
+// void
+// Highlight_Current_Block(void)
+// {
+//   int i;
+// 
+//   SDL_LockSurface( ne_screen );
+// 
+//   for (i=0; i<Block_Rect.w; i++)
+//     {
+//       // This draws a (double) line at the upper border of the current block
+//       putpixel( ne_screen ,
+// 		i + User_Rect.x + (User_Rect.w/2) + (rintf(Me.pos.x)-Me.pos.x - 0.5) * Block_Rect.w ,
+// 		UserCenter_y + ( rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h ,
+// 		HIGHLIGHTCOLOR );
+//       putpixel( ne_screen ,
+// 		i + User_Rect.x + (User_Rect.w/2) + (rintf(Me.pos.x)-Me.pos.x - 0.5) * Block_Rect.w ,
+// 		UserCenter_y + ( rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h + 1 ,
+// 		HIGHLIGHTCOLOR );
+// 
+//       // This draws a line at the lower border of the current block
+//       putpixel( ne_screen ,
+// 		i + User_Rect.x + (User_Rect.w/2) + (rintf(Me.pos.x)-Me.pos.x - 0.5) * Block_Rect.w ,
+// 		UserCenter_y + ( rintf(Me.pos.y)-Me.pos.y + 0.5 ) * Block_Rect.h - 1,
+// 		HIGHLIGHTCOLOR );
+//       putpixel( ne_screen ,
+// 		i + User_Rect.x + (User_Rect.w/2) + (rintf(Me.pos.x)-Me.pos.x - 0.5) * Block_Rect.w ,
+// 		UserCenter_y + ( rintf(Me.pos.y)-Me.pos.y + 0.5 ) * Block_Rect.h - 2,
+// 		HIGHLIGHTCOLOR );
+// 
+//       // This draws a line at the left border of the current block
+//       putpixel( ne_screen ,
+// 		0 + User_Rect.x + (User_Rect.w/2) + (rintf(Me.pos.x)-Me.pos.x - 0.5) * Block_Rect.w ,
+// 		UserCenter_y + ( rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h + i ,
+// 		// User_Rect.y + User_Rect.h/2 + (rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h + i ,
+// 		HIGHLIGHTCOLOR );
+//       putpixel( ne_screen ,
+// 		1 + User_Rect.x + (User_Rect.w/2) + (rintf(Me.pos.x)-Me.pos.x - 0.5) * Block_Rect.w ,
+// 		UserCenter_y + ( rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h + i ,
+// 		// User_Rect.y + User_Rect.h/2 + (rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h + i ,
+// 		HIGHLIGHTCOLOR );
+// 
+//       // This draws a line at the right border of the current block
+//       putpixel( ne_screen ,
+// 		-1 + User_Rect.x + (User_Rect.w/2) + (rintf(Me.pos.x)-Me.pos.x + 0.5) * Block_Rect.w ,
+// 		UserCenter_y + ( rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h + i ,
+// 		// User_Rect.y + User_Rect.h/2 + (rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h + i ,
+// 		HIGHLIGHTCOLOR );
+//       putpixel( ne_screen ,
+// 		-2 + User_Rect.x + (User_Rect.w/2) + (rintf(Me.pos.x)-Me.pos.x + 0.5) * Block_Rect.w ,
+// 		UserCenter_y + ( rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h + i ,
+// 		// User_Rect.y + User_Rect.h/2 + (rintf(Me.pos.y)-Me.pos.y - 0.5 ) * Block_Rect.h + i ,
+// 		HIGHLIGHTCOLOR );
+// 
+//       /*
+// 	      TargetRectangle.x = UserCenter_x
+// 		+ ( -Me.pos.x+col-0.5 )*Block_Rect.w;
+// 	      TargetRectangle.y = UserCenter_y
+// 		+ ( -Me.pos.y+line-0.5 )*Block_Rect.h;
+// 	      SDL_BlitSurface( MapBlockSurfacePointer[ CurLevel->color ][MapBrick] , NULL ,
+//  			       ne_screen, &TargetRectangle);
+//       */
+// 
+// 
+//     }
+// 
+//   SDL_UnlockSurface( ne_screen );
+// } // void Highlight_Current_Block(void)
 
 /*@Function============================================================
 @Desc: This function is used by the Level Editor integrated into
