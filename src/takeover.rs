@@ -1590,7 +1590,7 @@ pub unsafe fn takeover(enemynum: c_int) -> c_int {
         let now = SDL_GetTicks();
         while !fire_pressed_r() && SDL_GetTicks() - now < SHOW_WAIT {
             #[cfg(target_os = "android")]
-            SDL_Flip(ne_screen);
+            SDL_Flip(NE_SCREEN);
 
             SDL_Delay(1);
         }

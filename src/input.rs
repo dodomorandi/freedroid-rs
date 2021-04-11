@@ -1,5 +1,5 @@
 #[cfg(target_os = "android")]
-use crate::global::ne_screen;
+use crate::graphics::NE_SCREEN;
 use crate::{
     defs::{
         self, alt_pressed, ctrl_pressed, down_pressed, get_user_center, left_pressed,
@@ -41,6 +41,9 @@ use std::{
     os::raw::{c_char, c_int},
     ptr::{null, null_mut},
 };
+
+#[cfg(target_os = "android")]
+use sdl::video::ll::SDL_Flip;
 
 extern "C" {
     pub fn SDL_Delay(ms: u32);
@@ -159,7 +162,7 @@ pub fn wait_for_key_pressed() -> c_int {
 pub fn any_key_just_pressed() -> c_int {
     #[cfg(target_os = "android")]
     unsafe {
-        SDL_Flip(ne_screen)
+        SDL_Flip(NE_SCREEN)
     };
 
     unsafe {
@@ -436,7 +439,7 @@ pub unsafe fn wait_for_all_keys_released() {
 
 pub unsafe fn any_key_is_pressed_r() -> bool {
     #[cfg(target_os = "android")]
-    SDL_Flip(ne_screen); // make sure we keep updating screen to read out Android inputs
+    SDL_Flip(NE_SCREEN); // make sure we keep updating screen to read out Android inputs
 
     #[cfg(not(target_os = "android"))]
     update_input();

@@ -122,15 +122,15 @@ macro_rules! menu_entry {
 }
 
 #[cfg(target_os = "android")]
-const LEGACY_MENU: [MenuEntry; 10] = [
+const LEGACY_MENU: [MenuEntry; 9] = [
     menu_entry! { "Back" },
-    menu_entry! { "Set Strictly Classic", handle_StrictlyClassic},
-    menu_entry! { "Combat Window: ", handle_WindowType},
-    menu_entry! { "Graphics Theme: ", handle_Theme},
-    menu_entry! { "Droid Talk: ", handle_DroidTalk},
-    menu_entry! { "Show Decals: ", handle_ShowDecals},
-    menu_entry! { "All Map Visible: ", handle_AllMapVisible},
-    menu_entry! { "Empty Level Speedup: ", handle_EmptyLevelSpeedup, NULL },
+    menu_entry! { "Set Strictly Classic", handle_strictly_classic},
+    menu_entry! { "Combat Window: ", handle_window_type},
+    menu_entry! { "Graphics Theme: ", handle_theme},
+    menu_entry! { "Droid Talk: ", handle_droid_talk},
+    menu_entry! { "Show Decals: ", handle_show_decals},
+    menu_entry! { "All Map Visible: ", handle_all_map_visible},
+    menu_entry! { "Empty Level Speedup: ", handle_empty_level_speedup},
     menu_entry! {},
 ];
 
@@ -179,12 +179,12 @@ const LEVEL_EDITOR_MENU: [MenuEntry; 8] = [
 #[cfg(target_os = "android")]
 const MAIN_MENU: [MenuEntry; 8] = [
     menu_entry! { "Back to Game"},
-    menu_entry! { "Graphics & Sound", None, GraphicsSoundMenu },
-    menu_entry! { "Legacy Options", None, LegacyMenu },
-    menu_entry! { "HUD Settings", None, HUDMenu },
-    menu_entry! { "Highscores", handle_Highscores},
-    menu_entry! { "Credits", handle_Credits},
-    menu_entry! { "Quit Game", handle_QuitGame},
+    menu_entry! { "Graphics & Sound", None, GRAPHICS_SOUND_MENU },
+    menu_entry! { "Legacy Options", None, LEGACY_MENU },
+    menu_entry! { "HUD Settings", None, HUD_MENU },
+    menu_entry! { "Highscores", handle_highscores},
+    menu_entry! { "Credits", handle_credits},
+    menu_entry! { "Quit Game", handle_quit_game},
     menu_entry! {},
 ];
 
@@ -924,7 +924,7 @@ pub unsafe fn show_menu(menu_entries: *const MenuEntry) {
         }
 
         #[cfg(target_os = "android")]
-        SDL_Flip(ne_screen); // for responsive input on Android, we need to run this every cycle
+        SDL_Flip(NE_SCREEN); // for responsive input on Android, we need to run this every cycle
 
         let action = get_menu_action(250);
 
@@ -1034,7 +1034,7 @@ pub unsafe fn display_key_config(selx: c_int, sely: c_int) {
 
     #[cfg(feature = "gcw0")]
     PrintStringFont(
-        ne_screen,
+        NE_SCREEN,
         Font0_BFont,
         col1,
         starty,

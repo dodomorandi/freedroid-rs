@@ -79,7 +79,7 @@ pub unsafe fn fill_rect(mut rect: Rect, color: SDL_Color) {
 }
 
 /// This function assembles the contents of the combat window
-/// in ne_screen.
+/// in NE_SCREEN.
 ///
 /// Several FLAGS can be used to control its behaviour:
 ///
@@ -544,10 +544,6 @@ pub unsafe fn put_influence(x: c_int, y: c_int) {
         && ME.text_visible_time < GAME_CONFIG.wanted_text_visible_time
         && GAME_CONFIG.droid_talk != 0
     {
-        //      PutStringFont ( ne_screen , Font0_BFont ,
-        //		      User_Rect.x+(User_Rect.w/2) + Block_Rect.w/3 ,
-        //		      User_Rect.y+(User_Rect.h/2) - Block_Rect.h/2 ,
-        //		      Me.TextToBeDisplayed );
         set_current_font(FONT0_B_FONT);
         display_text(
             ME.text_to_be_displayed,
@@ -668,8 +664,6 @@ pub unsafe fn put_blast(blast_number: c_int) {
         0,
         0,
     );
-    // SDL_BlitSurface( ne_blocks,
-    // Blastmap[CurBlast->type].block + ((int) floorf(CurBlast->phase)), ne_screen , &dst);
     SDL_UpperBlit(
         BLASTMAP[usize::try_from(cur_blast.ty).unwrap()].surface_pointer
             [(cur_blast.phase).floor() as usize],

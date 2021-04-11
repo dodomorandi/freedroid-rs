@@ -651,7 +651,6 @@ pub unsafe fn scale_graphics(scale: c_float) {
 
     //---------- rescale Takeover pics
     scale_pic(&mut TO_BLOCKS, scale);
-    //  printf_SDL (ne_screen, -1, -1, ".");
 
     scale_pic(&mut SHIP_ON_PIC, scale);
     scale_pic(&mut SHIP_OFF_PIC, scale);
@@ -1796,7 +1795,7 @@ pub unsafe fn set_combat_scale_to(scale: c_float) {
     scale_rect(&mut BLOCK_RECT, scale);
 }
 
-/// This function load an image and displays it directly to the ne_screen
+/// This function load an image and displays it directly to the NE_SCREEN
 /// but without updating it.
 /// This might be very handy, especially in the Title() function to
 /// display the title image and perhaps also for displaying the ship
@@ -1884,7 +1883,6 @@ pub unsafe fn draw_line_between_tiles(
     //--------------------
     // Now we start the drawing process
     //
-    // SDL_LockSurface( ne_screen );
 
     let slope = (y2 - y1) / (x2 - x1);
     let mut i = 0.;

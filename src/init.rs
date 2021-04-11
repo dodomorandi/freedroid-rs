@@ -631,7 +631,6 @@ pub unsafe fn init_new_mission(mission_name: *mut c_char) {
     let oldfont = get_current_font();
 
     set_current_font(FONT0_B_FONT);
-    //  printf_SDL (ne_screen, User_Rect.x + 50, -1, "Loading mission data ");
 
     /* Read the whole mission data to memory */
     let fpath = find_file(
@@ -820,9 +819,6 @@ pub unsafe fn init_new_mission(mission_name: *mut c_char) {
     // At this point the position history can be initialized
     //
     init_influ_position_history();
-    //  printf_SDL (ne_screen, -1, -1, ".");
-
-    //  printf_SDL (ne_screen, -1, -1, " ok\n");
     set_current_font(oldfont);
     //--------------------
     // We start with doing the briefing things...
@@ -907,7 +903,6 @@ pub unsafe fn title(mission_briefing_pointer: *mut c_char) {
     ));
     make_grid_on_screen(Some(&SCREEN_RECT));
     ME.status = Status::Briefing as c_int;
-    //  SDL_Flip (ne_screen);
 
     set_current_font(PARA_B_FONT);
 

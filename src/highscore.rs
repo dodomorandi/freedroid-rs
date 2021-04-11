@@ -1,5 +1,3 @@
-#[cfg(target_os = "android")]
-use crate::input::wait_for_key_pressed;
 use crate::{
     b_font::{
         centered_print_string, char_width, font_height, get_current_font, print_string,
@@ -13,11 +11,14 @@ use crate::{
     graphics::{display_image, make_grid_on_screen, NE_SCREEN, PIC999},
     input::wait_for_key_pressed,
     misc::find_file,
-    text::{display_text, get_string, printf_sdl},
+    text::{display_text, printf_sdl},
     vars::{FULL_USER_RECT, ME, PORTRAIT_RECT, SCREEN_RECT, USER_RECT},
     view::{assemble_combat_picture, display_banner},
     CONFIG_DIR, REAL_SCORE, SHOW_SCORE,
 };
+
+#[cfg(not(target_os = "android"))]
+use crate::text::get_string;
 
 use cstr::cstr;
 use log::{info, warn};
@@ -30,10 +31,13 @@ use std::{
     io::{Read, Write},
     mem,
     ops::Not,
-    os::raw::{c_char, c_int, c_long, c_void},
+    os::raw::{c_char, c_int, c_long},
     path::Path,
     ptr::null_mut,
 };
+
+#[cfg(not(target_os = "android"))]
+use std::os::raw::c_void;
 
 pub static mut HIGHSCORES: *mut *mut HighscoreEntry = null_mut();
 pub static mut NUM_HIGHSCORES: i32 = 0; /* total number of entries in our list (fixed) */
