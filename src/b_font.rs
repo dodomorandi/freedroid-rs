@@ -1,6 +1,5 @@
 use crate::{
     graphics::{putpixel, scale_pic, IMG_Load},
-    misc::my_malloc,
     sdl_must_lock,
 };
 
@@ -17,9 +16,9 @@ use sdl::{
     },
 };
 use std::{
+    alloc::{alloc_zeroed, dealloc, Layout},
     convert::{TryFrom, TryInto},
-    mem,
-    os::raw::{c_char, c_float, c_int, c_void},
+    os::raw::{c_char, c_float, c_int},
     ptr::null_mut,
 };
 
@@ -127,7 +126,8 @@ pub unsafe fn load_font(filename: *mut c_char, scale: c_float) -> *mut BFontInfo
         return null_mut();
     }
 
-    let font = my_malloc(mem::size_of::<BFontInfo>().try_into().unwrap()) as *mut BFontInfo;
+    let font_layout = Layout::new::<BFontInfo>();
+    let font = alloc_zeroed(font_layout) as *mut BFontInfo;
     if font.is_null() {
         return null_mut();
     }
@@ -136,7 +136,7 @@ pub unsafe fn load_font(filename: *mut c_char, scale: c_float) -> *mut BFontInfo
     scale_pic(&mut surface, scale);
 
     if surface.is_null() {
-        libc::free(font as *mut c_void);
+        dealloc(font as *mut u8, font_layout);
         return null_mut();
     }
 

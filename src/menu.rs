@@ -34,7 +34,7 @@ use crate::{
     level_editor::level_editor,
     map::{save_ship, COLOR_NAMES},
     misc::{
-        activate_conservative_frame_computation, armageddon, find_file, my_malloc, teleport,
+        activate_conservative_frame_computation, armageddon, dealloc_c_string, find_file, teleport,
         terminate,
     },
     ship::show_deck_map,
@@ -63,12 +63,14 @@ use sdl::{
     },
 };
 use std::{
+    alloc::{alloc_zeroed, dealloc, realloc, Layout},
     convert::{TryFrom, TryInto},
     ffi::CStr,
     io::Cursor,
     ops::{AddAssign, Not, SubAssign},
-    os::raw::{c_char, c_float, c_int, c_void},
+    os::raw::{c_char, c_float, c_int},
     ptr::null_mut,
+    sync::atomic::AtomicBool,
 };
 
 static mut FONT_HEIGHT: i32 = 0;
@@ -419,7 +421,7 @@ pub unsafe fn cheatmenu() {
                     cstr!("%f").as_ptr() as *mut c_char,
                     &mut CURRENT_COMBAT_SCALE_FACTOR,
                 );
-                libc::free(input as *mut c_void);
+                drop(Vec::from_raw_parts(input as *mut i8, 45, 45));
                 set_combat_scale_to(CURRENT_COMBAT_SCALE_FACTOR);
             }
 
@@ -585,7 +587,7 @@ pub unsafe fn cheatmenu() {
                     &mut x,
                     &mut y,
                 );
-                libc::free(input as *mut c_void);
+                drop(Vec::from_raw_parts(input as *mut i8, 45, 45));
                 teleport(l_num, x, y);
             }
 
@@ -634,7 +636,7 @@ pub unsafe fn cheatmenu() {
                     );
                     getchar_raw();
                 }
-                libc::free(input as *mut c_void);
+                drop(Vec::from_raw_parts(input as *mut i8, 45, 45));
             }
 
             Some(b'i') => {
@@ -655,7 +657,7 @@ pub unsafe fn cheatmenu() {
                 let input = get_string(40, 2);
                 let mut num = 0;
                 libc::sscanf(input, cstr!("%d").as_ptr() as *mut c_char, &mut num);
-                libc::free(input as *mut c_void);
+                drop(Vec::from_raw_parts(input as *mut i8, 45, 45));
                 ME.energy = num as f32;
                 if ME.energy > ME.health {
                     ME.health = ME.energy;
@@ -678,7 +680,7 @@ pub unsafe fn cheatmenu() {
                 let input = get_string(40, 2);
                 let mut l_num = 0;
                 libc::sscanf(input, cstr!("%d").as_ptr() as *mut c_char, &mut l_num);
-                libc::free(input as *mut c_void);
+                drop(Vec::from_raw_parts(input as *mut i8, 45, 45));
                 show_deck_map();
                 getchar_raw();
             }
@@ -1384,6 +1386,8 @@ pub unsafe fn handle_le_save_ship(action: MenuAction) -> *const c_char {
 }
 
 pub unsafe fn handle_le_name(action: MenuAction) -> *const c_char {
+    use std::sync::atomic::Ordering;
+
     let cur_level = &mut *CUR_LEVEL;
     if action == MenuAction::INFO {
         return cur_level.levelname;
@@ -1397,7 +1401,12 @@ pub unsafe fn handle_le_name(action: MenuAction) -> *const c_char {
             &FULL_USER_RECT,
         );
         SDL_Flip(NE_SCREEN);
-        libc::free(cur_level.levelname as *mut c_void);
+        static ALREADY_FREED: AtomicBool = AtomicBool::new(false);
+        match ALREADY_FREED.compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire) {
+            Ok(_) => dealloc_c_string(cur_level.levelname),
+            Err(_) => drop(Vec::from_raw_parts(cur_level.levelname as *mut i8, 20, 20)),
+        }
+
         cur_level.levelname = get_string(15, 2);
         initiate_menu(false);
     }
@@ -1484,7 +1493,11 @@ pub unsafe fn handle_le_size_x(action: MenuAction) -> *const c_char {
     let newmem = usize::try_from(cur_level.xlen).unwrap();
     // adjust memory sizes for new value
     for row in 0..usize::try_from(cur_level.ylen).unwrap() {
-        cur_level.map[row] = libc::realloc(cur_level.map[row] as *mut c_void, newmem) as *mut i8;
+        cur_level.map[row] = realloc(
+            cur_level.map[row] as *mut u8,
+            Layout::array::<i8>(usize::try_from(oldxlen).unwrap()).unwrap(),
+            newmem,
+        ) as *mut i8;
         if cur_level.map[row].is_null() {
             error!(
                 "Failed to re-allocate to {} bytes in map row {}",
@@ -1524,14 +1537,18 @@ pub unsafe fn handle_le_size_y(action: MenuAction) -> *const c_char {
         0,
         i32::try_from(MAX_MAP_ROWS - 1).unwrap(),
     );
+    let layout = Layout::array::<i8>(usize::try_from(cur_level.xlen).unwrap()).unwrap();
     match oldylen.cmp(&cur_level.ylen) {
         Ordering::Greater => {
-            libc::free(cur_level.map[usize::try_from(oldylen - 1).unwrap()] as *mut c_void);
+            dealloc(
+                cur_level.map[usize::try_from(oldylen - 1).unwrap()] as *mut u8,
+                layout,
+            );
             cur_level.map[usize::try_from(oldylen - 1).unwrap()] = null_mut();
         }
         Ordering::Less => {
             cur_level.map[usize::try_from(cur_level.ylen - 1).unwrap()] =
-                my_malloc(cur_level.xlen.into()) as *mut i8;
+                alloc_zeroed(layout) as *mut i8;
             std::ptr::write_bytes(
                 cur_level.map[usize::try_from(cur_level.ylen - 1).unwrap()],
                 MapTile::Void as u8,

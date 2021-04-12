@@ -16,16 +16,16 @@ use crate::{
         clear_graph_mem, display_image, init_pictures, init_video, load_fonts, make_grid_on_screen,
         white_noise, ALL_THEMES, NE_SCREEN, NUMBER_OF_BULLET_TYPES, PIC999,
     },
-    highscore::{init_highscores, update_highscores, HIGHSCORES, NUM_HIGHSCORES},
+    highscore::{init_highscores, update_highscores, HIGHSCORES},
     influencer::{explode_influencer, init_influ_position_history},
     input::{any_key_just_pressed, init_joy, wait_for_all_keys_released, SDL_Delay},
     map::{get_crew, get_lift_connections, load_ship},
     misc::{
         activate_conservative_frame_computation, compute_fps_for_this_frame,
-        count_string_occurences, find_file, init_progress, load_game_config, locate_string_in_data,
-        my_malloc, my_random, read_and_malloc_and_terminate_file, read_and_malloc_string_from_data,
-        read_value_from_string, set_time_factor, start_taking_time_for_fps_calculation, terminate,
-        update_progress,
+        count_string_occurences, dealloc_c_string, find_file, init_progress, load_game_config,
+        locate_string_in_data, my_random, read_and_malloc_and_terminate_file,
+        read_and_malloc_string_from_data, read_value_from_string, set_time_factor,
+        start_taking_time_for_fps_calculation, terminate, update_progress,
     },
     sound::{init_audio, switch_background_music_to, thou_art_defeated_sound},
     structs::{BulletSpec, DruidSpec},
@@ -55,6 +55,7 @@ use sdl::{
     Rect,
 };
 use std::{
+    alloc::{alloc_zeroed, dealloc, Layout},
     convert::{TryFrom, TryInto},
     ffi::CStr,
     ops::Not,
@@ -91,7 +92,10 @@ pub unsafe fn free_game_mem() {
                 SDL_FreeSurface(*surface);
             }
         }
-        libc::free(BULLETMAP as *mut c_void);
+        dealloc(
+            BULLETMAP as *mut u8,
+            Layout::array::<BulletSpec>(usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap()).unwrap(),
+        );
         BULLETMAP = null_mut();
     }
 
@@ -107,18 +111,10 @@ pub unsafe fn free_game_mem() {
     free_druidmap();
 
     // free highscores list
-    if HIGHSCORES.is_null().not() {
-        let highscores =
-            std::slice::from_raw_parts(HIGHSCORES, usize::try_from(NUM_HIGHSCORES).unwrap());
-        for highscore in highscores {
-            libc::free(*highscore as *mut c_void);
-        }
-        libc::free(HIGHSCORES as *mut c_void);
-        HIGHSCORES = null_mut();
-    }
+    drop(HIGHSCORES.take());
 
     // free constant text blobs
-    libc::free(DEBRIEFING_TEXT as *mut c_void);
+    dealloc_c_string(DEBRIEFING_TEXT);
     DEBRIEFING_TEXT = null_mut();
 }
 
@@ -129,10 +125,13 @@ pub unsafe fn free_druidmap() {
     let droid_map =
         std::slice::from_raw_parts(DRUIDMAP, usize::try_from(NUMBER_OF_DROID_TYPES).unwrap());
     for droid in droid_map {
-        libc::free(droid.notes as *mut c_void);
+        dealloc_c_string(droid.notes);
     }
 
-    libc::free(DRUIDMAP as *mut c_void);
+    dealloc(
+        DRUIDMAP as *mut u8,
+        Layout::array::<DruidSpec>(usize::try_from(NUMBER_OF_DROID_TYPES).unwrap()).unwrap(),
+    );
     DRUIDMAP = null_mut();
 }
 
@@ -410,7 +409,7 @@ pub unsafe fn find_all_themes() {
         .iter_mut()
         .filter(|name| name.is_null().not())
         .for_each(|name| {
-            libc::free(*name as *mut c_void);
+            dealloc_c_string(*name as *mut i8);
             *name = null_mut();
         });
 
@@ -502,7 +501,8 @@ pub unsafe fn find_all_themes() {
                             let new_theme = &mut ALL_THEMES.theme_name
                                 [usize::try_from(ALL_THEMES.num_themes).unwrap()];
                             *new_theme =
-                                my_malloc((theme_name.len() + 1).try_into().unwrap()) as *mut u8;
+                                alloc_zeroed(Layout::array::<u8>(theme_name.len() + 1).unwrap())
+                                    as *mut u8;
                             std::ptr::copy_nonoverlapping(
                                 theme_name.as_ptr(),
                                 *new_theme,
@@ -640,7 +640,7 @@ pub unsafe fn init_new_mission(mission_name: *mut c_char) {
         Criticality::Critical as c_int,
     );
 
-    let main_mission_pointer = read_and_malloc_and_terminate_file(
+    let mut main_mission_pointer = read_and_malloc_and_terminate_file(
         fpath,
         END_OF_MISSION_DATA_STRING.as_ptr() as *mut c_char,
     );
@@ -655,7 +655,7 @@ pub unsafe fn init_new_mission(mission_name: *mut c_char) {
     //
     let mut buffer: [c_char; 500] = [0; 500];
     read_value_from_string(
-        main_mission_pointer,
+        main_mission_pointer.as_mut_ptr(),
         GAMEDATANAME_INDICATION_STRING.as_ptr() as *mut c_char,
         cstr!("%s").as_ptr() as *mut c_char,
         buffer.as_mut_ptr() as *mut c_void,
@@ -668,7 +668,7 @@ pub unsafe fn init_new_mission(mission_name: *mut c_char) {
     // read the ship file into the right memory structures
     //
     read_value_from_string(
-        main_mission_pointer,
+        main_mission_pointer.as_mut_ptr(),
         SHIPNAME_INDICATION_STRING.as_ptr() as *mut c_char,
         cstr!("%s").as_ptr() as *mut c_char,
         buffer.as_mut_ptr() as *mut c_void,
@@ -683,7 +683,7 @@ pub unsafe fn init_new_mission(mission_name: *mut c_char) {
     // read the elevator file into the right memory structures
     //
     read_value_from_string(
-        main_mission_pointer,
+        main_mission_pointer.as_mut_ptr(),
         ELEVATORNAME_INDICATION_STRING.as_ptr() as *mut c_char,
         cstr!("%s").as_ptr() as *mut c_char,
         buffer.as_mut_ptr() as *mut c_void,
@@ -710,7 +710,7 @@ pub unsafe fn init_new_mission(mission_name: *mut c_char) {
     // assemble an appropriate crew out of it
     //
     read_value_from_string(
-        main_mission_pointer,
+        main_mission_pointer.as_mut_ptr(),
         CREWNAME_INDICATION_STRING.as_ptr() as *mut c_char,
         cstr!("%s").as_ptr() as *mut c_char,
         buffer.as_mut_ptr() as *mut c_void,
@@ -729,17 +729,17 @@ pub unsafe fn init_new_mission(mission_name: *mut c_char) {
     // can be used, if the mission is completed and also the end title music name
     // must be read in as well
     read_value_from_string(
-        main_mission_pointer,
+        main_mission_pointer.as_mut_ptr(),
         MISSION_ENDTITLE_SONG_NAME_STRING.as_ptr() as *mut c_char,
         cstr!("%s").as_ptr() as *mut c_char,
         DEBRIEFING_SONG.as_mut_ptr() as *mut c_void,
     );
 
     if DEBRIEFING_TEXT.is_null().not() {
-        libc::free(DEBRIEFING_TEXT as *mut c_void);
+        dealloc_c_string(DEBRIEFING_TEXT);
     }
     DEBRIEFING_TEXT = read_and_malloc_string_from_data(
-        main_mission_pointer,
+        main_mission_pointer.as_mut_ptr(),
         MISSION_ENDTITLE_BEGIN_STRING.as_ptr() as *mut c_char,
         MISSION_ENDTITLE_END_STRING.as_ptr() as *mut c_char,
     );
@@ -750,7 +750,7 @@ pub unsafe fn init_new_mission(mission_name: *mut c_char) {
     // influencer at the beginning of the mission.
 
     let number_of_start_points = count_string_occurences(
-        main_mission_pointer,
+        main_mission_pointer.as_mut_ptr(),
         MISSION_START_POINT_STRING.as_ptr() as *mut c_char,
     );
 
@@ -766,7 +766,7 @@ pub unsafe fn init_new_mission(mission_name: *mut c_char) {
     // Now that we know how many different starting points there are, we can randomly select
     // one of them and read then in this one starting point into the right structures...
     let real_start_point = my_random(number_of_start_points - 1) + 1;
-    let mut start_point_pointer = main_mission_pointer;
+    let mut start_point_pointer = main_mission_pointer.as_mut_ptr();
     for _ in 0..real_start_point {
         start_point_pointer = libc::strstr(
             start_point_pointer,
@@ -825,7 +825,7 @@ pub unsafe fn init_new_mission(mission_name: *mut c_char) {
     // Now we search for the beginning of the mission briefing big section NOT subsection.
     // We display the title and explanation of controls and such...
     let briefing_section_pointer = locate_string_in_data(
-        main_mission_pointer,
+        main_mission_pointer.as_mut_ptr(),
         MISSION_BRIEFING_BEGIN_STRING.as_ptr() as *mut c_char,
     );
     title(briefing_section_pointer);
@@ -861,8 +861,6 @@ pub unsafe fn init_new_mission(mission_name: *mut c_char) {
     ME.timer = 0.0; // set clock to 0
 
     info!("done."); // this matches the printf at the beginning of this function
-
-    libc::free(main_mission_pointer as *mut c_void);
 }
 
 ///  This function does the mission briefing.  It assumes,
@@ -915,7 +913,7 @@ pub unsafe fn title(mission_briefing_pointer: *mut c_char) {
     // Next we display all the subsections of the briefing section
     // with scrolling font
     let mut next_subsection_start_pointer = mission_briefing_pointer;
-    let mut prepared_briefing_text = null_mut();
+    let mut prepared_briefing_text: *mut i8 = null_mut();
     loop {
         next_subsection_start_pointer = libc::strstr(
             next_subsection_start_pointer,
@@ -936,9 +934,16 @@ pub unsafe fn title(mission_briefing_pointer: *mut c_char) {
             terminate(defs::ERR.into());
         }
         let this_text_length = termination_pointer.offset_from(next_subsection_start_pointer);
-        libc::free(prepared_briefing_text as *mut c_void);
-        prepared_briefing_text =
-            my_malloc(c_long::try_from(this_text_length).unwrap() + 10) as *mut c_char;
+        if prepared_briefing_text.is_null().not() {
+            let len = CStr::from_ptr(prepared_briefing_text).to_bytes().len() + 10;
+            dealloc(
+                prepared_briefing_text as *mut u8,
+                Layout::array::<i8>(len).unwrap(),
+            );
+        }
+        prepared_briefing_text = alloc_zeroed(
+            Layout::array::<i8>(usize::try_from(this_text_length).unwrap() + 10).unwrap(),
+        ) as *mut c_char;
         libc::strncpy(
             prepared_briefing_text,
             next_subsection_start_pointer,
@@ -954,7 +959,13 @@ pub unsafe fn title(mission_briefing_pointer: *mut c_char) {
         }
     }
 
-    libc::free(prepared_briefing_text as *mut c_void);
+    if prepared_briefing_text.is_null().not() {
+        let len = CStr::from_ptr(prepared_briefing_text).to_bytes().len() + 10;
+        dealloc(
+            prepared_briefing_text as *mut u8,
+            Layout::array::<i8>(len).unwrap(),
+        );
+    }
 }
 
 /// This function loads all the constant variables of the game from
@@ -970,12 +981,12 @@ pub unsafe fn init_game_data(data_filename: *mut c_char) {
         Criticality::Critical as c_int,
     );
 
-    let data =
+    let mut data =
         read_and_malloc_and_terminate_file(fpath, END_OF_GAME_DAT_STRING.as_ptr() as *mut c_char);
 
-    get_general_game_constants(data);
-    get_robot_data(data as *mut c_void);
-    get_bullet_data(data as *mut c_void);
+    get_general_game_constants(data.as_mut_ptr());
+    get_robot_data(data.as_mut_ptr() as *mut c_void);
+    get_bullet_data(data.as_mut_ptr() as *mut c_void);
 
     // Now we read in the total time amount for the blast animations
     const BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING: &CStr =
@@ -984,19 +995,17 @@ pub unsafe fn init_game_data(data_filename: *mut c_char) {
         cstr!("Time in seconds for the animation of blast one :");
 
     read_value_from_string(
-        data,
+        data.as_mut_ptr(),
         BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING.as_ptr() as *mut c_char,
         cstr!("%f").as_ptr() as *mut c_char,
         &mut BLASTMAP[0].total_animation_time as *mut f32 as *mut c_void,
     );
     read_value_from_string(
-        data,
+        data.as_mut_ptr(),
         BLAST_TWO_TOTAL_AMOUNT_OF_TIME_STRING.as_ptr() as *mut c_char,
         cstr!("%f").as_ptr() as *mut c_char,
         &mut BLASTMAP[1].total_animation_time as *mut f32 as *mut c_void,
     );
-
-    libc::free(data as *mut c_void);
 }
 
 /// This function loads all the constant variables of the game from
@@ -1117,8 +1126,9 @@ pub unsafe fn get_robot_data(data_pointer: *mut c_void) {
 
     // Now that we know how many robots are defined in freedroid.ruleset, we can allocate
     // a fitting amount of memory.
-    let mem = usize::try_from(NUMBER_OF_DROID_TYPES).unwrap() * std::mem::size_of::<DruidSpec>();
-    DRUIDMAP = my_malloc(mem.try_into().unwrap()) as *mut DruidSpec;
+    DRUIDMAP = alloc_zeroed(
+        Layout::array::<DruidSpec>(usize::try_from(NUMBER_OF_DROID_TYPES).unwrap()).unwrap(),
+    ) as *mut DruidSpec;
     info!(
         "We have counted {} different druid types in the game data file.",
         NUMBER_OF_DROID_TYPES,
@@ -1338,9 +1348,9 @@ pub unsafe fn get_bullet_data(data_pointer: *mut c_void) {
     // image files AND MOST LIKELY CAUSE A SEGFAULT!!!
     //
     if BULLETMAP.is_null() {
-        let mem =
-            usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap() * std::mem::size_of::<BulletSpec>();
-        BULLETMAP = my_malloc(mem.try_into().unwrap()) as *mut BulletSpec;
+        BULLETMAP = alloc_zeroed(
+            Layout::array::<BulletSpec>(usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap()).unwrap(),
+        ) as *mut BulletSpec;
         std::ptr::write_bytes(
             BULLETMAP,
             0,

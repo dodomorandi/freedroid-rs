@@ -10,7 +10,7 @@ use crate::{
     influencer::refresh_influencer,
     menu::SHIP_EXT,
     misc::{
-        find_file, frame_time, locate_string_in_data, my_malloc, my_random,
+        dealloc_c_string, find_file, frame_time, locate_string_in_data, my_random,
         read_and_malloc_and_terminate_file, read_and_malloc_string_from_data,
         read_value_from_string, terminate,
     },
@@ -24,6 +24,7 @@ use cstr::cstr;
 use defs::{MAX_DOORS_ON_LEVEL, MAX_WP_CONNECTIONS};
 use log::{error, info, trace, warn};
 use std::{
+    alloc::{alloc_zeroed, dealloc, Layout},
     convert::{TryFrom, TryInto},
     ffi::CStr,
     ops::Not,
@@ -125,7 +126,7 @@ pub unsafe fn free_ship_memory() {
         .map(|&mut level| level as *mut Level)
         .for_each(|level| {
             free_level_memory(level);
-            libc::free(level as *mut c_void);
+            dealloc(level as *mut u8, Layout::new::<Level>());
         });
 }
 
@@ -135,16 +136,21 @@ pub unsafe fn free_level_memory(level: *mut Level) {
     }
 
     let level = &mut *level;
-    libc::free(level.levelname as *mut c_void);
-    libc::free(level.background_song_name as *mut c_void);
-    libc::free(level.level_enter_comment as *mut c_void);
+    drop(Vec::from_raw_parts(level.levelname as *mut u8, 20, 20));
+    dealloc_c_string(level.background_song_name);
+    dealloc_c_string(level.level_enter_comment);
 
+    let xlen = level.xlen;
     level
         .map
         .iter_mut()
         .take(level.ylen as usize)
-        .map(|&mut map| map as *mut c_void)
-        .for_each(|map| libc::free(map));
+        .for_each(|&mut map| {
+            dealloc(
+                map as *mut u8,
+                Layout::array::<i8>(usize::try_from(xlen).unwrap()).unwrap(),
+            )
+        });
 }
 
 pub unsafe fn animate_refresh() {
@@ -509,7 +515,14 @@ freedroid-discussion@lists.sourceforge.net\n\
             let level_mem = struct_to_mem(level);
             ship_file.write_all(CStr::from_ptr(level_mem).to_bytes())?;
 
-            libc::free(level_mem as *mut c_void);
+            let mem_amount = usize::try_from((*level).xlen + 1).unwrap()
+                * usize::try_from((*level).ylen).unwrap()
+                + usize::try_from((*level).num_waypoints).unwrap() * MAX_WP_CONNECTIONS * 4
+                + 50000;
+            dealloc(
+                level_mem as *mut u8,
+                Layout::array::<u8>(mem_amount).unwrap(),
+            );
         }
 
         //--------------------
@@ -640,7 +653,7 @@ pub unsafe fn struct_to_mem(level: *mut Level) -> *mut c_char {
         + 50000; /* Map-memory; Puffer fuer Dimensionen, mark-strings .. */
 
     /* allocate some memory */
-    let level_mem = my_malloc(i64::try_from(mem_amount).unwrap()) as *mut u8;
+    let level_mem = alloc_zeroed(Layout::array::<u8>(mem_amount).unwrap());
     if level_mem.is_null() {
         error!("could not allocate memory, terminating.");
         terminate(defs::ERR.into());
@@ -950,7 +963,7 @@ pub unsafe fn get_crew(filename: *mut c_char) -> c_int {
     // It's now time to decode the file and to fill the array of enemys with
     // new droids of the given types.
     let mut droid_section_pointer = libc::strstr(
-        main_droids_file_pointer,
+        main_droids_file_pointer.as_ptr(),
         DROIDS_LEVEL_DESCRIPTION_START_STRING.as_ptr() as *mut c_char,
     );
     while droid_section_pointer.is_null().not() {
@@ -990,7 +1003,6 @@ pub unsafe fn get_crew(filename: *mut c_char) -> c_int {
         NUM_ENEMYS += 1;
     }
 
-    libc::free(main_droids_file_pointer as *mut c_void);
     defs::OK.into()
 }
 
@@ -1027,14 +1039,14 @@ pub unsafe fn get_lift_connections(filename: *mut c_char) -> c_int {
         Criticality::Critical as c_int,
     );
 
-    let data =
+    let mut data =
         read_and_malloc_and_terminate_file(fpath, END_OF_LIFT_DATA_STRING.as_ptr() as *mut c_char);
 
     // At first we read in the rectangles that define where the colums of the
     // lift are, so that we can highlight them later.
     CUR_SHIP.num_lift_rows = 0;
     let mut entry_pointer = locate_string_in_data(
-        data,
+        data.as_mut_ptr(),
         START_OF_LIFT_RECTANGLE_DATA_STRING.as_ptr() as *mut c_char,
     );
     while {
@@ -1067,7 +1079,7 @@ pub unsafe fn get_lift_connections(filename: *mut c_char) -> c_int {
     // elevator and console functions.
     //
     CUR_SHIP.num_level_rects.fill(0); // this initializes zeros for the number
-    entry_pointer = data;
+    entry_pointer = data.as_mut_ptr();
 
     while {
         entry_pointer = libc::strstr(entry_pointer, cstr!("DeckNr=").as_ptr() as *mut c_char);
@@ -1092,14 +1104,17 @@ pub unsafe fn get_lift_connections(filename: *mut c_char) -> c_int {
         rect.h = h.try_into().unwrap();
     }
 
-    entry_pointer = libc::strstr(data, START_OF_LIFT_DATA_STRING.as_ptr() as *mut c_char);
+    entry_pointer = libc::strstr(
+        data.as_ptr(),
+        START_OF_LIFT_DATA_STRING.as_ptr() as *mut c_char,
+    );
     if entry_pointer.is_null() {
         error!("START OF LIFT DATA STRING NOT FOUND!  Terminating...");
         terminate(defs::ERR.into());
     }
 
     let mut label: c_int = 0;
-    entry_pointer = data;
+    entry_pointer = data.as_mut_ptr();
     while {
         entry_pointer = libc::strstr(entry_pointer, cstr!("Label=").as_ptr() as *mut c_char);
         entry_pointer.is_null().not()
@@ -1118,7 +1133,6 @@ pub unsafe fn get_lift_connections(filename: *mut c_char) -> c_int {
 
     CUR_SHIP.num_lifts = label;
 
-    libc::free(data as *mut c_void);
     defs::OK.into()
 }
 
@@ -1281,7 +1295,7 @@ pub unsafe fn get_alerts(level: &mut Level) {
 /// Doors and Waypoints Arrays are initialized too
 pub unsafe fn level_to_struct(data: *mut c_char) -> *mut Level {
     /* Get the memory for one level */
-    let loadlevel_ptr = my_malloc(std::mem::size_of::<Level>().try_into().unwrap()) as *mut Level;
+    let loadlevel_ptr = alloc_zeroed(Layout::new::<Level>()) as *mut Level;
     let loadlevel = &mut *loadlevel_ptr;
 
     loadlevel.empty = false.into();
@@ -1356,7 +1370,9 @@ pub unsafe fn level_to_struct(data: *mut c_char) -> *mut Level {
         if this_line.is_null() {
             return null_mut();
         }
-        loadlevel.map[i] = my_malloc(loadlevel.xlen.try_into().unwrap()) as *mut c_char;
+        loadlevel.map[i] =
+            alloc_zeroed(Layout::array::<i8>(loadlevel.xlen.try_into().unwrap()).unwrap())
+                as *mut c_char;
         let mut pos = this_line;
         pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace
 
@@ -1447,26 +1463,26 @@ pub unsafe fn load_ship(filename: *mut c_char) -> c_int {
         Themed::NoTheme as c_int,
         Criticality::Critical as c_int,
     );
-    let ship_data =
+    let mut ship_data =
         read_and_malloc_and_terminate_file(fpath, END_OF_SHIP_DATA_STRING.as_ptr() as *mut c_char);
 
     // Now we read the Area-name from the loaded data
     let buffer = read_and_malloc_string_from_data(
-        ship_data,
+        ship_data.as_mut_ptr(),
         AREA_NAME_STRING_C.as_ptr() as *mut c_char,
         cstr!("\"").as_ptr() as *mut c_char,
     );
     libc::strncpy(CUR_SHIP.area_name.as_mut_ptr(), buffer, 99);
     CUR_SHIP.area_name[99] = 0;
-    libc::free(buffer as *mut c_void);
+    dealloc_c_string(buffer);
 
     // Now we count the number of levels and remember their start-addresses.
     // This is done by searching for the LEVEL_END_STRING again and again
     // until it is no longer found in the ship file.  good.
 
     let mut level_anz = 0;
-    let mut endpt = ship_data;
-    level_start[level_anz] = ship_data;
+    let mut endpt = ship_data.as_mut_ptr();
+    level_start[level_anz] = ship_data.as_mut_ptr();
 
     while {
         endpt = libc::strstr(endpt, LEVEL_END_STRING_C.as_ptr());
@@ -1499,8 +1515,6 @@ pub unsafe fn load_ship(filename: *mut c_char) -> c_int {
     if result.is_none() {
         return defs::ERR.into();
     }
-
-    libc::free(ship_data as *mut c_void);
 
     defs::OK.into()
 }

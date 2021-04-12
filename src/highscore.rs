@@ -36,10 +36,7 @@ use std::{
     ptr::null_mut,
 };
 
-#[cfg(not(target_os = "android"))]
-use std::os::raw::c_void;
-
-pub static mut HIGHSCORES: *mut *mut HighscoreEntry = null_mut();
+pub static mut HIGHSCORES: Option<Box<[HighscoreEntry]>> = None;
 pub static mut NUM_HIGHSCORES: i32 = 0; /* total number of entries in our list (fixed) */
 
 pub struct HighscoreEntry {
@@ -115,7 +112,7 @@ impl HighscoreEntry {
 }
 
 /// Set up a new highscore list: load from disk if found
-fn init_highscores_inner(config_dir: Option<&Path>) {
+unsafe fn init_highscores_inner(config_dir: Option<&Path>) {
     let file = config_dir.and_then(|config_dir| {
         let path = config_dir.join("highscores");
         let file = File::open(&path).ok();
@@ -126,32 +123,27 @@ fn init_highscores_inner(config_dir: Option<&Path>) {
         file
     });
 
-    unsafe { NUM_HIGHSCORES = MAX_HIGHSCORES as _ };
-    let highscores: Box<_> = match file {
+    NUM_HIGHSCORES = MAX_HIGHSCORES as _;
+    let highscores = match file {
         Some(mut file) => (0..MAX_HIGHSCORES)
             .map(|_| {
                 let mut entry = mem::MaybeUninit::uninit();
-                unsafe {
-                    let as_slice = std::slice::from_raw_parts_mut(
-                        entry.as_mut_ptr() as *mut u8,
-                        mem::size_of::<HighscoreEntry>(),
-                    );
-                    file.read_exact(as_slice).unwrap();
-                    Box::new(entry.assume_init())
-                }
+                let as_slice = std::slice::from_raw_parts_mut(
+                    entry.as_mut_ptr() as *mut u8,
+                    mem::size_of::<HighscoreEntry>(),
+                );
+                file.read_exact(as_slice).unwrap();
+                entry.assume_init()
             })
             .collect(),
-        None => std::iter::repeat_with(|| Box::new(HighscoreEntry::default()))
+        None => std::iter::repeat_with(HighscoreEntry::default)
             .take(MAX_HIGHSCORES)
             .collect(),
     };
-
-    unsafe {
-        HIGHSCORES = Box::into_raw(highscores) as *mut *mut HighscoreEntry;
-    }
+    HIGHSCORES = Some(highscores);
 }
 
-fn save_highscores_inner(config_dir: Option<&Path>) -> Result<(), ()> {
+unsafe fn save_highscores_inner(config_dir: Option<&Path>) -> Result<(), ()> {
     match config_dir {
         Some(config_dir) => {
             let path = config_dir.join("highscores");
@@ -163,16 +155,11 @@ fn save_highscores_inner(config_dir: Option<&Path>) -> Result<(), ()> {
                 }
             };
 
-            let highscores = unsafe {
-                std::slice::from_raw_parts(HIGHSCORES as *mut Box<HighscoreEntry>, MAX_HIGHSCORES)
-            };
-            for entry in highscores.iter() {
-                let as_slice = unsafe {
-                    std::slice::from_raw_parts(
-                        entry.as_ref() as *const HighscoreEntry as *const u8,
-                        mem::size_of::<HighscoreEntry>(),
-                    )
-                };
+            for entry in HIGHSCORES.as_mut().unwrap().iter_mut() {
+                let as_slice = std::slice::from_raw_parts(
+                    entry as *mut HighscoreEntry as *const u8,
+                    mem::size_of::<HighscoreEntry>(),
+                );
                 file.write_all(as_slice).unwrap();
             }
             file.sync_all().unwrap();
@@ -187,25 +174,20 @@ fn save_highscores_inner(config_dir: Option<&Path>) -> Result<(), ()> {
     }
 }
 
-pub fn update_highscores() {
-    let score = unsafe { REAL_SCORE };
-    unsafe {
-        REAL_SCORE = 0.;
-        SHOW_SCORE = 0;
-    }
+pub unsafe fn update_highscores() {
+    let score = REAL_SCORE;
+    REAL_SCORE = 0.;
+    SHOW_SCORE = 0;
 
     if score <= 0. {
         return;
     }
 
-    unsafe {
-        ME.status = Status::Debriefing as c_int;
-    }
+    ME.status = Status::Debriefing as c_int;
 
-    let hightscores = unsafe {
-        std::slice::from_raw_parts_mut(HIGHSCORES as *mut Box<HighscoreEntry>, MAX_HIGHSCORES)
-    };
-    let entry_pos = match hightscores
+    let entry_pos = match HIGHSCORES
+        .as_ref()
+        .unwrap()
         .iter()
         .position(|entry| entry.score < score as c_long)
     {
@@ -213,87 +195,89 @@ pub fn update_highscores() {
         None => return,
     };
 
-    unsafe {
-        let prev_font = get_current_font();
-        set_current_font(HIGHSCORE_B_FONT);
+    let prev_font = get_current_font();
+    set_current_font(HIGHSCORE_B_FONT);
 
-        let user_center_x: i16 = USER_RECT.x + (USER_RECT.w / 2) as i16;
-        let user_center_y: i16 = USER_RECT.y + (USER_RECT.h / 2) as i16;
+    let user_center_x: i16 = USER_RECT.x + (USER_RECT.w / 2) as i16;
+    let user_center_y: i16 = USER_RECT.y + (USER_RECT.h / 2) as i16;
 
-        assemble_combat_picture(0);
-        make_grid_on_screen(Some(&USER_RECT));
-        let mut dst = SDL_Rect::new(
-            user_center_x - (PORTRAIT_RECT.w / 2) as i16,
-            user_center_y - (PORTRAIT_RECT.h / 2) as i16,
-            PORTRAIT_RECT.w,
-            PORTRAIT_RECT.h,
-        );
-        SDL_UpperBlit(PIC999, null_mut(), NE_SCREEN, &mut dst);
-        let h = font_height(&*PARA_B_FONT);
-        display_text(
-            cstr!("Great Score !").as_ptr(),
-            i32::from(dst.x) - h,
-            i32::from(dst.y) - h,
-            &USER_RECT,
-        );
+    assemble_combat_picture(0);
+    make_grid_on_screen(Some(&USER_RECT));
+    let mut dst = SDL_Rect::new(
+        user_center_x - (PORTRAIT_RECT.w / 2) as i16,
+        user_center_y - (PORTRAIT_RECT.h / 2) as i16,
+        PORTRAIT_RECT.w,
+        PORTRAIT_RECT.h,
+    );
+    SDL_UpperBlit(PIC999, null_mut(), NE_SCREEN, &mut dst);
+    let h = font_height(&*PARA_B_FONT);
+    display_text(
+        cstr!("Great Score !").as_ptr(),
+        i32::from(dst.x) - h,
+        i32::from(dst.y) - h,
+        &USER_RECT,
+    );
 
-        // TODO ARCADEINPUT
-        #[cfg(not(target_os = "android"))]
-        display_text(
-            cstr!("Enter your name: ").as_ptr(),
-            i32::from(dst.x) - 5 * h,
-            i32::from(dst.y) + i32::from(dst.h),
-            &USER_RECT,
-        );
+    // TODO ARCADEINPUT
+    #[cfg(not(target_os = "android"))]
+    display_text(
+        cstr!("Enter your name: ").as_ptr(),
+        i32::from(dst.x) - 5 * h,
+        i32::from(dst.y) + i32::from(dst.h),
+        &USER_RECT,
+    );
 
-        #[cfg(target_os = "android")]
-        wait_for_key_pressed();
+    #[cfg(target_os = "android")]
+    wait_for_key_pressed();
 
-        // TODO More ARCADEINPUT
+    // TODO More ARCADEINPUT
 
-        SDL_Flip(NE_SCREEN);
-        SDL_SetClipRect(NE_SCREEN, null_mut());
+    SDL_Flip(NE_SCREEN);
+    SDL_SetClipRect(NE_SCREEN, null_mut());
 
-        let date = format!("{}", chrono::Local::today().format("%Y/%m/%d"));
+    let date = format!("{}", chrono::Local::today().format("%Y/%m/%d"));
 
-        #[cfg(target_os = "android")]
-        let new_entry = HighscoreEntry::new("Player", score as i64, &date);
-        #[cfg(not(target_os = "android"))]
-        let new_entry = {
-            let tmp_name = get_string(MAX_NAME_LEN as c_int, 2);
-            let mut new_entry = HighscoreEntry::new("", score as i64, &date);
-            libc::strcpy(new_entry.name.as_mut_ptr(), tmp_name);
-            libc::free(tmp_name as *mut c_void);
-            new_entry
-        };
+    #[cfg(target_os = "android")]
+    let new_entry = HighscoreEntry::new("Player", score as i64, &date);
+    #[cfg(not(target_os = "android"))]
+    let new_entry = {
+        let tmp_name = get_string(MAX_NAME_LEN as c_int, 2);
+        let mut new_entry = HighscoreEntry::new("", score as i64, &date);
+        libc::strcpy(new_entry.name.as_mut_ptr(), tmp_name);
+        drop(Vec::from_raw_parts(
+            tmp_name,
+            MAX_NAME_LEN + 5,
+            MAX_NAME_LEN + 5,
+        ));
+        new_entry
+    };
 
-        printf_sdl(NE_SCREEN, -1, -1, format_args!("\n"));
+    printf_sdl(NE_SCREEN, -1, -1, format_args!("\n"));
 
-        hightscores[entry_pos..]
-            .iter_mut()
-            .fold(new_entry, |new_entry, cur_entry| {
-                mem::replace(cur_entry, new_entry)
-            });
+    HIGHSCORES.as_mut().unwrap()[entry_pos..]
+        .iter_mut()
+        .fold(new_entry, |new_entry, cur_entry| {
+            mem::replace(cur_entry, new_entry)
+        });
 
-        set_current_font(prev_font);
-    }
+    set_current_font(prev_font);
 }
 
-fn get_config_dir() -> Option<&'static Path> {
-    if unsafe { CONFIG_DIR[0] } == 0 {
+unsafe fn get_config_dir() -> Option<&'static Path> {
+    if CONFIG_DIR[0] == 0 {
         None
     } else {
-        let config_dir = unsafe { CStr::from_ptr(CONFIG_DIR.as_ptr()) };
+        let config_dir = CStr::from_ptr(CONFIG_DIR.as_ptr());
         let config_dir = Path::new(config_dir.to_str().unwrap());
         Some(config_dir)
     }
 }
 
-pub fn init_highscores() {
+pub unsafe fn init_highscores() {
     init_highscores_inner(get_config_dir());
 }
 
-pub fn save_highscores() -> c_int {
+pub unsafe fn save_highscores() -> c_int {
     match save_highscores_inner(get_config_dir()) {
         Ok(()) => defs::OK.into(),
         Err(()) => defs::ERR.into(),
@@ -339,9 +323,7 @@ pub unsafe fn show_highscores() {
         format_args!("Top {}  scores\n", NUM_HIGHSCORES),
     );
 
-    let highscores =
-        std::slice::from_raw_parts(HIGHSCORES, usize::try_from(NUM_HIGHSCORES).unwrap());
-    for (i, highscore) in highscores.iter().copied().enumerate() {
+    for (i, highscore) in HIGHSCORES.as_ref().unwrap().iter().enumerate() {
         let i = i32::try_from(i).unwrap();
         print_string(
             NE_SCREEN,
@@ -349,14 +331,14 @@ pub unsafe fn show_highscores() {
             y0 + (i + 2) * height,
             format_args!("{}", i + 1),
         );
-        if (*highscore).score >= 0 {
+        if highscore.score >= 0 {
             print_string(
                 NE_SCREEN,
                 x1,
                 y0 + (i + 2) * height,
                 format_args!(
                     "{}",
-                    CStr::from_ptr((*highscore).date.as_ptr()).to_str().unwrap()
+                    CStr::from_ptr(highscore.date.as_ptr()).to_str().unwrap()
                 ),
             );
         }
@@ -366,15 +348,15 @@ pub unsafe fn show_highscores() {
             y0 + (i + 2) * height,
             format_args!(
                 "{}",
-                CStr::from_ptr((*highscore).name.as_ptr()).to_str().unwrap()
+                CStr::from_ptr(highscore.name.as_ptr()).to_str().unwrap()
             ),
         );
-        if (*highscore).score >= 0 {
+        if highscore.score >= 0 {
             print_string(
                 NE_SCREEN,
                 x3,
                 y0 + (i + 2) * height,
-                format_args!("{}", (*highscore).score),
+                format_args!("{}", highscore.score),
             );
         }
     }

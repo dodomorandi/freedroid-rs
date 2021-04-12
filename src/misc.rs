@@ -39,6 +39,7 @@ use sdl::{
     video::ll::{SDL_Flip, SDL_SetClipRect, SDL_UpdateRects, SDL_UpperBlit},
 };
 use std::{
+    alloc::{alloc_zeroed, dealloc, Layout},
     borrow::Cow,
     convert::{TryFrom, TryInto},
     env,
@@ -393,24 +394,6 @@ pub unsafe fn activate_conservative_frame_computation() {
     BANNER_IS_DESTROYED = true.into();
 }
 
-/// This function usese calloc, so memory is automatically 0-initialized!
-/// The function also checks for success and terminates in case of
-/// "out of memory", so we dont need to do this always in the code.
-pub unsafe fn my_malloc(mut size: c_long) -> *mut c_void {
-    // make Gnu-compatible even if on a broken system:
-    if size == 0 {
-        size = 1;
-    }
-
-    let ptr = libc::calloc(1, size.try_into().unwrap());
-    if ptr.is_null() {
-        error!("MyMalloc({}) did not succeed!", size);
-        terminate(defs::ERR.into());
-    }
-
-    ptr
-}
-
 /// Find a given filename in subdir relative to FD_DATADIR,
 ///
 /// if you pass NULL as "subdir", it will be ignored
@@ -588,7 +571,7 @@ pub unsafe fn init_progress(mut text: *mut c_char) {
 pub unsafe fn read_and_malloc_and_terminate_file(
     filename: *mut c_char,
     file_end_string: *mut c_char,
-) -> *mut c_char {
+) -> Box<[c_char]> {
     use bstr::ByteSlice;
     use std::io::Read;
 
@@ -649,15 +632,10 @@ pub unsafe fn read_and_malloc_and_terminate_file(
         }
     };
 
-    let data = my_malloc((file_len + 64 * 2 + 10000).try_into().unwrap()) as *mut c_char;
-    if data.is_null() {
-        error!("ReadAndMallocAndTerminateFile: Out of Memory?");
-        terminate(defs::ERR.into());
-    }
+    let mut all_data: Box<[c_char]> = vec![0; file_len + 64 * 2 + 10000].into_boxed_slice();
 
-    let all_data = std::slice::from_raw_parts_mut(data as *mut u8, file_len + 64 * 2 + 10000);
     {
-        let data = &mut all_data[..file_len];
+        let data = std::slice::from_raw_parts_mut(all_data.as_mut_ptr() as *mut u8, file_len);
         match file.read_exact(data) {
             Ok(()) => info!("ReadAndMallocAndTerminateFile: Reading file succeeded..."),
             Err(_) => {
@@ -666,13 +644,15 @@ pub unsafe fn read_and_malloc_and_terminate_file(
             }
         }
     }
-    all_data[file_len..].iter_mut().for_each(|c| *c = 0);
+    all_data[file_len..].fill(0);
 
     drop(file);
 
     info!("ReadAndMallocAndTerminateFile: Adding a 0 at the end of read data....");
 
-    match all_data.find(file_end_string.to_bytes()) {
+    match std::slice::from_raw_parts(all_data.as_ptr() as *const u8, all_data.len())
+        .find(file_end_string.to_bytes())
+    {
         None => {
             error!(
                 "\n\
@@ -709,10 +689,10 @@ pub unsafe fn read_and_malloc_and_terminate_file(
 
     info!(
         "ReadAndMallocAndTerminateFile: The content of the read file: \n{}",
-        CStr::from_ptr(data).to_string_lossy()
+        CStr::from_ptr(all_data.as_ptr()).to_string_lossy()
     );
 
-    data
+    all_data
 }
 
 /// find label in data and read stuff after label into dst using the FormatString
@@ -942,7 +922,9 @@ pub unsafe fn read_and_malloc_string_from_data(
         // Now we allocate memory and copy the string...
         let string_length = end_of_string_pointer.offset_from(search_pointer);
 
-        let return_string = my_malloc(c_long::try_from(string_length).unwrap() + 1) as *mut c_char;
+        let return_string =
+            alloc_zeroed(Layout::array::<i8>(usize::try_from(string_length).unwrap() + 1).unwrap())
+                as *mut c_char;
         libc::strncpy(
             return_string,
             search_pointer,
@@ -956,6 +938,13 @@ pub unsafe fn read_and_malloc_string_from_data(
         );
         return_string
     }
+}
+
+pub unsafe fn dealloc_c_string(string_ptr: *mut i8) {
+    dealloc(
+        string_ptr as *mut u8,
+        Layout::array::<i8>(CStr::from_ptr(string_ptr).to_bytes_with_nul().len()).unwrap(),
+    );
 }
 
 /// LoadGameConfig(): load saved options from config-file

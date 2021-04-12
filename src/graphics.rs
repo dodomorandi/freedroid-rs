@@ -16,7 +16,7 @@ use crate::{
     },
     input::{any_key_just_pressed, cmd_is_active, wait_for_all_keys_released, SDL_Delay},
     misc::{
-        activate_conservative_frame_computation, find_file, init_progress, my_malloc,
+        activate_conservative_frame_computation, find_file, init_progress,
         read_and_malloc_and_terminate_file, read_value_from_string, terminate, update_progress,
     },
     sound::play_sound,
@@ -63,6 +63,7 @@ use sdl::{
     wm::ll::{SDL_WM_SetCaption, SDL_WM_SetIcon},
 };
 use std::{
+    alloc::{alloc_zeroed, dealloc, Layout},
     convert::{TryFrom, TryInto},
     ffi::CStr,
     os::raw::{c_char, c_double, c_float, c_int, c_short, c_void},
@@ -71,8 +72,9 @@ use std::{
 
 pub static mut VID_INFO: *const SDL_VideoInfo = null_mut();
 pub static mut VID_BPP: c_int = 0;
-pub static mut PORTRAIT_RAW_MEM: [*mut c_char; Droid::NumDroids as usize] =
-    [null_mut(); Droid::NumDroids as usize];
+pub static mut PORTRAIT_RAW_MEM: once_cell::sync::Lazy<
+    [Option<Box<[u8]>>; Droid::NumDroids as usize],
+> = once_cell::sync::Lazy::new(|| array_init::array_init(|_| None));
 pub static mut FONTS_LOADED: c_int = 0;
 pub static mut MAP_BLOCK_SURFACE_POINTER: [[*mut SDL_Surface; NUM_MAP_BLOCKS]; NUM_COLORS] =
     [[null_mut(); NUM_MAP_BLOCKS]; NUM_COLORS]; // A pointer to the surfaces containing the map-pics, which may be rescaled with respect to
@@ -277,9 +279,7 @@ pub unsafe fn free_graphics() {
             close(packed_portrait);
         });
 
-    PORTRAIT_RAW_MEM
-        .iter()
-        .for_each(|&mem| libc::free(mem as *mut c_void));
+    PORTRAIT_RAW_MEM.iter_mut().for_each(|mem| drop(mem.take()));
 
     SDL_FreeSurface(NE_SCREEN);
 
@@ -327,7 +327,7 @@ pub unsafe fn free_graphics() {
     .filter(|font| !font.is_null())
     .for_each(|&font| {
         SDL_FreeSurface((*font).surface);
-        libc::free(font as *mut c_void);
+        dealloc(font as *mut u8, Layout::new::<BFontInfo>());
     });
 
     // free Load_Block()-internal buffer
@@ -804,8 +804,7 @@ pub unsafe fn white_noise(bitmap: *mut SDL_Surface, rect: &mut Rect, timeout: c_
 }
 
 pub unsafe fn duplicate_font(in_font: &BFontInfo) -> *mut BFontInfo {
-    let out_font =
-        my_malloc(std::mem::size_of::<BFontInfo>().try_into().unwrap()) as *mut BFontInfo;
+    let out_font = alloc_zeroed(Layout::new::<BFontInfo>()) as *mut BFontInfo;
 
     std::ptr::copy_nonoverlapping(in_font, out_font, 1);
     (*out_font).surface = SDL_ConvertSurface(
@@ -1040,13 +1039,11 @@ pub unsafe fn init_video() {
 }
 
 /// load a pic into memory and return the SDL_RWops pointer to it
-pub unsafe fn load_raw_pic(fpath: *const c_char, raw_mem: *mut *mut c_char) -> *mut SDL_RWops {
+pub unsafe fn load_raw_pic(
+    fpath: *const c_char,
+    raw_mem: &mut Option<Box<[u8]>>,
+) -> *mut SDL_RWops {
     use std::{fs::File, io::Read, path::Path};
-
-    if raw_mem.is_null() || !(*raw_mem).is_null() {
-        error!("Invalid input 'raw_mem': must be pointing to NULL pointer");
-        terminate(defs::ERR.into());
-    }
 
     // sanity check
     if fpath.is_null() {
@@ -1079,15 +1076,16 @@ pub unsafe fn load_raw_pic(fpath: *const c_char, raw_mem: *mut *mut c_char) -> *
     };
 
     let len = metadata.len().try_into().unwrap();
-    *raw_mem = my_malloc(len) as *mut i8;
-    let buf = std::slice::from_raw_parts_mut(*raw_mem as *mut u8, len.try_into().unwrap());
-    if file.read_exact(buf).is_err() {
+    let mut buf = vec![0; len].into_boxed_slice();
+    if file.read_exact(&mut *buf).is_err() {
         error!("cannot reading file {}. Giving up...", fpath.display());
         terminate(defs::ERR.into());
     }
     drop(file);
 
-    SDL_RWFromMem((*raw_mem) as *mut c_void, len.try_into().unwrap())
+    let ops = SDL_RWFromMem(buf.as_mut_ptr() as *mut c_void, len.try_into().unwrap());
+    *raw_mem = Some(buf);
+    ops
 }
 
 /// Get the pics for: druids, bullets, blasts
@@ -1630,9 +1628,8 @@ pub unsafe fn load_theme_configuration_file() {
         Criticality::Critical as c_int,
     );
 
-    let data_ptr =
+    let data =
         read_and_malloc_and_terminate_file(fpath, END_OF_THEME_DATA_STRING.as_ptr() as *mut c_char);
-    let data = CStr::from_ptr(data_ptr).to_bytes();
 
     //--------------------
     // Now the file is read in entirely and
@@ -1656,7 +1653,7 @@ pub unsafe fn load_theme_configuration_file() {
     );
 
     // Next we read in the number of phases that are to be used for each bullet type
-    let mut reader = data;
+    let mut reader = std::slice::from_raw_parts(data.as_ptr() as *const u8, data.len());
     while let Some(read_start) = reader.find(b"For Bullettype Nr.=") {
         let read = &reader[read_start..];
         let mut bullet_index: c_int = 0;
@@ -1757,8 +1754,6 @@ pub unsafe fn load_theme_configuration_file() {
         cstr!("%hd").as_ptr() as *mut c_char,
         &mut THIRD_DIGIT_RECT.y as *mut c_short as *mut c_void,
     );
-
-    libc::free(data_ptr as *mut c_void);
 }
 
 /// This function resizes all blocks and structures involved in assembling
