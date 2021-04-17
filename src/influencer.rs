@@ -18,7 +18,7 @@ use crate::{
     takeover::takeover,
     text::enemy_influ_collision_text,
     vars::{BULLETMAP, DRUIDMAP},
-    ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, GAME_CONFIG, INVINCIBLE_MODE,
+    Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, GAME_CONFIG, INVINCIBLE_MODE,
     LAST_REFRESH_SOUND, ME, NUM_ENEMYS, REAL_SCORE,
 };
 
@@ -371,7 +371,7 @@ pub unsafe fn animate_influence() {
 
 /// This function moves the influencer, adjusts his speed according to
 /// keys pressed and also adjusts his status and current "phase" of his rotation.
-pub unsafe fn move_influence() {
+pub(crate) unsafe fn move_influence(data: &mut Data) {
     static mut TRANSFER_COUNTER: c_float = 0.;
 
     let accel = (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).accel * frame_time();
@@ -398,7 +398,7 @@ pub unsafe fn move_influence() {
             start_blast(ME.pos.x, ME.pos.y, Explosion::Rejectblast as c_int);
         } else {
             ME.status = Status::Terminated as c_int;
-            thou_art_defeated();
+            thou_art_defeated(data);
             return;
         }
     }

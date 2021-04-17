@@ -35,8 +35,8 @@ use crate::{
         SCREEN_RECT, USER_RECT,
     },
     view::{assemble_combat_picture, display_banner},
-    ALERT_BONUS_PER_SEC, ALERT_THRESHOLD, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP,
-    DEATH_COUNT, DEATH_COUNT_DRAIN_SPEED, DEBUG_LEVEL, GAME_OVER, LAST_GOT_INTO_BLAST_SOUND,
+    Data, ALERT_BONUS_PER_SEC, ALERT_THRESHOLD, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL,
+    CUR_SHIP, DEATH_COUNT, DEATH_COUNT_DRAIN_SPEED, DEBUG_LEVEL, LAST_GOT_INTO_BLAST_SOUND,
     LAST_REFRESH_SOUND, LEVEL_DOORS_NOT_MOVED_TIME, ME, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
     REAL_SCORE, SHOW_SCORE, SOUND_ON, THIS_MESSAGE_TIME,
 };
@@ -170,7 +170,7 @@ pub unsafe fn win32_disclaimer() {
 
 /// This function checks, if the influencer has succeeded in his given
 /// mission.  If not it returns, if yes the Debriefing is started.
-pub unsafe fn check_if_mission_is_complete() {
+pub(crate) unsafe fn check_if_mission_is_complete(data: &mut Data) {
     for enemy in ALL_ENEMYS.iter().take(NUM_ENEMYS.try_into().unwrap()) {
         if enemy.status != Status::Out as c_int && enemy.status != Status::Terminated as c_int {
             return;
@@ -180,7 +180,7 @@ pub unsafe fn check_if_mission_is_complete() {
     // mission complete: all droids have been killed
     REAL_SCORE += MISSION_COMPLETE_BONUS;
     thou_art_victorious();
-    GAME_OVER = true.into();
+    data.game_over = true;
 }
 
 pub unsafe fn thou_art_victorious() {
@@ -1535,7 +1535,7 @@ pub unsafe fn get_general_game_constants(data: *mut c_char) {
 }
 
 /// Show end-screen
-pub unsafe fn thou_art_defeated() {
+pub(crate) unsafe fn thou_art_defeated(data: &mut Data) {
     ME.status = Status::Terminated as c_int;
     SDL_ShowCursor(SDL_DISABLE);
 
@@ -1614,5 +1614,5 @@ pub unsafe fn thou_art_defeated() {
 
     update_highscores();
 
-    GAME_OVER = true.into();
+    data.game_over = true;
 }

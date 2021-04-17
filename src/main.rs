@@ -51,7 +51,6 @@ use input::{
 use map::{animate_refresh, move_level_doors, ColorNames};
 use misc::{
     compute_fps_for_this_frame, frame_time, set_time_factor, start_taking_time_for_fps_calculation,
-    terminate,
 };
 use ship::{alert_level_warning, show_droid_info, show_droid_portrait};
 use sound::switch_background_music_to;
@@ -67,6 +66,7 @@ use sdl::{
 };
 use std::{
     convert::TryFrom,
+    ops::Not,
     os::raw::{c_char, c_float},
     ptr::null_mut,
 };
@@ -100,8 +100,6 @@ static mut CUR_SHIP: Ship = Ship {
     num_level_rects: [0; MAX_LEVELS],          /* how many rects has a level */
 }; /* the current ship-data */
 
-static mut GAME_OVER: i32 = 0;
-static mut QUIT_PROGRAM: i32 = 0;
 static mut DEBUG_LEVEL: i32 = 0; /* 0=no debug 1=some debug messages 2=...etc */
 static mut SOUND_ON: i32 = 1; /* Toggle TRUE/FALSE for turning sounds on/off */
 static mut THIS_MESSAGE_TIME: i32 = 0;
@@ -153,8 +151,21 @@ static mut SECOND_DIGIT_RECT: Rect = RECT_ZERO;
 static mut THIRD_DIGIT_RECT: Rect = RECT_ZERO;
 static mut F_P_SOVER1: f32 = 0.;
 
+#[derive(Debug)]
+struct Data {
+    game_over: bool,
+}
+
+impl Default for Data {
+    fn default() -> Self {
+        Self { game_over: false }
+    }
+}
+
 fn main() {
     env_logger::init();
+
+    let mut data = Data::default();
 
     unsafe {
         JOY_SENSITIVITY = 1;
@@ -171,7 +182,7 @@ fn main() {
             win32_disclaimer();
         }
 
-        while QUIT_PROGRAM == 0 {
+        loop {
             init_new_mission(STANDARD_MISSION_C.as_ptr() as *mut c_char);
 
             // scale Level-pic rects
@@ -214,12 +225,10 @@ fn main() {
             );
             SDL_Flip(NE_SCREEN);
 
-            GAME_OVER = false.into();
-
             SDL_SetCursor(CROSSHAIR_CURSOR); // default cursor is a crosshair
             SDL_ShowCursor(SDL_ENABLE);
 
-            while GAME_OVER == 0 && QUIT_PROGRAM == 0 {
+            while data.game_over.not() {
                 start_taking_time_for_fps_calculation();
 
                 update_counters_for_this_frame();
@@ -250,8 +259,9 @@ fn main() {
                     check_bullet_collisions(bullet);
                 }
 
-                move_influence(); // change Influ-speed depending on keys pressed, but
-                                  // also change his status and position and "phase" of rotation
+                // change Influ-speed depending on keys pressed, but
+                // also change his status and position and "phase" of rotation
+                move_influence(&mut data);
 
                 move_enemys(); // move all the enemys:
                                // also do attacks on influ and also move "phase" or their rotation
@@ -271,7 +281,7 @@ fn main() {
                     switch_background_music_to(BYCOLOR.as_ptr()); // start new background music
                 }
 
-                check_if_mission_is_complete();
+                check_if_mission_is_complete(&mut data);
 
                 if GAME_CONFIG.hog_cpu == 0 {
                     // don't use up 100% CPU unless requested
@@ -281,8 +291,6 @@ fn main() {
                 compute_fps_for_this_frame();
             }
         }
-
-        terminate(0);
     }
 }
 
