@@ -18,7 +18,9 @@ use crate::{
     },
     highscore::{init_highscores, update_highscores, HIGHSCORES},
     influencer::{explode_influencer, init_influ_position_history},
-    input::{any_key_just_pressed, init_joy, wait_for_all_keys_released, SDL_Delay},
+    input::{
+        any_key_just_pressed, init_joy, wait_for_all_keys_released, SDL_Delay, JOY_SENSITIVITY,
+    },
     map::{get_crew, get_lift_connections, load_ship},
     misc::{
         activate_conservative_frame_computation, compute_fps_for_this_frame,
@@ -374,6 +376,8 @@ unsafe fn parse_command_line() {
             println!("\nJoystick sensitivity must lie in the range [0;32]");
             terminate(defs::ERR.into());
         }
+
+        JOY_SENSITIVITY = sensitivity.into();
     }
 
     if opt.debug > 0 {
