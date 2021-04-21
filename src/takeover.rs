@@ -8,7 +8,7 @@ use crate::{
     input::{any_key_just_pressed, key_is_pressed_r, wait_for_all_keys_released},
     menu::get_menu_action,
     misc::{activate_conservative_frame_computation, my_random},
-    ship::{show_droid_info, show_droid_portrait},
+    ship::show_droid_portrait,
     sound::{
         countdown_sound, end_countdown_sound, move_menu_position_sound,
         takeover_game_deadlock_sound, takeover_game_lost_sound, takeover_game_won_sound,
@@ -16,8 +16,8 @@ use crate::{
     },
     structs::Point,
     vars::{CLASSIC_USER_RECT, CONS_DROID_RECT, DRUIDMAP, ME, USER_RECT},
-    view::{display_banner, fill_rect, put_enemy, put_influence},
-    ALL_ENEMYS, DEATH_COUNT, INVINCIBLE_MODE, PRE_TAKE_ENERGY, REAL_SCORE,
+    view::{display_banner, fill_rect, put_enemy},
+    Data, ALL_ENEMYS, DEATH_COUNT, INVINCIBLE_MODE, PRE_TAKE_ENERGY, REAL_SCORE,
 };
 
 use cstr::cstr;
@@ -948,658 +948,663 @@ unsafe fn clear_playground() {
         .for_each(|(row, display_column)| *display_column = (row % 2).try_into().unwrap());
 }
 
-/// prepares _and displays_ the current Playground
-///
-/// NOTE: this function should only change the USERFENSTER part
-///       so that we can do Infoline-setting before this
-unsafe fn show_playground() {
-    let your_color: usize = YOUR_COLOR.into();
-    let opponent_color: usize = OPPONENT_COLOR.into();
+impl Data {
+    /// prepares _and displays_ the current Playground
+    ///
+    /// NOTE: this function should only change the USERFENSTER part
+    ///       so that we can do Infoline-setting before this
+    unsafe fn show_playground(&mut self) {
+        let your_color: usize = YOUR_COLOR.into();
+        let opponent_color: usize = OPPONENT_COLOR.into();
 
-    let xoffs = CLASSIC_USER_RECT.x;
-    let yoffs = CLASSIC_USER_RECT.y;
+        let xoffs = CLASSIC_USER_RECT.x;
+        let yoffs = CLASSIC_USER_RECT.y;
 
-    SDL_SetClipRect(NE_SCREEN, null_mut());
+        SDL_SetClipRect(NE_SCREEN, null_mut());
 
-    SDL_UpperBlit(TAKEOVER_BG_PIC, &mut USER_RECT, NE_SCREEN, &mut USER_RECT);
+        SDL_UpperBlit(TAKEOVER_BG_PIC, &mut USER_RECT, NE_SCREEN, &mut USER_RECT);
 
-    put_influence(
-        i32::from(xoffs) + DROID_STARTS[your_color].x,
-        i32::from(yoffs) + DROID_STARTS[your_color].y,
-    );
-
-    if ALL_ENEMYS[usize::try_from(DROID_NUM).unwrap()].status != Status::Out as i32 {
-        put_enemy(
-            DROID_NUM,
-            i32::from(xoffs) + DROID_STARTS[opponent_color].x,
-            i32::from(yoffs) + DROID_STARTS[opponent_color].y,
-        );
-    }
-
-    let mut dst = Rect::new(
-        xoffs + i16::try_from(LEFT_GROUND_START.x).unwrap(),
-        yoffs + i16::try_from(LEFT_GROUND_START.y).unwrap(),
-        USER_RECT.w,
-        USER_RECT.h,
-    );
-
-    let mut to_ground_blocks = TO_GROUND_BLOCKS.lock().unwrap();
-    SDL_UpperBlit(
-        TO_BLOCKS,
-        &mut to_ground_blocks[GroundBlock::YellowAbove as usize],
-        NE_SCREEN,
-        &mut dst,
-    );
-
-    dst.y += i16::try_from(GROUND_RECT.h).unwrap();
-
-    for _ in 0..12 {
-        SDL_UpperBlit(
-            TO_BLOCKS,
-            &mut to_ground_blocks[GroundBlock::YellowMiddle as usize],
-            NE_SCREEN,
-            &mut dst,
+        self.put_influence(
+            i32::from(xoffs) + DROID_STARTS[your_color].x,
+            i32::from(yoffs) + DROID_STARTS[your_color].y,
         );
 
-        dst.y += i16::try_from(GROUND_RECT.h).unwrap();
-    }
-
-    SDL_UpperBlit(
-        TO_BLOCKS,
-        &mut to_ground_blocks[GroundBlock::YellowBelow as usize],
-        NE_SCREEN,
-        &mut dst,
-    );
-
-    dst = Rect::new(
-        xoffs + i16::try_from(LEADER_BLOCK_START.x).unwrap(),
-        yoffs + i16::try_from(LEADER_BLOCK_START.y).unwrap(),
-        0,
-        0,
-    );
-    SDL_UpperBlit(TO_BLOCKS, &mut LEADER_BLOCK, NE_SCREEN, &mut dst);
-
-    dst.y += i16::try_from(LEADER_LED.h).unwrap();
-    for _ in 0..12 {
-        SDL_UpperBlit(TO_BLOCKS, &mut COLUMN_BLOCK, NE_SCREEN, &mut dst);
-        dst.y += i16::try_from(COLUMN_RECT.h).unwrap();
-    }
-
-    /* rechte Saeule */
-    dst = Rect::new(
-        xoffs + i16::try_from(RIGHT_GROUND_START.x).unwrap(),
-        yoffs + i16::try_from(RIGHT_GROUND_START.y).unwrap(),
-        0,
-        0,
-    );
-
-    SDL_UpperBlit(
-        TO_BLOCKS,
-        &mut to_ground_blocks[GroundBlock::VioletAbove as usize],
-        NE_SCREEN,
-        &mut dst,
-    );
-    dst.y += i16::try_from(GROUND_RECT.h).unwrap();
-
-    for _ in 0..12 {
-        SDL_UpperBlit(
-            TO_BLOCKS,
-            &mut to_ground_blocks[GroundBlock::VioletMiddle as usize],
-            NE_SCREEN,
-            &mut dst,
-        );
-        dst.y += i16::try_from(GROUND_RECT.h).unwrap();
-    }
-
-    SDL_UpperBlit(
-        TO_BLOCKS,
-        &mut to_ground_blocks[GroundBlock::VioletBelow as usize],
-        NE_SCREEN,
-        &mut dst,
-    );
-    drop(to_ground_blocks);
-
-    /* Fill the Leader-LED with its color */
-    let leader_color = usize::try_from(LEADER_COLOR).unwrap();
-    dst = Rect::new(xoffs + LEADER_LED.x, yoffs + LEADER_LED.y, 0, 0);
-    SDL_UpperBlit(
-        TO_BLOCKS,
-        &mut FILL_BLOCKS[leader_color],
-        NE_SCREEN,
-        &mut dst,
-    );
-    dst.y += i16::try_from(FILL_BLOCK.h).unwrap();
-    SDL_UpperBlit(
-        TO_BLOCKS,
-        &mut FILL_BLOCKS[leader_color],
-        NE_SCREEN,
-        &mut dst,
-    );
-
-    /* Fill the Display Column with its leds */
-    DISPLAY_COLUMN
-        .iter()
-        .copied()
-        .enumerate()
-        .for_each(|(line, display_column)| {
-            dst = Rect::new(
-                xoffs + i16::try_from(COLUMN_START.x).unwrap(),
-                yoffs
-                    + i16::try_from(COLUMN_START.y).unwrap()
-                    + i16::try_from(line).unwrap() * i16::try_from(COLUMN_RECT.h).unwrap(),
-                0,
-                0,
+        if ALL_ENEMYS[usize::try_from(DROID_NUM).unwrap()].status != Status::Out as i32 {
+            put_enemy(
+                DROID_NUM,
+                i32::from(xoffs) + DROID_STARTS[opponent_color].x,
+                i32::from(yoffs) + DROID_STARTS[opponent_color].y,
             );
+        }
+
+        let mut dst = Rect::new(
+            xoffs + i16::try_from(LEFT_GROUND_START.x).unwrap(),
+            yoffs + i16::try_from(LEFT_GROUND_START.y).unwrap(),
+            USER_RECT.w,
+            USER_RECT.h,
+        );
+
+        let mut to_ground_blocks = TO_GROUND_BLOCKS.lock().unwrap();
+        SDL_UpperBlit(
+            TO_BLOCKS,
+            &mut to_ground_blocks[GroundBlock::YellowAbove as usize],
+            NE_SCREEN,
+            &mut dst,
+        );
+
+        dst.y += i16::try_from(GROUND_RECT.h).unwrap();
+
+        for _ in 0..12 {
             SDL_UpperBlit(
                 TO_BLOCKS,
-                &mut FILL_BLOCKS[usize::try_from(display_column).unwrap()],
+                &mut to_ground_blocks[GroundBlock::YellowMiddle as usize],
                 NE_SCREEN,
                 &mut dst,
             );
-        });
 
-    /* Show the yellow playground */
-    let mut to_game_blocks = TO_GAME_BLOCKS.lock().unwrap();
-    PLAYGROUND[Color::Yellow as usize]
-        .iter()
-        .take(NUM_LAYERS - 1)
-        .zip(
-            ACTIVATION_MAP[Color::Yellow as usize]
-                .iter()
-                .take(NUM_LAYERS - 1),
-        )
-        .enumerate()
-        .flat_map(|(layer_index, (playground_layer, activation_layer))| {
-            let layer_index = i16::try_from(layer_index).unwrap();
-            playground_layer
-                .iter()
-                .copied()
-                .zip(activation_layer.iter().copied())
-                .enumerate()
-                .map(move |(line_index, (playground_line, activation_line))| {
-                    (
-                        layer_index,
-                        i16::try_from(line_index).unwrap(),
-                        usize::from(playground_line),
-                        usize::from(activation_line),
-                    )
-                })
-        })
-        .for_each(
-            |(layer_index, line_index, playground_line, activation_line)| {
-                dst = Rect::new(
-                    xoffs
-                        + i16::try_from(PLAYGROUND_STARTS[Color::Yellow as usize].x).unwrap()
-                        + layer_index * i16::try_from(ELEMENT_RECT.w).unwrap(),
-                    yoffs
-                        + i16::try_from(PLAYGROUND_STARTS[Color::Yellow as usize].y).unwrap()
-                        + line_index * i16::try_from(ELEMENT_RECT.h).unwrap(),
-                    0,
-                    0,
-                );
-
-                let block = playground_line + activation_line * TO_BLOCKS_N;
-                SDL_UpperBlit(TO_BLOCKS, &mut to_game_blocks[block], NE_SCREEN, &mut dst);
-            },
-        );
-
-    /* Show the violet playground */
-    PLAYGROUND[Color::Violet as usize]
-        .iter()
-        .take(NUM_LAYERS - 1)
-        .zip(
-            ACTIVATION_MAP[Color::Violet as usize]
-                .iter()
-                .take(NUM_LAYERS - 1),
-        )
-        .enumerate()
-        .flat_map(|(layer_index, (playground_layer, activation_layer))| {
-            let layer_index = i16::try_from(layer_index).unwrap();
-            playground_layer
-                .iter()
-                .copied()
-                .zip(activation_layer.iter().copied())
-                .enumerate()
-                .map(move |(line_index, (playground_line, activation_line))| {
-                    (
-                        layer_index,
-                        i16::try_from(line_index).unwrap(),
-                        usize::try_from(playground_line).unwrap(),
-                        usize::try_from(activation_line).unwrap(),
-                    )
-                })
-        })
-        .for_each(
-            |(layer_index, line_index, playground_line, activation_line)| {
-                dst = Rect::new(
-                    xoffs
-                        + i16::try_from(PLAYGROUND_STARTS[Color::Violet as usize].x).unwrap()
-                        + (i16::try_from(NUM_LAYERS).unwrap() - layer_index - 2)
-                            * i16::try_from(ELEMENT_RECT.w).unwrap(),
-                    yoffs
-                        + i16::try_from(PLAYGROUND_STARTS[Color::Violet as usize].y).unwrap()
-                        + line_index * i16::try_from(ELEMENT_RECT.h).unwrap(),
-                    0,
-                    0,
-                );
-                let block = playground_line + (NUM_PHASES + activation_line) * TO_BLOCKS_N;
-                SDL_UpperBlit(TO_BLOCKS, &mut to_game_blocks[block], NE_SCREEN, &mut dst);
-            },
-        );
-
-    /* Show the capsules left for each player */
-    NUM_CAPSULES
-        .iter()
-        .copied()
-        .enumerate()
-        .for_each(|(player, capsules)| {
-            let color = if player == Opponents::You as usize {
-                your_color
-            } else {
-                opponent_color
-            };
-
-            dst = Rect::new(
-                xoffs + i16::try_from(CUR_CAPSULE_STARTS[color].x).unwrap(),
-                yoffs
-                    + i16::try_from(CUR_CAPSULE_STARTS[color].y).unwrap()
-                    + i16::try_from(CAPSULE_CUR_ROW[color]).unwrap()
-                        * i16::try_from(CAPSULE_RECT.h).unwrap(),
-                0,
-                0,
-            );
-            if capsules != 0 {
-                SDL_UpperBlit(TO_BLOCKS, &mut CAPSULE_BLOCKS[color], NE_SCREEN, &mut dst);
-            }
-
-            for capsule in 0..capsules.saturating_sub(1) {
-                dst = Rect::new(
-                    xoffs + i16::try_from(LEFT_CAPSULE_STARTS[color].x).unwrap(),
-                    yoffs
-                        + i16::try_from(LEFT_CAPSULE_STARTS[color].y).unwrap()
-                        + i16::try_from(capsule).unwrap() * i16::try_from(CAPSULE_RECT.h).unwrap(),
-                    0,
-                    0,
-                );
-                SDL_UpperBlit(TO_BLOCKS, &mut CAPSULE_BLOCKS[color], NE_SCREEN, &mut dst);
-            }
-        });
-}
-
-/// the acutal Takeover game-playing is done here
-unsafe fn play_game() {
-    let mut countdown = 100;
-
-    const COUNT_TICK_LEN: u32 = 100;
-    const MOVE_TICK_LEN: u32 = 60;
-
-    let mut prev_count_tick = SDL_GetTicks();
-    let mut prev_move_tick = prev_count_tick;
-
-    wait_for_all_keys_released();
-
-    countdown_sound();
-    let mut finish_takeover = false;
-    let your_color = usize::try_from(YOUR_COLOR).unwrap();
-    while !finish_takeover {
-        let cur_time = SDL_GetTicks();
-
-        let do_update_count = cur_time > prev_count_tick + COUNT_TICK_LEN;
-        if do_update_count {
-            /* time to count 1 down */
-            prev_count_tick += COUNT_TICK_LEN; /* set for next countdown tick */
-            countdown -= 1;
-            let count_text = format!("Finish-{}\0", countdown);
-            display_banner(
-                count_text.as_bytes().as_ptr() as *const c_char,
-                null_mut(),
-                0,
-            );
-
-            if countdown != 0 && countdown % 10 == 0 {
-                countdown_sound();
-            }
-            if countdown == 0 {
-                end_countdown_sound();
-                finish_takeover = true;
-            }
-
-            animate_currents(); /* do some animation on the active cables */
+            dst.y += i16::try_from(GROUND_RECT.h).unwrap();
         }
 
-        let do_update_move = cur_time > prev_move_tick + MOVE_TICK_LEN;
-        if do_update_move {
-            prev_move_tick += MOVE_TICK_LEN; /* set for next motion tick */
+        SDL_UpperBlit(
+            TO_BLOCKS,
+            &mut to_ground_blocks[GroundBlock::YellowBelow as usize],
+            NE_SCREEN,
+            &mut dst,
+        );
 
-            let key_repeat_delay = if cfg!(target_os = "android") {
-                150 // better to avoid accidential key-repeats on touchscreen
-            } else {
-                110 // PC default, allows for quick-repeat key hits
-            };
+        dst = Rect::new(
+            xoffs + i16::try_from(LEADER_BLOCK_START.x).unwrap(),
+            yoffs + i16::try_from(LEADER_BLOCK_START.y).unwrap(),
+            0,
+            0,
+        );
+        SDL_UpperBlit(TO_BLOCKS, &mut LEADER_BLOCK, NE_SCREEN, &mut dst);
 
-            let action = get_menu_action(key_repeat_delay);
-            /* allow for a WIN-key that give immedate victory */
-            if key_is_pressed_r(b'w'.into()) && ctrl_pressed() && alt_pressed() {
-                LEADER_COLOR = YOUR_COLOR; /* simple as that */
-                return;
-            }
+        dst.y += i16::try_from(LEADER_LED.h).unwrap();
+        for _ in 0..12 {
+            SDL_UpperBlit(TO_BLOCKS, &mut COLUMN_BLOCK, NE_SCREEN, &mut dst);
+            dst.y += i16::try_from(COLUMN_RECT.h).unwrap();
+        }
 
-            if action.intersects(MenuAction::UP | MenuAction::UP_WHEEL) {
-                CAPSULE_CUR_ROW[your_color] -= 1;
-                if CAPSULE_CUR_ROW[your_color] < 1 {
-                    CAPSULE_CUR_ROW[your_color] = NUM_LINES.try_into().unwrap();
+        /* rechte Saeule */
+        dst = Rect::new(
+            xoffs + i16::try_from(RIGHT_GROUND_START.x).unwrap(),
+            yoffs + i16::try_from(RIGHT_GROUND_START.y).unwrap(),
+            0,
+            0,
+        );
+
+        SDL_UpperBlit(
+            TO_BLOCKS,
+            &mut to_ground_blocks[GroundBlock::VioletAbove as usize],
+            NE_SCREEN,
+            &mut dst,
+        );
+        dst.y += i16::try_from(GROUND_RECT.h).unwrap();
+
+        for _ in 0..12 {
+            SDL_UpperBlit(
+                TO_BLOCKS,
+                &mut to_ground_blocks[GroundBlock::VioletMiddle as usize],
+                NE_SCREEN,
+                &mut dst,
+            );
+            dst.y += i16::try_from(GROUND_RECT.h).unwrap();
+        }
+
+        SDL_UpperBlit(
+            TO_BLOCKS,
+            &mut to_ground_blocks[GroundBlock::VioletBelow as usize],
+            NE_SCREEN,
+            &mut dst,
+        );
+        drop(to_ground_blocks);
+
+        /* Fill the Leader-LED with its color */
+        let leader_color = usize::try_from(LEADER_COLOR).unwrap();
+        dst = Rect::new(xoffs + LEADER_LED.x, yoffs + LEADER_LED.y, 0, 0);
+        SDL_UpperBlit(
+            TO_BLOCKS,
+            &mut FILL_BLOCKS[leader_color],
+            NE_SCREEN,
+            &mut dst,
+        );
+        dst.y += i16::try_from(FILL_BLOCK.h).unwrap();
+        SDL_UpperBlit(
+            TO_BLOCKS,
+            &mut FILL_BLOCKS[leader_color],
+            NE_SCREEN,
+            &mut dst,
+        );
+
+        /* Fill the Display Column with its leds */
+        DISPLAY_COLUMN
+            .iter()
+            .copied()
+            .enumerate()
+            .for_each(|(line, display_column)| {
+                dst = Rect::new(
+                    xoffs + i16::try_from(COLUMN_START.x).unwrap(),
+                    yoffs
+                        + i16::try_from(COLUMN_START.y).unwrap()
+                        + i16::try_from(line).unwrap() * i16::try_from(COLUMN_RECT.h).unwrap(),
+                    0,
+                    0,
+                );
+                SDL_UpperBlit(
+                    TO_BLOCKS,
+                    &mut FILL_BLOCKS[usize::try_from(display_column).unwrap()],
+                    NE_SCREEN,
+                    &mut dst,
+                );
+            });
+
+        /* Show the yellow playground */
+        let mut to_game_blocks = TO_GAME_BLOCKS.lock().unwrap();
+        PLAYGROUND[Color::Yellow as usize]
+            .iter()
+            .take(NUM_LAYERS - 1)
+            .zip(
+                ACTIVATION_MAP[Color::Yellow as usize]
+                    .iter()
+                    .take(NUM_LAYERS - 1),
+            )
+            .enumerate()
+            .flat_map(|(layer_index, (playground_layer, activation_layer))| {
+                let layer_index = i16::try_from(layer_index).unwrap();
+                playground_layer
+                    .iter()
+                    .copied()
+                    .zip(activation_layer.iter().copied())
+                    .enumerate()
+                    .map(move |(line_index, (playground_line, activation_line))| {
+                        (
+                            layer_index,
+                            i16::try_from(line_index).unwrap(),
+                            usize::from(playground_line),
+                            usize::from(activation_line),
+                        )
+                    })
+            })
+            .for_each(
+                |(layer_index, line_index, playground_line, activation_line)| {
+                    dst = Rect::new(
+                        xoffs
+                            + i16::try_from(PLAYGROUND_STARTS[Color::Yellow as usize].x).unwrap()
+                            + layer_index * i16::try_from(ELEMENT_RECT.w).unwrap(),
+                        yoffs
+                            + i16::try_from(PLAYGROUND_STARTS[Color::Yellow as usize].y).unwrap()
+                            + line_index * i16::try_from(ELEMENT_RECT.h).unwrap(),
+                        0,
+                        0,
+                    );
+
+                    let block = playground_line + activation_line * TO_BLOCKS_N;
+                    SDL_UpperBlit(TO_BLOCKS, &mut to_game_blocks[block], NE_SCREEN, &mut dst);
+                },
+            );
+
+        /* Show the violet playground */
+        PLAYGROUND[Color::Violet as usize]
+            .iter()
+            .take(NUM_LAYERS - 1)
+            .zip(
+                ACTIVATION_MAP[Color::Violet as usize]
+                    .iter()
+                    .take(NUM_LAYERS - 1),
+            )
+            .enumerate()
+            .flat_map(|(layer_index, (playground_layer, activation_layer))| {
+                let layer_index = i16::try_from(layer_index).unwrap();
+                playground_layer
+                    .iter()
+                    .copied()
+                    .zip(activation_layer.iter().copied())
+                    .enumerate()
+                    .map(move |(line_index, (playground_line, activation_line))| {
+                        (
+                            layer_index,
+                            i16::try_from(line_index).unwrap(),
+                            usize::try_from(playground_line).unwrap(),
+                            usize::try_from(activation_line).unwrap(),
+                        )
+                    })
+            })
+            .for_each(
+                |(layer_index, line_index, playground_line, activation_line)| {
+                    dst = Rect::new(
+                        xoffs
+                            + i16::try_from(PLAYGROUND_STARTS[Color::Violet as usize].x).unwrap()
+                            + (i16::try_from(NUM_LAYERS).unwrap() - layer_index - 2)
+                                * i16::try_from(ELEMENT_RECT.w).unwrap(),
+                        yoffs
+                            + i16::try_from(PLAYGROUND_STARTS[Color::Violet as usize].y).unwrap()
+                            + line_index * i16::try_from(ELEMENT_RECT.h).unwrap(),
+                        0,
+                        0,
+                    );
+                    let block = playground_line + (NUM_PHASES + activation_line) * TO_BLOCKS_N;
+                    SDL_UpperBlit(TO_BLOCKS, &mut to_game_blocks[block], NE_SCREEN, &mut dst);
+                },
+            );
+
+        /* Show the capsules left for each player */
+        NUM_CAPSULES
+            .iter()
+            .copied()
+            .enumerate()
+            .for_each(|(player, capsules)| {
+                let color = if player == Opponents::You as usize {
+                    your_color
+                } else {
+                    opponent_color
+                };
+
+                dst = Rect::new(
+                    xoffs + i16::try_from(CUR_CAPSULE_STARTS[color].x).unwrap(),
+                    yoffs
+                        + i16::try_from(CUR_CAPSULE_STARTS[color].y).unwrap()
+                        + i16::try_from(CAPSULE_CUR_ROW[color]).unwrap()
+                            * i16::try_from(CAPSULE_RECT.h).unwrap(),
+                    0,
+                    0,
+                );
+                if capsules != 0 {
+                    SDL_UpperBlit(TO_BLOCKS, &mut CAPSULE_BLOCKS[color], NE_SCREEN, &mut dst);
                 }
-            }
 
-            if action.intersects(MenuAction::DOWN | MenuAction::DOWN_WHEEL) {
-                CAPSULE_CUR_ROW[your_color] += 1;
-                if CAPSULE_CUR_ROW[your_color] > NUM_LINES.try_into().unwrap() {
-                    CAPSULE_CUR_ROW[your_color] = 1;
+                for capsule in 0..capsules.saturating_sub(1) {
+                    dst = Rect::new(
+                        xoffs + i16::try_from(LEFT_CAPSULE_STARTS[color].x).unwrap(),
+                        yoffs
+                            + i16::try_from(LEFT_CAPSULE_STARTS[color].y).unwrap()
+                            + i16::try_from(capsule).unwrap()
+                                * i16::try_from(CAPSULE_RECT.h).unwrap(),
+                        0,
+                        0,
+                    );
+                    SDL_UpperBlit(TO_BLOCKS, &mut CAPSULE_BLOCKS[color], NE_SCREEN, &mut dst);
                 }
+            });
+    }
+
+    /// the acutal Takeover game-playing is done here
+    unsafe fn play_game(&mut self) {
+        let mut countdown = 100;
+
+        const COUNT_TICK_LEN: u32 = 100;
+        const MOVE_TICK_LEN: u32 = 60;
+
+        let mut prev_count_tick = SDL_GetTicks();
+        let mut prev_move_tick = prev_count_tick;
+
+        wait_for_all_keys_released();
+
+        countdown_sound();
+        let mut finish_takeover = false;
+        let your_color = usize::try_from(YOUR_COLOR).unwrap();
+        while !finish_takeover {
+            let cur_time = SDL_GetTicks();
+
+            let do_update_count = cur_time > prev_count_tick + COUNT_TICK_LEN;
+            if do_update_count {
+                /* time to count 1 down */
+                prev_count_tick += COUNT_TICK_LEN; /* set for next countdown tick */
+                countdown -= 1;
+                let count_text = format!("Finish-{}\0", countdown);
+                display_banner(
+                    count_text.as_bytes().as_ptr() as *const c_char,
+                    null_mut(),
+                    0,
+                );
+
+                if countdown != 0 && countdown % 10 == 0 {
+                    countdown_sound();
+                }
+                if countdown == 0 {
+                    end_countdown_sound();
+                    finish_takeover = true;
+                }
+
+                animate_currents(); /* do some animation on the active cables */
             }
 
-            if action.intersects(MenuAction::CLICK) {
-                if let Ok(row) = usize::try_from(CAPSULE_CUR_ROW[your_color] - 1) {
-                    if NUM_CAPSULES[Opponents::You as usize] > 0
-                        && PLAYGROUND[your_color][0][row] != Block::CableEnd
-                        && ACTIVATION_MAP[your_color][0][row] == Condition::Inactive
-                    {
-                        NUM_CAPSULES[Opponents::You as usize] -= 1;
-                        CAPSULE_CUR_ROW[your_color] = 0;
-                        PLAYGROUND[your_color][0][row] = Block::Repeater;
-                        ACTIVATION_MAP[your_color][0][row] = Condition::Active1;
-                        CAPSULES_COUNTDOWN[your_color][0][row] = Some(CAPSULE_COUNTDOWN * 2);
-                        takeover_set_capsule_sound();
+            let do_update_move = cur_time > prev_move_tick + MOVE_TICK_LEN;
+            if do_update_move {
+                prev_move_tick += MOVE_TICK_LEN; /* set for next motion tick */
+
+                let key_repeat_delay = if cfg!(target_os = "android") {
+                    150 // better to avoid accidential key-repeats on touchscreen
+                } else {
+                    110 // PC default, allows for quick-repeat key hits
+                };
+
+                let action = get_menu_action(key_repeat_delay);
+                /* allow for a WIN-key that give immedate victory */
+                if key_is_pressed_r(b'w'.into()) && ctrl_pressed() && alt_pressed() {
+                    LEADER_COLOR = YOUR_COLOR; /* simple as that */
+                    return;
+                }
+
+                if action.intersects(MenuAction::UP | MenuAction::UP_WHEEL) {
+                    CAPSULE_CUR_ROW[your_color] -= 1;
+                    if CAPSULE_CUR_ROW[your_color] < 1 {
+                        CAPSULE_CUR_ROW[your_color] = NUM_LINES.try_into().unwrap();
                     }
                 }
+
+                if action.intersects(MenuAction::DOWN | MenuAction::DOWN_WHEEL) {
+                    CAPSULE_CUR_ROW[your_color] += 1;
+                    if CAPSULE_CUR_ROW[your_color] > NUM_LINES.try_into().unwrap() {
+                        CAPSULE_CUR_ROW[your_color] = 1;
+                    }
+                }
+
+                if action.intersects(MenuAction::CLICK) {
+                    if let Ok(row) = usize::try_from(CAPSULE_CUR_ROW[your_color] - 1) {
+                        if NUM_CAPSULES[Opponents::You as usize] > 0
+                            && PLAYGROUND[your_color][0][row] != Block::CableEnd
+                            && ACTIVATION_MAP[your_color][0][row] == Condition::Inactive
+                        {
+                            NUM_CAPSULES[Opponents::You as usize] -= 1;
+                            CAPSULE_CUR_ROW[your_color] = 0;
+                            PLAYGROUND[your_color][0][row] = Block::Repeater;
+                            ACTIVATION_MAP[your_color][0][row] = Condition::Active1;
+                            CAPSULES_COUNTDOWN[your_color][0][row] = Some(CAPSULE_COUNTDOWN * 2);
+                            takeover_set_capsule_sound();
+                        }
+                    }
+                }
+
+                enemy_movements();
+                process_capsules(); /* count down the lifetime of the capsules */
+
+                process_playground();
+                process_playground();
+                process_playground();
+                process_playground(); /* this has to be done several times to be sure */
+
+                process_display_column();
+                self.show_playground();
+            } // if do_update_move
+
+            SDL_Flip(NE_SCREEN);
+            SDL_Delay(1);
+        } /* while !FinishTakeover */
+
+        /* Schluss- Countdown */
+        countdown = CAPSULE_COUNTDOWN;
+
+        wait_for_all_keys_released();
+        let mut fast_forward = false;
+        loop {
+            countdown -= 1;
+            if countdown == 0 {
+                break;
             }
 
-            enemy_movements();
+            if !fast_forward {
+                SDL_Delay(COUNT_TICK_LEN);
+            }
+            if any_key_just_pressed() != 0 {
+                fast_forward = true;
+            }
+            prev_count_tick += COUNT_TICK_LEN;
             process_capsules(); /* count down the lifetime of the capsules */
-
+            process_capsules(); /* do it twice this time to be faster */
+            animate_currents();
             process_playground();
             process_playground();
             process_playground();
             process_playground(); /* this has to be done several times to be sure */
-
             process_display_column();
-            show_playground();
-        } // if do_update_move
+            self.show_playground();
+            SDL_Delay(1);
+            SDL_Flip(NE_SCREEN);
+        } /* while (countdown) */
 
-        SDL_Flip(NE_SCREEN);
-        SDL_Delay(1);
-    } /* while !FinishTakeover */
+        wait_for_all_keys_released();
+    }
 
-    /* Schluss- Countdown */
-    countdown = CAPSULE_COUNTDOWN;
+    unsafe fn choose_color(&mut self) {
+        let mut countdown = 100; /* duration in 1/10 seconds given for color choosing */
 
-    wait_for_all_keys_released();
-    let mut fast_forward = false;
-    loop {
-        countdown -= 1;
-        if countdown == 0 {
-            break;
-        }
+        const COUNT_TICK_LEN: u32 = 100; /* countdown in 1/10 second steps */
 
-        if !fast_forward {
-            SDL_Delay(COUNT_TICK_LEN);
-        }
-        if any_key_just_pressed() != 0 {
-            fast_forward = true;
-        }
-        prev_count_tick += COUNT_TICK_LEN;
-        process_capsules(); /* count down the lifetime of the capsules */
-        process_capsules(); /* do it twice this time to be faster */
-        animate_currents();
-        process_playground();
-        process_playground();
-        process_playground();
-        process_playground(); /* this has to be done several times to be sure */
-        process_display_column();
-        show_playground();
-        SDL_Delay(1);
-        SDL_Flip(NE_SCREEN);
-    } /* while (countdown) */
+        let mut prev_count_tick = SDL_GetTicks();
 
-    wait_for_all_keys_released();
-}
+        wait_for_all_keys_released();
 
-unsafe fn choose_color() {
-    let mut countdown = 100; /* duration in 1/10 seconds given for color choosing */
-
-    const COUNT_TICK_LEN: u32 = 100; /* countdown in 1/10 second steps */
-
-    let mut prev_count_tick = SDL_GetTicks();
-
-    wait_for_all_keys_released();
-
-    let mut color_chosen = false;
-    while !color_chosen {
-        let action = get_menu_action(110);
-        if action.intersects(MenuAction::RIGHT | MenuAction::DOWN_WHEEL) {
-            if YOUR_COLOR != Color::Violet {
-                move_menu_position_sound();
+        let mut color_chosen = false;
+        while !color_chosen {
+            let action = get_menu_action(110);
+            if action.intersects(MenuAction::RIGHT | MenuAction::DOWN_WHEEL) {
+                if YOUR_COLOR != Color::Violet {
+                    move_menu_position_sound();
+                }
+                YOUR_COLOR = Color::Violet;
+                OPPONENT_COLOR = Color::Yellow;
             }
-            YOUR_COLOR = Color::Violet;
-            OPPONENT_COLOR = Color::Yellow;
-        }
 
-        if action.intersects(MenuAction::LEFT | MenuAction::UP_WHEEL) {
-            if YOUR_COLOR != Color::Yellow {
-                move_menu_position_sound();
+            if action.intersects(MenuAction::LEFT | MenuAction::UP_WHEEL) {
+                if YOUR_COLOR != Color::Yellow {
+                    move_menu_position_sound();
+                }
+                YOUR_COLOR = Color::Yellow;
+                OPPONENT_COLOR = Color::Violet;
             }
-            YOUR_COLOR = Color::Yellow;
-            OPPONENT_COLOR = Color::Violet;
+
+            if action.intersects(MenuAction::CLICK) {
+                color_chosen = true;
+            }
+
+            /* wait for next countdown tick */
+            if SDL_GetTicks() >= prev_count_tick + COUNT_TICK_LEN {
+                prev_count_tick += COUNT_TICK_LEN; /* set for next tick */
+                countdown -= 1; /* Count down */
+                let count_text = format!("Color-{}\0", countdown);
+
+                display_banner(count_text.as_ptr() as *const c_char, null_mut(), 0);
+                self.show_playground();
+            }
+
+            if countdown == 0 {
+                color_chosen = true;
+            }
+
+            SDL_Flip(NE_SCREEN);
+            SDL_Delay(1); // don't hog CPU
         }
-
-        if action.intersects(MenuAction::CLICK) {
-            color_chosen = true;
-        }
-
-        /* wait for next countdown tick */
-        if SDL_GetTicks() >= prev_count_tick + COUNT_TICK_LEN {
-            prev_count_tick += COUNT_TICK_LEN; /* set for next tick */
-            countdown -= 1; /* Count down */
-            let count_text = format!("Color-{}\0", countdown);
-
-            display_banner(count_text.as_ptr() as *const c_char, null_mut(), 0);
-            show_playground();
-        }
-
-        if countdown == 0 {
-            color_chosen = true;
-        }
-
-        SDL_Flip(NE_SCREEN);
-        SDL_Delay(1); // don't hog CPU
     }
 }
 
-/// play takeover-game against a druid
-///
-/// Returns true if the user won, false otherwise
-pub unsafe fn takeover(enemynum: c_int) -> c_int {
-    static mut REJECT_ENERGY: c_int = 0; /* your energy if you're rejected */
+impl Data {
+    /// play takeover-game against a druid
+    ///
+    /// Returns true if the user won, false otherwise
+    pub unsafe fn takeover(&mut self, enemynum: c_int) -> c_int {
+        static mut REJECT_ENERGY: c_int = 0; /* your energy if you're rejected */
 
-    /* Prevent distortion of framerate by the delay coming from
-     * the time spend in the menu.
-     */
-    activate_conservative_frame_computation();
+        /* Prevent distortion of framerate by the delay coming from
+         * the time spend in the menu.
+         */
+        activate_conservative_frame_computation();
 
-    // Takeover game always uses Classic User_Rect:
-    let buf = USER_RECT;
-    USER_RECT = CLASSIC_USER_RECT;
+        // Takeover game always uses Classic User_Rect:
+        let buf = USER_RECT;
+        USER_RECT = CLASSIC_USER_RECT;
 
-    display_banner(
-        null_mut(),
-        null_mut(),
-        DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-    );
+        display_banner(
+            null_mut(),
+            null_mut(),
+            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+        );
 
-    const BG_COLOR: SDL_Color = SDL_Color {
-        r: 130,
-        g: 130,
-        b: 130,
-        unused: 0,
-    };
-    fill_rect(USER_RECT, BG_COLOR);
+        const BG_COLOR: SDL_Color = SDL_Color {
+            r: 130,
+            g: 130,
+            b: 130,
+            unused: 0,
+        };
+        fill_rect(USER_RECT, BG_COLOR);
 
-    ME.status = Status::Mobile as i32; /* the new status _after_ the takeover game */
+        ME.status = Status::Mobile as i32; /* the new status _after_ the takeover game */
 
-    SDL_ShowCursor(SDL_DISABLE); // no mouse-cursor in takeover game!
+        SDL_ShowCursor(SDL_DISABLE); // no mouse-cursor in takeover game!
 
-    show_droid_info(ME.ty, -1, 0);
-    show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, UPDATE);
+        self.show_droid_info(ME.ty, -1, 0);
+        show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, UPDATE);
 
-    wait_for_all_keys_released();
-    while !fire_pressed_r() {
-        show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, 0);
-        SDL_Delay(1);
-    }
+        wait_for_all_keys_released();
+        while !fire_pressed_r() {
+            show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, 0);
+            SDL_Delay(1);
+        }
 
-    let enemy_index: usize = enemynum.try_into().unwrap();
-    show_droid_info(ALL_ENEMYS[enemy_index].ty, -2, 0);
-    show_droid_portrait(
-        CONS_DROID_RECT,
-        ALL_ENEMYS[enemy_index].ty,
-        DROID_ROTATION_TIME,
-        UPDATE,
-    );
-    wait_for_all_keys_released();
-    while !fire_pressed_r() {
+        let enemy_index: usize = enemynum.try_into().unwrap();
+        self.show_droid_info(ALL_ENEMYS[enemy_index].ty, -2, 0);
         show_droid_portrait(
             CONS_DROID_RECT,
             ALL_ENEMYS[enemy_index].ty,
             DROID_ROTATION_TIME,
-            0,
+            UPDATE,
         );
-        SDL_Delay(1);
-    }
-
-    SDL_UpperBlit(TAKEOVER_BG_PIC, null_mut(), NE_SCREEN, null_mut());
-    display_banner(
-        null_mut(),
-        null_mut(),
-        DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-    );
-
-    wait_for_all_keys_released();
-    let mut finish_takeover = false;
-    while !finish_takeover {
-        /* Init Color-column and Capsule-Number for each opponenet and your color */
-        DISPLAY_COLUMN
-            .iter_mut()
-            .enumerate()
-            .for_each(|(row, column)| *column = (row % 2).try_into().unwrap());
-        CAPSULES_COUNTDOWN
-            .iter_mut()
-            .flat_map(|color_countdown| color_countdown[0].iter_mut())
-            .for_each(|x| *x = None);
-
-        YOUR_COLOR = Color::Yellow;
-        OPPONENT_COLOR = Color::Violet;
-
-        CAPSULE_CUR_ROW[usize::from(Color::Yellow)] = 0;
-        CAPSULE_CUR_ROW[usize::from(Color::Violet)] = 0;
-
-        DROID_NUM = enemynum;
-        OPPONENT_TYPE = ALL_ENEMYS[enemy_index].ty;
-        NUM_CAPSULES[Opponents::You as usize] = 3 + class_of_druid(ME.ty);
-        NUM_CAPSULES[Opponents::Enemy as usize] = 4 + class_of_druid(OPPONENT_TYPE);
-
-        invent_playground();
-
-        show_playground();
-        SDL_Flip(NE_SCREEN);
-
-        choose_color();
         wait_for_all_keys_released();
-
-        play_game();
-        wait_for_all_keys_released();
-
-        let message;
-        /* Ausgang beurteilen und returnen */
-        if INVINCIBLE_MODE != 0 || LEADER_COLOR == YOUR_COLOR {
-            takeover_game_won_sound();
-            if ME.ty == Droid::Droid001 as c_int {
-                REJECT_ENERGY = ME.energy as c_int;
-                PRE_TAKE_ENERGY = ME.energy as c_int;
-            }
-
-            // We provide some security agains too high energy/health values gained
-            // by very rapid successions of successful takeover attempts
-            let droid_map = std::slice::from_raw_parts(DRUIDMAP, Droid::NumDroids as usize);
-            if ME.energy > droid_map[Droid::Droid001 as usize].maxenergy {
-                ME.energy = droid_map[Droid::Droid001 as usize].maxenergy;
-            }
-            if ME.health > droid_map[Droid::Droid001 as usize].maxenergy {
-                ME.health = droid_map[Droid::Droid001 as usize].maxenergy;
-            }
-
-            // We allow to gain the current energy/full health that was still in the
-            // other droid, since all previous damage must be due to fighting damage,
-            // and this is exactly the sort of damage can usually be cured in refreshes.
-            ME.energy += ALL_ENEMYS[enemy_index].energy;
-            ME.health += droid_map[usize::try_from(OPPONENT_TYPE).unwrap()].maxenergy;
-
-            ME.ty = ALL_ENEMYS[enemy_index].ty;
-
-            REAL_SCORE += droid_map[usize::try_from(OPPONENT_TYPE).unwrap()].score as f32;
-
-            DEATH_COUNT += (OPPONENT_TYPE * OPPONENT_TYPE) as f32; // quadratic "importance", max=529
-
-            ALL_ENEMYS[enemy_index].status = Status::Out as c_int; // removed droid silently (no blast!)
-
-            if LEADER_COLOR != YOUR_COLOR {
-                /* only won because of InvincibleMode */
-                message = cstr!("You cheat")
-            } else {
-                /* won the proper way */
-                message = cstr!("Complete")
-            };
-
-            finish_takeover = true;
-        } else if LEADER_COLOR == OPPONENT_COLOR {
-            /* LEADER_COLOR == YOUR_COLOR */
-            // you lost, but enemy is killed too --> blast it!
-            ALL_ENEMYS[enemy_index].energy = -1.0; /* to be sure */
-
-            takeover_game_lost_sound();
-            if ME.ty != Droid::Droid001 as c_int {
-                message = cstr!("Rejected");
-                ME.ty = Droid::Droid001 as c_int;
-                ME.energy = REJECT_ENERGY as f32;
-            } else {
-                message = cstr!("Burnt Out");
-                ME.energy = 0.;
-            }
-            finish_takeover = true;
-        } else {
-            /* LeadColor == OPPONENT_COLOR */
-
-            takeover_game_deadlock_sound();
-            message = cstr!("Deadlock");
-        }
-
-        display_banner(message.as_ptr(), null_mut(), 0);
-        show_playground();
-        SDL_Flip(NE_SCREEN);
-
-        wait_for_all_keys_released();
-        let now = SDL_GetTicks();
-        while !fire_pressed_r() && SDL_GetTicks() - now < SHOW_WAIT {
-            #[cfg(target_os = "android")]
-            SDL_Flip(NE_SCREEN);
-
+        while !fire_pressed_r() {
+            show_droid_portrait(
+                CONS_DROID_RECT,
+                ALL_ENEMYS[enemy_index].ty,
+                DROID_ROTATION_TIME,
+                0,
+            );
             SDL_Delay(1);
         }
+
+        SDL_UpperBlit(TAKEOVER_BG_PIC, null_mut(), NE_SCREEN, null_mut());
+        display_banner(
+            null_mut(),
+            null_mut(),
+            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+        );
+
+        wait_for_all_keys_released();
+        let mut finish_takeover = false;
+        while !finish_takeover {
+            /* Init Color-column and Capsule-Number for each opponenet and your color */
+            DISPLAY_COLUMN
+                .iter_mut()
+                .enumerate()
+                .for_each(|(row, column)| *column = (row % 2).try_into().unwrap());
+            CAPSULES_COUNTDOWN
+                .iter_mut()
+                .flat_map(|color_countdown| color_countdown[0].iter_mut())
+                .for_each(|x| *x = None);
+
+            YOUR_COLOR = Color::Yellow;
+            OPPONENT_COLOR = Color::Violet;
+
+            CAPSULE_CUR_ROW[usize::from(Color::Yellow)] = 0;
+            CAPSULE_CUR_ROW[usize::from(Color::Violet)] = 0;
+
+            DROID_NUM = enemynum;
+            OPPONENT_TYPE = ALL_ENEMYS[enemy_index].ty;
+            NUM_CAPSULES[Opponents::You as usize] = 3 + class_of_druid(ME.ty);
+            NUM_CAPSULES[Opponents::Enemy as usize] = 4 + class_of_druid(OPPONENT_TYPE);
+
+            invent_playground();
+
+            self.show_playground();
+            SDL_Flip(NE_SCREEN);
+
+            self.choose_color();
+            wait_for_all_keys_released();
+
+            self.play_game();
+            wait_for_all_keys_released();
+
+            let message;
+            /* Ausgang beurteilen und returnen */
+            if INVINCIBLE_MODE != 0 || LEADER_COLOR == YOUR_COLOR {
+                takeover_game_won_sound();
+                if ME.ty == Droid::Droid001 as c_int {
+                    REJECT_ENERGY = ME.energy as c_int;
+                    PRE_TAKE_ENERGY = ME.energy as c_int;
+                }
+
+                // We provide some security agains too high energy/health values gained
+                // by very rapid successions of successful takeover attempts
+                let droid_map = std::slice::from_raw_parts(DRUIDMAP, Droid::NumDroids as usize);
+                if ME.energy > droid_map[Droid::Droid001 as usize].maxenergy {
+                    ME.energy = droid_map[Droid::Droid001 as usize].maxenergy;
+                }
+                if ME.health > droid_map[Droid::Droid001 as usize].maxenergy {
+                    ME.health = droid_map[Droid::Droid001 as usize].maxenergy;
+                }
+
+                // We allow to gain the current energy/full health that was still in the
+                // other droid, since all previous damage must be due to fighting damage,
+                // and this is exactly the sort of damage can usually be cured in refreshes.
+                ME.energy += ALL_ENEMYS[enemy_index].energy;
+                ME.health += droid_map[usize::try_from(OPPONENT_TYPE).unwrap()].maxenergy;
+
+                ME.ty = ALL_ENEMYS[enemy_index].ty;
+
+                REAL_SCORE += droid_map[usize::try_from(OPPONENT_TYPE).unwrap()].score as f32;
+
+                DEATH_COUNT += (OPPONENT_TYPE * OPPONENT_TYPE) as f32; // quadratic "importance", max=529
+
+                ALL_ENEMYS[enemy_index].status = Status::Out as c_int; // removed droid silently (no blast!)
+
+                if LEADER_COLOR != YOUR_COLOR {
+                    /* only won because of InvincibleMode */
+                    message = cstr!("You cheat")
+                } else {
+                    /* won the proper way */
+                    message = cstr!("Complete")
+                };
+
+                finish_takeover = true;
+            } else if LEADER_COLOR == OPPONENT_COLOR {
+                /* LEADER_COLOR == YOUR_COLOR */
+                // you lost, but enemy is killed too --> blast it!
+                ALL_ENEMYS[enemy_index].energy = -1.0; /* to be sure */
+
+                takeover_game_lost_sound();
+                if ME.ty != Droid::Droid001 as c_int {
+                    message = cstr!("Rejected");
+                    ME.ty = Droid::Droid001 as c_int;
+                    ME.energy = REJECT_ENERGY as f32;
+                } else {
+                    message = cstr!("Burnt Out");
+                    ME.energy = 0.;
+                }
+                finish_takeover = true;
+            } else {
+                /* LeadColor == OPPONENT_COLOR */
+
+                takeover_game_deadlock_sound();
+                message = cstr!("Deadlock");
+            }
+
+            display_banner(message.as_ptr(), null_mut(), 0);
+            self.show_playground();
+            SDL_Flip(NE_SCREEN);
+
+            wait_for_all_keys_released();
+            let now = SDL_GetTicks();
+            while !fire_pressed_r() && SDL_GetTicks() - now < SHOW_WAIT {
+                #[cfg(target_os = "android")]
+                SDL_Flip(NE_SCREEN);
+
+                SDL_Delay(1);
+            }
+        }
+
+        // restore User_Rect
+        USER_RECT = buf;
+
+        clear_graph_mem();
+
+        (LEADER_COLOR == YOUR_COLOR).into()
     }
-
-    // restore User_Rect
-    USER_RECT = buf;
-
-    clear_graph_mem();
-
-    (LEADER_COLOR == YOUR_COLOR).into()
 }

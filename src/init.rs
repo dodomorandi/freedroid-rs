@@ -1,5 +1,5 @@
 use crate::{
-    b_font::{font_height, get_current_font, set_current_font},
+    b_font::font_height,
     bullet::{delete_bullet, explode_blasts, move_bullets},
     defs::{
         self, get_user_center, scale_rect, AssembleCombatWindowFlags, Criticality,
@@ -13,10 +13,10 @@ use crate::{
         SKIP_A_FEW_FRAMES, TIME_FOR_EACH_PHASE_OF_DOOR_MOVEMENT,
     },
     graphics::{
-        clear_graph_mem, display_image, init_pictures, init_video, load_fonts, make_grid_on_screen,
-        white_noise, ALL_THEMES, NE_SCREEN, NUMBER_OF_BULLET_TYPES, PIC999,
+        clear_graph_mem, display_image, init_video, make_grid_on_screen, white_noise, ALL_THEMES,
+        NE_SCREEN, NUMBER_OF_BULLET_TYPES, PIC999,
     },
-    highscore::{init_highscores, update_highscores, HIGHSCORES},
+    highscore::{init_highscores, HIGHSCORES},
     influencer::{explode_influencer, init_influ_position_history},
     input::{
         any_key_just_pressed, init_joy, wait_for_all_keys_released, SDL_Delay, JOY_SENSITIVITY,
@@ -24,19 +24,18 @@ use crate::{
     map::{get_crew, get_lift_connections, load_ship},
     misc::{
         activate_conservative_frame_computation, compute_fps_for_this_frame,
-        count_string_occurences, dealloc_c_string, find_file, init_progress, load_game_config,
+        count_string_occurences, dealloc_c_string, find_file, load_game_config,
         locate_string_in_data, my_random, read_and_malloc_and_terminate_file,
         read_and_malloc_string_from_data, read_value_from_string, set_time_factor,
         start_taking_time_for_fps_calculation, terminate, update_progress,
     },
     sound::{init_audio, switch_background_music_to, thou_art_defeated_sound},
     structs::{BulletSpec, DruidSpec},
-    text::{display_text, printf_sdl, scroll_text},
     vars::{
         BLASTMAP, BULLETMAP, CLASSIC_USER_RECT, DRUIDMAP, FULL_USER_RECT, PORTRAIT_RECT,
         SCREEN_RECT, USER_RECT,
     },
-    view::{assemble_combat_picture, display_banner},
+    view::display_banner,
     Data, ALERT_BONUS_PER_SEC, ALERT_THRESHOLD, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL,
     CUR_SHIP, DEATH_COUNT, DEATH_COUNT_DRAIN_SPEED, DEBUG_LEVEL, LAST_GOT_INTO_BLAST_SOUND,
     LAST_REFRESH_SOUND, LEVEL_DOORS_NOT_MOVED_TIME, ME, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
@@ -170,166 +169,170 @@ pub unsafe fn win32_disclaimer() {
     wait_for_key_pressed();
 }
 
-/// This function checks, if the influencer has succeeded in his given
-/// mission.  If not it returns, if yes the Debriefing is started.
-pub(crate) unsafe fn check_if_mission_is_complete(data: &mut Data) {
-    for enemy in ALL_ENEMYS.iter().take(NUM_ENEMYS.try_into().unwrap()) {
-        if enemy.status != Status::Out as c_int && enemy.status != Status::Terminated as c_int {
-            return;
+impl Data {
+    /// This function checks, if the influencer has succeeded in his given
+    /// mission.  If not it returns, if yes the Debriefing is started.
+    pub(crate) unsafe fn check_if_mission_is_complete(&mut self) {
+        for enemy in ALL_ENEMYS.iter().take(NUM_ENEMYS.try_into().unwrap()) {
+            if enemy.status != Status::Out as c_int && enemy.status != Status::Terminated as c_int {
+                return;
+            }
         }
+
+        // mission complete: all droids have been killed
+        REAL_SCORE += MISSION_COMPLETE_BONUS;
+        self.thou_art_victorious();
+        self.game_over = true;
     }
 
-    // mission complete: all droids have been killed
-    REAL_SCORE += MISSION_COMPLETE_BONUS;
-    thou_art_victorious();
-    data.game_over = true;
+    pub unsafe fn thou_art_victorious(&mut self) {
+        switch_background_music_to(DEBRIEFING_SONG.as_ptr());
+
+        SDL_ShowCursor(SDL_DISABLE);
+
+        SHOW_SCORE = REAL_SCORE as c_long;
+        ME.status = Status::Victory as c_int;
+        display_banner(
+            null_mut(),
+            null_mut(),
+            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+        );
+
+        wait_for_all_keys_released();
+
+        let now = SDL_GetTicks();
+
+        while SDL_GetTicks() - now < WAIT_AFTER_KILLED {
+            display_banner(null_mut(), null_mut(), 0);
+            explode_blasts();
+            move_bullets();
+            self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+        }
+
+        let mut rect = FULL_USER_RECT;
+        SDL_SetClipRect(NE_SCREEN, null_mut());
+        make_grid_on_screen(Some(&rect));
+        SDL_Flip(NE_SCREEN);
+        rect.x += 10;
+        rect.w -= 20; //leave some border
+        self.b_font.current_font = PARA_B_FONT;
+        self.scroll_text(DEBRIEFING_TEXT, &mut rect, 6);
+
+        wait_for_all_keys_released();
+    }
 }
 
-pub unsafe fn thou_art_victorious() {
-    switch_background_music_to(DEBRIEFING_SONG.as_ptr());
+impl Data {
+    /// This function initializes the whole Freedroid game.
+    ///
+    /// This must not be confused with initnewgame, which
+    /// only initializes a new mission for the game.
+    pub unsafe fn init_freedroid(&mut self) {
+        BULLETMAP = null_mut(); // That will cause the memory to be allocated later
 
-    SDL_ShowCursor(SDL_DISABLE);
+        for bullet in &mut ALL_BULLETS {
+            bullet.surfaces_were_generated = false.into();
+        }
 
-    SHOW_SCORE = REAL_SCORE as c_long;
-    ME.status = Status::Victory as c_int;
-    display_banner(
-        null_mut(),
-        null_mut(),
-        DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-    );
+        SKIP_A_FEW_FRAMES = false.into();
+        ME.text_visible_time = 0.;
+        ME.text_to_be_displayed = null_mut();
 
-    wait_for_all_keys_released();
+        // these are the hardcoded game-defaults, they can be overloaded by the config-file if present
+        GAME_CONFIG.current_bg_music_volume = 0.3;
+        GAME_CONFIG.current_sound_fx_volume = 0.5;
 
-    let now = SDL_GetTicks();
+        GAME_CONFIG.wanted_text_visible_time = 3.;
+        GAME_CONFIG.droid_talk = false.into();
 
-    while SDL_GetTicks() - now < WAIT_AFTER_KILLED {
-        display_banner(null_mut(), null_mut(), 0);
-        explode_blasts();
-        move_bullets();
-        assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+        GAME_CONFIG.draw_framerate = false.into();
+        GAME_CONFIG.draw_energy = false.into();
+        GAME_CONFIG.draw_death_count = false.into();
+        GAME_CONFIG.draw_position = false.into();
+
+        std::ptr::copy_nonoverlapping(
+            b"classic\0".as_ptr(),
+            GAME_CONFIG.theme_name.as_mut_ptr() as *mut u8,
+            b"classic\0".len(),
+        );
+        GAME_CONFIG.full_user_rect = true.into();
+        GAME_CONFIG.use_fullscreen = false.into();
+        GAME_CONFIG.takeover_activates = true.into();
+        GAME_CONFIG.fire_hold_takeover = true.into();
+        GAME_CONFIG.show_decals = false.into();
+        GAME_CONFIG.all_map_visible = true.into(); // classic setting: map always visible
+
+        let scale = if cfg!(feature = "gcw0") {
+            0.5 // Default for 320x200 device (GCW0)
+        } else {
+            1.0 // overall scaling of _all_ graphics (e.g. for 320x200 displays)
+        };
+        GAME_CONFIG.scale = scale;
+
+        GAME_CONFIG.hog_cpu = false.into(); // default to being nice
+        GAME_CONFIG.empty_level_speedup = 1.0; // speed up *time* in empty levels (ie also energy-loss rate)
+
+        // now load saved options from the config-file
+        load_game_config();
+
+        // call this _after_ default settings and LoadGameConfig() ==> cmdline has highest priority!
+        parse_command_line();
+
+        USER_RECT = if GAME_CONFIG.full_user_rect != 0 {
+            FULL_USER_RECT
+        } else {
+            CLASSIC_USER_RECT
+        };
+
+        scale_rect(&mut SCREEN_RECT, GAME_CONFIG.scale); // make sure we open a window of the right (rescaled) size!
+        init_video();
+
+        display_image(find_file(
+            TITLE_PIC_FILE_C.as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::Critical as c_int,
+        )); // show title pic
+        SDL_Flip(NE_SCREEN);
+
+        self.load_fonts(); // we need this for progress-meter!
+
+        self.init_progress(cstr!("Loading Freedroid").as_ptr() as *mut c_char);
+
+        find_all_themes(); // put all found themes into a list: AllThemes[]
+
+        update_progress(5);
+
+        init_audio();
+
+        init_joy();
+
+        init_game_data(cstr!("freedroid.ruleset").as_ptr() as *mut c_char); // load the default ruleset. This can be */
+                                                                            // overwritten from the mission file.
+
+        update_progress(10);
+
+        // The default should be, that no rescaling of the
+        // combat window at all is done.
+        CURRENT_COMBAT_SCALE_FACTOR = 1.;
+
+        /*
+         * Initialise random-number generator in order to make
+         * level-start etc really different at each program start
+         */
+        libc::srand(SDL_GetTicks() as c_uint);
+
+        /* initialize/load the highscore list */
+        init_highscores();
+
+        /* Now fill the pictures correctly to the structs */
+        if self.init_pictures() == 0 {
+            error!("Error in InitPictures reported back...");
+            terminate(defs::ERR.into());
+        }
+
+        update_progress(100); // finished init
     }
-
-    let mut rect = FULL_USER_RECT;
-    SDL_SetClipRect(NE_SCREEN, null_mut());
-    make_grid_on_screen(Some(&rect));
-    SDL_Flip(NE_SCREEN);
-    rect.x += 10;
-    rect.w -= 20; //leave some border
-    set_current_font(PARA_B_FONT);
-    scroll_text(DEBRIEFING_TEXT, &mut rect, 6);
-
-    wait_for_all_keys_released();
-}
-
-/// This function initializes the whole Freedroid game.
-///
-/// This must not be confused with initnewgame, which
-/// only initializes a new mission for the game.
-pub unsafe fn init_freedroid() {
-    BULLETMAP = null_mut(); // That will cause the memory to be allocated later
-
-    for bullet in &mut ALL_BULLETS {
-        bullet.surfaces_were_generated = false.into();
-    }
-
-    SKIP_A_FEW_FRAMES = false.into();
-    ME.text_visible_time = 0.;
-    ME.text_to_be_displayed = null_mut();
-
-    // these are the hardcoded game-defaults, they can be overloaded by the config-file if present
-    GAME_CONFIG.current_bg_music_volume = 0.3;
-    GAME_CONFIG.current_sound_fx_volume = 0.5;
-
-    GAME_CONFIG.wanted_text_visible_time = 3.;
-    GAME_CONFIG.droid_talk = false.into();
-
-    GAME_CONFIG.draw_framerate = false.into();
-    GAME_CONFIG.draw_energy = false.into();
-    GAME_CONFIG.draw_death_count = false.into();
-    GAME_CONFIG.draw_position = false.into();
-
-    std::ptr::copy_nonoverlapping(
-        b"classic\0".as_ptr(),
-        GAME_CONFIG.theme_name.as_mut_ptr() as *mut u8,
-        b"classic\0".len(),
-    );
-    GAME_CONFIG.full_user_rect = true.into();
-    GAME_CONFIG.use_fullscreen = false.into();
-    GAME_CONFIG.takeover_activates = true.into();
-    GAME_CONFIG.fire_hold_takeover = true.into();
-    GAME_CONFIG.show_decals = false.into();
-    GAME_CONFIG.all_map_visible = true.into(); // classic setting: map always visible
-
-    let scale = if cfg!(feature = "gcw0") {
-        0.5 // Default for 320x200 device (GCW0)
-    } else {
-        1.0 // overall scaling of _all_ graphics (e.g. for 320x200 displays)
-    };
-    GAME_CONFIG.scale = scale;
-
-    GAME_CONFIG.hog_cpu = false.into(); // default to being nice
-    GAME_CONFIG.empty_level_speedup = 1.0; // speed up *time* in empty levels (ie also energy-loss rate)
-
-    // now load saved options from the config-file
-    load_game_config();
-
-    // call this _after_ default settings and LoadGameConfig() ==> cmdline has highest priority!
-    parse_command_line();
-
-    USER_RECT = if GAME_CONFIG.full_user_rect != 0 {
-        FULL_USER_RECT
-    } else {
-        CLASSIC_USER_RECT
-    };
-
-    scale_rect(&mut SCREEN_RECT, GAME_CONFIG.scale); // make sure we open a window of the right (rescaled) size!
-    init_video();
-
-    display_image(find_file(
-        TITLE_PIC_FILE_C.as_ptr() as *mut c_char,
-        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-        Themed::NoTheme as c_int,
-        Criticality::Critical as c_int,
-    )); // show title pic
-    SDL_Flip(NE_SCREEN);
-
-    load_fonts(); // we need this for progress-meter!
-
-    init_progress(cstr!("Loading Freedroid").as_ptr() as *mut c_char);
-
-    find_all_themes(); // put all found themes into a list: AllThemes[]
-
-    update_progress(5);
-
-    init_audio();
-
-    init_joy();
-
-    init_game_data(cstr!("freedroid.ruleset").as_ptr() as *mut c_char); // load the default ruleset. This can be */
-                                                                        // overwritten from the mission file.
-
-    update_progress(10);
-
-    // The default should be, that no rescaling of the
-    // combat window at all is done.
-    CURRENT_COMBAT_SCALE_FACTOR = 1.;
-
-    /*
-     * Initialise random-number generator in order to make
-     * level-start etc really different at each program start
-     */
-    libc::srand(SDL_GetTicks() as c_uint);
-
-    /* initialize/load the highscore list */
-    init_highscores();
-
-    /* Now fill the pictures correctly to the structs */
-    if init_pictures() == 0 {
-        error!("Error in InitPictures reported back...");
-        terminate(defs::ERR.into());
-    }
-
-    update_progress(100); // finished init
 }
 
 #[derive(Clap)]
@@ -574,370 +577,395 @@ pub unsafe fn find_all_themes() {
     );
 }
 
-pub unsafe fn init_new_mission(mission_name: *mut c_char) {
-    const END_OF_MISSION_DATA_STRING: &CStr = cstr!("*** End of Mission File ***");
-    const MISSION_BRIEFING_BEGIN_STRING: &CStr =
-        cstr!("** Start of Mission Briefing Text Section **");
-    const MISSION_ENDTITLE_SONG_NAME_STRING: &CStr =
-        cstr!("Song name to play in the end title if the mission is completed: ");
-    const SHIPNAME_INDICATION_STRING: &CStr = cstr!("Ship file to use for this mission: ");
-    const ELEVATORNAME_INDICATION_STRING: &CStr = cstr!("Lift file to use for this mission: ");
-    const CREWNAME_INDICATION_STRING: &CStr = cstr!("Crew file to use for this mission: ");
-    const GAMEDATANAME_INDICATION_STRING: &CStr =
-        cstr!("Physics ('game.dat') file to use for this mission: ");
-    const MISSION_ENDTITLE_BEGIN_STRING: &CStr = cstr!("** Beginning of End Title Text Section **");
-    const MISSION_ENDTITLE_END_STRING: &CStr = cstr!("** End of End Title Text Section **");
-    const MISSION_START_POINT_STRING: &CStr = cstr!("Possible Start Point : ");
+impl Data {
+    pub unsafe fn init_new_mission(&mut self, mission_name: *mut c_char) {
+        const END_OF_MISSION_DATA_STRING: &CStr = cstr!("*** End of Mission File ***");
+        const MISSION_BRIEFING_BEGIN_STRING: &CStr =
+            cstr!("** Start of Mission Briefing Text Section **");
+        const MISSION_ENDTITLE_SONG_NAME_STRING: &CStr =
+            cstr!("Song name to play in the end title if the mission is completed: ");
+        const SHIPNAME_INDICATION_STRING: &CStr = cstr!("Ship file to use for this mission: ");
+        const ELEVATORNAME_INDICATION_STRING: &CStr = cstr!("Lift file to use for this mission: ");
+        const CREWNAME_INDICATION_STRING: &CStr = cstr!("Crew file to use for this mission: ");
+        const GAMEDATANAME_INDICATION_STRING: &CStr =
+            cstr!("Physics ('game.dat') file to use for this mission: ");
+        const MISSION_ENDTITLE_BEGIN_STRING: &CStr =
+            cstr!("** Beginning of End Title Text Section **");
+        const MISSION_ENDTITLE_END_STRING: &CStr = cstr!("** End of End Title Text Section **");
+        const MISSION_START_POINT_STRING: &CStr = cstr!("Possible Start Point : ");
 
-    // We store the mission name in case the influ
-    // gets destroyed so we know where to continue in
-    // case the player doesn't want to return to the very beginning
-    // but just to replay this mission.
-    libc::strcpy(PREVIOUS_MISSION_NAME.as_mut_ptr(), mission_name);
+        // We store the mission name in case the influ
+        // gets destroyed so we know where to continue in
+        // case the player doesn't want to return to the very beginning
+        // but just to replay this mission.
+        libc::strcpy(PREVIOUS_MISSION_NAME.as_mut_ptr(), mission_name);
 
-    info!(
-        "A new mission is being initialized from file {}.",
-        CStr::from_ptr(mission_name).to_string_lossy()
-    );
-
-    //--------------------
-    //At first we do the things that must be done for all
-    //missions, regardless of mission file given
-    activate_conservative_frame_computation();
-    LAST_GOT_INTO_BLAST_SOUND = 2.;
-    LAST_REFRESH_SOUND = 2.;
-    THIS_MESSAGE_TIME = 0;
-    LEVEL_DOORS_NOT_MOVED_TIME = 0.0;
-    DEATH_COUNT = 0.;
-    set_time_factor(1.0);
-
-    /* Delete all bullets and blasts */
-    for bullet in 0..MAXBULLETS {
-        delete_bullet(bullet.try_into().unwrap());
-    }
-
-    info!("InitNewMission: All bullets have been deleted.");
-    for blast in &mut ALL_BLASTS {
-        blast.phase = Status::Out as c_int as c_float;
-        blast.ty = Status::Out as c_int;
-    }
-    info!("InitNewMission: All blasts have been deleted.");
-    for enemy in &mut ALL_ENEMYS {
-        enemy.ty = Status::Out as c_int;
-        enemy.energy = -1.;
-    }
-    info!("InitNewMission: All enemys have been deleted...");
-
-    //Now its time to start decoding the mission file.
-    //For that, we must get it into memory first.
-    //The procedure is the same as with LoadShip
-
-    let oldfont = get_current_font();
-
-    set_current_font(FONT0_B_FONT);
-
-    /* Read the whole mission data to memory */
-    let fpath = find_file(
-        mission_name,
-        MAP_DIR_C.as_ptr() as *mut c_char,
-        Themed::NoTheme as c_int,
-        Criticality::Critical as c_int,
-    );
-
-    let mut main_mission_pointer = read_and_malloc_and_terminate_file(
-        fpath,
-        END_OF_MISSION_DATA_STRING.as_ptr() as *mut c_char,
-    );
-
-    //--------------------
-    // Now the mission file is read into memory.  That means we can start to decode the details given
-    // in the body of the mission file.
-
-    //--------------------
-    // First we extract the game physics file name from the
-    // mission file and load the game data.
-    //
-    let mut buffer: [c_char; 500] = [0; 500];
-    read_value_from_string(
-        main_mission_pointer.as_mut_ptr(),
-        GAMEDATANAME_INDICATION_STRING.as_ptr() as *mut c_char,
-        cstr!("%s").as_ptr() as *mut c_char,
-        buffer.as_mut_ptr() as *mut c_void,
-    );
-
-    init_game_data(buffer.as_mut_ptr());
-
-    //--------------------
-    // Now its time to get the shipname from the mission file and
-    // read the ship file into the right memory structures
-    //
-    read_value_from_string(
-        main_mission_pointer.as_mut_ptr(),
-        SHIPNAME_INDICATION_STRING.as_ptr() as *mut c_char,
-        cstr!("%s").as_ptr() as *mut c_char,
-        buffer.as_mut_ptr() as *mut c_void,
-    );
-
-    if load_ship(buffer.as_mut_ptr()) == defs::ERR.into() {
-        error!("Error in LoadShip");
-        terminate(defs::ERR.into());
-    }
-    //--------------------
-    // Now its time to get the elevator file name from the mission file and
-    // read the elevator file into the right memory structures
-    //
-    read_value_from_string(
-        main_mission_pointer.as_mut_ptr(),
-        ELEVATORNAME_INDICATION_STRING.as_ptr() as *mut c_char,
-        cstr!("%s").as_ptr() as *mut c_char,
-        buffer.as_mut_ptr() as *mut c_void,
-    );
-
-    if get_lift_connections(buffer.as_mut_ptr()) == defs::ERR.into() {
-        error!("Error in GetLiftConnections");
-        terminate(defs::ERR.into());
-    }
-    //--------------------
-    // We also load the comment for the influencer to say at the beginning of the mission
-    //
-
-    // NO! these strings are allocated elsewhere or even static, so free'ing them
-    // here would SegFault eventually!
-    //  if (Me.TextToBeDisplayed) free (Me.TextToBeDisplayed);
-
-    ME.text_to_be_displayed =
-        cstr!("Ok. I'm on board.  Let's get to work.").as_ptr() as *mut c_char; // taken from Paradroid.mission
-    ME.text_visible_time = 0.;
-
-    //--------------------
-    // Now its time to get the crew file name from the mission file and
-    // assemble an appropriate crew out of it
-    //
-    read_value_from_string(
-        main_mission_pointer.as_mut_ptr(),
-        CREWNAME_INDICATION_STRING.as_ptr() as *mut c_char,
-        cstr!("%s").as_ptr() as *mut c_char,
-        buffer.as_mut_ptr() as *mut c_void,
-    );
-
-    /* initialize enemys according to crew file */
-    // WARNING!! THIS REQUIRES THE freedroid.ruleset FILE TO BE READ ALREADY, BECAUSE
-    // ROBOT SPECIFICATIONS ARE ALREADY REQUIRED HERE!!!!!
-    if get_crew(buffer.as_mut_ptr()) == defs::ERR.into() {
-        error!("InitNewGame(): Initialization of enemys failed.",);
-        terminate(defs::ERR.into());
-    }
-
-    //--------------------
-    // Now its time to get the debriefing text from the mission file so that it
-    // can be used, if the mission is completed and also the end title music name
-    // must be read in as well
-    read_value_from_string(
-        main_mission_pointer.as_mut_ptr(),
-        MISSION_ENDTITLE_SONG_NAME_STRING.as_ptr() as *mut c_char,
-        cstr!("%s").as_ptr() as *mut c_char,
-        DEBRIEFING_SONG.as_mut_ptr() as *mut c_void,
-    );
-
-    if DEBRIEFING_TEXT.is_null().not() {
-        dealloc_c_string(DEBRIEFING_TEXT);
-    }
-    DEBRIEFING_TEXT = read_and_malloc_string_from_data(
-        main_mission_pointer.as_mut_ptr(),
-        MISSION_ENDTITLE_BEGIN_STRING.as_ptr() as *mut c_char,
-        MISSION_ENDTITLE_END_STRING.as_ptr() as *mut c_char,
-    );
-
-    //--------------------
-    // Now we read all the possible starting points for the
-    // current mission file, so that we know where to place the
-    // influencer at the beginning of the mission.
-
-    let number_of_start_points = count_string_occurences(
-        main_mission_pointer.as_mut_ptr(),
-        MISSION_START_POINT_STRING.as_ptr() as *mut c_char,
-    );
-
-    if number_of_start_points == 0 {
-        error!("NOT EVEN ONE SINGLE STARTING POINT ENTRY FOUND!  TERMINATING!",);
-        terminate(defs::ERR.into());
-    }
-    info!(
-        "Found {} different starting points for the mission in the mission file.",
-        number_of_start_points,
-    );
-
-    // Now that we know how many different starting points there are, we can randomly select
-    // one of them and read then in this one starting point into the right structures...
-    let real_start_point = my_random(number_of_start_points - 1) + 1;
-    let mut start_point_pointer = main_mission_pointer.as_mut_ptr();
-    for _ in 0..real_start_point {
-        start_point_pointer = libc::strstr(
-            start_point_pointer,
-            MISSION_START_POINT_STRING.as_ptr() as *mut c_char,
+        info!(
+            "A new mission is being initialized from file {}.",
+            CStr::from_ptr(mission_name).to_string_lossy()
         );
-        start_point_pointer = start_point_pointer.add(libc::strlen(
-            MISSION_START_POINT_STRING.as_ptr() as *mut c_char,
-        ));
-    }
-    start_point_pointer = libc::strstr(start_point_pointer, cstr!("Level=").as_ptr())
-        .add(libc::strlen(cstr!("Level=").as_ptr()));
-    let mut starting_level: c_int = 0;
-    let mut starting_x_pos: c_int = 0;
-    let mut starting_y_pos: c_int = 0;
-    libc::sscanf(
-        start_point_pointer,
-        cstr!("%d").as_ptr() as *mut c_char,
-        &mut starting_level,
-    );
-    CUR_LEVEL = CUR_SHIP.all_levels[usize::try_from(starting_level).unwrap()];
-    start_point_pointer = libc::strstr(start_point_pointer, cstr!("XPos=").as_ptr())
-        .add(libc::strlen(cstr!("XPos=").as_ptr()));
-    libc::sscanf(
-        start_point_pointer,
-        cstr!("%d").as_ptr() as *mut c_char,
-        &mut starting_x_pos,
-    );
-    ME.pos.x = starting_x_pos as c_float;
-    start_point_pointer = libc::strstr(start_point_pointer, cstr!("YPos=").as_ptr())
-        .add(libc::strlen(cstr!("YPos=").as_ptr()));
-    libc::sscanf(
-        start_point_pointer,
-        cstr!("%d").as_ptr() as *mut c_char,
-        &mut starting_y_pos,
-    );
-    ME.pos.y = starting_y_pos as c_float;
-    info!(
-        "Final starting position: Level={} XPos={} YPos={}.",
-        starting_level, starting_x_pos, starting_y_pos,
-    );
 
-    /* Reactivate the light on alle Levels, that might have been dark */
-    for &level in &CUR_SHIP.all_levels[0..usize::try_from(CUR_SHIP.num_levels).unwrap()] {
-        (*level).empty = false.into();
-    }
+        //--------------------
+        //At first we do the things that must be done for all
+        //missions, regardless of mission file given
+        activate_conservative_frame_computation();
+        LAST_GOT_INTO_BLAST_SOUND = 2.;
+        LAST_REFRESH_SOUND = 2.;
+        THIS_MESSAGE_TIME = 0;
+        LEVEL_DOORS_NOT_MOVED_TIME = 0.0;
+        DEATH_COUNT = 0.;
+        set_time_factor(1.0);
 
-    info!("InitNewMission: All levels have been set to 'active'...",);
-
-    //--------------------
-    // At this point the position history can be initialized
-    //
-    init_influ_position_history();
-    set_current_font(oldfont);
-    //--------------------
-    // We start with doing the briefing things...
-    // Now we search for the beginning of the mission briefing big section NOT subsection.
-    // We display the title and explanation of controls and such...
-    let briefing_section_pointer = locate_string_in_data(
-        main_mission_pointer.as_mut_ptr(),
-        MISSION_BRIEFING_BEGIN_STRING.as_ptr() as *mut c_char,
-    );
-    title(briefing_section_pointer);
-
-    /* Den Banner fuer das Spiel anzeigen */
-    clear_graph_mem();
-    display_banner(
-        null_mut(),
-        null_mut(),
-        DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-    );
-
-    // Switch_Background_Music_To (COMBAT_BACKGROUND_MUSIC_SOUND);
-    switch_background_music_to((*CUR_LEVEL).background_song_name);
-
-    for level in &CUR_SHIP.all_levels[..usize::try_from(CUR_SHIP.num_levels).unwrap()] {
-        CUR_LEVEL = *level;
-        shuffle_enemys();
-    }
-
-    CUR_LEVEL = CUR_SHIP.all_levels[usize::try_from(starting_level).unwrap()];
-
-    // Now that the briefing and all that is done,
-    // the influence structure can be initialized for
-    // the new mission:
-    ME.ty = Droid::Droid001 as c_int;
-    ME.speed.x = 0.;
-    ME.speed.y = 0.;
-    ME.energy = (*DRUIDMAP.add(Droid::Droid001 as usize)).maxenergy;
-    ME.health = ME.energy; /* start with max. health */
-    ME.status = Status::Mobile as c_int;
-    ME.phase = 0.;
-    ME.timer = 0.0; // set clock to 0
-
-    info!("done."); // this matches the printf at the beginning of this function
-}
-
-///  This function does the mission briefing.  It assumes,
-///  that a mission file has already been successfully loaded into
-///  memory.  The briefing texts will be extracted and displayed in
-///  scrolling font.
-pub unsafe fn title(mission_briefing_pointer: *mut c_char) {
-    const BRIEFING_TITLE_PICTURE_STRING: &CStr =
-        cstr!("The title picture in the graphics subdirectory for this mission is : ");
-    const BRIEFING_TITLE_SONG_STRING: &CStr =
-        cstr!("The title song in the sound subdirectory for this mission is : ");
-    const NEXT_BRIEFING_SUBSECTION_START_STRING: &CStr =
-        cstr!("* New Mission Briefing Text Subsection *");
-    const END_OF_BRIEFING_SUBSECTION_STRING: &CStr =
-        cstr!("* End of Mission Briefing Text Subsection *");
-
-    let mut buffer: [c_char; 500] = [0; 500];
-    read_value_from_string(
-        mission_briefing_pointer,
-        BRIEFING_TITLE_SONG_STRING.as_ptr() as *mut c_char,
-        cstr!("%s").as_ptr() as *mut c_char,
-        buffer.as_mut_ptr() as *mut c_void,
-    );
-    switch_background_music_to(buffer.as_mut_ptr());
-
-    SDL_SetClipRect(NE_SCREEN, null_mut());
-    read_value_from_string(
-        mission_briefing_pointer,
-        BRIEFING_TITLE_PICTURE_STRING.as_ptr() as *mut c_char,
-        cstr!("%s").as_ptr() as *mut c_char,
-        buffer.as_mut_ptr() as *mut c_void,
-    );
-    display_image(find_file(
-        buffer.as_mut_ptr(),
-        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-        Themed::NoTheme as c_int,
-        Criticality::Critical as c_int,
-    ));
-    make_grid_on_screen(Some(&SCREEN_RECT));
-    ME.status = Status::Briefing as c_int;
-
-    set_current_font(PARA_B_FONT);
-
-    display_banner(
-        null_mut(),
-        null_mut(),
-        DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-    );
-
-    // Next we display all the subsections of the briefing section
-    // with scrolling font
-    let mut next_subsection_start_pointer = mission_briefing_pointer;
-    let mut prepared_briefing_text: *mut i8 = null_mut();
-    loop {
-        next_subsection_start_pointer = libc::strstr(
-            next_subsection_start_pointer,
-            NEXT_BRIEFING_SUBSECTION_START_STRING.as_ptr(),
-        );
-        if next_subsection_start_pointer.is_null() {
-            break;
+        /* Delete all bullets and blasts */
+        for bullet in 0..MAXBULLETS {
+            delete_bullet(bullet.try_into().unwrap());
         }
 
-        next_subsection_start_pointer = next_subsection_start_pointer
-            .add(libc::strlen(NEXT_BRIEFING_SUBSECTION_START_STRING.as_ptr()));
-        let termination_pointer = libc::strstr(
-            next_subsection_start_pointer,
-            END_OF_BRIEFING_SUBSECTION_STRING.as_ptr(),
+        info!("InitNewMission: All bullets have been deleted.");
+        for blast in &mut ALL_BLASTS {
+            blast.phase = Status::Out as c_int as c_float;
+            blast.ty = Status::Out as c_int;
+        }
+        info!("InitNewMission: All blasts have been deleted.");
+        for enemy in &mut ALL_ENEMYS {
+            enemy.ty = Status::Out as c_int;
+            enemy.energy = -1.;
+        }
+        info!("InitNewMission: All enemys have been deleted...");
+
+        //Now its time to start decoding the mission file.
+        //For that, we must get it into memory first.
+        //The procedure is the same as with LoadShip
+
+        let oldfont = std::mem::replace(&mut self.b_font.current_font, FONT0_B_FONT);
+
+        /* Read the whole mission data to memory */
+        let fpath = find_file(
+            mission_name,
+            MAP_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::Critical as c_int,
         );
-        if termination_pointer.is_null() {
-            error!("Title: Unterminated Subsection in Mission briefing....Terminating...");
+
+        let mut main_mission_pointer = read_and_malloc_and_terminate_file(
+            fpath,
+            END_OF_MISSION_DATA_STRING.as_ptr() as *mut c_char,
+        );
+
+        //--------------------
+        // Now the mission file is read into memory.  That means we can start to decode the details given
+        // in the body of the mission file.
+
+        //--------------------
+        // First we extract the game physics file name from the
+        // mission file and load the game data.
+        //
+        let mut buffer: [c_char; 500] = [0; 500];
+        read_value_from_string(
+            main_mission_pointer.as_mut_ptr(),
+            GAMEDATANAME_INDICATION_STRING.as_ptr() as *mut c_char,
+            cstr!("%s").as_ptr() as *mut c_char,
+            buffer.as_mut_ptr() as *mut c_void,
+        );
+
+        init_game_data(buffer.as_mut_ptr());
+
+        //--------------------
+        // Now its time to get the shipname from the mission file and
+        // read the ship file into the right memory structures
+        //
+        read_value_from_string(
+            main_mission_pointer.as_mut_ptr(),
+            SHIPNAME_INDICATION_STRING.as_ptr() as *mut c_char,
+            cstr!("%s").as_ptr() as *mut c_char,
+            buffer.as_mut_ptr() as *mut c_void,
+        );
+
+        if load_ship(buffer.as_mut_ptr()) == defs::ERR.into() {
+            error!("Error in LoadShip");
             terminate(defs::ERR.into());
         }
-        let this_text_length = termination_pointer.offset_from(next_subsection_start_pointer);
+        //--------------------
+        // Now its time to get the elevator file name from the mission file and
+        // read the elevator file into the right memory structures
+        //
+        read_value_from_string(
+            main_mission_pointer.as_mut_ptr(),
+            ELEVATORNAME_INDICATION_STRING.as_ptr() as *mut c_char,
+            cstr!("%s").as_ptr() as *mut c_char,
+            buffer.as_mut_ptr() as *mut c_void,
+        );
+
+        if get_lift_connections(buffer.as_mut_ptr()) == defs::ERR.into() {
+            error!("Error in GetLiftConnections");
+            terminate(defs::ERR.into());
+        }
+        //--------------------
+        // We also load the comment for the influencer to say at the beginning of the mission
+        //
+
+        // NO! these strings are allocated elsewhere or even static, so free'ing them
+        // here would SegFault eventually!
+        //  if (Me.TextToBeDisplayed) free (Me.TextToBeDisplayed);
+
+        ME.text_to_be_displayed =
+            cstr!("Ok. I'm on board.  Let's get to work.").as_ptr() as *mut c_char; // taken from Paradroid.mission
+        ME.text_visible_time = 0.;
+
+        //--------------------
+        // Now its time to get the crew file name from the mission file and
+        // assemble an appropriate crew out of it
+        //
+        read_value_from_string(
+            main_mission_pointer.as_mut_ptr(),
+            CREWNAME_INDICATION_STRING.as_ptr() as *mut c_char,
+            cstr!("%s").as_ptr() as *mut c_char,
+            buffer.as_mut_ptr() as *mut c_void,
+        );
+
+        /* initialize enemys according to crew file */
+        // WARNING!! THIS REQUIRES THE freedroid.ruleset FILE TO BE READ ALREADY, BECAUSE
+        // ROBOT SPECIFICATIONS ARE ALREADY REQUIRED HERE!!!!!
+        if get_crew(buffer.as_mut_ptr()) == defs::ERR.into() {
+            error!("InitNewGame(): Initialization of enemys failed.",);
+            terminate(defs::ERR.into());
+        }
+
+        //--------------------
+        // Now its time to get the debriefing text from the mission file so that it
+        // can be used, if the mission is completed and also the end title music name
+        // must be read in as well
+        read_value_from_string(
+            main_mission_pointer.as_mut_ptr(),
+            MISSION_ENDTITLE_SONG_NAME_STRING.as_ptr() as *mut c_char,
+            cstr!("%s").as_ptr() as *mut c_char,
+            DEBRIEFING_SONG.as_mut_ptr() as *mut c_void,
+        );
+
+        if DEBRIEFING_TEXT.is_null().not() {
+            dealloc_c_string(DEBRIEFING_TEXT);
+        }
+        DEBRIEFING_TEXT = read_and_malloc_string_from_data(
+            main_mission_pointer.as_mut_ptr(),
+            MISSION_ENDTITLE_BEGIN_STRING.as_ptr() as *mut c_char,
+            MISSION_ENDTITLE_END_STRING.as_ptr() as *mut c_char,
+        );
+
+        //--------------------
+        // Now we read all the possible starting points for the
+        // current mission file, so that we know where to place the
+        // influencer at the beginning of the mission.
+
+        let number_of_start_points = count_string_occurences(
+            main_mission_pointer.as_mut_ptr(),
+            MISSION_START_POINT_STRING.as_ptr() as *mut c_char,
+        );
+
+        if number_of_start_points == 0 {
+            error!("NOT EVEN ONE SINGLE STARTING POINT ENTRY FOUND!  TERMINATING!",);
+            terminate(defs::ERR.into());
+        }
+        info!(
+            "Found {} different starting points for the mission in the mission file.",
+            number_of_start_points,
+        );
+
+        // Now that we know how many different starting points there are, we can randomly select
+        // one of them and read then in this one starting point into the right structures...
+        let real_start_point = my_random(number_of_start_points - 1) + 1;
+        let mut start_point_pointer = main_mission_pointer.as_mut_ptr();
+        for _ in 0..real_start_point {
+            start_point_pointer = libc::strstr(
+                start_point_pointer,
+                MISSION_START_POINT_STRING.as_ptr() as *mut c_char,
+            );
+            start_point_pointer = start_point_pointer.add(libc::strlen(
+                MISSION_START_POINT_STRING.as_ptr() as *mut c_char,
+            ));
+        }
+        start_point_pointer = libc::strstr(start_point_pointer, cstr!("Level=").as_ptr())
+            .add(libc::strlen(cstr!("Level=").as_ptr()));
+        let mut starting_level: c_int = 0;
+        let mut starting_x_pos: c_int = 0;
+        let mut starting_y_pos: c_int = 0;
+        libc::sscanf(
+            start_point_pointer,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut starting_level,
+        );
+        CUR_LEVEL = CUR_SHIP.all_levels[usize::try_from(starting_level).unwrap()];
+        start_point_pointer = libc::strstr(start_point_pointer, cstr!("XPos=").as_ptr())
+            .add(libc::strlen(cstr!("XPos=").as_ptr()));
+        libc::sscanf(
+            start_point_pointer,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut starting_x_pos,
+        );
+        ME.pos.x = starting_x_pos as c_float;
+        start_point_pointer = libc::strstr(start_point_pointer, cstr!("YPos=").as_ptr())
+            .add(libc::strlen(cstr!("YPos=").as_ptr()));
+        libc::sscanf(
+            start_point_pointer,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut starting_y_pos,
+        );
+        ME.pos.y = starting_y_pos as c_float;
+        info!(
+            "Final starting position: Level={} XPos={} YPos={}.",
+            starting_level, starting_x_pos, starting_y_pos,
+        );
+
+        /* Reactivate the light on alle Levels, that might have been dark */
+        for &level in &CUR_SHIP.all_levels[0..usize::try_from(CUR_SHIP.num_levels).unwrap()] {
+            (*level).empty = false.into();
+        }
+
+        info!("InitNewMission: All levels have been set to 'active'...",);
+
+        //--------------------
+        // At this point the position history can be initialized
+        //
+        init_influ_position_history();
+        self.b_font.current_font = oldfont;
+        //--------------------
+        // We start with doing the briefing things...
+        // Now we search for the beginning of the mission briefing big section NOT subsection.
+        // We display the title and explanation of controls and such...
+        let briefing_section_pointer = locate_string_in_data(
+            main_mission_pointer.as_mut_ptr(),
+            MISSION_BRIEFING_BEGIN_STRING.as_ptr() as *mut c_char,
+        );
+        self.title(briefing_section_pointer);
+
+        /* Den Banner fuer das Spiel anzeigen */
+        clear_graph_mem();
+        display_banner(
+            null_mut(),
+            null_mut(),
+            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+        );
+
+        // Switch_Background_Music_To (COMBAT_BACKGROUND_MUSIC_SOUND);
+        switch_background_music_to((*CUR_LEVEL).background_song_name);
+
+        for level in &CUR_SHIP.all_levels[..usize::try_from(CUR_SHIP.num_levels).unwrap()] {
+            CUR_LEVEL = *level;
+            shuffle_enemys();
+        }
+
+        CUR_LEVEL = CUR_SHIP.all_levels[usize::try_from(starting_level).unwrap()];
+
+        // Now that the briefing and all that is done,
+        // the influence structure can be initialized for
+        // the new mission:
+        ME.ty = Droid::Droid001 as c_int;
+        ME.speed.x = 0.;
+        ME.speed.y = 0.;
+        ME.energy = (*DRUIDMAP.add(Droid::Droid001 as usize)).maxenergy;
+        ME.health = ME.energy; /* start with max. health */
+        ME.status = Status::Mobile as c_int;
+        ME.phase = 0.;
+        ME.timer = 0.0; // set clock to 0
+
+        info!("done."); // this matches the printf at the beginning of this function
+    }
+
+    ///  This function does the mission briefing.  It assumes,
+    ///  that a mission file has already been successfully loaded into
+    ///  memory.  The briefing texts will be extracted and displayed in
+    ///  scrolling font.
+    pub unsafe fn title(&mut self, mission_briefing_pointer: *mut c_char) {
+        const BRIEFING_TITLE_PICTURE_STRING: &CStr =
+            cstr!("The title picture in the graphics subdirectory for this mission is : ");
+        const BRIEFING_TITLE_SONG_STRING: &CStr =
+            cstr!("The title song in the sound subdirectory for this mission is : ");
+        const NEXT_BRIEFING_SUBSECTION_START_STRING: &CStr =
+            cstr!("* New Mission Briefing Text Subsection *");
+        const END_OF_BRIEFING_SUBSECTION_STRING: &CStr =
+            cstr!("* End of Mission Briefing Text Subsection *");
+
+        let mut buffer: [c_char; 500] = [0; 500];
+        read_value_from_string(
+            mission_briefing_pointer,
+            BRIEFING_TITLE_SONG_STRING.as_ptr() as *mut c_char,
+            cstr!("%s").as_ptr() as *mut c_char,
+            buffer.as_mut_ptr() as *mut c_void,
+        );
+        switch_background_music_to(buffer.as_mut_ptr());
+
+        SDL_SetClipRect(NE_SCREEN, null_mut());
+        read_value_from_string(
+            mission_briefing_pointer,
+            BRIEFING_TITLE_PICTURE_STRING.as_ptr() as *mut c_char,
+            cstr!("%s").as_ptr() as *mut c_char,
+            buffer.as_mut_ptr() as *mut c_void,
+        );
+        display_image(find_file(
+            buffer.as_mut_ptr(),
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::Critical as c_int,
+        ));
+        make_grid_on_screen(Some(&SCREEN_RECT));
+        ME.status = Status::Briefing as c_int;
+
+        self.b_font.current_font = PARA_B_FONT;
+
+        display_banner(
+            null_mut(),
+            null_mut(),
+            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+        );
+
+        // Next we display all the subsections of the briefing section
+        // with scrolling font
+        let mut next_subsection_start_pointer = mission_briefing_pointer;
+        let mut prepared_briefing_text: *mut i8 = null_mut();
+        loop {
+            next_subsection_start_pointer = libc::strstr(
+                next_subsection_start_pointer,
+                NEXT_BRIEFING_SUBSECTION_START_STRING.as_ptr(),
+            );
+            if next_subsection_start_pointer.is_null() {
+                break;
+            }
+
+            next_subsection_start_pointer = next_subsection_start_pointer
+                .add(libc::strlen(NEXT_BRIEFING_SUBSECTION_START_STRING.as_ptr()));
+            let termination_pointer = libc::strstr(
+                next_subsection_start_pointer,
+                END_OF_BRIEFING_SUBSECTION_STRING.as_ptr(),
+            );
+            if termination_pointer.is_null() {
+                error!("Title: Unterminated Subsection in Mission briefing....Terminating...");
+                terminate(defs::ERR.into());
+            }
+            let this_text_length = termination_pointer.offset_from(next_subsection_start_pointer);
+            if prepared_briefing_text.is_null().not() {
+                let len = CStr::from_ptr(prepared_briefing_text).to_bytes().len() + 10;
+                dealloc(
+                    prepared_briefing_text as *mut u8,
+                    Layout::array::<i8>(len).unwrap(),
+                );
+            }
+            prepared_briefing_text = alloc_zeroed(
+                Layout::array::<i8>(usize::try_from(this_text_length).unwrap() + 10).unwrap(),
+            ) as *mut c_char;
+            libc::strncpy(
+                prepared_briefing_text,
+                next_subsection_start_pointer,
+                this_text_length.try_into().unwrap(),
+            );
+            *prepared_briefing_text.offset(this_text_length) = 0;
+
+            let mut rect = FULL_USER_RECT;
+            rect.x += 10;
+            rect.w -= 10; //leave some border
+            if self.scroll_text(prepared_briefing_text, &mut rect, 0) == 1 {
+                break; // User pressed 'fire'
+            }
+        }
+
         if prepared_briefing_text.is_null().not() {
             let len = CStr::from_ptr(prepared_briefing_text).to_bytes().len() + 10;
             dealloc(
@@ -945,30 +973,6 @@ pub unsafe fn title(mission_briefing_pointer: *mut c_char) {
                 Layout::array::<i8>(len).unwrap(),
             );
         }
-        prepared_briefing_text = alloc_zeroed(
-            Layout::array::<i8>(usize::try_from(this_text_length).unwrap() + 10).unwrap(),
-        ) as *mut c_char;
-        libc::strncpy(
-            prepared_briefing_text,
-            next_subsection_start_pointer,
-            this_text_length.try_into().unwrap(),
-        );
-        *prepared_briefing_text.offset(this_text_length) = 0;
-
-        let mut rect = FULL_USER_RECT;
-        rect.x += 10;
-        rect.w -= 10; //leave some border
-        if scroll_text(prepared_briefing_text, &mut rect, 0) == 1 {
-            break; // User pressed 'fire'
-        }
-    }
-
-    if prepared_briefing_text.is_null().not() {
-        let len = CStr::from_ptr(prepared_briefing_text).to_bytes().len() + 10;
-        dealloc(
-            prepared_briefing_text as *mut u8,
-            Layout::array::<i8>(len).unwrap(),
-        );
     }
 }
 
@@ -1538,85 +1542,87 @@ pub unsafe fn get_general_game_constants(data: *mut c_char) {
     );
 }
 
-/// Show end-screen
-pub(crate) unsafe fn thou_art_defeated(data: &mut Data) {
-    ME.status = Status::Terminated as c_int;
-    SDL_ShowCursor(SDL_DISABLE);
+impl Data {
+    /// Show end-screen
+    pub(crate) unsafe fn thou_art_defeated(&mut self) {
+        ME.status = Status::Terminated as c_int;
+        SDL_ShowCursor(SDL_DISABLE);
 
-    explode_influencer();
+        explode_influencer();
 
-    wait_for_all_keys_released();
+        wait_for_all_keys_released();
 
-    let mut now = SDL_GetTicks();
+        let mut now = SDL_GetTicks();
 
-    while (SDL_GetTicks() - now) < WAIT_AFTER_KILLED {
-        // add "slow motion effect" for final explosion
-        set_time_factor(SLOWMO_FACTOR);
+        while (SDL_GetTicks() - now) < WAIT_AFTER_KILLED {
+            // add "slow motion effect" for final explosion
+            set_time_factor(SLOWMO_FACTOR);
 
-        start_taking_time_for_fps_calculation();
-        display_banner(null_mut(), null_mut(), 0);
-        explode_blasts();
-        move_bullets();
-        move_enemys();
-        assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
-        compute_fps_for_this_frame();
-        if any_key_just_pressed() != 0 {
-            break;
+            start_taking_time_for_fps_calculation();
+            display_banner(null_mut(), null_mut(), 0);
+            explode_blasts();
+            move_bullets();
+            move_enemys();
+            self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+            compute_fps_for_this_frame();
+            if any_key_just_pressed() != 0 {
+                break;
+            }
         }
-    }
-    set_time_factor(1.0);
+        set_time_factor(1.0);
 
-    Mix_HaltMusic();
+        Mix_HaltMusic();
 
-    // important!!: don't forget to stop fps calculation here (bugfix: enemy piles after gameOver)
-    activate_conservative_frame_computation();
+        // important!!: don't forget to stop fps calculation here (bugfix: enemy piles after gameOver)
+        activate_conservative_frame_computation();
 
-    white_noise(
-        NE_SCREEN,
-        &mut USER_RECT,
-        WAIT_AFTER_KILLED.try_into().unwrap(),
-    );
+        white_noise(
+            NE_SCREEN,
+            &mut USER_RECT,
+            WAIT_AFTER_KILLED.try_into().unwrap(),
+        );
 
-    assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
-    make_grid_on_screen(Some(&USER_RECT));
+        self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+        make_grid_on_screen(Some(&USER_RECT));
 
-    let mut dst = Rect {
-        x: get_user_center().x - i16::try_from(PORTRAIT_RECT.w / 2).unwrap(),
-        y: get_user_center().y - i16::try_from(PORTRAIT_RECT.h / 2).unwrap(),
-        w: PORTRAIT_RECT.w,
-        h: PORTRAIT_RECT.h,
-    };
-    SDL_UpperBlit(PIC999, null_mut(), NE_SCREEN, &mut dst);
-    thou_art_defeated_sound();
+        let mut dst = Rect {
+            x: get_user_center().x - i16::try_from(PORTRAIT_RECT.w / 2).unwrap(),
+            y: get_user_center().y - i16::try_from(PORTRAIT_RECT.h / 2).unwrap(),
+            w: PORTRAIT_RECT.w,
+            h: PORTRAIT_RECT.h,
+        };
+        SDL_UpperBlit(PIC999, null_mut(), NE_SCREEN, &mut dst);
+        thou_art_defeated_sound();
 
-    set_current_font(PARA_B_FONT);
-    let h = font_height(&*PARA_B_FONT);
-    display_text(
-        cstr!("Transmission").as_ptr() as *mut c_char,
-        i32::from(dst.x) - h,
-        i32::from(dst.y) - h,
-        &USER_RECT,
-    );
-    display_text(
-        cstr!("Terminated").as_ptr() as *mut c_char,
-        i32::from(dst.x) - h,
-        i32::from(dst.y) + i32::from(dst.h),
-        &USER_RECT,
-    );
-    printf_sdl(NE_SCREEN, -1, -1, format_args!("\n"));
-    SDL_Flip(NE_SCREEN);
+        self.b_font.current_font = PARA_B_FONT;
+        let h = font_height(&*PARA_B_FONT);
+        self.display_text(
+            cstr!("Transmission").as_ptr() as *mut c_char,
+            i32::from(dst.x) - h,
+            i32::from(dst.y) - h,
+            &USER_RECT,
+        );
+        self.display_text(
+            cstr!("Terminated").as_ptr() as *mut c_char,
+            i32::from(dst.x) - h,
+            i32::from(dst.y) + i32::from(dst.h),
+            &USER_RECT,
+        );
+        self.printf_sdl(NE_SCREEN, -1, -1, format_args!("\n"));
+        SDL_Flip(NE_SCREEN);
 
-    now = SDL_GetTicks();
+        now = SDL_GetTicks();
 
-    wait_for_all_keys_released();
-    while SDL_GetTicks() - now < SHOW_WAIT {
-        SDL_Delay(1);
-        if any_key_just_pressed() != 0 {
-            break;
+        wait_for_all_keys_released();
+        while SDL_GetTicks() - now < SHOW_WAIT {
+            SDL_Delay(1);
+            if any_key_just_pressed() != 0 {
+                break;
+            }
         }
+
+        self.update_highscores();
+
+        self.game_over = true;
     }
-
-    update_highscores();
-
-    data.game_over = true;
 }

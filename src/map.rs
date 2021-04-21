@@ -14,7 +14,7 @@ use crate::{
         read_and_malloc_and_terminate_file, read_and_malloc_string_from_data,
         read_value_from_string, terminate,
     },
-    ship::{enter_konsole, enter_lift},
+    ship::enter_lift,
     structs::{Finepoint, GrobPoint, Level},
     vars::{BLOCK_RECT, DRUIDMAP},
     Data, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, ME, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
@@ -1521,42 +1521,44 @@ pub unsafe fn load_ship(filename: *mut c_char) -> c_int {
     defs::OK.into()
 }
 
-/// ActSpecialField: checks Influencer on SpecialFields like
-/// Lifts and Konsoles and acts on it
-pub unsafe fn act_special_field(x: c_float, y: c_float) {
-    let map_tile = get_map_brick(&*CUR_LEVEL, x, y);
+impl Data {
+    /// ActSpecialField: checks Influencer on SpecialFields like
+    /// Lifts and Konsoles and acts on it
+    pub unsafe fn act_special_field(&mut self, x: c_float, y: c_float) {
+        let map_tile = get_map_brick(&*CUR_LEVEL, x, y);
 
-    let myspeed2 = ME.speed.x * ME.speed.x + ME.speed.y * ME.speed.y;
+        let myspeed2 = ME.speed.x * ME.speed.x + ME.speed.y * ME.speed.y;
 
-    if let Ok(map_tile) = MapTile::try_from(map_tile) {
-        use MapTile::*;
-        match map_tile {
-            Lift => {
-                if myspeed2 <= 1.0
-                    && (ME.status == Status::Activate as c_int
-                        || (GAME_CONFIG.takeover_activates != 0
-                            && ME.status == Status::Transfermode as c_int))
-                {
-                    let cx = x.round() - x;
-                    let cy = y.round() - y;
+        if let Ok(map_tile) = MapTile::try_from(map_tile) {
+            use MapTile::*;
+            match map_tile {
+                Lift => {
+                    if myspeed2 <= 1.0
+                        && (ME.status == Status::Activate as c_int
+                            || (GAME_CONFIG.takeover_activates != 0
+                                && ME.status == Status::Transfermode as c_int))
+                    {
+                        let cx = x.round() - x;
+                        let cy = y.round() - y;
 
-                    if cx * cx + cy * cy < DROID_RADIUS * DROID_RADIUS {
-                        enter_lift();
+                        if cx * cx + cy * cy < DROID_RADIUS * DROID_RADIUS {
+                            enter_lift();
+                        }
                     }
                 }
-            }
 
-            KonsoleR | KonsoleL | KonsoleO | KonsoleU => {
-                if myspeed2 <= 1.0
-                    && (ME.status == Status::Activate as c_int
-                        || (GAME_CONFIG.takeover_activates != 0
-                            && ME.status == Status::Transfermode as c_int))
-                {
-                    enter_konsole();
+                KonsoleR | KonsoleL | KonsoleO | KonsoleU => {
+                    if myspeed2 <= 1.0
+                        && (ME.status == Status::Activate as c_int
+                            || (GAME_CONFIG.takeover_activates != 0
+                                && ME.status == Status::Transfermode as c_int))
+                    {
+                        self.enter_konsole();
+                    }
                 }
+                Refresh1 | Refresh2 | Refresh3 | Refresh4 => refresh_influencer(),
+                _ => {}
             }
-            Refresh1 | Refresh2 | Refresh3 | Refresh4 => refresh_influencer(),
-            _ => {}
         }
     }
 }

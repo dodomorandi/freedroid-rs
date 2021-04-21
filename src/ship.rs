@@ -1,5 +1,5 @@
 use crate::{
-    b_font::{font_height, get_current_font, set_current_font},
+    b_font::font_height,
     bullet::{delete_blast, delete_bullet},
     defs::{
         get_user_center, mouse_left_pressed_r, AlertNames, AssembleCombatWindowFlags,
@@ -24,14 +24,13 @@ use crate::{
         move_menu_position_sound, play_sound, switch_background_music_to,
     },
     structs::Point,
-    text::display_text,
     vars::{
         BRAIN_NAMES, CLASSES, CLASS_NAMES, CONS_DROID_RECT, CONS_HEADER_RECT, CONS_MENU_RECT,
         CONS_MENU_RECTS, CONS_TEXT_RECT, DRIVE_NAMES, DRUIDMAP, FULL_USER_RECT, PORTRAIT_RECT,
         SENSOR_NAMES, USER_RECT, WEAPON_NAMES,
     },
-    view::{assemble_combat_picture, display_banner, fill_rect},
-    ALERT_LEVEL, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, GAME_CONFIG, ME, NE_SCREEN, NUM_ENEMYS,
+    view::{display_banner, fill_rect},
+    Data, ALERT_LEVEL, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, GAME_CONFIG, ME, NE_SCREEN, NUM_ENEMYS,
     SHOW_CURSOR,
 };
 
@@ -247,533 +246,538 @@ pub unsafe fn show_droid_portrait(
     SDL_SetClipRect(NE_SCREEN, null_mut());
 }
 
-/// display infopage page of droidtype
-///
-/// if flags == UPDATE_ONLY : don't blit a new background&banner,
-///                           only  update the text-regions
-///
-///  does update the screen: all if flags=0, text-rect if flags=UPDATE_ONLY
-pub unsafe fn show_droid_info(droid_type: c_int, page: c_int, flags: c_int) {
-    use std::io::Write;
+impl Data {
+    /// display infopage page of droidtype
+    ///
+    /// if flags == UPDATE_ONLY : don't blit a new background&banner,
+    ///                           only  update the text-regions
+    ///
+    ///  does update the screen: all if flags=0, text-rect if flags=UPDATE_ONLY
+    pub unsafe fn show_droid_info(&mut self, droid_type: c_int, page: c_int, flags: c_int) {
+        use std::io::Write;
 
-    SDL_SetClipRect(NE_SCREEN, null_mut());
-    set_current_font(PARA_B_FONT);
+        SDL_SetClipRect(NE_SCREEN, null_mut());
+        self.b_font.current_font = PARA_B_FONT;
 
-    let lineskip = ((f64::from(font_height(&*get_current_font())) * TEXT_STRETCH) as f32) as i16;
-    let lastline = CONS_HEADER_RECT.y + i16::try_from(CONS_HEADER_RECT.h).unwrap();
-    UP_RECT = Rect {
-        x: CONS_HEADER_RECT.x,
-        y: lastline - lineskip,
-        w: 25,
-        h: 13,
-    };
-    DOWN_RECT = Rect {
-        x: CONS_HEADER_RECT.x,
-        y: (f32::from(lastline) - 0.5 * f32::from(lineskip)) as i16,
-        w: 25,
-        h: 13,
-    };
-    LEFT_RECT = Rect {
-        x: (f32::from(CONS_HEADER_RECT.x + i16::try_from(CONS_HEADER_RECT.w).unwrap())
-            - 1.5 * f32::from(lineskip)) as i16,
-        y: (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
-        w: 13,
-        h: 25,
-    };
-    RIGHT_RECT = Rect {
-        x: (f32::from(CONS_HEADER_RECT.x + i16::try_from(CONS_HEADER_RECT.w).unwrap())
-            - 1.0 * f32::from(lineskip)) as i16,
-        y: (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
-        w: 13,
-        h: 25,
-    };
+        let lineskip =
+            ((f64::from(font_height(&*self.b_font.current_font)) * TEXT_STRETCH) as f32) as i16;
+        let lastline = CONS_HEADER_RECT.y + i16::try_from(CONS_HEADER_RECT.h).unwrap();
+        UP_RECT = Rect {
+            x: CONS_HEADER_RECT.x,
+            y: lastline - lineskip,
+            w: 25,
+            h: 13,
+        };
+        DOWN_RECT = Rect {
+            x: CONS_HEADER_RECT.x,
+            y: (f32::from(lastline) - 0.5 * f32::from(lineskip)) as i16,
+            w: 25,
+            h: 13,
+        };
+        LEFT_RECT = Rect {
+            x: (f32::from(CONS_HEADER_RECT.x + i16::try_from(CONS_HEADER_RECT.w).unwrap())
+                - 1.5 * f32::from(lineskip)) as i16,
+            y: (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
+            w: 13,
+            h: 25,
+        };
+        RIGHT_RECT = Rect {
+            x: (f32::from(CONS_HEADER_RECT.x + i16::try_from(CONS_HEADER_RECT.w).unwrap())
+                - 1.0 * f32::from(lineskip)) as i16,
+            y: (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
+            w: 13,
+            h: 25,
+        };
 
-    let mut droid_name = [0u8; 80];
-    let droid = &*DRUIDMAP.add(usize::try_from(droid_type).unwrap());
-    write!(
-        droid_name.as_mut(),
-        "  Unit type {} - {}\0",
-        CStr::from_ptr(droid.druidname.as_ptr()).to_str().unwrap(),
-        CLASS_NAMES[usize::try_from(droid.class).unwrap()]
-            .to_str()
-            .unwrap()
-    )
-    .unwrap();
+        let mut droid_name = [0u8; 80];
+        let droid = &*DRUIDMAP.add(usize::try_from(droid_type).unwrap());
+        write!(
+            droid_name.as_mut(),
+            "  Unit type {} - {}\0",
+            CStr::from_ptr(droid.druidname.as_ptr()).to_str().unwrap(),
+            CLASS_NAMES[usize::try_from(droid.class).unwrap()]
+                .to_str()
+                .unwrap()
+        )
+        .unwrap();
 
-    let mut info_text = [0u8; 1000];
-    let mut show_arrows = false;
-    match page {
-        -3 => {
-            // Title screen: intro unit
-            write!(
-                info_text.as_mut(),
-                "This is the unit that you currently control. Prepare to board Robo-frighter \
+        let mut info_text = [0u8; 1000];
+        let mut show_arrows = false;
+        match page {
+            -3 => {
+                // Title screen: intro unit
+                write!(
+                    info_text.as_mut(),
+                    "This is the unit that you currently control. Prepare to board Robo-frighter \
 Paradroid to eliminate all rogue robots.\0",
-            )
-            .unwrap();
-        }
-        -2 => {
-            // Takeover: unit that you wish to control
-            write!(
-                info_text.as_mut(),
-                "This is the unit that you wish to control.\n\n Prepare to takeover.\0",
-            )
-            .unwrap();
-        }
-        -1 => {
-            // Takeover: unit that you control
-            write!(
-                info_text.as_mut(),
-                "This is the unit that you currently control.\0"
-            )
-            .unwrap();
-        }
-        0 => {
-            show_arrows = true;
-            write!(
-                info_text.as_mut(),
-                "Entry : {:02}\n\
+                )
+                .unwrap();
+            }
+            -2 => {
+                // Takeover: unit that you wish to control
+                write!(
+                    info_text.as_mut(),
+                    "This is the unit that you wish to control.\n\n Prepare to takeover.\0",
+                )
+                .unwrap();
+            }
+            -1 => {
+                // Takeover: unit that you control
+                write!(
+                    info_text.as_mut(),
+                    "This is the unit that you currently control.\0"
+                )
+                .unwrap();
+            }
+            0 => {
+                show_arrows = true;
+                write!(
+                    info_text.as_mut(),
+                    "Entry : {:02}\n\
                  Class : {}\n\
                  Height : {:5.2} m\n\
                  Weight: {} kg\n\
                  Drive : {} \n\
                  Brain : {}\0",
-                droid_type + 1,
-                CLASSES[usize::try_from(droid.class).unwrap()]
-                    .to_str()
-                    .unwrap(),
-                droid.height,
-                droid.weight,
-                DRIVE_NAMES[usize::try_from(droid.drive).unwrap()]
-                    .to_str()
-                    .unwrap(),
-                BRAIN_NAMES[usize::try_from(droid.brain).unwrap()]
-                    .to_str()
-                    .unwrap(),
-            )
-            .unwrap();
-        }
-        1 => {
-            show_arrows = true;
-            write!(
-                info_text.as_mut(),
-                "Armament : {}\n\
+                    droid_type + 1,
+                    CLASSES[usize::try_from(droid.class).unwrap()]
+                        .to_str()
+                        .unwrap(),
+                    droid.height,
+                    droid.weight,
+                    DRIVE_NAMES[usize::try_from(droid.drive).unwrap()]
+                        .to_str()
+                        .unwrap(),
+                    BRAIN_NAMES[usize::try_from(droid.brain).unwrap()]
+                        .to_str()
+                        .unwrap(),
+                )
+                .unwrap();
+            }
+            1 => {
+                show_arrows = true;
+                write!(
+                    info_text.as_mut(),
+                    "Armament : {}\n\
                  Sensors  1: {}\n\
                     2: {}\n\
                     3: {}\0",
-                WEAPON_NAMES[usize::try_from(droid.gun).unwrap()]
-                    .to_str()
-                    .unwrap(),
-                SENSOR_NAMES[usize::try_from(droid.sensor1).unwrap()]
-                    .to_str()
-                    .unwrap(),
-                SENSOR_NAMES[usize::try_from(droid.sensor2).unwrap()]
-                    .to_str()
-                    .unwrap(),
-                SENSOR_NAMES[usize::try_from(droid.sensor3).unwrap()]
-                    .to_str()
-                    .unwrap(),
-            )
-            .unwrap();
+                    WEAPON_NAMES[usize::try_from(droid.gun).unwrap()]
+                        .to_str()
+                        .unwrap(),
+                    SENSOR_NAMES[usize::try_from(droid.sensor1).unwrap()]
+                        .to_str()
+                        .unwrap(),
+                    SENSOR_NAMES[usize::try_from(droid.sensor2).unwrap()]
+                        .to_str()
+                        .unwrap(),
+                    SENSOR_NAMES[usize::try_from(droid.sensor3).unwrap()]
+                        .to_str()
+                        .unwrap(),
+                )
+                .unwrap();
+            }
+            2 => {
+                show_arrows = true;
+                write!(
+                    info_text.as_mut(),
+                    "Notes: {}\0",
+                    CStr::from_ptr(droid.notes).to_str().unwrap()
+                )
+                .unwrap();
+            }
+            _ => {
+                write!(
+                    info_text.as_mut(),
+                    "ERROR: Page not implemented!! \nPlease report bug!\0",
+                )
+                .unwrap();
+            }
         }
-        2 => {
-            show_arrows = true;
-            write!(
-                info_text.as_mut(),
-                "Notes: {}\0",
-                CStr::from_ptr(droid.notes).to_str().unwrap()
-            )
-            .unwrap();
+
+        // if UPDATE_ONLY then the background has not been cleared, so we have do it
+        // it for each menu-rect:
+        if flags & i32::from(UPDATE_ONLY) != 0 {
+            SDL_SetClipRect(NE_SCREEN, &CONS_TEXT_RECT);
+            SDL_UpperBlit(CONSOLE_BG_PIC2, null_mut(), NE_SCREEN, null_mut());
+            SDL_SetClipRect(NE_SCREEN, &CONS_HEADER_RECT);
+            SDL_UpperBlit(CONSOLE_BG_PIC2, null_mut(), NE_SCREEN, null_mut());
+            SDL_SetClipRect(NE_SCREEN, null_mut());
+        } else {
+            // otherwise we just redraw the whole screen
+            SDL_UpperBlit(CONSOLE_BG_PIC2, null_mut(), NE_SCREEN, null_mut());
+            display_banner(
+                null_mut(),
+                null_mut(),
+                (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
+                    .bits()
+                    .into(),
+            );
         }
-        _ => {
-            write!(
-                info_text.as_mut(),
-                "ERROR: Page not implemented!! \nPlease report bug!\0",
-            )
-            .unwrap();
+
+        self.display_text(
+            info_text.as_mut_ptr() as *mut c_char,
+            CONS_TEXT_RECT.x.into(),
+            CONS_TEXT_RECT.y.into(),
+            &CONS_TEXT_RECT,
+        );
+
+        self.display_text(
+            droid_name.as_mut_ptr() as *mut c_char,
+            i32::from(CONS_HEADER_RECT.x) + i32::from(lineskip),
+            (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i32,
+            null_mut(),
+        );
+
+        if show_arrows {
+            if ME.ty > droid_type {
+                SDL_UpperBlit(ARROW_UP, null_mut(), NE_SCREEN, &mut UP_RECT);
+            }
+
+            if droid_type > 0 {
+                SDL_UpperBlit(ARROW_DOWN, null_mut(), NE_SCREEN, &mut DOWN_RECT);
+            }
+
+            if page > 0 {
+                SDL_UpperBlit(ARROW_LEFT, null_mut(), NE_SCREEN, &mut LEFT_RECT);
+            }
+
+            if page < 2 {
+                SDL_UpperBlit(ARROW_RIGHT, null_mut(), NE_SCREEN, &mut RIGHT_RECT);
+            }
+        }
+
+        if flags & i32::from(UPDATE_ONLY) != 0 {
+            SDL_UpdateRects(NE_SCREEN, 1, &mut CONS_HEADER_RECT);
+            SDL_UpdateRects(NE_SCREEN, 1, &mut CONS_TEXT_RECT);
+        } else {
+            SDL_Flip(NE_SCREEN);
         }
     }
+}
 
-    // if UPDATE_ONLY then the background has not been cleared, so we have do it
-    // it for each menu-rect:
-    if flags & i32::from(UPDATE_ONLY) != 0 {
-        SDL_SetClipRect(NE_SCREEN, &CONS_TEXT_RECT);
-        SDL_UpperBlit(CONSOLE_BG_PIC2, null_mut(), NE_SCREEN, null_mut());
-        SDL_SetClipRect(NE_SCREEN, &CONS_HEADER_RECT);
-        SDL_UpperBlit(CONSOLE_BG_PIC2, null_mut(), NE_SCREEN, null_mut());
-        SDL_SetClipRect(NE_SCREEN, null_mut());
-    } else {
-        // otherwise we just redraw the whole screen
-        SDL_UpperBlit(CONSOLE_BG_PIC2, null_mut(), NE_SCREEN, null_mut());
-        display_banner(
-            null_mut(),
-            null_mut(),
-            (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
+impl Data {
+    /// Displays the concept view of deck
+    ///
+    /// Note: we no longer wait here for a key-press, but return
+    /// immediately
+    pub unsafe fn show_deck_map(&mut self) {
+        let tmp = ME.pos;
+
+        let cur_level = &*CUR_LEVEL;
+        ME.pos.x = (cur_level.xlen / 2) as f32;
+        ME.pos.y = (cur_level.ylen / 2) as f32;
+
+        SDL_ShowCursor(SDL_DISABLE);
+
+        set_combat_scale_to(0.25);
+
+        self.assemble_combat_picture(
+            (AssembleCombatWindowFlags::ONLY_SHOW_MAP | AssembleCombatWindowFlags::SHOW_FULL_MAP)
                 .bits()
                 .into(),
         );
-    }
 
-    display_text(
-        info_text.as_mut_ptr() as *mut c_char,
-        CONS_TEXT_RECT.x.into(),
-        CONS_TEXT_RECT.y.into(),
-        &CONS_TEXT_RECT,
-    );
-
-    display_text(
-        droid_name.as_mut_ptr() as *mut c_char,
-        i32::from(CONS_HEADER_RECT.x) + i32::from(lineskip),
-        (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i32,
-        null_mut(),
-    );
-
-    if show_arrows {
-        if ME.ty > droid_type {
-            SDL_UpperBlit(ARROW_UP, null_mut(), NE_SCREEN, &mut UP_RECT);
-        }
-
-        if droid_type > 0 {
-            SDL_UpperBlit(ARROW_DOWN, null_mut(), NE_SCREEN, &mut DOWN_RECT);
-        }
-
-        if page > 0 {
-            SDL_UpperBlit(ARROW_LEFT, null_mut(), NE_SCREEN, &mut LEFT_RECT);
-        }
-
-        if page < 2 {
-            SDL_UpperBlit(ARROW_RIGHT, null_mut(), NE_SCREEN, &mut RIGHT_RECT);
-        }
-    }
-
-    if flags & i32::from(UPDATE_ONLY) != 0 {
-        SDL_UpdateRects(NE_SCREEN, 1, &mut CONS_HEADER_RECT);
-        SDL_UpdateRects(NE_SCREEN, 1, &mut CONS_TEXT_RECT);
-    } else {
         SDL_Flip(NE_SCREEN);
-    }
-}
 
-/// Displays the concept view of deck
-///
-/// Note: we no longer wait here for a key-press, but return
-/// immediately
-pub unsafe fn show_deck_map() {
-    let tmp = ME.pos;
+        ME.pos = tmp;
 
-    let cur_level = &*CUR_LEVEL;
-    ME.pos.x = (cur_level.xlen / 2) as f32;
-    ME.pos.y = (cur_level.ylen / 2) as f32;
+        wait_for_key_pressed();
 
-    SDL_ShowCursor(SDL_DISABLE);
-
-    set_combat_scale_to(0.25);
-
-    assemble_combat_picture(
-        (AssembleCombatWindowFlags::ONLY_SHOW_MAP | AssembleCombatWindowFlags::SHOW_FULL_MAP)
-            .bits()
-            .into(),
-    );
-
-    SDL_Flip(NE_SCREEN);
-
-    ME.pos = tmp;
-
-    wait_for_key_pressed();
-
-    set_combat_scale_to(1.0);
-}
-
-/// EnterKonsole(): does all konsole- duties
-/// This function runs the consoles. This means the following duties:
-/// 2 * Show a small-scale plan of the current deck
-/// 3 * Show a side-elevation on the ship
-/// 1 * Give all available data on lower druid types
-/// 0 * Reenter the game without squashing the colortable
-pub unsafe fn enter_konsole() {
-    // Prevent distortion of framerate by the delay coming from
-    // the time spend in the menu.
-    activate_conservative_frame_computation();
-
-    let tmp_rect = USER_RECT;
-    USER_RECT = FULL_USER_RECT;
-
-    wait_for_all_keys_released();
-
-    ME.status = Status::Console as c_int;
-
-    if cfg!(target_os = "android") {
-        SHOW_CURSOR = false;
+        set_combat_scale_to(1.0);
     }
 
-    SDL_SetCursor(ARROW_CURSOR);
+    /// EnterKonsole(): does all konsole- duties
+    /// This function runs the consoles. This means the following duties:
+    /// 2 * Show a small-scale plan of the current deck
+    /// 3 * Show a side-elevation on the ship
+    /// 1 * Give all available data on lower druid types
+    /// 0 * Reenter the game without squashing the colortable
+    pub unsafe fn enter_konsole(&mut self) {
+        // Prevent distortion of framerate by the delay coming from
+        // the time spend in the menu.
+        activate_conservative_frame_computation();
 
-    set_current_font(PARA_B_FONT);
+        let tmp_rect = USER_RECT;
+        USER_RECT = FULL_USER_RECT;
 
-    let mut pos = 0; // starting menu position
-    paint_console_menu(c_int::try_from(pos).unwrap(), 0);
+        wait_for_all_keys_released();
 
-    let wait_move_ticks: u32 = 100;
-    static mut LAST_MOVE_TICK: u32 = 0;
-    let mut finished = false;
-    let mut need_update = true;
-    while !finished {
-        if SHOW_CURSOR {
-            SDL_ShowCursor(SDL_ENABLE);
-        } else {
+        ME.status = Status::Console as c_int;
+
+        if cfg!(target_os = "android") {
+            SHOW_CURSOR = false;
+        }
+
+        SDL_SetCursor(ARROW_CURSOR);
+
+        self.b_font.current_font = PARA_B_FONT;
+
+        let mut pos = 0; // starting menu position
+        self.paint_console_menu(c_int::try_from(pos).unwrap(), 0);
+
+        let wait_move_ticks: u32 = 100;
+        static mut LAST_MOVE_TICK: u32 = 0;
+        let mut finished = false;
+        let mut need_update = true;
+        while !finished {
+            if SHOW_CURSOR {
+                SDL_ShowCursor(SDL_ENABLE);
+            } else {
+                SDL_ShowCursor(SDL_DISABLE);
+            }
+
+            // check if the mouse-cursor is on any of the console-menu points
+            for (i, rect) in CONS_MENU_RECTS.iter_mut().enumerate() {
+                if SHOW_CURSOR && pos != i && cursor_is_on_rect(rect) != 0 {
+                    move_menu_position_sound();
+                    pos = i;
+                    need_update = true;
+                }
+            }
+            let action = get_menu_action(250);
+            if SDL_GetTicks() - LAST_MOVE_TICK > wait_move_ticks {
+                match action {
+                    MenuAction::BACK => {
+                        finished = true;
+                        wait_for_all_keys_released();
+                    }
+
+                    MenuAction::UP => {
+                        if pos > 0 {
+                            pos -= 1;
+                        } else {
+                            pos = 3;
+                        }
+                        // when warping the mouse-cursor: don't count that as a mouse-activity
+                        // this is a dirty hack, but that should be enough for here...
+                        if SHOW_CURSOR {
+                            let mousemove_buf = LAST_MOUSE_EVENT;
+                            SDL_WarpMouse(
+                                (CONS_MENU_RECTS[pos].x
+                                    + i16::try_from(CONS_MENU_RECTS[pos].w / 2).unwrap())
+                                .try_into()
+                                .unwrap(),
+                                (CONS_MENU_RECTS[pos].y
+                                    + i16::try_from(CONS_MENU_RECTS[pos].h / 2).unwrap())
+                                .try_into()
+                                .unwrap(),
+                            );
+                            update_input(); // this sets a new last_mouse_event
+                            LAST_MOUSE_EVENT = mousemove_buf; //... which we override.. ;)
+                        }
+                        move_menu_position_sound();
+                        need_update = true;
+                        LAST_MOVE_TICK = SDL_GetTicks();
+                    }
+
+                    MenuAction::DOWN => {
+                        if pos < 3 {
+                            pos += 1;
+                        } else {
+                            pos = 0;
+                        }
+                        // when warping the mouse-cursor: don't count that as a mouse-activity
+                        // this is a dirty hack, but that should be enough for here...
+                        if SHOW_CURSOR {
+                            let mousemove_buf = LAST_MOUSE_EVENT;
+                            SDL_WarpMouse(
+                                (CONS_MENU_RECTS[pos].x
+                                    + i16::try_from(CONS_MENU_RECTS[pos].w / 2).unwrap())
+                                .try_into()
+                                .unwrap(),
+                                (CONS_MENU_RECTS[pos].y
+                                    + i16::try_from(CONS_MENU_RECTS[pos].h / 2).unwrap())
+                                .try_into()
+                                .unwrap(),
+                            );
+                            update_input(); // this sets a new last_mouse_event
+                            LAST_MOUSE_EVENT = mousemove_buf; //... which we override.. ;)
+                        }
+                        move_menu_position_sound();
+                        need_update = true;
+                        LAST_MOVE_TICK = SDL_GetTicks();
+                    }
+
+                    MenuAction::CLICK => {
+                        menu_item_selected_sound();
+                        wait_for_all_keys_released();
+                        need_update = true;
+                        match pos {
+                            0 => {
+                                finished = true;
+                            }
+                            1 => {
+                                self.great_druid_show();
+                                self.paint_console_menu(pos.try_into().unwrap(), 0);
+                            }
+                            2 => {
+                                clear_graph_mem();
+                                display_banner(
+                                    null_mut(),
+                                    null_mut(),
+                                    DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+                                );
+                                self.show_deck_map();
+                                self.paint_console_menu(pos.try_into().unwrap(), 0);
+                            }
+                            3 => {
+                                clear_graph_mem();
+                                display_banner(
+                                    null_mut(),
+                                    null_mut(),
+                                    DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+                                );
+                                show_lifts((*CUR_LEVEL).levelnum, -1);
+                                wait_for_key_pressed();
+                                self.paint_console_menu(pos.try_into().unwrap(), 0);
+                            }
+                            _ => {
+                                error!("Konsole menu out of bounds... pos = {}", pos);
+                                pos = 0;
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            if need_update {
+                self.paint_console_menu(pos.try_into().unwrap(), UPDATE_ONLY.into());
+                if cfg!(not(target_os = "android")) {
+                    SDL_Flip(NE_SCREEN);
+                }
+
+                need_update = false;
+            }
+            if cfg!(target_os = "android") {
+                SDL_Flip(NE_SCREEN); // for responsive input on Android, we need to run this every cycle
+            }
+
+            SDL_Delay(1); // don't hog CPU
+        }
+
+        USER_RECT = tmp_rect;
+
+        ME.status = Status::Mobile as c_int;
+
+        clear_graph_mem();
+
+        SDL_SetCursor(CROSSHAIR_CURSOR);
+        if !SHOW_CURSOR {
             SDL_ShowCursor(SDL_DISABLE);
         }
+    }
 
-        // check if the mouse-cursor is on any of the console-menu points
-        for (i, rect) in CONS_MENU_RECTS.iter_mut().enumerate() {
-            if SHOW_CURSOR && pos != i && cursor_is_on_rect(rect) != 0 {
-                move_menu_position_sound();
-                pos = i;
-                need_update = true;
+    /// This function does the robot show when the user has selected robot
+    /// show from the console menu.
+    pub unsafe fn great_druid_show(&mut self) {
+        let mut finished = false;
+
+        let mut droidtype = ME.ty;
+        let mut page = 0;
+
+        self.show_droid_info(droidtype, page, 0);
+        show_droid_portrait(CONS_DROID_RECT, droidtype, 0.0, UPDATE | RESET);
+
+        wait_for_all_keys_released();
+        let mut need_update = true;
+        let wait_move_ticks: u32 = 100;
+        static mut LAST_MOVE_TICK: u32 = 0;
+
+        while !finished {
+            show_droid_portrait(CONS_DROID_RECT, droidtype, DROID_ROTATION_TIME, 0);
+
+            if SHOW_CURSOR {
+                SDL_ShowCursor(SDL_ENABLE);
+            } else {
+                SDL_ShowCursor(SDL_DISABLE);
             }
-        }
-        let action = get_menu_action(250);
-        if SDL_GetTicks() - LAST_MOVE_TICK > wait_move_ticks {
+
+            if need_update {
+                self.show_droid_info(droidtype, page, UPDATE_ONLY.into());
+                need_update = false;
+            }
+
+            let mut action = MenuAction::empty();
+            // special handling of mouse-clicks: check if move-arrows were clicked on
+            if mouse_left_pressed_r() {
+                if cursor_is_on_rect(&LEFT_RECT) != 0 {
+                    action = MenuAction::LEFT;
+                } else if cursor_is_on_rect(&RIGHT_RECT) != 0 {
+                    action = MenuAction::RIGHT;
+                } else if cursor_is_on_rect(&UP_RECT) != 0 {
+                    action = MenuAction::UP;
+                } else if cursor_is_on_rect(&DOWN_RECT) != 0 {
+                    action = MenuAction::DOWN;
+                }
+            } else {
+                action = get_menu_action(250);
+            }
+
+            let time_for_move = SDL_GetTicks() - LAST_MOVE_TICK > wait_move_ticks;
             match action {
-                MenuAction::BACK => {
+                MenuAction::BACK | MenuAction::CLICK => {
                     finished = true;
                     wait_for_all_keys_released();
                 }
 
                 MenuAction::UP => {
-                    if pos > 0 {
-                        pos -= 1;
-                    } else {
-                        pos = 3;
+                    if !time_for_move {
+                        continue;
                     }
-                    // when warping the mouse-cursor: don't count that as a mouse-activity
-                    // this is a dirty hack, but that should be enough for here...
-                    if SHOW_CURSOR {
-                        let mousemove_buf = LAST_MOUSE_EVENT;
-                        SDL_WarpMouse(
-                            (CONS_MENU_RECTS[pos].x
-                                + i16::try_from(CONS_MENU_RECTS[pos].w / 2).unwrap())
-                            .try_into()
-                            .unwrap(),
-                            (CONS_MENU_RECTS[pos].y
-                                + i16::try_from(CONS_MENU_RECTS[pos].h / 2).unwrap())
-                            .try_into()
-                            .unwrap(),
-                        );
-                        update_input(); // this sets a new last_mouse_event
-                        LAST_MOUSE_EVENT = mousemove_buf; //... which we override.. ;)
+
+                    if droidtype < ME.ty {
+                        move_menu_position_sound();
+                        droidtype += 1;
+                        need_update = true;
+                        LAST_MOVE_TICK = SDL_GetTicks();
                     }
-                    move_menu_position_sound();
-                    need_update = true;
-                    LAST_MOVE_TICK = SDL_GetTicks();
                 }
 
                 MenuAction::DOWN => {
-                    if pos < 3 {
-                        pos += 1;
-                    } else {
-                        pos = 0;
+                    if !time_for_move {
+                        continue;
                     }
-                    // when warping the mouse-cursor: don't count that as a mouse-activity
-                    // this is a dirty hack, but that should be enough for here...
-                    if SHOW_CURSOR {
-                        let mousemove_buf = LAST_MOUSE_EVENT;
-                        SDL_WarpMouse(
-                            (CONS_MENU_RECTS[pos].x
-                                + i16::try_from(CONS_MENU_RECTS[pos].w / 2).unwrap())
-                            .try_into()
-                            .unwrap(),
-                            (CONS_MENU_RECTS[pos].y
-                                + i16::try_from(CONS_MENU_RECTS[pos].h / 2).unwrap())
-                            .try_into()
-                            .unwrap(),
-                        );
-                        update_input(); // this sets a new last_mouse_event
-                        LAST_MOUSE_EVENT = mousemove_buf; //... which we override.. ;)
+
+                    if droidtype > 0 {
+                        move_menu_position_sound();
+                        droidtype -= 1;
+                        need_update = true;
+                        LAST_MOVE_TICK = SDL_GetTicks();
                     }
-                    move_menu_position_sound();
-                    need_update = true;
-                    LAST_MOVE_TICK = SDL_GetTicks();
                 }
 
-                MenuAction::CLICK => {
-                    menu_item_selected_sound();
-                    wait_for_all_keys_released();
-                    need_update = true;
-                    match pos {
-                        0 => {
-                            finished = true;
-                        }
-                        1 => {
-                            great_druid_show();
-                            paint_console_menu(pos.try_into().unwrap(), 0);
-                        }
-                        2 => {
-                            clear_graph_mem();
-                            display_banner(
-                                null_mut(),
-                                null_mut(),
-                                DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-                            );
-                            show_deck_map();
-                            paint_console_menu(pos.try_into().unwrap(), 0);
-                        }
-                        3 => {
-                            clear_graph_mem();
-                            display_banner(
-                                null_mut(),
-                                null_mut(),
-                                DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-                            );
-                            show_lifts((*CUR_LEVEL).levelnum, -1);
-                            wait_for_key_pressed();
-                            paint_console_menu(pos.try_into().unwrap(), 0);
-                        }
-                        _ => {
-                            error!("Konsole menu out of bounds... pos = {}", pos);
-                            pos = 0;
-                        }
+                MenuAction::RIGHT => {
+                    if !time_for_move {
+                        continue;
+                    }
+
+                    if page < 2 {
+                        move_menu_position_sound();
+                        page += 1;
+                        need_update = true;
+                        LAST_MOVE_TICK = SDL_GetTicks();
+                    }
+                }
+
+                MenuAction::LEFT => {
+                    if !time_for_move {
+                        continue;
+                    }
+
+                    if page > 0 {
+                        move_menu_position_sound();
+                        page -= 1;
+                        need_update = true;
+                        LAST_MOVE_TICK = SDL_GetTicks();
                     }
                 }
                 _ => {}
             }
+
+            SDL_Delay(1); // don't hog CPU
         }
-
-        if need_update {
-            paint_console_menu(pos.try_into().unwrap(), UPDATE_ONLY.into());
-            if cfg!(not(target_os = "android")) {
-                SDL_Flip(NE_SCREEN);
-            }
-
-            need_update = false;
-        }
-        if cfg!(target_os = "android") {
-            SDL_Flip(NE_SCREEN); // for responsive input on Android, we need to run this every cycle
-        }
-
-        SDL_Delay(1); // don't hog CPU
-    }
-
-    USER_RECT = tmp_rect;
-
-    ME.status = Status::Mobile as c_int;
-
-    clear_graph_mem();
-
-    SDL_SetCursor(CROSSHAIR_CURSOR);
-    if !SHOW_CURSOR {
-        SDL_ShowCursor(SDL_DISABLE);
-    }
-}
-
-/// This function does the robot show when the user has selected robot
-/// show from the console menu.
-pub unsafe fn great_druid_show() {
-    let mut finished = false;
-
-    let mut droidtype = ME.ty;
-    let mut page = 0;
-
-    show_droid_info(droidtype, page, 0);
-    show_droid_portrait(CONS_DROID_RECT, droidtype, 0.0, UPDATE | RESET);
-
-    wait_for_all_keys_released();
-    let mut need_update = true;
-    let wait_move_ticks: u32 = 100;
-    static mut LAST_MOVE_TICK: u32 = 0;
-
-    while !finished {
-        show_droid_portrait(CONS_DROID_RECT, droidtype, DROID_ROTATION_TIME, 0);
-
-        if SHOW_CURSOR {
-            SDL_ShowCursor(SDL_ENABLE);
-        } else {
-            SDL_ShowCursor(SDL_DISABLE);
-        }
-
-        if need_update {
-            show_droid_info(droidtype, page, UPDATE_ONLY.into());
-            need_update = false;
-        }
-
-        let mut action = MenuAction::empty();
-        // special handling of mouse-clicks: check if move-arrows were clicked on
-        if mouse_left_pressed_r() {
-            if cursor_is_on_rect(&LEFT_RECT) != 0 {
-                action = MenuAction::LEFT;
-            } else if cursor_is_on_rect(&RIGHT_RECT) != 0 {
-                action = MenuAction::RIGHT;
-            } else if cursor_is_on_rect(&UP_RECT) != 0 {
-                action = MenuAction::UP;
-            } else if cursor_is_on_rect(&DOWN_RECT) != 0 {
-                action = MenuAction::DOWN;
-            }
-        } else {
-            action = get_menu_action(250);
-        }
-
-        let time_for_move = SDL_GetTicks() - LAST_MOVE_TICK > wait_move_ticks;
-        match action {
-            MenuAction::BACK | MenuAction::CLICK => {
-                finished = true;
-                wait_for_all_keys_released();
-            }
-
-            MenuAction::UP => {
-                if !time_for_move {
-                    continue;
-                }
-
-                if droidtype < ME.ty {
-                    move_menu_position_sound();
-                    droidtype += 1;
-                    need_update = true;
-                    LAST_MOVE_TICK = SDL_GetTicks();
-                }
-            }
-
-            MenuAction::DOWN => {
-                if !time_for_move {
-                    continue;
-                }
-
-                if droidtype > 0 {
-                    move_menu_position_sound();
-                    droidtype -= 1;
-                    need_update = true;
-                    LAST_MOVE_TICK = SDL_GetTicks();
-                }
-            }
-
-            MenuAction::RIGHT => {
-                if !time_for_move {
-                    continue;
-                }
-
-                if page < 2 {
-                    move_menu_position_sound();
-                    page += 1;
-                    need_update = true;
-                    LAST_MOVE_TICK = SDL_GetTicks();
-                }
-            }
-
-            MenuAction::LEFT => {
-                if !time_for_move {
-                    continue;
-                }
-
-                if page > 0 {
-                    move_menu_position_sound();
-                    page -= 1;
-                    need_update = true;
-                    LAST_MOVE_TICK = SDL_GetTicks();
-                }
-            }
-            _ => {}
-        }
-
-        SDL_Delay(1); // don't hog CPU
     }
 }
 
@@ -841,67 +845,69 @@ pub unsafe fn show_lifts(level: c_int, liftrow: c_int) {
     SDL_Flip(NE_SCREEN);
 }
 
-/// diese Funktion zeigt die m"oglichen Auswahlpunkte des Menus
-/// Sie soll die Schriftfarben nicht ver"andern
-///
-/// NOTE: this function does not actually _display_ anything yet,
-///       it just prepares the display, so you need
-///       to call SDL_Flip() to display the result!
-/// pos  : 0<=pos<=3: which menu-position is currently active?
-/// flag : UPDATE_ONLY  only update the console-menu bar, not text & background
-pub unsafe fn paint_console_menu(pos: c_int, flag: c_int) {
-    use std::io::Write;
-    let mut menu_text: [u8; 200] = [0; 200];
+impl Data {
+    /// diese Funktion zeigt die m"oglichen Auswahlpunkte des Menus
+    /// Sie soll die Schriftfarben nicht ver"andern
+    ///
+    /// NOTE: this function does not actually _display_ anything yet,
+    ///       it just prepares the display, so you need
+    ///       to call SDL_Flip() to display the result!
+    /// pos  : 0<=pos<=3: which menu-position is currently active?
+    /// flag : UPDATE_ONLY  only update the console-menu bar, not text & background
+    pub unsafe fn paint_console_menu(&mut self, pos: c_int, flag: c_int) {
+        use std::io::Write;
+        let mut menu_text: [u8; 200] = [0; 200];
 
-    if (flag & i32::from(UPDATE_ONLY)) == 0 {
-        clear_graph_mem();
-        SDL_SetClipRect(NE_SCREEN, null_mut());
-        SDL_UpperBlit(CONSOLE_BG_PIC1, null_mut(), NE_SCREEN, null_mut());
+        if (flag & i32::from(UPDATE_ONLY)) == 0 {
+            clear_graph_mem();
+            SDL_SetClipRect(NE_SCREEN, null_mut());
+            SDL_UpperBlit(CONSOLE_BG_PIC1, null_mut(), NE_SCREEN, null_mut());
 
-        display_banner(
-            null_mut(),
-            null_mut(),
-            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-        );
+            display_banner(
+                null_mut(),
+                null_mut(),
+                DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+            );
 
-        write!(
-            &mut menu_text[..],
-            "Area : {}\nDeck : {}    Alert: {}\0",
-            CStr::from_ptr(CUR_SHIP.area_name.as_ptr())
-                .to_str()
-                .unwrap(),
-            CStr::from_ptr((*CUR_LEVEL).levelname).to_str().unwrap(),
-            AlertNames::try_from(ALERT_LEVEL).unwrap().to_str(),
-        )
-        .unwrap();
-        display_text(
-            menu_text.as_mut_ptr() as *mut c_char,
-            CONS_HEADER_RECT.x.into(),
-            CONS_HEADER_RECT.y.into(),
-            &CONS_HEADER_RECT,
-        );
+            write!(
+                &mut menu_text[..],
+                "Area : {}\nDeck : {}    Alert: {}\0",
+                CStr::from_ptr(CUR_SHIP.area_name.as_ptr())
+                    .to_str()
+                    .unwrap(),
+                CStr::from_ptr((*CUR_LEVEL).levelname).to_str().unwrap(),
+                AlertNames::try_from(ALERT_LEVEL).unwrap().to_str(),
+            )
+            .unwrap();
+            self.display_text(
+                menu_text.as_mut_ptr() as *mut c_char,
+                CONS_HEADER_RECT.x.into(),
+                CONS_HEADER_RECT.y.into(),
+                &CONS_HEADER_RECT,
+            );
 
-        write!(
-            &mut menu_text[..],
-            "Logout from console\n\nDroid info\n\nDeck map\n\nShip map\0"
-        )
-        .unwrap();
-        display_text(
-            menu_text.as_mut_ptr() as *mut c_char,
-            CONS_TEXT_RECT.x.into(),
-            c_int::from(CONS_TEXT_RECT.y) + 25,
-            &CONS_TEXT_RECT,
-        );
-    } // only if not UPDATE_ONLY was required
+            write!(
+                &mut menu_text[..],
+                "Logout from console\n\nDroid info\n\nDeck map\n\nShip map\0"
+            )
+            .unwrap();
+            self.display_text(
+                menu_text.as_mut_ptr() as *mut c_char,
+                CONS_TEXT_RECT.x.into(),
+                c_int::from(CONS_TEXT_RECT.y) + 25,
+                &CONS_TEXT_RECT,
+            );
+        } // only if not UPDATE_ONLY was required
 
-    let mut src = Rect {
-        x: i16::try_from(CONS_MENU_RECTS[0].w).unwrap() * i16::try_from(pos).unwrap()
-            + (2. * pos as f32 * GAME_CONFIG.scale) as i16,
-        y: 0,
-        w: CONS_MENU_RECT.w,
-        h: 4 * CONS_MENU_RECT.h,
-    };
-    SDL_UpperBlit(CONSOLE_PIC, &mut src, NE_SCREEN, &mut CONS_MENU_RECT);
+        let mut src = Rect {
+            x: i16::try_from(CONS_MENU_RECTS[0].w).unwrap() * i16::try_from(pos).unwrap()
+                + (2. * pos as f32 * GAME_CONFIG.scale) as i16,
+            y: 0,
+            w: CONS_MENU_RECT.w,
+            h: 4 * CONS_MENU_RECT.h,
+        };
+        SDL_UpperBlit(CONSOLE_PIC, &mut src, NE_SCREEN, &mut CONS_MENU_RECT);
+    }
 }
 
 /// does all the work when we enter a lift

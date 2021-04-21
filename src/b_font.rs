@@ -1,6 +1,6 @@
 use crate::{
     graphics::{putpixel, scale_pic, IMG_Load},
-    sdl_must_lock,
+    sdl_must_lock, Data,
 };
 
 use core::fmt;
@@ -22,7 +22,18 @@ use std::{
     ptr::null_mut,
 };
 
-pub static mut CURRENT_FONT: *mut BFontInfo = null_mut();
+#[derive(Debug)]
+pub struct BFont {
+    pub current_font: *mut BFontInfo,
+}
+
+impl Default for BFont {
+    fn default() -> Self {
+        Self {
+            current_font: null_mut(),
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct BFontInfo {
@@ -34,14 +45,6 @@ pub struct BFontInfo {
 
     /// characters width
     pub chars: [SDL_Rect; 256],
-}
-
-pub unsafe fn get_current_font() -> *mut BFontInfo {
-    CURRENT_FONT
-}
-
-pub unsafe fn set_current_font(font: *mut BFontInfo) {
-    CURRENT_FONT = font;
 }
 
 pub fn font_height(font: &BFontInfo) -> c_int {
@@ -91,13 +94,21 @@ pub fn char_width(font: &BFontInfo, c: u8) -> c_int {
     font.chars[usize::from(c)].w.into()
 }
 
-pub unsafe fn put_string(surface: *mut SDL_Surface, x: c_int, y: c_int, text: &[u8]) {
-    put_string_font(surface, CURRENT_FONT, x, y, text);
-}
+impl Data {
+    pub unsafe fn put_string(&self, surface: *mut SDL_Surface, x: c_int, y: c_int, text: &[u8]) {
+        put_string_font(surface, self.b_font.current_font, x, y, text);
+    }
 
-/// Puts a single char on the surface
-pub unsafe fn put_char(surface: *mut SDL_Surface, x: c_int, y: c_int, c: u8) -> c_int {
-    put_char_font(&mut *surface, &mut *CURRENT_FONT, x, y, c)
+    /// Puts a single char on the surface
+    pub unsafe fn put_char(
+        &mut self,
+        surface: *mut SDL_Surface,
+        x: c_int,
+        y: c_int,
+        c: u8,
+    ) -> c_int {
+        put_char_font(&mut *surface, &mut *self.b_font.current_font, x, y, c)
+    }
 }
 
 pub unsafe fn print_string_font(
@@ -120,37 +131,39 @@ pub unsafe fn put_pixel(surface: &SDL_Surface, x: c_int, y: c_int, pixel: u32) {
     putpixel(surface, x, y, pixel)
 }
 
-/// Load the font and stores it in the BFont_Info structure
-pub unsafe fn load_font(filename: *mut c_char, scale: c_float) -> *mut BFontInfo {
-    if filename.is_null() {
-        return null_mut();
+impl Data {
+    /// Load the font and stores it in the BFont_Info structure
+    pub unsafe fn load_font(&mut self, filename: *mut c_char, scale: c_float) -> *mut BFontInfo {
+        if filename.is_null() {
+            return null_mut();
+        }
+
+        let font_layout = Layout::new::<BFontInfo>();
+        let font = alloc_zeroed(font_layout) as *mut BFontInfo;
+        if font.is_null() {
+            return null_mut();
+        }
+
+        let mut surface = IMG_Load(filename);
+        scale_pic(&mut surface, scale);
+
+        if surface.is_null() {
+            dealloc(font as *mut u8, font_layout);
+            return null_mut();
+        }
+
+        (*font).surface = surface;
+        (*font)
+            .chars
+            .iter_mut()
+            .for_each(|rect| *rect = Rect::new(0, 0, 0, 0));
+        /* Init the font */
+        init_font(&mut *font);
+        /* Set the font as the current font */
+        self.b_font.current_font = font;
+
+        font
     }
-
-    let font_layout = Layout::new::<BFontInfo>();
-    let font = alloc_zeroed(font_layout) as *mut BFontInfo;
-    if font.is_null() {
-        return null_mut();
-    }
-
-    let mut surface = IMG_Load(filename);
-    scale_pic(&mut surface, scale);
-
-    if surface.is_null() {
-        dealloc(font as *mut u8, font_layout);
-        return null_mut();
-    }
-
-    (*font).surface = surface;
-    (*font)
-        .chars
-        .iter_mut()
-        .for_each(|rect| *rect = Rect::new(0, 0, 0, 0));
-    /* Init the font */
-    init_font(&mut *font);
-    /* Set the font as the current font */
-    set_current_font(font);
-
-    font
 }
 
 pub unsafe fn init_font(font: &mut BFontInfo) {
@@ -243,33 +256,37 @@ pub unsafe fn get_pixel(surface: &mut SDL_Surface, x: i32, y: i32) -> u32 {
     }
 }
 
-pub unsafe fn centered_print_string(
-    surface: *mut SDL_Surface,
-    y: c_int,
-    format_args: fmt::Arguments,
-) {
-    use std::{io::Cursor, io::Write};
+impl Data {
+    pub unsafe fn centered_print_string(
+        &self,
+        surface: *mut SDL_Surface,
+        y: c_int,
+        format_args: fmt::Arguments,
+    ) {
+        use std::{io::Cursor, io::Write};
 
-    let mut temp = [0u8; 10001];
-    let mut cursor = Cursor::new(temp.as_mut());
-    cursor.write_fmt(format_args).unwrap();
-    let written = cursor.position().try_into().unwrap();
-    centered_put_string(surface, y, &temp[..written]);
-}
+        let mut temp = [0u8; 10001];
+        let mut cursor = Cursor::new(temp.as_mut());
+        cursor.write_fmt(format_args).unwrap();
+        let written = cursor.position().try_into().unwrap();
+        self.centered_put_string(surface, y, &temp[..written]);
+    }
 
-pub unsafe fn print_string(
-    surface: *mut SDL_Surface,
-    x: c_int,
-    y: c_int,
-    format_args: fmt::Arguments,
-) {
-    use std::{io::Cursor, io::Write};
+    pub unsafe fn print_string(
+        &mut self,
+        surface: *mut SDL_Surface,
+        x: c_int,
+        y: c_int,
+        format_args: fmt::Arguments,
+    ) {
+        use std::{io::Cursor, io::Write};
 
-    let mut temp = vec![0u8; 10001].into_boxed_slice();
-    let mut cursor = Cursor::new(temp.as_mut());
-    cursor.write_fmt(format_args).unwrap();
-    let written = cursor.position().try_into().unwrap();
-    put_string_font(surface, CURRENT_FONT, x, y, &temp[..written]);
+        let mut temp = vec![0u8; 10001].into_boxed_slice();
+        let mut cursor = Cursor::new(temp.as_mut());
+        cursor.write_fmt(format_args).unwrap();
+        let written = cursor.position().try_into().unwrap();
+        put_string_font(surface, self.b_font.current_font, x, y, &temp[..written]);
+    }
 }
 
 pub unsafe fn centered_put_string_font(
@@ -287,12 +304,14 @@ pub unsafe fn centered_put_string_font(
     );
 }
 
-pub unsafe fn centered_put_string(surface: *mut SDL_Surface, y: c_int, text: &[u8]) {
-    centered_put_string_font(surface, CURRENT_FONT, y, text);
-}
+impl Data {
+    pub unsafe fn centered_put_string(&self, surface: *mut SDL_Surface, y: c_int, text: &[u8]) {
+        centered_put_string_font(surface, self.b_font.current_font, y, text);
+    }
 
-pub unsafe fn text_width(text: &[u8]) -> c_int {
-    text_width_font(&*CURRENT_FONT, text)
+    pub unsafe fn text_width(&self, text: &[u8]) -> c_int {
+        text_width_font(&*self.b_font.current_font, text)
+    }
 }
 
 pub fn text_width_font(font: &BFontInfo, text: &[u8]) -> c_int {

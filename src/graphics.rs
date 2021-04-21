@@ -1,5 +1,5 @@
 use crate::{
-    b_font::{get_current_font, load_font, put_pixel, set_current_font, BFontInfo},
+    b_font::{put_pixel, BFontInfo},
     defs::{
         self, free_if_unused, get_user_center, scale_point, scale_rect, Cmds, Criticality,
         DisplayBannerFlags, Droid, Sound, Themed, BANNER_BLOCK_FILE_C, BLAST_BLOCK_FILE_C,
@@ -16,8 +16,8 @@ use crate::{
     },
     input::{any_key_just_pressed, cmd_is_active, wait_for_all_keys_released, SDL_Delay},
     misc::{
-        activate_conservative_frame_computation, find_file, init_progress,
-        read_and_malloc_and_terminate_file, read_value_from_string, terminate, update_progress,
+        activate_conservative_frame_computation, find_file, read_and_malloc_and_terminate_file,
+        read_value_from_string, terminate, update_progress,
     },
     sound::play_sound,
     structs::ThemeList,
@@ -28,7 +28,6 @@ use crate::{
         PLAYGROUND_STARTS, RIGHT_GROUND_START, TO_BLOCKS, TO_BLOCK_FILE_C, TO_GAME_BLOCKS,
         TO_GROUND_BLOCKS,
     },
-    text::printf_sdl,
     vars::{
         BANNER_RECT, BLASTMAP, BLOCK_RECT, BULLETMAP, CLASSIC_USER_RECT, CONS_DROID_RECT,
         CONS_HEADER_RECT, CONS_MENU_ITEM_RECT, CONS_MENU_RECT, CONS_MENU_RECTS, CONS_TEXT_RECT,
@@ -36,7 +35,7 @@ use crate::{
         ORIG_BLOCK_RECT, ORIG_DIGIT_RECT, PORTRAIT_RECT, RIGHT_INFO_RECT, SCREEN_RECT, USER_RECT,
     },
     view::display_banner,
-    ALL_BULLETS, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
+    Data, ALL_BULLETS, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
 };
 
 use array_init::array_init;
@@ -572,132 +571,136 @@ pub unsafe fn scale_pic(pic: &mut *mut SDL_Surface, scale: c_float) {
     SDL_FreeSurface(tmp);
 }
 
-pub unsafe fn scale_graphics(scale: c_float) {
-    static INIT: std::sync::Once = std::sync::Once::new();
+impl Data {
+    pub unsafe fn scale_graphics(&self, scale: c_float) {
+        static INIT: std::sync::Once = std::sync::Once::new();
 
-    /* For some reason we need to SetAlpha every time on OS X */
-    /* Digits are only used in _internal_ blits ==> clear per-surf alpha */
-    for &surface in &INFLU_DIGIT_SURFACE_POINTER {
-        SDL_SetAlpha(surface, 0, 0);
-    }
-    for &surface in &ENEMY_DIGIT_SURFACE_POINTER {
-        SDL_SetAlpha(surface, 0, 0);
-    }
-    if (scale - 1.).abs() <= f32::EPSILON {
-        return;
-    }
+        /* For some reason we need to SetAlpha every time on OS X */
+        /* Digits are only used in _internal_ blits ==> clear per-surf alpha */
+        for &surface in &INFLU_DIGIT_SURFACE_POINTER {
+            SDL_SetAlpha(surface, 0, 0);
+        }
+        for &surface in &ENEMY_DIGIT_SURFACE_POINTER {
+            SDL_SetAlpha(surface, 0, 0);
+        }
+        if (scale - 1.).abs() <= f32::EPSILON {
+            return;
+        }
 
-    // these are reset in a theme-change by the theme-config-file
-    // therefore we need to rescale them each time again
-    scale_rect(&mut FIRST_DIGIT_RECT, scale);
-    scale_rect(&mut SECOND_DIGIT_RECT, scale);
-    scale_rect(&mut THIRD_DIGIT_RECT, scale);
+        // these are reset in a theme-change by the theme-config-file
+        // therefore we need to rescale them each time again
+        scale_rect(&mut FIRST_DIGIT_RECT, scale);
+        scale_rect(&mut SECOND_DIGIT_RECT, scale);
+        scale_rect(&mut THIRD_DIGIT_RECT, scale);
 
-    // note: only rescale these rects the first time!!
-    let mut init = false;
-    INIT.call_once(|| {
-        init = true;
-        scale_stat_rects(scale);
-    });
-
-    //---------- rescale Map blocks
-    ORIG_MAP_BLOCK_SURFACE_POINTER
-        .iter_mut()
-        .flat_map(|surfaces| surfaces.iter_mut())
-        .zip(
-            MAP_BLOCK_SURFACE_POINTER
-                .iter_mut()
-                .flat_map(|surfaces| surfaces.iter_mut()),
-        )
-        .for_each(|(orig_surface, map_surface)| {
-            scale_pic(orig_surface, scale);
-            *map_surface = *orig_surface;
+        // note: only rescale these rects the first time!!
+        let mut init = false;
+        INIT.call_once(|| {
+            init = true;
+            scale_stat_rects(scale);
         });
 
-    //---------- rescale Droid-model  blocks
-    /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
-    for surface in &mut INFLUENCER_SURFACE_POINTER {
-        scale_pic(surface, scale);
-        SDL_SetAlpha(*surface, 0, 0);
-    }
-    for surface in &mut ENEMY_SURFACE_POINTER {
-        scale_pic(surface, scale);
-        SDL_SetAlpha(*surface, 0, 0);
-    }
+        //---------- rescale Map blocks
+        ORIG_MAP_BLOCK_SURFACE_POINTER
+            .iter_mut()
+            .flat_map(|surfaces| surfaces.iter_mut())
+            .zip(
+                MAP_BLOCK_SURFACE_POINTER
+                    .iter_mut()
+                    .flat_map(|surfaces| surfaces.iter_mut()),
+            )
+            .for_each(|(orig_surface, map_surface)| {
+                scale_pic(orig_surface, scale);
+                *map_surface = *orig_surface;
+            });
 
-    //---------- rescale Bullet blocks
-    let bulletmap =
-        std::slice::from_raw_parts_mut(BULLETMAP, usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap());
-    bulletmap
-        .iter_mut()
-        .flat_map(|bullet| bullet.surface_pointer.iter_mut())
-        .for_each(|surface| scale_pic(surface, scale));
+        //---------- rescale Droid-model  blocks
+        /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
+        for surface in &mut INFLUENCER_SURFACE_POINTER {
+            scale_pic(surface, scale);
+            SDL_SetAlpha(*surface, 0, 0);
+        }
+        for surface in &mut ENEMY_SURFACE_POINTER {
+            scale_pic(surface, scale);
+            SDL_SetAlpha(*surface, 0, 0);
+        }
 
-    //---------- rescale Blast blocks
-    BLASTMAP
-        .iter_mut()
-        .flat_map(|blast| blast.surface_pointer.iter_mut())
-        .for_each(|surface| scale_pic(surface, scale));
-
-    //---------- rescale Digit blocks
-    for surface in &mut INFLU_DIGIT_SURFACE_POINTER {
-        scale_pic(surface, scale);
-        SDL_SetAlpha(*surface, 0, 0);
-    }
-    for surface in &mut ENEMY_DIGIT_SURFACE_POINTER {
-        scale_pic(surface, scale);
-        SDL_SetAlpha(*surface, 0, 0);
-    }
-
-    //---------- rescale Takeover pics
-    scale_pic(&mut TO_BLOCKS, scale);
-
-    scale_pic(&mut SHIP_ON_PIC, scale);
-    scale_pic(&mut SHIP_OFF_PIC, scale);
-
-    // the following are not theme-specific and are therefore only loaded once!
-    if init {
-        //  create a new tmp block-build storage
-        free_if_unused(BUILD_BLOCK);
-        let tmp = SDL_CreateRGBSurface(
-            0,
-            BLOCK_RECT.w.into(),
-            BLOCK_RECT.h.into(),
-            VID_BPP,
-            0,
-            0,
-            0,
-            0,
+        //---------- rescale Bullet blocks
+        let bulletmap = std::slice::from_raw_parts_mut(
+            BULLETMAP,
+            usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap(),
         );
-        BUILD_BLOCK = SDL_DisplayFormatAlpha(tmp);
-        SDL_FreeSurface(tmp);
+        bulletmap
+            .iter_mut()
+            .flat_map(|bullet| bullet.surface_pointer.iter_mut())
+            .for_each(|surface| scale_pic(surface, scale));
 
-        // takeover pics
-        scale_pic(&mut TAKEOVER_BG_PIC, scale);
+        //---------- rescale Blast blocks
+        BLASTMAP
+            .iter_mut()
+            .flat_map(|blast| blast.surface_pointer.iter_mut())
+            .for_each(|surface| scale_pic(surface, scale));
 
-        //---------- Console pictures
-        scale_pic(&mut CONSOLE_PIC, scale);
-        scale_pic(&mut CONSOLE_BG_PIC1, scale);
-        scale_pic(&mut CONSOLE_BG_PIC2, scale);
-        scale_pic(&mut ARROW_UP, scale);
-        scale_pic(&mut ARROW_DOWN, scale);
-        scale_pic(&mut ARROW_RIGHT, scale);
-        scale_pic(&mut ARROW_LEFT, scale);
-        //---------- Banner
-        scale_pic(&mut BANNER_PIC, scale);
-
-        scale_pic(&mut PIC999, scale);
-
-        // get the Ashes pics
-        if !DECAL_PICS[0].is_null() {
-            scale_pic(&mut DECAL_PICS[0], scale);
+        //---------- rescale Digit blocks
+        for surface in &mut INFLU_DIGIT_SURFACE_POINTER {
+            scale_pic(surface, scale);
+            SDL_SetAlpha(*surface, 0, 0);
         }
-        if !DECAL_PICS[1].is_null() {
-            scale_pic(&mut DECAL_PICS[1], scale);
+        for surface in &mut ENEMY_DIGIT_SURFACE_POINTER {
+            scale_pic(surface, scale);
+            SDL_SetAlpha(*surface, 0, 0);
         }
+
+        //---------- rescale Takeover pics
+        scale_pic(&mut TO_BLOCKS, scale);
+
+        scale_pic(&mut SHIP_ON_PIC, scale);
+        scale_pic(&mut SHIP_OFF_PIC, scale);
+
+        // the following are not theme-specific and are therefore only loaded once!
+        if init {
+            //  create a new tmp block-build storage
+            free_if_unused(BUILD_BLOCK);
+            let tmp = SDL_CreateRGBSurface(
+                0,
+                BLOCK_RECT.w.into(),
+                BLOCK_RECT.h.into(),
+                VID_BPP,
+                0,
+                0,
+                0,
+                0,
+            );
+            BUILD_BLOCK = SDL_DisplayFormatAlpha(tmp);
+            SDL_FreeSurface(tmp);
+
+            // takeover pics
+            scale_pic(&mut TAKEOVER_BG_PIC, scale);
+
+            //---------- Console pictures
+            scale_pic(&mut CONSOLE_PIC, scale);
+            scale_pic(&mut CONSOLE_BG_PIC1, scale);
+            scale_pic(&mut CONSOLE_BG_PIC2, scale);
+            scale_pic(&mut ARROW_UP, scale);
+            scale_pic(&mut ARROW_DOWN, scale);
+            scale_pic(&mut ARROW_RIGHT, scale);
+            scale_pic(&mut ARROW_LEFT, scale);
+            //---------- Banner
+            scale_pic(&mut BANNER_PIC, scale);
+
+            scale_pic(&mut PIC999, scale);
+
+            // get the Ashes pics
+            if !DECAL_PICS[0].is_null() {
+                scale_pic(&mut DECAL_PICS[0], scale);
+            }
+            if !DECAL_PICS[1].is_null() {
+                scale_pic(&mut DECAL_PICS[1], scale);
+            }
+        }
+
+        self.printf_sdl(NE_SCREEN, -1, -1, format_args!(" ok\n"));
     }
-
-    printf_sdl(NE_SCREEN, -1, -1, format_args!(" ok\n"));
 }
 
 /// display "white noise" effect in Rect.
@@ -820,61 +823,63 @@ pub unsafe fn duplicate_font(in_font: &BFontInfo) -> *mut BFontInfo {
     out_font
 }
 
-pub unsafe fn load_fonts() -> c_int {
-    let mut fpath = find_file(
-        PARA_FONT_FILE_C.as_ptr(),
-        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-        Themed::NoTheme as c_int,
-        Criticality::Critical as c_int,
-    );
-    PARA_B_FONT = load_font(fpath, GAME_CONFIG.scale);
-    if PARA_B_FONT.is_null() {
-        error!("font file named {} was not found.", PARA_FONT_FILE);
-        terminate(defs::ERR.into());
+impl Data {
+    pub unsafe fn load_fonts(&mut self) -> c_int {
+        let mut fpath = find_file(
+            PARA_FONT_FILE_C.as_ptr(),
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::Critical as c_int,
+        );
+        PARA_B_FONT = self.load_font(fpath, GAME_CONFIG.scale);
+        if PARA_B_FONT.is_null() {
+            error!("font file named {} was not found.", PARA_FONT_FILE);
+            terminate(defs::ERR.into());
+        }
+
+        fpath = find_file(
+            FONT0_FILE_C.as_ptr(),
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::Critical as c_int,
+        );
+        FONT0_B_FONT = self.load_font(fpath, GAME_CONFIG.scale);
+        if FONT0_B_FONT.is_null() {
+            error!("font file named {} was not found.\n", FONT0_FILE);
+            terminate(defs::ERR.into());
+        }
+
+        fpath = find_file(
+            FONT1_FILE_C.as_ptr(),
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::Critical as c_int,
+        );
+        FONT1_B_FONT = self.load_font(fpath, GAME_CONFIG.scale);
+        if FONT1_B_FONT.is_null() {
+            error!("font file named {} was not found.", FONT1_FILE);
+            terminate(defs::ERR.into());
+        }
+
+        fpath = find_file(
+            FONT2_FILE_C.as_ptr(),
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::Critical as c_int,
+        );
+        FONT2_B_FONT = self.load_font(fpath, GAME_CONFIG.scale);
+        if FONT2_B_FONT.is_null() {
+            error!("font file named {} was not found.", FONT2_FILE);
+            terminate(defs::ERR.into());
+        }
+
+        MENU_B_FONT = duplicate_font(&*PARA_B_FONT);
+        HIGHSCORE_B_FONT = duplicate_font(&*PARA_B_FONT);
+
+        FONTS_LOADED = true.into();
+
+        defs::OK.into()
     }
-
-    fpath = find_file(
-        FONT0_FILE_C.as_ptr(),
-        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-        Themed::NoTheme as c_int,
-        Criticality::Critical as c_int,
-    );
-    FONT0_B_FONT = load_font(fpath, GAME_CONFIG.scale);
-    if FONT0_B_FONT.is_null() {
-        error!("font file named {} was not found.\n", FONT0_FILE);
-        terminate(defs::ERR.into());
-    }
-
-    fpath = find_file(
-        FONT1_FILE_C.as_ptr(),
-        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-        Themed::NoTheme as c_int,
-        Criticality::Critical as c_int,
-    );
-    FONT1_B_FONT = load_font(fpath, GAME_CONFIG.scale);
-    if FONT1_B_FONT.is_null() {
-        error!("font file named {} was not found.", FONT1_FILE);
-        terminate(defs::ERR.into());
-    }
-
-    fpath = find_file(
-        FONT2_FILE_C.as_ptr(),
-        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-        Themed::NoTheme as c_int,
-        Criticality::Critical as c_int,
-    );
-    FONT2_B_FONT = load_font(fpath, GAME_CONFIG.scale);
-    if FONT2_B_FONT.is_null() {
-        error!("font file named {} was not found.", FONT2_FILE);
-        terminate(defs::ERR.into());
-    }
-
-    MENU_B_FONT = duplicate_font(&*PARA_B_FONT);
-    HIGHSCORE_B_FONT = duplicate_font(&*PARA_B_FONT);
-
-    FONTS_LOADED = true.into();
-
-    defs::OK.into()
 }
 
 pub unsafe fn clear_graph_mem() {
@@ -1088,405 +1093,408 @@ pub unsafe fn load_raw_pic(
     ops
 }
 
-/// Get the pics for: druids, bullets, blasts
-///
-/// reads all blocks and puts the right pointers into
-/// the various structs
-///
-/// Returns true/false
-pub unsafe fn init_pictures() -> c_int {
-    use std::sync::Once;
+impl Data {
+    /// Get the pics for: druids, bullets, blasts
+    ///
+    /// reads all blocks and puts the right pointers into
+    /// the various structs
+    ///
+    /// Returns true/false
+    pub unsafe fn init_pictures(&mut self) -> c_int {
+        use std::sync::Once;
 
-    static DO_ONCE: Once = Once::new();
-    let mut fname: [c_char; 500] = [0; 500];
+        static DO_ONCE: Once = Once::new();
+        let mut fname: [c_char; 500] = [0; 500];
 
-    // Loading all these pictures might take a while...
-    // and we do not want do deal with huge frametimes, which
-    // could box the influencer out of the ship....
-    activate_conservative_frame_computation();
+        // Loading all these pictures might take a while...
+        // and we do not want do deal with huge frametimes, which
+        // could box the influencer out of the ship....
+        activate_conservative_frame_computation();
 
-    let oldfont = get_current_font();
+        let oldfont = self.b_font.current_font;
 
-    if FONTS_LOADED == 0 {
-        load_fonts();
-    }
+        if FONTS_LOADED == 0 {
+            self.load_fonts();
+        }
 
-    set_current_font(FONT0_B_FONT);
+        self.b_font.current_font = FONT0_B_FONT;
 
-    init_progress(cstr!("Loading pictures").as_ptr() as *mut c_char);
+        self.init_progress(cstr!("Loading pictures").as_ptr() as *mut c_char);
 
-    load_theme_configuration_file();
+        load_theme_configuration_file();
 
-    update_progress(15);
+        update_progress(15);
 
-    //---------- get Map blocks
-    let fpath = find_file(
-        MAP_BLOCK_FILE_C.as_ptr(),
-        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-        Themed::UseTheme as c_int,
-        Criticality::Critical as c_int,
-    );
-    load_block(fpath, 0, 0, null_mut(), INIT_ONLY as i32); /* init function */
-    ORIG_MAP_BLOCK_SURFACE_POINTER
-        .iter_mut()
-        .enumerate()
-        .zip(MAP_BLOCK_SURFACE_POINTER.iter_mut())
-        .flat_map(|((color_index, orig_color_map), color_map)| {
-            orig_color_map
-                .iter_mut()
-                .enumerate()
-                .map(move |(block_index, orig_surface)| (color_index, block_index, orig_surface))
-                .zip(color_map.iter_mut())
-        })
-        .for_each(|((color_index, block_index, orig_surface), surface)| {
-            free_if_unused(*orig_surface);
-            *orig_surface = load_block(
-                null_mut(),
-                color_index.try_into().unwrap(),
-                block_index.try_into().unwrap(),
-                &mut ORIG_BLOCK_RECT,
-                0,
-            );
-            *surface = *orig_surface;
-        });
-
-    update_progress(20);
-    //---------- get Droid-model  blocks
-    let fpath = find_file(
-        DROID_BLOCK_FILE_C.as_ptr() as *mut c_char,
-        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-        Themed::UseTheme as c_int,
-        Criticality::Critical as c_int,
-    );
-    load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
-    INFLUENCER_SURFACE_POINTER
-        .iter_mut()
-        .enumerate()
-        .for_each(|(index, influencer_surface)| {
-            free_if_unused(*influencer_surface);
-            *influencer_surface = load_block(
-                null_mut(),
-                0,
-                index.try_into().unwrap(),
-                &mut ORIG_BLOCK_RECT,
-                0,
-            );
-
-            /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
-            SDL_SetAlpha(*influencer_surface, 0, 0);
-        });
-
-    ENEMY_SURFACE_POINTER
-        .iter_mut()
-        .enumerate()
-        .for_each(|(index, enemy_surface)| {
-            free_if_unused(*enemy_surface);
-            *enemy_surface = load_block(
-                null_mut(),
-                1,
-                index.try_into().unwrap(),
-                &mut ORIG_BLOCK_RECT,
-                0,
-            );
-
-            /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
-            SDL_SetAlpha(*enemy_surface, 0, 0);
-        });
-
-    update_progress(30);
-    //---------- get Bullet blocks
-    let fpath = find_file(
-        BULLET_BLOCK_FILE_C.as_ptr() as *mut c_char,
-        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-        Themed::UseTheme as c_int,
-        Criticality::Critical as c_int,
-    );
-    load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
-    std::slice::from_raw_parts_mut(BULLETMAP, NUMBER_OF_BULLET_TYPES.try_into().unwrap())
-        .iter_mut()
-        .enumerate()
-        .flat_map(|(bullet_type_index, bullet)| {
-            bullet
-                .surface_pointer
-                .iter_mut()
-                .enumerate()
-                .map(move |(phase_index, surface)| (bullet_type_index, phase_index, surface))
-        })
-        .for_each(|(bullet_type_index, phase_index, surface)| {
-            free_if_unused(*surface);
-            *surface = load_block(
-                null_mut(),
-                bullet_type_index.try_into().unwrap(),
-                phase_index.try_into().unwrap(),
-                &mut ORIG_BLOCK_RECT,
-                0,
-            );
-        });
-
-    update_progress(35);
-
-    //---------- get Blast blocks
-    let fpath = find_file(
-        BLAST_BLOCK_FILE_C.as_ptr() as *mut c_char,
-        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-        Themed::UseTheme as c_int,
-        Criticality::Critical as c_int,
-    );
-    load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
-    BLASTMAP
-        .iter_mut()
-        .enumerate()
-        .flat_map(|(blast_type_index, blast)| {
-            blast
-                .surface_pointer
-                .iter_mut()
-                .enumerate()
-                .map(move |(surface_index, surface)| (blast_type_index, surface_index, surface))
-        })
-        .for_each(|(blast_type_index, surface_index, surface)| {
-            free_if_unused(*surface);
-            *surface = load_block(
-                null_mut(),
-                blast_type_index.try_into().unwrap(),
-                surface_index.try_into().unwrap(),
-                &mut ORIG_BLOCK_RECT,
-                0,
-            );
-        });
-
-    update_progress(45);
-
-    //---------- get Digit blocks
-    let fpath = find_file(
-        DIGIT_BLOCK_FILE_C.as_ptr() as *mut c_char,
-        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-        Themed::UseTheme as c_int,
-        Criticality::Critical as c_int,
-    );
-    load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
-    INFLU_DIGIT_SURFACE_POINTER
-        .iter_mut()
-        .enumerate()
-        .for_each(|(index, surface)| {
-            free_if_unused(*surface);
-            *surface = load_block(
-                null_mut(),
-                0,
-                index.try_into().unwrap(),
-                &mut ORIG_DIGIT_RECT,
-                0,
-            );
-        });
-    ENEMY_DIGIT_SURFACE_POINTER
-        .iter_mut()
-        .enumerate()
-        .for_each(|(index, surface)| {
-            free_if_unused(*surface);
-            *surface = load_block(
-                null_mut(),
-                0,
-                (index + 10).try_into().unwrap(),
-                &mut ORIG_DIGIT_RECT,
-                0,
-            );
-        });
-
-    update_progress(50);
-
-    //---------- get Takeover pics
-    free_if_unused(TO_BLOCKS); /* this happens when we do theme-switching */
-    let fpath = find_file(
-        TO_BLOCK_FILE_C.as_ptr() as *mut c_char,
-        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-        Themed::UseTheme as c_int,
-        Criticality::Critical as c_int,
-    );
-    TO_BLOCKS = load_block(fpath, 0, 0, null_mut(), 0);
-
-    update_progress(60);
-
-    free_if_unused(SHIP_ON_PIC);
-    SHIP_ON_PIC = IMG_Load(find_file(
-        SHIP_ON_PIC_FILE_C.as_ptr() as *mut c_char,
-        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-        Themed::UseTheme as c_int,
-        Criticality::Critical as c_int,
-    ));
-    free_if_unused(SHIP_OFF_PIC);
-    SHIP_OFF_PIC = IMG_Load(find_file(
-        SHIP_OFF_PIC_FILE_C.as_ptr() as *mut c_char,
-        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-        Themed::UseTheme as c_int,
-        Criticality::Critical as c_int,
-    ));
-
-    // the following are not theme-specific and are therefore only loaded once!
-    DO_ONCE.call_once(|| {
-        //  create the tmp block-build storage
-        let tmp = SDL_CreateRGBSurface(
-            0,
-            BLOCK_RECT.w.into(),
-            BLOCK_RECT.h.into(),
-            VID_BPP,
-            0,
-            0,
-            0,
-            0,
-        );
-        BUILD_BLOCK = SDL_DisplayFormatAlpha(tmp);
-        SDL_FreeSurface(tmp);
-
-        // takeover background pics
+        //---------- get Map blocks
         let fpath = find_file(
-            TAKEOVER_BG_PIC_FILE_C.as_ptr() as *mut c_char,
+            MAP_BLOCK_FILE_C.as_ptr(),
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
+            Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
-        TAKEOVER_BG_PIC = load_block(fpath, 0, 0, null_mut(), 0);
-        set_takeover_rects(); // setup takeover rectangles
-
-        // cursor shapes
-        ARROW_CURSOR = init_system_cursor(&ARROW_XPM);
-        CROSSHAIR_CURSOR = init_system_cursor(&CROSSHAIR_XPM);
-        //---------- get Console pictures
-        let fpath = find_file(
-            CONSOLE_PIC_FILE_C.as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
-        );
-        CONSOLE_PIC = load_block(fpath, 0, 0, null_mut(), 0);
-        let fpath = find_file(
-            CONSOLE_BG_PIC1_FILE_C.as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
-        );
-        CONSOLE_BG_PIC1 = load_block(fpath, 0, 0, null_mut(), 0);
-        let fpath = find_file(
-            CONSOLE_BG_PIC2_FILE_C.as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
-        );
-        CONSOLE_BG_PIC2 = load_block(fpath, 0, 0, null_mut(), 0);
-
-        update_progress(80);
-
-        ARROW_UP = IMG_Load(find_file(
-            cstr!("arrow_up.png").as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
-        ));
-        ARROW_DOWN = IMG_Load(find_file(
-            cstr!("arrow_down.png").as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
-        ));
-        ARROW_RIGHT = IMG_Load(find_file(
-            cstr!("arrow_right.png").as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
-        ));
-        ARROW_LEFT = IMG_Load(find_file(
-            cstr!("arrow_left.png").as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
-        ));
-        //---------- get Banner
-        let fpath = find_file(
-            BANNER_BLOCK_FILE_C.as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
-        );
-        BANNER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
-
-        update_progress(90);
-        //---------- get Droid images ----------
-        let droids = std::slice::from_raw_parts(DRUIDMAP, Droid::NumDroids as usize);
-        droids
-            .iter()
-            .zip(PACKED_PORTRAITS.iter_mut())
-            .zip(PORTRAIT_RAW_MEM.iter_mut())
-            .for_each(|((droid, packed_portrait), raw_portrait)| {
-                // first check if we find a file with rotation-frames: first try .jpg
-                libc::strcpy(fname.as_mut_ptr(), droid.druidname.as_ptr());
-                libc::strcat(fname.as_mut_ptr(), cstr!(".jpg").as_ptr());
-                let mut fpath = find_file(
-                    fname.as_mut_ptr(),
-                    GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-                    Themed::NoTheme as c_int,
-                    Criticality::Ignore as c_int,
+        load_block(fpath, 0, 0, null_mut(), INIT_ONLY as i32); /* init function */
+        ORIG_MAP_BLOCK_SURFACE_POINTER
+            .iter_mut()
+            .enumerate()
+            .zip(MAP_BLOCK_SURFACE_POINTER.iter_mut())
+            .flat_map(|((color_index, orig_color_map), color_map)| {
+                orig_color_map
+                    .iter_mut()
+                    .enumerate()
+                    .map(move |(block_index, orig_surface)| {
+                        (color_index, block_index, orig_surface)
+                    })
+                    .zip(color_map.iter_mut())
+            })
+            .for_each(|((color_index, block_index, orig_surface), surface)| {
+                free_if_unused(*orig_surface);
+                *orig_surface = load_block(
+                    null_mut(),
+                    color_index.try_into().unwrap(),
+                    block_index.try_into().unwrap(),
+                    &mut ORIG_BLOCK_RECT,
+                    0,
                 );
-                // then try with .png
-                if fpath.is_null() {
+                *surface = *orig_surface;
+            });
+
+        update_progress(20);
+        //---------- get Droid-model  blocks
+        let fpath = find_file(
+            DROID_BLOCK_FILE_C.as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::UseTheme as c_int,
+            Criticality::Critical as c_int,
+        );
+        load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+        INFLUENCER_SURFACE_POINTER.iter_mut().enumerate().for_each(
+            |(index, influencer_surface)| {
+                free_if_unused(*influencer_surface);
+                *influencer_surface = load_block(
+                    null_mut(),
+                    0,
+                    index.try_into().unwrap(),
+                    &mut ORIG_BLOCK_RECT,
+                    0,
+                );
+
+                /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
+                SDL_SetAlpha(*influencer_surface, 0, 0);
+            },
+        );
+
+        ENEMY_SURFACE_POINTER
+            .iter_mut()
+            .enumerate()
+            .for_each(|(index, enemy_surface)| {
+                free_if_unused(*enemy_surface);
+                *enemy_surface = load_block(
+                    null_mut(),
+                    1,
+                    index.try_into().unwrap(),
+                    &mut ORIG_BLOCK_RECT,
+                    0,
+                );
+
+                /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
+                SDL_SetAlpha(*enemy_surface, 0, 0);
+            });
+
+        update_progress(30);
+        //---------- get Bullet blocks
+        let fpath = find_file(
+            BULLET_BLOCK_FILE_C.as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::UseTheme as c_int,
+            Criticality::Critical as c_int,
+        );
+        load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+        std::slice::from_raw_parts_mut(BULLETMAP, NUMBER_OF_BULLET_TYPES.try_into().unwrap())
+            .iter_mut()
+            .enumerate()
+            .flat_map(|(bullet_type_index, bullet)| {
+                bullet
+                    .surface_pointer
+                    .iter_mut()
+                    .enumerate()
+                    .map(move |(phase_index, surface)| (bullet_type_index, phase_index, surface))
+            })
+            .for_each(|(bullet_type_index, phase_index, surface)| {
+                free_if_unused(*surface);
+                *surface = load_block(
+                    null_mut(),
+                    bullet_type_index.try_into().unwrap(),
+                    phase_index.try_into().unwrap(),
+                    &mut ORIG_BLOCK_RECT,
+                    0,
+                );
+            });
+
+        update_progress(35);
+
+        //---------- get Blast blocks
+        let fpath = find_file(
+            BLAST_BLOCK_FILE_C.as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::UseTheme as c_int,
+            Criticality::Critical as c_int,
+        );
+        load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+        BLASTMAP
+            .iter_mut()
+            .enumerate()
+            .flat_map(|(blast_type_index, blast)| {
+                blast
+                    .surface_pointer
+                    .iter_mut()
+                    .enumerate()
+                    .map(move |(surface_index, surface)| (blast_type_index, surface_index, surface))
+            })
+            .for_each(|(blast_type_index, surface_index, surface)| {
+                free_if_unused(*surface);
+                *surface = load_block(
+                    null_mut(),
+                    blast_type_index.try_into().unwrap(),
+                    surface_index.try_into().unwrap(),
+                    &mut ORIG_BLOCK_RECT,
+                    0,
+                );
+            });
+
+        update_progress(45);
+
+        //---------- get Digit blocks
+        let fpath = find_file(
+            DIGIT_BLOCK_FILE_C.as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::UseTheme as c_int,
+            Criticality::Critical as c_int,
+        );
+        load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+        INFLU_DIGIT_SURFACE_POINTER
+            .iter_mut()
+            .enumerate()
+            .for_each(|(index, surface)| {
+                free_if_unused(*surface);
+                *surface = load_block(
+                    null_mut(),
+                    0,
+                    index.try_into().unwrap(),
+                    &mut ORIG_DIGIT_RECT,
+                    0,
+                );
+            });
+        ENEMY_DIGIT_SURFACE_POINTER
+            .iter_mut()
+            .enumerate()
+            .for_each(|(index, surface)| {
+                free_if_unused(*surface);
+                *surface = load_block(
+                    null_mut(),
+                    0,
+                    (index + 10).try_into().unwrap(),
+                    &mut ORIG_DIGIT_RECT,
+                    0,
+                );
+            });
+
+        update_progress(50);
+
+        //---------- get Takeover pics
+        free_if_unused(TO_BLOCKS); /* this happens when we do theme-switching */
+        let fpath = find_file(
+            TO_BLOCK_FILE_C.as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::UseTheme as c_int,
+            Criticality::Critical as c_int,
+        );
+        TO_BLOCKS = load_block(fpath, 0, 0, null_mut(), 0);
+
+        update_progress(60);
+
+        free_if_unused(SHIP_ON_PIC);
+        SHIP_ON_PIC = IMG_Load(find_file(
+            SHIP_ON_PIC_FILE_C.as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::UseTheme as c_int,
+            Criticality::Critical as c_int,
+        ));
+        free_if_unused(SHIP_OFF_PIC);
+        SHIP_OFF_PIC = IMG_Load(find_file(
+            SHIP_OFF_PIC_FILE_C.as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::UseTheme as c_int,
+            Criticality::Critical as c_int,
+        ));
+
+        // the following are not theme-specific and are therefore only loaded once!
+        DO_ONCE.call_once(|| {
+            //  create the tmp block-build storage
+            let tmp = SDL_CreateRGBSurface(
+                0,
+                BLOCK_RECT.w.into(),
+                BLOCK_RECT.h.into(),
+                VID_BPP,
+                0,
+                0,
+                0,
+                0,
+            );
+            BUILD_BLOCK = SDL_DisplayFormatAlpha(tmp);
+            SDL_FreeSurface(tmp);
+
+            // takeover background pics
+            let fpath = find_file(
+                TAKEOVER_BG_PIC_FILE_C.as_ptr() as *mut c_char,
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            );
+            TAKEOVER_BG_PIC = load_block(fpath, 0, 0, null_mut(), 0);
+            set_takeover_rects(); // setup takeover rectangles
+
+            // cursor shapes
+            ARROW_CURSOR = init_system_cursor(&ARROW_XPM);
+            CROSSHAIR_CURSOR = init_system_cursor(&CROSSHAIR_XPM);
+            //---------- get Console pictures
+            let fpath = find_file(
+                CONSOLE_PIC_FILE_C.as_ptr() as *mut c_char,
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            );
+            CONSOLE_PIC = load_block(fpath, 0, 0, null_mut(), 0);
+            let fpath = find_file(
+                CONSOLE_BG_PIC1_FILE_C.as_ptr() as *mut c_char,
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            );
+            CONSOLE_BG_PIC1 = load_block(fpath, 0, 0, null_mut(), 0);
+            let fpath = find_file(
+                CONSOLE_BG_PIC2_FILE_C.as_ptr() as *mut c_char,
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            );
+            CONSOLE_BG_PIC2 = load_block(fpath, 0, 0, null_mut(), 0);
+
+            update_progress(80);
+
+            ARROW_UP = IMG_Load(find_file(
+                cstr!("arrow_up.png").as_ptr() as *mut c_char,
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            ));
+            ARROW_DOWN = IMG_Load(find_file(
+                cstr!("arrow_down.png").as_ptr() as *mut c_char,
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            ));
+            ARROW_RIGHT = IMG_Load(find_file(
+                cstr!("arrow_right.png").as_ptr() as *mut c_char,
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            ));
+            ARROW_LEFT = IMG_Load(find_file(
+                cstr!("arrow_left.png").as_ptr() as *mut c_char,
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            ));
+            //---------- get Banner
+            let fpath = find_file(
+                BANNER_BLOCK_FILE_C.as_ptr() as *mut c_char,
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            );
+            BANNER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
+
+            update_progress(90);
+            //---------- get Droid images ----------
+            let droids = std::slice::from_raw_parts(DRUIDMAP, Droid::NumDroids as usize);
+            droids
+                .iter()
+                .zip(PACKED_PORTRAITS.iter_mut())
+                .zip(PORTRAIT_RAW_MEM.iter_mut())
+                .for_each(|((droid, packed_portrait), raw_portrait)| {
+                    // first check if we find a file with rotation-frames: first try .jpg
                     libc::strcpy(fname.as_mut_ptr(), droid.druidname.as_ptr());
-                    libc::strcat(fname.as_mut_ptr(), cstr!(".png").as_ptr());
-                    fpath = find_file(
+                    libc::strcat(fname.as_mut_ptr(), cstr!(".jpg").as_ptr());
+                    let mut fpath = find_file(
                         fname.as_mut_ptr(),
                         GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                         Themed::NoTheme as c_int,
-                        Criticality::Critical as c_int,
+                        Criticality::Ignore as c_int,
                     );
-                }
+                    // then try with .png
+                    if fpath.is_null() {
+                        libc::strcpy(fname.as_mut_ptr(), droid.druidname.as_ptr());
+                        libc::strcat(fname.as_mut_ptr(), cstr!(".png").as_ptr());
+                        fpath = find_file(
+                            fname.as_mut_ptr(),
+                            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                            Themed::NoTheme as c_int,
+                            Criticality::Critical as c_int,
+                        );
+                    }
 
-                *packed_portrait = load_raw_pic(fpath, raw_portrait);
-            });
+                    *packed_portrait = load_raw_pic(fpath, raw_portrait);
+                });
 
-        update_progress(95);
-        // we need the 999.png in any case for transparency!
-        libc::strcpy(
-            fname.as_mut_ptr(),
-            droids[Droid::Droid999 as usize].druidname.as_ptr(),
-        );
-        libc::strcat(fname.as_mut_ptr(), cstr!(".png").as_ptr());
-        let fpath = find_file(
-            fname.as_mut_ptr(),
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
-        );
-        PIC999 = load_block(fpath, 0, 0, null_mut(), 0);
+            update_progress(95);
+            // we need the 999.png in any case for transparency!
+            libc::strcpy(
+                fname.as_mut_ptr(),
+                droids[Droid::Droid999 as usize].druidname.as_ptr(),
+            );
+            libc::strcat(fname.as_mut_ptr(), cstr!(".png").as_ptr());
+            let fpath = find_file(
+                fname.as_mut_ptr(),
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            );
+            PIC999 = load_block(fpath, 0, 0, null_mut(), 0);
 
-        // get the Ashes pics
-        libc::strcpy(fname.as_mut_ptr(), cstr!("Ashes.png").as_ptr());
-        let fpath = find_file(
-            fname.as_mut_ptr(),
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::WarnOnly as c_int,
-        );
-        if fpath.is_null() {
-            warn!("deactivated display of droid-decals");
-            GAME_CONFIG.show_decals = false.into();
-        } else {
-            load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
-            DECAL_PICS[0] = load_block(null_mut(), 0, 0, &mut ORIG_BLOCK_RECT, 0);
-            DECAL_PICS[1] = load_block(null_mut(), 0, 1, &mut ORIG_BLOCK_RECT, 0);
-        }
-    });
+            // get the Ashes pics
+            libc::strcpy(fname.as_mut_ptr(), cstr!("Ashes.png").as_ptr());
+            let fpath = find_file(
+                fname.as_mut_ptr(),
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::WarnOnly as c_int,
+            );
+            if fpath.is_null() {
+                warn!("deactivated display of droid-decals");
+                GAME_CONFIG.show_decals = false.into();
+            } else {
+                load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+                DECAL_PICS[0] = load_block(null_mut(), 0, 0, &mut ORIG_BLOCK_RECT, 0);
+                DECAL_PICS[1] = load_block(null_mut(), 0, 1, &mut ORIG_BLOCK_RECT, 0);
+            }
+        });
 
-    update_progress(96);
-    // if scale != 1 then we need to rescale everything now
-    scale_graphics(GAME_CONFIG.scale);
+        update_progress(96);
+        // if scale != 1 then we need to rescale everything now
+        self.scale_graphics(GAME_CONFIG.scale);
 
-    update_progress(98);
+        update_progress(98);
 
-    // make sure bullet-surfaces get re-generated!
-    ALL_BULLETS
-        .iter_mut()
-        .take(MAXBULLETS)
-        .for_each(|bullet| bullet.surfaces_were_generated = false.into());
+        // make sure bullet-surfaces get re-generated!
+        ALL_BULLETS
+            .iter_mut()
+            .take(MAXBULLETS)
+            .for_each(|bullet| bullet.surfaces_were_generated = false.into());
 
-    set_current_font(oldfont);
+        self.b_font.current_font = oldfont;
 
-    true.into()
+        true.into()
+    }
 }
 
 const CROSSHAIR_XPM: [&[u8]; 37] = [

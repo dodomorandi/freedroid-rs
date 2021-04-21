@@ -6,7 +6,6 @@ use crate::{
         right_pressed, shift_pressed, up_pressed, Cmds, MenuAction, PointerStates,
     },
     graphics::{take_screenshot, toggle_fullscreen},
-    menu::{cheatmenu, handle_quit_game, show_main_menu},
     misc::terminate,
     structs::Point,
     Data,
@@ -477,7 +476,7 @@ pub unsafe fn no_direction_pressed() -> bool {
 impl Data {
     pub unsafe fn react_to_special_keys(&mut self) {
         if cmd_is_active_r(Cmds::Quit) {
-            handle_quit_game(MenuAction::CLICK);
+            self.handle_quit_game(MenuAction::CLICK);
         }
 
         if cmd_is_active_r(Cmds::Pause) {
@@ -493,12 +492,12 @@ impl Data {
         }
 
         if cmd_is_active_r(Cmds::Menu) {
-            show_main_menu();
+            self.show_main_menu();
         }
 
         // this stuff remains hardcoded to keys
         if key_is_pressed_r(b'c'.into()) && alt_pressed() && ctrl_pressed() && shift_pressed() {
-            cheatmenu();
+            self.cheatmenu();
         }
     }
 }

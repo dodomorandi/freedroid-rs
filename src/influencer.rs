@@ -5,9 +5,8 @@ use crate::{
         MAXBULLETS, PUSHSPEED, WAIT_COLLISION,
     },
     global::{COLLISION_LOSE_ENERGY_CALIBRATOR, DROID_RADIUS},
-    init::thou_art_defeated,
     input::{cmd_is_active, no_direction_pressed, AXIS_IS_ACTIVE, INPUT_AXIS},
-    map::{act_special_field, druid_passable, get_map_brick},
+    map::{druid_passable, get_map_brick},
     misc::{frame_time, my_random, terminate},
     ship::level_empty,
     sound::{
@@ -15,7 +14,6 @@ use crate::{
         fire_bullet_sound, play_sound, refresh_sound,
     },
     structs::{Finepoint, Gps},
-    takeover::takeover,
     text::enemy_influ_collision_text,
     vars::{BULLETMAP, DRUIDMAP},
     Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, GAME_CONFIG, INVINCIBLE_MODE,
@@ -88,77 +86,79 @@ pub unsafe fn refresh_influencer() {
     }
 }
 
-pub unsafe fn check_influence_enemy_collision() {
-    for (i, enemy) in ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()]
-        .iter_mut()
-        .enumerate()
-    {
-        /* ignore enemy that are not on this level or dead */
-        if enemy.levelnum != (*CUR_LEVEL).levelnum {
-            continue;
-        }
-        if enemy.status == Status::Out as c_int || enemy.status == Status::Terminated as c_int {
-            continue;
-        }
-
-        let xdist = ME.pos.x - enemy.pos.x;
-        let ydist = ME.pos.y - enemy.pos.y;
-
-        if xdist.trunc().abs() > 1. {
-            continue;
-        }
-        if ydist.trunc().abs() > 1. {
-            continue;
-        }
-
-        let dist2 = ((xdist * xdist) + (ydist * ydist)).sqrt();
-        if dist2 > 2. * DROID_RADIUS {
-            continue;
-        }
-
-        if ME.status != Status::Transfermode as c_int {
-            ME.speed.x = -ME.speed.x;
-            ME.speed.y = -ME.speed.y;
-
-            if ME.speed.x != 0. {
-                ME.speed.x += COLLISION_PUSHSPEED * (ME.speed.x / ME.speed.x.abs());
-            } else if xdist != 0. {
-                ME.speed.x = COLLISION_PUSHSPEED * (xdist / xdist.abs());
+impl Data {
+    pub unsafe fn check_influence_enemy_collision(&mut self) {
+        for (i, enemy) in ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()]
+            .iter_mut()
+            .enumerate()
+        {
+            /* ignore enemy that are not on this level or dead */
+            if enemy.levelnum != (*CUR_LEVEL).levelnum {
+                continue;
             }
-            if ME.speed.y != 0. {
-                ME.speed.y += COLLISION_PUSHSPEED * (ME.speed.y / ME.speed.y.abs());
-            } else if ydist != 0. {
-                ME.speed.y = COLLISION_PUSHSPEED * (ydist / ydist.abs());
+            if enemy.status == Status::Out as c_int || enemy.status == Status::Terminated as c_int {
+                continue;
             }
 
-            // move the influencer a little bit out of the enemy AND the enemy a little bit out of the influ
-            let max_step_size = if frame_time() < MAXIMAL_STEP_SIZE {
-                frame_time()
+            let xdist = ME.pos.x - enemy.pos.x;
+            let ydist = ME.pos.y - enemy.pos.y;
+
+            if xdist.trunc().abs() > 1. {
+                continue;
+            }
+            if ydist.trunc().abs() > 1. {
+                continue;
+            }
+
+            let dist2 = ((xdist * xdist) + (ydist * ydist)).sqrt();
+            if dist2 > 2. * DROID_RADIUS {
+                continue;
+            }
+
+            if ME.status != Status::Transfermode as c_int {
+                ME.speed.x = -ME.speed.x;
+                ME.speed.y = -ME.speed.y;
+
+                if ME.speed.x != 0. {
+                    ME.speed.x += COLLISION_PUSHSPEED * (ME.speed.x / ME.speed.x.abs());
+                } else if xdist != 0. {
+                    ME.speed.x = COLLISION_PUSHSPEED * (xdist / xdist.abs());
+                }
+                if ME.speed.y != 0. {
+                    ME.speed.y += COLLISION_PUSHSPEED * (ME.speed.y / ME.speed.y.abs());
+                } else if ydist != 0. {
+                    ME.speed.y = COLLISION_PUSHSPEED * (ydist / ydist.abs());
+                }
+
+                // move the influencer a little bit out of the enemy AND the enemy a little bit out of the influ
+                let max_step_size = if frame_time() < MAXIMAL_STEP_SIZE {
+                    frame_time()
+                } else {
+                    MAXIMAL_STEP_SIZE
+                };
+                ME.pos.x += max_step_size.copysign(ME.pos.x - enemy.pos.x);
+                ME.pos.y += max_step_size.copysign(ME.pos.y - enemy.pos.y);
+                enemy.pos.x -= frame_time().copysign(ME.pos.x - enemy.pos.x);
+                enemy.pos.y -= frame_time().copysign(ME.pos.y - enemy.pos.y);
+
+                // there might be walls close too, so lets check again for collisions with them
+                check_influence_wall_collisions();
+
+                // shortly stop this enemy, then send him back to previous waypoint
+                if enemy.warten == 0. {
+                    enemy.warten = WAIT_COLLISION as f32;
+                    std::mem::swap(&mut enemy.nextwaypoint, &mut enemy.lastwaypoint);
+
+                    // Add some funny text!
+                    enemy_influ_collision_text(i.try_into().unwrap());
+                }
+                influ_enemy_collision_lose_energy(i.try_into().unwrap()); /* someone loses energy ! */
             } else {
-                MAXIMAL_STEP_SIZE
-            };
-            ME.pos.x += max_step_size.copysign(ME.pos.x - enemy.pos.x);
-            ME.pos.y += max_step_size.copysign(ME.pos.y - enemy.pos.y);
-            enemy.pos.x -= frame_time().copysign(ME.pos.x - enemy.pos.x);
-            enemy.pos.y -= frame_time().copysign(ME.pos.y - enemy.pos.y);
+                self.takeover(i.try_into().unwrap());
 
-            // there might be walls close too, so lets check again for collisions with them
-            check_influence_wall_collisions();
-
-            // shortly stop this enemy, then send him back to previous waypoint
-            if enemy.warten == 0. {
-                enemy.warten = WAIT_COLLISION as f32;
-                std::mem::swap(&mut enemy.nextwaypoint, &mut enemy.lastwaypoint);
-
-                // Add some funny text!
-                enemy_influ_collision_text(i.try_into().unwrap());
-            }
-            influ_enemy_collision_lose_energy(i.try_into().unwrap()); /* someone loses energy ! */
-        } else {
-            takeover(i.try_into().unwrap());
-
-            if level_empty() != 0 {
-                (*CUR_LEVEL).empty = true.into();
+                if level_empty() != 0 {
+                    (*CUR_LEVEL).empty = true.into();
+                }
             }
         }
     }
@@ -369,137 +369,139 @@ pub unsafe fn animate_influence() {
     }
 }
 
-/// This function moves the influencer, adjusts his speed according to
-/// keys pressed and also adjusts his status and current "phase" of his rotation.
-pub(crate) unsafe fn move_influence(data: &mut Data) {
-    static mut TRANSFER_COUNTER: c_float = 0.;
+impl Data {
+    /// This function moves the influencer, adjusts his speed according to
+    /// keys pressed and also adjusts his status and current "phase" of his rotation.
+    pub(crate) unsafe fn move_influence(&mut self) {
+        static mut TRANSFER_COUNTER: c_float = 0.;
 
-    let accel = (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).accel * frame_time();
+        let accel = (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).accel * frame_time();
 
-    // We store the influencers position for the history record and so that others
-    // can follow his trail.
+        // We store the influencers position for the history record and so that others
+        // can follow his trail.
 
-    CURRENT_ZERO_RING_INDEX += 1;
-    CURRENT_ZERO_RING_INDEX %= c_int::try_from(MAX_INFLU_POSITION_HISTORY).unwrap();
-    ME.position_history_ring_buffer[usize::try_from(CURRENT_ZERO_RING_INDEX).unwrap()] = Gps {
-        x: ME.pos.x,
-        y: ME.pos.y,
-        z: (*CUR_LEVEL).levelnum,
-    };
+        CURRENT_ZERO_RING_INDEX += 1;
+        CURRENT_ZERO_RING_INDEX %= c_int::try_from(MAX_INFLU_POSITION_HISTORY).unwrap();
+        ME.position_history_ring_buffer[usize::try_from(CURRENT_ZERO_RING_INDEX).unwrap()] = Gps {
+            x: ME.pos.x,
+            y: ME.pos.y,
+            z: (*CUR_LEVEL).levelnum,
+        };
 
-    permanent_lose_energy(); /* influ permanently loses energy */
+        permanent_lose_energy(); /* influ permanently loses energy */
 
-    // check, if the influencer is still ok
-    if ME.energy <= 0. {
-        if ME.ty != Droid::Droid001 as c_int {
-            ME.ty = Droid::Droid001 as c_int;
-            ME.energy = BLINKENERGY;
-            ME.health = BLINKENERGY;
-            start_blast(ME.pos.x, ME.pos.y, Explosion::Rejectblast as c_int);
-        } else {
-            ME.status = Status::Terminated as c_int;
-            thou_art_defeated(data);
-            return;
+        // check, if the influencer is still ok
+        if ME.energy <= 0. {
+            if ME.ty != Droid::Droid001 as c_int {
+                ME.ty = Droid::Droid001 as c_int;
+                ME.energy = BLINKENERGY;
+                ME.health = BLINKENERGY;
+                start_blast(ME.pos.x, ME.pos.y, Explosion::Rejectblast as c_int);
+            } else {
+                ME.status = Status::Terminated as c_int;
+                self.thou_art_defeated();
+                return;
+            }
         }
-    }
 
-    /* Time passed before entering Transfermode ?? */
-    if TRANSFER_COUNTER >= WAIT_TRANSFERMODE {
-        ME.status = Status::Transfermode as c_int;
-        TRANSFER_COUNTER = 0.;
-    }
+        /* Time passed before entering Transfermode ?? */
+        if TRANSFER_COUNTER >= WAIT_TRANSFERMODE {
+            ME.status = Status::Transfermode as c_int;
+            TRANSFER_COUNTER = 0.;
+        }
 
-    if up_pressed() {
-        ME.speed.y -= accel;
-    }
-    if down_pressed() {
-        ME.speed.y += accel;
-    }
-    if left_pressed() {
-        ME.speed.x -= accel;
-    }
-    if right_pressed() {
-        ME.speed.x += accel;
-    }
+        if up_pressed() {
+            ME.speed.y -= accel;
+        }
+        if down_pressed() {
+            ME.speed.y += accel;
+        }
+        if left_pressed() {
+            ME.speed.x -= accel;
+        }
+        if right_pressed() {
+            ME.speed.x += accel;
+        }
 
-    //  We only need this check if we want held fire to cause activate
-    if !any_cmd_active() {
-        // Used to be !SpacePressed, which causes any fire button != SPACE behave differently than space
-        ME.status = Status::Mobile as c_int;
+        //  We only need this check if we want held fire to cause activate
+        if !any_cmd_active() {
+            // Used to be !SpacePressed, which causes any fire button != SPACE behave differently than space
+            ME.status = Status::Mobile as c_int;
+        }
+
+        if (TRANSFER_COUNTER - 1.).abs() <= f32::EPSILON {
+            ME.status = Status::Transfermode as c_int;
+            TRANSFER_COUNTER = 0.;
+        }
+
+        if cmd_is_active(Cmds::Activate) {
+            // activate mode for Konsole and Lifts
+            ME.status = Status::Activate as c_int;
+        }
+
+        if GAME_CONFIG.fire_hold_takeover != 0
+            && fire_pressed()
+            && no_direction_pressed()
+            && ME.status != Status::Weapon as c_int
+            && ME.status != Status::Transfermode as c_int
+        {
+            // Proposed FireActivatePressed here...
+            TRANSFER_COUNTER += frame_time(); // Or make it an option!
+        }
+
+        if fire_pressed() && !no_direction_pressed() && ME.status != Status::Transfermode as c_int {
+            ME.status = Status::Weapon as c_int;
+        }
+
+        if fire_pressed()
+            && !no_direction_pressed()
+            && ME.status == Status::Weapon as c_int
+            && ME.firewait == 0.
+        {
+            fire_bullet();
+        }
+
+        if ME.status != Status::Weapon as c_int && cmd_is_active(Cmds::Takeover) {
+            ME.status = Status::Transfermode as c_int;
+        }
+
+        influence_friction_with_air(); // The influ should lose some of his speed when no key is pressed
+
+        adjust_speed(); // If the influ is faster than allowed for his type, slow him
+
+        // Now we move influence according to current speed.  But there has been a problem
+        // reported from people, that the influencer would (*very* rarely) jump throught walls
+        // and even out of the ship.  This has *never* occured on my fast machine.  Therefore
+        // I assume that the problem is related to sometimes very low framerates on these machines.
+        // So, we do a sanity check not to make steps too big.
+        //
+        // So what do we do?  We allow a maximum step of exactly that, what the 302 (with a speed
+        // of 7) could get when the framerate is as low as 20 FPS.  This should be sufficient to
+        // prevent the influencer from *ever* leaving the ship.  I hope this really does work.
+        // The definition of that speed is made in MAXIMAL_STEP_SIZE at the top of this file.
+        //
+        // And on machines with FPS << 20, it will certainly alter the game behaviour, so people
+        // should really start using a pentium or better machine.
+        //
+        // NOTE:  PLEASE LEAVE THE .0 in the code or gcc will round it down to 0 like an integer.
+        //
+        let mut planned_step_x = ME.speed.x * frame_time();
+        let mut planned_step_y = ME.speed.y * frame_time();
+        if planned_step_x.abs() >= MAXIMAL_STEP_SIZE {
+            planned_step_x = f32::copysign(MAXIMAL_STEP_SIZE, planned_step_x);
+        }
+        if planned_step_y.abs() >= MAXIMAL_STEP_SIZE {
+            planned_step_y = f32::copysign(MAXIMAL_STEP_SIZE, planned_step_y);
+        }
+        ME.pos.x += planned_step_x;
+        ME.pos.y += planned_step_y;
+
+        //--------------------
+        // Check it the influ is on a special field like a lift, a console or a refresh
+        self.act_special_field(ME.pos.x, ME.pos.y);
+
+        animate_influence(); // move the "phase" of influencers rotation
     }
-
-    if (TRANSFER_COUNTER - 1.).abs() <= f32::EPSILON {
-        ME.status = Status::Transfermode as c_int;
-        TRANSFER_COUNTER = 0.;
-    }
-
-    if cmd_is_active(Cmds::Activate) {
-        // activate mode for Konsole and Lifts
-        ME.status = Status::Activate as c_int;
-    }
-
-    if GAME_CONFIG.fire_hold_takeover != 0
-        && fire_pressed()
-        && no_direction_pressed()
-        && ME.status != Status::Weapon as c_int
-        && ME.status != Status::Transfermode as c_int
-    {
-        // Proposed FireActivatePressed here...
-        TRANSFER_COUNTER += frame_time(); // Or make it an option!
-    }
-
-    if fire_pressed() && !no_direction_pressed() && ME.status != Status::Transfermode as c_int {
-        ME.status = Status::Weapon as c_int;
-    }
-
-    if fire_pressed()
-        && !no_direction_pressed()
-        && ME.status == Status::Weapon as c_int
-        && ME.firewait == 0.
-    {
-        fire_bullet();
-    }
-
-    if ME.status != Status::Weapon as c_int && cmd_is_active(Cmds::Takeover) {
-        ME.status = Status::Transfermode as c_int;
-    }
-
-    influence_friction_with_air(); // The influ should lose some of his speed when no key is pressed
-
-    adjust_speed(); // If the influ is faster than allowed for his type, slow him
-
-    // Now we move influence according to current speed.  But there has been a problem
-    // reported from people, that the influencer would (*very* rarely) jump throught walls
-    // and even out of the ship.  This has *never* occured on my fast machine.  Therefore
-    // I assume that the problem is related to sometimes very low framerates on these machines.
-    // So, we do a sanity check not to make steps too big.
-    //
-    // So what do we do?  We allow a maximum step of exactly that, what the 302 (with a speed
-    // of 7) could get when the framerate is as low as 20 FPS.  This should be sufficient to
-    // prevent the influencer from *ever* leaving the ship.  I hope this really does work.
-    // The definition of that speed is made in MAXIMAL_STEP_SIZE at the top of this file.
-    //
-    // And on machines with FPS << 20, it will certainly alter the game behaviour, so people
-    // should really start using a pentium or better machine.
-    //
-    // NOTE:  PLEASE LEAVE THE .0 in the code or gcc will round it down to 0 like an integer.
-    //
-    let mut planned_step_x = ME.speed.x * frame_time();
-    let mut planned_step_y = ME.speed.y * frame_time();
-    if planned_step_x.abs() >= MAXIMAL_STEP_SIZE {
-        planned_step_x = f32::copysign(MAXIMAL_STEP_SIZE, planned_step_x);
-    }
-    if planned_step_y.abs() >= MAXIMAL_STEP_SIZE {
-        planned_step_y = f32::copysign(MAXIMAL_STEP_SIZE, planned_step_y);
-    }
-    ME.pos.x += planned_step_x;
-    ME.pos.y += planned_step_y;
-
-    //--------------------
-    // Check it the influ is on a special field like a lift, a console or a refresh
-    act_special_field(ME.pos.x, ME.pos.y);
-
-    animate_influence(); // move the "phase" of influencers rotation
 }
 
 pub unsafe fn permanent_lose_energy() {

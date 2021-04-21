@@ -31,6 +31,7 @@ mod text;
 mod vars;
 mod view;
 
+use b_font::BFont;
 use bullet::{check_bullet_collisions, explode_blasts, move_bullets};
 use defs::{
     fire_pressed_r, scale_rect, AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Status,
@@ -40,20 +41,17 @@ use defs::{
 use enemy::move_enemys;
 use global::{GAME_CONFIG, LEVEL_DOORS_NOT_MOVED_TIME, SKIP_A_FEW_FRAMES};
 use graphics::{clear_graph_mem, CROSSHAIR_CURSOR, NE_SCREEN};
-use influencer::{
-    check_influence_enemy_collision, check_influence_wall_collisions, move_influence,
-};
-use init::{check_if_mission_is_complete, init_freedroid, init_new_mission};
+use influencer::check_influence_wall_collisions;
 use input::{init_keystr, wait_for_all_keys_released, SDL_Delay, JOY_SENSITIVITY, SHOW_CURSOR};
 use map::{move_level_doors, ColorNames, Map};
 use misc::{
     compute_fps_for_this_frame, frame_time, set_time_factor, start_taking_time_for_fps_calculation,
 };
-use ship::{alert_level_warning, show_droid_info, show_droid_portrait};
+use ship::{alert_level_warning, show_droid_portrait};
 use sound::switch_background_music_to;
 use structs::{Blast, Bullet, Enemy, Finepoint, Level, Lift, Ship};
 use vars::{CONS_DROID_RECT, ME, SHIP_EMPTY_COUNTER};
-use view::{assemble_combat_picture, display_banner};
+use view::display_banner;
 
 use sdl::{
     mouse::ll::{SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE},
@@ -152,6 +150,7 @@ static mut F_P_SOVER1: f32 = 0.;
 struct Data {
     game_over: bool,
     map: Map,
+    b_font: BFont,
 }
 
 impl Default for Data {
@@ -159,6 +158,7 @@ impl Default for Data {
         Self {
             game_over: false,
             map: Default::default(),
+            b_font: Default::default(),
         }
     }
 }
@@ -173,7 +173,7 @@ fn main() {
 
         init_keystr();
 
-        init_freedroid(); // Initialisation of global variables and arrays
+        data.init_freedroid(); // Initialisation of global variables and arrays
 
         SDL_ShowCursor(SDL_DISABLE);
 
@@ -184,7 +184,7 @@ fn main() {
         }
 
         loop {
-            init_new_mission(STANDARD_MISSION_C.as_ptr() as *mut c_char);
+            data.init_new_mission(STANDARD_MISSION_C.as_ptr() as *mut c_char);
 
             // scale Level-pic rects
             let scale = GAME_CONFIG.scale;
@@ -208,7 +208,7 @@ fn main() {
             // release all keys
             wait_for_all_keys_released();
 
-            show_droid_info(ME.ty, -3, 0); // show unit-intro page
+            data.show_droid_info(ME.ty, -3, 0); // show unit-intro page
             show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, RESET);
             let now = SDL_GetTicks();
             while SDL_GetTicks() - now < SHOW_WAIT && !fire_pressed_r() {
@@ -254,7 +254,9 @@ fn main() {
 
                 move_bullets(); // leave this in front of graphics output: time_in_frames should start with 1
 
-                assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+                data.assemble_combat_picture(
+                    AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into(),
+                );
 
                 for bullet in 0..i32::try_from(MAXBULLETS).unwrap() {
                     check_bullet_collisions(bullet);
@@ -262,13 +264,13 @@ fn main() {
 
                 // change Influ-speed depending on keys pressed, but
                 // also change his status and position and "phase" of rotation
-                move_influence(&mut data);
+                data.move_influence();
 
                 move_enemys(); // move all the enemys:
                                // also do attacks on influ and also move "phase" or their rotation
 
                 check_influence_wall_collisions(); /* Testen ob der Weg nicht durch Mauern verstellt ist */
-                check_influence_enemy_collision();
+                data.check_influence_enemy_collision();
 
                 // control speed of time-flow: dark-levels=emptyLevelSpeedup, normal-levels=1.0
                 if (*CUR_LEVEL).empty == 0 {
@@ -282,7 +284,7 @@ fn main() {
                     switch_background_music_to(BYCOLOR.as_ptr()); // start new background music
                 }
 
-                check_if_mission_is_complete(&mut data);
+                data.check_if_mission_is_complete();
 
                 if GAME_CONFIG.hog_cpu == 0 {
                     // don't use up 100% CPU unless requested

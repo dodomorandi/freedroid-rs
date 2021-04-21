@@ -1,5 +1,5 @@
 use crate::{
-    b_font::{char_width, font_height, get_current_font, put_char, put_string},
+    b_font::{char_width, font_height},
     defs::{
         self, down_pressed, fire_pressed_r, up_pressed, Cmds, PointerStates, SHOW_WAIT,
         TEXT_STRETCH,
@@ -12,7 +12,7 @@ use crate::{
     },
     misc::{my_random, terminate},
     vars::{ME, SCREEN_RECT},
-    ALL_ENEMYS,
+    Data, ALL_ENEMYS,
 };
 
 #[cfg(feature = "arcade-input")]
@@ -67,145 +67,147 @@ static mut MY_CURSOR_X: c_int = 0;
 static mut MY_CURSOR_Y: c_int = 0;
 static mut TEXT_BUFFER: [u8; 10000] = [0; 10000];
 
-/// Reads a string of "MaxLen" from User-input, and echos it
-/// either to stdout or using graphics-text, depending on the
-/// parameter "echo":
-/// * echo=0    no echo
-/// * echo=1    print using printf
-/// * echo=2    print using graphics-text
-///
-/// values of echo > 2 are ignored and treated like echo=0
-pub unsafe fn get_string(max_len: c_int, echo: c_int) -> *mut c_char {
-    let max_len: usize = max_len.try_into().unwrap();
+impl Data {
+    /// Reads a string of "MaxLen" from User-input, and echos it
+    /// either to stdout or using graphics-text, depending on the
+    /// parameter "echo":
+    /// * echo=0    no echo
+    /// * echo=1    print using printf
+    /// * echo=2    print using graphics-text
+    ///
+    /// values of echo > 2 are ignored and treated like echo=0
+    pub unsafe fn get_string(&self, max_len: c_int, echo: c_int) -> *mut c_char {
+        let max_len: usize = max_len.try_into().unwrap();
 
-    if echo == 1 {
-        error!("GetString(): sorry, echo=1 currently not implemented!\n");
-        return null_mut();
-    }
+        if echo == 1 {
+            error!("GetString(): sorry, echo=1 currently not implemented!\n");
+            return null_mut();
+        }
 
-    let x0 = MY_CURSOR_X;
-    let y0 = MY_CURSOR_Y;
-    let height = font_height(&*get_current_font());
+        let x0 = MY_CURSOR_X;
+        let y0 = MY_CURSOR_Y;
+        let height = font_height(&*self.b_font.current_font);
 
-    let store = SDL_CreateRGBSurface(0, SCREEN_RECT.w.into(), height, VID_BPP, 0, 0, 0, 0);
-    let mut store_rect = Rect::new(
-        x0.try_into().unwrap(),
-        y0.try_into().unwrap(),
-        SCREEN_RECT.w,
-        height.try_into().unwrap(),
-    );
-    SDL_UpperBlit(NE_SCREEN, &mut store_rect, store, null_mut());
-
-    #[cfg(feature = "arcade-input")]
-    let blink_time = 200; // For adjusting fast <->slow blink; in ms
-    #[cfg(feature = "arcade-input")]
-    static mut LAST_FRAME_TIME: u32 = 0; //  = SDL_GetTicks();
-    #[cfg(feature = "arcade-input")]
-    let mut inputchar: c_int = 17; // initial char = A
-    #[cfg(feature = "arcade-input")]
-    let empty_char = b' ' as c_char; //for "empty" input line / backspace etc...
-
-    #[cfg(not(feature = "arcade-input"))]
-    let empty_char = b'.' as c_char; //for "empty" input linue / backspace etc...
-
-    let mut input = vec![empty_char; max_len + 5].into_boxed_slice();
-    input[max_len] = 0;
-
-    let mut finished = false;
-    let mut curpos = 0;
-
-    while !finished {
-        let mut tmp_rect = store_rect;
-        SDL_UpperBlit(store, null_mut(), NE_SCREEN, &mut tmp_rect);
-        put_string(NE_SCREEN, x0, y0, CStr::from_ptr(input.as_ptr()).to_bytes());
-        SDL_Flip(NE_SCREEN);
+        let store = SDL_CreateRGBSurface(0, SCREEN_RECT.w.into(), height, VID_BPP, 0, 0, 0, 0);
+        let mut store_rect = Rect::new(
+            x0.try_into().unwrap(),
+            y0.try_into().unwrap(),
+            SCREEN_RECT.w,
+            height.try_into().unwrap(),
+        );
+        SDL_UpperBlit(NE_SCREEN, &mut store_rect, store, null_mut());
 
         #[cfg(feature = "arcade-input")]
-        {
-            if inputchar < 0 {
-                inputchar += ARCADE_INPUT_CHARS.len() as i32;
-            }
-            if inputchar >= ARCADE_INPUT_CHARS.len() as i32 {
-                inputchar -= ARCADE_INPUT_CHARS.len() as i32;
-            }
-            let key = ARCADE_INPUT_CHARS[usize::try_from(inputchar).unwrap()];
+        let blink_time = 200; // For adjusting fast <->slow blink; in ms
+        #[cfg(feature = "arcade-input")]
+        static mut LAST_FRAME_TIME: u32 = 0; //  = SDL_GetTicks();
+        #[cfg(feature = "arcade-input")]
+        let mut inputchar: c_int = 17; // initial char = A
+        #[cfg(feature = "arcade-input")]
+        let empty_char = b' ' as c_char; //for "empty" input line / backspace etc...
 
-            let frame_duration = SDL_GetTicks() - LAST_FRAME_TIME;
-            if frame_duration > blink_time / 2 {
-                input[curpos] = key.try_into().unwrap(); // We want to show the currently chosen character
-                if frame_duration > blink_time {
-                    LAST_FRAME_TIME = SDL_GetTicks();
-                } else {
-                    input[curpos] = empty_char; // Hmm., how to get character widht? If using '.', or any fill character, we'd need to know
+        #[cfg(not(feature = "arcade-input"))]
+        let empty_char = b'.' as c_char; //for "empty" input linue / backspace etc...
+
+        let mut input = vec![empty_char; max_len + 5].into_boxed_slice();
+        input[max_len] = 0;
+
+        let mut finished = false;
+        let mut curpos = 0;
+
+        while !finished {
+            let mut tmp_rect = store_rect;
+            SDL_UpperBlit(store, null_mut(), NE_SCREEN, &mut tmp_rect);
+            self.put_string(NE_SCREEN, x0, y0, CStr::from_ptr(input.as_ptr()).to_bytes());
+            SDL_Flip(NE_SCREEN);
+
+            #[cfg(feature = "arcade-input")]
+            {
+                if inputchar < 0 {
+                    inputchar += ARCADE_INPUT_CHARS.len() as i32;
                 }
+                if inputchar >= ARCADE_INPUT_CHARS.len() as i32 {
+                    inputchar -= ARCADE_INPUT_CHARS.len() as i32;
+                }
+                let key = ARCADE_INPUT_CHARS[usize::try_from(inputchar).unwrap()];
 
-                if KeyIsPressedR(SDLK_RETURN.try_into().unwrap()) {
-                    // For GCW0, maybe we need a prompt to say [PRESS ENTER WHEN FINISHED], or any other key we may choose...
-                    input[curpos] = 0; // The last char is currently shown but, not entered into the string...
-                                       // 	  input[curpos] = key; // Not sure which one would be expected by most users; the last blinking char is input or not?
-                    finished = true;
-                } else if UpPressedR() {
-                    /* Currently, the key will work ON RELEASE; we might change this to
-                     * ON PRESS and add a counter / delay after which while holding, will
-                     * scroll trough the chars */
-                    inputchar += 1;
-                } else if DownPressedR() {
-                    inputchar -= 1;
-                } else if FirePressedR() {
-                    // ADVANCE CURSOR
-                    input[curpos] = key.try_into().unwrap(); // Needed in case character has just blinked out...
-                    curpos += 1;
-                } else if LeftPressedR() {
-                    inputchar -= 5;
-                } else if RightPressedR() {
-                    inputchar += 5;
-                } else if cmd_is_activeR(Cmds::Activate) {
-                    // CAPITAL <-> small
-                    if (17..=42).contains(&inputchar) {
-                        inputchar = 44 + (inputchar - 17);
-                    } else if (44..=69).contains(&inputchar) {
-                        inputchar = 17 + (inputchar - 44);
+                let frame_duration = SDL_GetTicks() - LAST_FRAME_TIME;
+                if frame_duration > blink_time / 2 {
+                    input[curpos] = key.try_into().unwrap(); // We want to show the currently chosen character
+                    if frame_duration > blink_time {
+                        LAST_FRAME_TIME = SDL_GetTicks();
+                    } else {
+                        input[curpos] = empty_char; // Hmm., how to get character widht? If using '.', or any fill character, we'd need to know
                     }
-                } else if KeyIsPressedR(SDLK_BACKSPACE.try_into().unwrap()) {
-                    // else if ... other functions to consider: SPACE
-                    // Or any othe key we choose for the GCW0!
-                    input[curpos] = empty_char;
+
+                    if KeyIsPressedR(SDLK_RETURN.try_into().unwrap()) {
+                        // For GCW0, maybe we need a prompt to say [PRESS ENTER WHEN FINISHED], or any other key we may choose...
+                        input[curpos] = 0; // The last char is currently shown but, not entered into the string...
+                                           // 	  input[curpos] = key; // Not sure which one would be expected by most users; the last blinking char is input or not?
+                        finished = true;
+                    } else if UpPressedR() {
+                        /* Currently, the key will work ON RELEASE; we might change this to
+                         * ON PRESS and add a counter / delay after which while holding, will
+                         * scroll trough the chars */
+                        inputchar += 1;
+                    } else if DownPressedR() {
+                        inputchar -= 1;
+                    } else if FirePressedR() {
+                        // ADVANCE CURSOR
+                        input[curpos] = key.try_into().unwrap(); // Needed in case character has just blinked out...
+                        curpos += 1;
+                    } else if LeftPressedR() {
+                        inputchar -= 5;
+                    } else if RightPressedR() {
+                        inputchar += 5;
+                    } else if cmd_is_activeR(Cmds::Activate) {
+                        // CAPITAL <-> small
+                        if (17..=42).contains(&inputchar) {
+                            inputchar = 44 + (inputchar - 17);
+                        } else if (44..=69).contains(&inputchar) {
+                            inputchar = 17 + (inputchar - 44);
+                        }
+                    } else if KeyIsPressedR(SDLK_BACKSPACE.try_into().unwrap()) {
+                        // else if ... other functions to consider: SPACE
+                        // Or any othe key we choose for the GCW0!
+                        input[curpos] = empty_char;
+                        if curpos > 0 {
+                            curpos -= 1
+                        };
+                    }
+                }
+            }
+
+            #[cfg(not(feature = "arcade-input"))]
+            {
+                let key = getchar_raw();
+
+                if key == SDLK_RETURN.try_into().unwrap() {
+                    input[curpos] = 0;
+                    finished = true;
+                } else if key < SDLK_DELETE.try_into().unwrap()
+                    && ((key as u8).is_ascii_graphic() || (key as u8).is_ascii_whitespace())
+                    && curpos < max_len
+                {
+                    /* printable characters are entered in string */
+                    input[curpos] = key.try_into().unwrap();
+                    curpos += 1;
+                } else if key == SDLK_BACKSPACE.try_into().unwrap() {
                     if curpos > 0 {
                         curpos -= 1
                     };
+                    input[curpos] = b'.' as c_char;
                 }
             }
         }
 
-        #[cfg(not(feature = "arcade-input"))]
-        {
-            let key = getchar_raw();
+        info!(
+            "GetString(..): The final string is: {}",
+            CStr::from_ptr(input.as_ptr()).to_string_lossy()
+        );
 
-            if key == SDLK_RETURN.try_into().unwrap() {
-                input[curpos] = 0;
-                finished = true;
-            } else if key < SDLK_DELETE.try_into().unwrap()
-                && ((key as u8).is_ascii_graphic() || (key as u8).is_ascii_whitespace())
-                && curpos < max_len
-            {
-                /* printable characters are entered in string */
-                input[curpos] = key.try_into().unwrap();
-                curpos += 1;
-            } else if key == SDLK_BACKSPACE.try_into().unwrap() {
-                if curpos > 0 {
-                    curpos -= 1
-                };
-                input[curpos] = b'.' as c_char;
-            }
-        }
+        Box::into_raw(input) as *mut c_char
     }
-
-    info!(
-        "GetString(..): The final string is: {}",
-        CStr::from_ptr(input.as_ptr()).to_string_lossy()
-    );
-
-    Box::into_raw(input) as *mut c_char
 }
 
 /// Should do roughly what getchar() does, but in raw (SLD) keyboard mode.
@@ -303,189 +305,195 @@ pub unsafe fn getchar_raw() -> c_int {
     }
 }
 
-/// Behaves similarly as gl_printf() of svgalib, using the BFont
-/// print function PrintString().
-///
-///  sets current position of MyCursor[XY],
-///     if last char is '\n': to same x, next line y
-///     to end of string otherwise
-///
-/// Added functionality to PrintString() is:
-///  o) passing -1 as coord uses previous x and next-line y for printing
-///  o) Screen is updated immediatly after print, using SDL_flip()
-pub unsafe fn printf_sdl(
-    screen: *mut SDL_Surface,
-    mut x: c_int,
-    mut y: c_int,
-    format_args: fmt::Arguments,
-) {
-    use std::io::Write;
+impl Data {
+    /// Behaves similarly as gl_printf() of svgalib, using the BFont
+    /// print function PrintString().
+    ///
+    ///  sets current position of MyCursor[XY],
+    ///     if last char is '\n': to same x, next line y
+    ///     to end of string otherwise
+    ///
+    /// Added functionality to PrintString() is:
+    ///  o) passing -1 as coord uses previous x and next-line y for printing
+    ///  o) Screen is updated immediatly after print, using SDL_flip()
+    pub unsafe fn printf_sdl(
+        &self,
+        screen: *mut SDL_Surface,
+        mut x: c_int,
+        mut y: c_int,
+        format_args: fmt::Arguments,
+    ) {
+        use std::io::Write;
 
-    if x == -1 {
-        x = MY_CURSOR_X;
-    } else {
-        MY_CURSOR_X = x;
-    }
-
-    if y == -1 {
-        y = MY_CURSOR_Y;
-    } else {
-        MY_CURSOR_Y = y;
-    }
-
-    let mut cursor = Cursor::new(TEXT_BUFFER.as_mut());
-    cursor.write_fmt(format_args).unwrap();
-    let text_buffer = &TEXT_BUFFER[..usize::try_from(cursor.position()).unwrap()];
-    let textlen: c_int = text_buffer
-        .iter()
-        .map(|&c| char_width(&*get_current_font(), c))
-        .sum();
-
-    put_string(screen, x, y, text_buffer);
-    let h = font_height(&*get_current_font()) + 2;
-
-    SDL_UpdateRect(
-        screen,
-        x,
-        y,
-        textlen.try_into().unwrap(),
-        h.try_into().unwrap(),
-    ); // update the relevant line
-
-    if *text_buffer.last().unwrap() == b'\n' {
-        MY_CURSOR_X = x;
-        MY_CURSOR_Y = (f64::from(y) + 1.1 * f64::from(h)) as c_int;
-    } else {
-        MY_CURSOR_X += textlen;
-        MY_CURSOR_Y = y;
-    }
-}
-
-/// Prints *Text beginning at positions startx/starty,
-/// and respecting the text-borders set by clip_rect
-/// -> this includes clipping but also automatic line-breaks
-/// when end-of-line is reached
-///
-/// if startx/y == -1, write at current position, given by MyCursorX/Y.
-/// if clip_rect==NULL, no clipping is performed
-///
-/// NOTE: the previous clip-rectange is restored before the function returns!
-/// NOTE2: this function _does not_ update the screen
-///
-/// Return TRUE if some characters where written inside the clip rectangle,
-/// FALSE if not (used by ScrollText to know if Text has been scrolled
-/// out of clip-rect completely)
-pub unsafe fn display_text(
-    text: *const c_char,
-    startx: c_int,
-    starty: c_int,
-    mut clip: *const SDL_Rect,
-) -> c_int {
-    if text.is_null() {
-        return false as c_int;
-    }
-
-    if startx != -1 {
-        MY_CURSOR_X = startx;
-    }
-    if starty != -1 {
-        MY_CURSOR_Y = starty;
-    }
-
-    let mut store_clip = Rect::new(0, 0, 0, 0);
-    let mut temp_clipping_rect;
-    SDL_GetClipRect(NE_SCREEN, &mut store_clip); /* store previous clip-rect */
-    if !clip.is_null() {
-        SDL_SetClipRect(NE_SCREEN, clip);
-    } else {
-        temp_clipping_rect = Rect::new(0, 0, SCREEN_RECT.w, SCREEN_RECT.h);
-        clip = &mut temp_clipping_rect;
-    }
-
-    let mut text = CStr::from_ptr(text).to_bytes();
-
-    let clip = &*clip;
-    while let Some((&first, rest)) = text.split_first() {
-        if MY_CURSOR_Y >= c_int::from(clip.y) + c_int::from(clip.h) {
-            break;
-        }
-
-        if first == b'\n' {
-            MY_CURSOR_X = clip.x.into();
-            MY_CURSOR_Y += (f64::from(font_height(&*get_current_font())) * TEXT_STRETCH) as c_int;
+        if x == -1 {
+            x = MY_CURSOR_X;
         } else {
-            display_char(first as c_uchar);
+            MY_CURSOR_X = x;
         }
 
-        text = rest;
-        if is_linebreak_needed(text, clip) {
-            text = &text[1..];
-            MY_CURSOR_X = clip.x.into();
-            MY_CURSOR_Y += (f64::from(font_height(&*get_current_font())) * TEXT_STRETCH) as c_int;
+        if y == -1 {
+            y = MY_CURSOR_Y;
+        } else {
+            MY_CURSOR_Y = y;
         }
-    }
 
-    SDL_SetClipRect(NE_SCREEN, &store_clip); /* restore previous clip-rect */
+        let mut cursor = Cursor::new(TEXT_BUFFER.as_mut());
+        cursor.write_fmt(format_args).unwrap();
+        let text_buffer = &TEXT_BUFFER[..usize::try_from(cursor.position()).unwrap()];
+        let textlen: c_int = text_buffer
+            .iter()
+            .map(|&c| char_width(&*self.b_font.current_font, c))
+            .sum();
 
-    /*
-     * ScrollText() wants to know if we still wrote something inside the
-     * clip-rectangle, of if the Text has been scrolled out
-     */
-    if MY_CURSOR_Y < clip.y.into() || starty > c_int::from(clip.y) + c_int::from(clip.h) {
-        false as c_int
-    } else {
-        true as c_int
-    }
-}
+        self.put_string(screen, x, y, text_buffer);
+        let h = font_height(&*self.b_font.current_font) + 2;
 
-/// This function displays a char. It uses Menu_BFont now
-/// to do this.  MyCursorX is  updated to new position.
-pub unsafe fn display_char(c: c_uchar) {
-    // don't accept non-printable characters
-    if !(c.is_ascii_graphic() || c.is_ascii_whitespace()) {
-        println!("Illegal char passed to DisplayChar(): {}", c);
-        terminate(defs::ERR.into());
-    }
+        SDL_UpdateRect(
+            screen,
+            x,
+            y,
+            textlen.try_into().unwrap(),
+            h.try_into().unwrap(),
+        ); // update the relevant line
 
-    put_char(NE_SCREEN, MY_CURSOR_X, MY_CURSOR_Y, c);
-
-    // After the char has been displayed, we must move the cursor to its
-    // new position.  That depends of course on the char displayed.
-    //
-    MY_CURSOR_X += char_width(&*get_current_font(), c);
-}
-
-///  This function checks if the next word still fits in this line
-///  of text or if we need a linebreak:
-///  returns TRUE if linebreak is needed, FALSE otherwise
-///
-///  NOTE: this function only does something if *textpos is pointing on a space,
-///  i.e. a word-beginning, otherwise it just returns TRUE
-///
-///  rp: added argument clip, which contains the text-window we're writing in
-///  (formerly known as "TextBorder")
-pub unsafe fn is_linebreak_needed(textpos: &[u8], clip: &Rect) -> bool {
-    // only relevant if we're at the beginning of a word
-    let textpos = match textpos.split_first() {
-        Some((&c, _)) if c != b' ' => return false,
-        Some((_, rest)) => rest,
-        None => textpos,
-    };
-
-    let mut needed_space = 0;
-    let iter = textpos
-        .iter()
-        .copied()
-        .take_while(|&c| c != b' ' && c != b'\n');
-    for c in iter {
-        let w = char_width(&*get_current_font(), c);
-        needed_space += w;
-        if MY_CURSOR_X + needed_space > c_int::from(clip.x) + c_int::from(clip.w) - w {
-            return true;
+        if *text_buffer.last().unwrap() == b'\n' {
+            MY_CURSOR_X = x;
+            MY_CURSOR_Y = (f64::from(y) + 1.1 * f64::from(h)) as c_int;
+        } else {
+            MY_CURSOR_X += textlen;
+            MY_CURSOR_Y = y;
         }
     }
 
-    false
+    /// Prints *Text beginning at positions startx/starty,
+    /// and respecting the text-borders set by clip_rect
+    /// -> this includes clipping but also automatic line-breaks
+    /// when end-of-line is reached
+    ///
+    /// if startx/y == -1, write at current position, given by MyCursorX/Y.
+    /// if clip_rect==NULL, no clipping is performed
+    ///
+    /// NOTE: the previous clip-rectange is restored before the function returns!
+    /// NOTE2: this function _does not_ update the screen
+    ///
+    /// Return TRUE if some characters where written inside the clip rectangle,
+    /// FALSE if not (used by ScrollText to know if Text has been scrolled
+    /// out of clip-rect completely)
+    pub unsafe fn display_text(
+        &mut self,
+        text: *const c_char,
+        startx: c_int,
+        starty: c_int,
+        mut clip: *const SDL_Rect,
+    ) -> c_int {
+        if text.is_null() {
+            return false as c_int;
+        }
+
+        if startx != -1 {
+            MY_CURSOR_X = startx;
+        }
+        if starty != -1 {
+            MY_CURSOR_Y = starty;
+        }
+
+        let mut store_clip = Rect::new(0, 0, 0, 0);
+        let mut temp_clipping_rect;
+        SDL_GetClipRect(NE_SCREEN, &mut store_clip); /* store previous clip-rect */
+        if !clip.is_null() {
+            SDL_SetClipRect(NE_SCREEN, clip);
+        } else {
+            temp_clipping_rect = Rect::new(0, 0, SCREEN_RECT.w, SCREEN_RECT.h);
+            clip = &mut temp_clipping_rect;
+        }
+
+        let mut text = CStr::from_ptr(text).to_bytes();
+
+        let clip = &*clip;
+        while let Some((&first, rest)) = text.split_first() {
+            if MY_CURSOR_Y >= c_int::from(clip.y) + c_int::from(clip.h) {
+                break;
+            }
+
+            if first == b'\n' {
+                MY_CURSOR_X = clip.x.into();
+                MY_CURSOR_Y +=
+                    (f64::from(font_height(&*self.b_font.current_font)) * TEXT_STRETCH) as c_int;
+            } else {
+                self.display_char(first as c_uchar);
+            }
+
+            text = rest;
+            if self.is_linebreak_needed(text, clip) {
+                text = &text[1..];
+                MY_CURSOR_X = clip.x.into();
+                MY_CURSOR_Y +=
+                    (f64::from(font_height(&*self.b_font.current_font)) * TEXT_STRETCH) as c_int;
+            }
+        }
+
+        SDL_SetClipRect(NE_SCREEN, &store_clip); /* restore previous clip-rect */
+
+        /*
+         * ScrollText() wants to know if we still wrote something inside the
+         * clip-rectangle, of if the Text has been scrolled out
+         */
+        if MY_CURSOR_Y < clip.y.into() || starty > c_int::from(clip.y) + c_int::from(clip.h) {
+            false as c_int
+        } else {
+            true as c_int
+        }
+    }
+
+    /// This function displays a char. It uses Menu_BFont now
+    /// to do this.  MyCursorX is  updated to new position.
+    pub unsafe fn display_char(&mut self, c: c_uchar) {
+        // don't accept non-printable characters
+        if !(c.is_ascii_graphic() || c.is_ascii_whitespace()) {
+            println!("Illegal char passed to DisplayChar(): {}", c);
+            terminate(defs::ERR.into());
+        }
+
+        self.put_char(NE_SCREEN, MY_CURSOR_X, MY_CURSOR_Y, c);
+
+        // After the char has been displayed, we must move the cursor to its
+        // new position.  That depends of course on the char displayed.
+        //
+        MY_CURSOR_X += char_width(&*self.b_font.current_font, c);
+    }
+
+    ///  This function checks if the next word still fits in this line
+    ///  of text or if we need a linebreak:
+    ///  returns TRUE if linebreak is needed, FALSE otherwise
+    ///
+    ///  NOTE: this function only does something if *textpos is pointing on a space,
+    ///  i.e. a word-beginning, otherwise it just returns TRUE
+    ///
+    ///  rp: added argument clip, which contains the text-window we're writing in
+    ///  (formerly known as "TextBorder")
+    pub unsafe fn is_linebreak_needed(&self, textpos: &[u8], clip: &Rect) -> bool {
+        // only relevant if we're at the beginning of a word
+        let textpos = match textpos.split_first() {
+            Some((&c, _)) if c != b' ' => return false,
+            Some((_, rest)) => rest,
+            None => textpos,
+        };
+
+        let mut needed_space = 0;
+        let iter = textpos
+            .iter()
+            .copied()
+            .take_while(|&c| c != b' ' && c != b'\n');
+        for c in iter {
+            let w = char_width(&*self.b_font.current_font, c);
+            needed_space += w;
+            if MY_CURSOR_X + needed_space > c_int::from(clip.x) + c_int::from(clip.w) - w {
+                return true;
+            }
+        }
+
+        false
+    }
 }
 
 pub unsafe fn enemy_hit_by_bullet_text(enemy: c_int) {
@@ -579,92 +587,96 @@ pub unsafe fn add_influ_burnt_text() {
     }
 }
 
-/// Scrolls a given text down inside the given rect
-///
-/// returns 0 if end of text was scolled out, 1 if user pressed fire
-pub unsafe fn scroll_text(
-    text: *mut c_char,
-    rect: &mut SDL_Rect,
-    _seconds_minimum_duration: c_int,
-) -> c_int {
-    let mut insert_line: f32 = rect.y.into();
-    let mut speed = 30; // in pixel / sec
-    const MAX_SPEED: c_int = 150;
-    let mut just_started = true;
+impl Data {
+    /// Scrolls a given text down inside the given rect
+    ///
+    /// returns 0 if end of text was scolled out, 1 if user pressed fire
+    pub unsafe fn scroll_text(
+        &mut self,
+        text: *mut c_char,
+        rect: &mut SDL_Rect,
+        _seconds_minimum_duration: c_int,
+    ) -> c_int {
+        let mut insert_line: f32 = rect.y.into();
+        let mut speed = 30; // in pixel / sec
+        const MAX_SPEED: c_int = 150;
+        let mut just_started = true;
 
-    let background = SDL_DisplayFormat(NE_SCREEN);
+        let background = SDL_DisplayFormat(NE_SCREEN);
 
-    wait_for_all_keys_released();
-    let ret;
-    loop {
-        let mut prev_tick = SDL_GetTicks();
-        SDL_UpperBlit(background, null_mut(), NE_SCREEN, null_mut());
-        if display_text(text, rect.x.into(), insert_line as c_int, rect) == 0 {
-            ret = 0; /* Text has been scrolled outside Rect */
-            break;
-        }
-        SDL_Flip(NE_SCREEN);
+        wait_for_all_keys_released();
+        let ret;
+        loop {
+            let mut prev_tick = SDL_GetTicks();
+            SDL_UpperBlit(background, null_mut(), NE_SCREEN, null_mut());
+            if self.display_text(text, rect.x.into(), insert_line as c_int, rect) == 0 {
+                ret = 0; /* Text has been scrolled outside Rect */
+                break;
+            }
+            SDL_Flip(NE_SCREEN);
 
-        if GAME_CONFIG.hog_cpu != 0 {
-            SDL_Delay(1);
-        }
-
-        if just_started {
-            just_started = false;
-            let now = SDL_GetTicks();
-            let mut key;
-            loop {
-                key = any_key_just_pressed();
-                if key == 0 && (SDL_GetTicks() - now < SHOW_WAIT as u32) {
-                    SDL_Delay(1); // wait before starting auto-scroll
-                } else {
-                    break;
-                }
+            if GAME_CONFIG.hog_cpu != 0 {
+                SDL_Delay(1);
             }
 
-            if (key == KEY_CMDS[Cmds::Fire as usize][0])
-                || (key == KEY_CMDS[Cmds::Fire as usize][1])
-                || (key == KEY_CMDS[Cmds::Fire as usize][2])
-            {
-                trace!("in just_started: Fire registered");
+            if just_started {
+                just_started = false;
+                let now = SDL_GetTicks();
+                let mut key;
+                loop {
+                    key = any_key_just_pressed();
+                    if key == 0 && (SDL_GetTicks() - now < SHOW_WAIT as u32) {
+                        SDL_Delay(1); // wait before starting auto-scroll
+                    } else {
+                        break;
+                    }
+                }
+
+                if (key == KEY_CMDS[Cmds::Fire as usize][0])
+                    || (key == KEY_CMDS[Cmds::Fire as usize][1])
+                    || (key == KEY_CMDS[Cmds::Fire as usize][2])
+                {
+                    trace!("in just_started: Fire registered");
+                    ret = 1;
+                    break;
+                }
+                prev_tick = SDL_GetTicks();
+            }
+
+            if fire_pressed_r() {
+                trace!("outside just_started: Fire registered");
                 ret = 1;
                 break;
             }
-            prev_tick = SDL_GetTicks();
-        }
 
-        if fire_pressed_r() {
-            trace!("outside just_started: Fire registered");
-            ret = 1;
-            break;
-        }
+            if up_pressed() || wheel_up_pressed() {
+                speed -= 5;
+                if speed < -MAX_SPEED {
+                    speed = -MAX_SPEED;
+                }
+            }
+            if down_pressed() || wheel_down_pressed() {
+                speed += 5;
+                if speed > MAX_SPEED {
+                    speed = MAX_SPEED;
+                }
+            }
 
-        if up_pressed() || wheel_up_pressed() {
-            speed -= 5;
-            if speed < -MAX_SPEED {
-                speed = -MAX_SPEED;
+            insert_line -=
+                (f64::from(SDL_GetTicks() - prev_tick) * f64::from(speed) / 1000.0) as f32;
+
+            if insert_line > f32::from(rect.y) + f32::from(rect.h) {
+                insert_line = f32::from(rect.y) + f32::from(rect.h);
+                if speed < 0 {
+                    speed = 0;
+                }
             }
         }
-        if down_pressed() || wheel_down_pressed() {
-            speed += 5;
-            if speed > MAX_SPEED {
-                speed = MAX_SPEED;
-            }
-        }
 
-        insert_line -= (f64::from(SDL_GetTicks() - prev_tick) * f64::from(speed) / 1000.0) as f32;
+        SDL_UpperBlit(background, null_mut(), NE_SCREEN, null_mut());
+        SDL_Flip(NE_SCREEN);
+        SDL_FreeSurface(background);
 
-        if insert_line > f32::from(rect.y) + f32::from(rect.h) {
-            insert_line = f32::from(rect.y) + f32::from(rect.h);
-            if speed < 0 {
-                speed = 0;
-            }
-        }
+        ret
     }
-
-    SDL_UpperBlit(background, null_mut(), NE_SCREEN, null_mut());
-    SDL_Flip(NE_SCREEN);
-    SDL_FreeSurface(background);
-
-    ret
 }

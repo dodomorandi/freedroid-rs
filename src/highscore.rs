@@ -1,8 +1,5 @@
 use crate::{
-    b_font::{
-        centered_print_string, char_width, font_height, get_current_font, print_string,
-        set_current_font,
-    },
+    b_font::{char_width, font_height},
     defs::{
         self, Criticality, DisplayBannerFlags, Status, Themed, DATE_LEN, GRAPHICS_DIR_C,
         HS_BACKGROUND_FILE_C, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
@@ -11,14 +8,10 @@ use crate::{
     graphics::{display_image, make_grid_on_screen, NE_SCREEN, PIC999},
     input::wait_for_key_pressed,
     misc::find_file,
-    text::{display_text, printf_sdl},
     vars::{FULL_USER_RECT, ME, PORTRAIT_RECT, SCREEN_RECT, USER_RECT},
-    view::{assemble_combat_picture, display_banner},
-    CONFIG_DIR, REAL_SCORE, SHOW_SCORE,
+    view::display_banner,
+    Data, CONFIG_DIR, REAL_SCORE, SHOW_SCORE,
 };
-
-#[cfg(not(target_os = "android"))]
-use crate::text::get_string;
 
 use cstr::cstr;
 use log::{info, warn};
@@ -174,93 +167,94 @@ unsafe fn save_highscores_inner(config_dir: Option<&Path>) -> Result<(), ()> {
     }
 }
 
-pub unsafe fn update_highscores() {
-    let score = REAL_SCORE;
-    REAL_SCORE = 0.;
-    SHOW_SCORE = 0;
+impl Data {
+    pub unsafe fn update_highscores(&mut self) {
+        let score = REAL_SCORE;
+        REAL_SCORE = 0.;
+        SHOW_SCORE = 0;
 
-    if score <= 0. {
-        return;
+        if score <= 0. {
+            return;
+        }
+
+        ME.status = Status::Debriefing as c_int;
+
+        let entry_pos = match HIGHSCORES
+            .as_ref()
+            .unwrap()
+            .iter()
+            .position(|entry| entry.score < score as c_long)
+        {
+            Some(entry_pos) => entry_pos,
+            None => return,
+        };
+
+        let prev_font = std::mem::replace(&mut self.b_font.current_font, HIGHSCORE_B_FONT);
+
+        let user_center_x: i16 = USER_RECT.x + (USER_RECT.w / 2) as i16;
+        let user_center_y: i16 = USER_RECT.y + (USER_RECT.h / 2) as i16;
+
+        self.assemble_combat_picture(0);
+        make_grid_on_screen(Some(&USER_RECT));
+        let mut dst = SDL_Rect::new(
+            user_center_x - (PORTRAIT_RECT.w / 2) as i16,
+            user_center_y - (PORTRAIT_RECT.h / 2) as i16,
+            PORTRAIT_RECT.w,
+            PORTRAIT_RECT.h,
+        );
+        SDL_UpperBlit(PIC999, null_mut(), NE_SCREEN, &mut dst);
+        let h = font_height(&*PARA_B_FONT);
+        self.display_text(
+            cstr!("Great Score !").as_ptr(),
+            i32::from(dst.x) - h,
+            i32::from(dst.y) - h,
+            &USER_RECT,
+        );
+
+        // TODO ARCADEINPUT
+        #[cfg(not(target_os = "android"))]
+        self.display_text(
+            cstr!("Enter your name: ").as_ptr(),
+            i32::from(dst.x) - 5 * h,
+            i32::from(dst.y) + i32::from(dst.h),
+            &USER_RECT,
+        );
+
+        #[cfg(target_os = "android")]
+        wait_for_key_pressed();
+
+        // TODO More ARCADEINPUT
+
+        SDL_Flip(NE_SCREEN);
+        SDL_SetClipRect(NE_SCREEN, null_mut());
+
+        let date = format!("{}", chrono::Local::today().format("%Y/%m/%d"));
+
+        #[cfg(target_os = "android")]
+        let new_entry = HighscoreEntry::new("Player", score as i64, &date);
+        #[cfg(not(target_os = "android"))]
+        let new_entry = {
+            let tmp_name = self.get_string(MAX_NAME_LEN as c_int, 2);
+            let mut new_entry = HighscoreEntry::new("", score as i64, &date);
+            libc::strcpy(new_entry.name.as_mut_ptr(), tmp_name);
+            drop(Vec::from_raw_parts(
+                tmp_name,
+                MAX_NAME_LEN + 5,
+                MAX_NAME_LEN + 5,
+            ));
+            new_entry
+        };
+
+        self.printf_sdl(NE_SCREEN, -1, -1, format_args!("\n"));
+
+        HIGHSCORES.as_mut().unwrap()[entry_pos..]
+            .iter_mut()
+            .fold(new_entry, |new_entry, cur_entry| {
+                mem::replace(cur_entry, new_entry)
+            });
+
+        self.b_font.current_font = prev_font;
     }
-
-    ME.status = Status::Debriefing as c_int;
-
-    let entry_pos = match HIGHSCORES
-        .as_ref()
-        .unwrap()
-        .iter()
-        .position(|entry| entry.score < score as c_long)
-    {
-        Some(entry_pos) => entry_pos,
-        None => return,
-    };
-
-    let prev_font = get_current_font();
-    set_current_font(HIGHSCORE_B_FONT);
-
-    let user_center_x: i16 = USER_RECT.x + (USER_RECT.w / 2) as i16;
-    let user_center_y: i16 = USER_RECT.y + (USER_RECT.h / 2) as i16;
-
-    assemble_combat_picture(0);
-    make_grid_on_screen(Some(&USER_RECT));
-    let mut dst = SDL_Rect::new(
-        user_center_x - (PORTRAIT_RECT.w / 2) as i16,
-        user_center_y - (PORTRAIT_RECT.h / 2) as i16,
-        PORTRAIT_RECT.w,
-        PORTRAIT_RECT.h,
-    );
-    SDL_UpperBlit(PIC999, null_mut(), NE_SCREEN, &mut dst);
-    let h = font_height(&*PARA_B_FONT);
-    display_text(
-        cstr!("Great Score !").as_ptr(),
-        i32::from(dst.x) - h,
-        i32::from(dst.y) - h,
-        &USER_RECT,
-    );
-
-    // TODO ARCADEINPUT
-    #[cfg(not(target_os = "android"))]
-    display_text(
-        cstr!("Enter your name: ").as_ptr(),
-        i32::from(dst.x) - 5 * h,
-        i32::from(dst.y) + i32::from(dst.h),
-        &USER_RECT,
-    );
-
-    #[cfg(target_os = "android")]
-    wait_for_key_pressed();
-
-    // TODO More ARCADEINPUT
-
-    SDL_Flip(NE_SCREEN);
-    SDL_SetClipRect(NE_SCREEN, null_mut());
-
-    let date = format!("{}", chrono::Local::today().format("%Y/%m/%d"));
-
-    #[cfg(target_os = "android")]
-    let new_entry = HighscoreEntry::new("Player", score as i64, &date);
-    #[cfg(not(target_os = "android"))]
-    let new_entry = {
-        let tmp_name = get_string(MAX_NAME_LEN as c_int, 2);
-        let mut new_entry = HighscoreEntry::new("", score as i64, &date);
-        libc::strcpy(new_entry.name.as_mut_ptr(), tmp_name);
-        drop(Vec::from_raw_parts(
-            tmp_name,
-            MAX_NAME_LEN + 5,
-            MAX_NAME_LEN + 5,
-        ));
-        new_entry
-    };
-
-    printf_sdl(NE_SCREEN, -1, -1, format_args!("\n"));
-
-    HIGHSCORES.as_mut().unwrap()[entry_pos..]
-        .iter_mut()
-        .fold(new_entry, |new_entry, cur_entry| {
-            mem::replace(cur_entry, new_entry)
-        });
-
-    set_current_font(prev_font);
 }
 
 unsafe fn get_config_dir() -> Option<&'static Path> {
@@ -284,85 +278,86 @@ pub unsafe fn save_highscores() -> c_int {
     }
 }
 
-/// Display the high scores of the single player game.
-/// This function is actually a submenu of the MainMenu.
-pub unsafe fn show_highscores() {
-    let fpath = find_file(
-        HS_BACKGROUND_FILE_C.as_ptr() as *mut c_char,
-        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-        Themed::NoTheme as c_int,
-        Criticality::WarnOnly as c_int,
-    );
-    if fpath.is_null().not() {
-        display_image(fpath);
-    }
-    make_grid_on_screen(Some(&SCREEN_RECT));
-    display_banner(
-        null_mut(),
-        null_mut(),
-        DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-    );
-
-    let prev_font = get_current_font();
-    set_current_font(HIGHSCORE_B_FONT);
-
-    let len = char_width(&*get_current_font(), b'9');
-
-    let x0 = i32::from(SCREEN_RECT.w) / 8;
-    let x1 = x0 + 2 * len;
-    let x2 = x1 + 11 * len;
-    let x3 = x2 + i32::try_from(MAX_NAME_LEN).unwrap() * len;
-
-    let height = font_height(&*get_current_font());
-
-    let y0 = i32::from(FULL_USER_RECT.y) + height;
-
-    centered_print_string(
-        NE_SCREEN,
-        y0,
-        format_args!("Top {}  scores\n", NUM_HIGHSCORES),
-    );
-
-    for (i, highscore) in HIGHSCORES.as_ref().unwrap().iter().enumerate() {
-        let i = i32::try_from(i).unwrap();
-        print_string(
-            NE_SCREEN,
-            x0,
-            y0 + (i + 2) * height,
-            format_args!("{}", i + 1),
+impl Data {
+    /// Display the high scores of the single player game.
+    /// This function is actually a submenu of the MainMenu.
+    pub unsafe fn show_highscores(&mut self) {
+        let fpath = find_file(
+            HS_BACKGROUND_FILE_C.as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::NoTheme as c_int,
+            Criticality::WarnOnly as c_int,
         );
-        if highscore.score >= 0 {
-            print_string(
+        if fpath.is_null().not() {
+            display_image(fpath);
+        }
+        make_grid_on_screen(Some(&SCREEN_RECT));
+        display_banner(
+            null_mut(),
+            null_mut(),
+            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+        );
+
+        let prev_font = std::mem::replace(&mut self.b_font.current_font, HIGHSCORE_B_FONT);
+
+        let len = char_width(&*self.b_font.current_font, b'9');
+
+        let x0 = i32::from(SCREEN_RECT.w) / 8;
+        let x1 = x0 + 2 * len;
+        let x2 = x1 + 11 * len;
+        let x3 = x2 + i32::try_from(MAX_NAME_LEN).unwrap() * len;
+
+        let height = font_height(&*self.b_font.current_font);
+
+        let y0 = i32::from(FULL_USER_RECT.y) + height;
+
+        self.centered_print_string(
+            NE_SCREEN,
+            y0,
+            format_args!("Top {}  scores\n", NUM_HIGHSCORES),
+        );
+
+        for (i, highscore) in HIGHSCORES.as_ref().unwrap().iter().enumerate() {
+            let i = i32::try_from(i).unwrap();
+            self.print_string(
                 NE_SCREEN,
-                x1,
+                x0,
+                y0 + (i + 2) * height,
+                format_args!("{}", i + 1),
+            );
+            if highscore.score >= 0 {
+                self.print_string(
+                    NE_SCREEN,
+                    x1,
+                    y0 + (i + 2) * height,
+                    format_args!(
+                        "{}",
+                        CStr::from_ptr(highscore.date.as_ptr()).to_str().unwrap()
+                    ),
+                );
+            }
+            self.print_string(
+                NE_SCREEN,
+                x2,
                 y0 + (i + 2) * height,
                 format_args!(
                     "{}",
-                    CStr::from_ptr(highscore.date.as_ptr()).to_str().unwrap()
+                    CStr::from_ptr(highscore.name.as_ptr()).to_str().unwrap()
                 ),
             );
+            if highscore.score >= 0 {
+                self.print_string(
+                    NE_SCREEN,
+                    x3,
+                    y0 + (i + 2) * height,
+                    format_args!("{}", highscore.score),
+                );
+            }
         }
-        print_string(
-            NE_SCREEN,
-            x2,
-            y0 + (i + 2) * height,
-            format_args!(
-                "{}",
-                CStr::from_ptr(highscore.name.as_ptr()).to_str().unwrap()
-            ),
-        );
-        if highscore.score >= 0 {
-            print_string(
-                NE_SCREEN,
-                x3,
-                y0 + (i + 2) * height,
-                format_args!("{}", highscore.score),
-            );
-        }
+        SDL_Flip(NE_SCREEN);
+
+        wait_for_key_pressed();
+
+        self.b_font.current_font = prev_font;
     }
-    SDL_Flip(NE_SCREEN);
-
-    wait_for_key_pressed();
-
-    set_current_font(prev_font);
 }

@@ -21,9 +21,8 @@ use crate::{
     menu::free_menu_data,
     ship::free_droid_pics,
     sound::{free_sounds, leave_lift_sound},
-    text::printf_sdl,
     vars::{ME, PROGRESS_BAR_RECT, PROGRESS_METER_RECT, PROGRESS_TEXT_RECT},
-    view::{assemble_combat_picture, display_banner},
+    view::display_banner,
     Data, ALL_BLASTS, ALL_ENEMYS, CONFIG_DIR, CUR_LEVEL, CUR_SHIP, F_P_SOVER1, NUM_ENEMYS,
 };
 
@@ -157,7 +156,7 @@ impl Data {
     /// allow for better screenshots.
     pub unsafe fn pause(&mut self) {
         ME.status = Status::Pause as i32;
-        assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+        self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
 
         let mut cheese = false;
         loop {
@@ -170,7 +169,7 @@ impl Data {
             }
 
             display_banner(null_mut(), null_mut(), 0);
-            assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+            self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
 
             SDL_Delay(1);
 
@@ -515,55 +514,57 @@ pub unsafe fn find_file(
     FILE_PATH.as_mut_ptr() as *mut c_char
 }
 
-/// show_progress: display empty progress meter with given text
-pub unsafe fn init_progress(mut text: *mut c_char) {
-    if text.is_null() {
-        text = cstr!("Progress...").as_ptr() as *mut c_char;
-    }
+impl Data {
+    /// show_progress: display empty progress meter with given text
+    pub unsafe fn init_progress(&self, mut text: *mut c_char) {
+        if text.is_null() {
+            text = cstr!("Progress...").as_ptr() as *mut c_char;
+        }
 
-    if PROGRESS_METER_PIC.is_null() {
-        let mut fpath = find_file(
-            PROGRESS_METER_FILE_C.as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
+        if PROGRESS_METER_PIC.is_null() {
+            let mut fpath = find_file(
+                PROGRESS_METER_FILE_C.as_ptr() as *mut c_char,
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            );
+            PROGRESS_METER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
+            scale_pic(&mut PROGRESS_METER_PIC, GAME_CONFIG.scale);
+            fpath = find_file(
+                PROGRESS_FILLER_FILE_C.as_ptr() as *mut c_char,
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            );
+            PROGRESS_FILLER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
+            scale_pic(&mut PROGRESS_FILLER_PIC, GAME_CONFIG.scale);
+
+            scale_rect(&mut PROGRESS_METER_RECT, GAME_CONFIG.scale);
+            scale_rect(&mut PROGRESS_BAR_RECT, GAME_CONFIG.scale);
+            scale_rect(&mut PROGRESS_TEXT_RECT, GAME_CONFIG.scale);
+        }
+
+        SDL_SetClipRect(NE_SCREEN, null_mut()); // this unsets the clipping rectangle
+        SDL_UpperBlit(
+            PROGRESS_METER_PIC,
+            null_mut(),
+            NE_SCREEN,
+            &mut PROGRESS_METER_RECT,
         );
-        PROGRESS_METER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
-        scale_pic(&mut PROGRESS_METER_PIC, GAME_CONFIG.scale);
-        fpath = find_file(
-            PROGRESS_FILLER_FILE_C.as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
+
+        let mut dst = PROGRESS_TEXT_RECT;
+        dst.x += PROGRESS_METER_RECT.x;
+        dst.y += PROGRESS_METER_RECT.y;
+
+        self.printf_sdl(
+            NE_SCREEN,
+            dst.x.into(),
+            dst.y.into(),
+            format_args!("{}", CStr::from_ptr(text).to_str().unwrap()),
         );
-        PROGRESS_FILLER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
-        scale_pic(&mut PROGRESS_FILLER_PIC, GAME_CONFIG.scale);
 
-        scale_rect(&mut PROGRESS_METER_RECT, GAME_CONFIG.scale);
-        scale_rect(&mut PROGRESS_BAR_RECT, GAME_CONFIG.scale);
-        scale_rect(&mut PROGRESS_TEXT_RECT, GAME_CONFIG.scale);
+        SDL_Flip(NE_SCREEN);
     }
-
-    SDL_SetClipRect(NE_SCREEN, null_mut()); // this unsets the clipping rectangle
-    SDL_UpperBlit(
-        PROGRESS_METER_PIC,
-        null_mut(),
-        NE_SCREEN,
-        &mut PROGRESS_METER_RECT,
-    );
-
-    let mut dst = PROGRESS_TEXT_RECT;
-    dst.x += PROGRESS_METER_RECT.x;
-    dst.y += PROGRESS_METER_RECT.y;
-
-    printf_sdl(
-        NE_SCREEN,
-        dst.x.into(),
-        dst.y.into(),
-        format_args!("{}", CStr::from_ptr(text).to_str().unwrap()),
-    );
-
-    SDL_Flip(NE_SCREEN);
 }
 
 /// This function read in a file with the specified name, allocated
