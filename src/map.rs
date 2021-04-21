@@ -17,7 +17,7 @@ use crate::{
     ship::{enter_konsole, enter_lift},
     structs::{Finepoint, GrobPoint, Level},
     vars::{BLOCK_RECT, DRUIDMAP},
-    ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, ME, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
+    Data, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, ME, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
 };
 
 use cstr::cstr;
@@ -72,6 +72,11 @@ const LEVEL_END_STRING: &str = "end_level";
 const LEVEL_END_STRING_C: &CStr = cstr!("end_level");
 const CONNECTION_STRING: &str = "connections: ";
 const CONNECTION_STRING_C: &CStr = cstr!("connections: ");
+
+#[derive(Debug, Default)]
+pub struct Map {
+    inner_wait_counter: f32,
+}
 
 /// Determines wether object on x/y is visible to the 001 or not
 pub unsafe fn is_visible(objpos: &Finepoint) -> c_int {
@@ -153,28 +158,25 @@ pub unsafe fn free_level_memory(level: *mut Level) {
         });
 }
 
-pub unsafe fn animate_refresh() {
-    static mut INNER_WAIT_COUNTER: f32 = 0.;
+impl Data {
+    pub unsafe fn animate_refresh(&mut self) {
+        self.map.inner_wait_counter += frame_time() * 10.;
 
-    trace!("AnimateRefresh():  real function call confirmed.");
+        let cur_level = &*CUR_LEVEL;
+        cur_level
+            .refreshes
+            .iter()
+            .take(MAX_REFRESHES_ON_LEVEL)
+            .take_while(|refresh| refresh.x != -1 && refresh.y != -1)
+            .for_each(|refresh| {
+                let x = isize::try_from(refresh.x).unwrap();
+                let y = usize::try_from(refresh.y).unwrap();
 
-    INNER_WAIT_COUNTER += frame_time() * 10.;
-
-    let cur_level = &*CUR_LEVEL;
-    cur_level
-        .refreshes
-        .iter()
-        .take(MAX_REFRESHES_ON_LEVEL)
-        .take_while(|refresh| refresh.x != -1 && refresh.y != -1)
-        .for_each(|refresh| {
-            let x = isize::try_from(refresh.x).unwrap();
-            let y = usize::try_from(refresh.y).unwrap();
-
-            *cur_level.map[y].offset(x) = (((INNER_WAIT_COUNTER.round() as c_int) % 4)
-                + MapTile::Refresh1 as c_int) as c_char;
-        });
-
-    trace!("AnimateRefresh():  end of function reached.");
+                *cur_level.map[y].offset(x) = (((self.map.inner_wait_counter.round() as c_int) % 4)
+                    + MapTile::Refresh1 as c_int)
+                    as c_char;
+            });
+    }
 }
 
 pub unsafe fn is_passable(x: c_float, y: c_float, check_pos: c_int) -> c_int {

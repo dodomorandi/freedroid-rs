@@ -17,14 +17,14 @@ use crate::{
     influencer::animate_influence,
     init::free_game_mem,
     input::{cmd_is_active, cmd_is_active_r, key_is_pressed_r, SDL_Delay, CMD_STRINGS, KEY_CMDS},
-    map::{animate_refresh, free_ship_memory},
+    map::free_ship_memory,
     menu::free_menu_data,
     ship::free_droid_pics,
     sound::{free_sounds, leave_lift_sound},
     text::printf_sdl,
     vars::{ME, PROGRESS_BAR_RECT, PROGRESS_METER_RECT, PROGRESS_TEXT_RECT},
     view::{assemble_combat_picture, display_banner},
-    ALL_BLASTS, ALL_ENEMYS, CONFIG_DIR, CUR_LEVEL, CUR_SHIP, F_P_SOVER1, NUM_ENEMYS,
+    Data, ALL_BLASTS, ALL_ENEMYS, CONFIG_DIR, CUR_LEVEL, CUR_SHIP, F_P_SOVER1, NUM_ENEMYS,
 };
 
 use cstr::cstr;
@@ -149,51 +149,53 @@ pub unsafe fn my_random(upper_bound: c_int) -> c_int {
     dice_val
 }
 
-/// realise Pause-Mode: the game process is halted,
-/// while the graphics and animations are not.  This mode
-/// can further be toggled from PAUSE to CHEESE, which is
-/// a feature from the original program that should probably
-/// allow for better screenshots.
-pub unsafe fn pause() {
-    ME.status = Status::Pause as i32;
-    assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
-
-    let mut cheese = false;
-    loop {
-        start_taking_time_for_fps_calculation();
-
-        if !cheese {
-            animate_influence();
-            animate_refresh();
-            animate_enemys();
-        }
-
-        display_banner(null_mut(), null_mut(), 0);
+impl Data {
+    /// realise Pause-Mode: the game process is halted,
+    /// while the graphics and animations are not.  This mode
+    /// can further be toggled from PAUSE to CHEESE, which is
+    /// a feature from the original program that should probably
+    /// allow for better screenshots.
+    pub unsafe fn pause(&mut self) {
+        ME.status = Status::Pause as i32;
         assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
 
-        SDL_Delay(1);
+        let mut cheese = false;
+        loop {
+            start_taking_time_for_fps_calculation();
 
-        compute_fps_for_this_frame();
-
-        #[cfg(feature = "gcw0")]
-        let cond = gcw0_ls_pressed_r() || gcw0_rs_pressed_r();
-        #[cfg(not(feature = "gcw0"))]
-        let cond = key_is_pressed_r(b'c'.into());
-
-        if cond {
-            if ME.status != Status::Cheese as i32 {
-                ME.status = Status::Cheese as i32;
-            } else {
-                ME.status = Status::Pause as i32;
+            if !cheese {
+                animate_influence();
+                self.animate_refresh();
+                animate_enemys();
             }
-            cheese = !cheese;
-        }
 
-        if fire_pressed_r() || cmd_is_active_r(Cmds::Pause) {
-            while cmd_is_active(Cmds::Pause) {
-                SDL_Delay(1);
+            display_banner(null_mut(), null_mut(), 0);
+            assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+
+            SDL_Delay(1);
+
+            compute_fps_for_this_frame();
+
+            #[cfg(feature = "gcw0")]
+            let cond = gcw0_ls_pressed_r() || gcw0_rs_pressed_r();
+            #[cfg(not(feature = "gcw0"))]
+            let cond = key_is_pressed_r(b'c'.into());
+
+            if cond {
+                if ME.status != Status::Cheese as i32 {
+                    ME.status = Status::Cheese as i32;
+                } else {
+                    ME.status = Status::Pause as i32;
+                }
+                cheese = !cheese;
             }
-            break;
+
+            if fire_pressed_r() || cmd_is_active_r(Cmds::Pause) {
+                while cmd_is_active(Cmds::Pause) {
+                    SDL_Delay(1);
+                }
+                break;
+            }
         }
     }
 }

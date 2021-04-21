@@ -7,8 +7,9 @@ use crate::{
     },
     graphics::{take_screenshot, toggle_fullscreen},
     menu::{cheatmenu, handle_quit_game, show_main_menu},
-    misc::{pause, terminate},
+    misc::terminate,
     structs::Point,
+    Data,
 };
 
 use cstr::cstr;
@@ -473,30 +474,32 @@ pub unsafe fn no_direction_pressed() -> bool {
         || right_pressed())
 }
 
-pub unsafe fn react_to_special_keys() {
-    if cmd_is_active_r(Cmds::Quit) {
-        handle_quit_game(MenuAction::CLICK);
-    }
+impl Data {
+    pub unsafe fn react_to_special_keys(&mut self) {
+        if cmd_is_active_r(Cmds::Quit) {
+            handle_quit_game(MenuAction::CLICK);
+        }
 
-    if cmd_is_active_r(Cmds::Pause) {
-        pause();
-    }
+        if cmd_is_active_r(Cmds::Pause) {
+            self.pause();
+        }
 
-    if cmd_is_active(Cmds::Screenshot) {
-        take_screenshot();
-    }
+        if cmd_is_active(Cmds::Screenshot) {
+            take_screenshot();
+        }
 
-    if cmd_is_active_r(Cmds::Fullscreen) {
-        toggle_fullscreen();
-    }
+        if cmd_is_active_r(Cmds::Fullscreen) {
+            toggle_fullscreen();
+        }
 
-    if cmd_is_active_r(Cmds::Menu) {
-        show_main_menu();
-    }
+        if cmd_is_active_r(Cmds::Menu) {
+            show_main_menu();
+        }
 
-    // this stuff remains hardcoded to keys
-    if key_is_pressed_r(b'c'.into()) && alt_pressed() && ctrl_pressed() && shift_pressed() {
-        cheatmenu();
+        // this stuff remains hardcoded to keys
+        if key_is_pressed_r(b'c'.into()) && alt_pressed() && ctrl_pressed() && shift_pressed() {
+            cheatmenu();
+        }
     }
 }
 

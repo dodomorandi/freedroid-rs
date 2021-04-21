@@ -44,11 +44,8 @@ use influencer::{
     check_influence_enemy_collision, check_influence_wall_collisions, move_influence,
 };
 use init::{check_if_mission_is_complete, init_freedroid, init_new_mission};
-use input::{
-    init_keystr, react_to_special_keys, wait_for_all_keys_released, SDL_Delay, JOY_SENSITIVITY,
-    SHOW_CURSOR,
-};
-use map::{animate_refresh, move_level_doors, ColorNames};
+use input::{init_keystr, wait_for_all_keys_released, SDL_Delay, JOY_SENSITIVITY, SHOW_CURSOR};
+use map::{move_level_doors, ColorNames, Map};
 use misc::{
     compute_fps_for_this_frame, frame_time, set_time_factor, start_taking_time_for_fps_calculation,
 };
@@ -154,11 +151,15 @@ static mut F_P_SOVER1: f32 = 0.;
 #[derive(Debug)]
 struct Data {
     game_over: bool,
+    map: Map,
 }
 
 impl Default for Data {
     fn default() -> Self {
-        Self { game_over: false }
+        Self {
+            game_over: false,
+            map: Default::default(),
+        }
     }
 }
 
@@ -233,7 +234,7 @@ fn main() {
 
                 update_counters_for_this_frame();
 
-                react_to_special_keys();
+                data.react_to_special_keys();
 
                 if SHOW_CURSOR {
                     SDL_ShowCursor(SDL_ENABLE);
@@ -243,7 +244,7 @@ fn main() {
 
                 move_level_doors();
 
-                animate_refresh();
+                data.animate_refresh();
 
                 explode_blasts(); // move blasts to the right current "phase" of the blast
 
