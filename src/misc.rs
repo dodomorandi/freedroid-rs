@@ -3,26 +3,22 @@ use crate::defs::{gcw0_ls_pressed_r, gcw0_rs_pressed_r};
 use crate::{
     bullet::delete_bullet,
     defs::{
-        self, fire_pressed_r, scale_rect, AssembleCombatWindowFlags, Cmds, Criticality, Status,
-        Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE_C,
-        PROGRESS_METER_FILE_C,
+        self, scale_rect, AssembleCombatWindowFlags, Cmds, Criticality, Status, Themed, FD_DATADIR,
+        GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE_C, PROGRESS_METER_FILE_C,
     },
     enemy::{animate_enemys, shuffle_enemys},
     global::{GAME_CONFIG, SKIP_A_FEW_FRAMES},
     graphics::{
-        free_graphics, load_block, scale_pic, BANNER_IS_DESTROYED, NE_SCREEN, PROGRESS_FILLER_PIC,
+        free_graphics, load_block, BANNER_IS_DESTROYED, NE_SCREEN, PROGRESS_FILLER_PIC,
         PROGRESS_METER_PIC,
     },
-    highscore::save_highscores,
     influencer::animate_influence,
-    init::free_game_mem,
-    input::{cmd_is_active, cmd_is_active_r, key_is_pressed_r, SDL_Delay, CMD_STRINGS, KEY_CMDS},
+    input::{SDL_Delay, CMD_STRINGS, KEY_CMDS},
     map::free_ship_memory,
     menu::free_menu_data,
     ship::free_droid_pics,
     sound::{free_sounds, leave_lift_sound},
     vars::{ME, PROGRESS_BAR_RECT, PROGRESS_METER_RECT, PROGRESS_TEXT_RECT},
-    view::display_banner,
     Data, ALL_BLASTS, ALL_ENEMYS, CONFIG_DIR, CUR_LEVEL, CUR_SHIP, F_P_SOVER1, NUM_ENEMYS,
 };
 
@@ -107,30 +103,32 @@ pub unsafe fn set_time_factor(time_factor: c_float) {
     *CURRENT_TIME_FACTOR.write().unwrap() = time_factor;
 }
 
-/// This function is used for terminating freedroid.  It will close
-/// the SDL submodules and exit.
-pub unsafe fn terminate(exit_code: c_int) -> ! {
-    info!("Termination of Freedroid initiated.");
+impl Data {
+    /// This function is used for terminating freedroid.  It will close
+    /// the SDL submodules and exit.
+    pub unsafe fn terminate(&mut self, exit_code: c_int) -> ! {
+        info!("Termination of Freedroid initiated.");
 
-    if exit_code == defs::OK.into() {
-        info!("Writing config file");
-        save_game_config();
-        info!("Writing highscores to disk");
-        save_highscores();
+        if exit_code == defs::OK.into() {
+            info!("Writing config file");
+            save_game_config();
+            info!("Writing highscores to disk");
+            self.save_highscores();
+        }
+
+        // ----- free memory
+        free_ship_memory();
+        free_droid_pics();
+        free_graphics();
+        free_sounds();
+        free_menu_data();
+        self.free_game_mem();
+
+        // ----- exit
+        info!("Thank you for playing Freedroid.");
+        SDL_Quit();
+        process::exit(exit_code);
     }
-
-    // ----- free memory
-    free_ship_memory();
-    free_droid_pics();
-    free_graphics();
-    free_sounds();
-    free_menu_data();
-    free_game_mem();
-
-    // ----- exit
-    info!("Thank you for playing Freedroid.");
-    SDL_Quit();
-    process::exit(exit_code);
 }
 
 /// This function is used to generate a random integer in the range
@@ -168,7 +166,7 @@ impl Data {
                 animate_enemys();
             }
 
-            display_banner(null_mut(), null_mut(), 0);
+            self.display_banner(null_mut(), null_mut(), 0);
             self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
 
             SDL_Delay(1);
@@ -178,7 +176,7 @@ impl Data {
             #[cfg(feature = "gcw0")]
             let cond = gcw0_ls_pressed_r() || gcw0_rs_pressed_r();
             #[cfg(not(feature = "gcw0"))]
-            let cond = key_is_pressed_r(b'c'.into());
+            let cond = self.key_is_pressed_r(b'c'.into());
 
             if cond {
                 if ME.status != Status::Cheese as i32 {
@@ -189,8 +187,8 @@ impl Data {
                 cheese = !cheese;
             }
 
-            if fire_pressed_r() || cmd_is_active_r(Cmds::Pause) {
-                while cmd_is_active(Cmds::Pause) {
+            if self.fire_pressed_r() || self.cmd_is_active_r(Cmds::Pause) {
+                while self.cmd_is_active(Cmds::Pause) {
                     SDL_Delay(1);
                 }
                 break;
@@ -395,149 +393,150 @@ pub unsafe fn activate_conservative_frame_computation() {
     BANNER_IS_DESTROYED = true.into();
 }
 
-/// Find a given filename in subdir relative to FD_DATADIR,
-///
-/// if you pass NULL as "subdir", it will be ignored
-///
-/// use current-theme subdir if "use_theme" == USE_THEME, otherwise NO_THEME
-///
-/// behavior on file-not-found depends on parameter "critical"
-///  IGNORE: just return NULL
-///  WARNONLY: warn and return NULL
-///  CRITICAL: Error-message and Terminate
-///
-/// returns pointer to _static_ string array File_Path, which
-/// contains the full pathname of the file.
-///
-/// !! do never try to free the returned string !!
-/// or to keep using it after a new call to find_file!
-pub unsafe fn find_file(
-    fname: *const c_char,
-    mut subdir: *mut c_char,
-    use_theme: c_int,
-    mut critical: c_int,
-) -> *mut c_char {
-    use std::io::Write;
+impl Data {
+    /// Find a given filename in subdir relative to FD_DATADIR,
+    ///
+    /// if you pass NULL as "subdir", it will be ignored
+    ///
+    /// use current-theme subdir if "use_theme" == USE_THEME, otherwise NO_THEME
+    ///
+    /// behavior on file-not-found depends on parameter "critical"
+    ///  IGNORE: just return NULL
+    ///  WARNONLY: warn and return NULL
+    ///  CRITICAL: Error-message and Terminate
+    ///
+    /// returns pointer to _static_ string array File_Path, which
+    /// contains the full pathname of the file.
+    ///
+    /// !! do never try to free the returned string !!
+    /// or to keep using it after a new call to find_file!
+    pub unsafe fn find_file(
+        &mut self,
+        fname: *const c_char,
+        mut subdir: *mut c_char,
+        use_theme: c_int,
+        mut critical: c_int,
+    ) -> *mut c_char {
+        use std::io::Write;
 
-    static mut FILE_PATH: [u8; 1024] = [0u8; 1024]; /* hope this will be enough */
+        static mut FILE_PATH: [u8; 1024] = [0u8; 1024]; /* hope this will be enough */
 
-    if critical != Criticality::Ignore as c_int
-        && critical != Criticality::WarnOnly as c_int
-        && critical != Criticality::Critical as c_int
-    {
-        warn!(
-            "WARNING: unknown critical-value passed to find_file(): {}. Assume CRITICAL",
-            critical
-        );
-        critical = Criticality::Critical as c_int;
-    }
+        if critical != Criticality::Ignore as c_int
+            && critical != Criticality::WarnOnly as c_int
+            && critical != Criticality::Critical as c_int
+        {
+            warn!(
+                "WARNING: unknown critical-value passed to find_file(): {}. Assume CRITICAL",
+                critical
+            );
+            critical = Criticality::Critical as c_int;
+        }
 
-    if fname.is_null() {
-        error!("find_file() called with empty filename!");
-        return null_mut();
-    }
-    if subdir.is_null() {
-        subdir = cstr!("").as_ptr() as *mut c_char;
-    }
+        if fname.is_null() {
+            error!("find_file() called with empty filename!");
+            return null_mut();
+        }
+        if subdir.is_null() {
+            subdir = cstr!("").as_ptr() as *mut c_char;
+        }
 
-    let inner = |datadir| {
-        let theme_dir = if use_theme == Themed::UseTheme as c_int {
-            Cow::Owned(format!(
-                "{}_theme/",
-                CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
-            ))
-        } else {
-            Cow::Borrowed("")
+        let inner = |datadir| {
+            let theme_dir = if use_theme == Themed::UseTheme as c_int {
+                Cow::Owned(format!(
+                    "{}_theme/",
+                    CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
+                ))
+            } else {
+                Cow::Borrowed("")
+            };
+
+            write!(
+                &mut FILE_PATH[..],
+                "{}/{}/{}/{}\0",
+                datadir,
+                CStr::from_ptr(subdir).to_string_lossy(),
+                theme_dir,
+                CStr::from_ptr(fname).to_string_lossy(),
+            )
+            .unwrap();
+
+            CStr::from_ptr(FILE_PATH.as_ptr() as *const c_char)
+                .to_str()
+                .map(|file_path| Path::new(file_path).exists())
+                .unwrap_or(false)
         };
 
-        write!(
-            &mut FILE_PATH[..],
-            "{}/{}/{}/{}\0",
-            datadir,
-            CStr::from_ptr(subdir).to_string_lossy(),
-            theme_dir,
-            CStr::from_ptr(fname).to_string_lossy(),
-        )
-        .unwrap();
+        let mut found = inner(LOCAL_DATADIR);
+        if !found {
+            found = inner(FD_DATADIR);
+        }
 
-        CStr::from_ptr(FILE_PATH.as_ptr() as *const c_char)
-            .to_str()
-            .map(|file_path| Path::new(file_path).exists())
-            .unwrap_or(false)
-    };
-
-    let mut found = inner(LOCAL_DATADIR);
-    if !found {
-        found = inner(FD_DATADIR);
-    }
-
-    if !found {
-        let critical = match critical.try_into() {
-            Ok(critical) => critical,
-            Err(_) => {
-                error!("ERROR in find_file(): Code should never reach this line!! Harakiri",);
-                terminate(defs::ERR.into());
-            }
-        };
-        // how critical is this file for the game:
-        match critical {
-            Criticality::WarnOnly => {
-                let fname = CStr::from_ptr(fname).to_string_lossy();
-                if use_theme == Themed::UseTheme as c_int {
-                    warn!(
-                        "file {} not found in theme-dir: graphics/{}_theme/",
-                        fname,
-                        CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
-                    );
-                } else {
-                    warn!("file {} not found ", fname);
+        if !found {
+            let critical = match critical.try_into() {
+                Ok(critical) => critical,
+                Err(_) => {
+                    error!("ERROR in find_file(): Code should never reach this line!! Harakiri",);
+                    self.terminate(defs::ERR.into());
                 }
-                return null_mut();
-            }
-            Criticality::Ignore => return null_mut(),
-            Criticality::Critical => {
-                let fname = CStr::from_ptr(fname).to_string_lossy();
-                if use_theme == Themed::UseTheme as c_int {
-                    error!(
+            };
+            // how critical is this file for the game:
+            match critical {
+                Criticality::WarnOnly => {
+                    let fname = CStr::from_ptr(fname).to_string_lossy();
+                    if use_theme == Themed::UseTheme as c_int {
+                        warn!(
+                            "file {} not found in theme-dir: graphics/{}_theme/",
+                            fname,
+                            CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
+                        );
+                    } else {
+                        warn!("file {} not found ", fname);
+                    }
+                    return null_mut();
+                }
+                Criticality::Ignore => return null_mut(),
+                Criticality::Critical => {
+                    let fname = CStr::from_ptr(fname).to_string_lossy();
+                    if use_theme == Themed::UseTheme as c_int {
+                        error!(
                         "file {} not found in theme-dir: graphics/{}_theme/, cannot run without it!",
                         fname,
                         CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
                     );
-                } else {
-                    error!("file {} not found, cannot run without it!", fname);
+                    } else {
+                        error!("file {} not found, cannot run without it!", fname);
+                    }
+                    self.terminate(defs::ERR.into());
                 }
-                terminate(defs::ERR.into());
             }
         }
+
+        FILE_PATH.as_mut_ptr() as *mut c_char
     }
 
-    FILE_PATH.as_mut_ptr() as *mut c_char
-}
-
-impl Data {
     /// show_progress: display empty progress meter with given text
-    pub unsafe fn init_progress(&self, mut text: *mut c_char) {
+    pub unsafe fn init_progress(&mut self, mut text: *mut c_char) {
         if text.is_null() {
             text = cstr!("Progress...").as_ptr() as *mut c_char;
         }
 
         if PROGRESS_METER_PIC.is_null() {
-            let mut fpath = find_file(
+            let mut fpath = self.find_file(
                 PROGRESS_METER_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
             PROGRESS_METER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
-            scale_pic(&mut PROGRESS_METER_PIC, GAME_CONFIG.scale);
-            fpath = find_file(
+            self.scale_pic(&mut PROGRESS_METER_PIC, GAME_CONFIG.scale);
+            fpath = self.find_file(
                 PROGRESS_FILLER_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
             PROGRESS_FILLER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
-            scale_pic(&mut PROGRESS_FILLER_PIC, GAME_CONFIG.scale);
+            self.scale_pic(&mut PROGRESS_FILLER_PIC, GAME_CONFIG.scale);
 
             scale_rect(&mut PROGRESS_METER_RECT, GAME_CONFIG.scale);
             scale_rect(&mut PROGRESS_BAR_RECT, GAME_CONFIG.scale);
@@ -565,35 +564,35 @@ impl Data {
 
         SDL_Flip(NE_SCREEN);
     }
-}
 
-/// This function read in a file with the specified name, allocated
-/// memory for it of course, looks for the file end string and then
-/// terminates the whole read in file with a 0 character, so that it
-/// can easily be treated like a common string.
-pub unsafe fn read_and_malloc_and_terminate_file(
-    filename: *mut c_char,
-    file_end_string: *mut c_char,
-) -> Box<[c_char]> {
-    use bstr::ByteSlice;
-    use std::io::Read;
+    /// This function read in a file with the specified name, allocated
+    /// memory for it of course, looks for the file end string and then
+    /// terminates the whole read in file with a 0 character, so that it
+    /// can easily be treated like a common string.
+    pub unsafe fn read_and_malloc_and_terminate_file(
+        &mut self,
+        filename: *mut c_char,
+        file_end_string: *mut c_char,
+    ) -> Box<[c_char]> {
+        use bstr::ByteSlice;
+        use std::io::Read;
 
-    let filename = CStr::from_ptr(filename).to_str().unwrap();
-    let file_end_string = CStr::from_ptr(file_end_string);
-    info!(
-        "ReadAndMallocAndTerminateFile: The filename is: {}",
-        filename
-    );
+        let filename = CStr::from_ptr(filename).to_str().unwrap();
+        let file_end_string = CStr::from_ptr(file_end_string);
+        info!(
+            "ReadAndMallocAndTerminateFile: The filename is: {}",
+            filename
+        );
 
-    // Read the whole theme data to memory
-    let mut file = match File::open(filename) {
-        Ok(file) => {
-            info!("ReadAndMallocAndTerminateFile: Opening file succeeded...");
-            file
-        }
-        Err(_) => {
-            error!(
-                "\n\
+        // Read the whole theme data to memory
+        let mut file = match File::open(filename) {
+            Ok(file) => {
+                info!("ReadAndMallocAndTerminateFile: Opening file succeeded...");
+                file
+            }
+            Err(_) => {
+                error!(
+                    "\n\
         ----------------------------------------------------------------------\n\
         Freedroid has encountered a problem:\n\
         In function 'char* ReadAndMallocAndTerminateFile ( char* filename ):\n\
@@ -615,50 +614,50 @@ pub unsafe fn read_and_malloc_and_terminate_file(
         not resolve.... Sorry, if that interrupts a major game of yours.....\n\
         ----------------------------------------------------------------------\n\
         ",
-                filename
-            );
-            terminate(defs::ERR.into());
-        }
-    };
-    let file_len = match file
-        .metadata()
-        .ok()
-        .and_then(|metadata| usize::try_from(metadata.len()).ok())
-    {
-        Some(file_len) => {
-            info!("ReadAndMallocAndTerminateFile: fstating file succeeded...");
-            file_len
-        }
-        None => {
-            error!("ReadAndMallocAndTerminateFile: Error fstat-ing File....");
-            terminate(defs::ERR.into());
-        }
-    };
+                    filename
+                );
+                self.terminate(defs::ERR.into());
+            }
+        };
+        let file_len = match file
+            .metadata()
+            .ok()
+            .and_then(|metadata| usize::try_from(metadata.len()).ok())
+        {
+            Some(file_len) => {
+                info!("ReadAndMallocAndTerminateFile: fstating file succeeded...");
+                file_len
+            }
+            None => {
+                error!("ReadAndMallocAndTerminateFile: Error fstat-ing File....");
+                self.terminate(defs::ERR.into());
+            }
+        };
 
-    let mut all_data: Box<[c_char]> = vec![0; file_len + 64 * 2 + 10000].into_boxed_slice();
+        let mut all_data: Box<[c_char]> = vec![0; file_len + 64 * 2 + 10000].into_boxed_slice();
 
-    {
-        let data = std::slice::from_raw_parts_mut(all_data.as_mut_ptr() as *mut u8, file_len);
-        match file.read_exact(data) {
-            Ok(()) => info!("ReadAndMallocAndTerminateFile: Reading file succeeded..."),
-            Err(_) => {
-                error!("ReadAndMallocAndTerminateFile: Reading file failed...");
-                terminate(defs::ERR.into());
+        {
+            let data = std::slice::from_raw_parts_mut(all_data.as_mut_ptr() as *mut u8, file_len);
+            match file.read_exact(data) {
+                Ok(()) => info!("ReadAndMallocAndTerminateFile: Reading file succeeded..."),
+                Err(_) => {
+                    error!("ReadAndMallocAndTerminateFile: Reading file failed...");
+                    self.terminate(defs::ERR.into());
+                }
             }
         }
-    }
-    all_data[file_len..].fill(0);
+        all_data[file_len..].fill(0);
 
-    drop(file);
+        drop(file);
 
-    info!("ReadAndMallocAndTerminateFile: Adding a 0 at the end of read data....");
+        info!("ReadAndMallocAndTerminateFile: Adding a 0 at the end of read data....");
 
-    match std::slice::from_raw_parts(all_data.as_ptr() as *const u8, all_data.len())
-        .find(file_end_string.to_bytes())
-    {
-        None => {
-            error!(
-                "\n\
+        match std::slice::from_raw_parts(all_data.as_ptr() as *const u8, all_data.len())
+            .find(file_end_string.to_bytes())
+        {
+            None => {
+                error!(
+                    "\n\
                 ----------------------------------------------------------------------\n\
                 Freedroid has encountered a problem:\n\
                 In function 'char* ReadAndMallocAndTerminateFile ( char* filename ):\n\
@@ -682,65 +681,69 @@ pub unsafe fn read_and_malloc_and_terminate_file(
                 not resolve.... Sorry, if that interrupts a major game of yours.....\n\
                 ----------------------------------------------------------------------\n\
                 \n",
-                filename,
-                file_end_string.to_string_lossy()
-            );
-            terminate(defs::ERR.into());
+                    filename,
+                    file_end_string.to_string_lossy()
+                );
+                self.terminate(defs::ERR.into());
+            }
+            Some(pos) => all_data[pos] = 0,
         }
-        Some(pos) => all_data[pos] = 0,
-    }
 
-    info!(
-        "ReadAndMallocAndTerminateFile: The content of the read file: \n{}",
-        CStr::from_ptr(all_data.as_ptr()).to_string_lossy()
-    );
-
-    all_data
-}
-
-/// find label in data and read stuff after label into dst using the FormatString
-///
-/// NOTE!!: be sure dst is large enough for data read by FormatString, or
-/// sscanf will crash!!
-pub unsafe fn read_value_from_string(
-    data: *mut c_char,
-    label: *mut c_char,
-    format_string: *mut c_char,
-    dst: *mut c_void,
-) {
-    // Now we locate the label in data and position pointer right after the label
-    // ..will Terminate itself if not found...
-    let pos = locate_string_in_data(data, label).add(CStr::from_ptr(label).to_bytes().len());
-
-    if libc::sscanf(pos, format_string, dst) == libc::EOF {
-        error!(
-            "ReadValueFromString(): could not read value {} of label {} with format {}",
-            CStr::from_ptr(pos).to_string_lossy(),
-            CStr::from_ptr(format_string).to_string_lossy(),
-            CStr::from_ptr(label).to_string_lossy(),
+        info!(
+            "ReadAndMallocAndTerminateFile: The content of the read file: \n{}",
+            CStr::from_ptr(all_data.as_ptr()).to_string_lossy()
         );
-        terminate(defs::ERR.into());
-    } else {
-        info!("ReadValueFromString: value read in successfully.");
+
+        all_data
     }
-}
 
-/// This function tries to locate a string in some given data string.
-/// The data string is assumed to be null terminated.  Otherwise SEGFAULTS
-/// might happen.
-///
-/// The return value is a pointer to the first instance where the substring
-/// we are searching is found in the main text.
-pub unsafe fn locate_string_in_data(
-    search_begin_pointer: *mut c_char,
-    search_text_pointer: *mut c_char,
-) -> *mut c_char {
-    let temp = libc::strstr(search_begin_pointer, search_text_pointer);
-    let search_text = CStr::from_ptr(search_text_pointer).to_string_lossy();
+    /// find label in data and read stuff after label into dst using the FormatString
+    ///
+    /// NOTE!!: be sure dst is large enough for data read by FormatString, or
+    /// sscanf will crash!!
+    pub unsafe fn read_value_from_string(
+        &mut self,
+        data: *mut c_char,
+        label: *mut c_char,
+        format_string: *mut c_char,
+        dst: *mut c_void,
+    ) {
+        // Now we locate the label in data and position pointer right after the label
+        // ..will Terminate itself if not found...
+        let pos = self
+            .locate_string_in_data(data, label)
+            .add(CStr::from_ptr(label).to_bytes().len());
 
-    if temp.is_null() {
-        error!(
-            "\n\
+        if libc::sscanf(pos, format_string, dst) == libc::EOF {
+            error!(
+                "ReadValueFromString(): could not read value {} of label {} with format {}",
+                CStr::from_ptr(pos).to_string_lossy(),
+                CStr::from_ptr(format_string).to_string_lossy(),
+                CStr::from_ptr(label).to_string_lossy(),
+            );
+            self.terminate(defs::ERR.into());
+        } else {
+            info!("ReadValueFromString: value read in successfully.");
+        }
+    }
+
+    /// This function tries to locate a string in some given data string.
+    /// The data string is assumed to be null terminated.  Otherwise SEGFAULTS
+    /// might happen.
+    ///
+    /// The return value is a pointer to the first instance where the substring
+    /// we are searching is found in the main text.
+    pub unsafe fn locate_string_in_data(
+        &mut self,
+        search_begin_pointer: *mut c_char,
+        search_text_pointer: *mut c_char,
+    ) -> *mut c_char {
+        let temp = libc::strstr(search_begin_pointer, search_text_pointer);
+        let search_text = CStr::from_ptr(search_text_pointer).to_string_lossy();
+
+        if temp.is_null() {
+            error!(
+                "\n\
              \n\
              ----------------------------------------------------------------------\n\
              Freedroid has encountered a problem:\n\
@@ -761,16 +764,17 @@ pub unsafe fn locate_string_in_data(
              not resolve.... Sorry, if that interrupts a major game of yours.....\n\
              ----------------------------------------------------------------------\n\
              \n",
-            search_text
-        );
-        terminate(defs::ERR.into());
-    } else {
-        info!(
-            "LocateStringInDate: String {} successfully located within data. ",
-            search_text
-        );
+                search_text
+            );
+            self.terminate(defs::ERR.into());
+        } else {
+            info!(
+                "LocateStringInDate: String {} successfully located within data. ",
+                search_text
+            );
+        }
+        temp
     }
-    temp
 }
 
 /// This function teleports the influencer to a new position on the
@@ -854,19 +858,21 @@ pub unsafe fn count_string_occurences(
     counter
 }
 
-/// This function looks for a sting begin indicator and takes the string
-/// from after there up to a sting end indicator and mallocs memory for
-/// it, copys it there and returns it.
-/// The original source string specified should in no way be modified.
-pub unsafe fn read_and_malloc_string_from_data(
-    search_string: *mut c_char,
-    start_indication_string: *mut c_char,
-    end_indication_string: *mut c_char,
-) -> *mut c_char {
-    let search_pointer = libc::strstr(search_string, start_indication_string);
-    if search_pointer.is_null() {
-        error!(
-            "\n\
+impl Data {
+    /// This function looks for a sting begin indicator and takes the string
+    /// from after there up to a sting end indicator and mallocs memory for
+    /// it, copys it there and returns it.
+    /// The original source string specified should in no way be modified.
+    pub unsafe fn read_and_malloc_string_from_data(
+        &mut self,
+        search_string: *mut c_char,
+        start_indication_string: *mut c_char,
+        end_indication_string: *mut c_char,
+    ) -> *mut c_char {
+        let search_pointer = libc::strstr(search_string, start_indication_string);
+        if search_pointer.is_null() {
+            error!(
+                "\n\
              \n\
              ----------------------------------------------------------------------\n\
              Freedroid has encountered a problem:\n\
@@ -886,17 +892,17 @@ pub unsafe fn read_and_malloc_string_from_data(
              not resolve.... Sorry, if that interrupts a major game of yours.....\n\
              ----------------------------------------------------------------------\n\
              \n",
-            CStr::from_ptr(start_indication_string).to_string_lossy()
-        );
-        terminate(defs::ERR.into());
-    } else {
-        // Now we move to the beginning
-        let search_pointer = search_pointer.add(libc::strlen(start_indication_string));
-        let end_of_string_pointer = libc::strstr(search_pointer, end_indication_string);
-        // Now we move to the end with the end pointer
-        if end_of_string_pointer.is_null() {
-            error!(
-                "\n\
+                CStr::from_ptr(start_indication_string).to_string_lossy()
+            );
+            self.terminate(defs::ERR.into());
+        } else {
+            // Now we move to the beginning
+            let search_pointer = search_pointer.add(libc::strlen(start_indication_string));
+            let end_of_string_pointer = libc::strstr(search_pointer, end_indication_string);
+            // Now we move to the end with the end pointer
+            if end_of_string_pointer.is_null() {
+                error!(
+                    "\n\
                  \n\
                  ----------------------------------------------------------------------\n\
                  Freedroid has encountered a problem:\n\
@@ -917,29 +923,30 @@ pub unsafe fn read_and_malloc_string_from_data(
                  not resolve.... Sorry, if that interrupts a major game of yours.....\n\
                  ----------------------------------------------------------------------\n\
                  \n",
-                CStr::from_ptr(end_indication_string).to_string_lossy(),
+                    CStr::from_ptr(end_indication_string).to_string_lossy(),
+                );
+                self.terminate(defs::ERR.into());
+            }
+
+            // Now we allocate memory and copy the string...
+            let string_length = end_of_string_pointer.offset_from(search_pointer);
+
+            let return_string = alloc_zeroed(
+                Layout::array::<i8>(usize::try_from(string_length).unwrap() + 1).unwrap(),
+            ) as *mut c_char;
+            libc::strncpy(
+                return_string,
+                search_pointer,
+                string_length.try_into().unwrap(),
             );
-            terminate(defs::ERR.into());
+            *return_string.add(string_length.try_into().unwrap()) = 0;
+
+            info!(
+                "ReadAndMalocStringFromData): Successfully identified string: {}.",
+                CStr::from_ptr(return_string).to_string_lossy()
+            );
+            return_string
         }
-
-        // Now we allocate memory and copy the string...
-        let string_length = end_of_string_pointer.offset_from(search_pointer);
-
-        let return_string =
-            alloc_zeroed(Layout::array::<i8>(usize::try_from(string_length).unwrap() + 1).unwrap())
-                as *mut c_char;
-        libc::strncpy(
-            return_string,
-            search_pointer,
-            string_length.try_into().unwrap(),
-        );
-        *return_string.add(string_length.try_into().unwrap()) = 0;
-
-        info!(
-            "ReadAndMalocStringFromData): Successfully identified string: {}.",
-            CStr::from_ptr(return_string).to_string_lossy()
-        );
-        return_string
     }
 }
 

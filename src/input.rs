@@ -1,12 +1,7 @@
 #[cfg(target_os = "android")]
 use crate::graphics::NE_SCREEN;
 use crate::{
-    defs::{
-        self, alt_pressed, ctrl_pressed, down_pressed, get_user_center, left_pressed,
-        right_pressed, shift_pressed, up_pressed, Cmds, MenuAction, PointerStates,
-    },
-    graphics::{take_screenshot, toggle_fullscreen},
-    misc::terminate,
+    defs::{self, get_user_center, Cmds, MenuAction, PointerStates},
     structs::Point,
     Data,
 };
@@ -149,36 +144,36 @@ pub const CURSOR_KEEP_VISIBLE: u32 = 3000; // ticks to keep mouse-cursor visible
 pub static mut KEYSTR: [*const c_char; PointerStates::Last as usize] =
     [null(); PointerStates::Last as usize];
 
-/// Check if any keys have been 'freshly' pressed. If yes, return key-code, otherwise 0.
-pub fn wait_for_key_pressed() -> c_int {
-    loop {
-        match any_key_just_pressed() {
-            0 => unsafe { SDL_Delay(1) },
-            key => break key,
+impl Data {
+    /// Check if any keys have been 'freshly' pressed. If yes, return key-code, otherwise 0.
+    pub unsafe fn wait_for_key_pressed(&mut self) -> c_int {
+        loop {
+            match self.any_key_just_pressed() {
+                0 => SDL_Delay(1),
+                key => break key,
+            }
         }
     }
-}
 
-pub fn any_key_just_pressed() -> c_int {
-    #[cfg(target_os = "android")]
-    unsafe {
-        SDL_Flip(NE_SCREEN)
-    };
+    pub unsafe fn any_key_just_pressed(&mut self) -> c_int {
+        #[cfg(target_os = "android")]
+        unsafe {
+            SDL_Flip(NE_SCREEN)
+        };
 
-    unsafe {
-        update_input();
-    }
+        self.update_input();
 
-    let pressed_key = (0..PointerStates::Last as c_int)
-        .map(|key| (key, unsafe { &mut INPUT_STATE[key as usize] }))
-        .find(|(_, key_flags)| is_just_pressed(**key_flags));
+        let pressed_key = (0..PointerStates::Last as c_int)
+            .map(|key| (key, &mut INPUT_STATE[key as usize]))
+            .find(|(_, key_flags)| is_just_pressed(**key_flags));
 
-    match pressed_key {
-        Some((key, key_flags)) => {
-            clear_fresh(key_flags);
-            key
+        match pressed_key {
+            Some((key, key_flags)) => {
+                clear_fresh(key_flags);
+                key
+            }
+            None => 0,
         }
-        None => 0,
     }
 }
 
@@ -194,263 +189,269 @@ fn clear_fresh(key_flags: &mut c_int) {
     *key_flags &= !FRESH_BIT;
 }
 
-pub unsafe fn update_input() -> c_int {
-    // switch mouse-cursor visibility as a function of time of last activity
-    if SDL_GetTicks() - LAST_MOUSE_EVENT > CURSOR_KEEP_VISIBLE {
-        SHOW_CURSOR = false;
-    } else {
-        SHOW_CURSOR = true;
-    }
+impl Data {
+    pub unsafe fn update_input(&mut self) -> c_int {
+        // switch mouse-cursor visibility as a function of time of last activity
+        if SDL_GetTicks() - LAST_MOUSE_EVENT > CURSOR_KEEP_VISIBLE {
+            SHOW_CURSOR = false;
+        } else {
+            SHOW_CURSOR = true;
+        }
 
-    while SDL_PollEvent(&mut EVENT) != 0 {
-        match (*EVENT._type()).into() {
-            SDL_QUIT => {
-                info!("User requested termination, terminating.");
-                terminate(0);
-            }
-
-            SDL_KEYDOWN => {
-                let key = &*EVENT.key();
-                CURRENT_MODIFIERS = key.keysym._mod;
-                INPUT_STATE[usize::try_from(key.keysym.sym).unwrap()] = PRESSED;
-                #[cfg(feature = "gcw0")]
-                if input_axis.x != 0 || input_axis.y != 0 {
-                    axis_is_active = true.into(); // 4 GCW-0 ; breaks cursor keys after axis has been active...
+        while SDL_PollEvent(&mut EVENT) != 0 {
+            match (*EVENT._type()).into() {
+                SDL_QUIT => {
+                    info!("User requested termination, terminating.");
+                    self.terminate(0);
                 }
-            }
-            SDL_KEYUP => {
-                let key = &*EVENT.key();
-                CURRENT_MODIFIERS = key.keysym._mod;
-                INPUT_STATE[usize::try_from(key.keysym.sym).unwrap()] = RELEASED;
-                #[cfg(feature = "gcw0")]
-                {
-                    axis_is_active = false.into();
-                }
-            }
 
-            SDL_JOYAXISMOTION => {
-                let jaxis = &*EVENT.jaxis();
-                let axis = jaxis.axis;
-                if axis == 0 || ((JOY_NUM_AXES >= 5) && (axis == 3))
-                /* x-axis */
-                {
-                    INPUT_AXIS.x = jaxis.value.into();
-
-                    // this is a bit tricky, because we want to allow direction keys
-                    // to be soft-released. When mapping the joystick->keyboard, we
-                    // therefore have to make sure that this mapping only occurs when
-                    // and actual _change_ of the joystick-direction ('digital') occurs
-                    // so that it behaves like "set"/"release"
-                    if JOY_SENSITIVITY * i32::from(jaxis.value) > 10000 {
-                        /* about half tilted */
-                        INPUT_STATE[PointerStates::JoyRight as usize] = PRESSED;
-                        INPUT_STATE[PointerStates::JoyLeft as usize] = false.into();
-                    } else if JOY_SENSITIVITY * i32::from(jaxis.value) < -10000 {
-                        INPUT_STATE[PointerStates::JoyLeft as usize] = PRESSED;
-                        INPUT_STATE[PointerStates::JoyRight as usize] = false.into();
-                    } else {
-                        INPUT_STATE[PointerStates::JoyLeft as usize] = false.into();
-                        INPUT_STATE[PointerStates::JoyRight as usize] = false.into();
-                    }
-                } else if (axis == 1) || ((JOY_NUM_AXES >= 5) && (axis == 4)) {
-                    /* y-axis */
-                    INPUT_AXIS.y = jaxis.value.into();
-
-                    if JOY_SENSITIVITY * i32::from(jaxis.value) > 10000 {
-                        INPUT_STATE[PointerStates::JoyDown as usize] = PRESSED;
-                        INPUT_STATE[PointerStates::JoyUp as usize] = false.into();
-                    } else if JOY_SENSITIVITY * i32::from(jaxis.value) < -10000 {
-                        INPUT_STATE[PointerStates::JoyUp as usize] = PRESSED;
-                        INPUT_STATE[PointerStates::JoyDown as usize] = false.into();
-                    } else {
-                        INPUT_STATE[PointerStates::JoyUp as usize] = false.into();
-                        INPUT_STATE[PointerStates::JoyDown as usize] = false.into();
+                SDL_KEYDOWN => {
+                    let key = &*EVENT.key();
+                    CURRENT_MODIFIERS = key.keysym._mod;
+                    INPUT_STATE[usize::try_from(key.keysym.sym).unwrap()] = PRESSED;
+                    #[cfg(feature = "gcw0")]
+                    if input_axis.x != 0 || input_axis.y != 0 {
+                        axis_is_active = true.into(); // 4 GCW-0 ; breaks cursor keys after axis has been active...
                     }
                 }
-            }
-
-            SDL_JOYBUTTONDOWN => {
-                let jbutton = &*EVENT.jbutton();
-                // first button
-                if jbutton.button == 0 {
-                    INPUT_STATE[PointerStates::JoyButton1 as usize] = PRESSED;
-                }
-                // second button
-                else if jbutton.button == 1 {
-                    INPUT_STATE[PointerStates::JoyButton2 as usize] = PRESSED;
-                }
-                // and third button
-                else if jbutton.button == 2 {
-                    INPUT_STATE[PointerStates::JoyButton3 as usize] = PRESSED;
-                }
-                // and fourth button
-                else if jbutton.button == 3 {
-                    INPUT_STATE[PointerStates::JoyButton4 as usize] = PRESSED;
+                SDL_KEYUP => {
+                    let key = &*EVENT.key();
+                    CURRENT_MODIFIERS = key.keysym._mod;
+                    INPUT_STATE[usize::try_from(key.keysym.sym).unwrap()] = RELEASED;
+                    #[cfg(feature = "gcw0")]
+                    {
+                        axis_is_active = false.into();
+                    }
                 }
 
-                AXIS_IS_ACTIVE = true.into();
-            }
+                SDL_JOYAXISMOTION => {
+                    let jaxis = &*EVENT.jaxis();
+                    let axis = jaxis.axis;
+                    if axis == 0 || ((JOY_NUM_AXES >= 5) && (axis == 3))
+                    /* x-axis */
+                    {
+                        INPUT_AXIS.x = jaxis.value.into();
 
-            SDL_JOYBUTTONUP => {
-                let jbutton = &*EVENT.jbutton();
-                // first button
-                if jbutton.button == 0 {
-                    INPUT_STATE[PointerStates::JoyButton1 as usize] = false.into();
+                        // this is a bit tricky, because we want to allow direction keys
+                        // to be soft-released. When mapping the joystick->keyboard, we
+                        // therefore have to make sure that this mapping only occurs when
+                        // and actual _change_ of the joystick-direction ('digital') occurs
+                        // so that it behaves like "set"/"release"
+                        if JOY_SENSITIVITY * i32::from(jaxis.value) > 10000 {
+                            /* about half tilted */
+                            INPUT_STATE[PointerStates::JoyRight as usize] = PRESSED;
+                            INPUT_STATE[PointerStates::JoyLeft as usize] = false.into();
+                        } else if JOY_SENSITIVITY * i32::from(jaxis.value) < -10000 {
+                            INPUT_STATE[PointerStates::JoyLeft as usize] = PRESSED;
+                            INPUT_STATE[PointerStates::JoyRight as usize] = false.into();
+                        } else {
+                            INPUT_STATE[PointerStates::JoyLeft as usize] = false.into();
+                            INPUT_STATE[PointerStates::JoyRight as usize] = false.into();
+                        }
+                    } else if (axis == 1) || ((JOY_NUM_AXES >= 5) && (axis == 4)) {
+                        /* y-axis */
+                        INPUT_AXIS.y = jaxis.value.into();
+
+                        if JOY_SENSITIVITY * i32::from(jaxis.value) > 10000 {
+                            INPUT_STATE[PointerStates::JoyDown as usize] = PRESSED;
+                            INPUT_STATE[PointerStates::JoyUp as usize] = false.into();
+                        } else if JOY_SENSITIVITY * i32::from(jaxis.value) < -10000 {
+                            INPUT_STATE[PointerStates::JoyUp as usize] = PRESSED;
+                            INPUT_STATE[PointerStates::JoyDown as usize] = false.into();
+                        } else {
+                            INPUT_STATE[PointerStates::JoyUp as usize] = false.into();
+                            INPUT_STATE[PointerStates::JoyDown as usize] = false.into();
+                        }
+                    }
                 }
-                // second button
-                else if jbutton.button == 1 {
-                    INPUT_STATE[PointerStates::JoyButton2 as usize] = false.into();
-                }
-                // and third button
-                else if jbutton.button == 2 {
-                    INPUT_STATE[PointerStates::JoyButton3 as usize] = false.into();
-                }
-                // and fourth button
-                else if jbutton.button == 3 {
-                    INPUT_STATE[PointerStates::JoyButton4 as usize] = false.into();
-                }
 
-                AXIS_IS_ACTIVE = false.into();
-            }
+                SDL_JOYBUTTONDOWN => {
+                    let jbutton = &*EVENT.jbutton();
+                    // first button
+                    if jbutton.button == 0 {
+                        INPUT_STATE[PointerStates::JoyButton1 as usize] = PRESSED;
+                    }
+                    // second button
+                    else if jbutton.button == 1 {
+                        INPUT_STATE[PointerStates::JoyButton2 as usize] = PRESSED;
+                    }
+                    // and third button
+                    else if jbutton.button == 2 {
+                        INPUT_STATE[PointerStates::JoyButton3 as usize] = PRESSED;
+                    }
+                    // and fourth button
+                    else if jbutton.button == 3 {
+                        INPUT_STATE[PointerStates::JoyButton4 as usize] = PRESSED;
+                    }
 
-            SDL_MOUSEMOTION => {
-                let button = &*EVENT.button();
-                let user_center = get_user_center();
-                INPUT_AXIS.x = i32::from(button.x) - i32::from(user_center.x) + 16;
-                INPUT_AXIS.y = i32::from(button.y) - i32::from(user_center.y) + 16;
-
-                LAST_MOUSE_EVENT = SDL_GetTicks();
-            }
-
-            /* Mouse control */
-            SDL_MOUSEBUTTONDOWN => {
-                let button = &*EVENT.button();
-                if button.button == MouseState::Left as u8 {
-                    INPUT_STATE[PointerStates::MouseButton1 as usize] = PRESSED;
                     AXIS_IS_ACTIVE = true.into();
                 }
 
-                if button.button == MouseState::Right as u8 {
-                    INPUT_STATE[PointerStates::MouseButton2 as usize] = PRESSED;
-                }
+                SDL_JOYBUTTONUP => {
+                    let jbutton = &*EVENT.jbutton();
+                    // first button
+                    if jbutton.button == 0 {
+                        INPUT_STATE[PointerStates::JoyButton1 as usize] = false.into();
+                    }
+                    // second button
+                    else if jbutton.button == 1 {
+                        INPUT_STATE[PointerStates::JoyButton2 as usize] = false.into();
+                    }
+                    // and third button
+                    else if jbutton.button == 2 {
+                        INPUT_STATE[PointerStates::JoyButton3 as usize] = false.into();
+                    }
+                    // and fourth button
+                    else if jbutton.button == 3 {
+                        INPUT_STATE[PointerStates::JoyButton4 as usize] = false.into();
+                    }
 
-                if button.button == MouseState::Middle as u8 {
-                    INPUT_STATE[PointerStates::MouseButton3 as usize] = PRESSED;
-                }
-
-                // wheel events are immediately released, so we rather
-                // count the number of not yet read-out events
-                if button.button == MouseState::WheelUp as u8 {
-                    WHEEL_UP_EVENTS += 1;
-                }
-
-                if button.button == MouseState::WheelDown as u8 {
-                    WHEEL_DOWN_EVENTS += 1;
-                }
-
-                LAST_MOUSE_EVENT = SDL_GetTicks();
-            }
-
-            SDL_MOUSEBUTTONUP => {
-                let button = &*EVENT.button();
-                if button.button == MouseState::Left as u8 {
-                    INPUT_STATE[PointerStates::MouseButton1 as usize] = false.into();
                     AXIS_IS_ACTIVE = false.into();
                 }
 
-                if button.button == MouseState::Right as u8 {
-                    INPUT_STATE[PointerStates::MouseButton2 as usize] = false.into();
+                SDL_MOUSEMOTION => {
+                    let button = &*EVENT.button();
+                    let user_center = get_user_center();
+                    INPUT_AXIS.x = i32::from(button.x) - i32::from(user_center.x) + 16;
+                    INPUT_AXIS.y = i32::from(button.y) - i32::from(user_center.y) + 16;
+
+                    LAST_MOUSE_EVENT = SDL_GetTicks();
                 }
 
-                if button.button == MouseState::Middle as u8 {
-                    INPUT_STATE[PointerStates::MouseButton3 as usize] = false.into();
+                /* Mouse control */
+                SDL_MOUSEBUTTONDOWN => {
+                    let button = &*EVENT.button();
+                    if button.button == MouseState::Left as u8 {
+                        INPUT_STATE[PointerStates::MouseButton1 as usize] = PRESSED;
+                        AXIS_IS_ACTIVE = true.into();
+                    }
+
+                    if button.button == MouseState::Right as u8 {
+                        INPUT_STATE[PointerStates::MouseButton2 as usize] = PRESSED;
+                    }
+
+                    if button.button == MouseState::Middle as u8 {
+                        INPUT_STATE[PointerStates::MouseButton3 as usize] = PRESSED;
+                    }
+
+                    // wheel events are immediately released, so we rather
+                    // count the number of not yet read-out events
+                    if button.button == MouseState::WheelUp as u8 {
+                        WHEEL_UP_EVENTS += 1;
+                    }
+
+                    if button.button == MouseState::WheelDown as u8 {
+                        WHEEL_DOWN_EVENTS += 1;
+                    }
+
+                    LAST_MOUSE_EVENT = SDL_GetTicks();
                 }
+
+                SDL_MOUSEBUTTONUP => {
+                    let button = &*EVENT.button();
+                    if button.button == MouseState::Left as u8 {
+                        INPUT_STATE[PointerStates::MouseButton1 as usize] = false.into();
+                        AXIS_IS_ACTIVE = false.into();
+                    }
+
+                    if button.button == MouseState::Right as u8 {
+                        INPUT_STATE[PointerStates::MouseButton2 as usize] = false.into();
+                    }
+
+                    if button.button == MouseState::Middle as u8 {
+                        INPUT_STATE[PointerStates::MouseButton3 as usize] = false.into();
+                    }
+                }
+
+                _ => break,
             }
-
-            _ => break,
         }
+
+        0
     }
 
-    0
-}
+    pub unsafe fn key_is_pressed(&mut self, key: c_int) -> bool {
+        self.update_input();
 
-pub unsafe fn key_is_pressed(key: c_int) -> bool {
-    update_input();
+        (INPUT_STATE[usize::try_from(key).unwrap()] & PRESSED) == PRESSED
+    }
 
-    (INPUT_STATE[usize::try_from(key).unwrap()] & PRESSED) == PRESSED
-}
+    /// Does the same as KeyIsPressed, but automatically releases the key as well..
+    pub unsafe fn key_is_pressed_r(&mut self, key: c_int) -> bool {
+        let ret = self.key_is_pressed(key);
 
-/// Does the same as KeyIsPressed, but automatically releases the key as well..
-pub unsafe fn key_is_pressed_r(key: c_int) -> bool {
-    let ret = key_is_pressed(key);
-
-    release_key(key);
-    ret
+        release_key(key);
+        ret
+    }
 }
 
 pub unsafe fn release_key(key: c_int) {
     INPUT_STATE[usize::try_from(key).unwrap()] = false.into();
 }
 
-pub unsafe fn wheel_up_pressed() -> bool {
-    update_input();
-    if WHEEL_UP_EVENTS != 0 {
-        WHEEL_UP_EVENTS -= 1;
-        true
-    } else {
-        false
-    }
-}
-
-pub unsafe fn wheel_down_pressed() -> bool {
-    update_input();
-    if WHEEL_DOWN_EVENTS != 0 {
-        WHEEL_DOWN_EVENTS -= 1;
-        true
-    } else {
-        false
-    }
-}
-
-pub unsafe fn cmd_is_active(cmd: Cmds) -> bool {
-    let cmd = cmd as usize;
-    key_is_pressed(KEY_CMDS[cmd][0])
-        || key_is_pressed(KEY_CMDS[cmd][1])
-        || key_is_pressed(KEY_CMDS[cmd][2])
-}
-
-/// the same but release the keys: use only for menus!
-pub unsafe fn cmd_is_active_r(cmd: Cmds) -> bool {
-    let cmd = cmd as usize;
-
-    let c1 = key_is_pressed_r(KEY_CMDS[cmd][0]);
-    let c2 = key_is_pressed_r(KEY_CMDS[cmd][1]);
-    let c3 = key_is_pressed_r(KEY_CMDS[cmd][2]);
-
-    c1 || c2 || c3
-}
-
-pub unsafe fn wait_for_all_keys_released() {
-    while any_key_is_pressed_r() {
-        SDL_Delay(1);
-    }
-    reset_mouse_wheel();
-}
-
-pub unsafe fn any_key_is_pressed_r() -> bool {
-    #[cfg(target_os = "android")]
-    SDL_Flip(NE_SCREEN); // make sure we keep updating screen to read out Android inputs
-
-    #[cfg(not(target_os = "android"))]
-    update_input();
-
-    for state in &mut INPUT_STATE {
-        if (*state & PRESSED) != 0 {
-            *state = 0;
-            return true;
+impl Data {
+    pub unsafe fn wheel_up_pressed(&mut self) -> bool {
+        self.update_input();
+        if WHEEL_UP_EVENTS != 0 {
+            WHEEL_UP_EVENTS -= 1;
+            true
+        } else {
+            false
         }
     }
-    false
+
+    pub unsafe fn wheel_down_pressed(&mut self) -> bool {
+        self.update_input();
+        if WHEEL_DOWN_EVENTS != 0 {
+            WHEEL_DOWN_EVENTS -= 1;
+            true
+        } else {
+            false
+        }
+    }
+
+    pub unsafe fn cmd_is_active(&mut self, cmd: Cmds) -> bool {
+        let cmd = cmd as usize;
+        self.key_is_pressed(KEY_CMDS[cmd][0])
+            || self.key_is_pressed(KEY_CMDS[cmd][1])
+            || self.key_is_pressed(KEY_CMDS[cmd][2])
+    }
+
+    /// the same but release the keys: use only for menus!
+    pub unsafe fn cmd_is_active_r(&mut self, cmd: Cmds) -> bool {
+        let cmd = cmd as usize;
+
+        let c1 = self.key_is_pressed_r(KEY_CMDS[cmd][0]);
+        let c2 = self.key_is_pressed_r(KEY_CMDS[cmd][1]);
+        let c3 = self.key_is_pressed_r(KEY_CMDS[cmd][2]);
+
+        c1 || c2 || c3
+    }
+
+    pub unsafe fn wait_for_all_keys_released(&mut self) {
+        while self.any_key_is_pressed_r() {
+            SDL_Delay(1);
+        }
+        reset_mouse_wheel();
+    }
+}
+
+impl Data {
+    pub unsafe fn any_key_is_pressed_r(&mut self) -> bool {
+        #[cfg(target_os = "android")]
+        SDL_Flip(NE_SCREEN); // make sure we keep updating screen to read out Android inputs
+
+        #[cfg(not(target_os = "android"))]
+        self.update_input();
+
+        for state in &mut INPUT_STATE {
+            if (*state & PRESSED) != 0 {
+                *state = 0;
+                return true;
+            }
+        }
+        false
+    }
 }
 
 // forget the wheel-counters
@@ -460,77 +461,83 @@ pub unsafe fn reset_mouse_wheel() {
     WHEEL_DOWN_EVENTS = 0;
 }
 
-pub unsafe fn mod_is_pressed(sdl_mod: SDLMod) -> bool {
-    update_input();
-    (CURRENT_MODIFIERS & sdl_mod) != 0
-}
-
-pub unsafe fn no_direction_pressed() -> bool {
-    !((AXIS_IS_ACTIVE != 0 && (INPUT_AXIS.x != 0 || INPUT_AXIS.y != 0))
-        || down_pressed()
-        || up_pressed()
-        || left_pressed()
-        || right_pressed())
+impl Data {
+    pub unsafe fn mod_is_pressed(&mut self, sdl_mod: SDLMod) -> bool {
+        self.update_input();
+        (CURRENT_MODIFIERS & sdl_mod) != 0
+    }
 }
 
 impl Data {
+    pub unsafe fn no_direction_pressed(&mut self) -> bool {
+        !((AXIS_IS_ACTIVE != 0 && (INPUT_AXIS.x != 0 || INPUT_AXIS.y != 0))
+            || self.down_pressed()
+            || self.up_pressed()
+            || self.left_pressed()
+            || self.right_pressed())
+    }
+
     pub unsafe fn react_to_special_keys(&mut self) {
-        if cmd_is_active_r(Cmds::Quit) {
+        if self.cmd_is_active_r(Cmds::Quit) {
             self.handle_quit_game(MenuAction::CLICK);
         }
 
-        if cmd_is_active_r(Cmds::Pause) {
+        if self.cmd_is_active_r(Cmds::Pause) {
             self.pause();
         }
 
-        if cmd_is_active(Cmds::Screenshot) {
-            take_screenshot();
+        if self.cmd_is_active(Cmds::Screenshot) {
+            self.take_screenshot();
         }
 
-        if cmd_is_active_r(Cmds::Fullscreen) {
-            toggle_fullscreen();
+        if self.cmd_is_active_r(Cmds::Fullscreen) {
+            self.toggle_fullscreen();
         }
 
-        if cmd_is_active_r(Cmds::Menu) {
+        if self.cmd_is_active_r(Cmds::Menu) {
             self.show_main_menu();
         }
 
         // this stuff remains hardcoded to keys
-        if key_is_pressed_r(b'c'.into()) && alt_pressed() && ctrl_pressed() && shift_pressed() {
+        if self.key_is_pressed_r(b'c'.into())
+            && self.alt_pressed()
+            && self.ctrl_pressed()
+            && self.shift_pressed()
+        {
             self.cheatmenu();
         }
     }
-}
 
-pub unsafe fn init_joy() {
-    if SDL_InitSubSystem(SDL_INIT_JOYSTICK) == -1 {
-        eprintln!("Couldn't initialize SDL-Joystick: {}", sdl::get_error(),);
-        terminate(defs::ERR.into());
-    } else {
-        info!("SDL Joystick initialisation successful.");
-    }
+    pub unsafe fn init_joy(&mut self) {
+        if SDL_InitSubSystem(SDL_INIT_JOYSTICK) == -1 {
+            eprintln!("Couldn't initialize SDL-Joystick: {}", sdl::get_error(),);
+            self.terminate(defs::ERR.into());
+        } else {
+            info!("SDL Joystick initialisation successful.");
+        }
 
-    let num_joy = SDL_NumJoysticks();
-    info!("{} Joysticks found!\n", num_joy);
+        let num_joy = SDL_NumJoysticks();
+        info!("{} Joysticks found!\n", num_joy);
 
-    if num_joy > 0 {
-        JOY = SDL_JoystickOpen(0);
-    }
+        if num_joy > 0 {
+            JOY = SDL_JoystickOpen(0);
+        }
 
-    if !JOY.is_null() {
-        info!(
-            "Identifier: {}",
-            get_joystick_name(0).unwrap_or_else(identity)
-        );
+        if !JOY.is_null() {
+            info!(
+                "Identifier: {}",
+                get_joystick_name(0).unwrap_or_else(identity)
+            );
 
-        JOY_NUM_AXES = SDL_JoystickNumAxes(JOY);
-        info!("Number of Axes: {}", JOY_NUM_AXES);
-        info!("Number of Buttons: {}", SDL_JoystickNumButtons(JOY));
+            JOY_NUM_AXES = SDL_JoystickNumAxes(JOY);
+            info!("Number of Axes: {}", JOY_NUM_AXES);
+            info!("Number of Buttons: {}", SDL_JoystickNumButtons(JOY));
 
-        /* aktivate Joystick event handling */
-        SDL_JoystickEventState(SDL_ENABLE);
-    } else {
-        JOY = null_mut(); /* signals that no yoystick is present */
+            /* aktivate Joystick event handling */
+            SDL_JoystickEventState(SDL_ENABLE);
+        } else {
+            JOY = null_mut(); /* signals that no yoystick is present */
+        }
     }
 }
 

@@ -1,10 +1,6 @@
 #[cfg(feature = "gcw0")]
 use crate::input::{key_is_pressed, key_is_pressed_r};
-use crate::{
-    input::{cmd_is_active, cmd_is_active_r, key_is_pressed, key_is_pressed_r, mod_is_pressed},
-    structs::Point,
-    vars::USER_RECT,
-};
+use crate::{structs::Point, vars::USER_RECT, Data};
 
 use bitflags::bitflags;
 use cstr::cstr;
@@ -117,44 +113,46 @@ pub enum Cmds {
 
 //--------------------------------------------------
 
-#[inline]
-pub unsafe fn return_pressed_r() -> bool {
-    key_is_pressed_r(SDLK_RETURN as i32)
-}
+impl Data {
+    #[inline]
+    pub unsafe fn return_pressed_r(&mut self) -> bool {
+        self.key_is_pressed_r(SDLK_RETURN as i32)
+    }
 
-#[inline]
-pub unsafe fn shift_pressed() -> bool {
-    mod_is_pressed(Mod::LShift as u32 | Mod::RShift as u32)
-}
+    #[inline]
+    pub unsafe fn shift_pressed(&mut self) -> bool {
+        self.mod_is_pressed(Mod::LShift as u32 | Mod::RShift as u32)
+    }
 
-#[inline]
-pub unsafe fn alt_pressed() -> bool {
-    mod_is_pressed(Mod::LAlt as u32 | Mod::RAlt as u32)
-}
+    #[inline]
+    pub unsafe fn alt_pressed(&mut self) -> bool {
+        self.mod_is_pressed(Mod::LAlt as u32 | Mod::RAlt as u32)
+    }
 
-#[inline]
-pub unsafe fn ctrl_pressed() -> bool {
-    mod_is_pressed(Mod::LCtrl as u32 | Mod::RCtrl as u32)
-}
+    #[inline]
+    pub unsafe fn ctrl_pressed(&mut self) -> bool {
+        self.mod_is_pressed(Mod::LCtrl as u32 | Mod::RCtrl as u32)
+    }
 
-#[inline]
-pub unsafe fn mouse_left_pressed() -> bool {
-    key_is_pressed(PointerStates::MouseButton1 as c_int)
-}
+    #[inline]
+    pub unsafe fn mouse_left_pressed(&mut self) -> bool {
+        self.key_is_pressed(PointerStates::MouseButton1 as c_int)
+    }
 
-#[inline]
-pub unsafe fn mouse_left_pressed_r() -> bool {
-    key_is_pressed_r(PointerStates::MouseButton1 as c_int)
-}
+    #[inline]
+    pub unsafe fn mouse_left_pressed_r(&mut self) -> bool {
+        self.key_is_pressed_r(PointerStates::MouseButton1 as c_int)
+    }
 
-#[inline]
-pub unsafe fn space_pressed() -> bool {
-    key_is_pressed(SDLK_SPACE as c_int)
-}
+    #[inline]
+    pub unsafe fn space_pressed(&mut self) -> bool {
+        self.key_is_pressed(SDLK_SPACE as c_int)
+    }
 
-#[inline]
-pub unsafe fn escape_pressed_r() -> bool {
-    key_is_pressed_r(SDLK_ESCAPE as c_int)
+    #[inline]
+    pub unsafe fn escape_pressed_r(&mut self) -> bool {
+        self.key_is_pressed_r(SDLK_ESCAPE as c_int)
+    }
 }
 
 #[cfg(feature = "gcw0")]
@@ -279,59 +277,63 @@ pub unsafe fn gcw0_any_button_pressed_r() -> bool {
         || gcw0_select_pressed_r()
 }
 
-#[inline]
-pub unsafe fn up_pressed() -> bool {
-    cmd_is_active(Cmds::Up)
-}
+impl Data {
+    #[inline]
+    pub unsafe fn up_pressed(&mut self) -> bool {
+        self.cmd_is_active(Cmds::Up)
+    }
 
-#[inline]
-pub unsafe fn down_pressed() -> bool {
-    cmd_is_active(Cmds::Down)
-}
+    #[inline]
+    pub unsafe fn down_pressed(&mut self) -> bool {
+        self.cmd_is_active(Cmds::Down)
+    }
 
-#[inline]
-pub unsafe fn left_pressed() -> bool {
-    cmd_is_active(Cmds::Left)
-}
+    #[inline]
+    pub unsafe fn left_pressed(&mut self) -> bool {
+        self.cmd_is_active(Cmds::Left)
+    }
 
-#[inline]
-pub unsafe fn right_pressed() -> bool {
-    cmd_is_active(Cmds::Right)
-}
+    #[inline]
+    pub unsafe fn right_pressed(&mut self) -> bool {
+        self.cmd_is_active(Cmds::Right)
+    }
 
-#[inline]
-pub unsafe fn fire_pressed() -> bool {
-    cmd_is_active(Cmds::Fire)
-}
+    #[inline]
+    pub unsafe fn fire_pressed(&mut self) -> bool {
+        self.cmd_is_active(Cmds::Fire)
+    }
 
-#[inline]
-pub unsafe fn fire_pressed_r() -> bool {
-    cmd_is_active_r(Cmds::Fire)
-}
+    #[inline]
+    pub unsafe fn fire_pressed_r(&mut self) -> bool {
+        self.cmd_is_active_r(Cmds::Fire)
+    }
 
-#[inline]
-pub unsafe fn up_pressed_r() -> bool {
-    cmd_is_active_r(Cmds::Up)
-}
+    #[inline]
+    pub unsafe fn up_pressed_r(&mut self) -> bool {
+        self.cmd_is_active_r(Cmds::Up)
+    }
 
-#[inline]
-pub unsafe fn down_pressed_r() -> bool {
-    cmd_is_active_r(Cmds::Down)
-}
+    #[inline]
+    pub unsafe fn down_pressed_r(&mut self) -> bool {
+        self.cmd_is_active_r(Cmds::Down)
+    }
 
-#[inline]
-pub unsafe fn left_pressed_r() -> bool {
-    cmd_is_active_r(Cmds::Left)
-}
+    #[inline]
+    pub unsafe fn left_pressed_r(&mut self) -> bool {
+        self.cmd_is_active_r(Cmds::Left)
+    }
 
-#[inline]
-pub unsafe fn right_pressed_r() -> bool {
-    cmd_is_active_r(Cmds::Right)
-}
+    #[inline]
+    pub unsafe fn right_pressed_r(&mut self) -> bool {
+        self.cmd_is_active_r(Cmds::Right)
+    }
 
-#[inline]
-pub unsafe fn any_cmd_active() -> bool {
-    cmd_is_active(Cmds::Fire) || cmd_is_active(Cmds::Activate) || cmd_is_active(Cmds::Takeover)
+    #[inline]
+    pub unsafe fn any_cmd_active(&mut self) -> bool {
+        self.cmd_is_active(Cmds::Fire)
+            || self.cmd_is_active(Cmds::Activate)
+            || self.cmd_is_active(Cmds::Takeover)
+    }
 }
 
 // ----------------------------------------

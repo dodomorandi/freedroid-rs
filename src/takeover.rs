@@ -1,14 +1,10 @@
 use crate::{
     defs::{
-        self, alt_pressed, ctrl_pressed, fire_pressed_r, DisplayBannerFlags, Droid, MenuAction,
-        Status, DROID_ROTATION_TIME, SHOW_WAIT, UPDATE,
+        self, DisplayBannerFlags, Droid, MenuAction, Status, DROID_ROTATION_TIME, SHOW_WAIT, UPDATE,
     },
     enemy::class_of_druid,
     graphics::{clear_graph_mem, NE_SCREEN, TAKEOVER_BG_PIC},
-    input::{any_key_just_pressed, key_is_pressed_r, wait_for_all_keys_released},
-    menu::get_menu_action,
     misc::{activate_conservative_frame_computation, my_random},
-    ship::show_droid_portrait,
     sound::{
         countdown_sound, end_countdown_sound, move_menu_position_sound,
         takeover_game_deadlock_sound, takeover_game_lost_sound, takeover_game_won_sound,
@@ -16,7 +12,7 @@ use crate::{
     },
     structs::Point,
     vars::{CLASSIC_USER_RECT, CONS_DROID_RECT, DRUIDMAP, ME, USER_RECT},
-    view::{display_banner, fill_rect, put_enemy},
+    view::fill_rect,
     Data, ALL_ENEMYS, DEATH_COUNT, INVINCIBLE_MODE, PRE_TAKE_ENERGY, REAL_SCORE,
 };
 
@@ -970,7 +966,7 @@ impl Data {
         );
 
         if ALL_ENEMYS[usize::try_from(DROID_NUM).unwrap()].status != Status::Out as i32 {
-            put_enemy(
+            self.put_enemy(
                 DROID_NUM,
                 i32::from(xoffs) + DROID_STARTS[opponent_color].x,
                 i32::from(yoffs) + DROID_STARTS[opponent_color].y,
@@ -1238,7 +1234,7 @@ impl Data {
         let mut prev_count_tick = SDL_GetTicks();
         let mut prev_move_tick = prev_count_tick;
 
-        wait_for_all_keys_released();
+        self.wait_for_all_keys_released();
 
         countdown_sound();
         let mut finish_takeover = false;
@@ -1252,7 +1248,7 @@ impl Data {
                 prev_count_tick += COUNT_TICK_LEN; /* set for next countdown tick */
                 countdown -= 1;
                 let count_text = format!("Finish-{}\0", countdown);
-                display_banner(
+                self.display_banner(
                     count_text.as_bytes().as_ptr() as *const c_char,
                     null_mut(),
                     0,
@@ -1279,9 +1275,9 @@ impl Data {
                     110 // PC default, allows for quick-repeat key hits
                 };
 
-                let action = get_menu_action(key_repeat_delay);
+                let action = self.get_menu_action(key_repeat_delay);
                 /* allow for a WIN-key that give immedate victory */
-                if key_is_pressed_r(b'w'.into()) && ctrl_pressed() && alt_pressed() {
+                if self.key_is_pressed_r(b'w'.into()) && self.ctrl_pressed() && self.alt_pressed() {
                     LEADER_COLOR = YOUR_COLOR; /* simple as that */
                     return;
                 }
@@ -1335,7 +1331,7 @@ impl Data {
         /* Schluss- Countdown */
         countdown = CAPSULE_COUNTDOWN;
 
-        wait_for_all_keys_released();
+        self.wait_for_all_keys_released();
         let mut fast_forward = false;
         loop {
             countdown -= 1;
@@ -1346,7 +1342,7 @@ impl Data {
             if !fast_forward {
                 SDL_Delay(COUNT_TICK_LEN);
             }
-            if any_key_just_pressed() != 0 {
+            if self.any_key_just_pressed() != 0 {
                 fast_forward = true;
             }
             prev_count_tick += COUNT_TICK_LEN;
@@ -1363,7 +1359,7 @@ impl Data {
             SDL_Flip(NE_SCREEN);
         } /* while (countdown) */
 
-        wait_for_all_keys_released();
+        self.wait_for_all_keys_released();
     }
 
     unsafe fn choose_color(&mut self) {
@@ -1373,11 +1369,11 @@ impl Data {
 
         let mut prev_count_tick = SDL_GetTicks();
 
-        wait_for_all_keys_released();
+        self.wait_for_all_keys_released();
 
         let mut color_chosen = false;
         while !color_chosen {
-            let action = get_menu_action(110);
+            let action = self.get_menu_action(110);
             if action.intersects(MenuAction::RIGHT | MenuAction::DOWN_WHEEL) {
                 if YOUR_COLOR != Color::Violet {
                     move_menu_position_sound();
@@ -1404,7 +1400,7 @@ impl Data {
                 countdown -= 1; /* Count down */
                 let count_text = format!("Color-{}\0", countdown);
 
-                display_banner(count_text.as_ptr() as *const c_char, null_mut(), 0);
+                self.display_banner(count_text.as_ptr() as *const c_char, null_mut(), 0);
                 self.show_playground();
             }
 
@@ -1434,7 +1430,7 @@ impl Data {
         let buf = USER_RECT;
         USER_RECT = CLASSIC_USER_RECT;
 
-        display_banner(
+        self.display_banner(
             null_mut(),
             null_mut(),
             DisplayBannerFlags::FORCE_UPDATE.bits().into(),
@@ -1453,25 +1449,25 @@ impl Data {
         SDL_ShowCursor(SDL_DISABLE); // no mouse-cursor in takeover game!
 
         self.show_droid_info(ME.ty, -1, 0);
-        show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, UPDATE);
+        self.show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, UPDATE);
 
-        wait_for_all_keys_released();
-        while !fire_pressed_r() {
-            show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, 0);
+        self.wait_for_all_keys_released();
+        while !self.fire_pressed_r() {
+            self.show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, 0);
             SDL_Delay(1);
         }
 
         let enemy_index: usize = enemynum.try_into().unwrap();
         self.show_droid_info(ALL_ENEMYS[enemy_index].ty, -2, 0);
-        show_droid_portrait(
+        self.show_droid_portrait(
             CONS_DROID_RECT,
             ALL_ENEMYS[enemy_index].ty,
             DROID_ROTATION_TIME,
             UPDATE,
         );
-        wait_for_all_keys_released();
-        while !fire_pressed_r() {
-            show_droid_portrait(
+        self.wait_for_all_keys_released();
+        while !self.fire_pressed_r() {
+            self.show_droid_portrait(
                 CONS_DROID_RECT,
                 ALL_ENEMYS[enemy_index].ty,
                 DROID_ROTATION_TIME,
@@ -1481,13 +1477,13 @@ impl Data {
         }
 
         SDL_UpperBlit(TAKEOVER_BG_PIC, null_mut(), NE_SCREEN, null_mut());
-        display_banner(
+        self.display_banner(
             null_mut(),
             null_mut(),
             DisplayBannerFlags::FORCE_UPDATE.bits().into(),
         );
 
-        wait_for_all_keys_released();
+        self.wait_for_all_keys_released();
         let mut finish_takeover = false;
         while !finish_takeover {
             /* Init Color-column and Capsule-Number for each opponenet and your color */
@@ -1517,10 +1513,10 @@ impl Data {
             SDL_Flip(NE_SCREEN);
 
             self.choose_color();
-            wait_for_all_keys_released();
+            self.wait_for_all_keys_released();
 
             self.play_game();
-            wait_for_all_keys_released();
+            self.wait_for_all_keys_released();
 
             let message;
             /* Ausgang beurteilen und returnen */
@@ -1586,13 +1582,13 @@ impl Data {
                 message = cstr!("Deadlock");
             }
 
-            display_banner(message.as_ptr(), null_mut(), 0);
+            self.display_banner(message.as_ptr(), null_mut(), 0);
             self.show_playground();
             SDL_Flip(NE_SCREEN);
 
-            wait_for_all_keys_released();
+            self.wait_for_all_keys_released();
             let now = SDL_GetTicks();
-            while !fire_pressed_r() && SDL_GetTicks() - now < SHOW_WAIT {
+            while !self.fire_pressed_r() && SDL_GetTicks() - now < SHOW_WAIT {
                 #[cfg(target_os = "android")]
                 SDL_Flip(NE_SCREEN);
 

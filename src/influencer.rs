@@ -5,9 +5,9 @@ use crate::{
         MAXBULLETS, PUSHSPEED, WAIT_COLLISION,
     },
     global::{COLLISION_LOSE_ENERGY_CALIBRATOR, DROID_RADIUS},
-    input::{cmd_is_active, no_direction_pressed, AXIS_IS_ACTIVE, INPUT_AXIS},
+    input::{AXIS_IS_ACTIVE, INPUT_AXIS},
     map::{druid_passable, get_map_brick},
-    misc::{frame_time, my_random, terminate},
+    misc::{frame_time, my_random},
     ship::level_empty,
     sound::{
         bounce_sound, collision_damaged_enemy_sound, collision_got_damaged_sound,
@@ -21,10 +21,7 @@ use crate::{
 };
 
 use cstr::cstr;
-use defs::{
-    any_cmd_active, down_pressed, fire_pressed, left_pressed, right_pressed, up_pressed, Cmds,
-    BLINKENERGY, MAX_INFLU_POSITION_HISTORY, WAIT_TRANSFERMODE,
-};
+use defs::{Cmds, BLINKENERGY, MAX_INFLU_POSITION_HISTORY, WAIT_TRANSFERMODE};
 use log::{error, info, warn};
 use std::{
     convert::{TryFrom, TryInto},
@@ -187,32 +184,34 @@ pub unsafe fn influ_enemy_collision_lose_energy(enemy_num: c_int) {
     }
 }
 
-pub unsafe fn explode_influencer() {
-    ME.status = Status::Terminated as c_int;
+impl Data {
+    pub unsafe fn explode_influencer(&mut self) {
+        ME.status = Status::Terminated as c_int;
 
-    for i in 0..10 {
-        /* freien Blast finden */
-        let mut counter = 0;
-        loop {
-            let check = ALL_BLASTS[counter].ty != Status::Out as c_int;
-            counter += 1;
-            if check.not() {
-                break;
+        for i in 0..10 {
+            /* freien Blast finden */
+            let mut counter = 0;
+            loop {
+                let check = ALL_BLASTS[counter].ty != Status::Out as c_int;
+                counter += 1;
+                if check.not() {
+                    break;
+                }
             }
+            counter -= 1;
+            if counter >= MAXBLASTS {
+                error!("Went out of blasts in ExplodeInfluencer...");
+                self.terminate(defs::ERR.into());
+            }
+            let blast = &mut ALL_BLASTS[counter];
+            blast.ty = Explosion::Druidblast as c_int;
+            blast.px = ME.pos.x - DROID_RADIUS / 2. + my_random(10) as f32 * 0.05;
+            blast.py = ME.pos.y - DROID_RADIUS / 2. + my_random(10) as f32 * 0.05;
+            blast.phase = 0.2 * i as f32;
         }
-        counter -= 1;
-        if counter >= MAXBLASTS {
-            error!("Went out of blasts in ExplodeInfluencer...");
-            terminate(defs::ERR.into());
-        }
-        let blast = &mut ALL_BLASTS[counter];
-        blast.ty = Explosion::Druidblast as c_int;
-        blast.px = ME.pos.x - DROID_RADIUS / 2. + my_random(10) as f32 * 0.05;
-        blast.py = ME.pos.y - DROID_RADIUS / 2. + my_random(10) as f32 * 0.05;
-        blast.phase = 0.2 * i as f32;
-    }
 
-    play_sound(Sound::Influexplosion as c_int);
+        play_sound(Sound::Influexplosion as c_int);
+    }
 }
 
 /// This function checks for collisions of the influencer with walls,
@@ -410,21 +409,21 @@ impl Data {
             TRANSFER_COUNTER = 0.;
         }
 
-        if up_pressed() {
+        if self.up_pressed() {
             ME.speed.y -= accel;
         }
-        if down_pressed() {
+        if self.down_pressed() {
             ME.speed.y += accel;
         }
-        if left_pressed() {
+        if self.left_pressed() {
             ME.speed.x -= accel;
         }
-        if right_pressed() {
+        if self.right_pressed() {
             ME.speed.x += accel;
         }
 
         //  We only need this check if we want held fire to cause activate
-        if !any_cmd_active() {
+        if !self.any_cmd_active() {
             // Used to be !SpacePressed, which causes any fire button != SPACE behave differently than space
             ME.status = Status::Mobile as c_int;
         }
@@ -434,14 +433,14 @@ impl Data {
             TRANSFER_COUNTER = 0.;
         }
 
-        if cmd_is_active(Cmds::Activate) {
+        if self.cmd_is_active(Cmds::Activate) {
             // activate mode for Konsole and Lifts
             ME.status = Status::Activate as c_int;
         }
 
         if GAME_CONFIG.fire_hold_takeover != 0
-            && fire_pressed()
-            && no_direction_pressed()
+            && self.fire_pressed()
+            && self.no_direction_pressed()
             && ME.status != Status::Weapon as c_int
             && ME.status != Status::Transfermode as c_int
         {
@@ -449,23 +448,26 @@ impl Data {
             TRANSFER_COUNTER += frame_time(); // Or make it an option!
         }
 
-        if fire_pressed() && !no_direction_pressed() && ME.status != Status::Transfermode as c_int {
+        if self.fire_pressed()
+            && !self.no_direction_pressed()
+            && ME.status != Status::Transfermode as c_int
+        {
             ME.status = Status::Weapon as c_int;
         }
 
-        if fire_pressed()
-            && !no_direction_pressed()
+        if self.fire_pressed()
+            && !self.no_direction_pressed()
             && ME.status == Status::Weapon as c_int
             && ME.firewait == 0.
         {
-            fire_bullet();
+            self.fire_bullet();
         }
 
-        if ME.status != Status::Weapon as c_int && cmd_is_active(Cmds::Takeover) {
+        if ME.status != Status::Weapon as c_int && self.cmd_is_active(Cmds::Takeover) {
             ME.status = Status::Transfermode as c_int;
         }
 
-        influence_friction_with_air(); // The influ should lose some of his speed when no key is pressed
+        self.influence_friction_with_air(); // The influ should lose some of his speed when no key is pressed
 
         adjust_speed(); // If the influ is faster than allowed for his type, slow him
 
@@ -519,97 +521,99 @@ pub unsafe fn permanent_lose_energy() {
     }
 }
 
-/// Fire-Routine for the Influencer only !! (should be changed)
-pub unsafe fn fire_bullet() {
-    let guntype = (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).gun; /* which gun do we have ? */
-    let bullet_speed = (*BULLETMAP.add(usize::try_from(guntype).unwrap())).speed;
+impl Data {
+    /// Fire-Routine for the Influencer only !! (should be changed)
+    pub unsafe fn fire_bullet(&mut self) {
+        let guntype = (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).gun; /* which gun do we have ? */
+        let bullet_speed = (*BULLETMAP.add(usize::try_from(guntype).unwrap())).speed;
 
-    if ME.firewait > 0. {
-        return;
-    }
-    ME.firewait = (*BULLETMAP.add(usize::try_from(guntype).unwrap())).recharging_time;
-
-    fire_bullet_sound(guntype);
-
-    let cur_bullet = ALL_BULLETS[..MAXBULLETS]
-        .iter_mut()
-        .find(|bullet| bullet.ty == Status::Out as u8)
-        .unwrap_or(&mut ALL_BULLETS[0]);
-
-    cur_bullet.pos.x = ME.pos.x;
-    cur_bullet.pos.y = ME.pos.y;
-    cur_bullet.ty = guntype.try_into().unwrap();
-    cur_bullet.mine = true;
-    cur_bullet.owner = -1;
-
-    let mut speed = Finepoint { x: 0., y: 0. };
-
-    if down_pressed() {
-        speed.y = 1.0;
-    }
-    if up_pressed() {
-        speed.y = -1.0;
-    }
-    if left_pressed() {
-        speed.x = -1.0;
-    }
-    if right_pressed() {
-        speed.x = 1.0;
-    }
-
-    /* if using a joystick/mouse, allow exact directional shots! */
-    if AXIS_IS_ACTIVE != 0 {
-        let max_val = INPUT_AXIS.x.abs().max(INPUT_AXIS.y.abs()) as f32;
-        speed.x = INPUT_AXIS.x as f32 / max_val;
-        speed.y = INPUT_AXIS.y as f32 / max_val;
-    }
-
-    let speed_norm = (speed.x * speed.x + speed.y * speed.y).sqrt();
-    cur_bullet.speed.x = speed.x / speed_norm;
-    cur_bullet.speed.y = speed.y / speed_norm;
-
-    // now determine the angle of the shot
-    cur_bullet.angle = -speed.y.atan2(speed.x) * 180. / std::f32::consts::PI + 90.;
-
-    info!("FireBullet: Phase of bullet={}.", cur_bullet.phase);
-    info!("FireBullet: angle of bullet={}.", cur_bullet.angle);
-
-    cur_bullet.speed.x *= bullet_speed;
-    cur_bullet.speed.y *= bullet_speed;
-
-    // To prevent influ from hitting himself with his own bullets,
-    // move them a bit..
-    cur_bullet.pos.x += 0.5 * (cur_bullet.speed.x / bullet_speed);
-    cur_bullet.pos.y += 0.5 * (cur_bullet.speed.y / bullet_speed);
-
-    cur_bullet.time_in_frames = 0;
-    cur_bullet.time_in_seconds = 0.;
-}
-
-pub unsafe fn influence_friction_with_air() {
-    const DECELERATION: f32 = 7.0;
-
-    if !right_pressed() && !left_pressed() {
-        let oldsign = ME.speed.x.signum();
-        let slowdown = oldsign * DECELERATION * frame_time();
-        ME.speed.x -= slowdown;
-
-        #[allow(clippy::float_cmp)]
-        if ME.speed.x.signum() != oldsign {
-            // changed direction -> vel=0
-            ME.speed.x = 0.0;
+        if ME.firewait > 0. {
+            return;
         }
+        ME.firewait = (*BULLETMAP.add(usize::try_from(guntype).unwrap())).recharging_time;
+
+        fire_bullet_sound(guntype);
+
+        let cur_bullet = ALL_BULLETS[..MAXBULLETS]
+            .iter_mut()
+            .find(|bullet| bullet.ty == Status::Out as u8)
+            .unwrap_or(&mut ALL_BULLETS[0]);
+
+        cur_bullet.pos.x = ME.pos.x;
+        cur_bullet.pos.y = ME.pos.y;
+        cur_bullet.ty = guntype.try_into().unwrap();
+        cur_bullet.mine = true;
+        cur_bullet.owner = -1;
+
+        let mut speed = Finepoint { x: 0., y: 0. };
+
+        if self.down_pressed() {
+            speed.y = 1.0;
+        }
+        if self.up_pressed() {
+            speed.y = -1.0;
+        }
+        if self.left_pressed() {
+            speed.x = -1.0;
+        }
+        if self.right_pressed() {
+            speed.x = 1.0;
+        }
+
+        /* if using a joystick/mouse, allow exact directional shots! */
+        if AXIS_IS_ACTIVE != 0 {
+            let max_val = INPUT_AXIS.x.abs().max(INPUT_AXIS.y.abs()) as f32;
+            speed.x = INPUT_AXIS.x as f32 / max_val;
+            speed.y = INPUT_AXIS.y as f32 / max_val;
+        }
+
+        let speed_norm = (speed.x * speed.x + speed.y * speed.y).sqrt();
+        cur_bullet.speed.x = speed.x / speed_norm;
+        cur_bullet.speed.y = speed.y / speed_norm;
+
+        // now determine the angle of the shot
+        cur_bullet.angle = -speed.y.atan2(speed.x) * 180. / std::f32::consts::PI + 90.;
+
+        info!("FireBullet: Phase of bullet={}.", cur_bullet.phase);
+        info!("FireBullet: angle of bullet={}.", cur_bullet.angle);
+
+        cur_bullet.speed.x *= bullet_speed;
+        cur_bullet.speed.y *= bullet_speed;
+
+        // To prevent influ from hitting himself with his own bullets,
+        // move them a bit..
+        cur_bullet.pos.x += 0.5 * (cur_bullet.speed.x / bullet_speed);
+        cur_bullet.pos.y += 0.5 * (cur_bullet.speed.y / bullet_speed);
+
+        cur_bullet.time_in_frames = 0;
+        cur_bullet.time_in_seconds = 0.;
     }
 
-    if !up_pressed() && !down_pressed() {
-        let oldsign = ME.speed.y.signum();
-        let slowdown = oldsign * DECELERATION * frame_time();
-        ME.speed.y -= slowdown;
+    pub unsafe fn influence_friction_with_air(&mut self) {
+        const DECELERATION: f32 = 7.0;
 
-        #[allow(clippy::float_cmp)]
-        if ME.speed.y.signum() != oldsign {
-            // changed direction -> vel=0
-            ME.speed.y = 0.0;
+        if !self.right_pressed() && !self.left_pressed() {
+            let oldsign = ME.speed.x.signum();
+            let slowdown = oldsign * DECELERATION * frame_time();
+            ME.speed.x -= slowdown;
+
+            #[allow(clippy::float_cmp)]
+            if ME.speed.x.signum() != oldsign {
+                // changed direction -> vel=0
+                ME.speed.x = 0.0;
+            }
+        }
+
+        if !self.up_pressed() && !self.down_pressed() {
+            let oldsign = ME.speed.y.signum();
+            let slowdown = oldsign * DECELERATION * frame_time();
+            ME.speed.y -= slowdown;
+
+            #[allow(clippy::float_cmp)]
+            if ME.speed.y.signum() != oldsign {
+                // changed direction -> vel=0
+                ME.speed.y = 0.0;
+            }
         }
     }
 }

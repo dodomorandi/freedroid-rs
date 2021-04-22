@@ -1,8 +1,7 @@
 use crate::{
     defs::{BulletKind, Criticality, Sound, Themed, BYCOLOR, NUM_COLORS, SOUND_DIR_C},
     global::GAME_CONFIG,
-    misc::find_file,
-    CUR_LEVEL, SOUND_ON,
+    Data, CUR_LEVEL, SOUND_ON,
 };
 
 use cstr::cstr;
@@ -349,68 +348,70 @@ pub unsafe fn fire_bullet_sound(bullet_type: c_int) {
     }
 }
 
-pub unsafe fn switch_background_music_to(filename_raw: *const c_char) {
-    static mut PREV_COLOR: c_int = -1;
-    static mut PAUSED: bool = false;
+impl Data {
+    pub unsafe fn switch_background_music_to(&mut self, filename_raw: *const c_char) {
+        static mut PREV_COLOR: c_int = -1;
+        static mut PAUSED: bool = false;
 
-    if SOUND_ON == 0 {
-        return;
-    }
+        if SOUND_ON == 0 {
+            return;
+        }
 
-    if filename_raw.is_null() {
-        Mix_PauseMusic(); // pause currently played background music
-        PAUSED = true;
-        return;
-    }
+        if filename_raw.is_null() {
+            Mix_PauseMusic(); // pause currently played background music
+            PAUSED = true;
+            return;
+        }
 
-    let filename_raw = CStr::from_ptr(filename_raw);
+        let filename_raw = CStr::from_ptr(filename_raw);
 
-    // New feature: choose background music by level-color:
-    // if filename_raw==BYCOLOR then chose bg_music[color]
-    // NOTE: if new level-color is the same as before, just resume paused music!
-    if filename_raw.to_bytes() == BYCOLOR.to_bytes() {
-        if PAUSED && PREV_COLOR == (*CUR_LEVEL).color {
-            // current level-song was just paused
-            Mix_ResumeMusic();
-            PAUSED = false;
+        // New feature: choose background music by level-color:
+        // if filename_raw==BYCOLOR then chose bg_music[color]
+        // NOTE: if new level-color is the same as before, just resume paused music!
+        if filename_raw.to_bytes() == BYCOLOR.to_bytes() {
+            if PAUSED && PREV_COLOR == (*CUR_LEVEL).color {
+                // current level-song was just paused
+                Mix_ResumeMusic();
+                PAUSED = false;
+            } else {
+                Mix_PlayMusic(
+                    MUSIC_SONGS[usize::try_from((*CUR_LEVEL).color).unwrap()],
+                    -1,
+                );
+                PAUSED = false;
+                PREV_COLOR = (*CUR_LEVEL).color;
+            }
         } else {
-            Mix_PlayMusic(
-                MUSIC_SONGS[usize::try_from((*CUR_LEVEL).color).unwrap()],
-                -1,
+            // not using BYCOLOR mechanism: just play specified song
+            if !TMP_MOD_FILE.is_null() {
+                Mix_FreeMusic(TMP_MOD_FILE);
+            }
+            let fpath = self.find_file(
+                filename_raw.as_ptr() as *const c_char,
+                SOUND_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::WarnOnly as c_int,
             );
-            PAUSED = false;
-            PREV_COLOR = (*CUR_LEVEL).color;
+            if fpath.is_null() {
+                error!(
+                    "Error loading sound-file: {}",
+                    filename_raw.to_string_lossy()
+                );
+                return;
+            }
+            TMP_MOD_FILE = Mix_LoadMUS(fpath);
+            if TMP_MOD_FILE.is_null() {
+                error!(
+                    "SDL Mixer Error: {}. Continuing with sound disabled",
+                    get_error(),
+                );
+                return;
+            }
+            Mix_PlayMusic(TMP_MOD_FILE, -1);
         }
-    } else {
-        // not using BYCOLOR mechanism: just play specified song
-        if !TMP_MOD_FILE.is_null() {
-            Mix_FreeMusic(TMP_MOD_FILE);
-        }
-        let fpath = find_file(
-            filename_raw.as_ptr() as *const c_char,
-            SOUND_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::WarnOnly as c_int,
-        );
-        if fpath.is_null() {
-            error!(
-                "Error loading sound-file: {}",
-                filename_raw.to_string_lossy()
-            );
-            return;
-        }
-        TMP_MOD_FILE = Mix_LoadMUS(fpath);
-        if TMP_MOD_FILE.is_null() {
-            error!(
-                "SDL Mixer Error: {}. Continuing with sound disabled",
-                get_error(),
-            );
-            return;
-        }
-        Mix_PlayMusic(TMP_MOD_FILE, -1);
-    }
 
-    Mix_VolumeMusic((GAME_CONFIG.current_bg_music_volume * f32::from(MIX_MAX_VOLUME)) as c_int);
+        Mix_VolumeMusic((GAME_CONFIG.current_bg_music_volume * f32::from(MIX_MAX_VOLUME)) as c_int);
+    }
 }
 
 pub unsafe fn countdown_sound() {
@@ -442,110 +443,112 @@ pub unsafe fn set_bg_music_volume(new_volume: c_float) {
     Mix_VolumeMusic((new_volume * f32::from(MIX_MAX_VOLUME)) as c_int);
 }
 
-pub unsafe fn init_audio() {
-    info!("Initializing SDL Audio Systems");
+impl Data {
+    pub unsafe fn init_audio(&mut self) {
+        info!("Initializing SDL Audio Systems");
 
-    if SOUND_ON == 0 {
-        return;
-    }
-
-    // Now SDL_AUDIO is initialized here:
-
-    if SDL_InitSubSystem(SDL_INIT_AUDIO) == -1 {
-        warn!(
-            "SDL Sound subsystem could not be initialized. \
-             Continuing with sound disabled",
-        );
-        SOUND_ON = false.into();
-        return;
-    } else {
-        info!("SDL Audio initialisation successful.");
-    }
-
-    // Now that we have initialized the audio SubSystem, we must open
-    // an audio channel.  This will be done here (see code from Mixer-Tutorial):
-
-    if Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, 2, 100) != 0 {
-        error!("SDL audio channel could not be opened.");
-        warn!(
-            "SDL Mixer Error: {}. Continuing with sound disabled",
-            get_error(),
-        );
-        SOUND_ON = false.into();
-        return;
-    } else {
-        warn!("Successfully opened SDL audio channel.");
-    }
-
-    if Mix_AllocateChannels(20) != 20 {
-        warn!("WARNING: could not get all 20 mixer-channels I asked for...");
-    }
-
-    // Now that the audio channel is opend, its time to load all the
-    // WAV files into memory, something we NEVER did while using the yiff,
-    // because the yiff did all the loading, analyzing and playing...
-
-    LOADED_WAV_FILES[0] = null_mut();
-    let iter = SOUND_SAMPLE_FILENAMES
-        .iter()
-        .copied()
-        .zip(LOADED_WAV_FILES.iter_mut())
-        .skip(1);
-    for (sample_filename, loaded_wav_file) in iter {
-        let fpath = find_file(
-            sample_filename.as_ptr(),
-            SOUND_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::WarnOnly as c_int,
-        );
-        if !fpath.is_null() {
-            *loaded_wav_file = mix_load_wav(fpath);
+        if SOUND_ON == 0 {
+            return;
         }
 
-        if loaded_wav_file.is_null() {
-            error!(
-                "Could not load Sound-sample: {}",
-                sample_filename.to_string_lossy()
+        // Now SDL_AUDIO is initialized here:
+
+        if SDL_InitSubSystem(SDL_INIT_AUDIO) == -1 {
+            warn!(
+                "SDL Sound subsystem could not be initialized. \
+             Continuing with sound disabled",
             );
-            warn!("Continuing with sound disabled. Error = {}", get_error());
             SOUND_ON = false.into();
             return;
         } else {
-            info!(
-                "Successfully loaded file {}.",
-                sample_filename.to_string_lossy()
-            );
+            info!("SDL Audio initialisation successful.");
         }
-    }
 
-    let iter = MUSIC_FILES.iter().copied().zip(MUSIC_SONGS.iter_mut());
-    for (music_file, music_song) in iter {
-        let fpath = find_file(
-            music_file.as_ptr(),
-            SOUND_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::WarnOnly as c_int,
-        );
-        if !fpath.is_null() {
-            *music_song = Mix_LoadMUS(fpath);
-        }
-        if music_song.is_null() {
-            error!("Error loading sound-file: {}", music_file.to_string_lossy());
+        // Now that we have initialized the audio SubSystem, we must open
+        // an audio channel.  This will be done here (see code from Mixer-Tutorial):
+
+        if Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, 2, 100) != 0 {
+            error!("SDL audio channel could not be opened.");
             warn!(
                 "SDL Mixer Error: {}. Continuing with sound disabled",
-                get_error()
+                get_error(),
             );
             SOUND_ON = false.into();
             return;
         } else {
-            info!("Successfully loaded file {}.", music_file.to_string_lossy());
+            warn!("Successfully opened SDL audio channel.");
         }
-    }
 
-    //--------------------
-    // Now that the music files have been loaded successfully, it's time to set
-    // the music and sound volumes accoridingly, i.e. as specifies by the users
-    // configuration.
-    //
-    set_sound_f_x_volume(GAME_CONFIG.current_sound_fx_volume);
+        if Mix_AllocateChannels(20) != 20 {
+            warn!("WARNING: could not get all 20 mixer-channels I asked for...");
+        }
+
+        // Now that the audio channel is opend, its time to load all the
+        // WAV files into memory, something we NEVER did while using the yiff,
+        // because the yiff did all the loading, analyzing and playing...
+
+        LOADED_WAV_FILES[0] = null_mut();
+        let iter = SOUND_SAMPLE_FILENAMES
+            .iter()
+            .copied()
+            .zip(LOADED_WAV_FILES.iter_mut())
+            .skip(1);
+        for (sample_filename, loaded_wav_file) in iter {
+            let fpath = self.find_file(
+                sample_filename.as_ptr(),
+                SOUND_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::WarnOnly as c_int,
+            );
+            if !fpath.is_null() {
+                *loaded_wav_file = mix_load_wav(fpath);
+            }
+
+            if loaded_wav_file.is_null() {
+                error!(
+                    "Could not load Sound-sample: {}",
+                    sample_filename.to_string_lossy()
+                );
+                warn!("Continuing with sound disabled. Error = {}", get_error());
+                SOUND_ON = false.into();
+                return;
+            } else {
+                info!(
+                    "Successfully loaded file {}.",
+                    sample_filename.to_string_lossy()
+                );
+            }
+        }
+
+        let iter = MUSIC_FILES.iter().copied().zip(MUSIC_SONGS.iter_mut());
+        for (music_file, music_song) in iter {
+            let fpath = self.find_file(
+                music_file.as_ptr(),
+                SOUND_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::WarnOnly as c_int,
+            );
+            if !fpath.is_null() {
+                *music_song = Mix_LoadMUS(fpath);
+            }
+            if music_song.is_null() {
+                error!("Error loading sound-file: {}", music_file.to_string_lossy());
+                warn!(
+                    "SDL Mixer Error: {}. Continuing with sound disabled",
+                    get_error()
+                );
+                SOUND_ON = false.into();
+                return;
+            } else {
+                info!("Successfully loaded file {}.", music_file.to_string_lossy());
+            }
+        }
+
+        //--------------------
+        // Now that the music files have been loaded successfully, it's time to set
+        // the music and sound volumes accoridingly, i.e. as specifies by the users
+        // configuration.
+        //
+        set_sound_f_x_volume(GAME_CONFIG.current_sound_fx_volume);
+    }
 }

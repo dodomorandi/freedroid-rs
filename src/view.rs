@@ -12,7 +12,7 @@ use crate::{
         INFLU_DIGIT_SURFACE_POINTER, MAP_BLOCK_SURFACE_POINTER, NE_SCREEN,
     },
     map::{get_map_brick, is_visible},
-    misc::{frame_time, terminate},
+    misc::frame_time,
     sound::{cry_sound, transfer_sound},
     structs::{Enemy, Finepoint, GrobPoint},
     vars::{
@@ -273,7 +273,7 @@ impl Data {
                         || (enemy.status == Status::Out as i32)
                         || (enemy.status == Status::Terminated as i32))
                 })
-                .for_each(|(index, _)| put_enemy(index as c_int, -1, -1));
+                .for_each(|(index, _)| self.put_enemy(index as c_int, -1, -1));
 
             if ME.energy > 0. {
                 self.put_influence(-1, -1);
@@ -336,107 +336,107 @@ pub unsafe fn put_ashes(x: f32, y: f32) {
     SDL_UpperBlit(DECAL_PICS[0], null_mut(), NE_SCREEN, &mut dst);
 }
 
-pub unsafe fn put_enemy(enemy_index: c_int, x: c_int, y: c_int) {
-    let droid: &mut Enemy = &mut ALL_ENEMYS[usize::try_from(enemy_index).unwrap()];
-    let ty = droid.ty;
-    let phase = droid.phase;
-    let name = &mut (*DRUIDMAP.offset(ty.try_into().unwrap())).druidname;
-
-    if (droid.status == Status::Terminated as i32)
-        || (droid.status == Status::Out as i32)
-        || (droid.levelnum != (*CUR_LEVEL).levelnum)
-    {
-        return;
-    }
-
-    // if the enemy is out of sight, we need not do anything more here
-    if SHOW_ALL_DROIDS == 0 && is_visible(&droid.pos) == 0 {
-        trace!("ONSCREEN=FALSE --> usual end of function reached.");
-        return;
-    }
-
-    // We check for incorrect droid types, which sometimes might occor, especially after
-    // heavy editing of the crew initialisation functions ;)
-    if droid.ty >= NUMBER_OF_DROID_TYPES {
-        error!("nonexistant droid-type encountered: {}", droid.ty);
-        terminate(defs::ERR.into());
-    }
-
-    //--------------------
-    // First blit just the enemy hat and shoes.
-    SDL_UpperBlit(
-        ENEMY_SURFACE_POINTER[phase as usize],
-        null_mut(),
-        BUILD_BLOCK,
-        null_mut(),
-    );
-
-    //--------------------
-    // Now the numbers should be blittet.
-    let mut dst = FIRST_DIGIT_RECT;
-    SDL_UpperBlit(
-        ENEMY_DIGIT_SURFACE_POINTER[usize::try_from(name[0] - b'1' as i8 + 1).unwrap()],
-        null_mut(),
-        BUILD_BLOCK,
-        &mut dst,
-    );
-
-    dst = SECOND_DIGIT_RECT;
-    SDL_UpperBlit(
-        ENEMY_DIGIT_SURFACE_POINTER[usize::try_from(name[1] - b'1' as i8 + 1).unwrap()],
-        null_mut(),
-        BUILD_BLOCK,
-        &mut dst,
-    );
-
-    dst = THIRD_DIGIT_RECT;
-    SDL_UpperBlit(
-        ENEMY_DIGIT_SURFACE_POINTER[usize::try_from(name[2] - b'1' as i8 + 1).unwrap()],
-        null_mut(),
-        BUILD_BLOCK,
-        &mut dst,
-    );
-
-    // now blit the whole construction to screen:
-    if x == -1 {
-        let user_center = get_user_center();
-        dst.x = (f32::from(user_center.x) + (droid.pos.x - ME.pos.x) * f32::from(BLOCK_RECT.w)
-            - f32::from(BLOCK_RECT.w / 2)) as i16;
-        dst.y = (f32::from(user_center.y) + (droid.pos.y - ME.pos.y) * f32::from(BLOCK_RECT.h)
-            - f32::from(BLOCK_RECT.h / 2)) as i16;
-    } else {
-        dst.x = x.try_into().unwrap();
-        dst.y = y.try_into().unwrap();
-    }
-    SDL_UpperBlit(BUILD_BLOCK, null_mut(), NE_SCREEN, &mut dst);
-
-    //--------------------
-    // At this point we can assume, that the enemys has been blittet to the
-    // screen, whether it's a friendly enemy or not.
-    //
-    // So now we can add some text the enemys says.  That might be fun.
-    //
-    if x == -1
-        && droid.text_visible_time < GAME_CONFIG.wanted_text_visible_time
-        && GAME_CONFIG.droid_talk != 0
-    {
-        put_string_font(
-            NE_SCREEN,
-            FONT0_B_FONT,
-            (f32::from(USER_RECT.x)
-                + f32::from(USER_RECT.w / 2)
-                + f32::from(BLOCK_RECT.w / 3)
-                + (droid.pos.x - ME.pos.x) * f32::from(BLOCK_RECT.w)) as i32,
-            (f32::from(USER_RECT.y) + f32::from(USER_RECT.h / 2) - f32::from(BLOCK_RECT.h / 2)
-                + (droid.pos.y - ME.pos.y) * f32::from(BLOCK_RECT.h)) as i32,
-            CStr::from_ptr(droid.text_to_be_displayed).to_bytes(),
-        );
-    }
-
-    trace!("ENEMY HAS BEEN PUT --> usual end of function reached.");
-}
-
 impl Data {
+    pub unsafe fn put_enemy(&mut self, enemy_index: c_int, x: c_int, y: c_int) {
+        let droid: &mut Enemy = &mut ALL_ENEMYS[usize::try_from(enemy_index).unwrap()];
+        let ty = droid.ty;
+        let phase = droid.phase;
+        let name = &mut (*DRUIDMAP.offset(ty.try_into().unwrap())).druidname;
+
+        if (droid.status == Status::Terminated as i32)
+            || (droid.status == Status::Out as i32)
+            || (droid.levelnum != (*CUR_LEVEL).levelnum)
+        {
+            return;
+        }
+
+        // if the enemy is out of sight, we need not do anything more here
+        if SHOW_ALL_DROIDS == 0 && is_visible(&droid.pos) == 0 {
+            trace!("ONSCREEN=FALSE --> usual end of function reached.");
+            return;
+        }
+
+        // We check for incorrect droid types, which sometimes might occor, especially after
+        // heavy editing of the crew initialisation functions ;)
+        if droid.ty >= NUMBER_OF_DROID_TYPES {
+            error!("nonexistant droid-type encountered: {}", droid.ty);
+            self.terminate(defs::ERR.into());
+        }
+
+        //--------------------
+        // First blit just the enemy hat and shoes.
+        SDL_UpperBlit(
+            ENEMY_SURFACE_POINTER[phase as usize],
+            null_mut(),
+            BUILD_BLOCK,
+            null_mut(),
+        );
+
+        //--------------------
+        // Now the numbers should be blittet.
+        let mut dst = FIRST_DIGIT_RECT;
+        SDL_UpperBlit(
+            ENEMY_DIGIT_SURFACE_POINTER[usize::try_from(name[0] - b'1' as i8 + 1).unwrap()],
+            null_mut(),
+            BUILD_BLOCK,
+            &mut dst,
+        );
+
+        dst = SECOND_DIGIT_RECT;
+        SDL_UpperBlit(
+            ENEMY_DIGIT_SURFACE_POINTER[usize::try_from(name[1] - b'1' as i8 + 1).unwrap()],
+            null_mut(),
+            BUILD_BLOCK,
+            &mut dst,
+        );
+
+        dst = THIRD_DIGIT_RECT;
+        SDL_UpperBlit(
+            ENEMY_DIGIT_SURFACE_POINTER[usize::try_from(name[2] - b'1' as i8 + 1).unwrap()],
+            null_mut(),
+            BUILD_BLOCK,
+            &mut dst,
+        );
+
+        // now blit the whole construction to screen:
+        if x == -1 {
+            let user_center = get_user_center();
+            dst.x = (f32::from(user_center.x) + (droid.pos.x - ME.pos.x) * f32::from(BLOCK_RECT.w)
+                - f32::from(BLOCK_RECT.w / 2)) as i16;
+            dst.y = (f32::from(user_center.y) + (droid.pos.y - ME.pos.y) * f32::from(BLOCK_RECT.h)
+                - f32::from(BLOCK_RECT.h / 2)) as i16;
+        } else {
+            dst.x = x.try_into().unwrap();
+            dst.y = y.try_into().unwrap();
+        }
+        SDL_UpperBlit(BUILD_BLOCK, null_mut(), NE_SCREEN, &mut dst);
+
+        //--------------------
+        // At this point we can assume, that the enemys has been blittet to the
+        // screen, whether it's a friendly enemy or not.
+        //
+        // So now we can add some text the enemys says.  That might be fun.
+        //
+        if x == -1
+            && droid.text_visible_time < GAME_CONFIG.wanted_text_visible_time
+            && GAME_CONFIG.droid_talk != 0
+        {
+            put_string_font(
+                NE_SCREEN,
+                FONT0_B_FONT,
+                (f32::from(USER_RECT.x)
+                    + f32::from(USER_RECT.w / 2)
+                    + f32::from(BLOCK_RECT.w / 3)
+                    + (droid.pos.x - ME.pos.x) * f32::from(BLOCK_RECT.w)) as i32,
+                (f32::from(USER_RECT.y) + f32::from(USER_RECT.h / 2) - f32::from(BLOCK_RECT.h / 2)
+                    + (droid.pos.y - ME.pos.y) * f32::from(BLOCK_RECT.h)) as i32,
+                CStr::from_ptr(droid.text_to_be_displayed).to_bytes(),
+            );
+        }
+
+        trace!("ENEMY HAS BEEN PUT --> usual end of function reached.");
+    }
+
     /// This function draws the influencer to the screen, either
     /// to the center of the combat window if (-1,-1) was specified, or
     /// to the specified coordinates anywhere on the screen, useful e.g.
@@ -679,157 +679,167 @@ pub unsafe fn put_blast(blast_number: c_int) {
     trace!("PutBlast: end of function reached.");
 }
 
-/// This function updates the top status bar.
-///
-/// To save framerate on slow machines however it will only work
-/// if it thinks that work needs to be done.
-/// You can however force update if you say so with a flag.
-///
-/// BANNER_FORCE_UPDATE=1: Forces the redrawing of the title bar
-///
-/// BANNER_DONT_TOUCH_TEXT=2: Prevents DisplayBanner from touching the
-/// text.
-///
-/// BANNER_NO_SDL_UPDATE=4: Prevents any SDL_Update calls.
-pub unsafe fn display_banner(mut left: *const c_char, mut right: *const c_char, flags: c_int) {
-    use std::io::Write;
+impl Data {
+    /// This function updates the top status bar.
+    ///
+    /// To save framerate on slow machines however it will only work
+    /// if it thinks that work needs to be done.
+    /// You can however force update if you say so with a flag.
+    ///
+    /// BANNER_FORCE_UPDATE=1: Forces the redrawing of the title bar
+    ///
+    /// BANNER_DONT_TOUCH_TEXT=2: Prevents DisplayBanner from touching the
+    /// text.
+    ///
+    /// BANNER_NO_SDL_UPDATE=4: Prevents any SDL_Update calls.
+    pub unsafe fn display_banner(
+        &mut self,
+        mut left: *const c_char,
+        mut right: *const c_char,
+        flags: c_int,
+    ) {
+        use std::io::Write;
 
-    let mut dummy: [u8; 80];
+        let mut dummy: [u8; 80];
 
-    thread_local! {
-        static PREVIOUS_LEFT_BOX: RefCell<[u8; LEFT_TEXT_LEN + 10]>={
-          let mut data = [0u8; LEFT_TEXT_LEN + 10];
-          data[..6].copy_from_slice(b"NOUGHT");
-          RefCell::new(data)
-        };
-        static PREVIOUS_RIGHT_BOX: RefCell<[u8; RIGHT_TEXT_LEN + 10]>= {
-          let mut data = [0u8; RIGHT_TEXT_LEN + 10];
-          data[..6].copy_from_slice(b"NOUGHT");
-          RefCell::new(data)
-        };
-    }
+        thread_local! {
+            static PREVIOUS_LEFT_BOX: RefCell<[u8; LEFT_TEXT_LEN + 10]>={
+              let mut data = [0u8; LEFT_TEXT_LEN + 10];
+              data[..6].copy_from_slice(b"NOUGHT");
+              RefCell::new(data)
+            };
+            static PREVIOUS_RIGHT_BOX: RefCell<[u8; RIGHT_TEXT_LEN + 10]>= {
+              let mut data = [0u8; RIGHT_TEXT_LEN + 10];
+              data[..6].copy_from_slice(b"NOUGHT");
+              RefCell::new(data)
+            };
+        }
 
-    // --------------------
-    // At first the text is prepared.  This can't hurt.
-    // we will decide whether to display it or not later...
-    //
+        // --------------------
+        // At first the text is prepared.  This can't hurt.
+        // we will decide whether to display it or not later...
+        //
 
-    if left.is_null() {
-        /* Left-DEFAULT: Mode */
-        left = INFLUENCE_MODE_NAMES[ME.status as usize].as_ptr();
-    }
+        if left.is_null() {
+            /* Left-DEFAULT: Mode */
+            left = INFLUENCE_MODE_NAMES[ME.status as usize].as_ptr();
+        }
 
-    if right.is_null()
-    /* Right-DEFAULT: Score */
-    {
-        dummy = [0u8; 80];
-        write!(dummy.as_mut(), "{}", SHOW_SCORE).unwrap();
-        right = dummy.as_mut_ptr() as *mut c_char;
-    }
-
-    // Now fill in the text
-    let left = CStr::from_ptr(left);
-    let left_len = left.to_bytes().len();
-    if left_len > LEFT_TEXT_LEN {
-        warn!(
-            "String {} too long for Left Infoline!!",
-            left.to_string_lossy()
-        );
-        terminate(defs::ERR.into());
-    }
-    let right = CStr::from_ptr(right);
-    let right_len = right.to_bytes().len();
-    if right_len > RIGHT_TEXT_LEN {
-        warn!(
-            "String {} too long for Right Infoline!!",
-            right.to_string_lossy()
-        );
-        terminate(defs::ERR.into());
-    }
-
-    /* Now prepare the left/right text-boxes */
-    let mut left_box = [b' '; LEFT_TEXT_LEN + 10];
-    let mut right_box = [b' '; RIGHT_TEXT_LEN + 10];
-
-    left_box[..left_len].copy_from_slice(&left.to_bytes()[..left_len]);
-    right_box[..right_len].copy_from_slice(&right.to_bytes()[..right_len]);
-
-    left_box[LEFT_TEXT_LEN] = b'\0'; /* that's right, we want padding! */
-    right_box[RIGHT_TEXT_LEN] = b'\0';
-
-    // --------------------
-    // No we see if the screen need an update...
-
-    if BANNER_IS_DESTROYED != 0
-        || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
-        || PREVIOUS_LEFT_BOX
-            .with(|previous_left_box| left_box.as_ref() != previous_left_box.borrow().as_ref())
-        || PREVIOUS_RIGHT_BOX
-            .with(|previous_right_box| right_box.as_ref() != previous_right_box.borrow().as_ref())
-    {
-        // Redraw the whole background of the top status bar
-        let mut dst = Rect::new(0, 0, 0, 0);
-        SDL_SetClipRect(NE_SCREEN, null_mut()); // this unsets the clipping rectangle
-        SDL_UpperBlit(BANNER_PIC, null_mut(), NE_SCREEN, &mut dst);
-
-        // Now the text should be ready and its
-        // time to display it...
-        let previous_left_check = PREVIOUS_LEFT_BOX
-            .with(|previous_left_box| left_box.as_ref() != previous_left_box.borrow().as_ref());
-        let previous_right_check = PREVIOUS_RIGHT_BOX
-            .with(|previous_right_box| right_box.as_ref() != previous_right_box.borrow().as_ref());
-        if previous_left_check
-            || previous_right_check
-            || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
+        if right.is_null()
+        /* Right-DEFAULT: Score */
         {
-            dst.x = LEFT_INFO_RECT.x;
-            dst.y = LEFT_INFO_RECT.y - i16::try_from(font_height(&*PARA_B_FONT)).unwrap();
-            print_string_font(
-                NE_SCREEN,
-                PARA_B_FONT,
-                dst.x.into(),
-                dst.y.into(),
-                format_args!(
-                    "{}",
-                    CStr::from_ptr(left_box.as_ptr() as *const c_char)
-                        .to_str()
-                        .unwrap()
-                ),
-            );
-            let left_box_len = left_box.iter().position(|&c| c == 0).unwrap();
-            PREVIOUS_LEFT_BOX.with(|previous_left_box| {
-                let mut previous_left_box = previous_left_box.borrow_mut();
-                previous_left_box[..left_box_len].copy_from_slice(&left_box[..left_box_len]);
-                previous_left_box[left_box_len] = b'\0';
-            });
-
-            dst.x = RIGHT_INFO_RECT.x;
-            dst.y = RIGHT_INFO_RECT.y - i16::try_from(font_height(&*PARA_B_FONT)).unwrap();
-            print_string_font(
-                NE_SCREEN,
-                PARA_B_FONT,
-                dst.x.into(),
-                dst.y.into(),
-                format_args!(
-                    "{}",
-                    CStr::from_ptr(right_box.as_ptr() as *const c_char)
-                        .to_str()
-                        .unwrap()
-                ),
-            );
-            let right_box_len = right_box.iter().position(|&c| c == 0).unwrap();
-            PREVIOUS_RIGHT_BOX.with(|previous_right_box| {
-                let mut previous_right_box = previous_right_box.borrow_mut();
-                previous_right_box[..right_box_len].copy_from_slice(&right_box[..right_box_len]);
-                previous_right_box[right_box_len] = b'\0';
-            });
+            dummy = [0u8; 80];
+            write!(dummy.as_mut(), "{}", SHOW_SCORE).unwrap();
+            right = dummy.as_mut_ptr() as *mut c_char;
         }
 
-        // finally update the whole top status box
-        if (flags & i32::from(DisplayBannerFlags::NO_SDL_UPDATE.bits())) == 0 {
-            SDL_UpdateRect(NE_SCREEN, 0, 0, BANNER_RECT.w.into(), BANNER_RECT.h.into());
+        // Now fill in the text
+        let left = CStr::from_ptr(left);
+        let left_len = left.to_bytes().len();
+        if left_len > LEFT_TEXT_LEN {
+            warn!(
+                "String {} too long for Left Infoline!!",
+                left.to_string_lossy()
+            );
+            self.terminate(defs::ERR.into());
+        }
+        let right = CStr::from_ptr(right);
+        let right_len = right.to_bytes().len();
+        if right_len > RIGHT_TEXT_LEN {
+            warn!(
+                "String {} too long for Right Infoline!!",
+                right.to_string_lossy()
+            );
+            self.terminate(defs::ERR.into());
         }
 
-        BANNER_IS_DESTROYED = false.into();
+        /* Now prepare the left/right text-boxes */
+        let mut left_box = [b' '; LEFT_TEXT_LEN + 10];
+        let mut right_box = [b' '; RIGHT_TEXT_LEN + 10];
+
+        left_box[..left_len].copy_from_slice(&left.to_bytes()[..left_len]);
+        right_box[..right_len].copy_from_slice(&right.to_bytes()[..right_len]);
+
+        left_box[LEFT_TEXT_LEN] = b'\0'; /* that's right, we want padding! */
+        right_box[RIGHT_TEXT_LEN] = b'\0';
+
+        // --------------------
+        // No we see if the screen need an update...
+
+        if BANNER_IS_DESTROYED != 0
+            || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
+            || PREVIOUS_LEFT_BOX
+                .with(|previous_left_box| left_box.as_ref() != previous_left_box.borrow().as_ref())
+            || PREVIOUS_RIGHT_BOX.with(|previous_right_box| {
+                right_box.as_ref() != previous_right_box.borrow().as_ref()
+            })
+        {
+            // Redraw the whole background of the top status bar
+            let mut dst = Rect::new(0, 0, 0, 0);
+            SDL_SetClipRect(NE_SCREEN, null_mut()); // this unsets the clipping rectangle
+            SDL_UpperBlit(BANNER_PIC, null_mut(), NE_SCREEN, &mut dst);
+
+            // Now the text should be ready and its
+            // time to display it...
+            let previous_left_check = PREVIOUS_LEFT_BOX
+                .with(|previous_left_box| left_box.as_ref() != previous_left_box.borrow().as_ref());
+            let previous_right_check = PREVIOUS_RIGHT_BOX.with(|previous_right_box| {
+                right_box.as_ref() != previous_right_box.borrow().as_ref()
+            });
+            if previous_left_check
+                || previous_right_check
+                || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
+            {
+                dst.x = LEFT_INFO_RECT.x;
+                dst.y = LEFT_INFO_RECT.y - i16::try_from(font_height(&*PARA_B_FONT)).unwrap();
+                print_string_font(
+                    NE_SCREEN,
+                    PARA_B_FONT,
+                    dst.x.into(),
+                    dst.y.into(),
+                    format_args!(
+                        "{}",
+                        CStr::from_ptr(left_box.as_ptr() as *const c_char)
+                            .to_str()
+                            .unwrap()
+                    ),
+                );
+                let left_box_len = left_box.iter().position(|&c| c == 0).unwrap();
+                PREVIOUS_LEFT_BOX.with(|previous_left_box| {
+                    let mut previous_left_box = previous_left_box.borrow_mut();
+                    previous_left_box[..left_box_len].copy_from_slice(&left_box[..left_box_len]);
+                    previous_left_box[left_box_len] = b'\0';
+                });
+
+                dst.x = RIGHT_INFO_RECT.x;
+                dst.y = RIGHT_INFO_RECT.y - i16::try_from(font_height(&*PARA_B_FONT)).unwrap();
+                print_string_font(
+                    NE_SCREEN,
+                    PARA_B_FONT,
+                    dst.x.into(),
+                    dst.y.into(),
+                    format_args!(
+                        "{}",
+                        CStr::from_ptr(right_box.as_ptr() as *const c_char)
+                            .to_str()
+                            .unwrap()
+                    ),
+                );
+                let right_box_len = right_box.iter().position(|&c| c == 0).unwrap();
+                PREVIOUS_RIGHT_BOX.with(|previous_right_box| {
+                    let mut previous_right_box = previous_right_box.borrow_mut();
+                    previous_right_box[..right_box_len]
+                        .copy_from_slice(&right_box[..right_box_len]);
+                    previous_right_box[right_box_len] = b'\0';
+                });
+            }
+
+            // finally update the whole top status box
+            if (flags & i32::from(DisplayBannerFlags::NO_SDL_UPDATE.bits())) == 0 {
+                SDL_UpdateRect(NE_SCREEN, 0, 0, BANNER_RECT.w.into(), BANNER_RECT.h.into());
+            }
+
+            BANNER_IS_DESTROYED = false.into();
+        }
     }
 }

@@ -1,18 +1,15 @@
 use crate::{
     b_font::{font_height, print_string_font},
     defs::{
-        down_pressed_r, escape_pressed_r, fire_pressed_r, get_user_center, left_pressed_r,
-        mouse_left_pressed, return_pressed_r, right_pressed_r, shift_pressed, space_pressed,
-        up_pressed_r, AssembleCombatWindowFlags, Cmds, MapTile, MAXWAYPOINTS, MAX_WP_CONNECTIONS,
-        NUM_MAP_BLOCKS,
+        get_user_center, AssembleCombatWindowFlags, Cmds, MapTile, MAXWAYPOINTS,
+        MAX_WP_CONNECTIONS, NUM_MAP_BLOCKS,
     },
     enemy::shuffle_enemys,
     global::{CURRENT_COMBAT_SCALE_FACTOR, FONT0_B_FONT, MENU_B_FONT},
     graphics::{
-        clear_graph_mem, draw_line_between_tiles, make_grid_on_screen, putpixel,
-        set_combat_scale_to, NE_SCREEN,
+        clear_graph_mem, draw_line_between_tiles, make_grid_on_screen, putpixel, NE_SCREEN,
     },
-    input::{cmd_is_active_r, key_is_pressed_r, SDL_Delay},
+    input::SDL_Delay,
     menu::QUIT_LEVEL_EDITOR,
     structs::{Level, Waypoint},
     vars::{BLOCK_RECT, FULL_USER_RECT, SCREEN_RECT, USER_RECT},
@@ -58,12 +55,12 @@ impl Data {
         let mut src_wp = null_mut();
 
         while done.not() {
-            if cmd_is_active_r(Cmds::Menu) {
+            if self.cmd_is_active_r(Cmds::Menu) {
                 self.show_level_editor_menu();
                 if QUIT_LEVEL_EDITOR {
                     done = true;
                     CURRENT_COMBAT_SCALE_FACTOR = 1.;
-                    set_combat_scale_to(CURRENT_COMBAT_SCALE_FACTOR);
+                    self.set_combat_scale_to(CURRENT_COMBAT_SCALE_FACTOR);
                     QUIT_LEVEL_EDITOR = false;
                 }
                 continue;
@@ -106,23 +103,23 @@ impl Data {
             // If the user of the Level editor pressed some cursor keys, move the
             // highlited filed (that is Me.pos) accordingly. This is done here:
             //
-            if left_pressed_r() && ME.pos.x.round() > 0. {
+            if self.left_pressed_r() && ME.pos.x.round() > 0. {
                 ME.pos.x -= 1.;
             }
 
-            if right_pressed_r() && (ME.pos.x.round() as c_int) < (*CUR_LEVEL).xlen - 1 {
+            if self.right_pressed_r() && (ME.pos.x.round() as c_int) < (*CUR_LEVEL).xlen - 1 {
                 ME.pos.x += 1.;
             }
 
-            if up_pressed_r() && ME.pos.y.round() > 0. {
+            if self.up_pressed_r() && ME.pos.y.round() > 0. {
                 ME.pos.y -= 1.;
             }
 
-            if down_pressed_r() && (ME.pos.y.round() as c_int) < (*CUR_LEVEL).ylen - 1 {
+            if self.down_pressed_r() && (ME.pos.y.round() as c_int) < (*CUR_LEVEL).ylen - 1 {
                 ME.pos.y += 1.;
             }
 
-            if key_is_pressed_r(SDLK_F1.try_into().unwrap()) {
+            if self.key_is_pressed_r(SDLK_F1.try_into().unwrap()) {
                 let mut k = 3;
                 make_grid_on_screen(None);
                 self.centered_put_string(
@@ -203,7 +200,8 @@ impl Data {
                 );
 
                 SDL_Flip(NE_SCREEN);
-                while !fire_pressed_r() && !escape_pressed_r() && !return_pressed_r() {
+                while !self.fire_pressed_r() && !self.escape_pressed_r() && !self.return_pressed_r()
+                {
                     SDL_Delay(1);
                 }
             }
@@ -215,7 +213,7 @@ impl Data {
             // specify the value of a map piece just numerically.  This will be
             // done upon pressing the 'e' key.
             //
-            if key_is_pressed_r(b'e'.into()) {
+            if self.key_is_pressed_r(b'e'.into()) {
                 self.centered_put_string(
                     NE_SCREEN,
                     6 * font_height(&*MENU_B_FONT),
@@ -238,20 +236,20 @@ impl Data {
 
             //If the person using the level editor decides he/she wants a different
             //scale for the editing process, he/she may say so by using the O/I keys.
-            if key_is_pressed_r(b'o'.into()) {
+            if self.key_is_pressed_r(b'o'.into()) {
                 if CURRENT_COMBAT_SCALE_FACTOR > 0.25 {
                     CURRENT_COMBAT_SCALE_FACTOR -= 0.25;
                 }
-                set_combat_scale_to(CURRENT_COMBAT_SCALE_FACTOR);
+                self.set_combat_scale_to(CURRENT_COMBAT_SCALE_FACTOR);
             }
-            if key_is_pressed_r(b'i'.into()) {
+            if self.key_is_pressed_r(b'i'.into()) {
                 CURRENT_COMBAT_SCALE_FACTOR += 0.25;
-                set_combat_scale_to(CURRENT_COMBAT_SCALE_FACTOR);
+                self.set_combat_scale_to(CURRENT_COMBAT_SCALE_FACTOR);
             }
 
             // toggle waypoint on current square.  That means either removed or added.
             // And in case of removal, also the connections must be removed.
-            if key_is_pressed_r(b'p'.into()) {
+            if self.key_is_pressed_r(b'p'.into()) {
                 // find out if there is a waypoint on the current square
                 let mut i = 0;
                 while i < usize::try_from((*CUR_LEVEL).num_waypoints).unwrap() {
@@ -276,7 +274,7 @@ impl Data {
             // create a connection between waypoints.  If this is the first selected waypoint, its
             // an origin and the second "C"-pressed waypoint will be used a target.
             // If origin and destination are the same, the operation is cancelled.
-            if key_is_pressed_r(b'c'.into()) {
+            if self.key_is_pressed_r(b'c'.into()) {
                 // Determine which waypoint is currently targeted
                 let mut i = 0;
                 while i < usize::try_from((*CUR_LEVEL).num_waypoints).unwrap() {
@@ -324,94 +322,94 @@ impl Data {
 
             // If the person using the level editor pressed some editing keys, insert the
             // corresponding map tile.  This is done here:
-            if key_is_pressed_r(b'f'.into()) {
+            if self.key_is_pressed_r(b'f'.into()) {
                 *map_tile = MapTile::FineGrid as i8;
             }
-            if key_is_pressed_r(b'1'.into()) {
+            if self.key_is_pressed_r(b'1'.into()) {
                 *map_tile = MapTile::Block1 as i8;
             }
-            if key_is_pressed_r(b'2'.into()) {
+            if self.key_is_pressed_r(b'2'.into()) {
                 *map_tile = MapTile::Block2 as i8;
             }
-            if key_is_pressed_r(b'3'.into()) {
+            if self.key_is_pressed_r(b'3'.into()) {
                 *map_tile = MapTile::Block3 as i8;
             }
-            if key_is_pressed_r(b'4'.into()) {
+            if self.key_is_pressed_r(b'4'.into()) {
                 *map_tile = MapTile::Block4 as i8;
             }
-            if key_is_pressed_r(b'5'.into()) {
+            if self.key_is_pressed_r(b'5'.into()) {
                 *map_tile = MapTile::Block5 as i8;
             }
-            if key_is_pressed_r(b'l'.into()) {
+            if self.key_is_pressed_r(b'l'.into()) {
                 *map_tile = MapTile::Lift as i8;
             }
-            if key_is_pressed_r(SDLK_KP_PLUS as c_int) {
+            if self.key_is_pressed_r(SDLK_KP_PLUS as c_int) {
                 *map_tile = MapTile::VWall as i8;
             }
-            if key_is_pressed_r(SDLK_KP0 as c_int) {
+            if self.key_is_pressed_r(SDLK_KP0 as c_int) {
                 *map_tile = MapTile::HWall as i8;
             }
-            if key_is_pressed_r(SDLK_KP1 as c_int) {
+            if self.key_is_pressed_r(SDLK_KP1 as c_int) {
                 *map_tile = MapTile::EckLu as i8;
             }
-            if key_is_pressed_r(SDLK_KP2 as c_int) {
-                if !shift_pressed() {
+            if self.key_is_pressed_r(SDLK_KP2 as c_int) {
+                if !self.shift_pressed() {
                     *map_tile = MapTile::Tu as i8;
                 } else {
                     *map_tile = MapTile::KonsoleU as i8;
                 }
             }
-            if key_is_pressed_r(SDLK_KP3 as c_int) {
+            if self.key_is_pressed_r(SDLK_KP3 as c_int) {
                 *map_tile = MapTile::EckRu as i8;
             }
-            if key_is_pressed_r(SDLK_KP4 as c_int) {
-                if !shift_pressed() {
+            if self.key_is_pressed_r(SDLK_KP4 as c_int) {
+                if !self.shift_pressed() {
                     *map_tile = MapTile::Tl as i8;
                 } else {
                     *map_tile = MapTile::KonsoleL as i8;
                 }
             }
-            if key_is_pressed_r(SDLK_KP5 as c_int) {
-                if !shift_pressed() {
+            if self.key_is_pressed_r(SDLK_KP5 as c_int) {
+                if !self.shift_pressed() {
                     *map_tile = MapTile::Kreuz as i8;
                 } else {
                     *map_tile = MapTile::Void as i8;
                 }
             }
-            if key_is_pressed_r(SDLK_KP6 as c_int) {
-                if !shift_pressed() {
+            if self.key_is_pressed_r(SDLK_KP6 as c_int) {
+                if !self.shift_pressed() {
                     *map_tile = MapTile::Tr as i8;
                 } else {
                     *map_tile = MapTile::KonsoleR as i8;
                 }
             }
-            if key_is_pressed_r(SDLK_KP7 as c_int) {
+            if self.key_is_pressed_r(SDLK_KP7 as c_int) {
                 *map_tile = MapTile::EckLo as i8;
             }
-            if key_is_pressed_r(SDLK_KP8 as c_int) {
-                if !shift_pressed() {
+            if self.key_is_pressed_r(SDLK_KP8 as c_int) {
+                if !self.shift_pressed() {
                     *map_tile = MapTile::To as i8;
                 } else {
                     *map_tile = MapTile::KonsoleO as i8;
                 }
             }
-            if key_is_pressed_r(SDLK_KP9 as c_int) {
+            if self.key_is_pressed_r(SDLK_KP9 as c_int) {
                 *map_tile = MapTile::EckRo as i8;
             }
-            if key_is_pressed_r(b'm'.into()) {
+            if self.key_is_pressed_r(b'm'.into()) {
                 *map_tile = MapTile::AlertGreen as i8;
             }
-            if key_is_pressed_r(b'r'.into()) {
+            if self.key_is_pressed_r(b'r'.into()) {
                 *map_tile = MapTile::Refresh1 as i8;
             }
-            if key_is_pressed_r(b't'.into()) {
-                if shift_pressed() {
+            if self.key_is_pressed_r(b't'.into()) {
+                if self.shift_pressed() {
                     *map_tile = MapTile::VZutuere as i8;
                 } else {
                     *map_tile = MapTile::HZutuere as i8;
                 }
             }
-            if space_pressed() || mouse_left_pressed() {
+            if self.space_pressed() || self.mouse_left_pressed() {
                 *map_tile = MapTile::Floor as i8;
             }
         }

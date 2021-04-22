@@ -14,11 +14,8 @@ use crate::{
         FONT0_B_FONT, FONT1_B_FONT, FONT2_B_FONT, GAME_CONFIG, HIGHSCORE_B_FONT, MENU_B_FONT,
         PARA_B_FONT,
     },
-    input::{any_key_just_pressed, cmd_is_active, wait_for_all_keys_released, SDL_Delay},
-    misc::{
-        activate_conservative_frame_computation, find_file, read_and_malloc_and_terminate_file,
-        read_value_from_string, terminate, update_progress,
-    },
+    input::SDL_Delay,
+    misc::{activate_conservative_frame_computation, update_progress},
     sound::play_sound,
     structs::ThemeList,
     takeover::{
@@ -34,7 +31,6 @@ use crate::{
         DIGIT_RECT, DRUIDMAP, FULL_USER_RECT, LEFT_INFO_RECT, ME, MENU_RECT, OPTIONS_MENU_RECT,
         ORIG_BLOCK_RECT, ORIG_DIGIT_RECT, PORTRAIT_RECT, RIGHT_INFO_RECT, SCREEN_RECT, USER_RECT,
     },
-    view::display_banner,
     Data, ALL_BULLETS, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
 };
 
@@ -189,75 +185,79 @@ pub unsafe fn apply_filter(
     defs::OK.into()
 }
 
-pub unsafe fn toggle_fullscreen() {
-    let mut vid_flags = (*NE_SCREEN).flags;
+impl Data {
+    pub unsafe fn toggle_fullscreen(&mut self) {
+        let mut vid_flags = (*NE_SCREEN).flags;
 
-    if GAME_CONFIG.use_fullscreen != 0 {
-        vid_flags &= !(VideoFlag::Fullscreen as u32);
-    } else {
-        vid_flags |= VideoFlag::Fullscreen as u32;
-    }
+        if GAME_CONFIG.use_fullscreen != 0 {
+            vid_flags &= !(VideoFlag::Fullscreen as u32);
+        } else {
+            vid_flags |= VideoFlag::Fullscreen as u32;
+        }
 
-    NE_SCREEN = SDL_SetVideoMode(SCREEN_RECT.w.into(), SCREEN_RECT.h.into(), 0, vid_flags);
-    if NE_SCREEN.is_null() {
-        error!(
-            "unable to toggle windowed/fullscreen {} x {} video mode.",
-            SCREEN_RECT.w, SCREEN_RECT.h,
-        );
-        error!("SDL-Error: {}", get_error());
-        terminate(defs::ERR.into());
-    }
+        NE_SCREEN = SDL_SetVideoMode(SCREEN_RECT.w.into(), SCREEN_RECT.h.into(), 0, vid_flags);
+        if NE_SCREEN.is_null() {
+            error!(
+                "unable to toggle windowed/fullscreen {} x {} video mode.",
+                SCREEN_RECT.w, SCREEN_RECT.h,
+            );
+            error!("SDL-Error: {}", get_error());
+            self.terminate(defs::ERR.into());
+        }
 
-    if (*NE_SCREEN).flags != vid_flags {
-        warn!("Failed to toggle windowed/fullscreen mode!");
-    } else {
-        GAME_CONFIG.use_fullscreen = !GAME_CONFIG.use_fullscreen;
+        if (*NE_SCREEN).flags != vid_flags {
+            warn!("Failed to toggle windowed/fullscreen mode!");
+        } else {
+            GAME_CONFIG.use_fullscreen = !GAME_CONFIG.use_fullscreen;
+        }
     }
 }
 
-/// This function saves a screenshot to disk.
-///
-/// The screenshots are names "Screenshot_XX.bmp" where XX is a
-/// running number.
-///
-/// NOTE:  This function does NOT check for existing screenshots,
-///        but will silently overwrite them.  No problem in most
-///        cases I think.
-pub unsafe fn take_screenshot() {
-    static mut NUMBER_OF_SCREENSHOT: u32 = 0;
+impl Data {
+    /// This function saves a screenshot to disk.
+    ///
+    /// The screenshots are names "Screenshot_XX.bmp" where XX is a
+    /// running number.
+    ///
+    /// NOTE:  This function does NOT check for existing screenshots,
+    ///        but will silently overwrite them.  No problem in most
+    ///        cases I think.
+    pub unsafe fn take_screenshot(&mut self) {
+        static mut NUMBER_OF_SCREENSHOT: u32 = 0;
 
-    activate_conservative_frame_computation();
+        activate_conservative_frame_computation();
 
-    let screenshot_filename = format!("Screenshot_{}.bmp\0", NUMBER_OF_SCREENSHOT);
-    SDL_SaveBMP_RW(
-        NE_SCREEN,
-        SDL_RWFromFile(
-            screenshot_filename.as_ptr() as *const c_char,
-            cstr!("wb").as_ptr(),
-        ),
-        1,
-    );
-    NUMBER_OF_SCREENSHOT = NUMBER_OF_SCREENSHOT.wrapping_add(1);
-    display_banner(
-        cstr!("Screenshot").as_ptr(),
-        null_mut(),
-        (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
-            .bits()
-            .into(),
-    );
-    make_grid_on_screen(None);
-    SDL_Flip(NE_SCREEN);
-    play_sound(Sound::Screenshot as i32);
+        let screenshot_filename = format!("Screenshot_{}.bmp\0", NUMBER_OF_SCREENSHOT);
+        SDL_SaveBMP_RW(
+            NE_SCREEN,
+            SDL_RWFromFile(
+                screenshot_filename.as_ptr() as *const c_char,
+                cstr!("wb").as_ptr(),
+            ),
+            1,
+        );
+        NUMBER_OF_SCREENSHOT = NUMBER_OF_SCREENSHOT.wrapping_add(1);
+        self.display_banner(
+            cstr!("Screenshot").as_ptr(),
+            null_mut(),
+            (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
+                .bits()
+                .into(),
+        );
+        make_grid_on_screen(None);
+        SDL_Flip(NE_SCREEN);
+        play_sound(Sound::Screenshot as i32);
 
-    while cmd_is_active(Cmds::Screenshot) {
-        SDL_Delay(1);
+        while self.cmd_is_active(Cmds::Screenshot) {
+            SDL_Delay(1);
+        }
+
+        self.display_banner(
+            null_mut(),
+            null_mut(),
+            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+        );
     }
-
-    display_banner(
-        null_mut(),
-        null_mut(),
-        DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-    );
 }
 
 #[inline]
@@ -556,23 +556,23 @@ pub unsafe fn scale_stat_rects(scale: c_float) {
     scale!(COLUMN_RECT);
 }
 
-pub unsafe fn scale_pic(pic: &mut *mut SDL_Surface, scale: c_float) {
-    if (scale - 1.0).abs() <= f32::EPSILON {
-        return;
-    }
-    let scale = scale.into();
-
-    let tmp = *pic;
-    *pic = zoomSurface(tmp, scale, scale, 0);
-    if pic.is_null() {
-        error!("zoomSurface() failed for scale = {}.", scale);
-        terminate(defs::ERR.into());
-    }
-    SDL_FreeSurface(tmp);
-}
-
 impl Data {
-    pub unsafe fn scale_graphics(&self, scale: c_float) {
+    pub unsafe fn scale_pic(&mut self, pic: &mut *mut SDL_Surface, scale: c_float) {
+        if (scale - 1.0).abs() <= f32::EPSILON {
+            return;
+        }
+        let scale = scale.into();
+
+        let tmp = *pic;
+        *pic = zoomSurface(tmp, scale, scale, 0);
+        if pic.is_null() {
+            error!("zoomSurface() failed for scale = {}.", scale);
+            self.terminate(defs::ERR.into());
+        }
+        SDL_FreeSurface(tmp);
+    }
+
+    pub unsafe fn scale_graphics(&mut self, scale: c_float) {
         static INIT: std::sync::Once = std::sync::Once::new();
 
         /* For some reason we need to SetAlpha every time on OS X */
@@ -610,18 +610,18 @@ impl Data {
                     .flat_map(|surfaces| surfaces.iter_mut()),
             )
             .for_each(|(orig_surface, map_surface)| {
-                scale_pic(orig_surface, scale);
+                self.scale_pic(orig_surface, scale);
                 *map_surface = *orig_surface;
             });
 
         //---------- rescale Droid-model  blocks
         /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
         for surface in &mut INFLUENCER_SURFACE_POINTER {
-            scale_pic(surface, scale);
+            self.scale_pic(surface, scale);
             SDL_SetAlpha(*surface, 0, 0);
         }
         for surface in &mut ENEMY_SURFACE_POINTER {
-            scale_pic(surface, scale);
+            self.scale_pic(surface, scale);
             SDL_SetAlpha(*surface, 0, 0);
         }
 
@@ -633,29 +633,29 @@ impl Data {
         bulletmap
             .iter_mut()
             .flat_map(|bullet| bullet.surface_pointer.iter_mut())
-            .for_each(|surface| scale_pic(surface, scale));
+            .for_each(|surface| self.scale_pic(surface, scale));
 
         //---------- rescale Blast blocks
         BLASTMAP
             .iter_mut()
             .flat_map(|blast| blast.surface_pointer.iter_mut())
-            .for_each(|surface| scale_pic(surface, scale));
+            .for_each(|surface| self.scale_pic(surface, scale));
 
         //---------- rescale Digit blocks
         for surface in &mut INFLU_DIGIT_SURFACE_POINTER {
-            scale_pic(surface, scale);
+            self.scale_pic(surface, scale);
             SDL_SetAlpha(*surface, 0, 0);
         }
         for surface in &mut ENEMY_DIGIT_SURFACE_POINTER {
-            scale_pic(surface, scale);
+            self.scale_pic(surface, scale);
             SDL_SetAlpha(*surface, 0, 0);
         }
 
         //---------- rescale Takeover pics
-        scale_pic(&mut TO_BLOCKS, scale);
+        self.scale_pic(&mut TO_BLOCKS, scale);
 
-        scale_pic(&mut SHIP_ON_PIC, scale);
-        scale_pic(&mut SHIP_OFF_PIC, scale);
+        self.scale_pic(&mut SHIP_ON_PIC, scale);
+        self.scale_pic(&mut SHIP_OFF_PIC, scale);
 
         // the following are not theme-specific and are therefore only loaded once!
         if init {
@@ -675,157 +675,160 @@ impl Data {
             SDL_FreeSurface(tmp);
 
             // takeover pics
-            scale_pic(&mut TAKEOVER_BG_PIC, scale);
+            self.scale_pic(&mut TAKEOVER_BG_PIC, scale);
 
             //---------- Console pictures
-            scale_pic(&mut CONSOLE_PIC, scale);
-            scale_pic(&mut CONSOLE_BG_PIC1, scale);
-            scale_pic(&mut CONSOLE_BG_PIC2, scale);
-            scale_pic(&mut ARROW_UP, scale);
-            scale_pic(&mut ARROW_DOWN, scale);
-            scale_pic(&mut ARROW_RIGHT, scale);
-            scale_pic(&mut ARROW_LEFT, scale);
+            self.scale_pic(&mut CONSOLE_PIC, scale);
+            self.scale_pic(&mut CONSOLE_BG_PIC1, scale);
+            self.scale_pic(&mut CONSOLE_BG_PIC2, scale);
+            self.scale_pic(&mut ARROW_UP, scale);
+            self.scale_pic(&mut ARROW_DOWN, scale);
+            self.scale_pic(&mut ARROW_RIGHT, scale);
+            self.scale_pic(&mut ARROW_LEFT, scale);
             //---------- Banner
-            scale_pic(&mut BANNER_PIC, scale);
+            self.scale_pic(&mut BANNER_PIC, scale);
 
-            scale_pic(&mut PIC999, scale);
+            self.scale_pic(&mut PIC999, scale);
 
             // get the Ashes pics
             if !DECAL_PICS[0].is_null() {
-                scale_pic(&mut DECAL_PICS[0], scale);
+                self.scale_pic(&mut DECAL_PICS[0], scale);
             }
             if !DECAL_PICS[1].is_null() {
-                scale_pic(&mut DECAL_PICS[1], scale);
+                self.scale_pic(&mut DECAL_PICS[1], scale);
             }
         }
 
         self.printf_sdl(NE_SCREEN, -1, -1, format_args!(" ok\n"));
     }
-}
 
-/// display "white noise" effect in Rect.
-/// algorith basically stolen from
-/// Greg Knauss's "xteevee" hack in xscreensavers.
-///
-/// timeout is in ms
-pub unsafe fn white_noise(bitmap: *mut SDL_Surface, rect: &mut Rect, timeout: c_int) {
-    use rand::{
-        seq::{IteratorRandom, SliceRandom},
-        Rng,
-    };
-    const NOISE_COLORS: usize = 6;
-    const NOISE_TILES: usize = 8;
+    /// display "white noise" effect in Rect.
+    /// algorith basically stolen from
+    /// Greg Knauss's "xteevee" hack in xscreensavers.
+    ///
+    /// timeout is in ms
+    pub unsafe fn white_noise(
+        &mut self,
+        bitmap: *mut SDL_Surface,
+        rect: &mut Rect,
+        timeout: c_int,
+    ) {
+        use rand::{
+            seq::{IteratorRandom, SliceRandom},
+            Rng,
+        };
+        const NOISE_COLORS: usize = 6;
+        const NOISE_TILES: usize = 8;
 
-    let signal_strengh = 60;
+        let signal_strengh = 60;
 
-    let grey: [u32; NOISE_COLORS] = array_init(|index| {
-        let color = (((index as f64 + 1.0) / (NOISE_COLORS as f64)) * 255.0) as u8;
-        SDL_MapRGB((*NE_SCREEN).format, color, color, color)
-    });
+        let grey: [u32; NOISE_COLORS] = array_init(|index| {
+            let color = (((index as f64 + 1.0) / (NOISE_COLORS as f64)) * 255.0) as u8;
+            SDL_MapRGB((*NE_SCREEN).format, color, color, color)
+        });
 
-    // produce the tiles
-    let tmp = SDL_CreateRGBSurface(0, rect.w.into(), rect.h.into(), VID_BPP, 0, 0, 0, 0);
-    let tmp2 = SDL_DisplayFormat(tmp);
-    SDL_FreeSurface(tmp);
-    SDL_UpperBlit(bitmap, rect, tmp2, null_mut());
+        // produce the tiles
+        let tmp = SDL_CreateRGBSurface(0, rect.w.into(), rect.h.into(), VID_BPP, 0, 0, 0, 0);
+        let tmp2 = SDL_DisplayFormat(tmp);
+        SDL_FreeSurface(tmp);
+        SDL_UpperBlit(bitmap, rect, tmp2, null_mut());
 
-    let mut rng = rand::thread_rng();
-    let noise_tiles: [*mut SDL_Surface; NOISE_TILES] = array_init(|_| {
-        let tile = SDL_DisplayFormat(tmp2);
-        (0..rect.x)
-            .flat_map(|x| (0..rect.h).map(move |y| (x, y)))
-            .for_each(|(x, y)| {
-                if rng.gen_range(0, 100) > signal_strengh {
-                    put_pixel(&*tile, x.into(), y.into(), *grey.choose(&mut rng).unwrap());
-                }
-            });
-        tile
-    });
-    SDL_FreeSurface(tmp2);
+        let mut rng = rand::thread_rng();
+        let noise_tiles: [*mut SDL_Surface; NOISE_TILES] = array_init(|_| {
+            let tile = SDL_DisplayFormat(tmp2);
+            (0..rect.x)
+                .flat_map(|x| (0..rect.h).map(move |y| (x, y)))
+                .for_each(|(x, y)| {
+                    if rng.gen_range(0, 100) > signal_strengh {
+                        put_pixel(&*tile, x.into(), y.into(), *grey.choose(&mut rng).unwrap());
+                    }
+                });
+            tile
+        });
+        SDL_FreeSurface(tmp2);
 
-    let mut used_tiles: [c_char; NOISE_TILES / 2 + 1] = [-1; NOISE_TILES / 2 + 1];
-    // let's go
-    play_sound(Sound::WhiteNoise as c_int);
+        let mut used_tiles: [c_char; NOISE_TILES / 2 + 1] = [-1; NOISE_TILES / 2 + 1];
+        // let's go
+        play_sound(Sound::WhiteNoise as c_int);
 
-    let now = SDL_GetTicks();
+        let now = SDL_GetTicks();
 
-    wait_for_all_keys_released();
-    let mut clip_rect = Rect::new(0, 0, 0, 0);
-    loop {
-        // pick an old enough tile
-        let mut next_tile;
+        self.wait_for_all_keys_released();
+        let mut clip_rect = Rect::new(0, 0, 0, 0);
         loop {
-            next_tile = (0..NOISE_TILES as i8).choose(&mut rng).unwrap();
-            for &used_tile in &used_tiles {
-                if next_tile == used_tile {
-                    next_tile = -1;
+            // pick an old enough tile
+            let mut next_tile;
+            loop {
+                next_tile = (0..NOISE_TILES as i8).choose(&mut rng).unwrap();
+                for &used_tile in &used_tiles {
+                    if next_tile == used_tile {
+                        next_tile = -1;
+                        break;
+                    }
+                }
+
+                if next_tile != -1 {
                     break;
                 }
             }
+            used_tiles.copy_within(1.., 0);
+            *used_tiles.last_mut().unwrap() = next_tile;
 
-            if next_tile != -1 {
+            // make sure we can blit the full rect without clipping! (would change *rect!)
+            SDL_GetClipRect(NE_SCREEN, &mut clip_rect);
+            SDL_SetClipRect(NE_SCREEN, null_mut());
+            // set it
+            SDL_UpperBlit(
+                noise_tiles[usize::try_from(next_tile).unwrap()],
+                null_mut(),
+                NE_SCREEN,
+                rect,
+            );
+            SDL_UpdateRect(
+                NE_SCREEN,
+                rect.x.into(),
+                rect.y.into(),
+                rect.w.into(),
+                rect.h.into(),
+            );
+            SDL_Delay(25);
+
+            if timeout != 0 && SDL_GetTicks() - now > timeout.try_into().unwrap() {
+                break;
+            }
+
+            if self.any_key_just_pressed() != 0 {
                 break;
             }
         }
-        used_tiles.copy_within(1.., 0);
-        *used_tiles.last_mut().unwrap() = next_tile;
 
-        // make sure we can blit the full rect without clipping! (would change *rect!)
-        SDL_GetClipRect(NE_SCREEN, &mut clip_rect);
-        SDL_SetClipRect(NE_SCREEN, null_mut());
-        // set it
-        SDL_UpperBlit(
-            noise_tiles[usize::try_from(next_tile).unwrap()],
-            null_mut(),
-            NE_SCREEN,
-            rect,
-        );
-        SDL_UpdateRect(
-            NE_SCREEN,
-            rect.x.into(),
-            rect.y.into(),
-            rect.w.into(),
-            rect.h.into(),
-        );
-        SDL_Delay(25);
+        //restore previous clip-rectange
+        SDL_SetClipRect(NE_SCREEN, &clip_rect);
 
-        if timeout != 0 && SDL_GetTicks() - now > timeout.try_into().unwrap() {
-            break;
-        }
-
-        if any_key_just_pressed() != 0 {
-            break;
+        for &tile in &noise_tiles {
+            SDL_FreeSurface(tile);
         }
     }
 
-    //restore previous clip-rectange
-    SDL_SetClipRect(NE_SCREEN, &clip_rect);
+    pub unsafe fn duplicate_font(&mut self, in_font: &BFontInfo) -> *mut BFontInfo {
+        let out_font = alloc_zeroed(Layout::new::<BFontInfo>()) as *mut BFontInfo;
 
-    for &tile in &noise_tiles {
-        SDL_FreeSurface(tile);
-    }
-}
+        std::ptr::copy_nonoverlapping(in_font, out_font, 1);
+        (*out_font).surface = SDL_ConvertSurface(
+            in_font.surface,
+            (*in_font.surface).format,
+            (*in_font.surface).flags,
+        );
+        if (*out_font).surface.is_null() {
+            error!("Duplicate_Font: failed to copy SDL_Surface using SDL_ConvertSurface()");
+            self.terminate(defs::ERR.into());
+        }
 
-pub unsafe fn duplicate_font(in_font: &BFontInfo) -> *mut BFontInfo {
-    let out_font = alloc_zeroed(Layout::new::<BFontInfo>()) as *mut BFontInfo;
-
-    std::ptr::copy_nonoverlapping(in_font, out_font, 1);
-    (*out_font).surface = SDL_ConvertSurface(
-        in_font.surface,
-        (*in_font.surface).format,
-        (*in_font.surface).flags,
-    );
-    if (*out_font).surface.is_null() {
-        error!("Duplicate_Font: failed to copy SDL_Surface using SDL_ConvertSurface()");
-        terminate(defs::ERR.into());
+        out_font
     }
 
-    out_font
-}
-
-impl Data {
     pub unsafe fn load_fonts(&mut self) -> c_int {
-        let mut fpath = find_file(
+        let mut fpath = self.find_file(
             PARA_FONT_FILE_C.as_ptr(),
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -834,10 +837,10 @@ impl Data {
         PARA_B_FONT = self.load_font(fpath, GAME_CONFIG.scale);
         if PARA_B_FONT.is_null() {
             error!("font file named {} was not found.", PARA_FONT_FILE);
-            terminate(defs::ERR.into());
+            self.terminate(defs::ERR.into());
         }
 
-        fpath = find_file(
+        fpath = self.find_file(
             FONT0_FILE_C.as_ptr(),
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -846,10 +849,10 @@ impl Data {
         FONT0_B_FONT = self.load_font(fpath, GAME_CONFIG.scale);
         if FONT0_B_FONT.is_null() {
             error!("font file named {} was not found.\n", FONT0_FILE);
-            terminate(defs::ERR.into());
+            self.terminate(defs::ERR.into());
         }
 
-        fpath = find_file(
+        fpath = self.find_file(
             FONT1_FILE_C.as_ptr(),
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -858,10 +861,10 @@ impl Data {
         FONT1_B_FONT = self.load_font(fpath, GAME_CONFIG.scale);
         if FONT1_B_FONT.is_null() {
             error!("font file named {} was not found.", FONT1_FILE);
-            terminate(defs::ERR.into());
+            self.terminate(defs::ERR.into());
         }
 
-        fpath = find_file(
+        fpath = self.find_file(
             FONT2_FILE_C.as_ptr(),
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -870,11 +873,11 @@ impl Data {
         FONT2_B_FONT = self.load_font(fpath, GAME_CONFIG.scale);
         if FONT2_B_FONT.is_null() {
             error!("font file named {} was not found.", FONT2_FILE);
-            terminate(defs::ERR.into());
+            self.terminate(defs::ERR.into());
         }
 
-        MENU_B_FONT = duplicate_font(&*PARA_B_FONT);
-        HIGHSCORE_B_FONT = duplicate_font(&*PARA_B_FONT);
+        MENU_B_FONT = self.duplicate_font(&*PARA_B_FONT);
+        HIGHSCORE_B_FONT = self.duplicate_font(&*PARA_B_FONT);
 
         FONTS_LOADED = true.into();
 
@@ -895,205 +898,206 @@ pub unsafe fn clear_graph_mem() {
     SDL_Flip(NE_SCREEN);
 }
 
-/// Initialise the Video display and graphics engine
-pub unsafe fn init_video() {
-    const YN: [&str; 2] = ["no", "yes"];
+impl Data {
+    /// Initialise the Video display and graphics engine
+    pub unsafe fn init_video(&mut self) {
+        const YN: [&str; 2] = ["no", "yes"];
 
-    /* Initialize the SDL library */
-    // if ( SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) == -1 )
+        /* Initialize the SDL library */
+        // if ( SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) == -1 )
 
-    if SDL_Init(SDL_INIT_VIDEO) == -1 {
-        eprintln!("Couldn't initialize SDL: {}", get_error());
-        terminate(defs::ERR.into());
-    } else {
-        info!("SDL Video initialisation successful.");
-    }
-
-    // Now SDL_TIMER is initialized here:
-
-    if SDL_InitSubSystem(SDL_INIT_TIMER) == -1 {
-        eprintln!("Couldn't initialize SDL: {}", get_error());
-        terminate(defs::ERR.into());
-    } else {
-        info!("SDL Timer initialisation successful.");
-    }
-
-    /* clean up on exit */
-    libc::atexit(std::mem::transmute(SDL_Quit as unsafe extern "C" fn()));
-
-    VID_INFO = SDL_GetVideoInfo(); /* just curious */
-    let mut vid_driver: [c_char; 81] = [0; 81];
-    SDL_VideoDriverName(vid_driver.as_mut_ptr(), 80);
-
-    let vid_info_ref = *VID_INFO;
-    if cfg!(os_target = "android") {
-        VID_BPP = 16; // Hardcoded Android default
-    } else {
-        VID_BPP = (*vid_info_ref.vfmt).BitsPerPixel.into();
-    }
-
-    macro_rules! flag {
-        ($flag:ident) => {
-            (vid_info_ref.flags & VideoInfoFlag::$flag as u32) != 0
-        };
-    }
-    macro_rules! flag_yn {
-        ($flag:ident) => {
-            YN[usize::from(flag!($flag))]
-        };
-    }
-
-    info!("Video info summary from SDL:");
-    info!("----------------------------------------------------------------------");
-    info!(
-        "Is it possible to create hardware surfaces: {}",
-        flag_yn!(HWAvailable)
-    );
-    info!(
-        "Is there a window manager available: {}",
-        flag_yn!(WMAvailable)
-    );
-    info!(
-        "Are hardware to hardware blits accelerated: {}",
-        flag_yn!(BlitHW)
-    );
-    info!(
-        "Are hardware to hardware colorkey blits accelerated: {}",
-        flag_yn!(BlitHWColorkey)
-    );
-    info!(
-        "Are hardware to hardware alpha blits accelerated: {}",
-        flag_yn!(BlitHWAlpha)
-    );
-    info!(
-        "Are software to hardware blits accelerated: {}",
-        flag_yn!(BlitSW)
-    );
-    info!(
-        "Are software to hardware colorkey blits accelerated: {}",
-        flag_yn!(BlitSWColorkey)
-    );
-    info!(
-        "Are software to hardware alpha blits accelerated: {}",
-        flag_yn!(BlitSWAlpha)
-    );
-    info!("Are color fills accelerated: {}", flag_yn!(BlitFill));
-    info!(
-        "Total amount of video memory in Kilobytes: {}",
-        vid_info_ref.video_mem
-    );
-    info!(
-        "Pixel format of the video device: bpp = {}, bytes/pixel = {}",
-        VID_BPP,
-        (*vid_info_ref.vfmt).BytesPerPixel
-    );
-    info!(
-        "Video Driver Name: {}",
-        CStr::from_ptr(vid_driver.as_ptr()).to_string_lossy()
-    );
-    info!("----------------------------------------------------------------------");
-
-    let vid_flags = if GAME_CONFIG.use_fullscreen != 0 {
-        VideoFlag::Fullscreen as u32
-    } else {
-        0
-    };
-
-    if flag!(WMAvailable) {
-        /* if there's a window-manager */
-        SDL_WM_SetCaption(cstr!("Freedroid").as_ptr(), cstr!("").as_ptr());
-        let fpath = find_file(
-            ICON_FILE_C.as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::WarnOnly as c_int,
-        );
-        if fpath.is_null() {
-            warn!("Could not find icon file '{}'", ICON_FILE);
+        if SDL_Init(SDL_INIT_VIDEO) == -1 {
+            eprintln!("Couldn't initialize SDL: {}", get_error());
+            self.terminate(defs::ERR.into());
         } else {
-            let img = IMG_Load(fpath);
-            if img.is_null() {
-                warn!(
-                    "IMG_Load failed for icon file '{}'\n",
-                    CStr::from_ptr(fpath).to_string_lossy()
-                );
+            info!("SDL Video initialisation successful.");
+        }
+
+        // Now SDL_TIMER is initialized here:
+
+        if SDL_InitSubSystem(SDL_INIT_TIMER) == -1 {
+            eprintln!("Couldn't initialize SDL: {}", get_error());
+            self.terminate(defs::ERR.into());
+        } else {
+            info!("SDL Timer initialisation successful.");
+        }
+
+        /* clean up on exit */
+        libc::atexit(std::mem::transmute(SDL_Quit as unsafe extern "C" fn()));
+
+        VID_INFO = SDL_GetVideoInfo(); /* just curious */
+        let mut vid_driver: [c_char; 81] = [0; 81];
+        SDL_VideoDriverName(vid_driver.as_mut_ptr(), 80);
+
+        let vid_info_ref = *VID_INFO;
+        if cfg!(os_target = "android") {
+            VID_BPP = 16; // Hardcoded Android default
+        } else {
+            VID_BPP = (*vid_info_ref.vfmt).BitsPerPixel.into();
+        }
+
+        macro_rules! flag {
+            ($flag:ident) => {
+                (vid_info_ref.flags & VideoInfoFlag::$flag as u32) != 0
+            };
+        }
+        macro_rules! flag_yn {
+            ($flag:ident) => {
+                YN[usize::from(flag!($flag))]
+            };
+        }
+
+        info!("Video info summary from SDL:");
+        info!("----------------------------------------------------------------------");
+        info!(
+            "Is it possible to create hardware surfaces: {}",
+            flag_yn!(HWAvailable)
+        );
+        info!(
+            "Is there a window manager available: {}",
+            flag_yn!(WMAvailable)
+        );
+        info!(
+            "Are hardware to hardware blits accelerated: {}",
+            flag_yn!(BlitHW)
+        );
+        info!(
+            "Are hardware to hardware colorkey blits accelerated: {}",
+            flag_yn!(BlitHWColorkey)
+        );
+        info!(
+            "Are hardware to hardware alpha blits accelerated: {}",
+            flag_yn!(BlitHWAlpha)
+        );
+        info!(
+            "Are software to hardware blits accelerated: {}",
+            flag_yn!(BlitSW)
+        );
+        info!(
+            "Are software to hardware colorkey blits accelerated: {}",
+            flag_yn!(BlitSWColorkey)
+        );
+        info!(
+            "Are software to hardware alpha blits accelerated: {}",
+            flag_yn!(BlitSWAlpha)
+        );
+        info!("Are color fills accelerated: {}", flag_yn!(BlitFill));
+        info!(
+            "Total amount of video memory in Kilobytes: {}",
+            vid_info_ref.video_mem
+        );
+        info!(
+            "Pixel format of the video device: bpp = {}, bytes/pixel = {}",
+            VID_BPP,
+            (*vid_info_ref.vfmt).BytesPerPixel
+        );
+        info!(
+            "Video Driver Name: {}",
+            CStr::from_ptr(vid_driver.as_ptr()).to_string_lossy()
+        );
+        info!("----------------------------------------------------------------------");
+
+        let vid_flags = if GAME_CONFIG.use_fullscreen != 0 {
+            VideoFlag::Fullscreen as u32
+        } else {
+            0
+        };
+
+        if flag!(WMAvailable) {
+            /* if there's a window-manager */
+            SDL_WM_SetCaption(cstr!("Freedroid").as_ptr(), cstr!("").as_ptr());
+            let fpath = self.find_file(
+                ICON_FILE_C.as_ptr() as *mut c_char,
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::WarnOnly as c_int,
+            );
+            if fpath.is_null() {
+                warn!("Could not find icon file '{}'", ICON_FILE);
             } else {
-                SDL_WM_SetIcon(img, null_mut());
-                SDL_FreeSurface(img);
+                let img = IMG_Load(fpath);
+                if img.is_null() {
+                    warn!(
+                        "IMG_Load failed for icon file '{}'\n",
+                        CStr::from_ptr(fpath).to_string_lossy()
+                    );
+                } else {
+                    SDL_WM_SetIcon(img, null_mut());
+                    SDL_FreeSurface(img);
+                }
             }
         }
-    }
 
-    NE_SCREEN = SDL_SetVideoMode(SCREEN_RECT.w.into(), SCREEN_RECT.h.into(), 0, vid_flags);
-    if NE_SCREEN.is_null() {
-        error!(
-            "Couldn't set {} x {} video mode. SDL: {}",
-            SCREEN_RECT.w,
-            SCREEN_RECT.h,
-            get_error(),
-        );
-        std::process::exit(-1);
-    }
-
-    VID_INFO = SDL_GetVideoInfo(); /* info about current video mode */
-
-    info!("Got video mode: ");
-
-    SDL_SetGamma(1., 1., 1.);
-    GAME_CONFIG.current_gamma_correction = 1.;
-}
-
-/// load a pic into memory and return the SDL_RWops pointer to it
-pub unsafe fn load_raw_pic(
-    fpath: *const c_char,
-    raw_mem: &mut Option<Box<[u8]>>,
-) -> *mut SDL_RWops {
-    use std::{fs::File, io::Read, path::Path};
-
-    // sanity check
-    if fpath.is_null() {
-        error!("load_raw_pic() called with NULL argument!");
-        terminate(defs::ERR.into());
-    }
-
-    let fpath = match CStr::from_ptr(fpath).to_str() {
-        Ok(fpath) => fpath,
-        Err(err) => {
-            error!("unable to convert path with invalid UTF-8 data: {}", err);
-            terminate(defs::ERR.into());
+        NE_SCREEN = SDL_SetVideoMode(SCREEN_RECT.w.into(), SCREEN_RECT.h.into(), 0, vid_flags);
+        if NE_SCREEN.is_null() {
+            error!(
+                "Couldn't set {} x {} video mode. SDL: {}",
+                SCREEN_RECT.w,
+                SCREEN_RECT.h,
+                get_error(),
+            );
+            std::process::exit(-1);
         }
-    };
-    let fpath = Path::new(&fpath);
-    let mut file = match File::open(fpath) {
-        Ok(file) => file,
-        Err(_) => {
-            error!("could not open file {}. Giving up", fpath.display());
-            terminate(defs::ERR.into());
-        }
-    };
 
-    let metadata = match file.metadata() {
-        Ok(metadata) => metadata,
-        Err(err) => {
-            error!("unable to get file metadata: {}", err);
-            terminate(defs::ERR.into());
-        }
-    };
+        VID_INFO = SDL_GetVideoInfo(); /* info about current video mode */
 
-    let len = metadata.len().try_into().unwrap();
-    let mut buf = vec![0; len].into_boxed_slice();
-    if file.read_exact(&mut *buf).is_err() {
-        error!("cannot reading file {}. Giving up...", fpath.display());
-        terminate(defs::ERR.into());
+        info!("Got video mode: ");
+
+        SDL_SetGamma(1., 1., 1.);
+        GAME_CONFIG.current_gamma_correction = 1.;
     }
-    drop(file);
 
-    let ops = SDL_RWFromMem(buf.as_mut_ptr() as *mut c_void, len.try_into().unwrap());
-    *raw_mem = Some(buf);
-    ops
-}
+    /// load a pic into memory and return the SDL_RWops pointer to it
+    pub unsafe fn load_raw_pic(
+        &mut self,
+        fpath: *const c_char,
+        raw_mem: &mut Option<Box<[u8]>>,
+    ) -> *mut SDL_RWops {
+        use std::{fs::File, io::Read, path::Path};
 
-impl Data {
+        // sanity check
+        if fpath.is_null() {
+            error!("load_raw_pic() called with NULL argument!");
+            self.terminate(defs::ERR.into());
+        }
+
+        let fpath = match CStr::from_ptr(fpath).to_str() {
+            Ok(fpath) => fpath,
+            Err(err) => {
+                error!("unable to convert path with invalid UTF-8 data: {}", err);
+                self.terminate(defs::ERR.into());
+            }
+        };
+        let fpath = Path::new(&fpath);
+        let mut file = match File::open(fpath) {
+            Ok(file) => file,
+            Err(_) => {
+                error!("could not open file {}. Giving up", fpath.display());
+                self.terminate(defs::ERR.into());
+            }
+        };
+
+        let metadata = match file.metadata() {
+            Ok(metadata) => metadata,
+            Err(err) => {
+                error!("unable to get file metadata: {}", err);
+                self.terminate(defs::ERR.into());
+            }
+        };
+
+        let len = metadata.len().try_into().unwrap();
+        let mut buf = vec![0; len].into_boxed_slice();
+        if file.read_exact(&mut *buf).is_err() {
+            error!("cannot reading file {}. Giving up...", fpath.display());
+            self.terminate(defs::ERR.into());
+        }
+        drop(file);
+
+        let ops = SDL_RWFromMem(buf.as_mut_ptr() as *mut c_void, len.try_into().unwrap());
+        *raw_mem = Some(buf);
+        ops
+    }
+
     /// Get the pics for: druids, bullets, blasts
     ///
     /// reads all blocks and puts the right pointers into
@@ -1121,12 +1125,12 @@ impl Data {
 
         self.init_progress(cstr!("Loading pictures").as_ptr() as *mut c_char);
 
-        load_theme_configuration_file();
+        self.load_theme_configuration_file();
 
         update_progress(15);
 
         //---------- get Map blocks
-        let fpath = find_file(
+        let fpath = self.find_file(
             MAP_BLOCK_FILE_C.as_ptr(),
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,
@@ -1160,7 +1164,7 @@ impl Data {
 
         update_progress(20);
         //---------- get Droid-model  blocks
-        let fpath = find_file(
+        let fpath = self.find_file(
             DROID_BLOCK_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,
@@ -1202,7 +1206,7 @@ impl Data {
 
         update_progress(30);
         //---------- get Bullet blocks
-        let fpath = find_file(
+        let fpath = self.find_file(
             BULLET_BLOCK_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,
@@ -1233,7 +1237,7 @@ impl Data {
         update_progress(35);
 
         //---------- get Blast blocks
-        let fpath = find_file(
+        let fpath = self.find_file(
             BLAST_BLOCK_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,
@@ -1264,7 +1268,7 @@ impl Data {
         update_progress(45);
 
         //---------- get Digit blocks
-        let fpath = find_file(
+        let fpath = self.find_file(
             DIGIT_BLOCK_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,
@@ -1302,7 +1306,7 @@ impl Data {
 
         //---------- get Takeover pics
         free_if_unused(TO_BLOCKS); /* this happens when we do theme-switching */
-        let fpath = find_file(
+        let fpath = self.find_file(
             TO_BLOCK_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,
@@ -1313,14 +1317,14 @@ impl Data {
         update_progress(60);
 
         free_if_unused(SHIP_ON_PIC);
-        SHIP_ON_PIC = IMG_Load(find_file(
+        SHIP_ON_PIC = IMG_Load(self.find_file(
             SHIP_ON_PIC_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         ));
         free_if_unused(SHIP_OFF_PIC);
-        SHIP_OFF_PIC = IMG_Load(find_file(
+        SHIP_OFF_PIC = IMG_Load(self.find_file(
             SHIP_OFF_PIC_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,
@@ -1344,7 +1348,7 @@ impl Data {
             SDL_FreeSurface(tmp);
 
             // takeover background pics
-            let fpath = find_file(
+            let fpath = self.find_file(
                 TAKEOVER_BG_PIC_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
@@ -1357,21 +1361,21 @@ impl Data {
             ARROW_CURSOR = init_system_cursor(&ARROW_XPM);
             CROSSHAIR_CURSOR = init_system_cursor(&CROSSHAIR_XPM);
             //---------- get Console pictures
-            let fpath = find_file(
+            let fpath = self.find_file(
                 CONSOLE_PIC_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
             CONSOLE_PIC = load_block(fpath, 0, 0, null_mut(), 0);
-            let fpath = find_file(
+            let fpath = self.find_file(
                 CONSOLE_BG_PIC1_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
             CONSOLE_BG_PIC1 = load_block(fpath, 0, 0, null_mut(), 0);
-            let fpath = find_file(
+            let fpath = self.find_file(
                 CONSOLE_BG_PIC2_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
@@ -1381,32 +1385,32 @@ impl Data {
 
             update_progress(80);
 
-            ARROW_UP = IMG_Load(find_file(
+            ARROW_UP = IMG_Load(self.find_file(
                 cstr!("arrow_up.png").as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             ));
-            ARROW_DOWN = IMG_Load(find_file(
+            ARROW_DOWN = IMG_Load(self.find_file(
                 cstr!("arrow_down.png").as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             ));
-            ARROW_RIGHT = IMG_Load(find_file(
+            ARROW_RIGHT = IMG_Load(self.find_file(
                 cstr!("arrow_right.png").as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             ));
-            ARROW_LEFT = IMG_Load(find_file(
+            ARROW_LEFT = IMG_Load(self.find_file(
                 cstr!("arrow_left.png").as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             ));
             //---------- get Banner
-            let fpath = find_file(
+            let fpath = self.find_file(
                 BANNER_BLOCK_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
@@ -1425,7 +1429,7 @@ impl Data {
                     // first check if we find a file with rotation-frames: first try .jpg
                     libc::strcpy(fname.as_mut_ptr(), droid.druidname.as_ptr());
                     libc::strcat(fname.as_mut_ptr(), cstr!(".jpg").as_ptr());
-                    let mut fpath = find_file(
+                    let mut fpath = self.find_file(
                         fname.as_mut_ptr(),
                         GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                         Themed::NoTheme as c_int,
@@ -1435,7 +1439,7 @@ impl Data {
                     if fpath.is_null() {
                         libc::strcpy(fname.as_mut_ptr(), droid.druidname.as_ptr());
                         libc::strcat(fname.as_mut_ptr(), cstr!(".png").as_ptr());
-                        fpath = find_file(
+                        fpath = self.find_file(
                             fname.as_mut_ptr(),
                             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                             Themed::NoTheme as c_int,
@@ -1443,7 +1447,7 @@ impl Data {
                         );
                     }
 
-                    *packed_portrait = load_raw_pic(fpath, raw_portrait);
+                    *packed_portrait = self.load_raw_pic(fpath, raw_portrait);
                 });
 
             update_progress(95);
@@ -1453,7 +1457,7 @@ impl Data {
                 droids[Droid::Droid999 as usize].druidname.as_ptr(),
             );
             libc::strcat(fname.as_mut_ptr(), cstr!(".png").as_ptr());
-            let fpath = find_file(
+            let fpath = self.find_file(
                 fname.as_mut_ptr(),
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
@@ -1463,7 +1467,7 @@ impl Data {
 
             // get the Ashes pics
             libc::strcpy(fname.as_mut_ptr(), cstr!("Ashes.png").as_ptr());
-            let fpath = find_file(
+            let fpath = self.find_file(
                 fname.as_mut_ptr(),
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
@@ -1624,56 +1628,59 @@ fn init_system_cursor(image: &[&[u8]]) -> *mut SDL_Cursor {
     unsafe { SDL_CreateCursor(data.as_mut_ptr(), mask.as_mut_ptr(), 32, 32, hot_x, hot_y) }
 }
 
-pub unsafe fn load_theme_configuration_file() {
-    use bstr::ByteSlice;
+impl Data {
+    pub unsafe fn load_theme_configuration_file(&mut self) {
+        use bstr::ByteSlice;
 
-    const END_OF_THEME_DATA_STRING: &CStr = cstr!("**** End of theme data section ****");
+        const END_OF_THEME_DATA_STRING: &CStr = cstr!("**** End of theme data section ****");
 
-    let fpath = find_file(
-        cstr!("config.theme").as_ptr() as *mut c_char,
-        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-        Themed::UseTheme as c_int,
-        Criticality::Critical as c_int,
-    );
-
-    let data =
-        read_and_malloc_and_terminate_file(fpath, END_OF_THEME_DATA_STRING.as_ptr() as *mut c_char);
-
-    //--------------------
-    // Now the file is read in entirely and
-    // we can start to analyze its content,
-    //
-    const BLAST_ONE_NUMBER_OF_PHASES_STRING: &CStr = cstr!("How many phases in Blast one :");
-    const BLAST_TWO_NUMBER_OF_PHASES_STRING: &CStr = cstr!("How many phases in Blast two :");
-
-    read_value_from_string(
-        data.as_ptr() as *mut c_char,
-        BLAST_ONE_NUMBER_OF_PHASES_STRING.as_ptr() as *mut c_char,
-        cstr!("%d").as_ptr() as *mut c_char,
-        &mut BLASTMAP[0].phases as *mut c_int as *mut c_void,
-    );
-
-    read_value_from_string(
-        data.as_ptr() as *mut c_char,
-        BLAST_TWO_NUMBER_OF_PHASES_STRING.as_ptr() as *mut c_char,
-        cstr!("%d").as_ptr() as *mut c_char,
-        &mut BLASTMAP[1].phases as *mut c_int as *mut c_void,
-    );
-
-    // Next we read in the number of phases that are to be used for each bullet type
-    let mut reader = std::slice::from_raw_parts(data.as_ptr() as *const u8, data.len());
-    while let Some(read_start) = reader.find(b"For Bullettype Nr.=") {
-        let read = &reader[read_start..];
-        let mut bullet_index: c_int = 0;
-        read_value_from_string(
-            read.as_ptr() as *mut c_char,
-            cstr!("For Bullettype Nr.=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut bullet_index as *mut c_int as *mut c_void,
+        let fpath = self.find_file(
+            cstr!("config.theme").as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::UseTheme as c_int,
+            Criticality::Critical as c_int,
         );
-        if bullet_index >= NUMBER_OF_BULLET_TYPES {
-            error!(
-                "----------------------------------------------------------------------\n\
+
+        let data = self.read_and_malloc_and_terminate_file(
+            fpath,
+            END_OF_THEME_DATA_STRING.as_ptr() as *mut c_char,
+        );
+
+        //--------------------
+        // Now the file is read in entirely and
+        // we can start to analyze its content,
+        //
+        const BLAST_ONE_NUMBER_OF_PHASES_STRING: &CStr = cstr!("How many phases in Blast one :");
+        const BLAST_TWO_NUMBER_OF_PHASES_STRING: &CStr = cstr!("How many phases in Blast two :");
+
+        self.read_value_from_string(
+            data.as_ptr() as *mut c_char,
+            BLAST_ONE_NUMBER_OF_PHASES_STRING.as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut BLASTMAP[0].phases as *mut c_int as *mut c_void,
+        );
+
+        self.read_value_from_string(
+            data.as_ptr() as *mut c_char,
+            BLAST_TWO_NUMBER_OF_PHASES_STRING.as_ptr() as *mut c_char,
+            cstr!("%d").as_ptr() as *mut c_char,
+            &mut BLASTMAP[1].phases as *mut c_int as *mut c_void,
+        );
+
+        // Next we read in the number of phases that are to be used for each bullet type
+        let mut reader = std::slice::from_raw_parts(data.as_ptr() as *const u8, data.len());
+        while let Some(read_start) = reader.find(b"For Bullettype Nr.=") {
+            let read = &reader[read_start..];
+            let mut bullet_index: c_int = 0;
+            self.read_value_from_string(
+                read.as_ptr() as *mut c_char,
+                cstr!("For Bullettype Nr.=").as_ptr() as *mut c_char,
+                cstr!("%d").as_ptr() as *mut c_char,
+                &mut bullet_index as *mut c_int as *mut c_void,
+            );
+            if bullet_index >= NUMBER_OF_BULLET_TYPES {
+                error!(
+                    "----------------------------------------------------------------------\n\
                  Freedroid has encountered a problem:\n\
                  In function 'char* LoadThemeConfigurationFile ( ... ):\n\
                  \n\
@@ -1692,135 +1699,136 @@ pub unsafe fn load_theme_configuration_file() {
                  Freedroid will terminate now to draw attention to the data problem it could\n\
                  not resolve.... Sorry, if that interrupts a major game of yours.....\n\
                  ----------------------------------------------------------------------\n"
+                );
+                self.terminate(defs::ERR.into());
+            }
+            self.read_value_from_string(
+                read.as_ptr() as *mut c_char,
+                cstr!("we will use number of phases=").as_ptr() as *mut c_char,
+                cstr!("%d").as_ptr() as *mut c_char,
+                &mut (*BULLETMAP.offset(bullet_index.try_into().unwrap())).phases as *mut c_int
+                    as *mut c_void,
             );
-            terminate(defs::ERR.into());
+            self.read_value_from_string(
+                read.as_ptr() as *mut c_char,
+                cstr!("and number of phase changes per second=").as_ptr() as *mut c_char,
+                cstr!("%f").as_ptr() as *mut c_char,
+                &mut (*BULLETMAP.offset(bullet_index.try_into().unwrap())).phase_changes_per_second
+                    as *mut c_float as *mut c_void,
+            );
+            reader = &reader[read_start + 1..];
         }
-        read_value_from_string(
-            read.as_ptr() as *mut c_char,
-            cstr!("we will use number of phases=").as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut (*BULLETMAP.offset(bullet_index.try_into().unwrap())).phases as *mut c_int
-                as *mut c_void,
+
+        // --------------------
+        // Also decidable from the theme is where in the robot to
+        // display the digits.  This must also be read from the configuration
+        // file of the theme
+        //
+        const DIGIT_ONE_POSITION_X_STRING: &CStr = cstr!("First digit x :");
+        const DIGIT_ONE_POSITION_Y_STRING: &CStr = cstr!("First digit y :");
+        const DIGIT_TWO_POSITION_X_STRING: &CStr = cstr!("Second digit x :");
+        const DIGIT_TWO_POSITION_Y_STRING: &CStr = cstr!("Second digit y :");
+        const DIGIT_THREE_POSITION_X_STRING: &CStr = cstr!("Third digit x :");
+        const DIGIT_THREE_POSITION_Y_STRING: &CStr = cstr!("Third digit y :");
+
+        self.read_value_from_string(
+            data.as_ptr() as *mut c_char,
+            DIGIT_ONE_POSITION_X_STRING.as_ptr() as *mut c_char,
+            cstr!("%hd").as_ptr() as *mut c_char,
+            &mut FIRST_DIGIT_RECT.x as *mut c_short as *mut c_void,
         );
-        read_value_from_string(
-            read.as_ptr() as *mut c_char,
-            cstr!("and number of phase changes per second=").as_ptr() as *mut c_char,
-            cstr!("%f").as_ptr() as *mut c_char,
-            &mut (*BULLETMAP.offset(bullet_index.try_into().unwrap())).phase_changes_per_second
-                as *mut c_float as *mut c_void,
+        self.read_value_from_string(
+            data.as_ptr() as *mut c_char,
+            DIGIT_ONE_POSITION_Y_STRING.as_ptr() as *mut c_char,
+            cstr!("%hd").as_ptr() as *mut c_char,
+            &mut FIRST_DIGIT_RECT.y as *mut c_short as *mut c_void,
         );
-        reader = &reader[read_start + 1..];
+
+        self.read_value_from_string(
+            data.as_ptr() as *mut c_char,
+            DIGIT_TWO_POSITION_X_STRING.as_ptr() as *mut c_char,
+            cstr!("%hd").as_ptr() as *mut c_char,
+            &mut SECOND_DIGIT_RECT.x as *mut c_short as *mut c_void,
+        );
+        self.read_value_from_string(
+            data.as_ptr() as *mut c_char,
+            DIGIT_TWO_POSITION_Y_STRING.as_ptr() as *mut c_char,
+            cstr!("%hd").as_ptr() as *mut c_char,
+            &mut SECOND_DIGIT_RECT.y as *mut c_short as *mut c_void,
+        );
+
+        self.read_value_from_string(
+            data.as_ptr() as *mut c_char,
+            DIGIT_THREE_POSITION_X_STRING.as_ptr() as *mut c_char,
+            cstr!("%hd").as_ptr() as *mut c_char,
+            &mut THIRD_DIGIT_RECT.x as *mut i16 as *mut c_void,
+        );
+        self.read_value_from_string(
+            data.as_ptr() as *mut c_char,
+            DIGIT_THREE_POSITION_Y_STRING.as_ptr() as *mut c_char,
+            cstr!("%hd").as_ptr() as *mut c_char,
+            &mut THIRD_DIGIT_RECT.y as *mut c_short as *mut c_void,
+        );
     }
 
-    // --------------------
-    // Also decidable from the theme is where in the robot to
-    // display the digits.  This must also be read from the configuration
-    // file of the theme
-    //
-    const DIGIT_ONE_POSITION_X_STRING: &CStr = cstr!("First digit x :");
-    const DIGIT_ONE_POSITION_Y_STRING: &CStr = cstr!("First digit y :");
-    const DIGIT_TWO_POSITION_X_STRING: &CStr = cstr!("Second digit x :");
-    const DIGIT_TWO_POSITION_Y_STRING: &CStr = cstr!("Second digit y :");
-    const DIGIT_THREE_POSITION_X_STRING: &CStr = cstr!("Third digit x :");
-    const DIGIT_THREE_POSITION_Y_STRING: &CStr = cstr!("Third digit y :");
+    /// This function resizes all blocks and structures involved in assembling
+    /// the combat picture to a new scale.  The new scale is relative to the
+    /// standard scale with means scale=1 is 64x64 tile size.
+    ///
+    /// in the first call we assume the Block_Rect to be the original game-size
+    /// and store this value for future rescalings
+    pub unsafe fn set_combat_scale_to(&mut self, scale: c_float) {
+        use once_cell::sync::Lazy;
+        static ORIG_BLOCK: Lazy<Rect> = Lazy::new(|| unsafe { BLOCK_RECT });
 
-    read_value_from_string(
-        data.as_ptr() as *mut c_char,
-        DIGIT_ONE_POSITION_X_STRING.as_ptr() as *mut c_char,
-        cstr!("%hd").as_ptr() as *mut c_char,
-        &mut FIRST_DIGIT_RECT.x as *mut c_short as *mut c_void,
-    );
-    read_value_from_string(
-        data.as_ptr() as *mut c_char,
-        DIGIT_ONE_POSITION_Y_STRING.as_ptr() as *mut c_char,
-        cstr!("%hd").as_ptr() as *mut c_char,
-        &mut FIRST_DIGIT_RECT.y as *mut c_short as *mut c_void,
-    );
+        MAP_BLOCK_SURFACE_POINTER
+            .iter_mut()
+            .zip(ORIG_MAP_BLOCK_SURFACE_POINTER.iter())
+            .flat_map(|(map_block, orig_map_block)| map_block.iter_mut().zip(orig_map_block.iter()))
+            .for_each(|(surface, &orig_surface)| {
+                // if there's already a rescaled version, free it
+                if *surface != orig_surface {
+                    SDL_FreeSurface(*surface);
+                }
+                // then zoom..
+                let tmp = zoomSurface(orig_surface, scale.into(), scale.into(), 0);
+                if tmp.is_null() {
+                    error!("zoomSurface() failed for scale = {}.", scale);
+                    self.terminate(defs::ERR.into());
+                }
+                // and optimize
+                *surface = SDL_DisplayFormat(tmp);
+                SDL_FreeSurface(tmp); // free the old surface
+            });
 
-    read_value_from_string(
-        data.as_ptr() as *mut c_char,
-        DIGIT_TWO_POSITION_X_STRING.as_ptr() as *mut c_char,
-        cstr!("%hd").as_ptr() as *mut c_char,
-        &mut SECOND_DIGIT_RECT.x as *mut c_short as *mut c_void,
-    );
-    read_value_from_string(
-        data.as_ptr() as *mut c_char,
-        DIGIT_TWO_POSITION_Y_STRING.as_ptr() as *mut c_char,
-        cstr!("%hd").as_ptr() as *mut c_char,
-        &mut SECOND_DIGIT_RECT.y as *mut c_short as *mut c_void,
-    );
-
-    read_value_from_string(
-        data.as_ptr() as *mut c_char,
-        DIGIT_THREE_POSITION_X_STRING.as_ptr() as *mut c_char,
-        cstr!("%hd").as_ptr() as *mut c_char,
-        &mut THIRD_DIGIT_RECT.x as *mut i16 as *mut c_void,
-    );
-    read_value_from_string(
-        data.as_ptr() as *mut c_char,
-        DIGIT_THREE_POSITION_Y_STRING.as_ptr() as *mut c_char,
-        cstr!("%hd").as_ptr() as *mut c_char,
-        &mut THIRD_DIGIT_RECT.y as *mut c_short as *mut c_void,
-    );
-}
-
-/// This function resizes all blocks and structures involved in assembling
-/// the combat picture to a new scale.  The new scale is relative to the
-/// standard scale with means scale=1 is 64x64 tile size.
-///
-/// in the first call we assume the Block_Rect to be the original game-size
-/// and store this value for future rescalings
-pub unsafe fn set_combat_scale_to(scale: c_float) {
-    use once_cell::sync::Lazy;
-    static ORIG_BLOCK: Lazy<Rect> = Lazy::new(|| unsafe { BLOCK_RECT });
-
-    MAP_BLOCK_SURFACE_POINTER
-        .iter_mut()
-        .zip(ORIG_MAP_BLOCK_SURFACE_POINTER.iter())
-        .flat_map(|(map_block, orig_map_block)| map_block.iter_mut().zip(orig_map_block.iter()))
-        .for_each(|(surface, &orig_surface)| {
-            // if there's already a rescaled version, free it
-            if *surface != orig_surface {
-                SDL_FreeSurface(*surface);
-            }
-            // then zoom..
-            let tmp = zoomSurface(orig_surface, scale.into(), scale.into(), 0);
-            if tmp.is_null() {
-                error!("zoomSurface() failed for scale = {}.", scale);
-                terminate(defs::ERR.into());
-            }
-            // and optimize
-            *surface = SDL_DisplayFormat(tmp);
-            SDL_FreeSurface(tmp); // free the old surface
-        });
-
-    BLOCK_RECT = *ORIG_BLOCK;
-    scale_rect(&mut BLOCK_RECT, scale);
-}
-
-/// This function load an image and displays it directly to the NE_SCREEN
-/// but without updating it.
-/// This might be very handy, especially in the Title() function to
-/// display the title image and perhaps also for displaying the ship
-/// and that.
-pub unsafe fn display_image(datafile: *mut c_char) {
-    let mut image = IMG_Load(datafile);
-    if image.is_null() {
-        error!(
-            "couldn't load image {}: {}",
-            CStr::from_ptr(datafile).to_string_lossy(),
-            get_error()
-        );
-        terminate(defs::ERR.into());
+        BLOCK_RECT = *ORIG_BLOCK;
+        scale_rect(&mut BLOCK_RECT, scale);
     }
 
-    if (GAME_CONFIG.scale - 1.).abs() > c_float::EPSILON {
-        scale_pic(&mut image, GAME_CONFIG.scale);
+    /// This function load an image and displays it directly to the NE_SCREEN
+    /// but without updating it.
+    /// This might be very handy, especially in the Title() function to
+    /// display the title image and perhaps also for displaying the ship
+    /// and that.
+    pub unsafe fn display_image(&mut self, datafile: *mut c_char) {
+        let mut image = IMG_Load(datafile);
+        if image.is_null() {
+            error!(
+                "couldn't load image {}: {}",
+                CStr::from_ptr(datafile).to_string_lossy(),
+                get_error()
+            );
+            self.terminate(defs::ERR.into());
+        }
+
+        if (GAME_CONFIG.scale - 1.).abs() > c_float::EPSILON {
+            self.scale_pic(&mut image, GAME_CONFIG.scale);
+        }
+
+        SDL_UpperBlit(image, null_mut(), NE_SCREEN, null_mut());
+
+        SDL_FreeSurface(image);
     }
-
-    SDL_UpperBlit(image, null_mut(), NE_SCREEN, null_mut());
-
-    SDL_FreeSurface(image);
 }
 
 pub unsafe fn draw_line_between_tiles(

@@ -34,24 +34,23 @@ mod view;
 use b_font::BFont;
 use bullet::{check_bullet_collisions, explode_blasts, move_bullets};
 use defs::{
-    fire_pressed_r, scale_rect, AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Status,
-    BYCOLOR, DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, MAX_LEVELS,
-    MAX_LEVEL_RECTS, MAX_LIFTS, MAX_LIFT_ROWS, RESET, SHOW_WAIT, STANDARD_MISSION_C,
+    scale_rect, AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Status, BYCOLOR,
+    DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_LEVEL_RECTS,
+    MAX_LIFTS, MAX_LIFT_ROWS, RESET, SHOW_WAIT, STANDARD_MISSION_C,
 };
 use enemy::move_enemys;
 use global::{GAME_CONFIG, LEVEL_DOORS_NOT_MOVED_TIME, SKIP_A_FEW_FRAMES};
 use graphics::{clear_graph_mem, CROSSHAIR_CURSOR, NE_SCREEN};
+use highscore::Highscore;
 use influencer::check_influence_wall_collisions;
-use input::{init_keystr, wait_for_all_keys_released, SDL_Delay, JOY_SENSITIVITY, SHOW_CURSOR};
+use input::{init_keystr, SDL_Delay, JOY_SENSITIVITY, SHOW_CURSOR};
 use map::{move_level_doors, ColorNames, Map};
 use misc::{
     compute_fps_for_this_frame, frame_time, set_time_factor, start_taking_time_for_fps_calculation,
 };
-use ship::{alert_level_warning, show_droid_portrait};
-use sound::switch_background_music_to;
+use ship::alert_level_warning;
 use structs::{Blast, Bullet, Enemy, Finepoint, Level, Lift, Ship};
 use vars::{CONS_DROID_RECT, ME, SHIP_EMPTY_COUNTER};
-use view::display_banner;
 
 use sdl::{
     mouse::ll::{SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE},
@@ -151,6 +150,7 @@ struct Data {
     game_over: bool,
     map: Map,
     b_font: BFont,
+    highscore: Highscore,
 }
 
 impl Default for Data {
@@ -159,6 +159,7 @@ impl Default for Data {
             game_over: false,
             map: Default::default(),
             b_font: Default::default(),
+            highscore: Default::default(),
         }
     }
 }
@@ -206,18 +207,18 @@ fn main() {
             }
 
             // release all keys
-            wait_for_all_keys_released();
+            data.wait_for_all_keys_released();
 
             data.show_droid_info(ME.ty, -3, 0); // show unit-intro page
-            show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, RESET);
+            data.show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, RESET);
             let now = SDL_GetTicks();
-            while SDL_GetTicks() - now < SHOW_WAIT && !fire_pressed_r() {
-                show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, 0);
+            while SDL_GetTicks() - now < SHOW_WAIT && !data.fire_pressed_r() {
+                data.show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, 0);
                 SDL_Delay(1);
             }
 
             clear_graph_mem();
-            display_banner(
+            data.display_banner(
                 null_mut(),
                 null_mut(),
                 (DisplayBannerFlags::FORCE_UPDATE | DisplayBannerFlags::NO_SDL_UPDATE)
@@ -250,7 +251,7 @@ fn main() {
 
                 alert_level_warning(); // tout tout, blink blink... Alert!!
 
-                display_banner(null_mut(), null_mut(), 0);
+                data.display_banner(null_mut(), null_mut(), 0);
 
                 move_bullets(); // leave this in front of graphics output: time_in_frames should start with 1
 
@@ -281,7 +282,7 @@ fn main() {
                 } else if (*CUR_LEVEL).timer <= 0. {
                     // time to switch off the lights ...
                     (*CUR_LEVEL).color = ColorNames::Dark as i32;
-                    switch_background_music_to(BYCOLOR.as_ptr()); // start new background music
+                    data.switch_background_music_to(BYCOLOR.as_ptr()); // start new background music
                 }
 
                 data.check_if_mission_is_complete();

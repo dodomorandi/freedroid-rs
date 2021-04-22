@@ -1,16 +1,10 @@
 use crate::{
     b_font::{char_width, font_height},
-    defs::{
-        self, down_pressed, fire_pressed_r, up_pressed, Cmds, PointerStates, SHOW_WAIT,
-        TEXT_STRETCH,
-    },
+    defs::{self, Cmds, PointerStates, SHOW_WAIT, TEXT_STRETCH},
     global::GAME_CONFIG,
     graphics::{NE_SCREEN, VID_BPP},
-    input::{
-        any_key_just_pressed, update_input, wait_for_all_keys_released, wheel_down_pressed,
-        wheel_up_pressed, SDL_Delay, JOY_NUM_AXES, JOY_SENSITIVITY, KEY_CMDS,
-    },
-    misc::{my_random, terminate},
+    input::{SDL_Delay, JOY_NUM_AXES, JOY_SENSITIVITY, KEY_CMDS},
+    misc::my_random,
     vars::{ME, SCREEN_RECT},
     Data, ALL_ENEMYS,
 };
@@ -76,7 +70,7 @@ impl Data {
     /// * echo=2    print using graphics-text
     ///
     /// values of echo > 2 are ignored and treated like echo=0
-    pub unsafe fn get_string(&self, max_len: c_int, echo: c_int) -> *mut c_char {
+    pub unsafe fn get_string(&mut self, max_len: c_int, echo: c_int) -> *mut c_char {
         let max_len: usize = max_len.try_into().unwrap();
 
         if echo == 1 {
@@ -180,7 +174,7 @@ impl Data {
 
             #[cfg(not(feature = "arcade-input"))]
             {
-                let key = getchar_raw();
+                let key = self.getchar_raw();
 
                 if key == SDLK_RETURN.try_into().unwrap() {
                     input[curpos] = 0;
@@ -208,104 +202,102 @@ impl Data {
 
         Box::into_raw(input) as *mut c_char
     }
-}
 
-/// Should do roughly what getchar() does, but in raw (SLD) keyboard mode.
-///
-/// Return the (SDLKey) of the next key-pressed event cast to
-pub unsafe fn getchar_raw() -> c_int {
-    let mut event = SDL_Event {
-        data: Default::default(),
-    };
-    let mut return_key = 0;
+    /// Should do roughly what getchar() does, but in raw (SLD) keyboard mode.
+    ///
+    /// Return the (SDLKey) of the next key-pressed event cast to
+    pub unsafe fn getchar_raw(&mut self) -> c_int {
+        let mut event = SDL_Event {
+            data: Default::default(),
+        };
+        let mut return_key = 0;
 
-    loop {
-        SDL_WaitEvent(&mut event); /* wait for next event */
+        loop {
+            SDL_WaitEvent(&mut event); /* wait for next event */
 
-        match u32::from(*event._type()) {
-            SDL_KEYDOWN => {
-                /*
-                 * here we use the fact that, I cite from SDL_keyboard.h:
-                 * "The keyboard syms have been cleverly chosen to map to ASCII"
-                 * ... I hope that this design feature is portable, and durable ;)
-                 */
-                let key = &*event.key();
-                return_key = key.keysym.sym as c_int;
-                const SHIFT: SDLMod = Mod::LShift as SDLMod | Mod::RShift as SDLMod;
-                if key.keysym._mod & SHIFT != 0 {
-                    return_key = u8::try_from(key.keysym.sym as u32)
-                        .unwrap()
-                        .to_ascii_uppercase()
-                        .into();
+            match u32::from(*event._type()) {
+                SDL_KEYDOWN => {
+                    /*
+                     * here we use the fact that, I cite from SDL_keyboard.h:
+                     * "The keyboard syms have been cleverly chosen to map to ASCII"
+                     * ... I hope that this design feature is portable, and durable ;)
+                     */
+                    let key = &*event.key();
+                    return_key = key.keysym.sym as c_int;
+                    const SHIFT: SDLMod = Mod::LShift as SDLMod | Mod::RShift as SDLMod;
+                    if key.keysym._mod & SHIFT != 0 {
+                        return_key = u8::try_from(key.keysym.sym as u32)
+                            .unwrap()
+                            .to_ascii_uppercase()
+                            .into();
+                    }
                 }
-            }
 
-            SDL_JOYBUTTONDOWN => {
-                let jbutton = &*event.jbutton();
-                if jbutton.button == 0 {
-                    return_key = PointerStates::JoyButton1 as c_int;
-                } else if jbutton.button == 1 {
-                    return_key = PointerStates::JoyButton2 as c_int;
-                } else if jbutton.button == 2 {
-                    return_key = PointerStates::JoyButton3 as c_int;
-                } else if jbutton.button == 3 {
-                    return_key = PointerStates::JoyButton4 as c_int;
+                SDL_JOYBUTTONDOWN => {
+                    let jbutton = &*event.jbutton();
+                    if jbutton.button == 0 {
+                        return_key = PointerStates::JoyButton1 as c_int;
+                    } else if jbutton.button == 1 {
+                        return_key = PointerStates::JoyButton2 as c_int;
+                    } else if jbutton.button == 2 {
+                        return_key = PointerStates::JoyButton3 as c_int;
+                    } else if jbutton.button == 3 {
+                        return_key = PointerStates::JoyButton4 as c_int;
+                    }
                 }
-            }
 
-            SDL_JOYAXISMOTION => {
-                let jaxis = &*event.jaxis();
-                let axis = jaxis.axis;
-                if axis == 0 || ((JOY_NUM_AXES >= 5) && (axis == 3))
-                /* x-axis */
-                {
-                    if JOY_SENSITIVITY * i32::from(jaxis.value) > 10000
-                    /* about half tilted */
+                SDL_JOYAXISMOTION => {
+                    let jaxis = &*event.jaxis();
+                    let axis = jaxis.axis;
+                    if axis == 0 || ((JOY_NUM_AXES >= 5) && (axis == 3))
+                    /* x-axis */
                     {
-                        return_key = PointerStates::JoyRight as c_int;
-                    } else if JOY_SENSITIVITY * i32::from(jaxis.value) < -10000 {
-                        return_key = PointerStates::JoyLeft as c_int;
+                        if JOY_SENSITIVITY * i32::from(jaxis.value) > 10000
+                        /* about half tilted */
+                        {
+                            return_key = PointerStates::JoyRight as c_int;
+                        } else if JOY_SENSITIVITY * i32::from(jaxis.value) < -10000 {
+                            return_key = PointerStates::JoyLeft as c_int;
+                        }
+                    } else if (axis == 1) || ((JOY_NUM_AXES >= 5) && (axis == 4))
+                    /* y-axis */
+                    {
+                        if JOY_SENSITIVITY * i32::from(jaxis.value) > 10000 {
+                            return_key = PointerStates::JoyDown as c_int;
+                        } else if JOY_SENSITIVITY * i32::from(jaxis.value) < -10000 {
+                            return_key = PointerStates::JoyUp as c_int;
+                        }
                     }
-                } else if (axis == 1) || ((JOY_NUM_AXES >= 5) && (axis == 4))
-                /* y-axis */
-                {
-                    if JOY_SENSITIVITY * i32::from(jaxis.value) > 10000 {
-                        return_key = PointerStates::JoyDown as c_int;
-                    } else if JOY_SENSITIVITY * i32::from(jaxis.value) < -10000 {
-                        return_key = PointerStates::JoyUp as c_int;
+                }
+
+                SDL_MOUSEBUTTONDOWN => {
+                    let button = &*event.button();
+                    if button.button == MouseState::Left as u8 {
+                        return_key = PointerStates::MouseButton1 as c_int;
+                    } else if button.button == MouseState::Right as u8 {
+                        return_key = PointerStates::MouseButton2 as c_int;
+                    } else if button.button == MouseState::Middle as u8 {
+                        return_key = PointerStates::MouseButton3 as c_int;
+                    } else if button.button == MouseState::WheelUp as u8 {
+                        return_key = PointerStates::MouseWheelup as c_int;
+                    } else if button.button == MouseState::WheelDown as u8 {
+                        return_key = PointerStates::MouseWheeldown as c_int;
                     }
+                }
+
+                _ => {
+                    SDL_PushEvent(&mut event); /* put this event back into the queue */
+                    self.update_input(); /* and treat it the usual way */
+                    continue;
                 }
             }
 
-            SDL_MOUSEBUTTONDOWN => {
-                let button = &*event.button();
-                if button.button == MouseState::Left as u8 {
-                    return_key = PointerStates::MouseButton1 as c_int;
-                } else if button.button == MouseState::Right as u8 {
-                    return_key = PointerStates::MouseButton2 as c_int;
-                } else if button.button == MouseState::Middle as u8 {
-                    return_key = PointerStates::MouseButton3 as c_int;
-                } else if button.button == MouseState::WheelUp as u8 {
-                    return_key = PointerStates::MouseWheelup as c_int;
-                } else if button.button == MouseState::WheelDown as u8 {
-                    return_key = PointerStates::MouseWheeldown as c_int;
-                }
+            if return_key != 0 {
+                break return_key;
             }
-
-            _ => {
-                SDL_PushEvent(&mut event); /* put this event back into the queue */
-                update_input(); /* and treat it the usual way */
-                continue;
-            }
-        }
-
-        if return_key != 0 {
-            break return_key;
         }
     }
-}
 
-impl Data {
     /// Behaves similarly as gl_printf() of svgalib, using the BFont
     /// print function PrintString().
     ///
@@ -451,7 +443,7 @@ impl Data {
         // don't accept non-printable characters
         if !(c.is_ascii_graphic() || c.is_ascii_whitespace()) {
             println!("Illegal char passed to DisplayChar(): {}", c);
-            terminate(defs::ERR.into());
+            self.terminate(defs::ERR.into());
         }
 
         self.put_char(NE_SCREEN, MY_CURSOR_X, MY_CURSOR_Y, c);
@@ -604,7 +596,7 @@ impl Data {
 
         let background = SDL_DisplayFormat(NE_SCREEN);
 
-        wait_for_all_keys_released();
+        self.wait_for_all_keys_released();
         let ret;
         loop {
             let mut prev_tick = SDL_GetTicks();
@@ -624,7 +616,7 @@ impl Data {
                 let now = SDL_GetTicks();
                 let mut key;
                 loop {
-                    key = any_key_just_pressed();
+                    key = self.any_key_just_pressed();
                     if key == 0 && (SDL_GetTicks() - now < SHOW_WAIT as u32) {
                         SDL_Delay(1); // wait before starting auto-scroll
                     } else {
@@ -643,19 +635,19 @@ impl Data {
                 prev_tick = SDL_GetTicks();
             }
 
-            if fire_pressed_r() {
+            if self.fire_pressed_r() {
                 trace!("outside just_started: Fire registered");
                 ret = 1;
                 break;
             }
 
-            if up_pressed() || wheel_up_pressed() {
+            if self.up_pressed() || self.wheel_up_pressed() {
                 speed -= 5;
                 if speed < -MAX_SPEED {
                     speed = -MAX_SPEED;
                 }
             }
-            if down_pressed() || wheel_down_pressed() {
+            if self.down_pressed() || self.wheel_down_pressed() {
                 speed += 5;
                 if speed > MAX_SPEED {
                     speed = MAX_SPEED;

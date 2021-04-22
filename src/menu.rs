@@ -1,5 +1,5 @@
 #[cfg(not(feature = "gcw0"))]
-use crate::input::{wait_for_all_keys_released, wait_for_key_pressed, KEY_CMDS};
+use crate::input::KEY_CMDS;
 
 #[cfg(feature = "gcw0")]
 use crate::{
@@ -10,38 +10,29 @@ use crate::{
 use crate::{
     b_font::{char_width, font_height, print_string_font},
     defs::{
-        self, down_pressed, fire_pressed, get_user_center, left_pressed, return_pressed_r,
-        right_pressed, up_pressed, AssembleCombatWindowFlags, Cmds, Criticality,
-        DisplayBannerFlags, Droid, MapTile, MenuAction, Status, Themed, BYCOLOR,
-        CREDITS_PIC_FILE_C, GRAPHICS_DIR_C, MAX_MAP_COLS, MAX_MAP_ROWS,
+        self, get_user_center, AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags,
+        Droid, MapTile, MenuAction, Status, Themed, BYCOLOR, CREDITS_PIC_FILE_C, GRAPHICS_DIR_C,
+        MAX_MAP_COLS, MAX_MAP_ROWS,
     },
     global::{
         CURRENT_COMBAT_SCALE_FACTOR, FONT0_B_FONT, FONT1_B_FONT, FONT2_B_FONT, GAME_CONFIG,
         INFLUENCE_MODE_NAMES, MENU_B_FONT,
     },
     graphics::{
-        clear_graph_mem, display_image, make_grid_on_screen, set_combat_scale_to,
-        toggle_fullscreen, ALL_THEMES, BANNER_IS_DESTROYED, CLASSIC_THEME_INDEX, NE_SCREEN,
+        clear_graph_mem, make_grid_on_screen, ALL_THEMES, BANNER_IS_DESTROYED, CLASSIC_THEME_INDEX,
+        NE_SCREEN,
     },
-    input::{
-        any_key_is_pressed_r, cmd_is_active_r, key_is_pressed, key_is_pressed_r, update_input,
-        wheel_down_pressed, wheel_up_pressed, SDL_Delay, CMD_STRINGS, KEYSTR,
-    },
-    map::{save_ship, COLOR_NAMES},
-    misc::{
-        activate_conservative_frame_computation, armageddon, dealloc_c_string, find_file, teleport,
-        terminate,
-    },
+    input::{SDL_Delay, CMD_STRINGS, KEYSTR},
+    map::COLOR_NAMES,
+    misc::{activate_conservative_frame_computation, armageddon, dealloc_c_string, teleport},
     sound::{
         menu_item_selected_sound, move_lift_sound, move_menu_position_sound, set_bg_music_volume,
-        set_sound_f_x_volume, switch_background_music_to,
+        set_sound_f_x_volume,
     },
-    text::getchar_raw,
     vars::{
         BLOCK_RECT, CLASSIC_USER_RECT, DRUIDMAP, FULL_USER_RECT, ME, MENU_RECT, SCREEN_RECT,
         USER_RECT,
     },
-    view::display_banner,
     Data, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, INVINCIBLE_MODE, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
     SHOW_ALL_DROIDS, SOUND_ON, STOP_INFLUENCER,
 };
@@ -242,14 +233,14 @@ impl Data {
 
         #[cfg(not(feature = "gcw0"))]
         {
-            wait_for_all_keys_released();
-            let key = wait_for_key_pressed();
+            self.wait_for_all_keys_released();
+            let key = self.wait_for_key_pressed();
             if key == b'y'.into()
                 || key == KEY_CMDS[Cmds::Fire as usize][0]
                 || key == KEY_CMDS[Cmds::Fire as usize][1]
                 || key == KEY_CMDS[Cmds::Fire as usize][2]
             {
-                terminate(defs::OK.into());
+                self.terminate(defs::OK.into());
             }
         }
 
@@ -276,7 +267,7 @@ impl Data {
         SDL_SetClipRect(NE_SCREEN, null_mut());
         ME.status = Status::Menu as i32;
         clear_graph_mem();
-        display_banner(
+        self.display_banner(
             null_mut(),
             null_mut(),
             (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
@@ -398,7 +389,7 @@ impl Data {
             );
             self.printf_sdl(NE_SCREEN, -1, -1, format_args!(" q. RESUME game\n"));
 
-            match u8::try_from(getchar_raw()).ok() {
+            match u8::try_from(self.getchar_raw()).ok() {
                 Some(b'f') => {
                     STOP_INFLUENCER = !STOP_INFLUENCER;
                 }
@@ -419,7 +410,7 @@ impl Data {
                         &mut CURRENT_COMBAT_SCALE_FACTOR,
                     );
                     drop(Vec::from_raw_parts(input as *mut i8, 45, 45));
-                    set_combat_scale_to(CURRENT_COMBAT_SCALE_FACTOR);
+                    self.set_combat_scale_to(CURRENT_COMBAT_SCALE_FACTOR);
                 }
 
                 Some(b'a') => {
@@ -440,7 +431,7 @@ impl Data {
                                     -1,
                                     format_args!(" --- MORE --- \n"),
                                 );
-                                if getchar_raw() == b'q'.into() {
+                                if self.getchar_raw() == b'q'.into() {
                                     break;
                                 }
                             }
@@ -493,7 +484,7 @@ impl Data {
                     }
 
                     self.printf_sdl(NE_SCREEN, -1, -1, format_args!(" --- END --- \n"));
-                    getchar_raw();
+                    self.getchar_raw();
                 }
 
                 Some(b'g') => {
@@ -510,7 +501,7 @@ impl Data {
                                 -1,
                                 format_args!(" --- MORE --- ('q' to quit)\n"),
                             );
-                            if getchar_raw() == b'q'.into() {
+                            if self.getchar_raw() == b'q'.into() {
                                 break;
                             }
                         }
@@ -555,7 +546,7 @@ impl Data {
                     }
 
                     self.printf_sdl(NE_SCREEN, -1, -1, format_args!(" --- END ---\n"));
-                    getchar_raw();
+                    self.getchar_raw();
                 }
 
                 Some(b'd') => {
@@ -571,7 +562,7 @@ impl Data {
                         -1,
                         format_args!("All robots on this deck killed!\n"),
                     );
-                    getchar_raw();
+                    self.getchar_raw();
                 }
 
                 Some(b't') => {
@@ -622,7 +613,7 @@ impl Data {
                                 CStr::from_ptr(input).to_str().unwrap(),
                             ),
                         );
-                        getchar_raw();
+                        self.getchar_raw();
                         clear_graph_mem();
                     } else {
                         ME.ty = i.try_into().unwrap();
@@ -637,7 +628,7 @@ impl Data {
                                 CStr::from_ptr(input).to_str().unwrap(),
                             ),
                         );
-                        getchar_raw();
+                        self.getchar_raw();
                     }
                     drop(Vec::from_raw_parts(input as *mut i8, 45, 45));
                 }
@@ -685,7 +676,7 @@ impl Data {
                     libc::sscanf(input, cstr!("%d").as_ptr() as *mut c_char, &mut l_num);
                     drop(Vec::from_raw_parts(input as *mut i8, 45, 45));
                     self.show_deck_map();
-                    getchar_raw();
+                    self.getchar_raw();
                 }
 
                 Some(b'w') => {
@@ -693,7 +684,7 @@ impl Data {
                     for (i, waypoint) in cur_level.all_waypoints.iter_mut().enumerate() {
                         if i != 0 && i % 20 == 0 {
                             self.printf_sdl(NE_SCREEN, -1, -1, format_args!(" ---- MORE -----\n"));
-                            if getchar_raw() == b'q'.into() {
+                            if self.getchar_raw() == b'q'.into() {
                                 break;
                             }
                         }
@@ -729,7 +720,7 @@ impl Data {
                         );
                     }
                     self.printf_sdl(NE_SCREEN, -1, -1, format_args!(" --- END ---\n"));
-                    getchar_raw();
+                    self.getchar_raw();
                 }
 
                 Some(b' ') | Some(b'q') => {
@@ -742,113 +733,111 @@ impl Data {
 
         clear_graph_mem();
 
-        update_input(); /* treat all pending keyboard events */
+        self.update_input(); /* treat all pending keyboard events */
     }
-}
 
-/// get menu input actions
-///
-/// NOTE: built-in time delay to ensure spurious key-repetitions
-/// such as from touchpad 'wheel' or android joystic emulation
-/// don't create unexpected menu movements:
-/// ==> ignore all movement commands withing delay_ms milliseconds of each other
-pub unsafe fn get_menu_action(wait_repeat_ticks: u32) -> MenuAction {
-    let mut action = MenuAction::empty();
+    /// get menu input actions
+    ///
+    /// NOTE: built-in time delay to ensure spurious key-repetitions
+    /// such as from touchpad 'wheel' or android joystic emulation
+    /// don't create unexpected menu movements:
+    /// ==> ignore all movement commands withing delay_ms milliseconds of each other
+    pub unsafe fn get_menu_action(&mut self, wait_repeat_ticks: u32) -> MenuAction {
+        let mut action = MenuAction::empty();
 
-    // 'normal' menu action keys get released
-    if key_is_pressed_r(SDLK_BACKSPACE as c_int) {
-        {
-            action = MenuAction::DELETE;
+        // 'normal' menu action keys get released
+        if self.key_is_pressed_r(SDLK_BACKSPACE as c_int) {
+            {
+                action = MenuAction::DELETE;
+            }
         }
-    }
-    if cmd_is_active_r(Cmds::Back) || key_is_pressed_r(SDLK_ESCAPE as c_int) {
-        {
-            action = MenuAction::BACK;
+        if self.cmd_is_active_r(Cmds::Back) || self.key_is_pressed_r(SDLK_ESCAPE as c_int) {
+            {
+                action = MenuAction::BACK;
+            }
         }
-    }
 
-    if fire_pressed() || return_pressed_r() {
-        {
-            action = MenuAction::CLICK;
+        if self.fire_pressed() || self.return_pressed_r() {
+            {
+                action = MenuAction::CLICK;
+            }
         }
-    }
 
-    // ----- up/down motion: allow for key-repeat, but carefully control repeat rate (modelled on takeover game)
-    static mut LAST_MOVEKEY_TIME: u32 = 0;
+        // ----- up/down motion: allow for key-repeat, but carefully control repeat rate (modelled on takeover game)
+        static mut LAST_MOVEKEY_TIME: u32 = 0;
 
-    static mut UP: bool = false;
-    static mut DOWN: bool = false;
-    static mut LEFT: bool = false;
-    static mut RIGHT: bool = false;
+        static mut UP: bool = false;
+        static mut DOWN: bool = false;
+        static mut LEFT: bool = false;
+        static mut RIGHT: bool = false;
 
-    // we register if there have been key-press events in the "waiting period" between move-ticks
-    if !UP && (up_pressed() || key_is_pressed(SDLK_UP as c_int)) {
-        UP = true;
-        LAST_MOVEKEY_TIME = SDL_GetTicks();
-        action |= MenuAction::UP;
-    }
-    if !DOWN && (down_pressed() || key_is_pressed(SDLK_DOWN as c_int)) {
-        DOWN = true;
-        LAST_MOVEKEY_TIME = SDL_GetTicks();
-        action |= MenuAction::DOWN;
-    }
-    if !LEFT && (left_pressed() || key_is_pressed(SDLK_LEFT as c_int)) {
-        LEFT = true;
-        LAST_MOVEKEY_TIME = SDL_GetTicks();
-        action |= MenuAction::LEFT;
-    }
-    if !RIGHT && (right_pressed() || key_is_pressed(SDLK_RIGHT as c_int)) {
-        RIGHT = true;
-        LAST_MOVEKEY_TIME = SDL_GetTicks();
-        action |= MenuAction::RIGHT;
-    }
-
-    if !(up_pressed() || key_is_pressed(SDLK_UP as c_int)) {
-        UP = false;
-    }
-    if !(down_pressed() || key_is_pressed(SDLK_DOWN as c_int)) {
-        DOWN = false;
-    }
-    if !(left_pressed() || key_is_pressed(SDLK_LEFT as c_int)) {
-        LEFT = false;
-    }
-    if !(right_pressed() || key_is_pressed(SDLK_RIGHT as c_int)) {
-        RIGHT = false;
-    }
-
-    // check if enough time since we registered last new move-action
-    if SDL_GetTicks() - LAST_MOVEKEY_TIME > wait_repeat_ticks {
-        if UP {
+        // we register if there have been key-press events in the "waiting period" between move-ticks
+        if !UP && (self.up_pressed() || self.key_is_pressed(SDLK_UP as c_int)) {
+            UP = true;
+            LAST_MOVEKEY_TIME = SDL_GetTicks();
             action |= MenuAction::UP;
         }
-        if DOWN {
+        if !DOWN && (self.down_pressed() || self.key_is_pressed(SDLK_DOWN as c_int)) {
+            DOWN = true;
+            LAST_MOVEKEY_TIME = SDL_GetTicks();
             action |= MenuAction::DOWN;
         }
-        if LEFT {
+        if !LEFT && (self.left_pressed() || self.key_is_pressed(SDLK_LEFT as c_int)) {
+            LEFT = true;
+            LAST_MOVEKEY_TIME = SDL_GetTicks();
             action |= MenuAction::LEFT;
         }
-        if RIGHT {
+        if !RIGHT && (self.right_pressed() || self.key_is_pressed(SDLK_RIGHT as c_int)) {
+            RIGHT = true;
+            LAST_MOVEKEY_TIME = SDL_GetTicks();
             action |= MenuAction::RIGHT;
         }
-    }
-    // special handling of mouse wheel: register every event, no need for key-repeat delays
-    if wheel_up_pressed() {
-        action |= MenuAction::UP_WHEEL;
-    }
-    if wheel_down_pressed() {
-        action |= MenuAction::DOWN_WHEEL;
+
+        if !(self.up_pressed() || self.key_is_pressed(SDLK_UP as c_int)) {
+            UP = false;
+        }
+        if !(self.down_pressed() || self.key_is_pressed(SDLK_DOWN as c_int)) {
+            DOWN = false;
+        }
+        if !(self.left_pressed() || self.key_is_pressed(SDLK_LEFT as c_int)) {
+            LEFT = false;
+        }
+        if !(self.right_pressed() || self.key_is_pressed(SDLK_RIGHT as c_int)) {
+            RIGHT = false;
+        }
+
+        // check if enough time since we registered last new move-action
+        if SDL_GetTicks() - LAST_MOVEKEY_TIME > wait_repeat_ticks {
+            if UP {
+                action |= MenuAction::UP;
+            }
+            if DOWN {
+                action |= MenuAction::DOWN;
+            }
+            if LEFT {
+                action |= MenuAction::LEFT;
+            }
+            if RIGHT {
+                action |= MenuAction::RIGHT;
+            }
+        }
+        // special handling of mouse wheel: register every event, no need for key-repeat delays
+        if self.wheel_up_pressed() {
+            action |= MenuAction::UP_WHEEL;
+        }
+        if self.wheel_down_pressed() {
+            action |= MenuAction::DOWN_WHEEL;
+        }
+
+        action
     }
 
-    action
-}
-
-impl Data {
     /// Generic menu handler
     pub unsafe fn show_menu(&mut self, menu_entries: *const MenuEntry) {
         use std::io::Write;
 
         self.initiate_menu(false);
-        wait_for_all_keys_released();
+        self.wait_for_all_keys_released();
 
         // figure out menu-start point to make it centered
         let mut num_entries = 0;
@@ -933,13 +922,13 @@ impl Data {
             #[cfg(target_os = "android")]
             SDL_Flip(NE_SCREEN); // for responsive input on Android, we need to run this every cycle
 
-            let action = get_menu_action(250);
+            let action = self.get_menu_action(250);
 
             let time_for_move = SDL_GetTicks() - LAST_MOVE_TICK > wait_move_ticks;
             match action {
                 MenuAction::BACK => {
                     finished = true;
-                    wait_for_all_keys_released();
+                    self.wait_for_all_keys_released();
                 }
 
                 MenuAction::CLICK => {
@@ -948,13 +937,13 @@ impl Data {
                         finished = true;
                     } else {
                         if let Some(handler) = handler {
-                            wait_for_all_keys_released();
+                            self.wait_for_all_keys_released();
                             (handler)(self, action);
                         }
 
                         if submenu.is_null().not() {
                             menu_item_selected_sound();
-                            wait_for_all_keys_released();
+                            self.wait_for_all_keys_released();
                             self.show_menu(submenu);
                             self.initiate_menu(false);
                         }
@@ -1021,7 +1010,7 @@ impl Data {
         BANNER_IS_DESTROYED = true.into();
         ME.status = Status::Mobile as i32;
 
-        while any_key_is_pressed_r()
+        while self.any_key_is_pressed_r()
         // wait for all key/controller-release
         {
             SDL_Delay(1);
@@ -1158,7 +1147,7 @@ impl Data {
         SDL_Flip(NE_SCREEN);
     }
 
-    pub unsafe fn key_config_menu(&self) {
+    pub unsafe fn key_config_menu(&mut self) {
         let mut selx = 1;
         let mut sely = 1; // currently selected menu-position
         const WAIT_MOVE_TICKS: u32 = 100;
@@ -1168,13 +1157,13 @@ impl Data {
         while !finished {
             self.display_key_config(i32::try_from(selx).unwrap(), i32::try_from(sely).unwrap());
 
-            let action = get_menu_action(250);
+            let action = self.get_menu_action(250);
             let time_for_move = SDL_GetTicks() - LAST_MOVE_TICK > WAIT_MOVE_TICKS;
 
             match action {
                 MenuAction::BACK => {
                     finished = true;
-                    wait_for_all_keys_released();
+                    self.wait_for_all_keys_released();
                 }
 
                 MenuAction::CLICK => {
@@ -1185,8 +1174,8 @@ impl Data {
                         i32::try_from(selx).unwrap(),
                         i32::try_from(sely).unwrap(),
                     );
-                    KEY_CMDS[sely - 1][selx - 1] = getchar_raw(); // includes joystick input!;
-                    wait_for_all_keys_released();
+                    KEY_CMDS[sely - 1][selx - 1] = self.getchar_raw(); // includes joystick input!;
+                    self.wait_for_all_keys_released();
                     LAST_MOVE_TICK = SDL_GetTicks();
                 }
 
@@ -1263,12 +1252,13 @@ impl Data {
 
         let screen = SCREEN_RECT;
         SDL_SetClipRect(NE_SCREEN, null_mut());
-        display_image(find_file(
+        let image = self.find_file(
             CREDITS_PIC_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as i32,
             Criticality::Critical as i32,
-        ));
+        );
+        self.display_image(image);
         make_grid_on_screen(Some(&screen));
 
         let oldfont = std::mem::replace(&mut self.b_font.current_font, FONT1_B_FONT);
@@ -1318,7 +1308,7 @@ impl Data {
         self.printf_sdl(NE_SCREEN, col2, -1, format_args!("Android"));
 
         SDL_Flip(NE_SCREEN);
-        wait_for_key_pressed();
+        self.wait_for_key_pressed();
         self.b_font.current_font = oldfont;
     }
 
@@ -1372,7 +1362,7 @@ impl Data {
         }
 
         if action == MenuAction::CLICK {
-            save_ship(SHIPNAME.as_ptr());
+            self.save_ship(SHIPNAME.as_ptr());
             let mut output = [0; 255];
             let mut cursor = Cursor::new(output.as_mut());
             write!(
@@ -1388,7 +1378,7 @@ impl Data {
                 &output[..position],
             );
             SDL_Flip(NE_SCREEN);
-            wait_for_key_pressed();
+            self.wait_for_key_pressed();
             self.initiate_menu(false);
         }
 
@@ -1456,7 +1446,7 @@ impl Data {
         let mut curlevel = cur_level.levelnum;
         menu_change_int(action, &mut curlevel, 1, 0, CUR_SHIP.num_levels - 1);
         teleport(curlevel, 3, 3);
-        switch_background_music_to(BYCOLOR.as_ptr());
+        self.switch_background_music_to(BYCOLOR.as_ptr());
         self.initiate_menu(false);
 
         null_mut()
@@ -1474,7 +1464,7 @@ impl Data {
             0,
             c_int::try_from(COLOR_NAMES.len()).unwrap() - 1,
         );
-        switch_background_music_to(BYCOLOR.as_ptr());
+        self.switch_background_music_to(BYCOLOR.as_ptr());
         self.initiate_menu(false);
 
         null_mut()
@@ -1513,7 +1503,7 @@ impl Data {
                     "Failed to re-allocate to {} bytes in map row {}",
                     newmem, row,
                 );
-                terminate(defs::ERR.into());
+                self.terminate(defs::ERR.into());
             }
             if cur_level.xlen > oldxlen {
                 // fill new map area with VOID
@@ -1762,13 +1752,13 @@ impl Data {
         null_mut()
     }
 
-    pub unsafe fn handle_fullscreen(_: &mut Self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_fullscreen(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::INFO {
             return is_toggle_on(GAME_CONFIG.use_fullscreen);
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            toggle_fullscreen();
+            self.toggle_fullscreen();
             menu_item_selected_sound();
         }
         null_mut()

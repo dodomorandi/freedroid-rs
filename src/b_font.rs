@@ -1,5 +1,5 @@
 use crate::{
-    graphics::{putpixel, scale_pic, IMG_Load},
+    graphics::{putpixel, IMG_Load},
     sdl_must_lock, Data,
 };
 
@@ -145,7 +145,7 @@ impl Data {
         }
 
         let mut surface = IMG_Load(filename);
-        scale_pic(&mut surface, scale);
+        self.scale_pic(&mut surface, scale);
 
         if surface.is_null() {
             dealloc(font as *mut u8, font_layout);

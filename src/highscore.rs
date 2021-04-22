@@ -5,11 +5,8 @@ use crate::{
         HS_BACKGROUND_FILE_C, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
     },
     global::{HIGHSCORE_B_FONT, PARA_B_FONT},
-    graphics::{display_image, make_grid_on_screen, NE_SCREEN, PIC999},
-    input::wait_for_key_pressed,
-    misc::find_file,
+    graphics::{make_grid_on_screen, NE_SCREEN, PIC999},
     vars::{FULL_USER_RECT, ME, PORTRAIT_RECT, SCREEN_RECT, USER_RECT},
-    view::display_banner,
     Data, CONFIG_DIR, REAL_SCORE, SHOW_SCORE,
 };
 
@@ -29,8 +26,11 @@ use std::{
     ptr::null_mut,
 };
 
-pub static mut HIGHSCORES: Option<Box<[HighscoreEntry]>> = None;
-pub static mut NUM_HIGHSCORES: i32 = 0; /* total number of entries in our list (fixed) */
+#[derive(Debug, Default)]
+pub struct Highscore {
+    pub entries: Option<Box<[HighscoreEntry]>>,
+    pub num: i32,
+}
 
 pub struct HighscoreEntry {
     name: [c_char; MAX_NAME_LEN + 5],
@@ -104,70 +104,70 @@ impl HighscoreEntry {
     }
 }
 
-/// Set up a new highscore list: load from disk if found
-unsafe fn init_highscores_inner(config_dir: Option<&Path>) {
-    let file = config_dir.and_then(|config_dir| {
-        let path = config_dir.join("highscores");
-        let file = File::open(&path).ok();
-        match file.as_ref() {
-            Some(_) => info!("Found highscore file {}", path.display()),
-            None => warn!("No highscore file found..."),
-        }
-        file
-    });
-
-    NUM_HIGHSCORES = MAX_HIGHSCORES as _;
-    let highscores = match file {
-        Some(mut file) => (0..MAX_HIGHSCORES)
-            .map(|_| {
-                let mut entry = mem::MaybeUninit::uninit();
-                let as_slice = std::slice::from_raw_parts_mut(
-                    entry.as_mut_ptr() as *mut u8,
-                    mem::size_of::<HighscoreEntry>(),
-                );
-                file.read_exact(as_slice).unwrap();
-                entry.assume_init()
-            })
-            .collect(),
-        None => std::iter::repeat_with(HighscoreEntry::default)
-            .take(MAX_HIGHSCORES)
-            .collect(),
-    };
-    HIGHSCORES = Some(highscores);
-}
-
-unsafe fn save_highscores_inner(config_dir: Option<&Path>) -> Result<(), ()> {
-    match config_dir {
-        Some(config_dir) => {
+impl Data {
+    /// Set up a new highscore list: load from disk if found
+    unsafe fn init_highscores_inner(&mut self, config_dir: Option<&Path>) {
+        let file = config_dir.and_then(|config_dir| {
             let path = config_dir.join("highscores");
-            let mut file = match File::create(&path) {
-                Ok(file) => file,
-                Err(_) => {
-                    warn!("Failed to create highscores file. Giving up...");
-                    return Err(());
-                }
-            };
-
-            for entry in HIGHSCORES.as_mut().unwrap().iter_mut() {
-                let as_slice = std::slice::from_raw_parts(
-                    entry as *mut HighscoreEntry as *const u8,
-                    mem::size_of::<HighscoreEntry>(),
-                );
-                file.write_all(as_slice).unwrap();
+            let file = File::open(&path).ok();
+            match file.as_ref() {
+                Some(_) => info!("Found highscore file {}", path.display()),
+                None => warn!("No highscore file found..."),
             }
-            file.sync_all().unwrap();
-            info!("Successfully updated highscores file '{}'", path.display());
+            file
+        });
 
-            Ok(())
-        }
-        None => {
-            warn!("No config-dir found, cannot save highscores!");
-            Err(())
+        self.highscore.num = MAX_HIGHSCORES as _;
+        let highscores = match file {
+            Some(mut file) => (0..MAX_HIGHSCORES)
+                .map(|_| {
+                    let mut entry = mem::MaybeUninit::uninit();
+                    let as_slice = std::slice::from_raw_parts_mut(
+                        entry.as_mut_ptr() as *mut u8,
+                        mem::size_of::<HighscoreEntry>(),
+                    );
+                    file.read_exact(as_slice).unwrap();
+                    entry.assume_init()
+                })
+                .collect(),
+            None => std::iter::repeat_with(HighscoreEntry::default)
+                .take(MAX_HIGHSCORES)
+                .collect(),
+        };
+        self.highscore.entries = Some(highscores);
+    }
+
+    unsafe fn save_highscores_inner(&mut self, config_dir: Option<&Path>) -> Result<(), ()> {
+        match config_dir {
+            Some(config_dir) => {
+                let path = config_dir.join("highscores");
+                let mut file = match File::create(&path) {
+                    Ok(file) => file,
+                    Err(_) => {
+                        warn!("Failed to create highscores file. Giving up...");
+                        return Err(());
+                    }
+                };
+
+                for entry in self.highscore.entries.as_mut().unwrap().iter_mut() {
+                    let as_slice = std::slice::from_raw_parts(
+                        entry as *mut HighscoreEntry as *const u8,
+                        mem::size_of::<HighscoreEntry>(),
+                    );
+                    file.write_all(as_slice).unwrap();
+                }
+                file.sync_all().unwrap();
+                info!("Successfully updated highscores file '{}'", path.display());
+
+                Ok(())
+            }
+            None => {
+                warn!("No config-dir found, cannot save highscores!");
+                Err(())
+            }
         }
     }
-}
 
-impl Data {
     pub unsafe fn update_highscores(&mut self) {
         let score = REAL_SCORE;
         REAL_SCORE = 0.;
@@ -179,7 +179,9 @@ impl Data {
 
         ME.status = Status::Debriefing as c_int;
 
-        let entry_pos = match HIGHSCORES
+        let entry_pos = match self
+            .highscore
+            .entries
             .as_ref()
             .unwrap()
             .iter()
@@ -247,7 +249,7 @@ impl Data {
 
         self.printf_sdl(NE_SCREEN, -1, -1, format_args!("\n"));
 
-        HIGHSCORES.as_mut().unwrap()[entry_pos..]
+        self.highscore.entries.as_mut().unwrap()[entry_pos..]
             .iter_mut()
             .fold(new_entry, |new_entry, cur_entry| {
                 mem::replace(cur_entry, new_entry)
@@ -267,32 +269,32 @@ unsafe fn get_config_dir() -> Option<&'static Path> {
     }
 }
 
-pub unsafe fn init_highscores() {
-    init_highscores_inner(get_config_dir());
-}
-
-pub unsafe fn save_highscores() -> c_int {
-    match save_highscores_inner(get_config_dir()) {
-        Ok(()) => defs::OK.into(),
-        Err(()) => defs::ERR.into(),
-    }
-}
-
 impl Data {
+    pub unsafe fn init_highscores(&mut self) {
+        self.init_highscores_inner(get_config_dir());
+    }
+
+    pub unsafe fn save_highscores(&mut self) -> c_int {
+        match self.save_highscores_inner(get_config_dir()) {
+            Ok(()) => defs::OK.into(),
+            Err(()) => defs::ERR.into(),
+        }
+    }
+
     /// Display the high scores of the single player game.
     /// This function is actually a submenu of the MainMenu.
     pub unsafe fn show_highscores(&mut self) {
-        let fpath = find_file(
+        let fpath = self.find_file(
             HS_BACKGROUND_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
             Criticality::WarnOnly as c_int,
         );
         if fpath.is_null().not() {
-            display_image(fpath);
+            self.display_image(fpath);
         }
         make_grid_on_screen(Some(&SCREEN_RECT));
-        display_banner(
+        self.display_banner(
             null_mut(),
             null_mut(),
             DisplayBannerFlags::FORCE_UPDATE.bits().into(),
@@ -314,10 +316,11 @@ impl Data {
         self.centered_print_string(
             NE_SCREEN,
             y0,
-            format_args!("Top {}  scores\n", NUM_HIGHSCORES),
+            format_args!("Top {}  scores\n", self.highscore.num),
         );
 
-        for (i, highscore) in HIGHSCORES.as_ref().unwrap().iter().enumerate() {
+        let highscore_entries = self.highscore.entries.take().unwrap();
+        for (i, highscore) in highscore_entries.iter().enumerate() {
             let i = i32::try_from(i).unwrap();
             self.print_string(
                 NE_SCREEN,
@@ -354,9 +357,10 @@ impl Data {
                 );
             }
         }
+        self.highscore.entries = Some(highscore_entries);
         SDL_Flip(NE_SCREEN);
 
-        wait_for_key_pressed();
+        self.wait_for_key_pressed();
 
         self.b_font.current_font = prev_font;
     }

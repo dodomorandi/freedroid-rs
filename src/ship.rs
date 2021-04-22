@@ -2,26 +2,21 @@ use crate::{
     b_font::font_height,
     bullet::{delete_blast, delete_bullet},
     defs::{
-        get_user_center, mouse_left_pressed_r, AlertNames, AssembleCombatWindowFlags,
-        DisplayBannerFlags, MenuAction, Sound, Status, DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS,
-        RESET, TEXT_STRETCH, UPDATE,
+        get_user_center, AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction,
+        Sound, Status, DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET, TEXT_STRETCH, UPDATE,
     },
     global::PARA_B_FONT,
     graphics::{
-        clear_graph_mem, scale_pic, set_combat_scale_to, ARROW_CURSOR, ARROW_DOWN, ARROW_LEFT,
-        ARROW_RIGHT, ARROW_UP, CONSOLE_BG_PIC1, CONSOLE_BG_PIC2, CONSOLE_PIC, CROSSHAIR_CURSOR,
-        PACKED_PORTRAITS, SHIP_OFF_PIC, SHIP_ON_PIC, VID_BPP,
+        clear_graph_mem, ARROW_CURSOR, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP,
+        CONSOLE_BG_PIC1, CONSOLE_BG_PIC2, CONSOLE_PIC, CROSSHAIR_CURSOR, PACKED_PORTRAITS,
+        SHIP_OFF_PIC, SHIP_ON_PIC, VID_BPP,
     },
-    input::{
-        update_input, wait_for_all_keys_released, wait_for_key_pressed, SDL_Delay, INPUT_AXIS,
-        LAST_MOUSE_EVENT,
-    },
+    input::{SDL_Delay, INPUT_AXIS, LAST_MOUSE_EVENT},
     map::{get_current_lift, get_map_brick},
-    menu::get_menu_action,
     misc::activate_conservative_frame_computation,
     sound::{
         enter_lift_sound, leave_lift_sound, menu_item_selected_sound, move_lift_sound,
-        move_menu_position_sound, play_sound, switch_background_music_to,
+        move_menu_position_sound, play_sound,
     },
     structs::Point,
     vars::{
@@ -29,7 +24,7 @@ use crate::{
         CONS_MENU_RECTS, CONS_TEXT_RECT, DRIVE_NAMES, DRUIDMAP, FULL_USER_RECT, PORTRAIT_RECT,
         SENSOR_NAMES, USER_RECT, WEAPON_NAMES,
     },
-    view::{display_banner, fill_rect},
+    view::fill_rect,
     Data, ALERT_LEVEL, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, GAME_CONFIG, ME, NE_SCREEN, NUM_ENEMYS,
     SHOW_CURSOR,
 };
@@ -131,122 +126,123 @@ pub unsafe fn alert_level_warning() {
     }
 }
 
-/// Show a an animated droid-pic: automatically counts frames and frametimes
-/// stored internally, so you just have to keep calling this function to get
-/// an animation. The target-rect dst is only updated when a new frame is set
-/// if flags & RESET: to restart a fresh animation at frame 0
-/// if flags & UPDATE: force a blit of droid-pic
-///
-/// cycle_time is the time in seconds for a full animation-cycle,
-/// if cycle_time == 0 : display static pic, using only first frame
-pub unsafe fn show_droid_portrait(
-    mut dst: Rect,
-    droid_type: c_int,
-    cycle_time: c_float,
-    flags: c_int,
-) {
-    static mut FRAME_NUM: c_int = 0;
-    static mut LAST_DROID_TYPE: c_int = -1;
-    static mut LAST_FRAME_TIME: u32 = 0;
-    static mut SRC_RECT: Rect = Rect {
-        x: 0,
-        y: 0,
-        h: 0,
-        w: 0,
-    };
-    let mut need_new_frame = false;
-
-    SDL_SetClipRect(NE_SCREEN, &dst);
-
-    if DROID_BACKGROUND.is_null() {
-        // first call
-        let tmp = SDL_CreateRGBSurface(0, dst.w.into(), dst.h.into(), VID_BPP, 0, 0, 0, 0);
-        DROID_BACKGROUND = SDL_DisplayFormat(tmp);
-        SDL_FreeSurface(tmp);
-        SDL_UpperBlit(NE_SCREEN, &mut dst, DROID_BACKGROUND, null_mut());
-        SRC_RECT = PORTRAIT_RECT;
-    }
-
-    if flags & RESET != 0 {
-        SDL_UpperBlit(NE_SCREEN, &mut dst, DROID_BACKGROUND, null_mut());
-        FRAME_NUM = 0;
-        LAST_FRAME_TIME = SDL_GetTicks();
-    }
-
-    if droid_type != LAST_DROID_TYPE || DROID_PICS.is_null() {
-        // we need to unpack the droid-pics into our local storage
-        if DROID_PICS.is_null().not() {
-            SDL_FreeSurface(DROID_PICS);
-        }
-        DROID_PICS = null_mut();
-        let packed_portrait = PACKED_PORTRAITS[usize::try_from(droid_type).unwrap()];
-        let tmp = IMG_Load_RW(packed_portrait, 0);
-        // important: return seek-position to beginning of RWops for next operation to succeed!
-        sdl_rw_seek(packed_portrait, 0, libc::SEEK_SET);
-        if tmp.is_null() {
-            error!(
-                "failed to unpack droid-portraits of droid-type {}",
-                droid_type,
-            );
-            return; // ok, so no pic but we continue ;)
-        }
-        // now see if its a jpg, then we add some transparency by color-keying:
-        if IMG_isJPG(packed_portrait) != 0 {
-            DROID_PICS = SDL_DisplayFormat(tmp);
-        } else {
-            // else assume it's png ;)
-            DROID_PICS = SDL_DisplayFormatAlpha(tmp);
-        }
-        SDL_FreeSurface(tmp);
-        sdl_rw_seek(packed_portrait, 0, libc::SEEK_SET);
-
-        // do we have to scale the droid pics
-        #[allow(clippy::float_cmp)]
-        if GAME_CONFIG.scale != 1.0 {
-            scale_pic(&mut DROID_PICS, GAME_CONFIG.scale);
-        }
-
-        LAST_DROID_TYPE = droid_type;
-    }
-
-    let droid_pics_ref = &*DROID_PICS;
-    let mut num_frames = droid_pics_ref.w / c_int::from(PORTRAIT_RECT.w);
-
-    // sanity check
-    if num_frames == 0 {
-        warn!(
-            "Only one frame found. Width droid-pics={}, Frame-width={}",
-            droid_pics_ref.w, PORTRAIT_RECT.w,
-        );
-        num_frames = 1; // continue and hope for the best
-    }
-
-    let frame_duration = SDL_GetTicks() - LAST_FRAME_TIME;
-
-    if cycle_time != 0. && (frame_duration as f32 > 1000.0 * cycle_time / num_frames as f32) {
-        need_new_frame = true;
-        FRAME_NUM += 1;
-    }
-
-    if FRAME_NUM >= num_frames {
-        FRAME_NUM = 0;
-    }
-
-    if flags & (RESET | UPDATE) != 0 || need_new_frame {
-        SRC_RECT.x = i16::try_from(FRAME_NUM).unwrap() * i16::try_from(SRC_RECT.w).unwrap();
-
-        SDL_UpperBlit(DROID_BACKGROUND, null_mut(), NE_SCREEN, &mut dst);
-        SDL_UpperBlit(DROID_PICS, &mut SRC_RECT, NE_SCREEN, &mut dst);
-
-        SDL_UpdateRects(NE_SCREEN, 1, &mut dst);
-
-        LAST_FRAME_TIME = SDL_GetTicks();
-    }
-
-    SDL_SetClipRect(NE_SCREEN, null_mut());
-}
-
 impl Data {
+    /// Show a an animated droid-pic: automatically counts frames and frametimes
+    /// stored internally, so you just have to keep calling this function to get
+    /// an animation. The target-rect dst is only updated when a new frame is set
+    /// if flags & RESET: to restart a fresh animation at frame 0
+    /// if flags & UPDATE: force a blit of droid-pic
+    ///
+    /// cycle_time is the time in seconds for a full animation-cycle,
+    /// if cycle_time == 0 : display static pic, using only first frame
+    pub unsafe fn show_droid_portrait(
+        &mut self,
+        mut dst: Rect,
+        droid_type: c_int,
+        cycle_time: c_float,
+        flags: c_int,
+    ) {
+        static mut FRAME_NUM: c_int = 0;
+        static mut LAST_DROID_TYPE: c_int = -1;
+        static mut LAST_FRAME_TIME: u32 = 0;
+        static mut SRC_RECT: Rect = Rect {
+            x: 0,
+            y: 0,
+            h: 0,
+            w: 0,
+        };
+        let mut need_new_frame = false;
+
+        SDL_SetClipRect(NE_SCREEN, &dst);
+
+        if DROID_BACKGROUND.is_null() {
+            // first call
+            let tmp = SDL_CreateRGBSurface(0, dst.w.into(), dst.h.into(), VID_BPP, 0, 0, 0, 0);
+            DROID_BACKGROUND = SDL_DisplayFormat(tmp);
+            SDL_FreeSurface(tmp);
+            SDL_UpperBlit(NE_SCREEN, &mut dst, DROID_BACKGROUND, null_mut());
+            SRC_RECT = PORTRAIT_RECT;
+        }
+
+        if flags & RESET != 0 {
+            SDL_UpperBlit(NE_SCREEN, &mut dst, DROID_BACKGROUND, null_mut());
+            FRAME_NUM = 0;
+            LAST_FRAME_TIME = SDL_GetTicks();
+        }
+
+        if droid_type != LAST_DROID_TYPE || DROID_PICS.is_null() {
+            // we need to unpack the droid-pics into our local storage
+            if DROID_PICS.is_null().not() {
+                SDL_FreeSurface(DROID_PICS);
+            }
+            DROID_PICS = null_mut();
+            let packed_portrait = PACKED_PORTRAITS[usize::try_from(droid_type).unwrap()];
+            let tmp = IMG_Load_RW(packed_portrait, 0);
+            // important: return seek-position to beginning of RWops for next operation to succeed!
+            sdl_rw_seek(packed_portrait, 0, libc::SEEK_SET);
+            if tmp.is_null() {
+                error!(
+                    "failed to unpack droid-portraits of droid-type {}",
+                    droid_type,
+                );
+                return; // ok, so no pic but we continue ;)
+            }
+            // now see if its a jpg, then we add some transparency by color-keying:
+            if IMG_isJPG(packed_portrait) != 0 {
+                DROID_PICS = SDL_DisplayFormat(tmp);
+            } else {
+                // else assume it's png ;)
+                DROID_PICS = SDL_DisplayFormatAlpha(tmp);
+            }
+            SDL_FreeSurface(tmp);
+            sdl_rw_seek(packed_portrait, 0, libc::SEEK_SET);
+
+            // do we have to scale the droid pics
+            #[allow(clippy::float_cmp)]
+            if GAME_CONFIG.scale != 1.0 {
+                self.scale_pic(&mut DROID_PICS, GAME_CONFIG.scale);
+            }
+
+            LAST_DROID_TYPE = droid_type;
+        }
+
+        let droid_pics_ref = &*DROID_PICS;
+        let mut num_frames = droid_pics_ref.w / c_int::from(PORTRAIT_RECT.w);
+
+        // sanity check
+        if num_frames == 0 {
+            warn!(
+                "Only one frame found. Width droid-pics={}, Frame-width={}",
+                droid_pics_ref.w, PORTRAIT_RECT.w,
+            );
+            num_frames = 1; // continue and hope for the best
+        }
+
+        let frame_duration = SDL_GetTicks() - LAST_FRAME_TIME;
+
+        if cycle_time != 0. && (frame_duration as f32 > 1000.0 * cycle_time / num_frames as f32) {
+            need_new_frame = true;
+            FRAME_NUM += 1;
+        }
+
+        if FRAME_NUM >= num_frames {
+            FRAME_NUM = 0;
+        }
+
+        if flags & (RESET | UPDATE) != 0 || need_new_frame {
+            SRC_RECT.x = i16::try_from(FRAME_NUM).unwrap() * i16::try_from(SRC_RECT.w).unwrap();
+
+            SDL_UpperBlit(DROID_BACKGROUND, null_mut(), NE_SCREEN, &mut dst);
+            SDL_UpperBlit(DROID_PICS, &mut SRC_RECT, NE_SCREEN, &mut dst);
+
+            SDL_UpdateRects(NE_SCREEN, 1, &mut dst);
+
+            LAST_FRAME_TIME = SDL_GetTicks();
+        }
+
+        SDL_SetClipRect(NE_SCREEN, null_mut());
+    }
+
     /// display infopage page of droidtype
     ///
     /// if flags == UPDATE_ONLY : don't blit a new background&banner,
@@ -406,7 +402,7 @@ Paradroid to eliminate all rogue robots.\0",
         } else {
             // otherwise we just redraw the whole screen
             SDL_UpperBlit(CONSOLE_BG_PIC2, null_mut(), NE_SCREEN, null_mut());
-            display_banner(
+            self.display_banner(
                 null_mut(),
                 null_mut(),
                 (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
@@ -470,7 +466,7 @@ impl Data {
 
         SDL_ShowCursor(SDL_DISABLE);
 
-        set_combat_scale_to(0.25);
+        self.set_combat_scale_to(0.25);
 
         self.assemble_combat_picture(
             (AssembleCombatWindowFlags::ONLY_SHOW_MAP | AssembleCombatWindowFlags::SHOW_FULL_MAP)
@@ -482,9 +478,9 @@ impl Data {
 
         ME.pos = tmp;
 
-        wait_for_key_pressed();
+        self.wait_for_key_pressed();
 
-        set_combat_scale_to(1.0);
+        self.set_combat_scale_to(1.0);
     }
 
     /// EnterKonsole(): does all konsole- duties
@@ -501,7 +497,7 @@ impl Data {
         let tmp_rect = USER_RECT;
         USER_RECT = FULL_USER_RECT;
 
-        wait_for_all_keys_released();
+        self.wait_for_all_keys_released();
 
         ME.status = Status::Console as c_int;
 
@@ -535,12 +531,12 @@ impl Data {
                     need_update = true;
                 }
             }
-            let action = get_menu_action(250);
+            let action = self.get_menu_action(250);
             if SDL_GetTicks() - LAST_MOVE_TICK > wait_move_ticks {
                 match action {
                     MenuAction::BACK => {
                         finished = true;
-                        wait_for_all_keys_released();
+                        self.wait_for_all_keys_released();
                     }
 
                     MenuAction::UP => {
@@ -563,7 +559,7 @@ impl Data {
                                 .try_into()
                                 .unwrap(),
                             );
-                            update_input(); // this sets a new last_mouse_event
+                            self.update_input(); // this sets a new last_mouse_event
                             LAST_MOUSE_EVENT = mousemove_buf; //... which we override.. ;)
                         }
                         move_menu_position_sound();
@@ -591,7 +587,7 @@ impl Data {
                                 .try_into()
                                 .unwrap(),
                             );
-                            update_input(); // this sets a new last_mouse_event
+                            self.update_input(); // this sets a new last_mouse_event
                             LAST_MOUSE_EVENT = mousemove_buf; //... which we override.. ;)
                         }
                         move_menu_position_sound();
@@ -601,7 +597,7 @@ impl Data {
 
                     MenuAction::CLICK => {
                         menu_item_selected_sound();
-                        wait_for_all_keys_released();
+                        self.wait_for_all_keys_released();
                         need_update = true;
                         match pos {
                             0 => {
@@ -613,7 +609,7 @@ impl Data {
                             }
                             2 => {
                                 clear_graph_mem();
-                                display_banner(
+                                self.display_banner(
                                     null_mut(),
                                     null_mut(),
                                     DisplayBannerFlags::FORCE_UPDATE.bits().into(),
@@ -623,13 +619,13 @@ impl Data {
                             }
                             3 => {
                                 clear_graph_mem();
-                                display_banner(
+                                self.display_banner(
                                     null_mut(),
                                     null_mut(),
                                     DisplayBannerFlags::FORCE_UPDATE.bits().into(),
                                 );
                                 show_lifts((*CUR_LEVEL).levelnum, -1);
-                                wait_for_key_pressed();
+                                self.wait_for_key_pressed();
                                 self.paint_console_menu(pos.try_into().unwrap(), 0);
                             }
                             _ => {
@@ -678,15 +674,15 @@ impl Data {
         let mut page = 0;
 
         self.show_droid_info(droidtype, page, 0);
-        show_droid_portrait(CONS_DROID_RECT, droidtype, 0.0, UPDATE | RESET);
+        self.show_droid_portrait(CONS_DROID_RECT, droidtype, 0.0, UPDATE | RESET);
 
-        wait_for_all_keys_released();
+        self.wait_for_all_keys_released();
         let mut need_update = true;
         let wait_move_ticks: u32 = 100;
         static mut LAST_MOVE_TICK: u32 = 0;
 
         while !finished {
-            show_droid_portrait(CONS_DROID_RECT, droidtype, DROID_ROTATION_TIME, 0);
+            self.show_droid_portrait(CONS_DROID_RECT, droidtype, DROID_ROTATION_TIME, 0);
 
             if SHOW_CURSOR {
                 SDL_ShowCursor(SDL_ENABLE);
@@ -701,7 +697,7 @@ impl Data {
 
             let mut action = MenuAction::empty();
             // special handling of mouse-clicks: check if move-arrows were clicked on
-            if mouse_left_pressed_r() {
+            if self.mouse_left_pressed_r() {
                 if cursor_is_on_rect(&LEFT_RECT) != 0 {
                     action = MenuAction::LEFT;
                 } else if cursor_is_on_rect(&RIGHT_RECT) != 0 {
@@ -712,14 +708,14 @@ impl Data {
                     action = MenuAction::DOWN;
                 }
             } else {
-                action = get_menu_action(250);
+                action = self.get_menu_action(250);
             }
 
             let time_for_move = SDL_GetTicks() - LAST_MOVE_TICK > wait_move_ticks;
             match action {
                 MenuAction::BACK | MenuAction::CLICK => {
                     finished = true;
-                    wait_for_all_keys_released();
+                    self.wait_for_all_keys_released();
                 }
 
                 MenuAction::UP => {
@@ -863,7 +859,7 @@ impl Data {
             SDL_SetClipRect(NE_SCREEN, null_mut());
             SDL_UpperBlit(CONSOLE_BG_PIC1, null_mut(), NE_SCREEN, null_mut());
 
-            display_banner(
+            self.display_banner(
                 null_mut(),
                 null_mut(),
                 DisplayBannerFlags::FORCE_UPDATE.bits().into(),
@@ -908,146 +904,146 @@ impl Data {
         };
         SDL_UpperBlit(CONSOLE_PIC, &mut src, NE_SCREEN, &mut CONS_MENU_RECT);
     }
-}
 
-/// does all the work when we enter a lift
-pub unsafe fn enter_lift() {
-    /* Prevent distortion of framerate by the delay coming from
-     * the time spend in the menu. */
-    activate_conservative_frame_computation();
+    /// does all the work when we enter a lift
+    pub unsafe fn enter_lift(&mut self) {
+        /* Prevent distortion of framerate by the delay coming from
+         * the time spend in the menu. */
+        activate_conservative_frame_computation();
 
-    /* make sure to release the fire-key */
-    wait_for_all_keys_released();
+        /* make sure to release the fire-key */
+        self.wait_for_all_keys_released();
 
-    /* Prevent the influ from coming out of the lift in transfer mode
-     * by turning off transfer mode as soon as the influ enters the lift */
-    ME.status = Status::Elevator as c_int;
+        /* Prevent the influ from coming out of the lift in transfer mode
+         * by turning off transfer mode as soon as the influ enters the lift */
+        ME.status = Status::Elevator as c_int;
 
-    SDL_ShowCursor(SDL_DISABLE);
+        SDL_ShowCursor(SDL_DISABLE);
 
-    let mut cur_level = (*CUR_LEVEL).levelnum;
+        let mut cur_level = (*CUR_LEVEL).levelnum;
 
-    let cur_lift = get_current_lift();
-    if cur_lift == -1 {
-        error!("Lift out of order, I'm so sorry !");
-        return;
-    }
-    let mut cur_lift: usize = cur_lift.try_into().unwrap();
+        let cur_lift = get_current_lift();
+        if cur_lift == -1 {
+            error!("Lift out of order, I'm so sorry !");
+            return;
+        }
+        let mut cur_lift: usize = cur_lift.try_into().unwrap();
 
-    enter_lift_sound();
-    switch_background_music_to(null_mut()); // turn off Bg music
+        enter_lift_sound();
+        self.switch_background_music_to(null_mut()); // turn off Bg music
 
-    let mut up_lift = CUR_SHIP.all_lifts[cur_lift].up;
-    let mut down_lift = CUR_SHIP.all_lifts[cur_lift].down;
+        let mut up_lift = CUR_SHIP.all_lifts[cur_lift].up;
+        let mut down_lift = CUR_SHIP.all_lifts[cur_lift].down;
 
-    let liftrow = CUR_SHIP.all_lifts[cur_lift].lift_row;
+        let liftrow = CUR_SHIP.all_lifts[cur_lift].lift_row;
 
-    // clear the whole screen
-    clear_graph_mem();
-    display_banner(
-        null_mut(),
-        null_mut(),
-        DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-    );
+        // clear the whole screen
+        clear_graph_mem();
+        self.display_banner(
+            null_mut(),
+            null_mut(),
+            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+        );
 
-    let wait_move_ticks: u32 = 100;
-    static mut LAST_MOVE_TICK: u32 = 0;
-    let mut finished = false;
-    while !finished {
-        show_lifts(cur_level, liftrow);
+        let wait_move_ticks: u32 = 100;
+        static mut LAST_MOVE_TICK: u32 = 0;
+        let mut finished = false;
+        while !finished {
+            show_lifts(cur_level, liftrow);
 
-        let action = get_menu_action(500);
-        if SDL_GetTicks() - LAST_MOVE_TICK > wait_move_ticks {
-            match action {
-                MenuAction::CLICK => {
-                    finished = true;
-                    wait_for_all_keys_released();
-                }
+            let action = self.get_menu_action(500);
+            if SDL_GetTicks() - LAST_MOVE_TICK > wait_move_ticks {
+                match action {
+                    MenuAction::CLICK => {
+                        finished = true;
+                        self.wait_for_all_keys_released();
+                    }
 
-                MenuAction::UP | MenuAction::UP_WHEEL => {
-                    LAST_MOVE_TICK = SDL_GetTicks();
-                    if up_lift != -1 {
-                        if CUR_SHIP.all_lifts[usize::try_from(up_lift).unwrap()].x == 99 {
-                            error!("Lift out of order, so sorry ..");
-                        } else {
-                            down_lift = cur_lift.try_into().unwrap();
-                            cur_lift = up_lift.try_into().unwrap();
-                            cur_level = CUR_SHIP.all_lifts[cur_lift].level;
-                            up_lift = CUR_SHIP.all_lifts[cur_lift].up;
-                            show_lifts(cur_level, liftrow);
-                            move_lift_sound();
+                    MenuAction::UP | MenuAction::UP_WHEEL => {
+                        LAST_MOVE_TICK = SDL_GetTicks();
+                        if up_lift != -1 {
+                            if CUR_SHIP.all_lifts[usize::try_from(up_lift).unwrap()].x == 99 {
+                                error!("Lift out of order, so sorry ..");
+                            } else {
+                                down_lift = cur_lift.try_into().unwrap();
+                                cur_lift = up_lift.try_into().unwrap();
+                                cur_level = CUR_SHIP.all_lifts[cur_lift].level;
+                                up_lift = CUR_SHIP.all_lifts[cur_lift].up;
+                                show_lifts(cur_level, liftrow);
+                                move_lift_sound();
+                            }
                         }
                     }
-                }
 
-                MenuAction::DOWN | MenuAction::DOWN_WHEEL => {
-                    LAST_MOVE_TICK = SDL_GetTicks();
-                    if down_lift != -1 {
-                        if CUR_SHIP.all_lifts[usize::try_from(down_lift).unwrap()].x == 99 {
-                            error!("Lift Out of order, so sorry ..");
-                        } else {
-                            up_lift = cur_lift.try_into().unwrap();
-                            cur_lift = down_lift.try_into().unwrap();
-                            cur_level = CUR_SHIP.all_lifts[cur_lift].level;
-                            down_lift = CUR_SHIP.all_lifts[cur_lift].down;
-                            show_lifts(cur_level, liftrow);
-                            move_lift_sound();
+                    MenuAction::DOWN | MenuAction::DOWN_WHEEL => {
+                        LAST_MOVE_TICK = SDL_GetTicks();
+                        if down_lift != -1 {
+                            if CUR_SHIP.all_lifts[usize::try_from(down_lift).unwrap()].x == 99 {
+                                error!("Lift Out of order, so sorry ..");
+                            } else {
+                                up_lift = cur_lift.try_into().unwrap();
+                                cur_lift = down_lift.try_into().unwrap();
+                                cur_level = CUR_SHIP.all_lifts[cur_lift].level;
+                                down_lift = CUR_SHIP.all_lifts[cur_lift].down;
+                                show_lifts(cur_level, liftrow);
+                                move_lift_sound();
+                            }
                         }
                     }
+                    _ => {}
                 }
-                _ => {}
+            }
+            SDL_Delay(1); // don't hog CPU
+        }
+
+        // It might happen, that the influencer enters the elevator, but then decides to
+        // come out on the same level where he has been before.  In this case of course there
+        // is no need to reshuffle enemys or to reset influencers position.  Therefore, only
+        // when a real level change has occured, we need to do real changes as below, where
+        // we set the new level and set new position and initiate timers and all that...
+        if cur_level != (*CUR_LEVEL).levelnum {
+            let mut array_num = 0;
+
+            let mut tmp;
+            while {
+                tmp = CUR_SHIP.all_levels[array_num];
+                tmp.is_null().not()
+            } {
+                if (*tmp).levelnum == cur_level {
+                    break;
+                } else {
+                    array_num += 1;
+                }
+            }
+
+            CUR_LEVEL = CUR_SHIP.all_levels[array_num];
+
+            // set the position of the influencer to the correct locatiohn
+            ME.pos.x = CUR_SHIP.all_lifts[cur_lift].x as f32;
+            ME.pos.y = CUR_SHIP.all_lifts[cur_lift].y as f32;
+
+            for i in 0..c_int::try_from(MAXBLASTS).unwrap() {
+                delete_blast(i);
+            }
+            for i in 0..c_int::try_from(MAXBULLETS).unwrap() {
+                delete_bullet(i);
             }
         }
-        SDL_Delay(1); // don't hog CPU
+
+        let cur_level = &*CUR_LEVEL;
+        leave_lift_sound();
+        self.switch_background_music_to(cur_level.background_song_name);
+        clear_graph_mem();
+        self.display_banner(
+            null_mut(),
+            null_mut(),
+            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+        );
+
+        ME.status = Status::Mobile as c_int;
+        ME.text_visible_time = 0.;
+        ME.text_to_be_displayed = cur_level.level_enter_comment;
     }
-
-    // It might happen, that the influencer enters the elevator, but then decides to
-    // come out on the same level where he has been before.  In this case of course there
-    // is no need to reshuffle enemys or to reset influencers position.  Therefore, only
-    // when a real level change has occured, we need to do real changes as below, where
-    // we set the new level and set new position and initiate timers and all that...
-    if cur_level != (*CUR_LEVEL).levelnum {
-        let mut array_num = 0;
-
-        let mut tmp;
-        while {
-            tmp = CUR_SHIP.all_levels[array_num];
-            tmp.is_null().not()
-        } {
-            if (*tmp).levelnum == cur_level {
-                break;
-            } else {
-                array_num += 1;
-            }
-        }
-
-        CUR_LEVEL = CUR_SHIP.all_levels[array_num];
-
-        // set the position of the influencer to the correct locatiohn
-        ME.pos.x = CUR_SHIP.all_lifts[cur_lift].x as f32;
-        ME.pos.y = CUR_SHIP.all_lifts[cur_lift].y as f32;
-
-        for i in 0..c_int::try_from(MAXBLASTS).unwrap() {
-            delete_blast(i);
-        }
-        for i in 0..c_int::try_from(MAXBULLETS).unwrap() {
-            delete_bullet(i);
-        }
-    }
-
-    let cur_level = &*CUR_LEVEL;
-    leave_lift_sound();
-    switch_background_music_to(cur_level.background_song_name);
-    clear_graph_mem();
-    display_banner(
-        null_mut(),
-        null_mut(),
-        DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-    );
-
-    ME.status = Status::Mobile as c_int;
-    ME.text_visible_time = 0.;
-    ME.text_to_be_displayed = cur_level.level_enter_comment;
 }
 
 pub unsafe fn level_empty() -> c_int {
