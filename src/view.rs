@@ -766,14 +766,14 @@ impl Data {
         // --------------------
         // No we see if the screen need an update...
 
-        if BANNER_IS_DESTROYED != 0
+        let screen_needs_update = BANNER_IS_DESTROYED != 0
             || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
             || PREVIOUS_LEFT_BOX
                 .with(|previous_left_box| left_box.as_ref() != previous_left_box.borrow().as_ref())
             || PREVIOUS_RIGHT_BOX.with(|previous_right_box| {
                 right_box.as_ref() != previous_right_box.borrow().as_ref()
-            })
-        {
+            });
+        if screen_needs_update {
             // Redraw the whole background of the top status bar
             let mut dst = Rect::new(0, 0, 0, 0);
             SDL_SetClipRect(NE_SCREEN, null_mut()); // this unsets the clipping rectangle
