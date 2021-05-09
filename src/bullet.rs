@@ -10,7 +10,7 @@ use crate::{
     structs::{Finepoint, Vect},
     text::{add_influ_burnt_text, enemy_hit_by_bullet_text},
     vars::{BLASTMAP, BULLETMAP, DRUIDMAP},
-    Status, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, INVINCIBLE_MODE,
+    Data, Status, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, INVINCIBLE_MODE,
     LAST_GOT_INTO_BLAST_SOUND, ME, NUM_ENEMYS,
 };
 
@@ -22,191 +22,197 @@ use std::{
     ptr::null_mut,
 };
 
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct BulletData {
+    fbt_counter: u32,
+}
+
 #[inline]
 unsafe fn get_druid_hit_dist_squared() -> f32 {
     (0.3 + 4. / 64.) * (DROID_RADIUS + 4. / 64.)
 }
 
-pub unsafe fn check_bullet_collisions(num: c_int) {
-    let level = (*CUR_LEVEL).levelnum;
-    let cur_bullet = &mut ALL_BULLETS[usize::try_from(num).unwrap()];
-    static mut FBT_COUNTER: c_int = 0;
+impl Data {
+    pub unsafe fn check_bullet_collisions(&mut self, num: c_int) {
+        let level = (*CUR_LEVEL).levelnum;
+        let cur_bullet = &mut ALL_BULLETS[usize::try_from(num).unwrap()];
 
-    match BulletKind::try_from(cur_bullet.ty) {
-        // Never do any collision checking if the bullet is OUT already...
-        Err(_) => {}
+        match BulletKind::try_from(cur_bullet.ty) {
+            // Never do any collision checking if the bullet is OUT already...
+            Err(_) => {}
 
-        // --------------------
-        // Next we handle the case that the bullet is of type FLASH
-        Ok(BulletKind::Flash) => {
-            // if the flash is over, just delete it and return
-            if cur_bullet.time_in_seconds >= FLASH_DURATION {
-                cur_bullet.time_in_frames = 0;
-                cur_bullet.time_in_seconds = 0.;
-                cur_bullet.ty = Status::Out as u8;
-                cur_bullet.mine = false;
-            }
-
-            // if the flash is not yet over, do some checking for who gets
-            // hurt by it.
-            // Two different methode for doing this are available:
-            // The first but less elegant Method is just to check for
-            // flash immunity, for distance and visiblity.
-            // The second and more elegant method is to recursively fill
-            // out the room where the flash-maker is in and to hurt all
-            // robots in there except of course for those immune.
-            if cur_bullet.time_in_frames != 1 {
-                return;
-            } // we only do the damage once and thats at frame nr. 1 of the flash
-
-            for (i, enemy) in ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()]
-                .iter_mut()
-                .enumerate()
-            {
-                // !! dont't forget: Only droids on our level are harmed!! (bugfix)
-                if enemy.levelnum != level {
-                    continue;
+            // --------------------
+            // Next we handle the case that the bullet is of type FLASH
+            Ok(BulletKind::Flash) => {
+                // if the flash is over, just delete it and return
+                if cur_bullet.time_in_seconds >= FLASH_DURATION {
+                    cur_bullet.time_in_frames = 0;
+                    cur_bullet.time_in_seconds = 0.;
+                    cur_bullet.ty = Status::Out as u8;
+                    cur_bullet.mine = false;
                 }
 
-                if is_visible(&enemy.pos) != 0
-                    && (*DRUIDMAP.add(usize::try_from(enemy.ty).unwrap())).flashimmune == 0
-                {
-                    enemy.energy -= (*BULLETMAP.add(BulletKind::Flash as usize)).damage as f32;
-                    // Since the enemy just got hit, it might as well say so :)
-                    enemy_hit_by_bullet_text(i.try_into().unwrap());
-                }
-            }
-
-            // droids with flash are always flash-immune!
-            // -> we don't get hurt by our own flashes!
-            if INVINCIBLE_MODE == 0
-                && (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).flashimmune == 0
-            {
-                ME.energy -= (*BULLETMAP.add(BulletKind::Flash as usize)).damage as f32;
-            }
-        }
-
-        // --------------------
-        // If its a "normal" Bullet, several checks have to be
-        // done, one for collisions with background,
-        // one for collision with influencer
-        // some for collisions with enemys
-        // and some for collisions with other bullets
-        // and some for collisions with blast
-        //
-        _ => {
-            // first check for collision with background
-            let mut step = Finepoint {
-                x: cur_bullet.pos.x - cur_bullet.prev_pos.x,
-                y: cur_bullet.pos.y - cur_bullet.prev_pos.y,
-            };
-            let mut num_check_steps =
-                ((step.x * step.x + step.y * step.y).sqrt() / COLLISION_STEPSIZE).trunc();
-            if num_check_steps == 0. {
-                num_check_steps = 1.;
-            }
-            step.x /= num_check_steps;
-            step.y /= num_check_steps;
-
-            cur_bullet.pos.x = cur_bullet.prev_pos.x;
-            cur_bullet.pos.y = cur_bullet.prev_pos.y;
-
-            for _ in 0..(num_check_steps as i32) {
-                cur_bullet.pos.x += step.x;
-                cur_bullet.pos.y += step.y;
-
-                if is_passable(
-                    cur_bullet.pos.x,
-                    cur_bullet.pos.y,
-                    Direction::Center as c_int,
-                ) != Direction::Center as c_int
-                {
-                    start_blast(
-                        cur_bullet.pos.x,
-                        cur_bullet.pos.y,
-                        Explosion::Bulletblast as c_int,
-                    );
-                    delete_bullet(num);
+                // if the flash is not yet over, do some checking for who gets
+                // hurt by it.
+                // Two different methode for doing this are available:
+                // The first but less elegant Method is just to check for
+                // flash immunity, for distance and visiblity.
+                // The second and more elegant method is to recursively fill
+                // out the room where the flash-maker is in and to hurt all
+                // robots in there except of course for those immune.
+                if cur_bullet.time_in_frames != 1 {
                     return;
-                }
+                } // we only do the damage once and thats at frame nr. 1 of the flash
 
-                // check for collision with influencer
-                if !cur_bullet.mine {
-                    let xdist = ME.pos.x - cur_bullet.pos.x;
-                    let ydist = ME.pos.y - cur_bullet.pos.y;
-                    // FIXME: don't use DRUIDHITDIST2!!
-                    if (xdist * xdist + ydist * ydist) < get_druid_hit_dist_squared() {
-                        got_hit_sound();
-
-                        if INVINCIBLE_MODE == 0 {
-                            ME.energy -= (*BULLETMAP.add(cur_bullet.ty.into())).damage as f32;
-                        }
-
-                        delete_bullet(num);
-                        return;
+                for (i, enemy) in ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()]
+                    .iter_mut()
+                    .enumerate()
+                {
+                    // !! dont't forget: Only droids on our level are harmed!! (bugfix)
+                    if enemy.levelnum != level {
+                        continue;
                     }
-                }
 
-                // check for collision with enemys
-                for enemy in ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()].iter_mut() {
-                    if enemy.status == Status::Out as c_int
-                        || enemy.status == Status::Terminated as c_int
-                        || enemy.levelnum != level
+                    if is_visible(&enemy.pos) != 0
+                        && (*DRUIDMAP.add(usize::try_from(enemy.ty).unwrap())).flashimmune == 0
                     {
-                        continue;
-                    }
-
-                    let xdist = cur_bullet.pos.x - enemy.pos.x;
-                    let ydist = cur_bullet.pos.y - enemy.pos.y;
-
-                    // FIXME
-                    if (xdist * xdist + ydist * ydist) < get_druid_hit_dist_squared() {
-                        // The enemy who was hit, loses some energy, depending on the bullet
-                        enemy.energy -=
-                            (*BULLETMAP.add(cur_bullet.ty.try_into().unwrap())).damage as f32;
-
-                        delete_bullet(num);
-                        got_hit_sound();
-
-                        if !cur_bullet.mine {
-                            FBT_COUNTER += 1;
-                        }
-                        cur_bullet.ty = Status::Out as u8;
-                        cur_bullet.mine = false;
-                        return;
+                        enemy.energy -= (*BULLETMAP.add(BulletKind::Flash as usize)).damage as f32;
+                        // Since the enemy just got hit, it might as well say so :)
+                        enemy_hit_by_bullet_text(i.try_into().unwrap());
                     }
                 }
 
-                // check for collisions with other bullets
-                for (i, bullet) in ALL_BULLETS[..MAXBULLETS].iter().enumerate() {
-                    if Some(i) == usize::try_from(num).ok() {
-                        continue;
-                    } // never check for collision with youself.. ;)
-                    if bullet.ty == Status::Out as u8 {
-                        continue;
-                    } // never check for collisions with dead bullets..
-                    if bullet.ty == BulletKind::Flash as u8 {
-                        continue;
-                    } // never check for collisions with flashes bullets..
+                // droids with flash are always flash-immune!
+                // -> we don't get hurt by our own flashes!
+                if INVINCIBLE_MODE == 0
+                    && (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).flashimmune == 0
+                {
+                    ME.energy -= (*BULLETMAP.add(BulletKind::Flash as usize)).damage as f32;
+                }
+            }
 
-                    let xdist = bullet.pos.x - cur_bullet.pos.x;
-                    let ydist = bullet.pos.y - cur_bullet.pos.y;
-                    if xdist * xdist + ydist * ydist > BULLET_COLL_DIST2 {
-                        continue;
-                    }
+            // --------------------
+            // If its a "normal" Bullet, several checks have to be
+            // done, one for collisions with background,
+            // one for collision with influencer
+            // some for collisions with enemys
+            // and some for collisions with other bullets
+            // and some for collisions with blast
+            //
+            _ => {
+                // first check for collision with background
+                let mut step = Finepoint {
+                    x: cur_bullet.pos.x - cur_bullet.prev_pos.x,
+                    y: cur_bullet.pos.y - cur_bullet.prev_pos.y,
+                };
+                let mut num_check_steps =
+                    ((step.x * step.x + step.y * step.y).sqrt() / COLLISION_STEPSIZE).trunc();
+                if num_check_steps == 0. {
+                    num_check_steps = 1.;
+                }
+                step.x /= num_check_steps;
+                step.y /= num_check_steps;
 
-                    // it seems like we have a collision of two bullets!
-                    // both will be deleted and replaced by blasts..
-                    info!("Bullet-Bullet-Collision detected...");
+                cur_bullet.pos.x = cur_bullet.prev_pos.x;
+                cur_bullet.pos.y = cur_bullet.prev_pos.y;
 
-                    start_blast(
+                for _ in 0..(num_check_steps as i32) {
+                    cur_bullet.pos.x += step.x;
+                    cur_bullet.pos.y += step.y;
+
+                    if is_passable(
                         cur_bullet.pos.x,
                         cur_bullet.pos.y,
-                        Explosion::Druidblast as c_int,
-                    );
+                        Direction::Center as c_int,
+                    ) != Direction::Center as c_int
+                    {
+                        start_blast(
+                            cur_bullet.pos.x,
+                            cur_bullet.pos.y,
+                            Explosion::Bulletblast as c_int,
+                        );
+                        delete_bullet(num);
+                        return;
+                    }
 
-                    delete_bullet(num);
-                    delete_bullet(i.try_into().unwrap());
+                    // check for collision with influencer
+                    if !cur_bullet.mine {
+                        let xdist = ME.pos.x - cur_bullet.pos.x;
+                        let ydist = ME.pos.y - cur_bullet.pos.y;
+                        // FIXME: don't use DRUIDHITDIST2!!
+                        if (xdist * xdist + ydist * ydist) < get_druid_hit_dist_squared() {
+                            got_hit_sound();
+
+                            if INVINCIBLE_MODE == 0 {
+                                ME.energy -= (*BULLETMAP.add(cur_bullet.ty.into())).damage as f32;
+                            }
+
+                            delete_bullet(num);
+                            return;
+                        }
+                    }
+
+                    // check for collision with enemys
+                    for enemy in ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()].iter_mut() {
+                        if enemy.status == Status::Out as c_int
+                            || enemy.status == Status::Terminated as c_int
+                            || enemy.levelnum != level
+                        {
+                            continue;
+                        }
+
+                        let xdist = cur_bullet.pos.x - enemy.pos.x;
+                        let ydist = cur_bullet.pos.y - enemy.pos.y;
+
+                        // FIXME
+                        if (xdist * xdist + ydist * ydist) < get_druid_hit_dist_squared() {
+                            // The enemy who was hit, loses some energy, depending on the bullet
+                            enemy.energy -=
+                                (*BULLETMAP.add(cur_bullet.ty.try_into().unwrap())).damage as f32;
+
+                            delete_bullet(num);
+                            got_hit_sound();
+
+                            if !cur_bullet.mine {
+                                self.bullet.fbt_counter += 1;
+                            }
+                            cur_bullet.ty = Status::Out as u8;
+                            cur_bullet.mine = false;
+                            return;
+                        }
+                    }
+
+                    // check for collisions with other bullets
+                    for (i, bullet) in ALL_BULLETS[..MAXBULLETS].iter().enumerate() {
+                        if Some(i) == usize::try_from(num).ok() {
+                            continue;
+                        } // never check for collision with youself.. ;)
+                        if bullet.ty == Status::Out as u8 {
+                            continue;
+                        } // never check for collisions with dead bullets..
+                        if bullet.ty == BulletKind::Flash as u8 {
+                            continue;
+                        } // never check for collisions with flashes bullets..
+
+                        let xdist = bullet.pos.x - cur_bullet.pos.x;
+                        let ydist = bullet.pos.y - cur_bullet.pos.y;
+                        if xdist * xdist + ydist * ydist > BULLET_COLL_DIST2 {
+                            continue;
+                        }
+
+                        // it seems like we have a collision of two bullets!
+                        // both will be deleted and replaced by blasts..
+                        info!("Bullet-Bullet-Collision detected...");
+
+                        start_blast(
+                            cur_bullet.pos.x,
+                            cur_bullet.pos.y,
+                            Explosion::Druidblast as c_int,
+                        );
+
+                        delete_bullet(num);
+                        delete_bullet(i.try_into().unwrap());
+                    }
                 }
             }
         }

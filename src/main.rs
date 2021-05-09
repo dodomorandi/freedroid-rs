@@ -32,7 +32,7 @@ mod vars;
 mod view;
 
 use b_font::BFont;
-use bullet::{check_bullet_collisions, explode_blasts, move_bullets};
+use bullet::{explode_blasts, move_bullets, BulletData};
 use defs::{
     scale_rect, AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Status, BYCOLOR,
     DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_LEVEL_RECTS,
@@ -151,6 +151,7 @@ struct Data {
     map: Map,
     b_font: BFont,
     highscore: Highscore,
+    bullet: BulletData,
 }
 
 impl Default for Data {
@@ -160,6 +161,7 @@ impl Default for Data {
             map: Default::default(),
             b_font: Default::default(),
             highscore: Default::default(),
+            bullet: Default::default(),
         }
     }
 }
@@ -260,7 +262,7 @@ fn main() {
                 );
 
                 for bullet in 0..i32::try_from(MAXBULLETS).unwrap() {
-                    check_bullet_collisions(bullet);
+                    data.check_bullet_collisions(bullet);
                 }
 
                 // change Influ-speed depending on keys pressed, but
