@@ -43,6 +43,7 @@ use global::{GAME_CONFIG, LEVEL_DOORS_NOT_MOVED_TIME, SKIP_A_FEW_FRAMES};
 use graphics::{clear_graph_mem, CROSSHAIR_CURSOR, NE_SCREEN};
 use highscore::Highscore;
 use influencer::Influencer;
+use init::Init;
 use input::{init_keystr, SDL_Delay, JOY_SENSITIVITY, SHOW_CURSOR};
 use map::{move_level_doors, ColorNames, Map};
 use misc::{
@@ -153,6 +154,7 @@ struct Data {
     highscore: Highscore,
     bullet: BulletData,
     influencer: Influencer,
+    init: Init,
 }
 
 impl Default for Data {
@@ -164,6 +166,7 @@ impl Default for Data {
             highscore: Default::default(),
             bullet: Default::default(),
             influencer: Default::default(),
+            init: Default::default(),
         }
     }
 }

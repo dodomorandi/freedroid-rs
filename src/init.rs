@@ -19,8 +19,9 @@ use crate::{
     input::{SDL_Delay, JOY_SENSITIVITY},
     misc::{
         activate_conservative_frame_computation, compute_fps_for_this_frame,
-        count_string_occurences, dealloc_c_string, load_game_config, my_random, set_time_factor,
-        start_taking_time_for_fps_calculation, update_progress,
+        count_string_occurences, dealloc_c_string, load_game_config, locate_string_in_data,
+        my_random, read_value_from_string, set_time_factor, start_taking_time_for_fps_calculation,
+        update_progress,
     },
     sound::thou_art_defeated_sound,
     structs::{BulletSpec, DruidSpec},
@@ -62,9 +63,22 @@ extern "C" {
     pub fn Mix_HaltMusic() -> c_int;
 }
 
-static mut DEBRIEFING_TEXT: *mut c_char = null_mut();
-static mut DEBRIEFING_SONG: [c_char; 500] = [0; 500];
-static mut PREVIOUS_MISSION_NAME: [c_char; 500] = [0; 500];
+#[derive(Debug)]
+pub struct Init {
+    debriefing_text: *mut c_char,
+    debriefing_song: [c_char; 500],
+    previous_mission_name: [c_char; 500],
+}
+
+impl Default for Init {
+    fn default() -> Self {
+        Self {
+            debriefing_text: null_mut(),
+            debriefing_song: [0; 500],
+            previous_mission_name: [0; 500],
+        }
+    }
+}
 
 const MISSION_COMPLETE_BONUS: f32 = 1000.;
 const COPYRIGHT: &str = "\nCopyright (C) 2003-2018 Johannes Prix, Reinhard Prix\n\
@@ -109,8 +123,8 @@ impl Data {
         drop(self.highscore.entries.take());
 
         // free constant text blobs
-        dealloc_c_string(DEBRIEFING_TEXT);
-        DEBRIEFING_TEXT = null_mut();
+        dealloc_c_string(self.init.debriefing_text);
+        self.init.debriefing_text = null_mut();
     }
 }
 
@@ -181,7 +195,7 @@ impl Data {
     }
 
     pub unsafe fn thou_art_victorious(&mut self) {
-        self.switch_background_music_to(DEBRIEFING_SONG.as_ptr());
+        self.switch_background_music_to(self.init.debriefing_song.as_ptr());
 
         SDL_ShowCursor(SDL_DISABLE);
 
@@ -211,7 +225,7 @@ impl Data {
         rect.x += 10;
         rect.w -= 20; //leave some border
         self.b_font.current_font = PARA_B_FONT;
-        self.scroll_text(DEBRIEFING_TEXT, &mut rect, 6);
+        self.scroll_text(self.init.debriefing_text, &mut rect, 6);
 
         self.wait_for_all_keys_released();
     }
@@ -587,7 +601,7 @@ impl Data {
         // gets destroyed so we know where to continue in
         // case the player doesn't want to return to the very beginning
         // but just to replay this mission.
-        libc::strcpy(PREVIOUS_MISSION_NAME.as_mut_ptr(), mission_name);
+        libc::strcpy(self.init.previous_mission_name.as_mut_ptr(), mission_name);
 
         info!(
             "A new mission is being initialized from file {}.",
@@ -650,7 +664,7 @@ impl Data {
         // mission file and load the game data.
         //
         let mut buffer: [c_char; 500] = [0; 500];
-        self.read_value_from_string(
+        read_value_from_string(
             main_mission_pointer.as_mut_ptr(),
             GAMEDATANAME_INDICATION_STRING.as_ptr() as *mut c_char,
             cstr!("%s").as_ptr() as *mut c_char,
@@ -663,7 +677,7 @@ impl Data {
         // Now its time to get the shipname from the mission file and
         // read the ship file into the right memory structures
         //
-        self.read_value_from_string(
+        read_value_from_string(
             main_mission_pointer.as_mut_ptr(),
             SHIPNAME_INDICATION_STRING.as_ptr() as *mut c_char,
             cstr!("%s").as_ptr() as *mut c_char,
@@ -677,7 +691,7 @@ impl Data {
         // Now its time to get the elevator file name from the mission file and
         // read the elevator file into the right memory structures
         //
-        self.read_value_from_string(
+        read_value_from_string(
             main_mission_pointer.as_mut_ptr(),
             ELEVATORNAME_INDICATION_STRING.as_ptr() as *mut c_char,
             cstr!("%s").as_ptr() as *mut c_char,
@@ -703,7 +717,7 @@ impl Data {
         // Now its time to get the crew file name from the mission file and
         // assemble an appropriate crew out of it
         //
-        self.read_value_from_string(
+        read_value_from_string(
             main_mission_pointer.as_mut_ptr(),
             CREWNAME_INDICATION_STRING.as_ptr() as *mut c_char,
             cstr!("%s").as_ptr() as *mut c_char,
@@ -721,17 +735,17 @@ impl Data {
         // Now its time to get the debriefing text from the mission file so that it
         // can be used, if the mission is completed and also the end title music name
         // must be read in as well
-        self.read_value_from_string(
+        read_value_from_string(
             main_mission_pointer.as_mut_ptr(),
             MISSION_ENDTITLE_SONG_NAME_STRING.as_ptr() as *mut c_char,
             cstr!("%s").as_ptr() as *mut c_char,
-            DEBRIEFING_SONG.as_mut_ptr() as *mut c_void,
+            self.init.debriefing_song.as_mut_ptr() as *mut c_void,
         );
 
-        if DEBRIEFING_TEXT.is_null().not() {
-            dealloc_c_string(DEBRIEFING_TEXT);
+        if self.init.debriefing_text.is_null().not() {
+            dealloc_c_string(self.init.debriefing_text);
         }
-        DEBRIEFING_TEXT = self.read_and_malloc_string_from_data(
+        self.init.debriefing_text = self.read_and_malloc_string_from_data(
             main_mission_pointer.as_mut_ptr(),
             MISSION_ENDTITLE_BEGIN_STRING.as_ptr() as *mut c_char,
             MISSION_ENDTITLE_END_STRING.as_ptr() as *mut c_char,
@@ -816,7 +830,7 @@ impl Data {
         // We start with doing the briefing things...
         // Now we search for the beginning of the mission briefing big section NOT subsection.
         // We display the title and explanation of controls and such...
-        let briefing_section_pointer = self.locate_string_in_data(
+        let briefing_section_pointer = locate_string_in_data(
             main_mission_pointer.as_mut_ptr(),
             MISSION_BRIEFING_BEGIN_STRING.as_ptr() as *mut c_char,
         );
@@ -870,7 +884,7 @@ impl Data {
             cstr!("* End of Mission Briefing Text Subsection *");
 
         let mut buffer: [c_char; 500] = [0; 500];
-        self.read_value_from_string(
+        read_value_from_string(
             mission_briefing_pointer,
             BRIEFING_TITLE_SONG_STRING.as_ptr() as *mut c_char,
             cstr!("%s").as_ptr() as *mut c_char,
@@ -879,7 +893,7 @@ impl Data {
         self.switch_background_music_to(buffer.as_mut_ptr());
 
         SDL_SetClipRect(NE_SCREEN, null_mut());
-        self.read_value_from_string(
+        read_value_from_string(
             mission_briefing_pointer,
             BRIEFING_TITLE_PICTURE_STRING.as_ptr() as *mut c_char,
             cstr!("%s").as_ptr() as *mut c_char,
@@ -988,13 +1002,13 @@ impl Data {
         const BLAST_TWO_TOTAL_AMOUNT_OF_TIME_STRING: &CStr =
             cstr!("Time in seconds for the animation of blast one :");
 
-        self.read_value_from_string(
+        read_value_from_string(
             data.as_mut_ptr(),
             BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
             &mut BLASTMAP[0].total_animation_time as *mut f32 as *mut c_void,
         );
-        self.read_value_from_string(
+        read_value_from_string(
             data.as_mut_ptr(),
             BLAST_TWO_TOTAL_AMOUNT_OF_TIME_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
@@ -1051,7 +1065,7 @@ impl Data {
         let mut aggression_calibrator = 0f32;
         let mut score_calibrator = 0f32;
 
-        let mut robot_pointer = self.locate_string_in_data(
+        let mut robot_pointer = locate_string_in_data(
             data_pointer as *mut c_char,
             ROBOT_SECTION_BEGIN_STRING.as_ptr() as *mut c_char,
         );
@@ -1059,7 +1073,7 @@ impl Data {
         info!("Starting to read robot calibration section");
 
         // Now we read in the speed calibration factor for all droids
-        self.read_value_from_string(
+        read_value_from_string(
             robot_pointer,
             MAXSPEED_CALIBRATOR_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
@@ -1067,7 +1081,7 @@ impl Data {
         );
 
         // Now we read in the acceleration calibration factor for all droids
-        self.read_value_from_string(
+        read_value_from_string(
             robot_pointer,
             ACCELERATION_CALIBRATOR_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
@@ -1075,7 +1089,7 @@ impl Data {
         );
 
         // Now we read in the maxenergy calibration factor for all droids
-        self.read_value_from_string(
+        read_value_from_string(
             robot_pointer,
             MAXENERGY_CALIBRATOR_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
@@ -1083,7 +1097,7 @@ impl Data {
         );
 
         // Now we read in the energy_loss calibration factor for all droids
-        self.read_value_from_string(
+        read_value_from_string(
             robot_pointer,
             ENERGYLOSS_CALIBRATOR_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
@@ -1091,7 +1105,7 @@ impl Data {
         );
 
         // Now we read in the aggression calibration factor for all droids
-        self.read_value_from_string(
+        read_value_from_string(
             robot_pointer,
             AGGRESSION_CALIBRATOR_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
@@ -1099,7 +1113,7 @@ impl Data {
         );
 
         // Now we read in the score calibration factor for all droids
-        self.read_value_from_string(
+        read_value_from_string(
             robot_pointer,
             SCORE_CALIBRATOR_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
@@ -1141,7 +1155,7 @@ impl Data {
             robot_pointer = robot_pointer.add(1); // to avoid doubly taking this entry
 
             // Now we read in the Name of this droid.  We consider as a name the rest of the
-            self.read_value_from_string(
+            read_value_from_string(
                 robot_pointer,
                 DROIDNAME_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%s").as_ptr() as *mut c_char,
@@ -1149,7 +1163,7 @@ impl Data {
             );
 
             // Now we read in the maximal speed this droid can go.
-            self.read_value_from_string(
+            read_value_from_string(
                 robot_pointer,
                 MAXSPEED_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
@@ -1157,7 +1171,7 @@ impl Data {
             );
 
             // Now we read in the class of this droid.
-            self.read_value_from_string(
+            read_value_from_string(
                 robot_pointer,
                 CLASS_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
@@ -1165,7 +1179,7 @@ impl Data {
             );
 
             // Now we read in the maximal acceleration this droid can go.
-            self.read_value_from_string(
+            read_value_from_string(
                 robot_pointer,
                 ACCELERATION_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
@@ -1173,7 +1187,7 @@ impl Data {
             );
 
             // Now we read in the maximal energy this droid can store.
-            self.read_value_from_string(
+            read_value_from_string(
                 robot_pointer,
                 MAXENERGY_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
@@ -1181,7 +1195,7 @@ impl Data {
             );
 
             // Now we read in the lose_health rate.
-            self.read_value_from_string(
+            read_value_from_string(
                 robot_pointer,
                 LOSEHEALTH_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
@@ -1189,7 +1203,7 @@ impl Data {
             );
 
             // Now we read in the class of this droid.
-            self.read_value_from_string(
+            read_value_from_string(
                 robot_pointer,
                 GUN_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
@@ -1197,7 +1211,7 @@ impl Data {
             );
 
             // Now we read in the aggression rate of this droid.
-            self.read_value_from_string(
+            read_value_from_string(
                 robot_pointer,
                 AGGRESSION_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
@@ -1205,7 +1219,7 @@ impl Data {
             );
 
             // Now we read in the flash immunity of this droid.
-            self.read_value_from_string(
+            read_value_from_string(
                 robot_pointer,
                 FLASHIMMUNE_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
@@ -1213,7 +1227,7 @@ impl Data {
             );
 
             // Now we score to be had for destroying one droid of this type
-            self.read_value_from_string(
+            read_value_from_string(
                 robot_pointer,
                 SCORE_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
@@ -1221,7 +1235,7 @@ impl Data {
             );
 
             // Now we read in the height of this droid of this type
-            self.read_value_from_string(
+            read_value_from_string(
                 robot_pointer,
                 HEIGHT_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
@@ -1229,7 +1243,7 @@ impl Data {
             );
 
             // Now we read in the weight of this droid type
-            self.read_value_from_string(
+            read_value_from_string(
                 robot_pointer,
                 WEIGHT_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
@@ -1237,7 +1251,7 @@ impl Data {
             );
 
             // Now we read in the drive of this droid of this type
-            self.read_value_from_string(
+            read_value_from_string(
                 robot_pointer,
                 DRIVE_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
@@ -1245,7 +1259,7 @@ impl Data {
             );
 
             // Now we read in the brain of this droid of this type
-            self.read_value_from_string(
+            read_value_from_string(
                 robot_pointer,
                 BRAIN_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
@@ -1253,19 +1267,19 @@ impl Data {
             );
 
             // Now we read in the sensor 1, 2 and 3 of this droid type
-            self.read_value_from_string(
+            read_value_from_string(
                 robot_pointer,
                 SENSOR1_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
                 &mut (*DRUIDMAP.add(robot_index)).sensor1 as *mut _ as *mut c_void,
             );
-            self.read_value_from_string(
+            read_value_from_string(
                 robot_pointer,
                 SENSOR2_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
                 &mut (*DRUIDMAP.add(robot_index)).sensor2 as *mut _ as *mut c_void,
             );
-            self.read_value_from_string(
+            read_value_from_string(
                 robot_pointer,
                 SENSOR3_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
@@ -1374,7 +1388,7 @@ impl Data {
             bullet_pointer = bullet_pointer.add(1); // to avoid doubly taking this entry
 
             // Now we read in the recharging time for this bullettype(=weapontype)
-            self.read_value_from_string(
+            read_value_from_string(
                 bullet_pointer,
                 BULLET_RECHARGE_TIME_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
@@ -1382,7 +1396,7 @@ impl Data {
             );
 
             // Now we read in the maximal speed this type of bullet can go.
-            self.read_value_from_string(
+            read_value_from_string(
                 bullet_pointer,
                 BULLET_SPEED_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
@@ -1390,7 +1404,7 @@ impl Data {
             );
 
             // Now we read in the damage this bullet can do
-            self.read_value_from_string(
+            read_value_from_string(
                 bullet_pointer,
                 BULLET_DAMAGE_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
@@ -1403,7 +1417,7 @@ impl Data {
             // &(*Bulletmap.add(BulletIndex)).phases , EndOfBulletData );
 
             // Now we read in the type of blast this bullet will cause when crashing e.g. against the wall
-            self.read_value_from_string(
+            read_value_from_string(
                 bullet_pointer,
                 BULLET_BLAST_TYPE_CAUSED_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
@@ -1423,7 +1437,7 @@ impl Data {
         let mut bullet_damage_calibrator = 0f32;
 
         // Now we read in the speed calibration factor for all bullets
-        self.read_value_from_string(
+        read_value_from_string(
             data_pointer as *mut c_char,
             BULLET_SPEED_CALIBRATOR_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
@@ -1431,7 +1445,7 @@ impl Data {
         );
 
         // Now we read in the damage calibration factor for all bullets
-        self.read_value_from_string(
+        read_value_from_string(
             data_pointer as *mut c_char,
             BULLET_DAMAGE_CALIBRATOR_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
@@ -1473,19 +1487,19 @@ impl Data {
         info!("Starting to read contents of General Game Constants section");
 
         // read in Alert-related parameters:
-        self.read_value_from_string(
+        read_value_from_string(
             data,
             DEATHCOUNT_DRAIN_SPEED_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
             &mut DEATH_COUNT_DRAIN_SPEED as *mut _ as *mut c_void,
         );
-        self.read_value_from_string(
+        read_value_from_string(
             data,
             ALERT_THRESHOLD_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
             &mut ALERT_THRESHOLD as *mut _ as *mut c_void,
         );
-        self.read_value_from_string(
+        read_value_from_string(
             data,
             ALERT_BONUS_PER_SEC_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
@@ -1493,7 +1507,7 @@ impl Data {
         );
 
         // Now we read in the speed calibration factor for all bullets
-        self.read_value_from_string(
+        read_value_from_string(
             data,
             COLLISION_LOSE_ENERGY_CALIBRATOR_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
@@ -1501,7 +1515,7 @@ impl Data {
         );
 
         // Now we read in the blast radius
-        self.read_value_from_string(
+        read_value_from_string(
             data,
             BLAST_RADIUS_SPECIFICATION_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
@@ -1509,7 +1523,7 @@ impl Data {
         );
 
         // Now we read in the druid 'radius' in x direction
-        self.read_value_from_string(
+        read_value_from_string(
             data,
             DROID_RADIUS_SPECIFICATION_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
@@ -1517,7 +1531,7 @@ impl Data {
         );
 
         // Now we read in the blast damage amount per 'second' of contact with the blast
-        self.read_value_from_string(
+        read_value_from_string(
             data,
             BLAST_DAMAGE_SPECIFICATION_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
@@ -1525,7 +1539,7 @@ impl Data {
         );
 
         // Now we read in the time is takes for the door to move one phase
-        self.read_value_from_string(
+        read_value_from_string(
             data,
             TIME_FOR_DOOR_MOVEMENT_SPECIFICATION_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,

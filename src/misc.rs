@@ -688,53 +688,50 @@ impl Data {
 
         all_data
     }
+}
 
-    /// find label in data and read stuff after label into dst using the FormatString
-    ///
-    /// NOTE!!: be sure dst is large enough for data read by FormatString, or
-    /// sscanf will crash!!
-    pub unsafe fn read_value_from_string(
-        &mut self,
-        data: *mut c_char,
-        label: *mut c_char,
-        format_string: *mut c_char,
-        dst: *mut c_void,
-    ) {
-        // Now we locate the label in data and position pointer right after the label
-        // ..will Terminate itself if not found...
-        let pos = self
-            .locate_string_in_data(data, label)
-            .add(CStr::from_ptr(label).to_bytes().len());
+/// find label in data and read stuff after label into dst using the FormatString
+///
+/// NOTE!!: be sure dst is large enough for data read by FormatString, or
+/// sscanf will crash!!
+pub unsafe fn read_value_from_string(
+    data: *mut c_char,
+    label: *mut c_char,
+    format_string: *mut c_char,
+    dst: *mut c_void,
+) {
+    // Now we locate the label in data and position pointer right after the label
+    // ..will Terminate itself if not found...
+    let pos = locate_string_in_data(data, label).add(CStr::from_ptr(label).to_bytes().len());
 
-        if libc::sscanf(pos, format_string, dst) == libc::EOF {
-            panic!(
-                "ReadValueFromString(): could not read value {} of label {} with format {}",
-                CStr::from_ptr(pos).to_string_lossy(),
-                CStr::from_ptr(format_string).to_string_lossy(),
-                CStr::from_ptr(label).to_string_lossy(),
-            );
-        } else {
-            info!("ReadValueFromString: value read in successfully.");
-        }
+    if libc::sscanf(pos, format_string, dst) == libc::EOF {
+        panic!(
+            "ReadValueFromString(): could not read value {} of label {} with format {}",
+            CStr::from_ptr(pos).to_string_lossy(),
+            CStr::from_ptr(format_string).to_string_lossy(),
+            CStr::from_ptr(label).to_string_lossy(),
+        );
+    } else {
+        info!("ReadValueFromString: value read in successfully.");
     }
+}
 
-    /// This function tries to locate a string in some given data string.
-    /// The data string is assumed to be null terminated.  Otherwise SEGFAULTS
-    /// might happen.
-    ///
-    /// The return value is a pointer to the first instance where the substring
-    /// we are searching is found in the main text.
-    pub unsafe fn locate_string_in_data(
-        &mut self,
-        search_begin_pointer: *mut c_char,
-        search_text_pointer: *mut c_char,
-    ) -> *mut c_char {
-        let temp = libc::strstr(search_begin_pointer, search_text_pointer);
-        let search_text = CStr::from_ptr(search_text_pointer).to_string_lossy();
+/// This function tries to locate a string in some given data string.
+/// The data string is assumed to be null terminated.  Otherwise SEGFAULTS
+/// might happen.
+///
+/// The return value is a pointer to the first instance where the substring
+/// we are searching is found in the main text.
+pub unsafe fn locate_string_in_data(
+    search_begin_pointer: *mut c_char,
+    search_text_pointer: *mut c_char,
+) -> *mut c_char {
+    let temp = libc::strstr(search_begin_pointer, search_text_pointer);
+    let search_text = CStr::from_ptr(search_text_pointer).to_string_lossy();
 
-        if temp.is_null() {
-            panic!(
-                "\n\
+    if temp.is_null() {
+        panic!(
+            "\n\
              \n\
              ----------------------------------------------------------------------\n\
              Freedroid has encountered a problem:\n\
@@ -755,16 +752,15 @@ impl Data {
              not resolve.... Sorry, if that interrupts a major game of yours.....\n\
              ----------------------------------------------------------------------\n\
              \n",
-                search_text
-            );
-        } else {
-            info!(
-                "LocateStringInDate: String {} successfully located within data. ",
-                search_text
-            );
-        }
-        temp
+            search_text
+        );
+    } else {
+        info!(
+            "LocateStringInDate: String {} successfully located within data. ",
+            search_text
+        );
     }
+    temp
 }
 
 /// This function teleports the influencer to a new position on the

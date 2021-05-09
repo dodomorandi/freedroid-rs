@@ -8,7 +8,9 @@ use crate::{
         DROID_RADIUS, GAME_CONFIG, LEVEL_DOORS_NOT_MOVED_TIME, TIME_FOR_EACH_PHASE_OF_DOOR_MOVEMENT,
     },
     menu::SHIP_EXT,
-    misc::{dealloc_c_string, frame_time, my_random},
+    misc::{
+        dealloc_c_string, frame_time, locate_string_in_data, my_random, read_value_from_string,
+    },
     structs::{Finepoint, GrobPoint, Level},
     vars::{BLOCK_RECT, DRUIDMAP},
     Data, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, ME, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
@@ -814,7 +816,7 @@ impl Data {
         const ALLOWED_TYPE_INDICATION_STRING: &CStr =
             cstr!("Allowed Type of Random Droid for this level: ");
 
-        let end_of_this_level_data = self.locate_string_in_data(
+        let end_of_this_level_data = locate_string_in_data(
             section_pointer,
             DROIDS_LEVEL_END_INDICATION_STRING.as_ptr() as *mut c_char,
         );
@@ -822,7 +824,7 @@ impl Data {
 
         // Now we read in the level number for this level
         let mut our_level_number: c_int = 0;
-        self.read_value_from_string(
+        read_value_from_string(
             section_pointer,
             DROIDS_LEVEL_INDICATION_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
@@ -831,7 +833,7 @@ impl Data {
 
         // Now we read in the maximal number of random droids for this level
         let mut max_rand: c_int = 0;
-        self.read_value_from_string(
+        read_value_from_string(
             section_pointer,
             DROIDS_MAXRAND_INDICATION_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
@@ -840,7 +842,7 @@ impl Data {
 
         // Now we read in the minimal number of random droids for this level
         let mut min_rand: c_int = 0;
-        self.read_value_from_string(
+        read_value_from_string(
             section_pointer,
             DROIDS_MINRAND_INDICATION_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
@@ -1008,7 +1010,7 @@ impl Data {
     pub unsafe fn get_lift_connections(&mut self, filename: *mut c_char) -> c_int {
         macro_rules! read_int_from_string_into {
             ($ptr:expr, $str:tt, $value:expr) => {
-                self.read_value_from_string(
+                read_value_from_string(
                     $ptr,
                     cstr!($str).as_ptr() as *mut c_char,
                     cstr!("%d").as_ptr() as *mut c_char,
@@ -1045,7 +1047,7 @@ impl Data {
         // At first we read in the rectangles that define where the colums of the
         // lift are, so that we can highlight them later.
         CUR_SHIP.num_lift_rows = 0;
-        let mut entry_pointer = self.locate_string_in_data(
+        let mut entry_pointer = locate_string_in_data(
             data.as_mut_ptr(),
             START_OF_LIFT_RECTANGLE_DATA_STRING.as_ptr() as *mut c_char,
         );

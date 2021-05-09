@@ -15,7 +15,7 @@ use crate::{
         PARA_B_FONT,
     },
     input::SDL_Delay,
-    misc::{activate_conservative_frame_computation, update_progress},
+    misc::{activate_conservative_frame_computation, read_value_from_string, update_progress},
     sound::play_sound,
     structs::ThemeList,
     takeover::{
@@ -1639,14 +1639,14 @@ impl Data {
         const BLAST_ONE_NUMBER_OF_PHASES_STRING: &CStr = cstr!("How many phases in Blast one :");
         const BLAST_TWO_NUMBER_OF_PHASES_STRING: &CStr = cstr!("How many phases in Blast two :");
 
-        self.read_value_from_string(
+        read_value_from_string(
             data.as_ptr() as *mut c_char,
             BLAST_ONE_NUMBER_OF_PHASES_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
             &mut BLASTMAP[0].phases as *mut c_int as *mut c_void,
         );
 
-        self.read_value_from_string(
+        read_value_from_string(
             data.as_ptr() as *mut c_char,
             BLAST_TWO_NUMBER_OF_PHASES_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
@@ -1658,7 +1658,7 @@ impl Data {
         while let Some(read_start) = reader.find(b"For Bullettype Nr.=") {
             let read = &reader[read_start..];
             let mut bullet_index: c_int = 0;
-            self.read_value_from_string(
+            read_value_from_string(
                 read.as_ptr() as *mut c_char,
                 cstr!("For Bullettype Nr.=").as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
@@ -1687,14 +1687,14 @@ impl Data {
                  ----------------------------------------------------------------------\n"
                 );
             }
-            self.read_value_from_string(
+            read_value_from_string(
                 read.as_ptr() as *mut c_char,
                 cstr!("we will use number of phases=").as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
                 &mut (*BULLETMAP.offset(bullet_index.try_into().unwrap())).phases as *mut c_int
                     as *mut c_void,
             );
-            self.read_value_from_string(
+            read_value_from_string(
                 read.as_ptr() as *mut c_char,
                 cstr!("and number of phase changes per second=").as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
@@ -1716,39 +1716,39 @@ impl Data {
         const DIGIT_THREE_POSITION_X_STRING: &CStr = cstr!("Third digit x :");
         const DIGIT_THREE_POSITION_Y_STRING: &CStr = cstr!("Third digit y :");
 
-        self.read_value_from_string(
+        read_value_from_string(
             data.as_ptr() as *mut c_char,
             DIGIT_ONE_POSITION_X_STRING.as_ptr() as *mut c_char,
             cstr!("%hd").as_ptr() as *mut c_char,
             &mut FIRST_DIGIT_RECT.x as *mut c_short as *mut c_void,
         );
-        self.read_value_from_string(
+        read_value_from_string(
             data.as_ptr() as *mut c_char,
             DIGIT_ONE_POSITION_Y_STRING.as_ptr() as *mut c_char,
             cstr!("%hd").as_ptr() as *mut c_char,
             &mut FIRST_DIGIT_RECT.y as *mut c_short as *mut c_void,
         );
 
-        self.read_value_from_string(
+        read_value_from_string(
             data.as_ptr() as *mut c_char,
             DIGIT_TWO_POSITION_X_STRING.as_ptr() as *mut c_char,
             cstr!("%hd").as_ptr() as *mut c_char,
             &mut SECOND_DIGIT_RECT.x as *mut c_short as *mut c_void,
         );
-        self.read_value_from_string(
+        read_value_from_string(
             data.as_ptr() as *mut c_char,
             DIGIT_TWO_POSITION_Y_STRING.as_ptr() as *mut c_char,
             cstr!("%hd").as_ptr() as *mut c_char,
             &mut SECOND_DIGIT_RECT.y as *mut c_short as *mut c_void,
         );
 
-        self.read_value_from_string(
+        read_value_from_string(
             data.as_ptr() as *mut c_char,
             DIGIT_THREE_POSITION_X_STRING.as_ptr() as *mut c_char,
             cstr!("%hd").as_ptr() as *mut c_char,
             &mut THIRD_DIGIT_RECT.x as *mut i16 as *mut c_void,
         );
-        self.read_value_from_string(
+        read_value_from_string(
             data.as_ptr() as *mut c_char,
             DIGIT_THREE_POSITION_Y_STRING.as_ptr() as *mut c_char,
             cstr!("%hd").as_ptr() as *mut c_char,
