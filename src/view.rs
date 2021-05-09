@@ -1,7 +1,7 @@
 use crate::{
     b_font::{font_height, print_string_font, put_string_font},
     defs::{
-        self, get_user_center, AssembleCombatWindowFlags, BulletKind, DisplayBannerFlags, Status,
+        get_user_center, AssembleCombatWindowFlags, BulletKind, DisplayBannerFlags, Status,
         BLINKENERGY, CRY_SOUND_INTERVAL, FLASH_DURATION, LEFT_TEXT_LEN, MAXBLASTS, MAXBULLETS,
         RIGHT_TEXT_LEN, TRANSFER_SOUND_INTERVAL,
     },
@@ -23,7 +23,7 @@ use crate::{
     NUMBER_OF_DROID_TYPES, SECOND_DIGIT_RECT, SHOW_ALL_DROIDS, SHOW_SCORE, THIRD_DIGIT_RECT,
 };
 
-use log::{error, info, trace, warn};
+use log::{info, trace};
 use sdl::{
     sdl::Rect,
     video::ll::{
@@ -359,8 +359,7 @@ impl Data {
         // We check for incorrect droid types, which sometimes might occor, especially after
         // heavy editing of the crew initialisation functions ;)
         if droid.ty >= NUMBER_OF_DROID_TYPES {
-            error!("nonexistant droid-type encountered: {}", droid.ty);
-            self.terminate(defs::ERR.into());
+            panic!("nonexistant droid-type encountered: {}", droid.ty);
         }
 
         //--------------------
@@ -737,20 +736,18 @@ impl Data {
         let left = CStr::from_ptr(left);
         let left_len = left.to_bytes().len();
         if left_len > LEFT_TEXT_LEN {
-            warn!(
+            panic!(
                 "String {} too long for Left Infoline!!",
                 left.to_string_lossy()
             );
-            self.terminate(defs::ERR.into());
         }
         let right = CStr::from_ptr(right);
         let right_len = right.to_bytes().len();
         if right_len > RIGHT_TEXT_LEN {
-            warn!(
+            panic!(
                 "String {} too long for Right Infoline!!",
                 right.to_string_lossy()
             );
-            self.terminate(defs::ERR.into());
         }
 
         /* Now prepare the left/right text-boxes */

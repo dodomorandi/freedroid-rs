@@ -106,15 +106,13 @@ pub unsafe fn set_time_factor(time_factor: c_float) {
 impl Data {
     /// This function is used for terminating freedroid.  It will close
     /// the SDL submodules and exit.
-    pub unsafe fn terminate(&mut self, exit_code: c_int) -> ! {
+    pub unsafe fn quit_successfully(&mut self) -> ! {
         info!("Termination of Freedroid initiated.");
 
-        if exit_code == defs::OK.into() {
-            info!("Writing config file");
-            save_game_config();
-            info!("Writing highscores to disk");
-            self.save_highscores();
-        }
+        info!("Writing config file");
+        save_game_config();
+        info!("Writing highscores to disk");
+        self.save_highscores();
 
         // ----- free memory
         free_ship_memory();
@@ -127,7 +125,7 @@ impl Data {
         // ----- exit
         info!("Thank you for playing Freedroid.");
         SDL_Quit();
-        process::exit(exit_code);
+        process::exit(defs::ERR.into());
     }
 }
 
@@ -475,8 +473,7 @@ impl Data {
             let critical = match critical.try_into() {
                 Ok(critical) => critical,
                 Err(_) => {
-                    error!("ERROR in find_file(): Code should never reach this line!! Harakiri",);
-                    self.terminate(defs::ERR.into());
+                    panic!("ERROR in find_file(): Code should never reach this line!! Harakiri",);
                 }
             };
             // how critical is this file for the game:
@@ -498,15 +495,14 @@ impl Data {
                 Criticality::Critical => {
                     let fname = CStr::from_ptr(fname).to_string_lossy();
                     if use_theme == Themed::UseTheme as c_int {
-                        error!(
+                        panic!(
                         "file {} not found in theme-dir: graphics/{}_theme/, cannot run without it!",
                         fname,
                         CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
                     );
                     } else {
-                        error!("file {} not found, cannot run without it!", fname);
+                        panic!("file {} not found, cannot run without it!", fname);
                     }
-                    self.terminate(defs::ERR.into());
                 }
             }
         }
@@ -591,7 +587,7 @@ impl Data {
                 file
             }
             Err(_) => {
-                error!(
+                panic!(
                     "\n\
         ----------------------------------------------------------------------\n\
         Freedroid has encountered a problem:\n\
@@ -616,7 +612,6 @@ impl Data {
         ",
                     filename
                 );
-                self.terminate(defs::ERR.into());
             }
         };
         let file_len = match file
@@ -629,8 +624,7 @@ impl Data {
                 file_len
             }
             None => {
-                error!("ReadAndMallocAndTerminateFile: Error fstat-ing File....");
-                self.terminate(defs::ERR.into());
+                panic!("ReadAndMallocAndTerminateFile: Error fstat-ing File....");
             }
         };
 
@@ -641,8 +635,7 @@ impl Data {
             match file.read_exact(data) {
                 Ok(()) => info!("ReadAndMallocAndTerminateFile: Reading file succeeded..."),
                 Err(_) => {
-                    error!("ReadAndMallocAndTerminateFile: Reading file failed...");
-                    self.terminate(defs::ERR.into());
+                    panic!("ReadAndMallocAndTerminateFile: Reading file failed...");
                 }
             }
         }
@@ -656,7 +649,7 @@ impl Data {
             .find(file_end_string.to_bytes())
         {
             None => {
-                error!(
+                panic!(
                     "\n\
                 ----------------------------------------------------------------------\n\
                 Freedroid has encountered a problem:\n\
@@ -684,7 +677,6 @@ impl Data {
                     filename,
                     file_end_string.to_string_lossy()
                 );
-                self.terminate(defs::ERR.into());
             }
             Some(pos) => all_data[pos] = 0,
         }
@@ -715,13 +707,12 @@ impl Data {
             .add(CStr::from_ptr(label).to_bytes().len());
 
         if libc::sscanf(pos, format_string, dst) == libc::EOF {
-            error!(
+            panic!(
                 "ReadValueFromString(): could not read value {} of label {} with format {}",
                 CStr::from_ptr(pos).to_string_lossy(),
                 CStr::from_ptr(format_string).to_string_lossy(),
                 CStr::from_ptr(label).to_string_lossy(),
             );
-            self.terminate(defs::ERR.into());
         } else {
             info!("ReadValueFromString: value read in successfully.");
         }
@@ -742,7 +733,7 @@ impl Data {
         let search_text = CStr::from_ptr(search_text_pointer).to_string_lossy();
 
         if temp.is_null() {
-            error!(
+            panic!(
                 "\n\
              \n\
              ----------------------------------------------------------------------\n\
@@ -766,7 +757,6 @@ impl Data {
              \n",
                 search_text
             );
-            self.terminate(defs::ERR.into());
         } else {
             info!(
                 "LocateStringInDate: String {} successfully located within data. ",
@@ -871,7 +861,7 @@ impl Data {
     ) -> *mut c_char {
         let search_pointer = libc::strstr(search_string, start_indication_string);
         if search_pointer.is_null() {
-            error!(
+            panic!(
                 "\n\
              \n\
              ----------------------------------------------------------------------\n\
@@ -894,14 +884,13 @@ impl Data {
              \n",
                 CStr::from_ptr(start_indication_string).to_string_lossy()
             );
-            self.terminate(defs::ERR.into());
         } else {
             // Now we move to the beginning
             let search_pointer = search_pointer.add(libc::strlen(start_indication_string));
             let end_of_string_pointer = libc::strstr(search_pointer, end_indication_string);
             // Now we move to the end with the end pointer
             if end_of_string_pointer.is_null() {
-                error!(
+                panic!(
                     "\n\
                  \n\
                  ----------------------------------------------------------------------\n\
@@ -925,7 +914,6 @@ impl Data {
                  \n",
                     CStr::from_ptr(end_indication_string).to_string_lossy(),
                 );
-                self.terminate(defs::ERR.into());
             }
 
             // Now we allocate memory and copy the string...

@@ -22,7 +22,7 @@ use crate::{
 
 use cstr::cstr;
 use defs::{Cmds, BLINKENERGY, MAX_INFLU_POSITION_HISTORY, WAIT_TRANSFERMODE};
-use log::{error, info, warn};
+use log::{info, warn};
 use std::{
     convert::{TryFrom, TryInto},
     ops::Not,
@@ -216,8 +216,7 @@ impl Data {
             }
             counter -= 1;
             if counter >= MAXBLASTS {
-                error!("Went out of blasts in ExplodeInfluencer...");
-                self.terminate(defs::ERR.into());
+                panic!("Went out of blasts in ExplodeInfluencer...");
             }
             let blast = &mut ALL_BLASTS[counter];
             blast.ty = Explosion::Druidblast as c_int;

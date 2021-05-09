@@ -201,8 +201,7 @@ impl Data {
                 "unable to toggle windowed/fullscreen {} x {} video mode.",
                 SCREEN_RECT.w, SCREEN_RECT.h,
             );
-            error!("SDL-Error: {}", get_error());
-            self.terminate(defs::ERR.into());
+            panic!("SDL-Error: {}", get_error());
         }
 
         if (*NE_SCREEN).flags != vid_flags {
@@ -566,8 +565,7 @@ impl Data {
         let tmp = *pic;
         *pic = zoomSurface(tmp, scale, scale, 0);
         if pic.is_null() {
-            error!("zoomSurface() failed for scale = {}.", scale);
-            self.terminate(defs::ERR.into());
+            panic!("zoomSurface() failed for scale = {}.", scale);
         }
         SDL_FreeSurface(tmp);
     }
@@ -820,8 +818,7 @@ impl Data {
             (*in_font.surface).flags,
         );
         if (*out_font).surface.is_null() {
-            error!("Duplicate_Font: failed to copy SDL_Surface using SDL_ConvertSurface()");
-            self.terminate(defs::ERR.into());
+            panic!("Duplicate_Font: failed to copy SDL_Surface using SDL_ConvertSurface()");
         }
 
         out_font
@@ -836,8 +833,7 @@ impl Data {
         );
         PARA_B_FONT = self.load_font(fpath, GAME_CONFIG.scale);
         if PARA_B_FONT.is_null() {
-            error!("font file named {} was not found.", PARA_FONT_FILE);
-            self.terminate(defs::ERR.into());
+            panic!("font file named {} was not found.", PARA_FONT_FILE);
         }
 
         fpath = self.find_file(
@@ -848,8 +844,7 @@ impl Data {
         );
         FONT0_B_FONT = self.load_font(fpath, GAME_CONFIG.scale);
         if FONT0_B_FONT.is_null() {
-            error!("font file named {} was not found.\n", FONT0_FILE);
-            self.terminate(defs::ERR.into());
+            panic!("font file named {} was not found.\n", FONT0_FILE);
         }
 
         fpath = self.find_file(
@@ -860,8 +855,7 @@ impl Data {
         );
         FONT1_B_FONT = self.load_font(fpath, GAME_CONFIG.scale);
         if FONT1_B_FONT.is_null() {
-            error!("font file named {} was not found.", FONT1_FILE);
-            self.terminate(defs::ERR.into());
+            panic!("font file named {} was not found.", FONT1_FILE);
         }
 
         fpath = self.find_file(
@@ -872,8 +866,7 @@ impl Data {
         );
         FONT2_B_FONT = self.load_font(fpath, GAME_CONFIG.scale);
         if FONT2_B_FONT.is_null() {
-            error!("font file named {} was not found.", FONT2_FILE);
-            self.terminate(defs::ERR.into());
+            panic!("font file named {} was not found.", FONT2_FILE);
         }
 
         MENU_B_FONT = self.duplicate_font(&*PARA_B_FONT);
@@ -907,8 +900,7 @@ impl Data {
         // if ( SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) == -1 )
 
         if SDL_Init(SDL_INIT_VIDEO) == -1 {
-            eprintln!("Couldn't initialize SDL: {}", get_error());
-            self.terminate(defs::ERR.into());
+            panic!("Couldn't initialize SDL: {}", get_error());
         } else {
             info!("SDL Video initialisation successful.");
         }
@@ -916,8 +908,7 @@ impl Data {
         // Now SDL_TIMER is initialized here:
 
         if SDL_InitSubSystem(SDL_INIT_TIMER) == -1 {
-            eprintln!("Couldn't initialize SDL: {}", get_error());
-            self.terminate(defs::ERR.into());
+            panic!("Couldn't initialize SDL: {}", get_error());
         } else {
             info!("SDL Timer initialisation successful.");
         }
@@ -1057,39 +1048,34 @@ impl Data {
 
         // sanity check
         if fpath.is_null() {
-            error!("load_raw_pic() called with NULL argument!");
-            self.terminate(defs::ERR.into());
+            panic!("load_raw_pic() called with NULL argument!");
         }
 
         let fpath = match CStr::from_ptr(fpath).to_str() {
             Ok(fpath) => fpath,
             Err(err) => {
-                error!("unable to convert path with invalid UTF-8 data: {}", err);
-                self.terminate(defs::ERR.into());
+                panic!("unable to convert path with invalid UTF-8 data: {}", err);
             }
         };
         let fpath = Path::new(&fpath);
         let mut file = match File::open(fpath) {
             Ok(file) => file,
             Err(_) => {
-                error!("could not open file {}. Giving up", fpath.display());
-                self.terminate(defs::ERR.into());
+                panic!("could not open file {}. Giving up", fpath.display());
             }
         };
 
         let metadata = match file.metadata() {
             Ok(metadata) => metadata,
             Err(err) => {
-                error!("unable to get file metadata: {}", err);
-                self.terminate(defs::ERR.into());
+                panic!("unable to get file metadata: {}", err);
             }
         };
 
         let len = metadata.len().try_into().unwrap();
         let mut buf = vec![0; len].into_boxed_slice();
         if file.read_exact(&mut *buf).is_err() {
-            error!("cannot reading file {}. Giving up...", fpath.display());
-            self.terminate(defs::ERR.into());
+            panic!("cannot reading file {}. Giving up...", fpath.display());
         }
         drop(file);
 
@@ -1679,7 +1665,7 @@ impl Data {
                 &mut bullet_index as *mut c_int as *mut c_void,
             );
             if bullet_index >= NUMBER_OF_BULLET_TYPES {
-                error!(
+                panic!(
                     "----------------------------------------------------------------------\n\
                  Freedroid has encountered a problem:\n\
                  In function 'char* LoadThemeConfigurationFile ( ... ):\n\
@@ -1700,7 +1686,6 @@ impl Data {
                  not resolve.... Sorry, if that interrupts a major game of yours.....\n\
                  ----------------------------------------------------------------------\n"
                 );
-                self.terminate(defs::ERR.into());
             }
             self.read_value_from_string(
                 read.as_ptr() as *mut c_char,
@@ -1793,8 +1778,7 @@ impl Data {
                 // then zoom..
                 let tmp = zoomSurface(orig_surface, scale.into(), scale.into(), 0);
                 if tmp.is_null() {
-                    error!("zoomSurface() failed for scale = {}.", scale);
-                    self.terminate(defs::ERR.into());
+                    panic!("zoomSurface() failed for scale = {}.", scale);
                 }
                 // and optimize
                 *surface = SDL_DisplayFormat(tmp);
@@ -1813,12 +1797,11 @@ impl Data {
     pub unsafe fn display_image(&mut self, datafile: *mut c_char) {
         let mut image = IMG_Load(datafile);
         if image.is_null() {
-            error!(
+            panic!(
                 "couldn't load image {}: {}",
                 CStr::from_ptr(datafile).to_string_lossy(),
                 get_error()
             );
-            self.terminate(defs::ERR.into());
         }
 
         if (GAME_CONFIG.scale - 1.).abs() > c_float::EPSILON {

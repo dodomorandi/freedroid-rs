@@ -1,7 +1,7 @@
 #[cfg(target_os = "android")]
 use crate::graphics::NE_SCREEN;
 use crate::{
-    defs::{self, get_user_center, Cmds, MenuAction, PointerStates},
+    defs::{get_user_center, Cmds, MenuAction, PointerStates},
     structs::Point,
     Data,
 };
@@ -202,7 +202,7 @@ impl Data {
             match (*EVENT._type()).into() {
                 SDL_QUIT => {
                     info!("User requested termination, terminating.");
-                    self.terminate(0);
+                    self.quit_successfully();
                 }
 
                 SDL_KEYDOWN => {
@@ -510,8 +510,7 @@ impl Data {
 
     pub unsafe fn init_joy(&mut self) {
         if SDL_InitSubSystem(SDL_INIT_JOYSTICK) == -1 {
-            eprintln!("Couldn't initialize SDL-Joystick: {}", sdl::get_error(),);
-            self.terminate(defs::ERR.into());
+            panic!("Couldn't initialize SDL-Joystick: {}", sdl::get_error(),);
         } else {
             info!("SDL Joystick initialisation successful.");
         }

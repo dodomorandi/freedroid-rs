@@ -1,6 +1,6 @@
 use crate::{
     b_font::{char_width, font_height},
-    defs::{self, Cmds, PointerStates, SHOW_WAIT, TEXT_STRETCH},
+    defs::{Cmds, PointerStates, SHOW_WAIT, TEXT_STRETCH},
     global::GAME_CONFIG,
     graphics::{NE_SCREEN, VID_BPP},
     input::{SDL_Delay, JOY_NUM_AXES, JOY_SENSITIVITY, KEY_CMDS},
@@ -442,8 +442,7 @@ impl Data {
     pub unsafe fn display_char(&mut self, c: c_uchar) {
         // don't accept non-printable characters
         if !(c.is_ascii_graphic() || c.is_ascii_whitespace()) {
-            println!("Illegal char passed to DisplayChar(): {}", c);
-            self.terminate(defs::ERR.into());
+            panic!("Illegal char passed to DisplayChar(): {}", c);
         }
 
         self.put_char(NE_SCREEN, MY_CURSOR_X, MY_CURSOR_Y, c);

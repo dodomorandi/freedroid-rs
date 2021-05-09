@@ -451,8 +451,7 @@ impl Data {
         let mut ship_file = match File::create(filename) {
             Ok(file) => file,
             Err(err) => {
-                error!("Error opening ship file: {}. Terminating", err);
-                self.terminate(defs::ERR.into());
+                panic!("Error opening ship file: {}. Terminating", err);
             }
         };
 
@@ -496,14 +495,12 @@ freedroid-discussion@lists.sourceforge.net\n\
                 let level = match level_iter.next() {
                     Some(level) => level,
                     None => {
-                        error!("Missing Levelnumber error in SaveShip.");
-                        self.terminate(defs::ERR.into());
+                        panic!("Missing Levelnumber error in SaveShip.");
                     }
                 };
 
                 if level_iter.next().is_some() {
-                    error!("Identical Levelnumber Error in SaveShip.");
-                    self.terminate(defs::ERR.into());
+                    panic!("Identical Levelnumber Error in SaveShip.");
                 }
 
                 //--------------------
@@ -542,8 +539,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         match result {
             Ok(()) => defs::OK.into(),
             Err(err) => {
-                error!("Error writing to ship file: {}. Terminating", err);
-                self.terminate(defs::ERR.into());
+                panic!("Error writing to ship file: {}. Terminating", err);
             }
         }
     }
@@ -653,8 +649,7 @@ impl Data {
         /* allocate some memory */
         let level_mem = alloc_zeroed(Layout::array::<u8>(mem_amount).unwrap());
         if level_mem.is_null() {
-            error!("could not allocate memory, terminating.");
-            self.terminate(defs::ERR.into());
+            panic!("could not allocate memory, terminating.");
         }
         let mut level_cursor =
             std::io::Cursor::new(std::slice::from_raw_parts_mut(level_mem, mem_amount));
@@ -879,12 +874,11 @@ impl Data {
                 list_index += 1;
             }
             if list_index >= NUMBER_OF_DROID_TYPES {
-                error!(
+                panic!(
                     "unknown droid type: {} found in data file for level {}",
                     CStr::from_ptr(type_indication_string.as_ptr()).to_string_lossy(),
                     our_level_number,
                 );
-                self.terminate(defs::ERR.into());
             } else {
                 info!(
                     "Type indication string {} translated to type Nr.{}.",
@@ -925,10 +919,9 @@ impl Data {
             }
 
             if free_all_enemys_position == MAX_ENEMYS_ON_SHIP {
-                error!(
+                panic!(
                     "No more free position to fill random droids into in GetCrew...Terminating...."
                 );
-                self.terminate(defs::ERR.into());
             }
 
             ALL_ENEMYS[free_all_enemys_position].ty = list_of_types_allowed[usize::try_from(
@@ -982,8 +975,7 @@ impl Data {
                 DROIDS_LEVEL_DESCRIPTION_END_STRING.as_ptr() as *mut c_char,
             );
             if end_of_this_droid_section_pointer.is_null() {
-                error!("GetCrew: Unterminated droid section encountered!! Terminating.");
-                self.terminate(defs::ERR.into());
+                panic!("GetCrew: Unterminated droid section encountered!! Terminating.");
             }
             self.get_this_levels_droids(droid_section_pointer);
             droid_section_pointer = end_of_this_droid_section_pointer.add(2); // Move past the inserted String terminator
@@ -1117,8 +1109,7 @@ impl Data {
             START_OF_LIFT_DATA_STRING.as_ptr() as *mut c_char,
         );
         if entry_pointer.is_null() {
-            error!("START OF LIFT DATA STRING NOT FOUND!  Terminating...");
-            self.terminate(defs::ERR.into());
+            panic!("START OF LIFT DATA STRING NOT FOUND!  Terminating...");
         }
 
         let mut label: c_int = 0;
@@ -1182,7 +1173,7 @@ impl Data {
                     curdoor += 1;
 
                     if curdoor > MAX_DOORS_ON_LEVEL {
-                        error!(
+                        panic!(
                             "\n\
 \n\
 ----------------------------------------------------------------------\n\
@@ -1206,7 +1197,6 @@ Sorry...\n\
 \n",
                             level.levelnum, MAX_DOORS_ON_LEVEL
                         );
-                        self.terminate(defs::ERR.into());
                     }
                 }
             }
@@ -1235,7 +1225,7 @@ Sorry...\n\
                     curref += 1;
 
                     if curref > MAX_REFRESHES_ON_LEVEL {
-                        error!(
+                        panic!(
                             "\n\
                         \n\
 ----------------------------------------------------------------------\n\
@@ -1259,7 +1249,6 @@ Sorry...\n\
 \n",
                             level.levelnum, MAX_REFRESHES_ON_LEVEL
                         );
-                        self.terminate(defs::ERR.into());
                     }
                 }
             }
@@ -1317,8 +1306,7 @@ impl Data {
         /* Read Header Data: levelnum and x/ylen */
         let data_pointer = libc::strstr(data, cstr!("Levelnumber:").as_ptr() as *mut c_char);
         if data_pointer.is_null() {
-            error!("No Levelnumber entry found! Terminating! ");
-            self.terminate(defs::ERR.into());
+            panic!("No Levelnumber entry found! Terminating! ");
         }
         libc::sscanf(
             data_pointer,

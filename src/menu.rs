@@ -10,8 +10,8 @@ use crate::{
 use crate::{
     b_font::{char_width, font_height, print_string_font},
     defs::{
-        self, get_user_center, AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags,
-        Droid, MapTile, MenuAction, Status, Themed, BYCOLOR, CREDITS_PIC_FILE_C, GRAPHICS_DIR_C,
+        get_user_center, AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags, Droid,
+        MapTile, MenuAction, Status, Themed, BYCOLOR, CREDITS_PIC_FILE_C, GRAPHICS_DIR_C,
         MAX_MAP_COLS, MAX_MAP_ROWS,
     },
     global::{
@@ -38,7 +38,6 @@ use crate::{
 };
 
 use cstr::cstr;
-use log::error;
 use sdl::{
     keysym::{SDLK_BACKSPACE, SDLK_DOWN, SDLK_ESCAPE, SDLK_LEFT, SDLK_RIGHT, SDLK_UP},
     mouse::ll::{SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE},
@@ -240,7 +239,7 @@ impl Data {
                 || key == KEY_CMDS[Cmds::Fire as usize][1]
                 || key == KEY_CMDS[Cmds::Fire as usize][2]
             {
-                self.terminate(defs::OK.into());
+                self.quit_successfully();
             }
         }
 
@@ -1499,11 +1498,10 @@ impl Data {
                 newmem,
             ) as *mut i8;
             if cur_level.map[row].is_null() {
-                error!(
+                panic!(
                     "Failed to re-allocate to {} bytes in map row {}",
                     newmem, row,
                 );
-                self.terminate(defs::ERR.into());
             }
             if cur_level.xlen > oldxlen {
                 // fill new map area with VOID
