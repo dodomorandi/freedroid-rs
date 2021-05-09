@@ -57,9 +57,28 @@ const ARCADE_INPUT_CHARS: [c_int; 70] = [
     119, 120, 121, 122,
 ];
 
-static mut MY_CURSOR_X: c_int = 0;
-static mut MY_CURSOR_Y: c_int = 0;
-static mut TEXT_BUFFER: [u8; 10000] = [0; 10000];
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Text {
+    my_cursor_x: c_int,
+    my_cursor_y: c_int,
+    text_buffer: [u8; 10000],
+
+    #[cfg(feature = "arcade-input")]
+    last_frame_time: u32,
+}
+
+impl Default for Text {
+    fn default() -> Self {
+        Self {
+            my_cursor_x: 0,
+            my_cursor_y: 0,
+            text_buffer: [0; 10000],
+
+            #[cfg(feature = "arcade-input")]
+            last_frame_time: 0,
+        }
+    }
+}
 
 impl Data {
     /// Reads a string of "MaxLen" from User-input, and echos it
@@ -78,8 +97,8 @@ impl Data {
             return null_mut();
         }
 
-        let x0 = MY_CURSOR_X;
-        let y0 = MY_CURSOR_Y;
+        let x0 = self.text.my_cursor_x;
+        let y0 = self.text.my_cursor_y;
         let height = font_height(&*self.b_font.current_font);
 
         let store = SDL_CreateRGBSurface(0, SCREEN_RECT.w.into(), height, VID_BPP, 0, 0, 0, 0);
@@ -93,8 +112,6 @@ impl Data {
 
         #[cfg(feature = "arcade-input")]
         let blink_time = 200; // For adjusting fast <->slow blink; in ms
-        #[cfg(feature = "arcade-input")]
-        static mut LAST_FRAME_TIME: u32 = 0; //  = SDL_GetTicks();
         #[cfg(feature = "arcade-input")]
         let mut inputchar: c_int = 17; // initial char = A
         #[cfg(feature = "arcade-input")]
@@ -125,11 +142,11 @@ impl Data {
                 }
                 let key = ARCADE_INPUT_CHARS[usize::try_from(inputchar).unwrap()];
 
-                let frame_duration = SDL_GetTicks() - LAST_FRAME_TIME;
+                let frame_duration = SDL_GetTicks() - self.text.last_frame_time;
                 if frame_duration > blink_time / 2 {
                     input[curpos] = key.try_into().unwrap(); // We want to show the currently chosen character
                     if frame_duration > blink_time {
-                        LAST_FRAME_TIME = SDL_GetTicks();
+                        self.text.last_frame_time = SDL_GetTicks();
                     } else {
                         input[curpos] = empty_char; // Hmm., how to get character widht? If using '.', or any fill character, we'd need to know
                     }
@@ -309,7 +326,7 @@ impl Data {
     ///  o) passing -1 as coord uses previous x and next-line y for printing
     ///  o) Screen is updated immediatly after print, using SDL_flip()
     pub unsafe fn printf_sdl(
-        &self,
+        &mut self,
         screen: *mut SDL_Surface,
         mut x: c_int,
         mut y: c_int,
@@ -318,20 +335,21 @@ impl Data {
         use std::io::Write;
 
         if x == -1 {
-            x = MY_CURSOR_X;
+            x = self.text.my_cursor_x;
         } else {
-            MY_CURSOR_X = x;
+            self.text.my_cursor_x = x;
         }
 
         if y == -1 {
-            y = MY_CURSOR_Y;
+            y = self.text.my_cursor_y;
         } else {
-            MY_CURSOR_Y = y;
+            self.text.my_cursor_y = y;
         }
 
-        let mut cursor = Cursor::new(TEXT_BUFFER.as_mut());
+        let mut cursor = Cursor::new(self.text.text_buffer.as_mut());
         cursor.write_fmt(format_args).unwrap();
-        let text_buffer = &TEXT_BUFFER[..usize::try_from(cursor.position()).unwrap()];
+        let cursor_pos = cursor.position();
+        let text_buffer = &self.text.text_buffer[..usize::try_from(cursor_pos).unwrap()];
         let textlen: c_int = text_buffer
             .iter()
             .map(|&c| char_width(&*self.b_font.current_font, c))
@@ -349,11 +367,11 @@ impl Data {
         ); // update the relevant line
 
         if *text_buffer.last().unwrap() == b'\n' {
-            MY_CURSOR_X = x;
-            MY_CURSOR_Y = (f64::from(y) + 1.1 * f64::from(h)) as c_int;
+            self.text.my_cursor_x = x;
+            self.text.my_cursor_y = (f64::from(y) + 1.1 * f64::from(h)) as c_int;
         } else {
-            MY_CURSOR_X += textlen;
-            MY_CURSOR_Y = y;
+            self.text.my_cursor_x += textlen;
+            self.text.my_cursor_y = y;
         }
     }
 
@@ -383,10 +401,10 @@ impl Data {
         }
 
         if startx != -1 {
-            MY_CURSOR_X = startx;
+            self.text.my_cursor_x = startx;
         }
         if starty != -1 {
-            MY_CURSOR_Y = starty;
+            self.text.my_cursor_y = starty;
         }
 
         let mut store_clip = Rect::new(0, 0, 0, 0);
@@ -403,13 +421,13 @@ impl Data {
 
         let clip = &*clip;
         while let Some((&first, rest)) = text.split_first() {
-            if MY_CURSOR_Y >= c_int::from(clip.y) + c_int::from(clip.h) {
+            if self.text.my_cursor_y >= c_int::from(clip.y) + c_int::from(clip.h) {
                 break;
             }
 
             if first == b'\n' {
-                MY_CURSOR_X = clip.x.into();
-                MY_CURSOR_Y +=
+                self.text.my_cursor_x = clip.x.into();
+                self.text.my_cursor_y +=
                     (f64::from(font_height(&*self.b_font.current_font)) * TEXT_STRETCH) as c_int;
             } else {
                 self.display_char(first as c_uchar);
@@ -418,8 +436,8 @@ impl Data {
             text = rest;
             if self.is_linebreak_needed(text, clip) {
                 text = &text[1..];
-                MY_CURSOR_X = clip.x.into();
-                MY_CURSOR_Y +=
+                self.text.my_cursor_x = clip.x.into();
+                self.text.my_cursor_y +=
                     (f64::from(font_height(&*self.b_font.current_font)) * TEXT_STRETCH) as c_int;
             }
         }
@@ -430,7 +448,9 @@ impl Data {
          * ScrollText() wants to know if we still wrote something inside the
          * clip-rectangle, of if the Text has been scrolled out
          */
-        if MY_CURSOR_Y < clip.y.into() || starty > c_int::from(clip.y) + c_int::from(clip.h) {
+        if self.text.my_cursor_y < clip.y.into()
+            || starty > c_int::from(clip.y) + c_int::from(clip.h)
+        {
             false as c_int
         } else {
             true as c_int
@@ -445,12 +465,12 @@ impl Data {
             panic!("Illegal char passed to DisplayChar(): {}", c);
         }
 
-        self.put_char(NE_SCREEN, MY_CURSOR_X, MY_CURSOR_Y, c);
+        self.put_char(NE_SCREEN, self.text.my_cursor_x, self.text.my_cursor_y, c);
 
         // After the char has been displayed, we must move the cursor to its
         // new position.  That depends of course on the char displayed.
         //
-        MY_CURSOR_X += char_width(&*self.b_font.current_font, c);
+        self.text.my_cursor_x += char_width(&*self.b_font.current_font, c);
     }
 
     ///  This function checks if the next word still fits in this line
@@ -478,7 +498,8 @@ impl Data {
         for c in iter {
             let w = char_width(&*self.b_font.current_font, c);
             needed_space += w;
-            if MY_CURSOR_X + needed_space > c_int::from(clip.x) + c_int::from(clip.w) - w {
+            if self.text.my_cursor_x + needed_space > c_int::from(clip.x) + c_int::from(clip.w) - w
+            {
                 return true;
             }
         }

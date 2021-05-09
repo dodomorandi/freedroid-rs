@@ -51,6 +51,7 @@ use misc::{
 };
 use ship::alert_level_warning;
 use structs::{Blast, Bullet, Enemy, Finepoint, Level, Lift, Ship};
+use text::Text;
 use vars::{CONS_DROID_RECT, ME, SHIP_EMPTY_COUNTER};
 
 use sdl::{
@@ -155,6 +156,7 @@ struct Data {
     bullet: BulletData,
     influencer: Influencer,
     init: Init,
+    text: Text,
 }
 
 impl Default for Data {
@@ -167,6 +169,7 @@ impl Default for Data {
             bullet: Default::default(),
             influencer: Default::default(),
             init: Default::default(),
+            text: Default::default(),
         }
     }
 }
