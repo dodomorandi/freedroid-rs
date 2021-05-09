@@ -7,7 +7,6 @@ use crate::{
     global::{
         DROID_RADIUS, GAME_CONFIG, LEVEL_DOORS_NOT_MOVED_TIME, TIME_FOR_EACH_PHASE_OF_DOOR_MOVEMENT,
     },
-    influencer::refresh_influencer,
     menu::SHIP_EXT,
     misc::{dealloc_c_string, frame_time, my_random},
     structs::{Finepoint, GrobPoint, Level},
@@ -1569,7 +1568,7 @@ impl Data {
                         self.enter_konsole();
                     }
                 }
-                Refresh1 | Refresh2 | Refresh3 | Refresh4 => refresh_influencer(),
+                Refresh1 | Refresh2 | Refresh3 | Refresh4 => self.refresh_influencer(),
                 _ => {}
             }
         }

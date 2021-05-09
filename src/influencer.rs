@@ -29,61 +29,77 @@ use std::{
     os::raw::{c_char, c_float, c_int},
 };
 
-static mut CURRENT_ZERO_RING_INDEX: c_int = 0;
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Influencer {
+    current_zero_ring_index: usize,
+    time_counter: u32,
+    transfer_counter: f32,
+}
+
+impl Default for Influencer {
+    fn default() -> Self {
+        Self {
+            /* to slow down healing process */
+            time_counter: 3,
+            current_zero_ring_index: Default::default(),
+            transfer_counter: Default::default(),
+        }
+    }
+}
 
 const REFRESH_ENERGY: f32 = 3.;
 
 const COLLISION_PUSHSPEED: f32 = 2.0;
 const MAXIMAL_STEP_SIZE: f32 = 7.0 / 20.;
 
-/// Refresh fields can be used to regain energy
-/// lost due to bullets or collisions, but not energy lost due to permanent
-/// loss of health in PermanentLoseEnergy.
-///
-/// This function now takes into account the framerates.
-pub unsafe fn refresh_influencer() {
-    static mut TIME_COUNTER: c_int = 3; /* to slow down healing process */
-
-    TIME_COUNTER -= 1;
-    if TIME_COUNTER != 0 {
-        return;
-    }
-    TIME_COUNTER = 3;
-
-    if ME.energy < ME.health {
-        ME.energy += REFRESH_ENERGY * frame_time() * 5.;
-        REAL_SCORE -= REFRESH_ENERGY * frame_time() * 10.;
-
-        if REAL_SCORE < 0. {
-            // don't go negative...
-            REAL_SCORE = 0.;
-        }
-
-        if ME.energy > ME.health {
-            ME.energy = ME.health;
-        }
-
-        if LAST_REFRESH_SOUND > 0.6 {
-            refresh_sound();
-            LAST_REFRESH_SOUND = 0.;
-        }
-
-        // since robots like the refresh, the influencer might also say so...
-        if GAME_CONFIG.droid_talk != 0 {
-            ME.text_to_be_displayed = cstr!("Ahhh, that feels so good...").as_ptr() as *mut c_char;
-            ME.text_visible_time = 0.;
-        }
-    } else {
-        // If nothing more is to be had, the influencer might also say so...
-        if GAME_CONFIG.droid_talk != 0 {
-            ME.text_to_be_displayed =
-                cstr!("Oh, it seems that was it again.").as_ptr() as *mut c_char;
-            ME.text_visible_time = 0.;
-        }
-    }
-}
-
 impl Data {
+    /// Refresh fields can be used to regain energy
+    /// lost due to bullets or collisions, but not energy lost due to permanent
+    /// loss of health in PermanentLoseEnergy.
+    ///
+    /// This function now takes into account the framerates.
+    pub unsafe fn refresh_influencer(&mut self) {
+        let time_counter = &mut self.influencer.time_counter;
+        *time_counter -= 1;
+        if *time_counter != 0 {
+            return;
+        }
+        *time_counter = 3;
+
+        if ME.energy < ME.health {
+            ME.energy += REFRESH_ENERGY * frame_time() * 5.;
+            REAL_SCORE -= REFRESH_ENERGY * frame_time() * 10.;
+
+            if REAL_SCORE < 0. {
+                // don't go negative...
+                REAL_SCORE = 0.;
+            }
+
+            if ME.energy > ME.health {
+                ME.energy = ME.health;
+            }
+
+            if LAST_REFRESH_SOUND > 0.6 {
+                refresh_sound();
+                LAST_REFRESH_SOUND = 0.;
+            }
+
+            // since robots like the refresh, the influencer might also say so...
+            if GAME_CONFIG.droid_talk != 0 {
+                ME.text_to_be_displayed =
+                    cstr!("Ahhh, that feels so good...").as_ptr() as *mut c_char;
+                ME.text_visible_time = 0.;
+            }
+        } else {
+            // If nothing more is to be had, the influencer might also say so...
+            if GAME_CONFIG.droid_talk != 0 {
+                ME.text_to_be_displayed =
+                    cstr!("Oh, it seems that was it again.").as_ptr() as *mut c_char;
+                ME.text_visible_time = 0.;
+            }
+        }
+    }
+
     pub unsafe fn check_influence_enemy_collision(&mut self) {
         for (i, enemy) in ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()]
             .iter_mut()
@@ -139,7 +155,7 @@ impl Data {
                 enemy.pos.y -= frame_time().copysign(ME.pos.y - enemy.pos.y);
 
                 // there might be walls close too, so lets check again for collisions with them
-                check_influence_wall_collisions();
+                self.check_influence_wall_collisions();
 
                 // shortly stop this enemy, then send him back to previous waypoint
                 if enemy.warten == 0. {
@@ -212,138 +228,144 @@ impl Data {
 
         play_sound(Sound::Influexplosion as c_int);
     }
-}
 
-/// This function checks for collisions of the influencer with walls,
-/// doors, consoles, boxes and all other map elements.
-/// In case of a collision, the position and speed of the influencer are
-/// adapted accordingly.
-/// NOTE: Of course this functions HAS to take into account the current framerate!
-pub unsafe fn check_influence_wall_collisions() {
-    let sx = ME.speed.x * frame_time();
-    let sy = ME.speed.y * frame_time();
-    let mut h_door_sliding_active = false;
+    /// This function checks for collisions of the influencer with walls,
+    /// doors, consoles, boxes and all other map elements.
+    /// In case of a collision, the position and speed of the influencer are
+    /// adapted accordingly.
+    /// NOTE: Of course this functions HAS to take into account the current framerate!
+    pub unsafe fn check_influence_wall_collisions(&self) {
+        let sx = ME.speed.x * frame_time();
+        let sy = ME.speed.y * frame_time();
+        let mut h_door_sliding_active = false;
 
-    let lastpos = Finepoint {
-        x: ME.pos.x - sx,
-        y: ME.pos.y - sy,
-    };
+        let lastpos = Finepoint {
+            x: ME.pos.x - sx,
+            y: ME.pos.y - sy,
+        };
 
-    let res = druid_passable(ME.pos.x, ME.pos.y);
+        let res = druid_passable(ME.pos.x, ME.pos.y);
 
-    // Influence-Wall-Collision only has to be checked in case of
-    // a collision of course, which is indicated by res not CENTER.
-    if res != Direction::Center as c_int {
-        //--------------------
-        // At first we just check in which directions (from the last position)
-        // the ways are blocked and in which directions the ways are open.
-        //
-        let north_south_axis_blocked;
-        if !((druid_passable(
-            lastpos.x,
-            lastpos.y + (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * frame_time(),
-        ) != Direction::Center as c_int)
-            || (druid_passable(
+        // Influence-Wall-Collision only has to be checked in case of
+        // a collision of course, which is indicated by res not CENTER.
+        if res != Direction::Center as c_int {
+            //--------------------
+            // At first we just check in which directions (from the last position)
+            // the ways are blocked and in which directions the ways are open.
+            //
+            let north_south_axis_blocked;
+            if !((druid_passable(
                 lastpos.x,
                 lastpos.y
-                    - (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * frame_time(),
-            ) != Direction::Center as c_int))
-        {
-            info!("North-south-Axis seems to be free.");
-            north_south_axis_blocked = false;
-        } else {
-            north_south_axis_blocked = true;
-        }
+                    + (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * frame_time(),
+            ) != Direction::Center as c_int)
+                || (druid_passable(
+                    lastpos.x,
+                    lastpos.y
+                        - (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * frame_time(),
+                ) != Direction::Center as c_int))
+            {
+                info!("North-south-Axis seems to be free.");
+                north_south_axis_blocked = false;
+            } else {
+                north_south_axis_blocked = true;
+            }
 
-        let east_west_axis_blocked;
-        if (druid_passable(
-            lastpos.x + (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * frame_time(),
-            lastpos.y,
-        ) == Direction::Center as c_int)
-            && (druid_passable(
+            let east_west_axis_blocked;
+            if (druid_passable(
                 lastpos.x
-                    - (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * frame_time(),
+                    + (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * frame_time(),
                 lastpos.y,
             ) == Direction::Center as c_int)
-        {
-            east_west_axis_blocked = false;
-        } else {
-            east_west_axis_blocked = true;
-        }
-
-        // Now we try to handle the sitution:
-
-        if north_south_axis_blocked {
-            // NorthSouthCorrectionDone=TRUE;
-            ME.pos.y = lastpos.y;
-            ME.speed.y = 0.;
-
-            // if its an open door, we also correct the east-west position, in the
-            // sense that we move thowards the middle
-            if get_map_brick(&*CUR_LEVEL, ME.pos.x, ME.pos.y - 0.5) == MapTile::HGanztuere as u8
-                || get_map_brick(&*CUR_LEVEL, ME.pos.x, ME.pos.y + 0.5) == MapTile::HGanztuere as u8
+                && (druid_passable(
+                    lastpos.x
+                        - (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * frame_time(),
+                    lastpos.y,
+                ) == Direction::Center as c_int)
             {
-                ME.pos.x += f32::copysign(PUSHSPEED * frame_time(), ME.pos.x.round() - ME.pos.x);
-                h_door_sliding_active = true;
+                east_west_axis_blocked = false;
+            } else {
+                east_west_axis_blocked = true;
             }
-        }
 
-        if east_west_axis_blocked {
-            // EastWestCorrectionDone=TRUE;
-            if !h_door_sliding_active {
-                ME.pos.x = lastpos.x;
+            // Now we try to handle the sitution:
+
+            if north_south_axis_blocked {
+                // NorthSouthCorrectionDone=TRUE;
+                ME.pos.y = lastpos.y;
+                ME.speed.y = 0.;
+
+                // if its an open door, we also correct the east-west position, in the
+                // sense that we move thowards the middle
+                if get_map_brick(&*CUR_LEVEL, ME.pos.x, ME.pos.y - 0.5) == MapTile::HGanztuere as u8
+                    || get_map_brick(&*CUR_LEVEL, ME.pos.x, ME.pos.y + 0.5)
+                        == MapTile::HGanztuere as u8
+                {
+                    ME.pos.x +=
+                        f32::copysign(PUSHSPEED * frame_time(), ME.pos.x.round() - ME.pos.x);
+                    h_door_sliding_active = true;
+                }
             }
-            ME.speed.x = 0.;
 
-            // if its an open door, we also correct the north-south position, in the
-            // sense that we move thowards the middle
-            if (get_map_brick(&*CUR_LEVEL, ME.pos.x + 0.5, ME.pos.y) == MapTile::VGanztuere as u8)
-                || (get_map_brick(&*CUR_LEVEL, ME.pos.x - 0.5, ME.pos.y)
+            if east_west_axis_blocked {
+                // EastWestCorrectionDone=TRUE;
+                if !h_door_sliding_active {
+                    ME.pos.x = lastpos.x;
+                }
+                ME.speed.x = 0.;
+
+                // if its an open door, we also correct the north-south position, in the
+                // sense that we move thowards the middle
+                if (get_map_brick(&*CUR_LEVEL, ME.pos.x + 0.5, ME.pos.y)
                     == MapTile::VGanztuere as u8)
+                    || (get_map_brick(&*CUR_LEVEL, ME.pos.x - 0.5, ME.pos.y)
+                        == MapTile::VGanztuere as u8)
+                {
+                    ME.pos.y +=
+                        f32::copysign(PUSHSPEED * frame_time(), ME.pos.y.round() - ME.pos.y);
+                }
+            }
+
+            if east_west_axis_blocked && north_south_axis_blocked {
+                // printf("\nBOTH AXES BLOCKED... Corner handling activated...");
+                // in case both axes were blocked, we must be at a corner.
+                // both axis-blocked-routines have been executed, so the speed has
+                // been set to absolutely zero and we are at the previous position.
+                //
+                // But perhaps everything would be fine,
+                // if we just restricted ourselves to moving in only ONE direction.
+                // try if this would make sense...
+                // (Of course we may only move into the one direction that is free)
+                //
+                if druid_passable(ME.pos.x + sx, ME.pos.y) == Direction::Center as c_int {
+                    ME.pos.x += sx;
+                }
+                if druid_passable(ME.pos.x, ME.pos.y + sy) == Direction::Center as c_int {
+                    ME.pos.y += sy;
+                }
+            }
+
+            // Here I introduce some extra security as a fallback:  Obviously
+            // if the influencer is blocked FOR THE SECOND TIME, then the throw-back-algorithm
+            // above HAS FAILED.  The absolutely fool-proof and secure handling is now done by
+            // simply reverting to the last influ coordinated, where influ was NOT BLOCKED.
+            // For this reason, a history of influ-coordinates has been introduced.  This will all
+            // be done here and now:
+
+            if (druid_passable(ME.pos.x, ME.pos.y) != Direction::Center as c_int)
+                && (druid_passable(
+                    self.get_influ_position_history_x(0),
+                    self.get_influ_position_history_y(0),
+                ) != Direction::Center as c_int)
+                && (druid_passable(
+                    self.get_influ_position_history_x(1),
+                    self.get_influ_position_history_y(1),
+                ) != Direction::Center as c_int)
             {
-                ME.pos.y += f32::copysign(PUSHSPEED * frame_time(), ME.pos.y.round() - ME.pos.y);
+                ME.pos.x = self.get_influ_position_history_x(2);
+                ME.pos.y = self.get_influ_position_history_y(2);
+                warn!("ATTENTION! CheckInfluenceWallCollsision FALLBACK ACTIVATED!!",);
             }
-        }
-
-        if east_west_axis_blocked && north_south_axis_blocked {
-            // printf("\nBOTH AXES BLOCKED... Corner handling activated...");
-            // in case both axes were blocked, we must be at a corner.
-            // both axis-blocked-routines have been executed, so the speed has
-            // been set to absolutely zero and we are at the previous position.
-            //
-            // But perhaps everything would be fine,
-            // if we just restricted ourselves to moving in only ONE direction.
-            // try if this would make sense...
-            // (Of course we may only move into the one direction that is free)
-            //
-            if druid_passable(ME.pos.x + sx, ME.pos.y) == Direction::Center as c_int {
-                ME.pos.x += sx;
-            }
-            if druid_passable(ME.pos.x, ME.pos.y + sy) == Direction::Center as c_int {
-                ME.pos.y += sy;
-            }
-        }
-
-        // Here I introduce some extra security as a fallback:  Obviously
-        // if the influencer is blocked FOR THE SECOND TIME, then the throw-back-algorithm
-        // above HAS FAILED.  The absolutely fool-proof and secure handling is now done by
-        // simply reverting to the last influ coordinated, where influ was NOT BLOCKED.
-        // For this reason, a history of influ-coordinates has been introduced.  This will all
-        // be done here and now:
-
-        if (druid_passable(ME.pos.x, ME.pos.y) != Direction::Center as c_int)
-            && (druid_passable(
-                get_influ_position_history_x(0),
-                get_influ_position_history_y(0),
-            ) != Direction::Center as c_int)
-            && (druid_passable(
-                get_influ_position_history_x(1),
-                get_influ_position_history_y(1),
-            ) != Direction::Center as c_int)
-        {
-            ME.pos.x = get_influ_position_history_x(2);
-            ME.pos.y = get_influ_position_history_y(2);
-            warn!("ATTENTION! CheckInfluenceWallCollsision FALLBACK ACTIVATED!!",);
         }
     }
 }
@@ -372,16 +394,14 @@ impl Data {
     /// This function moves the influencer, adjusts his speed according to
     /// keys pressed and also adjusts his status and current "phase" of his rotation.
     pub(crate) unsafe fn move_influence(&mut self) {
-        static mut TRANSFER_COUNTER: c_float = 0.;
-
         let accel = (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).accel * frame_time();
 
         // We store the influencers position for the history record and so that others
         // can follow his trail.
 
-        CURRENT_ZERO_RING_INDEX += 1;
-        CURRENT_ZERO_RING_INDEX %= c_int::try_from(MAX_INFLU_POSITION_HISTORY).unwrap();
-        ME.position_history_ring_buffer[usize::try_from(CURRENT_ZERO_RING_INDEX).unwrap()] = Gps {
+        self.influencer.current_zero_ring_index += 1;
+        self.influencer.current_zero_ring_index %= MAX_INFLU_POSITION_HISTORY;
+        ME.position_history_ring_buffer[self.influencer.current_zero_ring_index] = Gps {
             x: ME.pos.x,
             y: ME.pos.y,
             z: (*CUR_LEVEL).levelnum,
@@ -404,9 +424,9 @@ impl Data {
         }
 
         /* Time passed before entering Transfermode ?? */
-        if TRANSFER_COUNTER >= WAIT_TRANSFERMODE {
+        if self.influencer.transfer_counter >= WAIT_TRANSFERMODE {
             ME.status = Status::Transfermode as c_int;
-            TRANSFER_COUNTER = 0.;
+            self.influencer.transfer_counter = 0.;
         }
 
         if self.up_pressed() {
@@ -428,9 +448,9 @@ impl Data {
             ME.status = Status::Mobile as c_int;
         }
 
-        if (TRANSFER_COUNTER - 1.).abs() <= f32::EPSILON {
+        if (self.influencer.transfer_counter - 1.).abs() <= f32::EPSILON {
             ME.status = Status::Transfermode as c_int;
-            TRANSFER_COUNTER = 0.;
+            self.influencer.transfer_counter = 0.;
         }
 
         if self.cmd_is_active(Cmds::Activate) {
@@ -445,7 +465,7 @@ impl Data {
             && ME.status != Status::Transfermode as c_int
         {
             // Proposed FireActivatePressed here...
-            TRANSFER_COUNTER += frame_time(); // Or make it an option!
+            self.influencer.transfer_counter += frame_time(); // Or make it an option!
         }
 
         if self.fire_pressed()
@@ -624,21 +644,23 @@ pub unsafe fn adjust_speed() {
     ME.speed.y = ME.speed.y.clamp(-maxspeed, maxspeed);
 }
 
-pub unsafe fn get_position_history(how_long_past: c_int) -> &'static Gps {
-    let ring_position = CURRENT_ZERO_RING_INDEX - how_long_past
-        + i32::try_from(MAX_INFLU_POSITION_HISTORY).unwrap();
+impl Data {
+    pub unsafe fn get_position_history(&self, how_long_past: c_int) -> &'static Gps {
+        let ring_position = self.influencer.current_zero_ring_index + MAX_INFLU_POSITION_HISTORY
+            - usize::try_from(how_long_past).unwrap();
 
-    let ring_position = usize::try_from(ring_position).unwrap() % MAX_INFLU_POSITION_HISTORY;
+        let ring_position = ring_position % MAX_INFLU_POSITION_HISTORY;
 
-    &ME.position_history_ring_buffer[ring_position]
-}
+        &ME.position_history_ring_buffer[ring_position]
+    }
 
-pub unsafe fn get_influ_position_history_x(how_long_past: c_int) -> c_float {
-    get_position_history(how_long_past).x
-}
+    pub unsafe fn get_influ_position_history_x(&self, how_long_past: c_int) -> c_float {
+        self.get_position_history(how_long_past).x
+    }
 
-pub unsafe fn get_influ_position_history_y(how_long_past: c_int) -> c_float {
-    get_position_history(how_long_past).y
+    pub unsafe fn get_influ_position_history_y(&self, how_long_past: c_int) -> c_float {
+        self.get_position_history(how_long_past).y
+    }
 }
 
 pub unsafe fn init_influ_position_history() {

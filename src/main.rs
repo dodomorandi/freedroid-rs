@@ -42,7 +42,7 @@ use enemy::move_enemys;
 use global::{GAME_CONFIG, LEVEL_DOORS_NOT_MOVED_TIME, SKIP_A_FEW_FRAMES};
 use graphics::{clear_graph_mem, CROSSHAIR_CURSOR, NE_SCREEN};
 use highscore::Highscore;
-use influencer::check_influence_wall_collisions;
+use influencer::Influencer;
 use input::{init_keystr, SDL_Delay, JOY_SENSITIVITY, SHOW_CURSOR};
 use map::{move_level_doors, ColorNames, Map};
 use misc::{
@@ -152,6 +152,7 @@ struct Data {
     b_font: BFont,
     highscore: Highscore,
     bullet: BulletData,
+    influencer: Influencer,
 }
 
 impl Default for Data {
@@ -162,6 +163,7 @@ impl Default for Data {
             b_font: Default::default(),
             highscore: Default::default(),
             bullet: Default::default(),
+            influencer: Default::default(),
         }
     }
 }
@@ -272,7 +274,7 @@ fn main() {
                 move_enemys(); // move all the enemys:
                                // also do attacks on influ and also move "phase" or their rotation
 
-                check_influence_wall_collisions(); /* Testen ob der Weg nicht durch Mauern verstellt ist */
+                data.check_influence_wall_collisions(); /* Testen ob der Weg nicht durch Mauern verstellt ist */
                 data.check_influence_enemy_collision();
 
                 // control speed of time-flow: dark-levels=emptyLevelSpeedup, normal-levels=1.0
