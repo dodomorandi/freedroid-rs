@@ -17,7 +17,6 @@ use crate::{
     map::free_ship_memory,
     menu::free_menu_data,
     ship::free_droid_pics,
-    sound::{free_sounds, leave_lift_sound},
     vars::{ME, PROGRESS_BAR_RECT, PROGRESS_METER_RECT, PROGRESS_TEXT_RECT},
     Data, ALL_BLASTS, ALL_ENEMYS, CONFIG_DIR, CUR_LEVEL, CUR_SHIP, F_P_SOVER1, NUM_ENEMYS,
 };
@@ -118,7 +117,7 @@ impl Data {
         free_ship_memory();
         free_droid_pics();
         free_graphics();
-        free_sounds();
+        self.free_sounds();
         free_menu_data();
         self.free_game_mem();
 
@@ -391,125 +390,124 @@ pub unsafe fn activate_conservative_frame_computation() {
     BANNER_IS_DESTROYED = true.into();
 }
 
-impl Data {
-    /// Find a given filename in subdir relative to FD_DATADIR,
-    ///
-    /// if you pass NULL as "subdir", it will be ignored
-    ///
-    /// use current-theme subdir if "use_theme" == USE_THEME, otherwise NO_THEME
-    ///
-    /// behavior on file-not-found depends on parameter "critical"
-    ///  IGNORE: just return NULL
-    ///  WARNONLY: warn and return NULL
-    ///  CRITICAL: Error-message and Terminate
-    ///
-    /// returns pointer to _static_ string array File_Path, which
-    /// contains the full pathname of the file.
-    ///
-    /// !! do never try to free the returned string !!
-    /// or to keep using it after a new call to find_file!
-    pub unsafe fn find_file(
-        &mut self,
-        fname: *const c_char,
-        mut subdir: *mut c_char,
-        use_theme: c_int,
-        mut critical: c_int,
-    ) -> *mut c_char {
-        use std::io::Write;
+/// Find a given filename in subdir relative to FD_DATADIR,
+///
+/// if you pass NULL as "subdir", it will be ignored
+///
+/// use current-theme subdir if "use_theme" == USE_THEME, otherwise NO_THEME
+///
+/// behavior on file-not-found depends on parameter "critical"
+///  IGNORE: just return NULL
+///  WARNONLY: warn and return NULL
+///  CRITICAL: Error-message and Terminate
+///
+/// returns pointer to _static_ string array File_Path, which
+/// contains the full pathname of the file.
+///
+/// !! do never try to free the returned string !!
+/// or to keep using it after a new call to find_file!
+pub unsafe fn find_file(
+    fname: *const c_char,
+    mut subdir: *mut c_char,
+    use_theme: c_int,
+    mut critical: c_int,
+) -> *mut c_char {
+    use std::io::Write;
 
-        static mut FILE_PATH: [u8; 1024] = [0u8; 1024]; /* hope this will be enough */
+    static mut FILE_PATH: [u8; 1024] = [0u8; 1024]; /* hope this will be enough */
 
-        if critical != Criticality::Ignore as c_int
-            && critical != Criticality::WarnOnly as c_int
-            && critical != Criticality::Critical as c_int
-        {
-            warn!(
-                "WARNING: unknown critical-value passed to find_file(): {}. Assume CRITICAL",
-                critical
-            );
-            critical = Criticality::Critical as c_int;
-        }
+    if critical != Criticality::Ignore as c_int
+        && critical != Criticality::WarnOnly as c_int
+        && critical != Criticality::Critical as c_int
+    {
+        warn!(
+            "WARNING: unknown critical-value passed to find_file(): {}. Assume CRITICAL",
+            critical
+        );
+        critical = Criticality::Critical as c_int;
+    }
 
-        if fname.is_null() {
-            error!("find_file() called with empty filename!");
-            return null_mut();
-        }
-        if subdir.is_null() {
-            subdir = cstr!("").as_ptr() as *mut c_char;
-        }
+    if fname.is_null() {
+        error!("find_file() called with empty filename!");
+        return null_mut();
+    }
+    if subdir.is_null() {
+        subdir = cstr!("").as_ptr() as *mut c_char;
+    }
 
-        let inner = |datadir| {
-            let theme_dir = if use_theme == Themed::UseTheme as c_int {
-                Cow::Owned(format!(
-                    "{}_theme/",
-                    CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
-                ))
-            } else {
-                Cow::Borrowed("")
-            };
-
-            write!(
-                &mut FILE_PATH[..],
-                "{}/{}/{}/{}\0",
-                datadir,
-                CStr::from_ptr(subdir).to_string_lossy(),
-                theme_dir,
-                CStr::from_ptr(fname).to_string_lossy(),
-            )
-            .unwrap();
-
-            CStr::from_ptr(FILE_PATH.as_ptr() as *const c_char)
-                .to_str()
-                .map(|file_path| Path::new(file_path).exists())
-                .unwrap_or(false)
+    let inner = |datadir| {
+        let theme_dir = if use_theme == Themed::UseTheme as c_int {
+            Cow::Owned(format!(
+                "{}_theme/",
+                CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
+            ))
+        } else {
+            Cow::Borrowed("")
         };
 
-        let mut found = inner(LOCAL_DATADIR);
-        if !found {
-            found = inner(FD_DATADIR);
-        }
+        write!(
+            &mut FILE_PATH[..],
+            "{}/{}/{}/{}\0",
+            datadir,
+            CStr::from_ptr(subdir).to_string_lossy(),
+            theme_dir,
+            CStr::from_ptr(fname).to_string_lossy(),
+        )
+        .unwrap();
 
-        if !found {
-            let critical = match critical.try_into() {
-                Ok(critical) => critical,
-                Err(_) => {
-                    panic!("ERROR in find_file(): Code should never reach this line!! Harakiri",);
+        CStr::from_ptr(FILE_PATH.as_ptr() as *const c_char)
+            .to_str()
+            .map(|file_path| Path::new(file_path).exists())
+            .unwrap_or(false)
+    };
+
+    let mut found = inner(LOCAL_DATADIR);
+    if !found {
+        found = inner(FD_DATADIR);
+    }
+
+    if !found {
+        let critical = match critical.try_into() {
+            Ok(critical) => critical,
+            Err(_) => {
+                panic!("ERROR in find_file(): Code should never reach this line!! Harakiri",);
+            }
+        };
+        // how critical is this file for the game:
+        match critical {
+            Criticality::WarnOnly => {
+                let fname = CStr::from_ptr(fname).to_string_lossy();
+                if use_theme == Themed::UseTheme as c_int {
+                    warn!(
+                        "file {} not found in theme-dir: graphics/{}_theme/",
+                        fname,
+                        CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
+                    );
+                } else {
+                    warn!("file {} not found ", fname);
                 }
-            };
-            // how critical is this file for the game:
-            match critical {
-                Criticality::WarnOnly => {
-                    let fname = CStr::from_ptr(fname).to_string_lossy();
-                    if use_theme == Themed::UseTheme as c_int {
-                        warn!(
-                            "file {} not found in theme-dir: graphics/{}_theme/",
-                            fname,
-                            CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
-                        );
-                    } else {
-                        warn!("file {} not found ", fname);
-                    }
-                    return null_mut();
-                }
-                Criticality::Ignore => return null_mut(),
-                Criticality::Critical => {
-                    let fname = CStr::from_ptr(fname).to_string_lossy();
-                    if use_theme == Themed::UseTheme as c_int {
-                        panic!(
+                return null_mut();
+            }
+            Criticality::Ignore => return null_mut(),
+            Criticality::Critical => {
+                let fname = CStr::from_ptr(fname).to_string_lossy();
+                if use_theme == Themed::UseTheme as c_int {
+                    panic!(
                         "file {} not found in theme-dir: graphics/{}_theme/, cannot run without it!",
                         fname,
                         CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
                     );
-                    } else {
-                        panic!("file {} not found, cannot run without it!", fname);
-                    }
+                } else {
+                    panic!("file {} not found, cannot run without it!", fname);
                 }
             }
         }
-
-        FILE_PATH.as_mut_ptr() as *mut c_char
     }
 
+    FILE_PATH.as_mut_ptr() as *mut c_char
+}
+
+impl Data {
     /// show_progress: display empty progress meter with given text
     pub unsafe fn init_progress(&mut self, mut text: *mut c_char) {
         if text.is_null() {
@@ -517,7 +515,7 @@ impl Data {
         }
 
         if PROGRESS_METER_PIC.is_null() {
-            let mut fpath = self.find_file(
+            let mut fpath = find_file(
                 PROGRESS_METER_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
@@ -525,7 +523,7 @@ impl Data {
             );
             PROGRESS_METER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
             self.scale_pic(&mut PROGRESS_METER_PIC, GAME_CONFIG.scale);
-            fpath = self.find_file(
+            fpath = find_file(
                 PROGRESS_FILLER_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
@@ -763,53 +761,55 @@ pub unsafe fn locate_string_in_data(
     temp
 }
 
-/// This function teleports the influencer to a new position on the
-/// ship.  THIS CAN BE A POSITION ON A DIFFERENT LEVEL.
-pub unsafe fn teleport(level_num: c_int, x: c_int, y: c_int) {
-    let cur_level = level_num;
-    let mut array_num = 0;
+impl Data {
+    /// This function teleports the influencer to a new position on the
+    /// ship.  THIS CAN BE A POSITION ON A DIFFERENT LEVEL.
+    pub unsafe fn teleport(&self, level_num: c_int, x: c_int, y: c_int) {
+        let cur_level = level_num;
+        let mut array_num = 0;
 
-    if cur_level != (*CUR_LEVEL).levelnum {
-        //--------------------
-        // In case a real level change has happend,
-        // we need to do a lot of work:
+        if cur_level != (*CUR_LEVEL).levelnum {
+            //--------------------
+            // In case a real level change has happend,
+            // we need to do a lot of work:
 
-        loop {
-            let tmp = CUR_SHIP.all_levels[array_num];
-            if tmp.is_null() {
-                break;
+            loop {
+                let tmp = CUR_SHIP.all_levels[array_num];
+                if tmp.is_null() {
+                    break;
+                }
+
+                if (*tmp).levelnum == cur_level {
+                    break;
+                } else {
+                    array_num += 1;
+                }
             }
 
-            if (*tmp).levelnum == cur_level {
-                break;
-            } else {
-                array_num += 1;
-            }
+            CUR_LEVEL = CUR_SHIP.all_levels[array_num];
+
+            shuffle_enemys();
+
+            ME.pos.x = x as f32;
+            ME.pos.y = y as f32;
+
+            // turn off all blasts and bullets from the old level
+            ALL_BLASTS
+                .iter_mut()
+                .take(MAXBLASTS)
+                .for_each(|blast| blast.ty = Status::Out as i32);
+            (0..MAXBULLETS).for_each(|bullet| delete_bullet(bullet.try_into().unwrap()));
+        } else {
+            //--------------------
+            // If no real level change has occured, everything
+            // is simple and we just need to set the new coordinates, haha
+            //
+            ME.pos.x = x as f32;
+            ME.pos.y = y as f32;
         }
 
-        CUR_LEVEL = CUR_SHIP.all_levels[array_num];
-
-        shuffle_enemys();
-
-        ME.pos.x = x as f32;
-        ME.pos.y = y as f32;
-
-        // turn off all blasts and bullets from the old level
-        ALL_BLASTS
-            .iter_mut()
-            .take(MAXBLASTS)
-            .for_each(|blast| blast.ty = Status::Out as i32);
-        (0..MAXBULLETS).for_each(|bullet| delete_bullet(bullet.try_into().unwrap()));
-    } else {
-        //--------------------
-        // If no real level change has occured, everything
-        // is simple and we just need to set the new coordinates, haha
-        //
-        ME.pos.x = x as f32;
-        ME.pos.y = y as f32;
+        self.leave_lift_sound();
     }
-
-    leave_lift_sound();
 }
 
 /// This function is kills all enemy robots on the whole ship.

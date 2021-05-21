@@ -5,11 +5,6 @@ use crate::{
     enemy::class_of_druid,
     graphics::{clear_graph_mem, NE_SCREEN, TAKEOVER_BG_PIC},
     misc::{activate_conservative_frame_computation, my_random},
-    sound::{
-        countdown_sound, end_countdown_sound, move_menu_position_sound,
-        takeover_game_deadlock_sound, takeover_game_lost_sound, takeover_game_won_sound,
-        takeover_set_capsule_sound,
-    },
     structs::Point,
     vars::{CLASSIC_USER_RECT, CONS_DROID_RECT, DRUIDMAP, ME, USER_RECT},
     view::fill_rect,
@@ -512,67 +507,69 @@ pub unsafe fn set_takeover_rects() -> c_int {
     defs::OK.into()
 }
 
-unsafe fn enemy_movements() {
-    const ACTIONS: i32 = 3;
-    const MOVE_PROBABILITY: i32 = 100;
-    const TURN_PROBABILITY: i32 = 10;
-    const SET_PROBABILITY: i32 = 80;
+impl Data {
+    unsafe fn enemy_movements(&self) {
+        const ACTIONS: i32 = 3;
+        const MOVE_PROBABILITY: i32 = 100;
+        const TURN_PROBABILITY: i32 = 10;
+        const SET_PROBABILITY: i32 = 80;
 
-    static mut DIRECTION: i32 = 1; /* start with this direction */
-    let opponent_color = OPPONENT_COLOR as usize;
-    let mut row = CAPSULE_CUR_ROW[opponent_color] - 1;
+        static mut DIRECTION: i32 = 1; /* start with this direction */
+        let opponent_color = OPPONENT_COLOR as usize;
+        let mut row = CAPSULE_CUR_ROW[opponent_color] - 1;
 
-    if NUM_CAPSULES[Opponents::Enemy as usize] == 0 {
-        return;
-    }
+        if NUM_CAPSULES[Opponents::Enemy as usize] == 0 {
+            return;
+        }
 
-    let next_row = match my_random(ACTIONS) {
-        0 => {
-            /* Move along */
-            if my_random(100) <= MOVE_PROBABILITY {
-                row += DIRECTION;
-                if row > i32::try_from(NUM_LINES).unwrap() - 1 {
-                    1
-                } else if row < 0 {
-                    i32::try_from(NUM_LINES).unwrap()
+        let next_row = match my_random(ACTIONS) {
+            0 => {
+                /* Move along */
+                if my_random(100) <= MOVE_PROBABILITY {
+                    row += DIRECTION;
+                    if row > i32::try_from(NUM_LINES).unwrap() - 1 {
+                        1
+                    } else if row < 0 {
+                        i32::try_from(NUM_LINES).unwrap()
+                    } else {
+                        row + 1
+                    }
                 } else {
                     row + 1
                 }
-            } else {
+            }
+
+            1 => {
+                /* Turn around */
+                if my_random(100) <= TURN_PROBABILITY {
+                    DIRECTION *= -1;
+                }
                 row + 1
             }
-        }
 
-        1 => {
-            /* Turn around */
-            if my_random(100) <= TURN_PROBABILITY {
-                DIRECTION *= -1;
-            }
-            row + 1
-        }
-
-        2 => {
-            /* Try to set  capsule */
-            match usize::try_from(row) {
-                Ok(row)
-                    if my_random(100) <= SET_PROBABILITY
-                        && PLAYGROUND[opponent_color][0][row] != Block::CableEnd
-                        && ACTIVATION_MAP[opponent_color][0][row] == Condition::Inactive =>
-                {
-                    NUM_CAPSULES[Opponents::Enemy as usize] -= 1;
-                    takeover_set_capsule_sound();
-                    PLAYGROUND[opponent_color][0][row] = Block::Repeater;
-                    ACTIVATION_MAP[opponent_color][0][row] = Condition::Active1;
-                    CAPSULES_COUNTDOWN[opponent_color][0][row] = Some(CAPSULE_COUNTDOWN * 2);
-                    0
+            2 => {
+                /* Try to set  capsule */
+                match usize::try_from(row) {
+                    Ok(row)
+                        if my_random(100) <= SET_PROBABILITY
+                            && PLAYGROUND[opponent_color][0][row] != Block::CableEnd
+                            && ACTIVATION_MAP[opponent_color][0][row] == Condition::Inactive =>
+                    {
+                        NUM_CAPSULES[Opponents::Enemy as usize] -= 1;
+                        self.takeover_set_capsule_sound();
+                        PLAYGROUND[opponent_color][0][row] = Block::Repeater;
+                        ACTIVATION_MAP[opponent_color][0][row] = Condition::Active1;
+                        CAPSULES_COUNTDOWN[opponent_color][0][row] = Some(CAPSULE_COUNTDOWN * 2);
+                        0
+                    }
+                    _ => row + 1,
                 }
-                _ => row + 1,
             }
-        }
-        _ => row + 1,
-    };
+            _ => row + 1,
+        };
 
-    CAPSULE_CUR_ROW[opponent_color] = next_row;
+        CAPSULE_CUR_ROW[opponent_color] = next_row;
+    }
 }
 
 /// Animate the active cables: this is done by cycling over
@@ -1236,7 +1233,7 @@ impl Data {
 
         self.wait_for_all_keys_released();
 
-        countdown_sound();
+        self.countdown_sound();
         let mut finish_takeover = false;
         let your_color = usize::try_from(YOUR_COLOR).unwrap();
         while !finish_takeover {
@@ -1255,10 +1252,10 @@ impl Data {
                 );
 
                 if countdown != 0 && countdown % 10 == 0 {
-                    countdown_sound();
+                    self.countdown_sound();
                 }
                 if countdown == 0 {
-                    end_countdown_sound();
+                    self.end_countdown_sound();
                     finish_takeover = true;
                 }
 
@@ -1307,12 +1304,12 @@ impl Data {
                             PLAYGROUND[your_color][0][row] = Block::Repeater;
                             ACTIVATION_MAP[your_color][0][row] = Condition::Active1;
                             CAPSULES_COUNTDOWN[your_color][0][row] = Some(CAPSULE_COUNTDOWN * 2);
-                            takeover_set_capsule_sound();
+                            self.takeover_set_capsule_sound();
                         }
                     }
                 }
 
-                enemy_movements();
+                self.enemy_movements();
                 process_capsules(); /* count down the lifetime of the capsules */
 
                 process_playground();
@@ -1376,7 +1373,7 @@ impl Data {
             let action = self.get_menu_action(110);
             if action.intersects(MenuAction::RIGHT | MenuAction::DOWN_WHEEL) {
                 if YOUR_COLOR != Color::Violet {
-                    move_menu_position_sound();
+                    self.move_menu_position_sound();
                 }
                 YOUR_COLOR = Color::Violet;
                 OPPONENT_COLOR = Color::Yellow;
@@ -1384,7 +1381,7 @@ impl Data {
 
             if action.intersects(MenuAction::LEFT | MenuAction::UP_WHEEL) {
                 if YOUR_COLOR != Color::Yellow {
-                    move_menu_position_sound();
+                    self.move_menu_position_sound();
                 }
                 YOUR_COLOR = Color::Yellow;
                 OPPONENT_COLOR = Color::Violet;
@@ -1521,7 +1518,7 @@ impl Data {
             let message;
             /* Ausgang beurteilen und returnen */
             if INVINCIBLE_MODE != 0 || LEADER_COLOR == YOUR_COLOR {
-                takeover_game_won_sound();
+                self.takeover_game_won_sound();
                 if ME.ty == Droid::Droid001 as c_int {
                     REJECT_ENERGY = ME.energy as c_int;
                     PRE_TAKE_ENERGY = ME.energy as c_int;
@@ -1565,7 +1562,7 @@ impl Data {
                 // you lost, but enemy is killed too --> blast it!
                 ALL_ENEMYS[enemy_index].energy = -1.0; /* to be sure */
 
-                takeover_game_lost_sound();
+                self.takeover_game_lost_sound();
                 if ME.ty != Droid::Droid001 as c_int {
                     message = cstr!("Rejected");
                     ME.ty = Droid::Droid001 as c_int;
@@ -1578,7 +1575,7 @@ impl Data {
             } else {
                 /* LeadColor == OPPONENT_COLOR */
 
-                takeover_game_deadlock_sound();
+                self.takeover_game_deadlock_sound();
                 message = cstr!("Deadlock");
             }
 

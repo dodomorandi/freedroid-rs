@@ -1,12 +1,12 @@
 use crate::{
     b_font::font_height,
-    bullet::{delete_bullet, explode_blasts, move_bullets},
+    bullet::{delete_bullet, move_bullets},
     defs::{
         self, get_user_center, scale_rect, AssembleCombatWindowFlags, Criticality,
         DisplayBannerFlags, Droid, Status, Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR,
         MAP_DIR_C, MAXBULLETS, SHOW_WAIT, SLOWMO_FACTOR, TITLE_PIC_FILE_C, WAIT_AFTER_KILLED,
     },
-    enemy::{move_enemys, shuffle_enemys},
+    enemy::shuffle_enemys,
     global::{
         BLAST_DAMAGE_PER_SECOND, BLAST_RADIUS, COLLISION_LOSE_ENERGY_CALIBRATOR,
         CURRENT_COMBAT_SCALE_FACTOR, DROID_RADIUS, FONT0_B_FONT, GAME_CONFIG, PARA_B_FONT,
@@ -19,11 +19,10 @@ use crate::{
     input::{SDL_Delay, JOY_SENSITIVITY},
     misc::{
         activate_conservative_frame_computation, compute_fps_for_this_frame,
-        count_string_occurences, dealloc_c_string, load_game_config, locate_string_in_data,
-        my_random, read_value_from_string, set_time_factor, start_taking_time_for_fps_calculation,
-        update_progress,
+        count_string_occurences, dealloc_c_string, find_file, load_game_config,
+        locate_string_in_data, my_random, read_value_from_string, set_time_factor,
+        start_taking_time_for_fps_calculation, update_progress,
     },
-    sound::thou_art_defeated_sound,
     structs::{BulletSpec, DruidSpec},
     vars::{
         BLASTMAP, BULLETMAP, CLASSIC_USER_RECT, DRUIDMAP, FULL_USER_RECT, PORTRAIT_RECT,
@@ -213,7 +212,7 @@ impl Data {
 
         while SDL_GetTicks() - now < WAIT_AFTER_KILLED {
             self.display_banner(null_mut(), null_mut(), 0);
-            explode_blasts();
+            self.explode_blasts();
             move_bullets();
             self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
         }
@@ -294,7 +293,7 @@ impl Data {
         scale_rect(&mut SCREEN_RECT, GAME_CONFIG.scale); // make sure we open a window of the right (rescaled) size!
         self.init_video();
 
-        let image = self.find_file(
+        let image = find_file(
             TITLE_PIC_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -643,7 +642,7 @@ impl Data {
         let oldfont = std::mem::replace(&mut self.b_font.current_font, FONT0_B_FONT);
 
         /* Read the whole mission data to memory */
-        let fpath = self.find_file(
+        let fpath = find_file(
             mission_name,
             MAP_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -899,7 +898,7 @@ impl Data {
             cstr!("%s").as_ptr() as *mut c_char,
             buffer.as_mut_ptr() as *mut c_void,
         );
-        let image = self.find_file(
+        let image = find_file(
             buffer.as_mut_ptr(),
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -980,7 +979,7 @@ impl Data {
         const END_OF_GAME_DAT_STRING: &CStr = cstr!("*** End of game.dat File ***");
 
         /* Read the whole game data to memory */
-        let fpath = self.find_file(
+        let fpath = find_file(
             data_filename,
             MAP_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -1564,9 +1563,9 @@ impl Data {
 
             start_taking_time_for_fps_calculation();
             self.display_banner(null_mut(), null_mut(), 0);
-            explode_blasts();
+            self.explode_blasts();
             move_bullets();
-            move_enemys();
+            self.move_enemys();
             self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
             compute_fps_for_this_frame();
             if self.any_key_just_pressed() != 0 {
@@ -1596,7 +1595,7 @@ impl Data {
             h: PORTRAIT_RECT.h,
         };
         SDL_UpperBlit(PIC999, null_mut(), NE_SCREEN, &mut dst);
-        thou_art_defeated_sound();
+        self.thou_art_defeated_sound();
 
         self.b_font.current_font = PARA_B_FONT;
         let h = font_height(&*PARA_B_FONT);

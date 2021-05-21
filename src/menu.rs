@@ -24,11 +24,8 @@ use crate::{
     },
     input::{SDL_Delay, CMD_STRINGS, KEYSTR},
     map::COLOR_NAMES,
-    misc::{activate_conservative_frame_computation, armageddon, dealloc_c_string, teleport},
-    sound::{
-        menu_item_selected_sound, move_lift_sound, move_menu_position_sound, set_bg_music_volume,
-        set_sound_f_x_volume,
-    },
+    misc::{activate_conservative_frame_computation, armageddon, dealloc_c_string, find_file},
+    sound::set_bg_music_volume,
     vars::{
         BLOCK_RECT, CLASSIC_USER_RECT, DRUIDMAP, FULL_USER_RECT, ME, MENU_RECT, SCREEN_RECT,
         USER_RECT,
@@ -200,7 +197,7 @@ impl Data {
             return null_mut();
         }
 
-        menu_item_selected_sound();
+        self.menu_item_selected_sound();
         self.initiate_menu(false);
 
         #[cfg(feature = "gcw0")]
@@ -581,7 +578,7 @@ impl Data {
                         &mut y,
                     );
                     drop(Vec::from_raw_parts(input as *mut i8, 45, 45));
-                    teleport(l_num, x, y);
+                    self.teleport(l_num, x, y);
                 }
 
                 Some(b'r') => {
@@ -932,7 +929,7 @@ impl Data {
 
                 MenuAction::CLICK => {
                     if handler.is_none() && submenu.is_null() {
-                        menu_item_selected_sound();
+                        self.menu_item_selected_sound();
                         finished = true;
                     } else {
                         if let Some(handler) = handler {
@@ -941,7 +938,7 @@ impl Data {
                         }
 
                         if submenu.is_null().not() {
-                            menu_item_selected_sound();
+                            self.menu_item_selected_sound();
                             self.wait_for_all_keys_released();
                             self.show_menu(submenu);
                             self.initiate_menu(false);
@@ -967,7 +964,7 @@ impl Data {
                         continue;
                     }
 
-                    move_menu_position_sound();
+                    self.move_menu_position_sound();
                     if menu_pos > 0 {
                         menu_pos -= 1;
                     } else {
@@ -982,7 +979,7 @@ impl Data {
                         continue;
                     }
 
-                    move_menu_position_sound();
+                    self.move_menu_position_sound();
                     if menu_pos < num_entries - 1 {
                         menu_pos += 1;
                     } else {
@@ -1166,7 +1163,7 @@ impl Data {
                 }
 
                 MenuAction::CLICK => {
-                    menu_item_selected_sound();
+                    self.menu_item_selected_sound();
 
                     KEY_CMDS[sely - 1][selx - 1] = b'_'.into();
                     self.display_key_config(
@@ -1187,7 +1184,7 @@ impl Data {
                     } else {
                         sely = Cmds::Last as usize;
                     }
-                    move_menu_position_sound();
+                    self.move_menu_position_sound();
                     LAST_MOVE_TICK = SDL_GetTicks();
                 }
 
@@ -1200,7 +1197,7 @@ impl Data {
                     } else {
                         sely = 1;
                     }
-                    move_menu_position_sound();
+                    self.move_menu_position_sound();
                     LAST_MOVE_TICK = SDL_GetTicks();
                 }
 
@@ -1214,7 +1211,7 @@ impl Data {
                     } else {
                         selx = 1;
                     }
-                    move_menu_position_sound();
+                    self.move_menu_position_sound();
                     LAST_MOVE_TICK = SDL_GetTicks();
                 }
 
@@ -1228,13 +1225,13 @@ impl Data {
                     } else {
                         selx = 3;
                     }
-                    move_menu_position_sound();
+                    self.move_menu_position_sound();
                     LAST_MOVE_TICK = SDL_GetTicks();
                 }
 
                 MenuAction::DELETE => {
                     KEY_CMDS[sely - 1][selx - 1] = 0;
-                    menu_item_selected_sound();
+                    self.menu_item_selected_sound();
                 }
                 _ => {}
             }
@@ -1251,7 +1248,7 @@ impl Data {
 
         let screen = SCREEN_RECT;
         SDL_SetClipRect(NE_SCREEN, null_mut());
-        let image = self.find_file(
+        let image = find_file(
             CREDITS_PIC_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as i32,
@@ -1319,7 +1316,7 @@ impl Data {
 
     pub unsafe fn handle_configure_keys(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::CLICK {
-            menu_item_selected_sound();
+            self.menu_item_selected_sound();
             self.key_config_menu();
         }
 
@@ -1328,7 +1325,7 @@ impl Data {
 
     pub unsafe fn handle_highscores(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::CLICK {
-            menu_item_selected_sound();
+            self.menu_item_selected_sound();
             self.show_highscores();
         }
         null_mut()
@@ -1336,7 +1333,7 @@ impl Data {
 
     pub unsafe fn handle_credits(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::CLICK {
-            menu_item_selected_sound();
+            self.menu_item_selected_sound();
             self.show_credits();
         }
 
@@ -1415,15 +1412,15 @@ impl Data {
 
     pub unsafe fn handle_open_level_editor(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::CLICK {
-            menu_item_selected_sound();
+            self.menu_item_selected_sound();
             self.level_editor();
         }
         null_mut()
     }
 
-    pub unsafe fn handle_le_exit(_: &mut Self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_le_exit(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::CLICK {
-            menu_item_selected_sound();
+            self.menu_item_selected_sound();
             QUIT_LEVEL_EDITOR = true;
             QUIT_MENU = true;
         }
@@ -1443,8 +1440,8 @@ impl Data {
         }
 
         let mut curlevel = cur_level.levelnum;
-        menu_change_int(action, &mut curlevel, 1, 0, CUR_SHIP.num_levels - 1);
-        teleport(curlevel, 3, 3);
+        self.menu_change_int(action, &mut curlevel, 1, 0, CUR_SHIP.num_levels - 1);
+        self.teleport(curlevel, 3, 3);
         self.switch_background_music_to(BYCOLOR.as_ptr());
         self.initiate_menu(false);
 
@@ -1456,7 +1453,7 @@ impl Data {
         if action == MenuAction::INFO {
             return COLOR_NAMES[usize::try_from(cur_level.color).unwrap()].as_ptr();
         }
-        menu_change_int(
+        self.menu_change_int(
             action,
             &mut cur_level.color,
             1,
@@ -1482,7 +1479,7 @@ impl Data {
         }
 
         let oldxlen = cur_level.xlen;
-        menu_change_int(
+        self.menu_change_int(
             action,
             &mut cur_level.xlen,
             1,
@@ -1528,7 +1525,7 @@ impl Data {
         }
 
         let oldylen = cur_level.ylen;
-        menu_change_int(
+        self.menu_change_int(
             action,
             &mut cur_level.ylen,
             1,
@@ -1562,7 +1559,7 @@ impl Data {
 
     pub unsafe fn handle_strictly_classic(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::CLICK {
-            menu_item_selected_sound();
+            self.menu_item_selected_sound();
             GAME_CONFIG.droid_talk = false.into();
             GAME_CONFIG.show_decals = false.into();
             GAME_CONFIG.takeover_activates = true.into();
@@ -1592,7 +1589,7 @@ impl Data {
 
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            flip_toggle(&mut GAME_CONFIG.full_user_rect);
+            self.flip_toggle(&mut GAME_CONFIG.full_user_rect);
             if GAME_CONFIG.full_user_rect != 0 {
                 USER_RECT = FULL_USER_RECT;
             } else {
@@ -1612,7 +1609,7 @@ impl Data {
 
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            move_lift_sound();
+            self.move_lift_sound();
             let mut tnum = ALL_THEMES.cur_tnum;
             if action == MenuAction::CLICK && action == MenuAction::RIGHT {
                 tnum += 1;
@@ -1634,13 +1631,13 @@ impl Data {
         null_mut()
     }
 
-    pub unsafe fn handle_droid_talk(_: &mut Self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_droid_talk(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::INFO {
             return is_toggle_on(GAME_CONFIG.droid_talk);
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            flip_toggle(&mut GAME_CONFIG.droid_talk);
+            self.flip_toggle(&mut GAME_CONFIG.droid_talk);
         }
         null_mut()
     }
@@ -1651,7 +1648,7 @@ impl Data {
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            flip_toggle(&mut GAME_CONFIG.all_map_visible);
+            self.flip_toggle(&mut GAME_CONFIG.all_map_visible);
             self.initiate_menu(false);
         }
         null_mut()
@@ -1663,35 +1660,35 @@ impl Data {
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            flip_toggle(&mut GAME_CONFIG.show_decals);
+            self.flip_toggle(&mut GAME_CONFIG.show_decals);
             self.initiate_menu(false);
         }
         null_mut()
     }
 
-    pub unsafe fn handle_transfer_is_activate(_: &mut Self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_transfer_is_activate(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::INFO {
             return is_toggle_on(GAME_CONFIG.takeover_activates);
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            flip_toggle(&mut GAME_CONFIG.takeover_activates);
+            self.flip_toggle(&mut GAME_CONFIG.takeover_activates);
         }
         null_mut()
     }
 
-    pub unsafe fn handle_fire_is_transfer(_: &mut Self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_fire_is_transfer(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::INFO {
             return is_toggle_on(GAME_CONFIG.fire_hold_takeover);
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            flip_toggle(&mut GAME_CONFIG.fire_hold_takeover);
+            self.flip_toggle(&mut GAME_CONFIG.fire_hold_takeover);
         }
         null_mut()
     }
 
-    pub unsafe fn handle_empty_level_speedup(_: &mut Self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_empty_level_speedup(&mut self, action: MenuAction) -> *const c_char {
         static mut BUF: [c_char; 256] = [0; 256];
         if action == MenuAction::INFO {
             libc::sprintf(
@@ -1702,11 +1699,11 @@ impl Data {
             return BUF.as_ptr();
         }
 
-        menu_change_float(action, &mut GAME_CONFIG.empty_level_speedup, 0.1, 0.5, 2.0);
+        self.menu_change_float(action, &mut GAME_CONFIG.empty_level_speedup, 0.1, 0.5, 2.0);
         null_mut()
     }
 
-    pub unsafe fn handle_music_volume(_: &mut Self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_music_volume(&mut self, action: MenuAction) -> *const c_char {
         static mut BUF: [c_char; 256] = [0; 256];
         if action == MenuAction::INFO {
             libc::sprintf(
@@ -1717,7 +1714,7 @@ impl Data {
             return BUF.as_ptr();
         }
 
-        menu_change_float(
+        self.menu_change_float(
             action,
             &mut GAME_CONFIG.current_bg_music_volume,
             0.05,
@@ -1728,7 +1725,7 @@ impl Data {
         null_mut()
     }
 
-    pub unsafe fn handle_sound_volume(_: &mut Self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_sound_volume(&mut self, action: MenuAction) -> *const c_char {
         static mut BUF: [c_char; 256] = [0; 256];
         if action == MenuAction::INFO {
             libc::sprintf(
@@ -1739,14 +1736,14 @@ impl Data {
             return BUF.as_ptr();
         }
 
-        menu_change_float(
+        self.menu_change_float(
             action,
             &mut GAME_CONFIG.current_sound_fx_volume,
             0.05,
             0.,
             1.,
         );
-        set_sound_f_x_volume(GAME_CONFIG.current_sound_fx_volume);
+        self.set_sound_f_x_volume(GAME_CONFIG.current_sound_fx_volume);
         null_mut()
     }
 
@@ -1757,7 +1754,7 @@ impl Data {
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
             self.toggle_fullscreen();
-            menu_item_selected_sound();
+            self.menu_item_selected_sound();
         }
         null_mut()
     }
@@ -1768,7 +1765,7 @@ impl Data {
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            flip_toggle(&mut GAME_CONFIG.draw_position);
+            self.flip_toggle(&mut GAME_CONFIG.draw_position);
             self.initiate_menu(false);
         }
         null_mut()
@@ -1780,7 +1777,7 @@ impl Data {
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            flip_toggle(&mut GAME_CONFIG.draw_framerate);
+            self.flip_toggle(&mut GAME_CONFIG.draw_framerate);
             self.initiate_menu(false);
         }
         null_mut()
@@ -1792,68 +1789,66 @@ impl Data {
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            flip_toggle(&mut GAME_CONFIG.draw_energy);
+            self.flip_toggle(&mut GAME_CONFIG.draw_energy);
             self.initiate_menu(false);
         }
         null_mut()
     }
-}
 
-unsafe fn menu_change<T>(action: MenuAction, val: &mut T, step: T, min_value: T, max_value: T)
-where
-    T: PartialOrd + AddAssign + SubAssign,
-{
-    if action == MenuAction::RIGHT && *val < max_value {
-        move_lift_sound();
-        *val += step;
-        if *val > max_value {
-            *val = max_value;
+    unsafe fn menu_change<T>(
+        &self,
+        action: MenuAction,
+        val: &mut T,
+        step: T,
+        min_value: T,
+        max_value: T,
+    ) where
+        T: PartialOrd + AddAssign + SubAssign,
+    {
+        if action == MenuAction::RIGHT && *val < max_value {
+            self.move_lift_sound();
+            *val += step;
+            if *val > max_value {
+                *val = max_value;
+            }
+        } else if action == MenuAction::LEFT && *val > min_value {
+            self.move_lift_sound();
+            *val -= step;
+            if *val <= min_value {
+                *val = min_value;
+            }
         }
-    } else if action == MenuAction::LEFT && *val > min_value {
-        move_lift_sound();
-        *val -= step;
-        if *val <= min_value {
-            *val = min_value;
+    }
+
+    pub unsafe fn menu_change_float(
+        &self,
+        action: MenuAction,
+        val: &mut c_float,
+        step: c_float,
+        min_value: c_float,
+        max_value: c_float,
+    ) {
+        self.menu_change(action, val, step, min_value, max_value)
+    }
+
+    pub unsafe fn menu_change_int(
+        &self,
+        action: MenuAction,
+        val: &mut c_int,
+        step: c_int,
+        min_value: c_int,
+        max_value: c_int,
+    ) {
+        self.menu_change(action, val, step, min_value, max_value)
+    }
+
+    pub unsafe fn flip_toggle(&self, toggle: *mut c_int) {
+        if toggle.is_null().not() {
+            self.menu_item_selected_sound();
+            *toggle = !*toggle;
         }
     }
-}
 
-pub unsafe fn menu_change_float(
-    action: MenuAction,
-    val: &mut c_float,
-    step: c_float,
-    min_value: c_float,
-    max_value: c_float,
-) {
-    menu_change(action, val, step, min_value, max_value)
-}
-
-pub unsafe fn menu_change_int(
-    action: MenuAction,
-    val: &mut c_int,
-    step: c_int,
-    min_value: c_int,
-    max_value: c_int,
-) {
-    menu_change(action, val, step, min_value, max_value)
-}
-
-pub fn is_toggle_on(toggle: c_int) -> *const c_char {
-    if toggle != 0 {
-        cstr!("YES").as_ptr()
-    } else {
-        cstr!("NO").as_ptr()
-    }
-}
-
-pub unsafe fn flip_toggle(toggle: *mut c_int) {
-    if toggle.is_null().not() {
-        menu_item_selected_sound();
-        *toggle = !*toggle;
-    }
-}
-
-impl Data {
     pub unsafe fn set_theme(&mut self, theme_index: c_int) {
         assert!(theme_index >= 0 && theme_index < ALL_THEMES.num_themes);
 
@@ -1863,5 +1858,13 @@ impl Data {
             ALL_THEMES.theme_name[usize::try_from(ALL_THEMES.cur_tnum).unwrap()] as *const c_char,
         );
         self.init_pictures();
+    }
+}
+
+pub fn is_toggle_on(toggle: c_int) -> *const c_char {
+    if toggle != 0 {
+        cstr!("YES").as_ptr()
+    } else {
+        cstr!("NO").as_ptr()
     }
 }

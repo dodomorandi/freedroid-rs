@@ -1,7 +1,6 @@
 use crate::{
-    bullet::start_blast,
     defs::{
-        self, Direction, Droid, Explosion, MapTile, Sound, Status, ENEMYPHASES, MAXBLASTS,
+        self, Direction, Droid, Explosion, MapTile, SoundType, Status, ENEMYPHASES, MAXBLASTS,
         MAXBULLETS, PUSHSPEED, WAIT_COLLISION,
     },
     global::{COLLISION_LOSE_ENERGY_CALIBRATOR, DROID_RADIUS},
@@ -9,10 +8,6 @@ use crate::{
     map::{druid_passable, get_map_brick},
     misc::{frame_time, my_random},
     ship::level_empty,
-    sound::{
-        bounce_sound, collision_damaged_enemy_sound, collision_got_damaged_sound,
-        fire_bullet_sound, play_sound, refresh_sound,
-    },
     structs::{Finepoint, Gps},
     text::enemy_influ_collision_text,
     vars::{BULLETMAP, DRUIDMAP},
@@ -80,7 +75,7 @@ impl Data {
             }
 
             if LAST_REFRESH_SOUND > 0.6 {
-                refresh_sound();
+                self.refresh_sound();
                 LAST_REFRESH_SOUND = 0.;
             }
 
@@ -165,7 +160,7 @@ impl Data {
                     // Add some funny text!
                     enemy_influ_collision_text(i.try_into().unwrap());
                 }
-                influ_enemy_collision_lose_energy(i.try_into().unwrap()); /* someone loses energy ! */
+                self.influ_enemy_collision_lose_energy(i.try_into().unwrap()); /* someone loses energy ! */
             } else {
                 self.takeover(i.try_into().unwrap());
 
@@ -175,32 +170,31 @@ impl Data {
             }
         }
     }
-}
 
-pub unsafe fn influ_enemy_collision_lose_energy(enemy_num: c_int) {
-    let enemy_type = ALL_ENEMYS[usize::try_from(enemy_num).unwrap()].ty;
+    pub unsafe fn influ_enemy_collision_lose_energy(&self, enemy_num: c_int) {
+        let enemy_type = ALL_ENEMYS[usize::try_from(enemy_num).unwrap()].ty;
 
-    let damage = ((*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).class
-        - (*DRUIDMAP.add(usize::try_from(enemy_type).unwrap())).class) as f32
-        * COLLISION_LOSE_ENERGY_CALIBRATOR;
+        let damage = ((*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).class
+            - (*DRUIDMAP.add(usize::try_from(enemy_type).unwrap())).class)
+            as f32
+            * COLLISION_LOSE_ENERGY_CALIBRATOR;
 
-    if damage < 0. {
-        // we took damage
-        collision_got_damaged_sound();
-        if INVINCIBLE_MODE == 0 {
-            ME.energy += damage;
+        if damage < 0. {
+            // we took damage
+            self.collision_got_damaged_sound();
+            if INVINCIBLE_MODE == 0 {
+                ME.energy += damage;
+            }
+        } else if damage == 0. {
+            // nobody got hurt
+            self.bounce_sound();
+        } else {
+            // damage > 0: enemy got damaged
+            ALL_ENEMYS[usize::try_from(enemy_num).unwrap()].energy -= damage;
+            self.collision_damaged_enemy_sound();
         }
-    } else if damage == 0. {
-        // nobody got hurt
-        bounce_sound();
-    } else {
-        // damage > 0: enemy got damaged
-        ALL_ENEMYS[usize::try_from(enemy_num).unwrap()].energy -= damage;
-        collision_damaged_enemy_sound();
     }
-}
 
-impl Data {
     pub unsafe fn explode_influencer(&mut self) {
         ME.status = Status::Terminated as c_int;
 
@@ -225,7 +219,7 @@ impl Data {
             blast.phase = 0.2 * i as f32;
         }
 
-        play_sound(Sound::Influexplosion as c_int);
+        self.play_sound(SoundType::Influexplosion as c_int);
     }
 
     /// This function checks for collisions of the influencer with walls,
@@ -414,7 +408,7 @@ impl Data {
                 ME.ty = Droid::Droid001 as c_int;
                 ME.energy = BLINKENERGY;
                 ME.health = BLINKENERGY;
-                start_blast(ME.pos.x, ME.pos.y, Explosion::Rejectblast as c_int);
+                self.start_blast(ME.pos.x, ME.pos.y, Explosion::Rejectblast as c_int);
             } else {
                 ME.status = Status::Terminated as c_int;
                 self.thou_art_defeated();
@@ -551,7 +545,7 @@ impl Data {
         }
         ME.firewait = (*BULLETMAP.add(usize::try_from(guntype).unwrap())).recharging_time;
 
-        fire_bullet_sound(guntype);
+        self.fire_bullet_sound(guntype);
 
         let cur_bullet = ALL_BULLETS[..MAXBULLETS]
             .iter_mut()

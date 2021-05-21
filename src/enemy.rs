@@ -1,5 +1,4 @@
 use crate::{
-    bullet::start_blast,
     defs::{
         Explosion, Status, AGGRESSIONMAX, DECKCOMPLETEBONUS, ENEMYMAXWAIT, ENEMYPHASES, MAXBULLETS,
         MAXWAYPOINTS, MAX_ENEMYS_ON_SHIP, ROBOT_MAX_WAIT_BETWEEN_SHOTS, SLOWMO_FACTOR,
@@ -9,10 +8,9 @@ use crate::{
     map::is_visible,
     misc::{frame_time, my_random, set_time_factor},
     ship::level_empty,
-    sound::fire_bullet_sound,
     structs::Finepoint,
     vars::{BULLETMAP, DRUIDMAP, ME},
-    ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, DEATH_COUNT, NUM_ENEMYS, REAL_SCORE,
+    Data, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, DEATH_COUNT, NUM_ENEMYS, REAL_SCORE,
 };
 
 use cstr::cstr;
@@ -59,187 +57,192 @@ pub unsafe fn animate_enemys() {
     }
 }
 
-/// This is the function, that move each of the enemys according to
-/// their orders and their program
-pub unsafe fn move_enemys() {
-    permanent_heal_robots(); // enemy robots heal as time passes...
+impl Data {
+    /// This is the function, that move each of the enemys according to
+    /// their orders and their program
+    pub unsafe fn move_enemys(&self) {
+        permanent_heal_robots(); // enemy robots heal as time passes...
 
-    animate_enemys(); // move the "phase" of the rotation of enemys
+        animate_enemys(); // move the "phase" of the rotation of enemys
 
-    for (i, enemy) in ALL_ENEMYS[0..usize::try_from(NUM_ENEMYS).unwrap()]
-        .iter_mut()
-        .enumerate()
-    {
-        if enemy.status == Status::Out as i32
-            || enemy.status == Status::Terminated as i32
-            || enemy.levelnum != (*CUR_LEVEL).levelnum
+        for (i, enemy) in ALL_ENEMYS[0..usize::try_from(NUM_ENEMYS).unwrap()]
+            .iter_mut()
+            .enumerate()
         {
-            continue;
-        }
+            if enemy.status == Status::Out as i32
+                || enemy.status == Status::Terminated as i32
+                || enemy.levelnum != (*CUR_LEVEL).levelnum
+            {
+                continue;
+            }
 
-        move_this_enemy(i.try_into().unwrap());
+            self.move_this_enemy(i.try_into().unwrap());
 
-        // If its a combat droid, then if might attack...
-        if (*DRUIDMAP.add(usize::try_from(enemy.ty).unwrap())).aggression != 0 {
-            attack_influence(i.try_into().unwrap());
-        }
-    }
-}
-
-/// AttackInfluence(): This function sometimes fires a bullet from
-/// enemy number enemynum directly into the direction of the influencer,
-/// but of course only if the odds are good i.e. requirements are met.
-pub unsafe fn attack_influence(enemy_num: c_int) {
-    let this_robot = &mut ALL_ENEMYS[usize::try_from(enemy_num).unwrap()];
-    // At first, we check for a lot of cases in which we do not
-    // need to move anything for this reason or for that
-    //
-
-    // ignore robots on other levels
-    if this_robot.levelnum != (*CUR_LEVEL).levelnum {
-        return;
-    }
-
-    // ignore dead robots as well...
-    if this_robot.status == Status::Out as c_int {
-        return;
-    }
-
-    let mut xdist = ME.pos.x - this_robot.pos.x;
-    let mut ydist = ME.pos.y - this_robot.pos.y;
-
-    // Add some security against division by zero
-    if xdist == 0. {
-        xdist = 0.01;
-    }
-    if ydist == 0. {
-        ydist = 0.01;
-    }
-
-    // if odds are good, make a shot at your target
-    let guntype = (*DRUIDMAP.add(this_robot.ty.try_into().unwrap())).gun;
-
-    let dist2 = (xdist * xdist + ydist * ydist).sqrt();
-
-    //--------------------
-    //
-    // From here on, it's classical Paradroid robot behaviour concerning fireing....
-    //
-
-    // distance limitation only for MS mechs
-    if dist2 >= FIREDIST2 || this_robot.firewait != 0. || is_visible(&this_robot.pos) == 0 {
-        return;
-    }
-
-    if my_random(AGGRESSIONMAX) >= (*DRUIDMAP.add(this_robot.ty.try_into().unwrap())).aggression {
-        this_robot.firewait += my_random(1000) as f32 * ROBOT_MAX_WAIT_BETWEEN_SHOTS / 1000.0;
-        return;
-    }
-
-    fire_bullet_sound(guntype);
-
-    // find a bullet entry, that isn't currently used...
-    let mut j = 0;
-    while j < MAXBULLETS {
-        if ALL_BULLETS[j].ty == Status::Out as u8 {
-            break;
-        }
-
-        j += 1;
-    }
-
-    if j == MAXBULLETS {
-        warn!("AttackInfluencer: no free bullets... giving up");
-        return;
-    }
-
-    let cur_bullet = &mut ALL_BULLETS[j];
-    // determine the direction of the shot, so that it will go into the direction of
-    // the target
-
-    if xdist.abs() > ydist.abs() {
-        cur_bullet.speed.x = (*BULLETMAP.add(guntype.try_into().unwrap())).speed;
-        cur_bullet.speed.y = ydist * cur_bullet.speed.x / xdist;
-        if xdist < 0. {
-            cur_bullet.speed.x = -cur_bullet.speed.x;
-            cur_bullet.speed.y = -cur_bullet.speed.y;
+            // If its a combat droid, then if might attack...
+            if (*DRUIDMAP.add(usize::try_from(enemy.ty).unwrap())).aggression != 0 {
+                self.attack_influence(i.try_into().unwrap());
+            }
         }
     }
 
-    if xdist.abs() < ydist.abs() {
-        cur_bullet.speed.y = (*BULLETMAP.add(guntype.try_into().unwrap())).speed;
-        cur_bullet.speed.x = xdist * cur_bullet.speed.y / ydist;
-        if ydist < 0. {
-            cur_bullet.speed.x = -cur_bullet.speed.x;
-            cur_bullet.speed.y = -cur_bullet.speed.y;
+    /// AttackInfluence(): This function sometimes fires a bullet from
+    /// enemy number enemynum directly into the direction of the influencer,
+    /// but of course only if the odds are good i.e. requirements are met.
+    pub unsafe fn attack_influence(&self, enemy_num: c_int) {
+        let this_robot = &mut ALL_ENEMYS[usize::try_from(enemy_num).unwrap()];
+        // At first, we check for a lot of cases in which we do not
+        // need to move anything for this reason or for that
+        //
+
+        // ignore robots on other levels
+        if this_robot.levelnum != (*CUR_LEVEL).levelnum {
+            return;
         }
-    }
 
-    cur_bullet.angle =
-        -(90. + 180. * f32::atan2(cur_bullet.speed.y, cur_bullet.speed.x) / std::f32::consts::PI);
-
-    cur_bullet.pos.x = this_robot.pos.x;
-    cur_bullet.pos.y = this_robot.pos.y;
-
-    cur_bullet.pos.x +=
-        (cur_bullet.speed.x) / ((*BULLETMAP.add(guntype.try_into().unwrap())).speed).abs() * 0.5;
-    cur_bullet.pos.y +=
-        (cur_bullet.speed.y) / ((*BULLETMAP.add(guntype.try_into().unwrap())).speed).abs() * 0.5;
-
-    this_robot.firewait = (*BULLETMAP.add(
-        (*DRUIDMAP.add(this_robot.ty.try_into().unwrap()))
-            .gun
-            .try_into()
-            .unwrap(),
-    ))
-    .recharging_time;
-
-    cur_bullet.ty = guntype.try_into().unwrap();
-    cur_bullet.time_in_frames = 0;
-    cur_bullet.time_in_seconds = 0.;
-}
-
-pub unsafe fn move_this_enemy(enemy_num: c_int) {
-    let this_robot = &mut ALL_ENEMYS[usize::try_from(enemy_num).unwrap()];
-
-    // Now check if the robot is still alive
-    // if the robot just got killed, initiate the
-    // explosion and all that...
-    if this_robot.energy <= 0. && (this_robot.status != Status::Terminated as c_int) {
-        this_robot.status = Status::Terminated as c_int;
-        REAL_SCORE += (*DRUIDMAP.add(usize::try_from(this_robot.ty).unwrap())).score as f32;
-
-        DEATH_COUNT += (this_robot.ty * this_robot.ty) as f32; // quadratic "importance", max=529
-
-        start_blast(
-            this_robot.pos.x,
-            this_robot.pos.y,
-            Explosion::Druidblast as c_int,
-        );
-        if level_empty() != 0 {
-            REAL_SCORE += DECKCOMPLETEBONUS;
-
-            let cur_level = &mut *CUR_LEVEL;
-            cur_level.empty = true.into();
-            cur_level.timer = WAIT_LEVELEMPTY;
-            set_time_factor(SLOWMO_FACTOR); // watch final explosion in slow-motion
+        // ignore dead robots as well...
+        if this_robot.status == Status::Out as c_int {
+            return;
         }
-        return; // this one's down, so we can move on to the next
+
+        let mut xdist = ME.pos.x - this_robot.pos.x;
+        let mut ydist = ME.pos.y - this_robot.pos.y;
+
+        // Add some security against division by zero
+        if xdist == 0. {
+            xdist = 0.01;
+        }
+        if ydist == 0. {
+            ydist = 0.01;
+        }
+
+        // if odds are good, make a shot at your target
+        let guntype = (*DRUIDMAP.add(this_robot.ty.try_into().unwrap())).gun;
+
+        let dist2 = (xdist * xdist + ydist * ydist).sqrt();
+
+        //--------------------
+        //
+        // From here on, it's classical Paradroid robot behaviour concerning fireing....
+        //
+
+        // distance limitation only for MS mechs
+        if dist2 >= FIREDIST2 || this_robot.firewait != 0. || is_visible(&this_robot.pos) == 0 {
+            return;
+        }
+
+        if my_random(AGGRESSIONMAX) >= (*DRUIDMAP.add(this_robot.ty.try_into().unwrap())).aggression
+        {
+            this_robot.firewait += my_random(1000) as f32 * ROBOT_MAX_WAIT_BETWEEN_SHOTS / 1000.0;
+            return;
+        }
+
+        self.fire_bullet_sound(guntype);
+
+        // find a bullet entry, that isn't currently used...
+        let mut j = 0;
+        while j < MAXBULLETS {
+            if ALL_BULLETS[j].ty == Status::Out as u8 {
+                break;
+            }
+
+            j += 1;
+        }
+
+        if j == MAXBULLETS {
+            warn!("AttackInfluencer: no free bullets... giving up");
+            return;
+        }
+
+        let cur_bullet = &mut ALL_BULLETS[j];
+        // determine the direction of the shot, so that it will go into the direction of
+        // the target
+
+        if xdist.abs() > ydist.abs() {
+            cur_bullet.speed.x = (*BULLETMAP.add(guntype.try_into().unwrap())).speed;
+            cur_bullet.speed.y = ydist * cur_bullet.speed.x / xdist;
+            if xdist < 0. {
+                cur_bullet.speed.x = -cur_bullet.speed.x;
+                cur_bullet.speed.y = -cur_bullet.speed.y;
+            }
+        }
+
+        if xdist.abs() < ydist.abs() {
+            cur_bullet.speed.y = (*BULLETMAP.add(guntype.try_into().unwrap())).speed;
+            cur_bullet.speed.x = xdist * cur_bullet.speed.y / ydist;
+            if ydist < 0. {
+                cur_bullet.speed.x = -cur_bullet.speed.x;
+                cur_bullet.speed.y = -cur_bullet.speed.y;
+            }
+        }
+
+        cur_bullet.angle = -(90.
+            + 180. * f32::atan2(cur_bullet.speed.y, cur_bullet.speed.x) / std::f32::consts::PI);
+
+        cur_bullet.pos.x = this_robot.pos.x;
+        cur_bullet.pos.y = this_robot.pos.y;
+
+        cur_bullet.pos.x += (cur_bullet.speed.x)
+            / ((*BULLETMAP.add(guntype.try_into().unwrap())).speed).abs()
+            * 0.5;
+        cur_bullet.pos.y += (cur_bullet.speed.y)
+            / ((*BULLETMAP.add(guntype.try_into().unwrap())).speed).abs()
+            * 0.5;
+
+        this_robot.firewait = (*BULLETMAP.add(
+            (*DRUIDMAP.add(this_robot.ty.try_into().unwrap()))
+                .gun
+                .try_into()
+                .unwrap(),
+        ))
+        .recharging_time;
+
+        cur_bullet.ty = guntype.try_into().unwrap();
+        cur_bullet.time_in_frames = 0;
+        cur_bullet.time_in_seconds = 0.;
     }
 
-    // robots that still have to wait also do not need to
-    // be processed for movement
-    if this_robot.warten > 0. {
-        return;
+    pub unsafe fn move_this_enemy(&self, enemy_num: c_int) {
+        let this_robot = &mut ALL_ENEMYS[usize::try_from(enemy_num).unwrap()];
+
+        // Now check if the robot is still alive
+        // if the robot just got killed, initiate the
+        // explosion and all that...
+        if this_robot.energy <= 0. && (this_robot.status != Status::Terminated as c_int) {
+            this_robot.status = Status::Terminated as c_int;
+            REAL_SCORE += (*DRUIDMAP.add(usize::try_from(this_robot.ty).unwrap())).score as f32;
+
+            DEATH_COUNT += (this_robot.ty * this_robot.ty) as f32; // quadratic "importance", max=529
+
+            self.start_blast(
+                this_robot.pos.x,
+                this_robot.pos.y,
+                Explosion::Druidblast as c_int,
+            );
+            if level_empty() != 0 {
+                REAL_SCORE += DECKCOMPLETEBONUS;
+
+                let cur_level = &mut *CUR_LEVEL;
+                cur_level.empty = true.into();
+                cur_level.timer = WAIT_LEVELEMPTY;
+                set_time_factor(SLOWMO_FACTOR); // watch final explosion in slow-motion
+            }
+            return; // this one's down, so we can move on to the next
+        }
+
+        // robots that still have to wait also do not need to
+        // be processed for movement
+        if this_robot.warten > 0. {
+            return;
+        }
+
+        // Now check for collisions of this enemy with his colleagues
+        check_enemy_enemy_collision(enemy_num);
+
+        // Now comes the real movement part
+        move_this_robot_thowards_his_waypoint(enemy_num);
+
+        select_next_waypoint_classical(enemy_num);
     }
-
-    // Now check for collisions of this enemy with his colleagues
-    check_enemy_enemy_collision(enemy_num);
-
-    // Now comes the real movement part
-    move_this_robot_thowards_his_waypoint(enemy_num);
-
-    select_next_waypoint_classical(enemy_num);
 }
 
 pub unsafe fn check_enemy_enemy_collision(enemy_num: c_int) -> c_int {

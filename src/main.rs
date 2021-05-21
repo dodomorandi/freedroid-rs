@@ -32,13 +32,12 @@ mod vars;
 mod view;
 
 use b_font::BFont;
-use bullet::{explode_blasts, move_bullets, BulletData};
+use bullet::{move_bullets, BulletData};
 use defs::{
     scale_rect, AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Status, BYCOLOR,
     DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_LEVEL_RECTS,
     MAX_LIFTS, MAX_LIFT_ROWS, RESET, SHOW_WAIT, STANDARD_MISSION_C,
 };
-use enemy::move_enemys;
 use global::{GAME_CONFIG, LEVEL_DOORS_NOT_MOVED_TIME, SKIP_A_FEW_FRAMES};
 use graphics::{clear_graph_mem, CROSSHAIR_CURSOR, NE_SCREEN};
 use highscore::Highscore;
@@ -49,7 +48,7 @@ use map::{move_level_doors, ColorNames, Map};
 use misc::{
     compute_fps_for_this_frame, frame_time, set_time_factor, start_taking_time_for_fps_calculation,
 };
-use ship::alert_level_warning;
+use sound::Sound;
 use structs::{Blast, Bullet, Enemy, Finepoint, Level, Lift, Ship};
 use text::Text;
 use vars::{CONS_DROID_RECT, ME, SHIP_EMPTY_COUNTER};
@@ -157,6 +156,7 @@ struct Data {
     influencer: Influencer,
     init: Init,
     text: Text,
+    sound: Sound,
 }
 
 impl Default for Data {
@@ -170,6 +170,7 @@ impl Default for Data {
             influencer: Default::default(),
             init: Default::default(),
             text: Default::default(),
+            sound: Default::default(),
         }
     }
 }
@@ -257,9 +258,9 @@ fn main() {
 
                 data.animate_refresh();
 
-                explode_blasts(); // move blasts to the right current "phase" of the blast
+                data.explode_blasts(); // move blasts to the right current "phase" of the blast
 
-                alert_level_warning(); // tout tout, blink blink... Alert!!
+                data.alert_level_warning(); // tout tout, blink blink... Alert!!
 
                 data.display_banner(null_mut(), null_mut(), 0);
 
@@ -277,8 +278,8 @@ fn main() {
                 // also change his status and position and "phase" of rotation
                 data.move_influence();
 
-                move_enemys(); // move all the enemys:
-                               // also do attacks on influ and also move "phase" or their rotation
+                data.move_enemys(); // move all the enemys:
+                                    // also do attacks on influ and also move "phase" or their rotation
 
                 data.check_influence_wall_collisions(); /* Testen ob der Weg nicht durch Mauern verstellt ist */
                 data.check_influence_enemy_collision();

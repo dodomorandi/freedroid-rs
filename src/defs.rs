@@ -536,7 +536,7 @@ pub const BULLET_COLL_DIST2: f32 = 0.024_414_063;
 // in the SoundSampleFilenames definition located in sound.c!
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(dead_code)]
-pub enum Sound {
+pub enum SoundType {
     Error = 0,
     Blast,
     Collision,

@@ -9,7 +9,8 @@ use crate::{
     },
     menu::SHIP_EXT,
     misc::{
-        dealloc_c_string, frame_time, locate_string_in_data, my_random, read_value_from_string,
+        dealloc_c_string, find_file, frame_time, locate_string_in_data, my_random,
+        read_value_from_string,
     },
     structs::{Finepoint, GrobPoint, Level},
     vars::{BLOCK_RECT, DRUIDMAP},
@@ -948,7 +949,7 @@ impl Data {
         //Now its time to start decoding the droids file.
         //For that, we must get it into memory first.
         //The procedure is the same as with LoadShip
-        let fpath = self.find_file(
+        let fpath = find_file(
             filename,
             MAP_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -1032,7 +1033,7 @@ impl Data {
             cstr!("*** Beginning of elevator rectangles ***");
 
         /* Now get the lift-connection data from "FILE.elv" file */
-        let fpath = self.find_file(
+        let fpath = find_file(
             filename,
             MAP_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -1460,7 +1461,7 @@ impl Data {
 
         /* Read the whole ship-data to memory */
         const END_OF_SHIP_DATA_STRING: &CStr = cstr!("*** End of Ship Data ***");
-        let fpath = self.find_file(
+        let fpath = find_file(
             filename,
             MAP_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,

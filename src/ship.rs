@@ -3,7 +3,7 @@ use crate::{
     bullet::{delete_blast, delete_bullet},
     defs::{
         get_user_center, AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction,
-        Sound, Status, DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET, TEXT_STRETCH, UPDATE,
+        SoundType, Status, DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET, TEXT_STRETCH, UPDATE,
     },
     global::PARA_B_FONT,
     graphics::{
@@ -14,10 +14,6 @@ use crate::{
     input::{SDL_Delay, INPUT_AXIS, LAST_MOUSE_EVENT},
     map::{get_current_lift, get_map_brick},
     misc::activate_conservative_frame_computation,
-    sound::{
-        enter_lift_sound, leave_lift_sound, menu_item_selected_sound, move_lift_sound,
-        move_menu_position_sound, play_sound,
-    },
     structs::Point,
     vars::{
         BRAIN_NAMES, CLASSES, CLASS_NAMES, CONS_DROID_RECT, CONS_HEADER_RECT, CONS_MENU_RECT,
@@ -73,56 +69,59 @@ pub unsafe fn free_droid_pics() {
     SDL_FreeSurface(DROID_BACKGROUND);
 }
 
-/// do all alert-related agitations: alert-sirens and alert-lights
-pub unsafe fn alert_level_warning() {
-    const SIREN_WAIT: f32 = 2.5;
+impl Data {
+    /// do all alert-related agitations: alert-sirens and alert-lights
+    pub unsafe fn alert_level_warning(&self) {
+        const SIREN_WAIT: f32 = 2.5;
 
-    static mut LAST_SIREN: u32 = 0;
+        static mut LAST_SIREN: u32 = 0;
 
-    use AlertNames::*;
-    match AlertNames::try_from(ALERT_LEVEL).ok() {
-        Some(Green) => {}
-        Some(Yellow) | Some(Amber) | Some(Red) => {
-            if SDL_GetTicks() - LAST_SIREN > (SIREN_WAIT * 1000.0 / (ALERT_LEVEL as f32)) as u32 {
-                // higher alert-> faster sirens!
-                play_sound(Sound::Alert as c_int);
-                LAST_SIREN = SDL_GetTicks();
+        use AlertNames::*;
+        match AlertNames::try_from(ALERT_LEVEL).ok() {
+            Some(Green) => {}
+            Some(Yellow) | Some(Amber) | Some(Red) => {
+                if SDL_GetTicks() - LAST_SIREN > (SIREN_WAIT * 1000.0 / (ALERT_LEVEL as f32)) as u32
+                {
+                    // higher alert-> faster sirens!
+                    self.play_sound(SoundType::Alert as c_int);
+                    LAST_SIREN = SDL_GetTicks();
+                }
+            }
+            Some(Last) | None => {
+                warn!(
+                    "illegal AlertLevel = {} > {}.. something's gone wrong!!\n",
+                    ALERT_LEVEL,
+                    AlertNames::Red as c_int
+                );
             }
         }
-        Some(Last) | None => {
-            warn!(
-                "illegal AlertLevel = {} > {}.. something's gone wrong!!\n",
-                ALERT_LEVEL,
-                AlertNames::Red as c_int
-            );
-        }
-    }
 
-    // so much to the sirens, now make sure the alert-tiles are updated correctly:
-    let posx = (*CUR_LEVEL).alerts[0].x;
-    let posy = (*CUR_LEVEL).alerts[0].y;
-    if posx == -1 {
-        // no alerts here...
-        return;
-    }
-
-    let cur_alert = AlertNames::try_from(ALERT_LEVEL).unwrap();
-
-    // check if alert-tiles are up-to-date
-    if get_map_brick(&*CUR_LEVEL, posx.into(), posy.into()) == cur_alert as u8 {
-        // ok
-        return;
-    }
-
-    for alert in &mut (*CUR_LEVEL).alerts {
-        let posx = alert.x;
-        let posy = alert.y;
+        // so much to the sirens, now make sure the alert-tiles are updated correctly:
+        let posx = (*CUR_LEVEL).alerts[0].x;
+        let posy = (*CUR_LEVEL).alerts[0].y;
         if posx == -1 {
-            break;
+            // no alerts here...
+            return;
         }
 
-        *(*CUR_LEVEL).map[usize::try_from(posy).unwrap()].add(usize::try_from(posx).unwrap()) =
-            cur_alert as i8;
+        let cur_alert = AlertNames::try_from(ALERT_LEVEL).unwrap();
+
+        // check if alert-tiles are up-to-date
+        if get_map_brick(&*CUR_LEVEL, posx.into(), posy.into()) == cur_alert as u8 {
+            // ok
+            return;
+        }
+
+        for alert in &mut (*CUR_LEVEL).alerts {
+            let posx = alert.x;
+            let posy = alert.y;
+            if posx == -1 {
+                break;
+            }
+
+            *(*CUR_LEVEL).map[usize::try_from(posy).unwrap()].add(usize::try_from(posx).unwrap()) =
+                cur_alert as i8;
+        }
     }
 }
 
@@ -526,7 +525,7 @@ impl Data {
             // check if the mouse-cursor is on any of the console-menu points
             for (i, rect) in CONS_MENU_RECTS.iter_mut().enumerate() {
                 if SHOW_CURSOR && pos != i && cursor_is_on_rect(rect) != 0 {
-                    move_menu_position_sound();
+                    self.move_menu_position_sound();
                     pos = i;
                     need_update = true;
                 }
@@ -562,7 +561,7 @@ impl Data {
                             self.update_input(); // this sets a new last_mouse_event
                             LAST_MOUSE_EVENT = mousemove_buf; //... which we override.. ;)
                         }
-                        move_menu_position_sound();
+                        self.move_menu_position_sound();
                         need_update = true;
                         LAST_MOVE_TICK = SDL_GetTicks();
                     }
@@ -590,13 +589,13 @@ impl Data {
                             self.update_input(); // this sets a new last_mouse_event
                             LAST_MOUSE_EVENT = mousemove_buf; //... which we override.. ;)
                         }
-                        move_menu_position_sound();
+                        self.move_menu_position_sound();
                         need_update = true;
                         LAST_MOVE_TICK = SDL_GetTicks();
                     }
 
                     MenuAction::CLICK => {
-                        menu_item_selected_sound();
+                        self.menu_item_selected_sound();
                         self.wait_for_all_keys_released();
                         need_update = true;
                         match pos {
@@ -724,7 +723,7 @@ impl Data {
                     }
 
                     if droidtype < ME.ty {
-                        move_menu_position_sound();
+                        self.move_menu_position_sound();
                         droidtype += 1;
                         need_update = true;
                         LAST_MOVE_TICK = SDL_GetTicks();
@@ -737,7 +736,7 @@ impl Data {
                     }
 
                     if droidtype > 0 {
-                        move_menu_position_sound();
+                        self.move_menu_position_sound();
                         droidtype -= 1;
                         need_update = true;
                         LAST_MOVE_TICK = SDL_GetTicks();
@@ -750,7 +749,7 @@ impl Data {
                     }
 
                     if page < 2 {
-                        move_menu_position_sound();
+                        self.move_menu_position_sound();
                         page += 1;
                         need_update = true;
                         LAST_MOVE_TICK = SDL_GetTicks();
@@ -763,7 +762,7 @@ impl Data {
                     }
 
                     if page > 0 {
-                        move_menu_position_sound();
+                        self.move_menu_position_sound();
                         page -= 1;
                         need_update = true;
                         LAST_MOVE_TICK = SDL_GetTicks();
@@ -929,7 +928,7 @@ impl Data {
         }
         let mut cur_lift: usize = cur_lift.try_into().unwrap();
 
-        enter_lift_sound();
+        self.enter_lift_sound();
         self.switch_background_music_to(null_mut()); // turn off Bg music
 
         let mut up_lift = CUR_SHIP.all_lifts[cur_lift].up;
@@ -970,7 +969,7 @@ impl Data {
                                 cur_level = CUR_SHIP.all_lifts[cur_lift].level;
                                 up_lift = CUR_SHIP.all_lifts[cur_lift].up;
                                 show_lifts(cur_level, liftrow);
-                                move_lift_sound();
+                                self.move_lift_sound();
                             }
                         }
                     }
@@ -986,7 +985,7 @@ impl Data {
                                 cur_level = CUR_SHIP.all_lifts[cur_lift].level;
                                 down_lift = CUR_SHIP.all_lifts[cur_lift].down;
                                 show_lifts(cur_level, liftrow);
-                                move_lift_sound();
+                                self.move_lift_sound();
                             }
                         }
                     }
@@ -1031,7 +1030,7 @@ impl Data {
         }
 
         let cur_level = &*CUR_LEVEL;
-        leave_lift_sound();
+        self.leave_lift_sound();
         self.switch_background_music_to(cur_level.background_song_name);
         clear_graph_mem();
         self.display_banner(

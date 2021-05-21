@@ -6,7 +6,6 @@ use crate::{
     global::{BLAST_DAMAGE_PER_SECOND, BLAST_RADIUS, DROID_RADIUS},
     map::{is_passable, is_visible},
     misc::frame_time,
-    sound::{druid_blast_sound, got_hit_sound, got_into_blast_sound},
     structs::{Finepoint, Vect},
     text::{add_influ_burnt_text, enemy_hit_by_bullet_text},
     vars::{BLASTMAP, BULLETMAP, DRUIDMAP},
@@ -126,7 +125,7 @@ impl Data {
                         Direction::Center as c_int,
                     ) != Direction::Center as c_int
                     {
-                        start_blast(
+                        self.start_blast(
                             cur_bullet.pos.x,
                             cur_bullet.pos.y,
                             Explosion::Bulletblast as c_int,
@@ -141,7 +140,7 @@ impl Data {
                         let ydist = ME.pos.y - cur_bullet.pos.y;
                         // FIXME: don't use DRUIDHITDIST2!!
                         if (xdist * xdist + ydist * ydist) < get_druid_hit_dist_squared() {
-                            got_hit_sound();
+                            self.got_hit_sound();
 
                             if INVINCIBLE_MODE == 0 {
                                 ME.energy -= (*BULLETMAP.add(cur_bullet.ty.into())).damage as f32;
@@ -171,7 +170,7 @@ impl Data {
                                 (*BULLETMAP.add(cur_bullet.ty.try_into().unwrap())).damage as f32;
 
                             delete_bullet(num);
-                            got_hit_sound();
+                            self.got_hit_sound();
 
                             if !cur_bullet.mine {
                                 self.bullet.fbt_counter += 1;
@@ -204,7 +203,7 @@ impl Data {
                         // both will be deleted and replaced by blasts..
                         info!("Bullet-Bullet-Collision detected...");
 
-                        start_blast(
+                        self.start_blast(
                             cur_bullet.pos.x,
                             cur_bullet.pos.y,
                             Explosion::Druidblast as c_int,
@@ -223,136 +222,141 @@ pub unsafe fn delete_blast(num: c_int) {
     ALL_BLASTS[usize::try_from(num).unwrap()].ty = Status::Out as c_int;
 }
 
-pub unsafe fn explode_blasts() {
-    ALL_BLASTS[..MAXBLASTS]
-        .iter_mut()
-        .enumerate()
-        .filter(|(_, blast)| blast.ty != Status::Out as c_int)
-        .for_each(|(i, cur_blast)| {
-            if cur_blast.ty == Explosion::Druidblast as c_int {
-                check_blast_collisions(i.try_into().unwrap());
+impl Data {
+    pub unsafe fn explode_blasts(&self) {
+        ALL_BLASTS[..MAXBLASTS]
+            .iter_mut()
+            .enumerate()
+            .filter(|(_, blast)| blast.ty != Status::Out as c_int)
+            .for_each(|(i, cur_blast)| {
+                if cur_blast.ty == Explosion::Druidblast as c_int {
+                    self.check_blast_collisions(i.try_into().unwrap());
+                }
+
+                let blast_spec = &BLASTMAP[usize::try_from(cur_blast.ty).unwrap()];
+                cur_blast.phase +=
+                    frame_time() * blast_spec.phases as f32 / blast_spec.total_animation_time;
+                if cur_blast.phase.floor() as c_int >= blast_spec.phases {
+                    delete_blast(i.try_into().unwrap());
+                }
+            });
+    }
+
+    pub unsafe fn check_blast_collisions(&self, num: c_int) {
+        let level = (*CUR_LEVEL).levelnum;
+        let cur_blast = &mut ALL_BLASTS[usize::try_from(num).unwrap()];
+
+        /* check Blast-Bullet Collisions and kill hit Bullets */
+        for (i, cur_bullet) in ALL_BULLETS[0..MAXBULLETS].iter().enumerate() {
+            if cur_bullet.ty == Status::Out as u8 {
+                continue;
             }
 
-            let blast_spec = &BLASTMAP[usize::try_from(cur_blast.ty).unwrap()];
-            cur_blast.phase +=
-                frame_time() * blast_spec.phases as f32 / blast_spec.total_animation_time;
-            if cur_blast.phase.floor() as c_int >= blast_spec.phases {
-                delete_blast(i.try_into().unwrap());
+            let vdist = Vect {
+                x: cur_bullet.pos.x - cur_blast.px,
+                y: cur_bullet.pos.y - cur_blast.py,
+            };
+            let dist = (vdist.x * vdist.x + vdist.y * vdist.y).sqrt();
+            if dist < BLAST_RADIUS {
+                self.start_blast(
+                    cur_bullet.pos.x,
+                    cur_bullet.pos.y,
+                    Explosion::Bulletblast as c_int,
+                );
+                delete_bullet(i.try_into().unwrap());
             }
-        });
-}
-
-pub unsafe fn check_blast_collisions(num: c_int) {
-    let level = (*CUR_LEVEL).levelnum;
-    let cur_blast = &mut ALL_BLASTS[usize::try_from(num).unwrap()];
-
-    /* check Blast-Bullet Collisions and kill hit Bullets */
-    for (i, cur_bullet) in ALL_BULLETS[0..MAXBULLETS].iter().enumerate() {
-        if cur_bullet.ty == Status::Out as u8 {
-            continue;
         }
 
+        /* Check Blast-Enemy Collisions and smash energy of hit enemy */
+        for enemy in ALL_ENEMYS
+            .iter_mut()
+            .take(usize::try_from(NUM_ENEMYS).unwrap())
+        {
+            if enemy.status == Status::Out as c_int || enemy.levelnum != level {
+                continue;
+            }
+
+            let vdist = Vect {
+                x: enemy.pos.x - cur_blast.px,
+                y: enemy.pos.y - cur_blast.py,
+            };
+            let dist = (vdist.x * vdist.x + vdist.y * vdist.y).sqrt();
+
+            if dist < BLAST_RADIUS + DROID_RADIUS {
+                /* drag energy of enemy */
+                enemy.energy -= BLAST_DAMAGE_PER_SECOND * frame_time();
+            }
+
+            if enemy.energy < 0. {
+                enemy.energy = 0.;
+            }
+        }
+
+        /* Check influence-Blast collisions */
         let vdist = Vect {
-            x: cur_bullet.pos.x - cur_blast.px,
-            y: cur_bullet.pos.y - cur_blast.py,
+            x: ME.pos.x - cur_blast.px,
+            y: ME.pos.y - cur_blast.py,
         };
         let dist = (vdist.x * vdist.x + vdist.y * vdist.y).sqrt();
-        if dist < BLAST_RADIUS {
-            start_blast(
-                cur_bullet.pos.x,
-                cur_bullet.pos.y,
-                Explosion::Bulletblast as c_int,
-            );
-            delete_bullet(i.try_into().unwrap());
-        }
-    }
 
-    /* Check Blast-Enemy Collisions and smash energy of hit enemy */
-    for enemy in ALL_ENEMYS
-        .iter_mut()
-        .take(usize::try_from(NUM_ENEMYS).unwrap())
-    {
-        if enemy.status == Status::Out as c_int || enemy.levelnum != level {
-            continue;
-        }
+        if ME.status != Status::Out as c_int
+            && !cur_blast.mine
+            && dist < BLAST_RADIUS + DROID_RADIUS
+        {
+            if INVINCIBLE_MODE == 0 {
+                ME.energy -= BLAST_DAMAGE_PER_SECOND * frame_time();
 
-        let vdist = Vect {
-            x: enemy.pos.x - cur_blast.px,
-            y: enemy.pos.y - cur_blast.py,
-        };
-        let dist = (vdist.x * vdist.x + vdist.y * vdist.y).sqrt();
-
-        if dist < BLAST_RADIUS + DROID_RADIUS {
-            /* drag energy of enemy */
-            enemy.energy -= BLAST_DAMAGE_PER_SECOND * frame_time();
-        }
-
-        if enemy.energy < 0. {
-            enemy.energy = 0.;
-        }
-    }
-
-    /* Check influence-Blast collisions */
-    let vdist = Vect {
-        x: ME.pos.x - cur_blast.px,
-        y: ME.pos.y - cur_blast.py,
-    };
-    let dist = (vdist.x * vdist.x + vdist.y * vdist.y).sqrt();
-
-    if ME.status != Status::Out as c_int && !cur_blast.mine && dist < BLAST_RADIUS + DROID_RADIUS {
-        if INVINCIBLE_MODE == 0 {
-            ME.energy -= BLAST_DAMAGE_PER_SECOND * frame_time();
-
-            // So the influencer got some damage from the hot blast
-            // Now most likely, he then will also say so :)
-            if cur_blast.message_was_done == 0 {
-                add_influ_burnt_text();
-                cur_blast.message_was_done = true.into();
+                // So the influencer got some damage from the hot blast
+                // Now most likely, he then will also say so :)
+                if cur_blast.message_was_done == 0 {
+                    add_influ_burnt_text();
+                    cur_blast.message_was_done = true.into();
+                }
+            }
+            // In order to avoid a new sound EVERY frame we check for how long the previous blast
+            // lies back in time.  LastBlastHit is a float, that counts SECONDS real-time !!
+            if LAST_GOT_INTO_BLAST_SOUND > 1.2 {
+                self.got_into_blast_sound();
+                LAST_GOT_INTO_BLAST_SOUND = 0.;
             }
         }
-        // In order to avoid a new sound EVERY frame we check for how long the previous blast
-        // lies back in time.  LastBlastHit is a float, that counts SECONDS real-time !!
-        if LAST_GOT_INTO_BLAST_SOUND > 1.2 {
-            got_into_blast_sound();
-            LAST_GOT_INTO_BLAST_SOUND = 0.;
-        }
     }
-}
 
-pub unsafe fn start_blast(x: c_float, y: c_float, mut ty: c_int) {
-    let mut i = 0;
-    while i < MAXBLASTS {
-        if ALL_BLASTS[i].ty == Status::Out as c_int {
-            break;
+    pub unsafe fn start_blast(&self, x: c_float, y: c_float, mut ty: c_int) {
+        let mut i = 0;
+        while i < MAXBLASTS {
+            if ALL_BLASTS[i].ty == Status::Out as c_int {
+                break;
+            }
+
+            i += 1;
         }
 
-        i += 1;
-    }
+        if i >= MAXBLASTS {
+            i = 0;
+        }
 
-    if i >= MAXBLASTS {
-        i = 0;
-    }
+        /* Get Pointer to it: more comfortable */
+        let new_blast = &mut ALL_BLASTS[i];
 
-    /* Get Pointer to it: more comfortable */
-    let new_blast = &mut ALL_BLASTS[i];
+        if ty == Explosion::Rejectblast as c_int {
+            new_blast.mine = true;
+            ty = Explosion::Druidblast as c_int; // not really a different type, just avoid damaging influencer
+        } else {
+            new_blast.mine = false;
+        }
 
-    if ty == Explosion::Rejectblast as c_int {
-        new_blast.mine = true;
-        ty = Explosion::Druidblast as c_int; // not really a different type, just avoid damaging influencer
-    } else {
-        new_blast.mine = false;
-    }
+        new_blast.px = x;
+        new_blast.py = y;
 
-    new_blast.px = x;
-    new_blast.py = y;
+        new_blast.ty = ty;
+        new_blast.phase = 0.;
 
-    new_blast.ty = ty;
-    new_blast.phase = 0.;
+        new_blast.message_was_done = 0;
 
-    new_blast.message_was_done = 0;
-
-    if ty == Explosion::Druidblast as c_int {
-        druid_blast_sound();
+        if ty == Explosion::Druidblast as c_int {
+            self.druid_blast_sound();
+        }
     }
 }
 

@@ -13,7 +13,6 @@ use crate::{
     },
     map::{get_map_brick, is_visible},
     misc::frame_time,
-    sound::{cry_sound, transfer_sound},
     structs::{Enemy, Finepoint, GrobPoint},
     vars::{
         BANNER_RECT, BLASTMAP, BLOCK_RECT, BULLETMAP, DRUIDMAP, FULL_USER_RECT, LEFT_INFO_RECT,
@@ -511,7 +510,7 @@ impl Data {
 
             if ME.last_crysound_time > CRY_SOUND_INTERVAL {
                 ME.last_crysound_time = 0.;
-                cry_sound();
+                self.cry_sound();
             }
         }
 
@@ -524,7 +523,7 @@ impl Data {
 
             if ME.last_transfer_sound_time > TRANSFER_SOUND_INTERVAL {
                 ME.last_transfer_sound_time = 0.;
-                transfer_sound();
+                self.transfer_sound();
             }
         }
 
