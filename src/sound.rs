@@ -33,11 +33,11 @@ use inner::MixMusic;
 extern "C" {
     fn Mix_PlayChannelTimed(
         channel: c_int,
-        chunk: *mut Mix_Chunk,
+        chunk: *mut MixChunk,
         loops: c_int,
         ticks: c_int,
     ) -> c_int;
-    fn Mix_FreeChunk(chunk: *mut Mix_Chunk);
+    fn Mix_FreeChunk(chunk: *mut MixChunk);
     fn Mix_FreeMusic(music: *mut MixMusic);
     fn Mix_PauseMusic();
     fn Mix_ResumeMusic();
@@ -45,10 +45,10 @@ extern "C" {
     fn Mix_PlayMusic(music: *mut MixMusic, loops: c_int) -> c_int;
     fn Mix_VolumeMusic(volume: c_int) -> c_int;
     fn Mix_LoadMUS(file: *const c_char) -> *mut MixMusic;
-    fn Mix_VolumeChunk(chunk: *mut Mix_Chunk, volume: c_int) -> c_int;
+    fn Mix_VolumeChunk(chunk: *mut MixChunk, volume: c_int) -> c_int;
     fn Mix_OpenAudio(frequency: c_int, format: u16, channels: c_int, chunksize: c_int) -> c_int;
     fn Mix_AllocateChannels(num_chans: c_int) -> c_int;
-    fn Mix_LoadWAV_RW(src: *mut SDL_RWops, freesrc: c_int) -> *mut Mix_Chunk;
+    fn Mix_LoadWAV_RW(src: *mut SDL_RWops, freesrc: c_int) -> *mut MixChunk;
 }
 
 const MIX_MAX_VOLUME: u8 = 128;
@@ -65,7 +65,7 @@ const AUDIO_S16MSB: u16 = 0x9010;
 const MIX_DEFAULT_FORMAT: u16 = AUDIO_S16MSB;
 
 #[inline]
-unsafe fn mix_load_wav(file: *mut c_char) -> *mut Mix_Chunk {
+unsafe fn mix_load_wav(file: *mut c_char) -> *mut MixChunk {
     Mix_LoadWAV_RW(SDL_RWFromFile(file, cstr!("rb").as_ptr() as *mut c_char), 1)
 }
 
@@ -120,7 +120,7 @@ const MUSIC_FILES: [&CStr; NUM_COLORS] = [
 ];
 
 #[repr(C)]
-struct Mix_Chunk {
+struct MixChunk {
     allocated: c_int,
     abuf: *mut u8,
     alen: u32,
@@ -131,7 +131,7 @@ struct Mix_Chunk {
 pub struct Sound {
     prev_color: c_int,
     paused: bool,
-    loaded_wav_files: [*mut Mix_Chunk; SoundType::All as usize],
+    loaded_wav_files: [*mut MixChunk; SoundType::All as usize],
     music_songs: [*mut MixMusic; NUM_COLORS],
     tmp_mod_file: *mut MixMusic,
 }
@@ -149,7 +149,7 @@ impl Default for Sound {
 }
 
 #[inline]
-unsafe fn mix_play_channel(channel: c_int, chunk: *mut Mix_Chunk, loops: c_int) -> c_int {
+unsafe fn mix_play_channel(channel: c_int, chunk: *mut MixChunk, loops: c_int) -> c_int {
     Mix_PlayChannelTimed(channel, chunk, loops, -1)
 }
 
