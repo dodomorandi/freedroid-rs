@@ -18,7 +18,7 @@ use sdl::{
 use std::{
     convert::TryFrom,
     ffi::CStr,
-    os::raw::{c_char, c_float, c_int, c_void},
+    os::raw::{c_char, c_float, c_int},
     ptr::null_mut,
 };
 
@@ -119,10 +119,6 @@ const MUSIC_FILES: [&CStr; NUM_COLORS] = [
     cstr!("dreamfish-uridium2_loader.mod"), // DARK
 ];
 
-static mut MUSIC_SONGS: [*mut MixMusic; NUM_COLORS] =
-    [null_mut::<c_void>() as *mut MixMusic; NUM_COLORS];
-static mut TMP_MOD_FILE: *mut MixMusic = null_mut::<c_void>() as *mut MixMusic;
-
 #[repr(C)]
 struct Mix_Chunk {
     allocated: c_int,
@@ -136,6 +132,8 @@ pub struct Sound {
     prev_color: c_int,
     paused: bool,
     loaded_wav_files: [*mut Mix_Chunk; SoundType::All as usize],
+    music_songs: [*mut MixMusic; NUM_COLORS],
+    tmp_mod_file: *mut MixMusic,
 }
 
 impl Default for Sound {
@@ -144,6 +142,8 @@ impl Default for Sound {
             prev_color: -1,
             paused: false,
             loaded_wav_files: [null_mut(); SoundType::All as usize],
+            music_songs: [null_mut(); NUM_COLORS],
+            tmp_mod_file: null_mut(),
         }
     }
 }
@@ -191,13 +191,14 @@ impl Data {
             .filter(|file| !file.is_null())
             .for_each(|&file| Mix_FreeChunk(file));
 
-        MUSIC_SONGS
+        self.sound
+            .music_songs
             .iter()
             .filter(|song| !song.is_null())
             .for_each(|&song| Mix_FreeMusic(song));
 
-        if !TMP_MOD_FILE.is_null() {
-            Mix_FreeMusic(TMP_MOD_FILE);
+        if !self.sound.tmp_mod_file.is_null() {
+            Mix_FreeMusic(self.sound.tmp_mod_file);
         }
 
         Mix_CloseAudio();
@@ -391,7 +392,7 @@ impl Data {
                 self.sound.paused = false;
             } else {
                 Mix_PlayMusic(
-                    MUSIC_SONGS[usize::try_from((*CUR_LEVEL).color).unwrap()],
+                    self.sound.music_songs[usize::try_from((*CUR_LEVEL).color).unwrap()],
                     -1,
                 );
                 self.sound.paused = false;
@@ -399,8 +400,8 @@ impl Data {
             }
         } else {
             // not using BYCOLOR mechanism: just play specified song
-            if !TMP_MOD_FILE.is_null() {
-                Mix_FreeMusic(TMP_MOD_FILE);
+            if !self.sound.tmp_mod_file.is_null() {
+                Mix_FreeMusic(self.sound.tmp_mod_file);
             }
             let fpath = find_file(
                 filename_raw.as_ptr() as *const c_char,
@@ -415,15 +416,15 @@ impl Data {
                 );
                 return;
             }
-            TMP_MOD_FILE = Mix_LoadMUS(fpath);
-            if TMP_MOD_FILE.is_null() {
+            self.sound.tmp_mod_file = Mix_LoadMUS(fpath);
+            if self.sound.tmp_mod_file.is_null() {
                 error!(
                     "SDL Mixer Error: {}. Continuing with sound disabled",
                     get_error(),
                 );
                 return;
             }
-            Mix_PlayMusic(TMP_MOD_FILE, -1);
+            Mix_PlayMusic(self.sound.tmp_mod_file, -1);
         }
 
         Mix_VolumeMusic((GAME_CONFIG.current_bg_music_volume * f32::from(MIX_MAX_VOLUME)) as c_int);
@@ -540,7 +541,10 @@ impl Data {
             }
         }
 
-        let iter = MUSIC_FILES.iter().copied().zip(MUSIC_SONGS.iter_mut());
+        let iter = MUSIC_FILES
+            .iter()
+            .copied()
+            .zip(self.sound.music_songs.iter_mut());
         for (music_file, music_song) in iter {
             let fpath = find_file(
                 music_file.as_ptr(),
