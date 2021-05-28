@@ -48,6 +48,10 @@ pub struct Misc {
     previous_time: f32,
     current_time_factor: f32,
     file_path: [u8; 1024],
+    frame_nr: c_int,
+    one_frame_sdl_ticks: u32,
+    now_sdl_ticks: u32,
+    one_frame_delay: c_long,
 }
 
 impl Default for Misc {
@@ -56,14 +60,13 @@ impl Default for Misc {
             previous_time: 0.1,
             current_time_factor: 1.,
             file_path: [0; 1024],
+            frame_nr: 0,
+            one_frame_sdl_ticks: 0,
+            now_sdl_ticks: 0,
+            one_frame_delay: 0,
         }
     }
 }
-
-static mut ONE_FRAME_DELAY: c_long = 0;
-static mut NOW_SDL_TICKS: u32 = 0;
-static mut ONE_FRAME_SDL_TICKS: u32 = 0;
-static mut FRAME_NR: c_int = 0;
 
 pub unsafe fn update_progress(percent: c_int) {
     let h = (f64::from(PROGRESS_BAR_RECT.h) * f64::from(percent) / 100.) as u16;
@@ -168,7 +171,7 @@ impl Data {
 
         let mut cheese = false;
         loop {
-            start_taking_time_for_fps_calculation();
+            self.start_taking_time_for_fps_calculation();
 
             if !cheese {
                 self.animate_influence();
@@ -181,7 +184,7 @@ impl Data {
 
             SDL_Delay(1);
 
-            compute_fps_for_this_frame();
+            self.compute_fps_for_this_frame();
 
             #[cfg(feature = "gcw0")]
             let cond = gcw0_ls_pressed_r() || gcw0_rs_pressed_r();
@@ -354,44 +357,53 @@ pub unsafe fn save_game_config() -> c_int {
     defs::OK.into()
 }
 
-/// This function starts the time-taking process.  Later the results
-/// of this function will be used to calculate the current framerate
-pub unsafe fn start_taking_time_for_fps_calculation() {
-    /* This ensures, that 0 is never an encountered framenr,
-     * therefore count to 100 here
-     * Take the time now for calculating the frame rate
-     * (DO NOT MOVE THIS COMMAND PLEASE!) */
-    FRAME_NR += 1;
+impl Data {
+    /// This function starts the time-taking process.  Later the results
+    /// of this function will be used to calculate the current framerate
+    pub unsafe fn start_taking_time_for_fps_calculation(&mut self) {
+        /* This ensures, that 0 is never an encountered framenr,
+         * therefore count to 100 here
+         * Take the time now for calculating the frame rate
+         * (DO NOT MOVE THIS COMMAND PLEASE!) */
+        self.misc.frame_nr += 1;
 
-    ONE_FRAME_SDL_TICKS = SDL_GetTicks();
-}
-
-pub unsafe fn compute_fps_for_this_frame() {
-    // In the following paragraph the framerate calculation is done.
-    // There are basically two ways to do this:
-    // The first way is to use SDL_GetTicks(), a function measuring milliseconds
-    // since the initialisation of the SDL.
-    // The second way is to use gettimeofday, a standard ANSI C function I guess,
-    // defined in time.h or so.
-    //
-    // I have arranged for a definition set in defs.h to switch between the two
-    // methods of ramerate calculation.  THIS MIGHT INDEED MAKE SENSE, SINCE THERE
-    // ARE SOME UNEXPLAINED FRAMERATE PHENOMENA WHICH HAVE TO TO WITH KEYBOARD
-    // SPACE KEY, SO PLEASE DO NOT ERASE EITHER METHOD.  PLEASE ASK JP FIRST.
-    //
-
-    if SKIP_A_FEW_FRAMES != 0 {
-        return;
+        self.misc.one_frame_sdl_ticks = SDL_GetTicks();
     }
 
-    NOW_SDL_TICKS = SDL_GetTicks();
-    ONE_FRAME_DELAY = c_long::from(NOW_SDL_TICKS) - c_long::from(ONE_FRAME_SDL_TICKS);
-    ONE_FRAME_DELAY = if ONE_FRAME_DELAY > 0 {
-        ONE_FRAME_DELAY
-    } else {
-        1
-    }; // avoid division by zero
-    F_P_SOVER1 = (1000. / ONE_FRAME_DELAY as f64) as f32;
+    pub unsafe fn compute_fps_for_this_frame(&mut self) {
+        // In the following paragraph the framerate calculation is done.
+        // There are basically two ways to do this:
+        // The first way is to use SDL_GetTicks(), a function measuring milliseconds
+        // since the initialisation of the SDL.
+        // The second way is to use gettimeofday, a standard ANSI C function I guess,
+        // defined in time.h or so.
+        //
+        // I have arranged for a definition set in defs.h to switch between the two
+        // methods of ramerate calculation.  THIS MIGHT INDEED MAKE SENSE, SINCE THERE
+        // ARE SOME UNEXPLAINED FRAMERATE PHENOMENA WHICH HAVE TO TO WITH KEYBOARD
+        // SPACE KEY, SO PLEASE DO NOT ERASE EITHER METHOD.  PLEASE ASK JP FIRST.
+        //
+
+        if SKIP_A_FEW_FRAMES != 0 {
+            return;
+        }
+
+        let Misc {
+            now_sdl_ticks,
+            one_frame_delay,
+            ref one_frame_sdl_ticks,
+            ..
+        } = &mut self.misc;
+
+        *now_sdl_ticks = SDL_GetTicks();
+        *one_frame_delay = c_long::from(*now_sdl_ticks) - c_long::from(*one_frame_sdl_ticks);
+        *one_frame_delay = if *one_frame_delay > 0 {
+            *one_frame_delay
+        } else {
+            1
+        }; // avoid division by zero
+        F_P_SOVER1 = (1000. / *one_frame_delay as f64) as f32;
+    }
 }
 
 pub unsafe fn activate_conservative_frame_computation() {

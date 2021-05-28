@@ -45,7 +45,7 @@ use influencer::Influencer;
 use init::Init;
 use input::{init_keystr, SDL_Delay, JOY_SENSITIVITY, SHOW_CURSOR};
 use map::{move_level_doors, ColorNames, Map};
-use misc::{compute_fps_for_this_frame, start_taking_time_for_fps_calculation, Misc};
+use misc::Misc;
 use sound::Sound;
 use structs::{Blast, Bullet, Enemy, Finepoint, Level, Lift, Ship};
 use text::Text;
@@ -242,7 +242,7 @@ fn main() {
             SDL_ShowCursor(SDL_ENABLE);
 
             while data.game_over.not() {
-                start_taking_time_for_fps_calculation();
+                data.start_taking_time_for_fps_calculation();
 
                 data.update_counters_for_this_frame();
 
@@ -303,7 +303,7 @@ fn main() {
                     SDL_Delay(1);
                 }
 
-                compute_fps_for_this_frame();
+                data.compute_fps_for_this_frame();
             }
         }
     }

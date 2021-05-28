@@ -18,9 +18,9 @@ use crate::{
     influencer::init_influ_position_history,
     input::{SDL_Delay, JOY_SENSITIVITY},
     misc::{
-        activate_conservative_frame_computation, compute_fps_for_this_frame,
-        count_string_occurences, dealloc_c_string, load_game_config, locate_string_in_data,
-        my_random, read_value_from_string, start_taking_time_for_fps_calculation, update_progress,
+        activate_conservative_frame_computation, count_string_occurences, dealloc_c_string,
+        load_game_config, locate_string_in_data, my_random, read_value_from_string,
+        update_progress,
     },
     structs::{BulletSpec, DruidSpec},
     vars::{
@@ -1560,13 +1560,13 @@ impl Data {
             // add "slow motion effect" for final explosion
             self.set_time_factor(SLOWMO_FACTOR);
 
-            start_taking_time_for_fps_calculation();
+            self.start_taking_time_for_fps_calculation();
             self.display_banner(null_mut(), null_mut(), 0);
             self.explode_blasts();
             self.move_bullets();
             self.move_enemys();
             self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
-            compute_fps_for_this_frame();
+            self.compute_fps_for_this_frame();
             if self.any_key_just_pressed() != 0 {
                 break;
             }
