@@ -554,21 +554,21 @@ pub unsafe fn scale_stat_rects(scale: c_float) {
     scale!(COLUMN_RECT);
 }
 
-impl Data {
-    pub unsafe fn scale_pic(&mut self, pic: &mut *mut SDL_Surface, scale: c_float) {
-        if (scale - 1.0).abs() <= f32::EPSILON {
-            return;
-        }
-        let scale = scale.into();
-
-        let tmp = *pic;
-        *pic = zoomSurface(tmp, scale, scale, 0);
-        if pic.is_null() {
-            panic!("zoomSurface() failed for scale = {}.", scale);
-        }
-        SDL_FreeSurface(tmp);
+pub unsafe fn scale_pic(pic: &mut *mut SDL_Surface, scale: c_float) {
+    if (scale - 1.0).abs() <= f32::EPSILON {
+        return;
     }
+    let scale = scale.into();
 
+    let tmp = *pic;
+    *pic = zoomSurface(tmp, scale, scale, 0);
+    if pic.is_null() {
+        panic!("zoomSurface() failed for scale = {}.", scale);
+    }
+    SDL_FreeSurface(tmp);
+}
+
+impl Data {
     pub unsafe fn scale_graphics(&mut self, scale: c_float) {
         static INIT: std::sync::Once = std::sync::Once::new();
 
@@ -607,18 +607,18 @@ impl Data {
                     .flat_map(|surfaces| surfaces.iter_mut()),
             )
             .for_each(|(orig_surface, map_surface)| {
-                self.scale_pic(orig_surface, scale);
+                scale_pic(orig_surface, scale);
                 *map_surface = *orig_surface;
             });
 
         //---------- rescale Droid-model  blocks
         /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
         for surface in &mut INFLUENCER_SURFACE_POINTER {
-            self.scale_pic(surface, scale);
+            scale_pic(surface, scale);
             SDL_SetAlpha(*surface, 0, 0);
         }
         for surface in &mut ENEMY_SURFACE_POINTER {
-            self.scale_pic(surface, scale);
+            scale_pic(surface, scale);
             SDL_SetAlpha(*surface, 0, 0);
         }
 
@@ -630,29 +630,29 @@ impl Data {
         bulletmap
             .iter_mut()
             .flat_map(|bullet| bullet.surface_pointer.iter_mut())
-            .for_each(|surface| self.scale_pic(surface, scale));
+            .for_each(|surface| scale_pic(surface, scale));
 
         //---------- rescale Blast blocks
         BLASTMAP
             .iter_mut()
             .flat_map(|blast| blast.surface_pointer.iter_mut())
-            .for_each(|surface| self.scale_pic(surface, scale));
+            .for_each(|surface| scale_pic(surface, scale));
 
         //---------- rescale Digit blocks
         for surface in &mut INFLU_DIGIT_SURFACE_POINTER {
-            self.scale_pic(surface, scale);
+            scale_pic(surface, scale);
             SDL_SetAlpha(*surface, 0, 0);
         }
         for surface in &mut ENEMY_DIGIT_SURFACE_POINTER {
-            self.scale_pic(surface, scale);
+            scale_pic(surface, scale);
             SDL_SetAlpha(*surface, 0, 0);
         }
 
         //---------- rescale Takeover pics
-        self.scale_pic(&mut TO_BLOCKS, scale);
+        scale_pic(&mut TO_BLOCKS, scale);
 
-        self.scale_pic(&mut SHIP_ON_PIC, scale);
-        self.scale_pic(&mut SHIP_OFF_PIC, scale);
+        scale_pic(&mut SHIP_ON_PIC, scale);
+        scale_pic(&mut SHIP_OFF_PIC, scale);
 
         // the following are not theme-specific and are therefore only loaded once!
         if init {
@@ -672,27 +672,27 @@ impl Data {
             SDL_FreeSurface(tmp);
 
             // takeover pics
-            self.scale_pic(&mut TAKEOVER_BG_PIC, scale);
+            scale_pic(&mut TAKEOVER_BG_PIC, scale);
 
             //---------- Console pictures
-            self.scale_pic(&mut CONSOLE_PIC, scale);
-            self.scale_pic(&mut CONSOLE_BG_PIC1, scale);
-            self.scale_pic(&mut CONSOLE_BG_PIC2, scale);
-            self.scale_pic(&mut ARROW_UP, scale);
-            self.scale_pic(&mut ARROW_DOWN, scale);
-            self.scale_pic(&mut ARROW_RIGHT, scale);
-            self.scale_pic(&mut ARROW_LEFT, scale);
+            scale_pic(&mut CONSOLE_PIC, scale);
+            scale_pic(&mut CONSOLE_BG_PIC1, scale);
+            scale_pic(&mut CONSOLE_BG_PIC2, scale);
+            scale_pic(&mut ARROW_UP, scale);
+            scale_pic(&mut ARROW_DOWN, scale);
+            scale_pic(&mut ARROW_RIGHT, scale);
+            scale_pic(&mut ARROW_LEFT, scale);
             //---------- Banner
-            self.scale_pic(&mut BANNER_PIC, scale);
+            scale_pic(&mut BANNER_PIC, scale);
 
-            self.scale_pic(&mut PIC999, scale);
+            scale_pic(&mut PIC999, scale);
 
             // get the Ashes pics
             if !DECAL_PICS[0].is_null() {
-                self.scale_pic(&mut DECAL_PICS[0], scale);
+                scale_pic(&mut DECAL_PICS[0], scale);
             }
             if !DECAL_PICS[1].is_null() {
-                self.scale_pic(&mut DECAL_PICS[1], scale);
+                scale_pic(&mut DECAL_PICS[1], scale);
             }
         }
 
@@ -1804,7 +1804,7 @@ impl Data {
         }
 
         if (GAME_CONFIG.scale - 1.).abs() > c_float::EPSILON {
-            self.scale_pic(&mut image, GAME_CONFIG.scale);
+            scale_pic(&mut image, GAME_CONFIG.scale);
         }
 
         SDL_UpperBlit(image, null_mut(), NE_SCREEN, null_mut());

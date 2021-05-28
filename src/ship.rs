@@ -7,7 +7,7 @@ use crate::{
     },
     global::PARA_B_FONT,
     graphics::{
-        clear_graph_mem, ARROW_CURSOR, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP,
+        clear_graph_mem, scale_pic, ARROW_CURSOR, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP,
         CONSOLE_BG_PIC1, CONSOLE_BG_PIC2, CONSOLE_PIC, CROSSHAIR_CURSOR, PACKED_PORTRAITS,
         SHIP_OFF_PIC, SHIP_ON_PIC, VID_BPP,
     },
@@ -39,6 +39,7 @@ use sdl::{
 use std::{
     convert::{TryFrom, TryInto},
     ffi::CStr,
+    fmt,
     ops::Not,
     os::raw::{c_char, c_float, c_int},
     ptr::null_mut,
@@ -46,17 +47,100 @@ use std::{
 
 const UPDATE_ONLY: u8 = 0x01;
 
+pub struct ShipData {
+    last_siren: u32,
+    frame_num: c_int,
+    last_droid_type: c_int,
+    last_frame_time: u32,
+    src_rect: Rect,
+    enter_console_last_move_tick: u32,
+    great_droid_show_last_move_tick: u32,
+    enter_lift_last_move_tick: u32,
+    droid_background: *mut SDL_Surface,
+    droid_pics: *mut SDL_Surface,
+    up_rect: Rect,
+    down_rect: Rect,
+    left_rect: Rect,
+    right_rect: Rect,
+}
+
+impl fmt::Debug for ShipData {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        #[derive(Debug)]
+        struct Rect {
+            x: i16,
+            y: i16,
+            w: u16,
+            h: u16,
+        }
+
+        impl From<&::sdl::Rect> for Rect {
+            fn from(rect: &::sdl::Rect) -> Rect {
+                Rect {
+                    x: rect.x,
+                    y: rect.y,
+                    w: rect.w,
+                    h: rect.h,
+                }
+            }
+        }
+
+        let src_rect = Rect::from(&self.src_rect);
+        let up_rect = Rect::from(&self.up_rect);
+        let down_rect = Rect::from(&self.down_rect);
+        let left_rect = Rect::from(&self.left_rect);
+        let right_rect = Rect::from(&self.right_rect);
+
+        f.debug_struct("ShipData")
+            .field("last_siren", &self.last_siren)
+            .field("frame_num", &self.frame_num)
+            .field("last_droid_type", &self.last_droid_type)
+            .field("last_frame_time", &self.last_frame_time)
+            .field("src_rect", &src_rect)
+            .field(
+                "enter_console_last_move_tick",
+                &self.enter_console_last_move_tick,
+            )
+            .field(
+                "great_droid_show_last_move_tick",
+                &self.great_droid_show_last_move_tick,
+            )
+            .field("enter_lift_last_move_tick", &self.enter_lift_last_move_tick)
+            .field("droid_background", &self.droid_background)
+            .field("droid_pics", &self.droid_pics)
+            .field("up_rect", &up_rect)
+            .field("down_rect", &down_rect)
+            .field("left_rect", &left_rect)
+            .field("right_rect", &right_rect)
+            .finish()
+    }
+}
+
+impl Default for ShipData {
+    fn default() -> Self {
+        Self {
+            last_siren: 0,
+            frame_num: 0,
+            last_droid_type: -1,
+            last_frame_time: 0,
+            src_rect: rect!(0, 0, 0, 0),
+            enter_console_last_move_tick: 0,
+            great_droid_show_last_move_tick: 0,
+            enter_lift_last_move_tick: 0,
+            droid_background: null_mut(),
+            droid_pics: null_mut(),
+            up_rect: rect!(0, 0, 0, 0),
+            down_rect: rect!(0, 0, 0, 0),
+            left_rect: rect!(0, 0, 0, 0),
+            right_rect: rect!(0, 0, 0, 0),
+        }
+    }
+}
+
 extern "C" {
     pub fn IMG_Load_RW(src: *mut SDL_RWops, freesrc: c_int) -> *mut SDL_Surface;
     pub fn IMG_isJPG(src: *mut SDL_RWops) -> c_int;
 }
-
-pub static mut DROID_BACKGROUND: *mut SDL_Surface = null_mut();
-pub static mut DROID_PICS: *mut SDL_Surface = null_mut();
-pub static mut UP_RECT: Rect = rect!(0, 0, 0, 0);
-pub static mut DOWN_RECT: Rect = rect!(0, 0, 0, 0);
-pub static mut LEFT_RECT: Rect = rect!(0, 0, 0, 0);
-pub static mut RIGHT_RECT: Rect = rect!(0, 0, 0, 0);
 
 #[inline]
 pub unsafe fn sdl_rw_seek(ctx: *mut SDL_RWops, offset: c_int, whence: c_int) -> c_int {
@@ -64,27 +148,26 @@ pub unsafe fn sdl_rw_seek(ctx: *mut SDL_RWops, offset: c_int, whence: c_int) -> 
     seek(ctx, offset, whence)
 }
 
-pub unsafe fn free_droid_pics() {
-    SDL_FreeSurface(DROID_PICS);
-    SDL_FreeSurface(DROID_BACKGROUND);
-}
-
 impl Data {
-    /// do all alert-related agitations: alert-sirens and alert-lights
-    pub unsafe fn alert_level_warning(&self) {
-        const SIREN_WAIT: f32 = 2.5;
+    pub unsafe fn free_droid_pics(&self) {
+        SDL_FreeSurface(self.ship.droid_pics);
+        SDL_FreeSurface(self.ship.droid_background);
+    }
 
-        static mut LAST_SIREN: u32 = 0;
+    /// do all alert-related agitations: alert-sirens and alert-lights
+    pub unsafe fn alert_level_warning(&mut self) {
+        const SIREN_WAIT: f32 = 2.5;
 
         use AlertNames::*;
         match AlertNames::try_from(ALERT_LEVEL).ok() {
             Some(Green) => {}
             Some(Yellow) | Some(Amber) | Some(Red) => {
-                if SDL_GetTicks() - LAST_SIREN > (SIREN_WAIT * 1000.0 / (ALERT_LEVEL as f32)) as u32
+                if SDL_GetTicks() - self.ship.last_siren
+                    > (SIREN_WAIT * 1000.0 / (ALERT_LEVEL as f32)) as u32
                 {
                     // higher alert-> faster sirens!
                     self.play_sound(SoundType::Alert as c_int);
-                    LAST_SIREN = SDL_GetTicks();
+                    self.ship.last_siren = SDL_GetTicks();
                 }
             }
             Some(Last) | None => {
@@ -141,40 +224,31 @@ impl Data {
         cycle_time: c_float,
         flags: c_int,
     ) {
-        static mut FRAME_NUM: c_int = 0;
-        static mut LAST_DROID_TYPE: c_int = -1;
-        static mut LAST_FRAME_TIME: u32 = 0;
-        static mut SRC_RECT: Rect = Rect {
-            x: 0,
-            y: 0,
-            h: 0,
-            w: 0,
-        };
         let mut need_new_frame = false;
 
         SDL_SetClipRect(NE_SCREEN, &dst);
 
-        if DROID_BACKGROUND.is_null() {
+        if self.ship.droid_background.is_null() {
             // first call
             let tmp = SDL_CreateRGBSurface(0, dst.w.into(), dst.h.into(), VID_BPP, 0, 0, 0, 0);
-            DROID_BACKGROUND = SDL_DisplayFormat(tmp);
+            self.ship.droid_background = SDL_DisplayFormat(tmp);
             SDL_FreeSurface(tmp);
-            SDL_UpperBlit(NE_SCREEN, &mut dst, DROID_BACKGROUND, null_mut());
-            SRC_RECT = PORTRAIT_RECT;
+            SDL_UpperBlit(NE_SCREEN, &mut dst, self.ship.droid_background, null_mut());
+            self.ship.src_rect = PORTRAIT_RECT;
         }
 
         if flags & RESET != 0 {
-            SDL_UpperBlit(NE_SCREEN, &mut dst, DROID_BACKGROUND, null_mut());
-            FRAME_NUM = 0;
-            LAST_FRAME_TIME = SDL_GetTicks();
+            SDL_UpperBlit(NE_SCREEN, &mut dst, self.ship.droid_background, null_mut());
+            self.ship.frame_num = 0;
+            self.ship.last_frame_time = SDL_GetTicks();
         }
 
-        if droid_type != LAST_DROID_TYPE || DROID_PICS.is_null() {
+        if droid_type != self.ship.last_droid_type || self.ship.droid_pics.is_null() {
             // we need to unpack the droid-pics into our local storage
-            if DROID_PICS.is_null().not() {
-                SDL_FreeSurface(DROID_PICS);
+            if self.ship.droid_pics.is_null().not() {
+                SDL_FreeSurface(self.ship.droid_pics);
             }
-            DROID_PICS = null_mut();
+            self.ship.droid_pics = null_mut();
             let packed_portrait = PACKED_PORTRAITS[usize::try_from(droid_type).unwrap()];
             let tmp = IMG_Load_RW(packed_portrait, 0);
             // important: return seek-position to beginning of RWops for next operation to succeed!
@@ -188,10 +262,10 @@ impl Data {
             }
             // now see if its a jpg, then we add some transparency by color-keying:
             if IMG_isJPG(packed_portrait) != 0 {
-                DROID_PICS = SDL_DisplayFormat(tmp);
+                self.ship.droid_pics = SDL_DisplayFormat(tmp);
             } else {
                 // else assume it's png ;)
-                DROID_PICS = SDL_DisplayFormatAlpha(tmp);
+                self.ship.droid_pics = SDL_DisplayFormatAlpha(tmp);
             }
             SDL_FreeSurface(tmp);
             sdl_rw_seek(packed_portrait, 0, libc::SEEK_SET);
@@ -199,13 +273,13 @@ impl Data {
             // do we have to scale the droid pics
             #[allow(clippy::float_cmp)]
             if GAME_CONFIG.scale != 1.0 {
-                self.scale_pic(&mut DROID_PICS, GAME_CONFIG.scale);
+                scale_pic(&mut self.ship.droid_pics, GAME_CONFIG.scale);
             }
 
-            LAST_DROID_TYPE = droid_type;
+            self.ship.last_droid_type = droid_type;
         }
 
-        let droid_pics_ref = &*DROID_PICS;
+        let droid_pics_ref = &*self.ship.droid_pics;
         let mut num_frames = droid_pics_ref.w / c_int::from(PORTRAIT_RECT.w);
 
         // sanity check
@@ -217,26 +291,32 @@ impl Data {
             num_frames = 1; // continue and hope for the best
         }
 
-        let frame_duration = SDL_GetTicks() - LAST_FRAME_TIME;
+        let frame_duration = SDL_GetTicks() - self.ship.last_frame_time;
 
         if cycle_time != 0. && (frame_duration as f32 > 1000.0 * cycle_time / num_frames as f32) {
             need_new_frame = true;
-            FRAME_NUM += 1;
+            self.ship.frame_num += 1;
         }
 
-        if FRAME_NUM >= num_frames {
-            FRAME_NUM = 0;
+        if self.ship.frame_num >= num_frames {
+            self.ship.frame_num = 0;
         }
 
         if flags & (RESET | UPDATE) != 0 || need_new_frame {
-            SRC_RECT.x = i16::try_from(FRAME_NUM).unwrap() * i16::try_from(SRC_RECT.w).unwrap();
+            self.ship.src_rect.x = i16::try_from(self.ship.frame_num).unwrap()
+                * i16::try_from(self.ship.src_rect.w).unwrap();
 
-            SDL_UpperBlit(DROID_BACKGROUND, null_mut(), NE_SCREEN, &mut dst);
-            SDL_UpperBlit(DROID_PICS, &mut SRC_RECT, NE_SCREEN, &mut dst);
+            SDL_UpperBlit(self.ship.droid_background, null_mut(), NE_SCREEN, &mut dst);
+            SDL_UpperBlit(
+                self.ship.droid_pics,
+                &mut self.ship.src_rect,
+                NE_SCREEN,
+                &mut dst,
+            );
 
             SDL_UpdateRects(NE_SCREEN, 1, &mut dst);
 
-            LAST_FRAME_TIME = SDL_GetTicks();
+            self.ship.last_frame_time = SDL_GetTicks();
         }
 
         SDL_SetClipRect(NE_SCREEN, null_mut());
@@ -257,26 +337,26 @@ impl Data {
         let lineskip =
             ((f64::from(font_height(&*self.b_font.current_font)) * TEXT_STRETCH) as f32) as i16;
         let lastline = CONS_HEADER_RECT.y + i16::try_from(CONS_HEADER_RECT.h).unwrap();
-        UP_RECT = Rect {
+        self.ship.up_rect = Rect {
             x: CONS_HEADER_RECT.x,
             y: lastline - lineskip,
             w: 25,
             h: 13,
         };
-        DOWN_RECT = Rect {
+        self.ship.down_rect = Rect {
             x: CONS_HEADER_RECT.x,
             y: (f32::from(lastline) - 0.5 * f32::from(lineskip)) as i16,
             w: 25,
             h: 13,
         };
-        LEFT_RECT = Rect {
+        self.ship.left_rect = Rect {
             x: (f32::from(CONS_HEADER_RECT.x + i16::try_from(CONS_HEADER_RECT.w).unwrap())
                 - 1.5 * f32::from(lineskip)) as i16,
             y: (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
             w: 13,
             h: 25,
         };
-        RIGHT_RECT = Rect {
+        self.ship.right_rect = Rect {
             x: (f32::from(CONS_HEADER_RECT.x + i16::try_from(CONS_HEADER_RECT.w).unwrap())
                 - 1.0 * f32::from(lineskip)) as i16,
             y: (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
@@ -426,19 +506,24 @@ Paradroid to eliminate all rogue robots.\0",
 
         if show_arrows {
             if ME.ty > droid_type {
-                SDL_UpperBlit(ARROW_UP, null_mut(), NE_SCREEN, &mut UP_RECT);
+                SDL_UpperBlit(ARROW_UP, null_mut(), NE_SCREEN, &mut self.ship.up_rect);
             }
 
             if droid_type > 0 {
-                SDL_UpperBlit(ARROW_DOWN, null_mut(), NE_SCREEN, &mut DOWN_RECT);
+                SDL_UpperBlit(ARROW_DOWN, null_mut(), NE_SCREEN, &mut self.ship.down_rect);
             }
 
             if page > 0 {
-                SDL_UpperBlit(ARROW_LEFT, null_mut(), NE_SCREEN, &mut LEFT_RECT);
+                SDL_UpperBlit(ARROW_LEFT, null_mut(), NE_SCREEN, &mut self.ship.left_rect);
             }
 
             if page < 2 {
-                SDL_UpperBlit(ARROW_RIGHT, null_mut(), NE_SCREEN, &mut RIGHT_RECT);
+                SDL_UpperBlit(
+                    ARROW_RIGHT,
+                    null_mut(),
+                    NE_SCREEN,
+                    &mut self.ship.right_rect,
+                );
             }
         }
 
@@ -512,7 +597,6 @@ impl Data {
         self.paint_console_menu(c_int::try_from(pos).unwrap(), 0);
 
         let wait_move_ticks: u32 = 100;
-        static mut LAST_MOVE_TICK: u32 = 0;
         let mut finished = false;
         let mut need_update = true;
         while !finished {
@@ -531,7 +615,7 @@ impl Data {
                 }
             }
             let action = self.get_menu_action(250);
-            if SDL_GetTicks() - LAST_MOVE_TICK > wait_move_ticks {
+            if SDL_GetTicks() - self.ship.enter_console_last_move_tick > wait_move_ticks {
                 match action {
                     MenuAction::BACK => {
                         finished = true;
@@ -563,7 +647,7 @@ impl Data {
                         }
                         self.move_menu_position_sound();
                         need_update = true;
-                        LAST_MOVE_TICK = SDL_GetTicks();
+                        self.ship.enter_console_last_move_tick = SDL_GetTicks();
                     }
 
                     MenuAction::DOWN => {
@@ -591,7 +675,7 @@ impl Data {
                         }
                         self.move_menu_position_sound();
                         need_update = true;
-                        LAST_MOVE_TICK = SDL_GetTicks();
+                        self.ship.enter_console_last_move_tick = SDL_GetTicks();
                     }
 
                     MenuAction::CLICK => {
@@ -678,7 +762,6 @@ impl Data {
         self.wait_for_all_keys_released();
         let mut need_update = true;
         let wait_move_ticks: u32 = 100;
-        static mut LAST_MOVE_TICK: u32 = 0;
 
         while !finished {
             self.show_droid_portrait(CONS_DROID_RECT, droidtype, DROID_ROTATION_TIME, 0);
@@ -697,20 +780,21 @@ impl Data {
             let mut action = MenuAction::empty();
             // special handling of mouse-clicks: check if move-arrows were clicked on
             if self.mouse_left_pressed_r() {
-                if cursor_is_on_rect(&LEFT_RECT) != 0 {
+                if cursor_is_on_rect(&self.ship.left_rect) != 0 {
                     action = MenuAction::LEFT;
-                } else if cursor_is_on_rect(&RIGHT_RECT) != 0 {
+                } else if cursor_is_on_rect(&self.ship.right_rect) != 0 {
                     action = MenuAction::RIGHT;
-                } else if cursor_is_on_rect(&UP_RECT) != 0 {
+                } else if cursor_is_on_rect(&self.ship.up_rect) != 0 {
                     action = MenuAction::UP;
-                } else if cursor_is_on_rect(&DOWN_RECT) != 0 {
+                } else if cursor_is_on_rect(&self.ship.down_rect) != 0 {
                     action = MenuAction::DOWN;
                 }
             } else {
                 action = self.get_menu_action(250);
             }
 
-            let time_for_move = SDL_GetTicks() - LAST_MOVE_TICK > wait_move_ticks;
+            let time_for_move =
+                SDL_GetTicks() - self.ship.great_droid_show_last_move_tick > wait_move_ticks;
             match action {
                 MenuAction::BACK | MenuAction::CLICK => {
                     finished = true;
@@ -726,7 +810,7 @@ impl Data {
                         self.move_menu_position_sound();
                         droidtype += 1;
                         need_update = true;
-                        LAST_MOVE_TICK = SDL_GetTicks();
+                        self.ship.great_droid_show_last_move_tick = SDL_GetTicks();
                     }
                 }
 
@@ -739,7 +823,7 @@ impl Data {
                         self.move_menu_position_sound();
                         droidtype -= 1;
                         need_update = true;
-                        LAST_MOVE_TICK = SDL_GetTicks();
+                        self.ship.great_droid_show_last_move_tick = SDL_GetTicks();
                     }
                 }
 
@@ -752,7 +836,7 @@ impl Data {
                         self.move_menu_position_sound();
                         page += 1;
                         need_update = true;
-                        LAST_MOVE_TICK = SDL_GetTicks();
+                        self.ship.great_droid_show_last_move_tick = SDL_GetTicks();
                     }
                 }
 
@@ -765,7 +849,7 @@ impl Data {
                         self.move_menu_position_sound();
                         page -= 1;
                         need_update = true;
-                        LAST_MOVE_TICK = SDL_GetTicks();
+                        self.ship.great_droid_show_last_move_tick = SDL_GetTicks();
                     }
                 }
                 _ => {}
@@ -945,13 +1029,12 @@ impl Data {
         );
 
         let wait_move_ticks: u32 = 100;
-        static mut LAST_MOVE_TICK: u32 = 0;
         let mut finished = false;
         while !finished {
             show_lifts(cur_level, liftrow);
 
             let action = self.get_menu_action(500);
-            if SDL_GetTicks() - LAST_MOVE_TICK > wait_move_ticks {
+            if SDL_GetTicks() - self.ship.enter_lift_last_move_tick > wait_move_ticks {
                 match action {
                     MenuAction::CLICK => {
                         finished = true;
@@ -959,7 +1042,7 @@ impl Data {
                     }
 
                     MenuAction::UP | MenuAction::UP_WHEEL => {
-                        LAST_MOVE_TICK = SDL_GetTicks();
+                        self.ship.enter_lift_last_move_tick = SDL_GetTicks();
                         if up_lift != -1 {
                             if CUR_SHIP.all_lifts[usize::try_from(up_lift).unwrap()].x == 99 {
                                 error!("Lift out of order, so sorry ..");
@@ -975,7 +1058,7 @@ impl Data {
                     }
 
                     MenuAction::DOWN | MenuAction::DOWN_WHEEL => {
-                        LAST_MOVE_TICK = SDL_GetTicks();
+                        self.ship.enter_lift_last_move_tick = SDL_GetTicks();
                         if down_lift != -1 {
                             if CUR_SHIP.all_lifts[usize::try_from(down_lift).unwrap()].x == 99 {
                                 error!("Lift Out of order, so sorry ..");

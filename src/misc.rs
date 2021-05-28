@@ -9,13 +9,12 @@ use crate::{
     enemy::shuffle_enemys,
     global::{GAME_CONFIG, SKIP_A_FEW_FRAMES},
     graphics::{
-        free_graphics, load_block, BANNER_IS_DESTROYED, NE_SCREEN, PROGRESS_FILLER_PIC,
+        free_graphics, load_block, scale_pic, BANNER_IS_DESTROYED, NE_SCREEN, PROGRESS_FILLER_PIC,
         PROGRESS_METER_PIC,
     },
     input::{SDL_Delay, CMD_STRINGS, KEY_CMDS},
     map::free_ship_memory,
     menu::free_menu_data,
-    ship::free_droid_pics,
     vars::{ME, PROGRESS_BAR_RECT, PROGRESS_METER_RECT, PROGRESS_TEXT_RECT},
     Data, ALL_BLASTS, ALL_ENEMYS, CONFIG_DIR, CUR_LEVEL, CUR_SHIP, F_P_SOVER1, NUM_ENEMYS,
 };
@@ -131,7 +130,7 @@ impl Data {
 
         // ----- free memory
         free_ship_memory();
-        free_droid_pics();
+        self.free_droid_pics();
         free_graphics();
         self.free_sounds();
         free_menu_data();
@@ -546,7 +545,7 @@ impl Data {
                 Criticality::Critical as c_int,
             );
             PROGRESS_METER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
-            self.scale_pic(&mut PROGRESS_METER_PIC, GAME_CONFIG.scale);
+            scale_pic(&mut PROGRESS_METER_PIC, GAME_CONFIG.scale);
             fpath = self.find_file(
                 PROGRESS_FILLER_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
@@ -554,7 +553,7 @@ impl Data {
                 Criticality::Critical as c_int,
             );
             PROGRESS_FILLER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
-            self.scale_pic(&mut PROGRESS_FILLER_PIC, GAME_CONFIG.scale);
+            scale_pic(&mut PROGRESS_FILLER_PIC, GAME_CONFIG.scale);
 
             scale_rect(&mut PROGRESS_METER_RECT, GAME_CONFIG.scale);
             scale_rect(&mut PROGRESS_BAR_RECT, GAME_CONFIG.scale);

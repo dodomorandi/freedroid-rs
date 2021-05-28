@@ -46,6 +46,7 @@ use init::Init;
 use input::{init_keystr, SDL_Delay, JOY_SENSITIVITY, SHOW_CURSOR};
 use map::{move_level_doors, ColorNames, Map};
 use misc::Misc;
+use ship::ShipData;
 use sound::Sound;
 use structs::{Blast, Bullet, Enemy, Finepoint, Level, Lift, Ship};
 use text::Text;
@@ -156,6 +157,7 @@ struct Data {
     text: Text,
     sound: Sound,
     misc: Misc,
+    ship: ShipData,
 }
 
 impl Default for Data {
@@ -171,6 +173,7 @@ impl Default for Data {
             text: Default::default(),
             sound: Default::default(),
             misc: Default::default(),
+            ship: Default::default(),
         }
     }
 }
