@@ -5,7 +5,6 @@ use crate::{
     },
     global::{BLAST_DAMAGE_PER_SECOND, BLAST_RADIUS, DROID_RADIUS},
     map::{is_passable, is_visible},
-    misc::frame_time,
     structs::{Finepoint, Vect},
     text::{add_influ_burnt_text, enemy_hit_by_bullet_text},
     vars::{BLASTMAP, BULLETMAP, DRUIDMAP},
@@ -223,7 +222,7 @@ pub unsafe fn delete_blast(num: c_int) {
 }
 
 impl Data {
-    pub unsafe fn explode_blasts(&self) {
+    pub unsafe fn explode_blasts(&mut self) {
         ALL_BLASTS[..MAXBLASTS]
             .iter_mut()
             .enumerate()
@@ -235,14 +234,14 @@ impl Data {
 
                 let blast_spec = &BLASTMAP[usize::try_from(cur_blast.ty).unwrap()];
                 cur_blast.phase +=
-                    frame_time() * blast_spec.phases as f32 / blast_spec.total_animation_time;
+                    self.frame_time() * blast_spec.phases as f32 / blast_spec.total_animation_time;
                 if cur_blast.phase.floor() as c_int >= blast_spec.phases {
                     delete_blast(i.try_into().unwrap());
                 }
             });
     }
 
-    pub unsafe fn check_blast_collisions(&self, num: c_int) {
+    pub unsafe fn check_blast_collisions(&mut self, num: c_int) {
         let level = (*CUR_LEVEL).levelnum;
         let cur_blast = &mut ALL_BLASTS[usize::try_from(num).unwrap()];
 
@@ -284,7 +283,7 @@ impl Data {
 
             if dist < BLAST_RADIUS + DROID_RADIUS {
                 /* drag energy of enemy */
-                enemy.energy -= BLAST_DAMAGE_PER_SECOND * frame_time();
+                enemy.energy -= BLAST_DAMAGE_PER_SECOND * self.frame_time();
             }
 
             if enemy.energy < 0. {
@@ -304,7 +303,7 @@ impl Data {
             && dist < BLAST_RADIUS + DROID_RADIUS
         {
             if INVINCIBLE_MODE == 0 {
-                ME.energy -= BLAST_DAMAGE_PER_SECOND * frame_time();
+                ME.energy -= BLAST_DAMAGE_PER_SECOND * self.frame_time();
 
                 // So the influencer got some damage from the hot blast
                 // Now most likely, he then will also say so :)
@@ -407,22 +406,24 @@ pub unsafe fn delete_bullet(bullet_number: c_int) {
     cur_bullet.angle = 0.;
 }
 
-/// This function moves all the bullets according to their speeds.
-///
-/// NEW: this function also takes into accoung the current framerate.
-pub unsafe fn move_bullets() {
-    for cur_bullet in &mut ALL_BULLETS[..MAXBULLETS] {
-        if cur_bullet.ty == Status::Out as u8 {
-            continue;
+impl Data {
+    /// This function moves all the bullets according to their speeds.
+    ///
+    /// NEW: this function also takes into accoung the current framerate.
+    pub unsafe fn move_bullets(&mut self) {
+        for cur_bullet in &mut ALL_BULLETS[..MAXBULLETS] {
+            if cur_bullet.ty == Status::Out as u8 {
+                continue;
+            }
+
+            cur_bullet.prev_pos.x = cur_bullet.pos.x;
+            cur_bullet.prev_pos.y = cur_bullet.pos.y;
+
+            cur_bullet.pos.x += cur_bullet.speed.x * self.frame_time();
+            cur_bullet.pos.y += cur_bullet.speed.y * self.frame_time();
+
+            cur_bullet.time_in_frames += 1;
+            cur_bullet.time_in_seconds += self.frame_time();
         }
-
-        cur_bullet.prev_pos.x = cur_bullet.pos.x;
-        cur_bullet.prev_pos.y = cur_bullet.pos.y;
-
-        cur_bullet.pos.x += cur_bullet.speed.x * frame_time();
-        cur_bullet.pos.y += cur_bullet.speed.y * frame_time();
-
-        cur_bullet.time_in_frames += 1;
-        cur_bullet.time_in_seconds += frame_time();
     }
 }

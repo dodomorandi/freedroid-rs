@@ -1,6 +1,6 @@
 use crate::{
     b_font::font_height,
-    bullet::{delete_bullet, move_bullets},
+    bullet::delete_bullet,
     defs::{
         self, get_user_center, scale_rect, AssembleCombatWindowFlags, Criticality,
         DisplayBannerFlags, Droid, Status, Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR,
@@ -19,9 +19,8 @@ use crate::{
     input::{SDL_Delay, JOY_SENSITIVITY},
     misc::{
         activate_conservative_frame_computation, compute_fps_for_this_frame,
-        count_string_occurences, dealloc_c_string, find_file, load_game_config,
-        locate_string_in_data, my_random, read_value_from_string, set_time_factor,
-        start_taking_time_for_fps_calculation, update_progress,
+        count_string_occurences, dealloc_c_string, load_game_config, locate_string_in_data,
+        my_random, read_value_from_string, start_taking_time_for_fps_calculation, update_progress,
     },
     structs::{BulletSpec, DruidSpec},
     vars::{
@@ -213,7 +212,7 @@ impl Data {
         while SDL_GetTicks() - now < WAIT_AFTER_KILLED {
             self.display_banner(null_mut(), null_mut(), 0);
             self.explode_blasts();
-            move_bullets();
+            self.move_bullets();
             self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
         }
 
@@ -293,7 +292,7 @@ impl Data {
         scale_rect(&mut SCREEN_RECT, GAME_CONFIG.scale); // make sure we open a window of the right (rescaled) size!
         self.init_video();
 
-        let image = find_file(
+        let image = self.find_file(
             TITLE_PIC_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -616,7 +615,7 @@ impl Data {
         THIS_MESSAGE_TIME = 0;
         LEVEL_DOORS_NOT_MOVED_TIME = 0.0;
         DEATH_COUNT = 0.;
-        set_time_factor(1.0);
+        self.set_time_factor(1.0);
 
         /* Delete all bullets and blasts */
         for bullet in 0..MAXBULLETS {
@@ -642,7 +641,7 @@ impl Data {
         let oldfont = std::mem::replace(&mut self.b_font.current_font, FONT0_B_FONT);
 
         /* Read the whole mission data to memory */
-        let fpath = find_file(
+        let fpath = self.find_file(
             mission_name,
             MAP_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -898,7 +897,7 @@ impl Data {
             cstr!("%s").as_ptr() as *mut c_char,
             buffer.as_mut_ptr() as *mut c_void,
         );
-        let image = find_file(
+        let image = self.find_file(
             buffer.as_mut_ptr(),
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -979,7 +978,7 @@ impl Data {
         const END_OF_GAME_DAT_STRING: &CStr = cstr!("*** End of game.dat File ***");
 
         /* Read the whole game data to memory */
-        let fpath = find_file(
+        let fpath = self.find_file(
             data_filename,
             MAP_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -1559,12 +1558,12 @@ impl Data {
 
         while (SDL_GetTicks() - now) < WAIT_AFTER_KILLED {
             // add "slow motion effect" for final explosion
-            set_time_factor(SLOWMO_FACTOR);
+            self.set_time_factor(SLOWMO_FACTOR);
 
             start_taking_time_for_fps_calculation();
             self.display_banner(null_mut(), null_mut(), 0);
             self.explode_blasts();
-            move_bullets();
+            self.move_bullets();
             self.move_enemys();
             self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
             compute_fps_for_this_frame();
@@ -1572,7 +1571,7 @@ impl Data {
                 break;
             }
         }
-        set_time_factor(1.0);
+        self.set_time_factor(1.0);
 
         Mix_HaltMusic();
 

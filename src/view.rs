@@ -12,7 +12,6 @@ use crate::{
         INFLU_DIGIT_SURFACE_POINTER, MAP_BLOCK_SURFACE_POINTER, NE_SCREEN,
     },
     map::{get_map_brick, is_visible},
-    misc::frame_time,
     structs::{Enemy, Finepoint, GrobPoint},
     vars::{
         BANNER_RECT, BLASTMAP, BLOCK_RECT, BULLETMAP, DRUIDMAP, FULL_USER_RECT, LEFT_INFO_RECT,
@@ -207,11 +206,11 @@ impl Data {
             if GAME_CONFIG.draw_framerate != 0 {
                 TIME_SINCE_LAST_FPS_UPDATE.with(|time_cell| {
                     let mut time = time_cell.get();
-                    time += frame_time();
+                    time += self.frame_time();
 
                     if time > UPDATE_FPS_HOW_OFTEN {
                         FPS_DISPLAYED.with(|fps_displayed| {
-                            fps_displayed.set((1.0 / frame_time()) as i32);
+                            fps_displayed.set((1.0 / self.frame_time()) as i32);
                         });
                         time_cell.set(0.);
                     } else {

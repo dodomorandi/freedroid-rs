@@ -6,7 +6,7 @@ use crate::{
     global::{COLLISION_LOSE_ENERGY_CALIBRATOR, DROID_RADIUS},
     input::{AXIS_IS_ACTIVE, INPUT_AXIS},
     map::{druid_passable, get_map_brick},
-    misc::{frame_time, my_random},
+    misc::my_random,
     ship::level_empty,
     structs::{Finepoint, Gps},
     text::enemy_influ_collision_text,
@@ -62,8 +62,8 @@ impl Data {
         *time_counter = 3;
 
         if ME.energy < ME.health {
-            ME.energy += REFRESH_ENERGY * frame_time() * 5.;
-            REAL_SCORE -= REFRESH_ENERGY * frame_time() * 10.;
+            ME.energy += REFRESH_ENERGY * self.frame_time() * 5.;
+            REAL_SCORE -= REFRESH_ENERGY * self.frame_time() * 10.;
 
             if REAL_SCORE < 0. {
                 // don't go negative...
@@ -139,15 +139,15 @@ impl Data {
                 }
 
                 // move the influencer a little bit out of the enemy AND the enemy a little bit out of the influ
-                let max_step_size = if frame_time() < MAXIMAL_STEP_SIZE {
-                    frame_time()
+                let max_step_size = if self.frame_time() < MAXIMAL_STEP_SIZE {
+                    self.frame_time()
                 } else {
                     MAXIMAL_STEP_SIZE
                 };
                 ME.pos.x += max_step_size.copysign(ME.pos.x - enemy.pos.x);
                 ME.pos.y += max_step_size.copysign(ME.pos.y - enemy.pos.y);
-                enemy.pos.x -= frame_time().copysign(ME.pos.x - enemy.pos.x);
-                enemy.pos.y -= frame_time().copysign(ME.pos.y - enemy.pos.y);
+                enemy.pos.x -= self.frame_time().copysign(ME.pos.x - enemy.pos.x);
+                enemy.pos.y -= self.frame_time().copysign(ME.pos.y - enemy.pos.y);
 
                 // there might be walls close too, so lets check again for collisions with them
                 self.check_influence_wall_collisions();
@@ -227,9 +227,9 @@ impl Data {
     /// In case of a collision, the position and speed of the influencer are
     /// adapted accordingly.
     /// NOTE: Of course this functions HAS to take into account the current framerate!
-    pub unsafe fn check_influence_wall_collisions(&self) {
-        let sx = ME.speed.x * frame_time();
-        let sy = ME.speed.y * frame_time();
+    pub unsafe fn check_influence_wall_collisions(&mut self) {
+        let sx = ME.speed.x * self.frame_time();
+        let sy = ME.speed.y * self.frame_time();
         let mut h_door_sliding_active = false;
 
         let lastpos = Finepoint {
@@ -250,12 +250,13 @@ impl Data {
             if !((druid_passable(
                 lastpos.x,
                 lastpos.y
-                    + (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * frame_time(),
+                    + (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * self.frame_time(),
             ) != Direction::Center as c_int)
                 || (druid_passable(
                     lastpos.x,
                     lastpos.y
-                        - (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * frame_time(),
+                        - (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed
+                            * self.frame_time(),
                 ) != Direction::Center as c_int))
             {
                 info!("North-south-Axis seems to be free.");
@@ -267,12 +268,13 @@ impl Data {
             let east_west_axis_blocked;
             if (druid_passable(
                 lastpos.x
-                    + (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * frame_time(),
+                    + (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * self.frame_time(),
                 lastpos.y,
             ) == Direction::Center as c_int)
                 && (druid_passable(
                     lastpos.x
-                        - (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * frame_time(),
+                        - (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed
+                            * self.frame_time(),
                     lastpos.y,
                 ) == Direction::Center as c_int)
             {
@@ -295,7 +297,7 @@ impl Data {
                         == MapTile::HGanztuere as u8
                 {
                     ME.pos.x +=
-                        f32::copysign(PUSHSPEED * frame_time(), ME.pos.x.round() - ME.pos.x);
+                        f32::copysign(PUSHSPEED * self.frame_time(), ME.pos.x.round() - ME.pos.x);
                     h_door_sliding_active = true;
                 }
             }
@@ -315,7 +317,7 @@ impl Data {
                         == MapTile::VGanztuere as u8)
                 {
                     ME.pos.y +=
-                        f32::copysign(PUSHSPEED * frame_time(), ME.pos.y.round() - ME.pos.y);
+                        f32::copysign(PUSHSPEED * self.frame_time(), ME.pos.y.round() - ME.pos.y);
                 }
             }
 
@@ -363,31 +365,31 @@ impl Data {
     }
 }
 
-pub unsafe fn animate_influence() {
-    if ME.ty != Droid::Droid001 as c_int {
-        ME.phase += (ME.energy
-            / ((*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxenergy
-                + (*DRUIDMAP.add(Droid::Droid001 as usize)).maxenergy))
-            * frame_time()
-            * f32::from(ENEMYPHASES)
-            * 3.;
-    } else {
-        ME.phase += (ME.energy / ((*DRUIDMAP.add(Droid::Droid001 as usize)).maxenergy))
-            * frame_time()
-            * f32::from(ENEMYPHASES)
-            * 3.;
-    }
-
-    if ME.phase.round() >= ENEMYPHASES.into() {
-        ME.phase = 0.;
-    }
-}
-
 impl Data {
+    pub unsafe fn animate_influence(&mut self) {
+        if ME.ty != Droid::Droid001 as c_int {
+            ME.phase += (ME.energy
+                / ((*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxenergy
+                    + (*DRUIDMAP.add(Droid::Droid001 as usize)).maxenergy))
+                * self.frame_time()
+                * f32::from(ENEMYPHASES)
+                * 3.;
+        } else {
+            ME.phase += (ME.energy / ((*DRUIDMAP.add(Droid::Droid001 as usize)).maxenergy))
+                * self.frame_time()
+                * f32::from(ENEMYPHASES)
+                * 3.;
+        }
+
+        if ME.phase.round() >= ENEMYPHASES.into() {
+            ME.phase = 0.;
+        }
+    }
+
     /// This function moves the influencer, adjusts his speed according to
     /// keys pressed and also adjusts his status and current "phase" of his rotation.
     pub(crate) unsafe fn move_influence(&mut self) {
-        let accel = (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).accel * frame_time();
+        let accel = (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).accel * self.frame_time();
 
         // We store the influencers position for the history record and so that others
         // can follow his trail.
@@ -400,7 +402,7 @@ impl Data {
             z: (*CUR_LEVEL).levelnum,
         };
 
-        permanent_lose_energy(); /* influ permanently loses energy */
+        self.permanent_lose_energy(); /* influ permanently loses energy */
 
         // check, if the influencer is still ok
         if ME.energy <= 0. {
@@ -458,7 +460,7 @@ impl Data {
             && ME.status != Status::Transfermode as c_int
         {
             // Proposed FireActivatePressed here...
-            self.influencer.transfer_counter += frame_time(); // Or make it an option!
+            self.influencer.transfer_counter += self.frame_time(); // Or make it an option!
         }
 
         if self.fire_pressed()
@@ -500,8 +502,8 @@ impl Data {
         //
         // NOTE:  PLEASE LEAVE THE .0 in the code or gcc will round it down to 0 like an integer.
         //
-        let mut planned_step_x = ME.speed.x * frame_time();
-        let mut planned_step_y = ME.speed.y * frame_time();
+        let mut planned_step_x = ME.speed.x * self.frame_time();
+        let mut planned_step_y = ME.speed.y * self.frame_time();
         if planned_step_x.abs() >= MAXIMAL_STEP_SIZE {
             planned_step_x = f32::copysign(MAXIMAL_STEP_SIZE, planned_step_x);
         }
@@ -515,26 +517,27 @@ impl Data {
         // Check it the influ is on a special field like a lift, a console or a refresh
         self.act_special_field(ME.pos.x, ME.pos.y);
 
-        animate_influence(); // move the "phase" of influencers rotation
-    }
-}
-
-pub unsafe fn permanent_lose_energy() {
-    // Of course if in invincible mode, no energy will ever be lost...
-    if INVINCIBLE_MODE != 0 {
-        return;
-    }
-
-    /* health decreases with time */
-    ME.health -= (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).lose_health * frame_time();
-
-    /* you cant have more energy than health */
-    if ME.energy > ME.health {
-        ME.energy = ME.health;
+        self.animate_influence(); // move the "phase" of influencers rotation
     }
 }
 
 impl Data {
+    pub unsafe fn permanent_lose_energy(&mut self) {
+        // Of course if in invincible mode, no energy will ever be lost...
+        if INVINCIBLE_MODE != 0 {
+            return;
+        }
+
+        /* health decreases with time */
+        ME.health -=
+            (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).lose_health * self.frame_time();
+
+        /* you cant have more energy than health */
+        if ME.energy > ME.health {
+            ME.energy = ME.health;
+        }
+    }
+
     /// Fire-Routine for the Influencer only !! (should be changed)
     pub unsafe fn fire_bullet(&mut self) {
         let guntype = (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).gun; /* which gun do we have ? */
@@ -607,7 +610,7 @@ impl Data {
 
         if !self.right_pressed() && !self.left_pressed() {
             let oldsign = ME.speed.x.signum();
-            let slowdown = oldsign * DECELERATION * frame_time();
+            let slowdown = oldsign * DECELERATION * self.frame_time();
             ME.speed.x -= slowdown;
 
             #[allow(clippy::float_cmp)]
@@ -619,7 +622,7 @@ impl Data {
 
         if !self.up_pressed() && !self.down_pressed() {
             let oldsign = ME.speed.y.signum();
-            let slowdown = oldsign * DECELERATION * frame_time();
+            let slowdown = oldsign * DECELERATION * self.frame_time();
             ME.speed.y -= slowdown;
 
             #[allow(clippy::float_cmp)]

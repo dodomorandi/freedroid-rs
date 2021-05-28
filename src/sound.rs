@@ -1,7 +1,6 @@
 use crate::{
     defs::{BulletKind, Criticality, SoundType, Themed, BYCOLOR, NUM_COLORS, SOUND_DIR_C},
     global::GAME_CONFIG,
-    misc::find_file,
     Data, CUR_LEVEL, SOUND_ON,
 };
 
@@ -403,7 +402,7 @@ impl Data {
             if !self.sound.tmp_mod_file.is_null() {
                 Mix_FreeMusic(self.sound.tmp_mod_file);
             }
-            let fpath = find_file(
+            let fpath = self.find_file(
                 filename_raw.as_ptr() as *const c_char,
                 SOUND_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
@@ -509,18 +508,17 @@ impl Data {
         // because the yiff did all the loading, analyzing and playing...
 
         self.sound.loaded_wav_files[0] = null_mut();
-        let iter = SOUND_SAMPLE_FILENAMES
-            .iter()
-            .copied()
-            .zip(self.sound.loaded_wav_files.iter_mut())
-            .skip(1);
-        for (sample_filename, loaded_wav_file) in iter {
-            let fpath = find_file(
+        let iter = SOUND_SAMPLE_FILENAMES.iter().copied().enumerate().skip(1);
+        for (sound_file_index, sample_filename) in iter {
+            let fpath = self.find_file(
                 sample_filename.as_ptr(),
                 SOUND_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::WarnOnly as c_int,
             );
+
+            let loaded_wav_file = &mut self.sound.loaded_wav_files[sound_file_index];
+
             if !fpath.is_null() {
                 *loaded_wav_file = mix_load_wav(fpath);
             }
@@ -541,17 +539,15 @@ impl Data {
             }
         }
 
-        let iter = MUSIC_FILES
-            .iter()
-            .copied()
-            .zip(self.sound.music_songs.iter_mut());
-        for (music_file, music_song) in iter {
-            let fpath = find_file(
+        let iter = MUSIC_FILES.iter().copied().enumerate();
+        for (music_file_index, music_file) in iter {
+            let fpath = self.find_file(
                 music_file.as_ptr(),
                 SOUND_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::WarnOnly as c_int,
             );
+            let music_song = &mut self.sound.music_songs[music_file_index];
             if !fpath.is_null() {
                 *music_song = Mix_LoadMUS(fpath);
             }

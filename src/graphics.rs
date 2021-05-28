@@ -15,9 +15,7 @@ use crate::{
         PARA_B_FONT,
     },
     input::SDL_Delay,
-    misc::{
-        activate_conservative_frame_computation, find_file, read_value_from_string, update_progress,
-    },
+    misc::{activate_conservative_frame_computation, read_value_from_string, update_progress},
     structs::ThemeList,
     takeover::{
         set_takeover_rects, CAPSULE_BLOCKS, CAPSULE_RECT, COLUMN_BLOCK, COLUMN_RECT, COLUMN_START,
@@ -826,7 +824,7 @@ impl Data {
     }
 
     pub unsafe fn load_fonts(&mut self) -> c_int {
-        let mut fpath = find_file(
+        let mut fpath = self.find_file(
             PARA_FONT_FILE_C.as_ptr(),
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -837,7 +835,7 @@ impl Data {
             panic!("font file named {} was not found.", PARA_FONT_FILE);
         }
 
-        fpath = find_file(
+        fpath = self.find_file(
             FONT0_FILE_C.as_ptr(),
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -848,7 +846,7 @@ impl Data {
             panic!("font file named {} was not found.\n", FONT0_FILE);
         }
 
-        fpath = find_file(
+        fpath = self.find_file(
             FONT1_FILE_C.as_ptr(),
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -859,7 +857,7 @@ impl Data {
             panic!("font file named {} was not found.", FONT1_FILE);
         }
 
-        fpath = find_file(
+        fpath = self.find_file(
             FONT2_FILE_C.as_ptr(),
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -998,7 +996,7 @@ impl Data {
         if flag!(WMAvailable) {
             /* if there's a window-manager */
             SDL_WM_SetCaption(cstr!("Freedroid").as_ptr(), cstr!("").as_ptr());
-            let fpath = find_file(
+            let fpath = self.find_file(
                 ICON_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
@@ -1117,7 +1115,7 @@ impl Data {
         update_progress(15);
 
         //---------- get Map blocks
-        let fpath = find_file(
+        let fpath = self.find_file(
             MAP_BLOCK_FILE_C.as_ptr(),
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,
@@ -1151,7 +1149,7 @@ impl Data {
 
         update_progress(20);
         //---------- get Droid-model  blocks
-        let fpath = find_file(
+        let fpath = self.find_file(
             DROID_BLOCK_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,
@@ -1193,7 +1191,7 @@ impl Data {
 
         update_progress(30);
         //---------- get Bullet blocks
-        let fpath = find_file(
+        let fpath = self.find_file(
             BULLET_BLOCK_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,
@@ -1224,7 +1222,7 @@ impl Data {
         update_progress(35);
 
         //---------- get Blast blocks
-        let fpath = find_file(
+        let fpath = self.find_file(
             BLAST_BLOCK_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,
@@ -1255,7 +1253,7 @@ impl Data {
         update_progress(45);
 
         //---------- get Digit blocks
-        let fpath = find_file(
+        let fpath = self.find_file(
             DIGIT_BLOCK_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,
@@ -1293,7 +1291,7 @@ impl Data {
 
         //---------- get Takeover pics
         free_if_unused(TO_BLOCKS); /* this happens when we do theme-switching */
-        let fpath = find_file(
+        let fpath = self.find_file(
             TO_BLOCK_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,
@@ -1304,14 +1302,14 @@ impl Data {
         update_progress(60);
 
         free_if_unused(SHIP_ON_PIC);
-        SHIP_ON_PIC = IMG_Load(find_file(
+        SHIP_ON_PIC = IMG_Load(self.find_file(
             SHIP_ON_PIC_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         ));
         free_if_unused(SHIP_OFF_PIC);
-        SHIP_OFF_PIC = IMG_Load(find_file(
+        SHIP_OFF_PIC = IMG_Load(self.find_file(
             SHIP_OFF_PIC_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,
@@ -1335,7 +1333,7 @@ impl Data {
             SDL_FreeSurface(tmp);
 
             // takeover background pics
-            let fpath = find_file(
+            let fpath = self.find_file(
                 TAKEOVER_BG_PIC_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
@@ -1348,21 +1346,21 @@ impl Data {
             ARROW_CURSOR = init_system_cursor(&ARROW_XPM);
             CROSSHAIR_CURSOR = init_system_cursor(&CROSSHAIR_XPM);
             //---------- get Console pictures
-            let fpath = find_file(
+            let fpath = self.find_file(
                 CONSOLE_PIC_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
             CONSOLE_PIC = load_block(fpath, 0, 0, null_mut(), 0);
-            let fpath = find_file(
+            let fpath = self.find_file(
                 CONSOLE_BG_PIC1_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
             CONSOLE_BG_PIC1 = load_block(fpath, 0, 0, null_mut(), 0);
-            let fpath = find_file(
+            let fpath = self.find_file(
                 CONSOLE_BG_PIC2_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
@@ -1372,32 +1370,32 @@ impl Data {
 
             update_progress(80);
 
-            ARROW_UP = IMG_Load(find_file(
+            ARROW_UP = IMG_Load(self.find_file(
                 cstr!("arrow_up.png").as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             ));
-            ARROW_DOWN = IMG_Load(find_file(
+            ARROW_DOWN = IMG_Load(self.find_file(
                 cstr!("arrow_down.png").as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             ));
-            ARROW_RIGHT = IMG_Load(find_file(
+            ARROW_RIGHT = IMG_Load(self.find_file(
                 cstr!("arrow_right.png").as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             ));
-            ARROW_LEFT = IMG_Load(find_file(
+            ARROW_LEFT = IMG_Load(self.find_file(
                 cstr!("arrow_left.png").as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             ));
             //---------- get Banner
-            let fpath = find_file(
+            let fpath = self.find_file(
                 BANNER_BLOCK_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
@@ -1416,7 +1414,7 @@ impl Data {
                     // first check if we find a file with rotation-frames: first try .jpg
                     libc::strcpy(fname.as_mut_ptr(), droid.druidname.as_ptr());
                     libc::strcat(fname.as_mut_ptr(), cstr!(".jpg").as_ptr());
-                    let mut fpath = find_file(
+                    let mut fpath = self.find_file(
                         fname.as_mut_ptr(),
                         GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                         Themed::NoTheme as c_int,
@@ -1426,7 +1424,7 @@ impl Data {
                     if fpath.is_null() {
                         libc::strcpy(fname.as_mut_ptr(), droid.druidname.as_ptr());
                         libc::strcat(fname.as_mut_ptr(), cstr!(".png").as_ptr());
-                        fpath = find_file(
+                        fpath = self.find_file(
                             fname.as_mut_ptr(),
                             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                             Themed::NoTheme as c_int,
@@ -1444,7 +1442,7 @@ impl Data {
                 droids[Droid::Droid999 as usize].druidname.as_ptr(),
             );
             libc::strcat(fname.as_mut_ptr(), cstr!(".png").as_ptr());
-            let fpath = find_file(
+            let fpath = self.find_file(
                 fname.as_mut_ptr(),
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
@@ -1454,7 +1452,7 @@ impl Data {
 
             // get the Ashes pics
             libc::strcpy(fname.as_mut_ptr(), cstr!("Ashes.png").as_ptr());
-            let fpath = find_file(
+            let fpath = self.find_file(
                 fname.as_mut_ptr(),
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
@@ -1621,7 +1619,7 @@ impl Data {
 
         const END_OF_THEME_DATA_STRING: &CStr = cstr!("**** End of theme data section ****");
 
-        let fpath = find_file(
+        let fpath = self.find_file(
             cstr!("config.theme").as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,

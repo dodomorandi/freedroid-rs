@@ -6,7 +6,6 @@ use crate::{
     },
     global::{HIGHSCORE_B_FONT, PARA_B_FONT},
     graphics::{make_grid_on_screen, NE_SCREEN, PIC999},
-    misc::find_file,
     vars::{FULL_USER_RECT, ME, PORTRAIT_RECT, SCREEN_RECT, USER_RECT},
     Data, CONFIG_DIR, REAL_SCORE, SHOW_SCORE,
 };
@@ -285,7 +284,7 @@ impl Data {
     /// Display the high scores of the single player game.
     /// This function is actually a submenu of the MainMenu.
     pub unsafe fn show_highscores(&mut self) {
-        let fpath = find_file(
+        let fpath = self.find_file(
             HS_BACKGROUND_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,

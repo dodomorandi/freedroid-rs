@@ -32,7 +32,7 @@ mod vars;
 mod view;
 
 use b_font::BFont;
-use bullet::{move_bullets, BulletData};
+use bullet::BulletData;
 use defs::{
     scale_rect, AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Status, BYCOLOR,
     DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_LEVEL_RECTS,
@@ -45,9 +45,7 @@ use influencer::Influencer;
 use init::Init;
 use input::{init_keystr, SDL_Delay, JOY_SENSITIVITY, SHOW_CURSOR};
 use map::{move_level_doors, ColorNames, Map};
-use misc::{
-    compute_fps_for_this_frame, frame_time, set_time_factor, start_taking_time_for_fps_calculation,
-};
+use misc::{compute_fps_for_this_frame, start_taking_time_for_fps_calculation, Misc};
 use sound::Sound;
 use structs::{Blast, Bullet, Enemy, Finepoint, Level, Lift, Ship};
 use text::Text;
@@ -157,6 +155,7 @@ struct Data {
     init: Init,
     text: Text,
     sound: Sound,
+    misc: Misc,
 }
 
 impl Default for Data {
@@ -171,6 +170,7 @@ impl Default for Data {
             init: Default::default(),
             text: Default::default(),
             sound: Default::default(),
+            misc: Default::default(),
         }
     }
 }
@@ -244,7 +244,7 @@ fn main() {
             while data.game_over.not() {
                 start_taking_time_for_fps_calculation();
 
-                update_counters_for_this_frame();
+                data.update_counters_for_this_frame();
 
                 data.react_to_special_keys();
 
@@ -264,7 +264,7 @@ fn main() {
 
                 data.display_banner(null_mut(), null_mut(), 0);
 
-                move_bullets(); // leave this in front of graphics output: time_in_frames should start with 1
+                data.move_bullets(); // leave this in front of graphics output: time_in_frames should start with 1
 
                 data.assemble_combat_picture(
                     AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into(),
@@ -286,10 +286,10 @@ fn main() {
 
                 // control speed of time-flow: dark-levels=emptyLevelSpeedup, normal-levels=1.0
                 if (*CUR_LEVEL).empty == 0 {
-                    set_time_factor(1.0);
+                    data.set_time_factor(1.0);
                 } else if (*CUR_LEVEL).color == ColorNames::Dark as i32 {
                     // if level is already dark
-                    set_time_factor(GAME_CONFIG.empty_level_speedup);
+                    data.set_time_factor(GAME_CONFIG.empty_level_speedup);
                 } else if (*CUR_LEVEL).timer <= 0. {
                     // time to switch off the lights ...
                     (*CUR_LEVEL).color = ColorNames::Dark as i32;
@@ -316,85 +316,87 @@ fn sdl_must_lock(surface: &SDL_Surface) -> bool {
         && (surface.flags & (HWSurface as u32 | AsyncBlit as u32 | RLEAccel as u32)) != 0
 }
 
-/// This function updates counters and is called ONCE every frame.
-/// The counters include timers, but framerate-independence of game speed
-/// is preserved because everything is weighted with the Frame_Time()
-/// function.
-unsafe fn update_counters_for_this_frame() {
-    // Here are some things, that were previously done by some periodic */
-    // interrupt function
-    THIS_MESSAGE_TIME += 1;
+impl Data {
+    /// This function updates counters and is called ONCE every frame.
+    /// The counters include timers, but framerate-independence of game speed
+    /// is preserved because everything is weighted with the Frame_Time()
+    /// function.
+    unsafe fn update_counters_for_this_frame(&mut self) {
+        // Here are some things, that were previously done by some periodic */
+        // interrupt function
+        THIS_MESSAGE_TIME += 1;
 
-    LAST_GOT_INTO_BLAST_SOUND += frame_time();
-    LAST_REFRESH_SOUND += frame_time();
-    ME.last_crysound_time += frame_time();
-    ME.timer += frame_time();
+        LAST_GOT_INTO_BLAST_SOUND += self.frame_time();
+        LAST_REFRESH_SOUND += self.frame_time();
+        ME.last_crysound_time += self.frame_time();
+        ME.timer += self.frame_time();
 
-    let cur_level = &mut *CUR_LEVEL;
-    if cur_level.timer >= 0.0 {
-        cur_level.timer -= frame_time();
-    }
-
-    ME.last_transfer_sound_time += frame_time();
-    ME.text_visible_time += frame_time();
-    LEVEL_DOORS_NOT_MOVED_TIME += frame_time();
-    if SKIP_A_FEW_FRAMES != 0 {
-        SKIP_A_FEW_FRAMES = 0;
-    }
-
-    if ME.firewait > 0. {
-        ME.firewait -= frame_time();
-        if ME.firewait < 0. {
-            ME.firewait = 0.;
-        }
-    }
-    if SHIP_EMPTY_COUNTER > 1 {
-        SHIP_EMPTY_COUNTER -= 1;
-    }
-    if cur_level.empty > 2 {
-        cur_level.empty -= 1;
-    }
-    if REAL_SCORE > SHOW_SCORE as f32 {
-        SHOW_SCORE += 1;
-    }
-    if REAL_SCORE < SHOW_SCORE as f32 {
-        SHOW_SCORE -= 1;
-    }
-
-    // drain Death-count, responsible for Alert-state
-    if DEATH_COUNT > 0. {
-        DEATH_COUNT -= DEATH_COUNT_DRAIN_SPEED * frame_time();
-    }
-    if DEATH_COUNT < 0. {
-        DEATH_COUNT = 0.;
-    }
-    // and switch Alert-level according to DeathCount
-    ALERT_LEVEL = (DEATH_COUNT / ALERT_THRESHOLD as f32) as i32;
-    if ALERT_LEVEL > AlertNames::Red as i32 {
-        ALERT_LEVEL = AlertNames::Red as i32;
-    }
-    // player gets a bonus/second in AlertLevel
-    REAL_SCORE += ALERT_LEVEL as f32 * ALERT_BONUS_PER_SEC * frame_time();
-
-    for enemy in &mut ALL_ENEMYS {
-        if enemy.status == Status::Out as i32 {
-            continue;
+        let cur_level = &mut *CUR_LEVEL;
+        if cur_level.timer >= 0.0 {
+            cur_level.timer -= self.frame_time();
         }
 
-        if enemy.warten > 0. {
-            enemy.warten -= frame_time();
-            if enemy.warten < 0. {
-                enemy.warten = 0.;
+        ME.last_transfer_sound_time += self.frame_time();
+        ME.text_visible_time += self.frame_time();
+        LEVEL_DOORS_NOT_MOVED_TIME += self.frame_time();
+        if SKIP_A_FEW_FRAMES != 0 {
+            SKIP_A_FEW_FRAMES = 0;
+        }
+
+        if ME.firewait > 0. {
+            ME.firewait -= self.frame_time();
+            if ME.firewait < 0. {
+                ME.firewait = 0.;
             }
         }
-
-        if enemy.firewait > 0. {
-            enemy.firewait -= frame_time();
-            if enemy.firewait <= 0. {
-                enemy.firewait = 0.;
-            }
+        if SHIP_EMPTY_COUNTER > 1 {
+            SHIP_EMPTY_COUNTER -= 1;
+        }
+        if cur_level.empty > 2 {
+            cur_level.empty -= 1;
+        }
+        if REAL_SCORE > SHOW_SCORE as f32 {
+            SHOW_SCORE += 1;
+        }
+        if REAL_SCORE < SHOW_SCORE as f32 {
+            SHOW_SCORE -= 1;
         }
 
-        enemy.text_visible_time += frame_time();
+        // drain Death-count, responsible for Alert-state
+        if DEATH_COUNT > 0. {
+            DEATH_COUNT -= DEATH_COUNT_DRAIN_SPEED * self.frame_time();
+        }
+        if DEATH_COUNT < 0. {
+            DEATH_COUNT = 0.;
+        }
+        // and switch Alert-level according to DeathCount
+        ALERT_LEVEL = (DEATH_COUNT / ALERT_THRESHOLD as f32) as i32;
+        if ALERT_LEVEL > AlertNames::Red as i32 {
+            ALERT_LEVEL = AlertNames::Red as i32;
+        }
+        // player gets a bonus/second in AlertLevel
+        REAL_SCORE += ALERT_LEVEL as f32 * ALERT_BONUS_PER_SEC * self.frame_time();
+
+        for enemy in &mut ALL_ENEMYS {
+            if enemy.status == Status::Out as i32 {
+                continue;
+            }
+
+            if enemy.warten > 0. {
+                enemy.warten -= self.frame_time();
+                if enemy.warten < 0. {
+                    enemy.warten = 0.;
+                }
+            }
+
+            if enemy.firewait > 0. {
+                enemy.firewait -= self.frame_time();
+                if enemy.firewait <= 0. {
+                    enemy.firewait = 0.;
+                }
+            }
+
+            enemy.text_visible_time += self.frame_time();
+        }
     }
 }

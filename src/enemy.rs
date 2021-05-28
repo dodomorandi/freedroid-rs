@@ -6,7 +6,7 @@ use crate::{
     },
     global::DROID_RADIUS,
     map::is_visible,
-    misc::{frame_time, my_random, set_time_factor},
+    misc::my_random,
     ship::level_empty,
     structs::Finepoint,
     vars::{BULLETMAP, DRUIDMAP, ME},
@@ -36,34 +36,34 @@ pub unsafe fn class_of_druid(druid_type: c_int) -> c_int {
     }
 }
 
-pub unsafe fn animate_enemys() {
-    for enemy in &mut ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()] {
-        /* ignore enemys that are dead or on other levels or dummys */
-        if enemy.levelnum != (*CUR_LEVEL).levelnum {
-            continue;
-        }
-        if enemy.status == Status::Out as i32 {
-            continue;
-        }
+impl Data {
+    pub unsafe fn animate_enemys(&mut self) {
+        for enemy in &mut ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()] {
+            /* ignore enemys that are dead or on other levels or dummys */
+            if enemy.levelnum != (*CUR_LEVEL).levelnum {
+                continue;
+            }
+            if enemy.status == Status::Out as i32 {
+                continue;
+            }
 
-        enemy.phase += (enemy.energy / (*DRUIDMAP.add(enemy.ty.try_into().unwrap())).maxenergy)
-            * frame_time()
-            * ENEMYPHASES as f32
-            * 2.5;
+            enemy.phase += (enemy.energy / (*DRUIDMAP.add(enemy.ty.try_into().unwrap())).maxenergy)
+                * self.frame_time()
+                * ENEMYPHASES as f32
+                * 2.5;
 
-        if enemy.phase >= ENEMYPHASES as f32 {
-            enemy.phase = 0.;
+            if enemy.phase >= ENEMYPHASES as f32 {
+                enemy.phase = 0.;
+            }
         }
     }
-}
 
-impl Data {
     /// This is the function, that move each of the enemys according to
     /// their orders and their program
-    pub unsafe fn move_enemys(&self) {
-        permanent_heal_robots(); // enemy robots heal as time passes...
+    pub unsafe fn move_enemys(&mut self) {
+        self.permanent_heal_robots(); // enemy robots heal as time passes...
 
-        animate_enemys(); // move the "phase" of the rotation of enemys
+        self.animate_enemys(); // move the "phase" of the rotation of enemys
 
         for (i, enemy) in ALL_ENEMYS[0..usize::try_from(NUM_ENEMYS).unwrap()]
             .iter_mut()
@@ -201,7 +201,7 @@ impl Data {
         cur_bullet.time_in_seconds = 0.;
     }
 
-    pub unsafe fn move_this_enemy(&self, enemy_num: c_int) {
+    pub unsafe fn move_this_enemy(&mut self, enemy_num: c_int) {
         let this_robot = &mut ALL_ENEMYS[usize::try_from(enemy_num).unwrap()];
 
         // Now check if the robot is still alive
@@ -224,7 +224,7 @@ impl Data {
                 let cur_level = &mut *CUR_LEVEL;
                 cur_level.empty = true.into();
                 cur_level.timer = WAIT_LEVELEMPTY;
-                set_time_factor(SLOWMO_FACTOR); // watch final explosion in slow-motion
+                self.set_time_factor(SLOWMO_FACTOR); // watch final explosion in slow-motion
             }
             return; // this one's down, so we can move on to the next
         }
@@ -236,74 +236,74 @@ impl Data {
         }
 
         // Now check for collisions of this enemy with his colleagues
-        check_enemy_enemy_collision(enemy_num);
+        self.check_enemy_enemy_collision(enemy_num);
 
         // Now comes the real movement part
-        move_this_robot_thowards_his_waypoint(enemy_num);
+        self.move_this_robot_thowards_his_waypoint(enemy_num);
 
         select_next_waypoint_classical(enemy_num);
     }
-}
 
-pub unsafe fn check_enemy_enemy_collision(enemy_num: c_int) -> c_int {
-    let curlev = (*CUR_LEVEL).levelnum;
+    pub unsafe fn check_enemy_enemy_collision(&mut self, enemy_num: c_int) -> c_int {
+        let curlev = (*CUR_LEVEL).levelnum;
 
-    let enemy_num: usize = enemy_num.try_into().unwrap();
-    let (enemys_before, rest) =
-        ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()].split_at_mut(enemy_num);
-    let (cur_enemy, enemys_after) = rest.split_first_mut().unwrap();
-    let check_x = cur_enemy.pos.x;
-    let check_y = cur_enemy.pos.y;
+        let enemy_num: usize = enemy_num.try_into().unwrap();
+        let (enemys_before, rest) =
+            ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()].split_at_mut(enemy_num);
+        let (cur_enemy, enemys_after) = rest.split_first_mut().unwrap();
+        let check_x = cur_enemy.pos.x;
+        let check_y = cur_enemy.pos.y;
 
-    for enemy in enemys_before.iter_mut().chain(enemys_after) {
-        // check only collisions of LIVING enemys on this level
-        if enemy.status == Status::Out as c_int
-            || enemy.status == Status::Terminated as c_int
-            || enemy.levelnum != curlev
-        {
-            continue;
-        }
-
-        /* get distance between enemy and cur_enemy */
-        let xdist = check_x - enemy.pos.x;
-        let ydist = check_y - enemy.pos.y;
-
-        let dist = (xdist * xdist + ydist * ydist).sqrt();
-
-        // Is there a Collision?
-        if dist <= (2. * DROID_RADIUS) {
-            // am I waiting already?  If so, keep waiting...
-            if cur_enemy.warten != 0. {
-                cur_enemy.warten = my_random(2 * WAIT_COLLISION) as f32;
+        for enemy in enemys_before.iter_mut().chain(enemys_after) {
+            // check only collisions of LIVING enemys on this level
+            if enemy.status == Status::Out as c_int
+                || enemy.status == Status::Terminated as c_int
+                || enemy.levelnum != curlev
+            {
                 continue;
             }
 
-            enemy.warten = my_random(2 * WAIT_COLLISION) as f32;
+            /* get distance between enemy and cur_enemy */
+            let xdist = check_x - enemy.pos.x;
+            let ydist = check_y - enemy.pos.y;
 
-            if xdist != 0. {
-                enemy.pos.x -= xdist / xdist.abs() * frame_time();
+            let dist = (xdist * xdist + ydist * ydist).sqrt();
+
+            // Is there a Collision?
+            if dist <= (2. * DROID_RADIUS) {
+                // am I waiting already?  If so, keep waiting...
+                if cur_enemy.warten != 0. {
+                    cur_enemy.warten = my_random(2 * WAIT_COLLISION) as f32;
+                    continue;
+                }
+
+                enemy.warten = my_random(2 * WAIT_COLLISION) as f32;
+
+                if xdist != 0. {
+                    enemy.pos.x -= xdist / xdist.abs() * self.frame_time();
+                }
+                if ydist != 0. {
+                    enemy.pos.y -= ydist / ydist.abs() * self.frame_time();
+                }
+
+                std::mem::swap(&mut cur_enemy.nextwaypoint, &mut cur_enemy.lastwaypoint);
+
+                let speed_x = cur_enemy.speed.x;
+                let speed_y = cur_enemy.speed.y;
+
+                if speed_x != 0. {
+                    cur_enemy.pos.x -= self.frame_time() * COL_SPEED * (speed_x) / speed_x.abs();
+                }
+                if speed_y != 0. {
+                    cur_enemy.pos.y -= self.frame_time() * COL_SPEED * (speed_y) / speed_y.abs();
+                }
+
+                return true.into();
             }
-            if ydist != 0. {
-                enemy.pos.y -= ydist / ydist.abs() * frame_time();
-            }
-
-            std::mem::swap(&mut cur_enemy.nextwaypoint, &mut cur_enemy.lastwaypoint);
-
-            let speed_x = cur_enemy.speed.x;
-            let speed_y = cur_enemy.speed.y;
-
-            if speed_x != 0. {
-                cur_enemy.pos.x -= frame_time() * COL_SPEED * (speed_x) / speed_x.abs();
-            }
-            if speed_y != 0. {
-                cur_enemy.pos.y -= frame_time() * COL_SPEED * (speed_y) / speed_y.abs();
-            }
-
-            return true.into();
         }
-    }
 
-    false.into()
+        false.into()
+    }
 }
 
 /// This function checks if the connection between two points is free of
@@ -385,43 +385,45 @@ pub unsafe fn shuffle_enemys() {
     }
 }
 
-/// This function moves one robot thowards his next waypoint.  If already
-/// there, the function does nothing more.
-pub unsafe fn move_this_robot_thowards_his_waypoint(enemy_num: c_int) {
-    let this_robot = &mut ALL_ENEMYS[usize::try_from(enemy_num).unwrap()];
+impl Data {
+    /// This function moves one robot thowards his next waypoint.  If already
+    /// there, the function does nothing more.
+    pub unsafe fn move_this_robot_thowards_his_waypoint(&mut self, enemy_num: c_int) {
+        let this_robot = &mut ALL_ENEMYS[usize::try_from(enemy_num).unwrap()];
 
-    // We do some definitions to save us some more typing later...
-    let wp_list = (*CUR_LEVEL).all_waypoints;
-    let nextwp: usize = this_robot.nextwaypoint.try_into().unwrap();
-    let maxspeed = (*DRUIDMAP.add(usize::try_from(this_robot.ty).unwrap())).maxspeed;
+        // We do some definitions to save us some more typing later...
+        let wp_list = (*CUR_LEVEL).all_waypoints;
+        let nextwp: usize = this_robot.nextwaypoint.try_into().unwrap();
+        let maxspeed = (*DRUIDMAP.add(usize::try_from(this_robot.ty).unwrap())).maxspeed;
 
-    let nextwp_pos = Finepoint {
-        x: wp_list[nextwp].x.into(),
-        y: wp_list[nextwp].y.into(),
-    };
+        let nextwp_pos = Finepoint {
+            x: wp_list[nextwp].x.into(),
+            y: wp_list[nextwp].y.into(),
+        };
 
-    // determine the remaining way until the target point is reached
-    let restweg = Finepoint {
-        x: nextwp_pos.x - this_robot.pos.x,
-        y: nextwp_pos.y - this_robot.pos.y,
-    };
+        // determine the remaining way until the target point is reached
+        let restweg = Finepoint {
+            x: nextwp_pos.x - this_robot.pos.x,
+            y: nextwp_pos.y - this_robot.pos.y,
+        };
 
-    let steplen = frame_time() * maxspeed;
-    // As long a the distance from the current position of the enemy
-    // to its next wp is large, movement is rather simple:
+        let steplen = self.frame_time() * maxspeed;
+        // As long a the distance from the current position of the enemy
+        // to its next wp is large, movement is rather simple:
 
-    let dist = (restweg.x * restweg.x + restweg.y * restweg.y).sqrt();
-    if dist > steplen {
-        this_robot.speed.x = (restweg.x / dist) * maxspeed;
-        this_robot.speed.y = (restweg.y / dist) * maxspeed;
-        this_robot.pos.x += this_robot.speed.x * frame_time();
-        this_robot.pos.y += this_robot.speed.y * frame_time();
-    } else {
-        // If this enemy is just one step ahead of his target, we just put him there now
-        this_robot.pos.x = nextwp_pos.x;
-        this_robot.pos.y = nextwp_pos.y;
-        this_robot.speed.x = 0.;
-        this_robot.speed.y = 0.;
+        let dist = (restweg.x * restweg.x + restweg.y * restweg.y).sqrt();
+        if dist > steplen {
+            this_robot.speed.x = (restweg.x / dist) * maxspeed;
+            this_robot.speed.y = (restweg.y / dist) * maxspeed;
+            this_robot.pos.x += this_robot.speed.x * self.frame_time();
+            this_robot.pos.y += this_robot.speed.y * self.frame_time();
+        } else {
+            // If this enemy is just one step ahead of his target, we just put him there now
+            this_robot.pos.x = nextwp_pos.x;
+            this_robot.pos.y = nextwp_pos.y;
+            this_robot.speed.x = 0.;
+            this_robot.speed.y = 0.;
+        }
     }
 }
 
@@ -443,16 +445,18 @@ pub unsafe fn clear_enemys() {
     NUM_ENEMYS = 0;
 }
 
-pub unsafe fn permanent_heal_robots() {
-    ALL_ENEMYS[0..usize::try_from(NUM_ENEMYS).unwrap()]
-        .iter_mut()
-        .filter(|enemy| {
-            enemy.status != Status::Out as c_int
-                && enemy.energy > 0.
-                && enemy.energy < (*DRUIDMAP.add(usize::try_from(enemy.ty).unwrap())).maxenergy
-        })
-        .for_each(|enemy| {
-            enemy.energy +=
-                (*DRUIDMAP.add(usize::try_from(enemy.ty).unwrap())).lose_health * frame_time();
-        });
+impl Data {
+    pub unsafe fn permanent_heal_robots(&mut self) {
+        ALL_ENEMYS[0..usize::try_from(NUM_ENEMYS).unwrap()]
+            .iter_mut()
+            .filter(|enemy| {
+                enemy.status != Status::Out as c_int
+                    && enemy.energy > 0.
+                    && enemy.energy < (*DRUIDMAP.add(usize::try_from(enemy.ty).unwrap())).maxenergy
+            })
+            .for_each(|enemy| {
+                enemy.energy += (*DRUIDMAP.add(usize::try_from(enemy.ty).unwrap())).lose_health
+                    * self.frame_time();
+            });
+    }
 }

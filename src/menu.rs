@@ -24,7 +24,7 @@ use crate::{
     },
     input::{SDL_Delay, CMD_STRINGS, KEYSTR},
     map::COLOR_NAMES,
-    misc::{activate_conservative_frame_computation, armageddon, dealloc_c_string, find_file},
+    misc::{activate_conservative_frame_computation, armageddon, dealloc_c_string},
     sound::set_bg_music_volume,
     vars::{
         BLOCK_RECT, CLASSIC_USER_RECT, DRUIDMAP, FULL_USER_RECT, ME, MENU_RECT, SCREEN_RECT,
@@ -1248,7 +1248,7 @@ impl Data {
 
         let screen = SCREEN_RECT;
         SDL_SetClipRect(NE_SCREEN, null_mut());
-        let image = find_file(
+        let image = self.find_file(
             CREDITS_PIC_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as i32,

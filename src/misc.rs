@@ -6,13 +6,12 @@ use crate::{
         self, scale_rect, AssembleCombatWindowFlags, Cmds, Criticality, Status, Themed, FD_DATADIR,
         GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE_C, PROGRESS_METER_FILE_C,
     },
-    enemy::{animate_enemys, shuffle_enemys},
+    enemy::shuffle_enemys,
     global::{GAME_CONFIG, SKIP_A_FEW_FRAMES},
     graphics::{
         free_graphics, load_block, BANNER_IS_DESTROYED, NE_SCREEN, PROGRESS_FILLER_PIC,
         PROGRESS_METER_PIC,
     },
-    influencer::animate_influence,
     input::{SDL_Delay, CMD_STRINGS, KEY_CMDS},
     map::free_ship_memory,
     menu::free_menu_data,
@@ -24,7 +23,6 @@ use crate::{
 use cstr::cstr;
 use defs::MAXBULLETS;
 use log::{error, info, warn};
-use once_cell::sync::Lazy;
 use sdl::{
     sdl::{
         ll::{SDL_GetTicks, SDL_Quit},
@@ -43,14 +41,29 @@ use std::{
     path::Path,
     process,
     ptr::null_mut,
-    sync::RwLock,
 };
+
+#[derive(Debug)]
+pub struct Misc {
+    previous_time: f32,
+    current_time_factor: f32,
+    file_path: [u8; 1024],
+}
+
+impl Default for Misc {
+    fn default() -> Self {
+        Self {
+            previous_time: 0.1,
+            current_time_factor: 1.,
+            file_path: [0; 1024],
+        }
+    }
+}
 
 static mut ONE_FRAME_DELAY: c_long = 0;
 static mut NOW_SDL_TICKS: u32 = 0;
 static mut ONE_FRAME_SDL_TICKS: u32 = 0;
 static mut FRAME_NR: c_int = 0;
-static CURRENT_TIME_FACTOR: Lazy<RwLock<f32>> = Lazy::new(|| RwLock::new(1.));
 
 pub unsafe fn update_progress(percent: c_int) {
     let h = (f64::from(PROGRESS_BAR_RECT.h) * f64::from(percent) / 100.) as u16;
@@ -67,39 +80,39 @@ pub unsafe fn update_progress(percent: c_int) {
     SDL_UpdateRects(NE_SCREEN, 1, &mut dst);
 }
 
-/// This function is the key to independence of the framerate for various game elements.
-/// It returns the average time needed to draw one frame.
-/// Other functions use this to calculate new positions of moving objects, etc..
-///
-/// Also there is of course a serious problem when some interuption occurs, like e.g.
-/// the options menu is called or the debug menu is called or the console or the elevator
-/// is entered or a takeover game takes place.  This might cause HUGE framerates, that could
-/// box the influencer out of the ship if used to calculate the new position.
-///
-/// To counter unwanted effects after such events we have the SkipAFewFramerates counter,
-/// which instructs Rate_To_Be_Returned to return only the overall default framerate since
-/// no better substitute exists at this moment.  But on the other hand, this seems to
-/// work REALLY well this way.
-///
-/// This counter is most conveniently set via the function Activate_Conservative_Frame_Computation,
-/// which can be conveniently called from eveywhere.
-pub unsafe fn frame_time() -> c_float {
-    static mut PREVIOUS_TIME: c_float = 0.1;
+impl Data {
+    /// This function is the key to independence of the framerate for various game elements.
+    /// It returns the average time needed to draw one frame.
+    /// Other functions use this to calculate new positions of moving objects, etc..
+    ///
+    /// Also there is of course a serious problem when some interuption occurs, like e.g.
+    /// the options menu is called or the debug menu is called or the console or the elevator
+    /// is entered or a takeover game takes place.  This might cause HUGE framerates, that could
+    /// box the influencer out of the ship if used to calculate the new position.
+    ///
+    /// To counter unwanted effects after such events we have the SkipAFewFramerates counter,
+    /// which instructs Rate_To_Be_Returned to return only the overall default framerate since
+    /// no better substitute exists at this moment.  But on the other hand, this seems to
+    /// work REALLY well this way.
+    ///
+    /// This counter is most conveniently set via the function
+    /// Activate_Conservative_Frame_Computation, which can be conveniently called from eveywhere.
+    pub unsafe fn frame_time(&mut self) -> c_float {
+        if SKIP_A_FEW_FRAMES != 0 {
+            return self.misc.previous_time;
+        }
 
-    if SKIP_A_FEW_FRAMES != 0 {
-        return PREVIOUS_TIME;
+        if F_P_SOVER1 > 0. {
+            self.misc.previous_time = 1.0 / F_P_SOVER1;
+        }
+
+        self.misc.previous_time * self.misc.current_time_factor
     }
 
-    if F_P_SOVER1 > 0. {
-        PREVIOUS_TIME = 1.0 / F_P_SOVER1;
+    /// Update the factor affecting the current speed of 'time flow'
+    pub fn set_time_factor(&mut self, time_factor: c_float) {
+        self.misc.current_time_factor = time_factor;
     }
-
-    PREVIOUS_TIME * *CURRENT_TIME_FACTOR.read().unwrap()
-}
-
-/// Update the factor affecting the current speed of 'time flow'
-pub unsafe fn set_time_factor(time_factor: c_float) {
-    *CURRENT_TIME_FACTOR.write().unwrap() = time_factor;
 }
 
 impl Data {
@@ -158,9 +171,9 @@ impl Data {
             start_taking_time_for_fps_calculation();
 
             if !cheese {
-                animate_influence();
+                self.animate_influence();
                 self.animate_refresh();
-                animate_enemys();
+                self.animate_enemys();
             }
 
             self.display_banner(null_mut(), null_mut(), 0);
@@ -390,124 +403,123 @@ pub unsafe fn activate_conservative_frame_computation() {
     BANNER_IS_DESTROYED = true.into();
 }
 
-/// Find a given filename in subdir relative to FD_DATADIR,
-///
-/// if you pass NULL as "subdir", it will be ignored
-///
-/// use current-theme subdir if "use_theme" == USE_THEME, otherwise NO_THEME
-///
-/// behavior on file-not-found depends on parameter "critical"
-///  IGNORE: just return NULL
-///  WARNONLY: warn and return NULL
-///  CRITICAL: Error-message and Terminate
-///
-/// returns pointer to _static_ string array File_Path, which
-/// contains the full pathname of the file.
-///
-/// !! do never try to free the returned string !!
-/// or to keep using it after a new call to find_file!
-pub unsafe fn find_file(
-    fname: *const c_char,
-    mut subdir: *mut c_char,
-    use_theme: c_int,
-    mut critical: c_int,
-) -> *mut c_char {
-    use std::io::Write;
+impl Data {
+    /// Find a given filename in subdir relative to FD_DATADIR,
+    ///
+    /// if you pass NULL as "subdir", it will be ignored
+    ///
+    /// use current-theme subdir if "use_theme" == USE_THEME, otherwise NO_THEME
+    ///
+    /// behavior on file-not-found depends on parameter "critical"
+    ///  IGNORE: just return NULL
+    ///  WARNONLY: warn and return NULL
+    ///  CRITICAL: Error-message and Terminate
+    ///
+    /// returns pointer to _static_ string array File_Path, which
+    /// contains the full pathname of the file.
+    ///
+    /// !! do never try to free the returned string !!
+    /// or to keep using it after a new call to find_file!
+    pub unsafe fn find_file(
+        &mut self,
+        fname: *const c_char,
+        mut subdir: *mut c_char,
+        use_theme: c_int,
+        mut critical: c_int,
+    ) -> *mut c_char {
+        use std::io::Write;
 
-    static mut FILE_PATH: [u8; 1024] = [0u8; 1024]; /* hope this will be enough */
+        if critical != Criticality::Ignore as c_int
+            && critical != Criticality::WarnOnly as c_int
+            && critical != Criticality::Critical as c_int
+        {
+            warn!(
+                "WARNING: unknown critical-value passed to find_file(): {}. Assume CRITICAL",
+                critical
+            );
+            critical = Criticality::Critical as c_int;
+        }
 
-    if critical != Criticality::Ignore as c_int
-        && critical != Criticality::WarnOnly as c_int
-        && critical != Criticality::Critical as c_int
-    {
-        warn!(
-            "WARNING: unknown critical-value passed to find_file(): {}. Assume CRITICAL",
-            critical
-        );
-        critical = Criticality::Critical as c_int;
-    }
+        if fname.is_null() {
+            error!("find_file() called with empty filename!");
+            return null_mut();
+        }
+        if subdir.is_null() {
+            subdir = cstr!("").as_ptr() as *mut c_char;
+        }
 
-    if fname.is_null() {
-        error!("find_file() called with empty filename!");
-        return null_mut();
-    }
-    if subdir.is_null() {
-        subdir = cstr!("").as_ptr() as *mut c_char;
-    }
+        let mut inner = |datadir| {
+            let theme_dir = if use_theme == Themed::UseTheme as c_int {
+                Cow::Owned(format!(
+                    "{}_theme/",
+                    CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
+                ))
+            } else {
+                Cow::Borrowed("")
+            };
 
-    let inner = |datadir| {
-        let theme_dir = if use_theme == Themed::UseTheme as c_int {
-            Cow::Owned(format!(
-                "{}_theme/",
-                CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
-            ))
-        } else {
-            Cow::Borrowed("")
+            write!(
+                &mut self.misc.file_path[..],
+                "{}/{}/{}/{}\0",
+                datadir,
+                CStr::from_ptr(subdir).to_string_lossy(),
+                theme_dir,
+                CStr::from_ptr(fname).to_string_lossy(),
+            )
+            .unwrap();
+
+            CStr::from_ptr(self.misc.file_path.as_ptr() as *const c_char)
+                .to_str()
+                .map(|file_path| Path::new(file_path).exists())
+                .unwrap_or(false)
         };
 
-        write!(
-            &mut FILE_PATH[..],
-            "{}/{}/{}/{}\0",
-            datadir,
-            CStr::from_ptr(subdir).to_string_lossy(),
-            theme_dir,
-            CStr::from_ptr(fname).to_string_lossy(),
-        )
-        .unwrap();
+        let mut found = inner(LOCAL_DATADIR);
+        if !found {
+            found = inner(FD_DATADIR);
+        }
 
-        CStr::from_ptr(FILE_PATH.as_ptr() as *const c_char)
-            .to_str()
-            .map(|file_path| Path::new(file_path).exists())
-            .unwrap_or(false)
-    };
-
-    let mut found = inner(LOCAL_DATADIR);
-    if !found {
-        found = inner(FD_DATADIR);
-    }
-
-    if !found {
-        let critical = match critical.try_into() {
-            Ok(critical) => critical,
-            Err(_) => {
-                panic!("ERROR in find_file(): Code should never reach this line!! Harakiri",);
-            }
-        };
-        // how critical is this file for the game:
-        match critical {
-            Criticality::WarnOnly => {
-                let fname = CStr::from_ptr(fname).to_string_lossy();
-                if use_theme == Themed::UseTheme as c_int {
-                    warn!(
-                        "file {} not found in theme-dir: graphics/{}_theme/",
-                        fname,
-                        CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
-                    );
-                } else {
-                    warn!("file {} not found ", fname);
+        if !found {
+            let critical = match critical.try_into() {
+                Ok(critical) => critical,
+                Err(_) => {
+                    panic!("ERROR in find_file(): Code should never reach this line!! Harakiri",);
                 }
-                return null_mut();
-            }
-            Criticality::Ignore => return null_mut(),
-            Criticality::Critical => {
-                let fname = CStr::from_ptr(fname).to_string_lossy();
-                if use_theme == Themed::UseTheme as c_int {
-                    panic!(
+            };
+            // how critical is this file for the game:
+            match critical {
+                Criticality::WarnOnly => {
+                    let fname = CStr::from_ptr(fname).to_string_lossy();
+                    if use_theme == Themed::UseTheme as c_int {
+                        warn!(
+                            "file {} not found in theme-dir: graphics/{}_theme/",
+                            fname,
+                            CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
+                        );
+                    } else {
+                        warn!("file {} not found ", fname);
+                    }
+                    return null_mut();
+                }
+                Criticality::Ignore => return null_mut(),
+                Criticality::Critical => {
+                    let fname = CStr::from_ptr(fname).to_string_lossy();
+                    if use_theme == Themed::UseTheme as c_int {
+                        panic!(
                         "file {} not found in theme-dir: graphics/{}_theme/, cannot run without it!",
                         fname,
                         CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
                     );
-                } else {
-                    panic!("file {} not found, cannot run without it!", fname);
+                    } else {
+                        panic!("file {} not found, cannot run without it!", fname);
+                    }
                 }
             }
         }
+
+        self.misc.file_path.as_mut_ptr() as *mut c_char
     }
 
-    FILE_PATH.as_mut_ptr() as *mut c_char
-}
-
-impl Data {
     /// show_progress: display empty progress meter with given text
     pub unsafe fn init_progress(&mut self, mut text: *mut c_char) {
         if text.is_null() {
@@ -515,7 +527,7 @@ impl Data {
         }
 
         if PROGRESS_METER_PIC.is_null() {
-            let mut fpath = find_file(
+            let mut fpath = self.find_file(
                 PROGRESS_METER_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
@@ -523,7 +535,7 @@ impl Data {
             );
             PROGRESS_METER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
             self.scale_pic(&mut PROGRESS_METER_PIC, GAME_CONFIG.scale);
-            fpath = find_file(
+            fpath = self.find_file(
                 PROGRESS_FILLER_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,

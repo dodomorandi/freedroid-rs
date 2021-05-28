@@ -8,10 +8,7 @@ use crate::{
         DROID_RADIUS, GAME_CONFIG, LEVEL_DOORS_NOT_MOVED_TIME, TIME_FOR_EACH_PHASE_OF_DOOR_MOVEMENT,
     },
     menu::SHIP_EXT,
-    misc::{
-        dealloc_c_string, find_file, frame_time, locate_string_in_data, my_random,
-        read_value_from_string,
-    },
+    misc::{dealloc_c_string, locate_string_in_data, my_random, read_value_from_string},
     structs::{Finepoint, GrobPoint, Level},
     vars::{BLOCK_RECT, DRUIDMAP},
     Data, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, ME, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
@@ -157,7 +154,7 @@ pub unsafe fn free_level_memory(level: *mut Level) {
 
 impl Data {
     pub unsafe fn animate_refresh(&mut self) {
-        self.map.inner_wait_counter += frame_time() * 10.;
+        self.map.inner_wait_counter += self.frame_time() * 10.;
 
         let cur_level = &*CUR_LEVEL;
         cur_level
@@ -949,7 +946,7 @@ impl Data {
         //Now its time to start decoding the droids file.
         //For that, we must get it into memory first.
         //The procedure is the same as with LoadShip
-        let fpath = find_file(
+        let fpath = self.find_file(
             filename,
             MAP_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -1033,7 +1030,7 @@ impl Data {
             cstr!("*** Beginning of elevator rectangles ***");
 
         /* Now get the lift-connection data from "FILE.elv" file */
-        let fpath = find_file(
+        let fpath = self.find_file(
             filename,
             MAP_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
@@ -1461,7 +1458,7 @@ impl Data {
 
         /* Read the whole ship-data to memory */
         const END_OF_SHIP_DATA_STRING: &CStr = cstr!("*** End of Ship Data ***");
-        let fpath = find_file(
+        let fpath = self.find_file(
             filename,
             MAP_DIR_C.as_ptr() as *mut c_char,
             Themed::NoTheme as c_int,
