@@ -4,7 +4,6 @@ use crate::{
         MAXBULLETS, PUSHSPEED, WAIT_COLLISION,
     },
     global::{COLLISION_LOSE_ENERGY_CALIBRATOR, DROID_RADIUS},
-    input::{AXIS_IS_ACTIVE, INPUT_AXIS},
     map::{druid_passable, get_map_brick},
     misc::my_random,
     ship::level_empty,
@@ -577,10 +576,15 @@ impl Data {
         }
 
         /* if using a joystick/mouse, allow exact directional shots! */
-        if AXIS_IS_ACTIVE != 0 {
-            let max_val = INPUT_AXIS.x.abs().max(INPUT_AXIS.y.abs()) as f32;
-            speed.x = INPUT_AXIS.x as f32 / max_val;
-            speed.y = INPUT_AXIS.y as f32 / max_val;
+        if self.input.axis_is_active != 0 {
+            let max_val = self
+                .input
+                .input_axis
+                .x
+                .abs()
+                .max(self.input.input_axis.y.abs()) as f32;
+            speed.x = self.input.input_axis.x as f32 / max_val;
+            speed.y = self.input.input_axis.y as f32 / max_val;
         }
 
         let speed_norm = (speed.x * speed.x + speed.y * speed.y).sqrt();

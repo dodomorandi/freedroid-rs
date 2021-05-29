@@ -43,7 +43,7 @@ use graphics::{clear_graph_mem, CROSSHAIR_CURSOR, NE_SCREEN};
 use highscore::Highscore;
 use influencer::Influencer;
 use init::Init;
-use input::{init_keystr, SDL_Delay, JOY_SENSITIVITY, SHOW_CURSOR};
+use input::{Input, SDL_Delay};
 use map::{move_level_doors, ColorNames, Map};
 use misc::Misc;
 use ship::ShipData;
@@ -158,6 +158,7 @@ struct Data {
     sound: Sound,
     misc: Misc,
     ship: ShipData,
+    input: Input,
 }
 
 impl Default for Data {
@@ -174,6 +175,7 @@ impl Default for Data {
             sound: Default::default(),
             misc: Default::default(),
             ship: Default::default(),
+            input: Default::default(),
         }
     }
 }
@@ -184,9 +186,9 @@ fn main() {
     let mut data = Data::default();
 
     unsafe {
-        JOY_SENSITIVITY = 1;
+        data.input.joy_sensitivity = 1;
 
-        init_keystr();
+        data.init_keystr();
 
         data.init_freedroid(); // Initialisation of global variables and arrays
 
@@ -251,7 +253,7 @@ fn main() {
 
                 data.react_to_special_keys();
 
-                if SHOW_CURSOR {
+                if data.input.show_cursor {
                     SDL_ShowCursor(SDL_ENABLE);
                 } else {
                     SDL_ShowCursor(SDL_DISABLE);

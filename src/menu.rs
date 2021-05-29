@@ -1,6 +1,3 @@
-#[cfg(not(feature = "gcw0"))]
-use crate::input::KEY_CMDS;
-
 #[cfg(feature = "gcw0")]
 use crate::{
     defs::{gcw0_a_pressed, gcw0_any_button_pressed, gcw0_any_button_pressed_r},
@@ -22,7 +19,7 @@ use crate::{
         clear_graph_mem, make_grid_on_screen, ALL_THEMES, BANNER_IS_DESTROYED, CLASSIC_THEME_INDEX,
         NE_SCREEN,
     },
-    input::{SDL_Delay, CMD_STRINGS, KEYSTR},
+    input::{SDL_Delay, CMD_STRINGS},
     map::COLOR_NAMES,
     misc::{activate_conservative_frame_computation, armageddon, dealloc_c_string},
     sound::set_bg_music_volume,
@@ -232,9 +229,9 @@ impl Data {
             self.wait_for_all_keys_released();
             let key = self.wait_for_key_pressed();
             if key == b'y'.into()
-                || key == KEY_CMDS[Cmds::Fire as usize][0]
-                || key == KEY_CMDS[Cmds::Fire as usize][1]
-                || key == KEY_CMDS[Cmds::Fire as usize][2]
+                || key == self.input.key_cmds[Cmds::Fire as usize][0]
+                || key == self.input.key_cmds[Cmds::Fire as usize][1]
+                || key == self.input.key_cmds[Cmds::Fire as usize][2]
             {
                 self.quit_successfully();
             }
@@ -1085,7 +1082,11 @@ impl Data {
         );
         posy += 1;
 
-        for i in 0..Cmds::Last as usize {
+        for (i, cmd_string) in CMD_STRINGS[0..Cmds::Last as usize]
+            .iter()
+            .copied()
+            .enumerate()
+        {
             let pos_font = |x, y| {
                 if x != selx || i32::try_from(y).unwrap() != sely {
                     FONT1_B_FONT
@@ -1099,7 +1100,7 @@ impl Data {
                 FONT0_B_FONT,
                 startx,
                 starty + (posy) * lheight,
-                format_args!("{}", CStr::from_ptr(CMD_STRINGS[i]).to_str().unwrap()),
+                format_args!("{}", CStr::from_ptr(cmd_string).to_str().unwrap()),
             );
             print_string_font(
                 NE_SCREEN,
@@ -1108,9 +1109,11 @@ impl Data {
                 starty + (posy) * lheight,
                 format_args!(
                     "{}",
-                    CStr::from_ptr(KEYSTR[usize::try_from(KEY_CMDS[i][0]).unwrap()])
-                        .to_str()
-                        .unwrap()
+                    CStr::from_ptr(
+                        self.input.keystr[usize::try_from(self.input.key_cmds[i][0]).unwrap()]
+                    )
+                    .to_str()
+                    .unwrap()
                 ),
             );
             print_string_font(
@@ -1120,9 +1123,11 @@ impl Data {
                 starty + (posy) * lheight,
                 format_args!(
                     "{}",
-                    CStr::from_ptr(KEYSTR[usize::try_from(KEY_CMDS[i][1]).unwrap()])
-                        .to_str()
-                        .unwrap()
+                    CStr::from_ptr(
+                        self.input.keystr[usize::try_from(self.input.key_cmds[i][1]).unwrap()]
+                    )
+                    .to_str()
+                    .unwrap()
                 ),
             );
             print_string_font(
@@ -1132,9 +1137,11 @@ impl Data {
                 starty + (posy) * lheight,
                 format_args!(
                     "{}",
-                    CStr::from_ptr(KEYSTR[usize::try_from(KEY_CMDS[i][2]).unwrap()])
-                        .to_str()
-                        .unwrap()
+                    CStr::from_ptr(
+                        self.input.keystr[usize::try_from(self.input.key_cmds[i][2]).unwrap()]
+                    )
+                    .to_str()
+                    .unwrap()
                 ),
             );
             posy += 1;
@@ -1165,12 +1172,12 @@ impl Data {
                 MenuAction::CLICK => {
                     self.menu_item_selected_sound();
 
-                    KEY_CMDS[sely - 1][selx - 1] = b'_'.into();
+                    self.input.key_cmds[sely - 1][selx - 1] = b'_'.into();
                     self.display_key_config(
                         i32::try_from(selx).unwrap(),
                         i32::try_from(sely).unwrap(),
                     );
-                    KEY_CMDS[sely - 1][selx - 1] = self.getchar_raw(); // includes joystick input!;
+                    self.input.key_cmds[sely - 1][selx - 1] = self.getchar_raw(); // includes joystick input!;
                     self.wait_for_all_keys_released();
                     LAST_MOVE_TICK = SDL_GetTicks();
                 }
@@ -1230,7 +1237,7 @@ impl Data {
                 }
 
                 MenuAction::DELETE => {
-                    KEY_CMDS[sely - 1][selx - 1] = 0;
+                    self.input.key_cmds[sely - 1][selx - 1] = 0;
                     self.menu_item_selected_sound();
                 }
                 _ => {}

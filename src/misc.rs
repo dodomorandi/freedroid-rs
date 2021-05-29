@@ -12,7 +12,7 @@ use crate::{
         free_graphics, load_block, scale_pic, BANNER_IS_DESTROYED, NE_SCREEN, PROGRESS_FILLER_PIC,
         PROGRESS_METER_PIC,
     },
-    input::{SDL_Delay, CMD_STRINGS, KEY_CMDS},
+    input::{SDL_Delay, CMD_STRINGS},
     map::free_ship_memory,
     menu::free_menu_data,
     vars::{ME, PROGRESS_BAR_RECT, PROGRESS_METER_RECT, PROGRESS_TEXT_RECT},
@@ -124,7 +124,7 @@ impl Data {
         info!("Termination of Freedroid initiated.");
 
         info!("Writing config file");
-        save_game_config();
+        self.save_game_config();
         info!("Writing highscores to disk");
         self.save_highscores();
 
@@ -230,133 +230,137 @@ const VID_SCALE_FACTOR: &str = "Vid_ScaleFactor";
 const HOG_CPU: &str = "Hog_Cpu";
 const EMPTY_LEVEL_SPEEDUP: &str = "EmptyLevelSpeedup";
 
-pub unsafe fn save_game_config() -> c_int {
-    use std::io::Write;
-    if CONFIG_DIR[0] == b'\0' as c_char {
-        return defs::ERR.into();
-    }
-
-    let config_path =
-        Path::new(&CStr::from_ptr(CONFIG_DIR.as_ptr()).to_str().unwrap()).join("config");
-    let mut config = match File::create(&config_path) {
-        Ok(config) => config,
-        Err(_) => {
-            warn!(
-                "WARNING: failed to create config-file: {}",
-                config_path.display()
-            );
+impl Data {
+    pub unsafe fn save_game_config(&self) -> c_int {
+        use std::io::Write;
+        if CONFIG_DIR[0] == b'\0' as c_char {
             return defs::ERR.into();
         }
-    };
 
-    // Now write the actual data, line by line
-    writeln!(config, "{} = {}", VERSION_STRING, env!("CARGO_PKG_VERSION")).unwrap();
-    writeln!(
-        config,
-        "{} = {}",
-        DRAW_FRAMERATE, GAME_CONFIG.draw_framerate
-    )
-    .unwrap();
-    writeln!(config, "{} = {}", DRAW_ENERGY, GAME_CONFIG.draw_energy).unwrap();
-    writeln!(config, "{} = {}", DRAW_POSITION, GAME_CONFIG.draw_position).unwrap();
-    writeln!(
-        config,
-        "{} = {}",
-        DRAW_DEATHCOUNT, GAME_CONFIG.draw_death_count
-    )
-    .unwrap();
-    writeln!(config, "{} = {}", DROID_TALK, GAME_CONFIG.droid_talk).unwrap();
-    writeln!(
-        config,
-        "{} = {}",
-        WANTED_TEXT_VISIBLE_TIME, GAME_CONFIG.wanted_text_visible_time,
-    )
-    .unwrap();
-    writeln!(
-        config,
-        "{} = {}",
-        CURRENT_BG_MUSIC_VOLUME, GAME_CONFIG.current_bg_music_volume,
-    )
-    .unwrap();
-    writeln!(
-        config,
-        "{} = {}",
-        CURRENT_SOUND_FX_VOLUME, GAME_CONFIG.current_sound_fx_volume,
-    )
-    .unwrap();
-    writeln!(
-        config,
-        "{} = {}",
-        CURRENT_GAMMA_CORRECTION, GAME_CONFIG.current_gamma_correction,
-    )
-    .unwrap();
-    writeln!(
-        config,
-        "{} = {}",
-        THEME_NAME,
-        CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr())
-            .to_str()
-            .unwrap()
-    )
-    .unwrap();
-    writeln!(
-        config,
-        "{} = {}",
-        FULL_USER_RECT, GAME_CONFIG.full_user_rect
-    )
-    .unwrap();
-    writeln!(
-        config,
-        "{} = {}",
-        USE_FULLSCREEN, GAME_CONFIG.use_fullscreen
-    )
-    .unwrap();
-    writeln!(
-        config,
-        "{} = {}",
-        TAKEOVER_ACTIVATES, GAME_CONFIG.takeover_activates,
-    )
-    .unwrap();
-    writeln!(
-        config,
-        "{} = {}",
-        FIRE_HOLD_TAKEOVER, GAME_CONFIG.fire_hold_takeover,
-    )
-    .unwrap();
-    writeln!(config, "{} = {}", SHOW_DECALS, GAME_CONFIG.show_decals).unwrap();
-    writeln!(
-        config,
-        "{} = {}",
-        ALL_MAP_VISIBLE, GAME_CONFIG.all_map_visible
-    )
-    .unwrap();
-    writeln!(config, "{} = {}", VID_SCALE_FACTOR, GAME_CONFIG.scale).unwrap();
-    writeln!(config, "{} = {}", HOG_CPU, GAME_CONFIG.hog_cpu).unwrap();
-    writeln!(
-        config,
-        "{} = {}",
-        EMPTY_LEVEL_SPEEDUP, GAME_CONFIG.empty_level_speedup,
-    )
-    .unwrap();
+        let config_path =
+            Path::new(&CStr::from_ptr(CONFIG_DIR.as_ptr()).to_str().unwrap()).join("config");
+        let mut config = match File::create(&config_path) {
+            Ok(config) => config,
+            Err(_) => {
+                warn!(
+                    "WARNING: failed to create config-file: {}",
+                    config_path.display()
+                );
+                return defs::ERR.into();
+            }
+        };
 
-    // now write the keyboard->cmd mappings
-    for i in 0..Cmds::Last as usize {
+        // Now write the actual data, line by line
+        writeln!(config, "{} = {}", VERSION_STRING, env!("CARGO_PKG_VERSION")).unwrap();
         writeln!(
             config,
-            "{} \t= {}_{}_{}",
-            CStr::from_ptr(CMD_STRINGS[i]).to_str().unwrap(),
-            KEY_CMDS[i][0],
-            KEY_CMDS[i][1],
-            KEY_CMDS[i][2],
+            "{} = {}",
+            DRAW_FRAMERATE, GAME_CONFIG.draw_framerate
         )
         .unwrap();
+        writeln!(config, "{} = {}", DRAW_ENERGY, GAME_CONFIG.draw_energy).unwrap();
+        writeln!(config, "{} = {}", DRAW_POSITION, GAME_CONFIG.draw_position).unwrap();
+        writeln!(
+            config,
+            "{} = {}",
+            DRAW_DEATHCOUNT, GAME_CONFIG.draw_death_count
+        )
+        .unwrap();
+        writeln!(config, "{} = {}", DROID_TALK, GAME_CONFIG.droid_talk).unwrap();
+        writeln!(
+            config,
+            "{} = {}",
+            WANTED_TEXT_VISIBLE_TIME, GAME_CONFIG.wanted_text_visible_time,
+        )
+        .unwrap();
+        writeln!(
+            config,
+            "{} = {}",
+            CURRENT_BG_MUSIC_VOLUME, GAME_CONFIG.current_bg_music_volume,
+        )
+        .unwrap();
+        writeln!(
+            config,
+            "{} = {}",
+            CURRENT_SOUND_FX_VOLUME, GAME_CONFIG.current_sound_fx_volume,
+        )
+        .unwrap();
+        writeln!(
+            config,
+            "{} = {}",
+            CURRENT_GAMMA_CORRECTION, GAME_CONFIG.current_gamma_correction,
+        )
+        .unwrap();
+        writeln!(
+            config,
+            "{} = {}",
+            THEME_NAME,
+            CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr())
+                .to_str()
+                .unwrap()
+        )
+        .unwrap();
+        writeln!(
+            config,
+            "{} = {}",
+            FULL_USER_RECT, GAME_CONFIG.full_user_rect
+        )
+        .unwrap();
+        writeln!(
+            config,
+            "{} = {}",
+            USE_FULLSCREEN, GAME_CONFIG.use_fullscreen
+        )
+        .unwrap();
+        writeln!(
+            config,
+            "{} = {}",
+            TAKEOVER_ACTIVATES, GAME_CONFIG.takeover_activates,
+        )
+        .unwrap();
+        writeln!(
+            config,
+            "{} = {}",
+            FIRE_HOLD_TAKEOVER, GAME_CONFIG.fire_hold_takeover,
+        )
+        .unwrap();
+        writeln!(config, "{} = {}", SHOW_DECALS, GAME_CONFIG.show_decals).unwrap();
+        writeln!(
+            config,
+            "{} = {}",
+            ALL_MAP_VISIBLE, GAME_CONFIG.all_map_visible
+        )
+        .unwrap();
+        writeln!(config, "{} = {}", VID_SCALE_FACTOR, GAME_CONFIG.scale).unwrap();
+        writeln!(config, "{} = {}", HOG_CPU, GAME_CONFIG.hog_cpu).unwrap();
+        writeln!(
+            config,
+            "{} = {}",
+            EMPTY_LEVEL_SPEEDUP, GAME_CONFIG.empty_level_speedup,
+        )
+        .unwrap();
+
+        // now write the keyboard->cmd mappings
+        for (cmd_string, key_cmd) in CMD_STRINGS[0..Cmds::Last as usize]
+            .iter()
+            .copied()
+            .zip(&self.input.key_cmds)
+        {
+            writeln!(
+                config,
+                "{} \t= {}_{}_{}",
+                CStr::from_ptr(cmd_string).to_str().unwrap(),
+                key_cmd[0],
+                key_cmd[1],
+                key_cmd[2],
+            )
+            .unwrap();
+        }
+
+        config.flush().unwrap();
+        defs::OK.into()
     }
 
-    config.flush().unwrap();
-    defs::OK.into()
-}
-
-impl Data {
     /// This function starts the time-taking process.  Later the results
     /// of this function will be used to calculate the current framerate
     pub unsafe fn start_taking_time_for_fps_calculation(&mut self) {
@@ -964,87 +968,88 @@ pub unsafe fn dealloc_c_string(string_ptr: *mut i8) {
     );
 }
 
-/// LoadGameConfig(): load saved options from config-file
-///
-/// this should be the first of all load/save functions called
-/// as here we read the $HOME-dir and create the config-subdir if neccessary
-pub unsafe fn load_game_config() -> c_int {
-    // ----------------------------------------------------------------------
-    // Game-config maker-strings for config-file:
+impl Data {
+    /// LoadGameConfig(): load saved options from config-file
+    ///
+    /// this should be the first of all load/save functions called
+    /// as here we read the $HOME-dir and create the config-subdir if neccessary
+    pub unsafe fn load_game_config(&mut self) -> c_int {
+        // ----------------------------------------------------------------------
+        // Game-config maker-strings for config-file:
 
-    const VERSION_STRING: &str = "Freedroid Version";
-    const DRAW_FRAMERATE: &str = "Draw_Framerate";
-    const DRAW_ENERGY: &str = "Draw_Energy";
-    const DRAW_POSITION: &str = "Draw_Position";
-    const DRAW_DEATHCOUNT: &str = "Draw_DeathCount";
-    const DROID_TALK: &str = "Droid_Talk";
-    const WANTED_TEXT_VISIBLE_TIME: &str = "WantedTextVisibleTime";
-    const CURRENT_BG_MUSIC_VOLUME: &str = "Current_BG_Music_Volume";
-    const CURRENT_SOUND_FX_VOLUME: &str = "Current_Sound_FX_Volume";
-    const CURRENT_GAMMA_CORRECTION: &str = "Current_Gamma_Correction";
-    const THEME_NAME: &str = "Theme_Name";
-    const FULL_USER_RECT: &str = "FullUserRect";
-    const USE_FULLSCREEN: &str = "UseFullscreen";
-    const TAKEOVER_ACTIVATES: &str = "TakeoverActivates";
-    const FIRE_HOLD_TAKEOVER: &str = "FireHoldTakeover";
-    const SHOW_DECALS: &str = "ShowDecals";
-    const ALL_MAP_VISIBLE: &str = "AllMapVisible";
-    const VID_SCALE_FACTOR: &str = "Vid_ScaleFactor";
-    const HOG_CPU: &str = "Hog_Cpu";
-    const EMPTY_LEVEL_SPEEDUP: &str = "EmptyLevelSpeedup";
+        const VERSION_STRING: &str = "Freedroid Version";
+        const DRAW_FRAMERATE: &str = "Draw_Framerate";
+        const DRAW_ENERGY: &str = "Draw_Energy";
+        const DRAW_POSITION: &str = "Draw_Position";
+        const DRAW_DEATHCOUNT: &str = "Draw_DeathCount";
+        const DROID_TALK: &str = "Droid_Talk";
+        const WANTED_TEXT_VISIBLE_TIME: &str = "WantedTextVisibleTime";
+        const CURRENT_BG_MUSIC_VOLUME: &str = "Current_BG_Music_Volume";
+        const CURRENT_SOUND_FX_VOLUME: &str = "Current_Sound_FX_Volume";
+        const CURRENT_GAMMA_CORRECTION: &str = "Current_Gamma_Correction";
+        const THEME_NAME: &str = "Theme_Name";
+        const FULL_USER_RECT: &str = "FullUserRect";
+        const USE_FULLSCREEN: &str = "UseFullscreen";
+        const TAKEOVER_ACTIVATES: &str = "TakeoverActivates";
+        const FIRE_HOLD_TAKEOVER: &str = "FireHoldTakeover";
+        const SHOW_DECALS: &str = "ShowDecals";
+        const ALL_MAP_VISIBLE: &str = "AllMapVisible";
+        const VID_SCALE_FACTOR: &str = "Vid_ScaleFactor";
+        const HOG_CPU: &str = "Hog_Cpu";
+        const EMPTY_LEVEL_SPEEDUP: &str = "EmptyLevelSpeedup";
 
-    // first we need the user's homedir for loading/saving stuff
-    let homedir = match env::var("HOME") {
-        Err(_) => {
-            warn!("Environment does not contain HOME variable...using local dir");
-            Cow::Borrowed(Path::new("."))
+        // first we need the user's homedir for loading/saving stuff
+        let homedir = match env::var("HOME") {
+            Err(_) => {
+                warn!("Environment does not contain HOME variable...using local dir");
+                Cow::Borrowed(Path::new("."))
+            }
+            Ok(homedir) => {
+                info!("found environment HOME = '{}'", homedir);
+                Cow::Owned(homedir.into())
+            }
+        };
+
+        let config_dir = homedir.join(".freedroidClassic");
+
+        if !config_dir.exists() {
+            warn!(
+                "Couldn't stat Config-dir {}, I'll try to create it...",
+                config_dir.display()
+            );
+            match fs::create_dir(&config_dir) {
+                Ok(()) => {
+                    info!("Successfully created config-dir '{}'", config_dir.display());
+                    return defs::OK.into();
+                }
+                Err(_) => {
+                    error!(
+                        "Failed to create config-dir: {}. Giving up...",
+                        config_dir.display()
+                    );
+                    return defs::ERR.into();
+                }
+            }
         }
-        Ok(homedir) => {
-            info!("found environment HOME = '{}'", homedir);
-            Cow::Owned(homedir.into())
-        }
-    };
 
-    let config_dir = homedir.join(".freedroidClassic");
-
-    if !config_dir.exists() {
-        warn!(
-            "Couldn't stat Config-dir {}, I'll try to create it...",
-            config_dir.display()
-        );
-        match fs::create_dir(&config_dir) {
-            Ok(()) => {
-                info!("Successfully created config-dir '{}'", config_dir.display());
-                return defs::OK.into();
+        let config_path = config_dir.join("config");
+        let data = match fs::read(&config_path) {
+            Ok(data) => {
+                info!("Successfully read config-file '{}'", config_path.display());
+                data
             }
             Err(_) => {
-                error!(
-                    "Failed to create config-dir: {}. Giving up...",
-                    config_dir.display()
-                );
+                error!("failed to open config-file: {}", config_path.display());
                 return defs::ERR.into();
             }
-        }
-    }
+        };
 
-    let config_path = config_dir.join("config");
-    let data = match fs::read(&config_path) {
-        Ok(data) => {
-            info!("Successfully read config-file '{}'", config_path.display());
-            data
-        }
-        Err(_) => {
-            error!("failed to open config-file: {}", config_path.display());
+        if read_variable(&data, VERSION_STRING).is_none() {
+            error!("Version string could not be read in config-file...");
             return defs::ERR.into();
         }
-    };
 
-    if read_variable(&data, VERSION_STRING).is_none() {
-        error!("Version string could not be read in config-file...");
-        return defs::ERR.into();
-    }
-
-    macro_rules! parse_variable {
+        macro_rules! parse_variable {
         (@@inner = $name:expr; $($var:tt)+) => {
             {
                 let value = read_variable(&data, $name)
@@ -1063,48 +1068,49 @@ pub unsafe fn load_game_config() -> c_int {
         };
     }
 
-    parse_variable! { GAME_CONFIG.draw_framerate = DRAW_FRAMERATE; };
-    parse_variable! { GAME_CONFIG.draw_energy = DRAW_ENERGY; };
-    parse_variable! { GAME_CONFIG.draw_position = DRAW_POSITION; };
-    parse_variable! { GAME_CONFIG.draw_death_count = DRAW_DEATHCOUNT; };
-    parse_variable! { GAME_CONFIG.droid_talk = DROID_TALK; };
-    parse_variable! { GAME_CONFIG.wanted_text_visible_time = WANTED_TEXT_VISIBLE_TIME; };
-    parse_variable! { GAME_CONFIG.current_bg_music_volume = CURRENT_BG_MUSIC_VOLUME; };
-    parse_variable! { GAME_CONFIG.current_sound_fx_volume = CURRENT_SOUND_FX_VOLUME; };
-    parse_variable! { GAME_CONFIG.current_gamma_correction = CURRENT_GAMMA_CORRECTION; };
-    {
-        let value = read_variable(&data, THEME_NAME);
-        if let Some(value) = value {
-            GAME_CONFIG.theme_name[..value.len()].copy_from_slice(std::slice::from_raw_parts(
-                value.as_ptr() as *const c_char,
-                value.len(),
-            ));
-            GAME_CONFIG.theme_name[value.len()] = 0;
+        parse_variable! { GAME_CONFIG.draw_framerate = DRAW_FRAMERATE; };
+        parse_variable! { GAME_CONFIG.draw_energy = DRAW_ENERGY; };
+        parse_variable! { GAME_CONFIG.draw_position = DRAW_POSITION; };
+        parse_variable! { GAME_CONFIG.draw_death_count = DRAW_DEATHCOUNT; };
+        parse_variable! { GAME_CONFIG.droid_talk = DROID_TALK; };
+        parse_variable! { GAME_CONFIG.wanted_text_visible_time = WANTED_TEXT_VISIBLE_TIME; };
+        parse_variable! { GAME_CONFIG.current_bg_music_volume = CURRENT_BG_MUSIC_VOLUME; };
+        parse_variable! { GAME_CONFIG.current_sound_fx_volume = CURRENT_SOUND_FX_VOLUME; };
+        parse_variable! { GAME_CONFIG.current_gamma_correction = CURRENT_GAMMA_CORRECTION; };
+        {
+            let value = read_variable(&data, THEME_NAME);
+            if let Some(value) = value {
+                GAME_CONFIG.theme_name[..value.len()].copy_from_slice(std::slice::from_raw_parts(
+                    value.as_ptr() as *const c_char,
+                    value.len(),
+                ));
+                GAME_CONFIG.theme_name[value.len()] = 0;
+            }
         }
-    }
-    parse_variable! { GAME_CONFIG.full_user_rect = FULL_USER_RECT; };
-    parse_variable! { GAME_CONFIG.use_fullscreen = USE_FULLSCREEN; };
-    parse_variable! { GAME_CONFIG.takeover_activates = TAKEOVER_ACTIVATES; };
-    parse_variable! { GAME_CONFIG.fire_hold_takeover = FIRE_HOLD_TAKEOVER; };
-    parse_variable! { GAME_CONFIG.show_decals = SHOW_DECALS; };
-    parse_variable! { GAME_CONFIG.all_map_visible = ALL_MAP_VISIBLE; };
-    parse_variable! { GAME_CONFIG.scale = VID_SCALE_FACTOR; };
-    parse_variable! { GAME_CONFIG.hog_cpu = HOG_CPU; };
-    parse_variable! { GAME_CONFIG.empty_level_speedup = EMPTY_LEVEL_SPEEDUP; };
+        parse_variable! { GAME_CONFIG.full_user_rect = FULL_USER_RECT; };
+        parse_variable! { GAME_CONFIG.use_fullscreen = USE_FULLSCREEN; };
+        parse_variable! { GAME_CONFIG.takeover_activates = TAKEOVER_ACTIVATES; };
+        parse_variable! { GAME_CONFIG.fire_hold_takeover = FIRE_HOLD_TAKEOVER; };
+        parse_variable! { GAME_CONFIG.show_decals = SHOW_DECALS; };
+        parse_variable! { GAME_CONFIG.all_map_visible = ALL_MAP_VISIBLE; };
+        parse_variable! { GAME_CONFIG.scale = VID_SCALE_FACTOR; };
+        parse_variable! { GAME_CONFIG.hog_cpu = HOG_CPU; };
+        parse_variable! { GAME_CONFIG.empty_level_speedup = EMPTY_LEVEL_SPEEDUP; };
 
-    // read in keyboard-config
-    for (index, &cmd_string) in CMD_STRINGS.iter().enumerate() {
-        let value = read_variable(&data, CStr::from_ptr(cmd_string).to_str().unwrap());
-        if let Some(value) = value {
-            let value = std::str::from_utf8(value).unwrap();
-            KEY_CMDS[index]
-                .iter_mut()
-                .zip(value.splitn(3, '_').map(|x| x.parse().unwrap()))
-                .for_each(|(key_cmd, value)| *key_cmd = value);
+        // read in keyboard-config
+        for (index, &cmd_string) in CMD_STRINGS.iter().enumerate() {
+            let value = read_variable(&data, CStr::from_ptr(cmd_string).to_str().unwrap());
+            if let Some(value) = value {
+                let value = std::str::from_utf8(value).unwrap();
+                self.input.key_cmds[index]
+                    .iter_mut()
+                    .zip(value.splitn(3, '_').map(|x| x.parse().unwrap()))
+                    .for_each(|(key_cmd, value)| *key_cmd = value);
+            }
         }
-    }
 
-    defs::OK.into()
+        defs::OK.into()
+    }
 }
 
 fn read_variable<'a>(data: &'a [u8], var_name: &str) -> Option<&'a [u8]> {

@@ -3,7 +3,7 @@ use crate::{
     defs::{Cmds, PointerStates, SHOW_WAIT, TEXT_STRETCH},
     global::GAME_CONFIG,
     graphics::{NE_SCREEN, VID_BPP},
-    input::{SDL_Delay, JOY_NUM_AXES, JOY_SENSITIVITY, KEY_CMDS},
+    input::SDL_Delay,
     misc::my_random,
     vars::{ME, SCREEN_RECT},
     Data, ALL_ENEMYS,
@@ -266,22 +266,22 @@ impl Data {
                 SDL_JOYAXISMOTION => {
                     let jaxis = &*event.jaxis();
                     let axis = jaxis.axis;
-                    if axis == 0 || ((JOY_NUM_AXES >= 5) && (axis == 3))
+                    if axis == 0 || ((self.input.joy_num_axes >= 5) && (axis == 3))
                     /* x-axis */
                     {
-                        if JOY_SENSITIVITY * i32::from(jaxis.value) > 10000
+                        if self.input.joy_sensitivity * i32::from(jaxis.value) > 10000
                         /* about half tilted */
                         {
                             return_key = PointerStates::JoyRight as c_int;
-                        } else if JOY_SENSITIVITY * i32::from(jaxis.value) < -10000 {
+                        } else if self.input.joy_sensitivity * i32::from(jaxis.value) < -10000 {
                             return_key = PointerStates::JoyLeft as c_int;
                         }
-                    } else if (axis == 1) || ((JOY_NUM_AXES >= 5) && (axis == 4))
+                    } else if (axis == 1) || ((self.input.joy_num_axes >= 5) && (axis == 4))
                     /* y-axis */
                     {
-                        if JOY_SENSITIVITY * i32::from(jaxis.value) > 10000 {
+                        if self.input.joy_sensitivity * i32::from(jaxis.value) > 10000 {
                             return_key = PointerStates::JoyDown as c_int;
-                        } else if JOY_SENSITIVITY * i32::from(jaxis.value) < -10000 {
+                        } else if self.input.joy_sensitivity * i32::from(jaxis.value) < -10000 {
                             return_key = PointerStates::JoyUp as c_int;
                         }
                     }
@@ -644,9 +644,9 @@ impl Data {
                     }
                 }
 
-                if (key == KEY_CMDS[Cmds::Fire as usize][0])
-                    || (key == KEY_CMDS[Cmds::Fire as usize][1])
-                    || (key == KEY_CMDS[Cmds::Fire as usize][2])
+                if (key == self.input.key_cmds[Cmds::Fire as usize][0])
+                    || (key == self.input.key_cmds[Cmds::Fire as usize][1])
+                    || (key == self.input.key_cmds[Cmds::Fire as usize][2])
                 {
                     trace!("in just_started: Fire registered");
                     ret = 1;

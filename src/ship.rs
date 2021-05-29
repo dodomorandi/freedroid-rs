@@ -11,7 +11,7 @@ use crate::{
         CONSOLE_BG_PIC1, CONSOLE_BG_PIC2, CONSOLE_PIC, CROSSHAIR_CURSOR, PACKED_PORTRAITS,
         SHIP_OFF_PIC, SHIP_ON_PIC, VID_BPP,
     },
-    input::{SDL_Delay, INPUT_AXIS, LAST_MOUSE_EVENT},
+    input::SDL_Delay,
     map::{get_current_lift, get_map_brick},
     misc::activate_conservative_frame_computation,
     structs::Point,
@@ -22,7 +22,6 @@ use crate::{
     },
     view::fill_rect,
     Data, ALERT_LEVEL, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, GAME_CONFIG, ME, NE_SCREEN, NUM_ENEMYS,
-    SHOW_CURSOR,
 };
 
 use log::{error, warn};
@@ -586,7 +585,7 @@ impl Data {
         ME.status = Status::Console as c_int;
 
         if cfg!(target_os = "android") {
-            SHOW_CURSOR = false;
+            self.input.show_cursor = false;
         }
 
         SDL_SetCursor(ARROW_CURSOR);
@@ -600,7 +599,7 @@ impl Data {
         let mut finished = false;
         let mut need_update = true;
         while !finished {
-            if SHOW_CURSOR {
+            if self.input.show_cursor {
                 SDL_ShowCursor(SDL_ENABLE);
             } else {
                 SDL_ShowCursor(SDL_DISABLE);
@@ -608,7 +607,7 @@ impl Data {
 
             // check if the mouse-cursor is on any of the console-menu points
             for (i, rect) in CONS_MENU_RECTS.iter_mut().enumerate() {
-                if SHOW_CURSOR && pos != i && cursor_is_on_rect(rect) != 0 {
+                if self.input.show_cursor && pos != i && self.cursor_is_on_rect(rect) != 0 {
                     self.move_menu_position_sound();
                     pos = i;
                     need_update = true;
@@ -630,8 +629,8 @@ impl Data {
                         }
                         // when warping the mouse-cursor: don't count that as a mouse-activity
                         // this is a dirty hack, but that should be enough for here...
-                        if SHOW_CURSOR {
-                            let mousemove_buf = LAST_MOUSE_EVENT;
+                        if self.input.show_cursor {
+                            let mousemove_buf = self.input.last_mouse_event;
                             SDL_WarpMouse(
                                 (CONS_MENU_RECTS[pos].x
                                     + i16::try_from(CONS_MENU_RECTS[pos].w / 2).unwrap())
@@ -643,7 +642,7 @@ impl Data {
                                 .unwrap(),
                             );
                             self.update_input(); // this sets a new last_mouse_event
-                            LAST_MOUSE_EVENT = mousemove_buf; //... which we override.. ;)
+                            self.input.last_mouse_event = mousemove_buf; //... which we override.. ;)
                         }
                         self.move_menu_position_sound();
                         need_update = true;
@@ -658,8 +657,8 @@ impl Data {
                         }
                         // when warping the mouse-cursor: don't count that as a mouse-activity
                         // this is a dirty hack, but that should be enough for here...
-                        if SHOW_CURSOR {
-                            let mousemove_buf = LAST_MOUSE_EVENT;
+                        if self.input.show_cursor {
+                            let mousemove_buf = self.input.last_mouse_event;
                             SDL_WarpMouse(
                                 (CONS_MENU_RECTS[pos].x
                                     + i16::try_from(CONS_MENU_RECTS[pos].w / 2).unwrap())
@@ -671,7 +670,7 @@ impl Data {
                                 .unwrap(),
                             );
                             self.update_input(); // this sets a new last_mouse_event
-                            LAST_MOUSE_EVENT = mousemove_buf; //... which we override.. ;)
+                            self.input.last_mouse_event = mousemove_buf; //... which we override.. ;)
                         }
                         self.move_menu_position_sound();
                         need_update = true;
@@ -743,7 +742,7 @@ impl Data {
         clear_graph_mem();
 
         SDL_SetCursor(CROSSHAIR_CURSOR);
-        if !SHOW_CURSOR {
+        if !self.input.show_cursor {
             SDL_ShowCursor(SDL_DISABLE);
         }
     }
@@ -766,7 +765,7 @@ impl Data {
         while !finished {
             self.show_droid_portrait(CONS_DROID_RECT, droidtype, DROID_ROTATION_TIME, 0);
 
-            if SHOW_CURSOR {
+            if self.input.show_cursor {
                 SDL_ShowCursor(SDL_ENABLE);
             } else {
                 SDL_ShowCursor(SDL_DISABLE);
@@ -780,13 +779,13 @@ impl Data {
             let mut action = MenuAction::empty();
             // special handling of mouse-clicks: check if move-arrows were clicked on
             if self.mouse_left_pressed_r() {
-                if cursor_is_on_rect(&self.ship.left_rect) != 0 {
+                if self.cursor_is_on_rect(&self.ship.left_rect) != 0 {
                     action = MenuAction::LEFT;
-                } else if cursor_is_on_rect(&self.ship.right_rect) != 0 {
+                } else if self.cursor_is_on_rect(&self.ship.right_rect) != 0 {
                     action = MenuAction::RIGHT;
-                } else if cursor_is_on_rect(&self.ship.up_rect) != 0 {
+                } else if self.cursor_is_on_rect(&self.ship.up_rect) != 0 {
                     action = MenuAction::UP;
-                } else if cursor_is_on_rect(&self.ship.down_rect) != 0 {
+                } else if self.cursor_is_on_rect(&self.ship.down_rect) != 0 {
                     action = MenuAction::DOWN;
                 }
             } else {
@@ -858,21 +857,21 @@ impl Data {
             SDL_Delay(1); // don't hog CPU
         }
     }
-}
 
-/// This function should check if the mouse cursor is in the given Rectangle
-pub unsafe fn cursor_is_on_rect(rect: &Rect) -> c_int {
-    let user_center = get_user_center();
-    let cur_pos = Point {
-        x: INPUT_AXIS.x + (i32::from(user_center.x) - 16),
-        y: INPUT_AXIS.y + (i32::from(user_center.y) - 16),
-    };
+    /// This function should check if the mouse cursor is in the given Rectangle
+    pub unsafe fn cursor_is_on_rect(&self, rect: &Rect) -> c_int {
+        let user_center = get_user_center();
+        let cur_pos = Point {
+            x: self.input.input_axis.x + (i32::from(user_center.x) - 16),
+            y: self.input.input_axis.y + (i32::from(user_center.y) - 16),
+        };
 
-    (cur_pos.x >= rect.x.into()
-        && cur_pos.x <= i32::from(rect.x) + i32::from(rect.w)
-        && cur_pos.y >= rect.y.into()
-        && cur_pos.y <= i32::from(rect.y) + i32::from(rect.h))
-    .into()
+        (cur_pos.x >= rect.x.into()
+            && cur_pos.x <= i32::from(rect.x) + i32::from(rect.w)
+            && cur_pos.y >= rect.y.into()
+            && cur_pos.y <= i32::from(rect.y) + i32::from(rect.h))
+        .into()
+    }
 }
 
 /// @Desc: show side-view of the ship, and hightlight the current

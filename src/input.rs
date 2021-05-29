@@ -33,7 +33,8 @@ use sdl::{
 };
 use std::{
     convert::{identity, TryFrom},
-    os::raw::{c_char, c_int},
+    fmt,
+    os::raw::{c_char, c_int, c_uchar},
     ptr::{null, null_mut},
 };
 
@@ -44,87 +45,145 @@ extern "C" {
     pub fn SDL_Delay(ms: u32);
 }
 
-pub static mut SHOW_CURSOR: bool = false;
-pub static mut WHEEL_UP_EVENTS: c_int = 0;
-pub static mut WHEEL_DOWN_EVENTS: c_int = 0;
-pub static mut LAST_MOUSE_EVENT: u32 = 0;
-pub static mut CURRENT_MODIFIERS: SDLMod = 0;
-pub static mut INPUT_STATE: [c_int; PointerStates::Last as usize] =
-    [0; PointerStates::Last as usize];
-pub static mut EVENT: SDL_Event = SDL_Event { data: [0; 24] };
-pub static mut JOY_SENSITIVITY: c_int = 0;
-pub static mut INPUT_AXIS: Point = Point { x: 0, y: 0 }; /* joystick (and mouse) axis values */
-pub static mut JOY: *mut SDL_Joystick = null_mut();
-pub static mut JOY_NUM_AXES: i32 = 0; /* number of joystick axes */
-pub static mut AXIS_IS_ACTIVE: i32 = 0; /* is firing to use axis-values or not */
+pub struct Input {
+    pub show_cursor: bool,
+    wheel_up_events: c_int,
+    wheel_down_events: c_int,
+    pub last_mouse_event: u32,
+    current_modifiers: SDLMod,
+    input_state: [c_int; PointerStates::Last as usize],
+    event: SDL_Event,
+    pub joy_sensitivity: c_int,
+    // joystick (and mouse) axis values
+    pub input_axis: Point,
+    joy: *mut SDL_Joystick,
+    // number of joystick axes
+    pub joy_num_axes: i32,
+    // is firing to use axis-values or not
+    pub axis_is_active: i32,
+    pub key_cmds: [[c_int; 3]; Cmds::Last as usize],
+    pub keystr: [*const c_char; PointerStates::Last as usize],
+}
 
-#[cfg(feature = "gcw0")]
-pub static mut key_cmds: [[c_int; 3]; Cmds::Last as usize] = [
-    [SDLK_UP as c_int, PointerStates::JoyUp as c_int, 0], // CMD_UP
-    [SDLK_DOWN as c_int, PointerStates::JoyDown as c_int, 0], // CMD_DOWN
-    [SDLK_LEFT as c_int, PointerStates::JoyLeft as c_int, 0], // CMD_LEFT
-    [SDLK_RIGHT as c_int, PointerStates::JoyRight as c_int, 0], // CMD_RIGHT
-    [SDLK_SPACE as c_int, SDLK_LCTRL as c_int, 0],        // CMD_FIRE
-    [SDLK_LALT as c_int, PointerStates::JoyButton2 as c_int, 0], // CMD_ACTIVATE
-    [SDLK_BACKSPACE as c_int, SDLK_TAB as c_int, 0],      // CMD_TAKEOVER
-    [0, 0, 0],                                            // CMD_QUIT,
-    [SDLK_RETURN as c_int, 0, 0],                         // CMD_PAUSE,
-    [0, 0, 0],                                            // CMD_SCREENSHOT
-    [0, 0, 0],                                            // CMD_FULLSCREEN,
-    [SDLK_ESCAPE as c_int, PointerStates::JoyButton4 as c_int, 0], // CMD_MENU,
-    [
-        SDLK_ESCAPE as c_int,
-        PointerStates::JoyButton2 as c_int,
-        PointerStates::MouseButton2 as c_int,
-    ], // CMD_BACK
-];
+impl fmt::Debug for Input {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        #[derive(Debug)]
+        #[allow(non_camel_case_types)]
+        struct SDL_Event<'a> {
+            data: &'a [c_uchar; 24],
+        }
 
-#[cfg(not(feature = "gcw0"))]
-pub static mut KEY_CMDS: [[c_int; 3]; Cmds::Last as usize] = [
-    [
-        SDLK_UP as c_int,
-        PointerStates::JoyUp as c_int,
-        b'w' as c_int,
-    ], // CMD_UP
-    [
-        SDLK_DOWN as c_int,
-        PointerStates::JoyDown as c_int,
-        b's' as c_int,
-    ], // CMD_DOWN
-    [
-        SDLK_LEFT as c_int,
-        PointerStates::JoyLeft as c_int,
-        b'a' as c_int,
-    ], // CMD_LEFT
-    [
-        SDLK_RIGHT as c_int,
-        PointerStates::JoyRight as c_int,
-        b'd' as c_int,
-    ], // CMD_RIGHT
-    [
-        SDLK_SPACE as c_int,
-        PointerStates::JoyButton1 as c_int,
-        PointerStates::MouseButton1 as c_int,
-    ], // CMD_FIRE
-    [SDLK_RETURN as c_int, SDLK_RSHIFT as c_int, b'e' as c_int], // CMD_ACTIVATE
-    [
-        SDLK_SPACE as c_int,
-        PointerStates::JoyButton2 as c_int,
-        PointerStates::MouseButton2 as c_int,
-    ], // CMD_TAKEOVER
-    [b'q' as c_int, 0, 0],                                       // CMD_QUIT,
-    [SDLK_PAUSE as c_int, b'p' as c_int, 0],                     // CMD_PAUSE,
-    [SDLK_F12 as c_int, 0, 0],                                   // CMD_SCREENSHOT
-    [b'f' as c_int, 0, 0],                                       // CMD_FULLSCREEN,
-    [SDLK_ESCAPE as c_int, PointerStates::JoyButton4 as c_int, 0], // CMD_MENU,
-    [
-        SDLK_ESCAPE as c_int,
-        PointerStates::JoyButton2 as c_int,
-        PointerStates::MouseButton2 as c_int,
-    ], // CMD_BACK
-];
+        let event = SDL_Event {
+            data: &self.event.data,
+        };
 
-pub static mut CMD_STRINGS: [*const c_char; Cmds::Last as usize] = [
+        f.debug_struct("Input")
+            .field("show_cursor", &self.show_cursor)
+            .field("wheel_up_events", &self.wheel_up_events)
+            .field("wheel_down_events", &self.wheel_down_events)
+            .field("last_mouse_event", &self.last_mouse_event)
+            .field("current_modifiers", &self.current_modifiers)
+            .field("input_state", &self.input_state)
+            .field("event", &event)
+            .field("joy_sensitivity", &self.joy_sensitivity)
+            .field("input_axis", &self.input_axis)
+            .field("joy", &self.joy)
+            .field("joy_num_axes", &self.joy_num_axes)
+            .field("axis_is_active", &self.axis_is_active)
+            .field("key_cmds", &self.key_cmds)
+            .field("keystr", &self.keystr)
+            .finish()
+    }
+}
+
+impl Default for Input {
+    fn default() -> Self {
+        #[cfg(feature = "gcw0")]
+        let key_cmds = [
+            [SDLK_UP as c_int, PointerStates::JoyUp as c_int, 0], // CMD_UP
+            [SDLK_DOWN as c_int, PointerStates::JoyDown as c_int, 0], // CMD_DOWN
+            [SDLK_LEFT as c_int, PointerStates::JoyLeft as c_int, 0], // CMD_LEFT
+            [SDLK_RIGHT as c_int, PointerStates::JoyRight as c_int, 0], // CMD_RIGHT
+            [SDLK_SPACE as c_int, SDLK_LCTRL as c_int, 0],        // CMD_FIRE
+            [SDLK_LALT as c_int, PointerStates::JoyButton2 as c_int, 0], // CMD_ACTIVATE
+            [SDLK_BACKSPACE as c_int, SDLK_TAB as c_int, 0],      // CMD_TAKEOVER
+            [0, 0, 0],                                            // CMD_QUIT,
+            [SDLK_RETURN as c_int, 0, 0],                         // CMD_PAUSE,
+            [0, 0, 0],                                            // CMD_SCREENSHOT
+            [0, 0, 0],                                            // CMD_FULLSCREEN,
+            [SDLK_ESCAPE as c_int, PointerStates::JoyButton4 as c_int, 0], // CMD_MENU,
+            [
+                SDLK_ESCAPE as c_int,
+                PointerStates::JoyButton2 as c_int,
+                PointerStates::MouseButton2 as c_int,
+            ], // CMD_BACK
+        ];
+
+        #[cfg(not(feature = "gcw0"))]
+        let key_cmds = [
+            [
+                SDLK_UP as c_int,
+                PointerStates::JoyUp as c_int,
+                b'w' as c_int,
+            ], // CMD_UP
+            [
+                SDLK_DOWN as c_int,
+                PointerStates::JoyDown as c_int,
+                b's' as c_int,
+            ], // CMD_DOWN
+            [
+                SDLK_LEFT as c_int,
+                PointerStates::JoyLeft as c_int,
+                b'a' as c_int,
+            ], // CMD_LEFT
+            [
+                SDLK_RIGHT as c_int,
+                PointerStates::JoyRight as c_int,
+                b'd' as c_int,
+            ], // CMD_RIGHT
+            [
+                SDLK_SPACE as c_int,
+                PointerStates::JoyButton1 as c_int,
+                PointerStates::MouseButton1 as c_int,
+            ], // CMD_FIRE
+            [SDLK_RETURN as c_int, SDLK_RSHIFT as c_int, b'e' as c_int], // CMD_ACTIVATE
+            [
+                SDLK_SPACE as c_int,
+                PointerStates::JoyButton2 as c_int,
+                PointerStates::MouseButton2 as c_int,
+            ], // CMD_TAKEOVER
+            [b'q' as c_int, 0, 0],                                       // CMD_QUIT,
+            [SDLK_PAUSE as c_int, b'p' as c_int, 0],                     // CMD_PAUSE,
+            [SDLK_F12 as c_int, 0, 0],                                   // CMD_SCREENSHOT
+            [b'f' as c_int, 0, 0],                                       // CMD_FULLSCREEN,
+            [SDLK_ESCAPE as c_int, PointerStates::JoyButton4 as c_int, 0], // CMD_MENU,
+            [
+                SDLK_ESCAPE as c_int,
+                PointerStates::JoyButton2 as c_int,
+                PointerStates::MouseButton2 as c_int,
+            ], // CMD_BACK
+        ];
+
+        Self {
+            show_cursor: false,
+            wheel_up_events: 0,
+            wheel_down_events: 0,
+            last_mouse_event: 0,
+            current_modifiers: 0,
+            input_state: [0; PointerStates::Last as usize],
+            event: SDL_Event { data: [0; 24] },
+            joy_sensitivity: 0,
+            input_axis: Point { x: 0, y: 0 },
+            joy: null_mut(),
+            joy_num_axes: 0,
+            axis_is_active: 0,
+            key_cmds,
+            keystr: [null(); PointerStates::Last as usize],
+        }
+    }
+}
+
+pub const CMD_STRINGS: [*const c_char; Cmds::Last as usize] = [
     cstr!("UP").as_ptr(),
     cstr!("DOWN").as_ptr(),
     cstr!("LEFT").as_ptr(),
@@ -141,8 +200,6 @@ pub static mut CMD_STRINGS: [*const c_char; Cmds::Last as usize] = [
 ];
 
 pub const CURSOR_KEEP_VISIBLE: u32 = 3000; // ticks to keep mouse-cursor visible without mouse-input
-pub static mut KEYSTR: [*const c_char; PointerStates::Last as usize] =
-    [null(); PointerStates::Last as usize];
 
 impl Data {
     /// Check if any keys have been 'freshly' pressed. If yes, return key-code, otherwise 0.
@@ -164,12 +221,11 @@ impl Data {
         self.update_input();
 
         let pressed_key = (0..PointerStates::Last as c_int)
-            .map(|key| (key, &mut INPUT_STATE[key as usize]))
-            .find(|(_, key_flags)| is_just_pressed(**key_flags));
+            .find(|&key| is_just_pressed(self.input.input_state[key as usize]));
 
         match pressed_key {
-            Some((key, key_flags)) => {
-                clear_fresh(key_flags);
+            Some(key) => {
+                clear_fresh(&mut self.input.input_state[key as usize]);
                 key
             }
             None => 0,
@@ -192,32 +248,32 @@ fn clear_fresh(key_flags: &mut c_int) {
 impl Data {
     pub unsafe fn update_input(&mut self) -> c_int {
         // switch mouse-cursor visibility as a function of time of last activity
-        if SDL_GetTicks() - LAST_MOUSE_EVENT > CURSOR_KEEP_VISIBLE {
-            SHOW_CURSOR = false;
+        if SDL_GetTicks() - self.input.last_mouse_event > CURSOR_KEEP_VISIBLE {
+            self.input.show_cursor = false;
         } else {
-            SHOW_CURSOR = true;
+            self.input.show_cursor = true;
         }
 
-        while SDL_PollEvent(&mut EVENT) != 0 {
-            match (*EVENT._type()).into() {
+        while SDL_PollEvent(&mut self.input.event) != 0 {
+            match (*self.input.event._type()).into() {
                 SDL_QUIT => {
                     info!("User requested termination, terminating.");
                     self.quit_successfully();
                 }
 
                 SDL_KEYDOWN => {
-                    let key = &*EVENT.key();
-                    CURRENT_MODIFIERS = key.keysym._mod;
-                    INPUT_STATE[usize::try_from(key.keysym.sym).unwrap()] = PRESSED;
+                    let key = &*self.input.event.key();
+                    self.input.current_modifiers = key.keysym._mod;
+                    self.input.input_state[usize::try_from(key.keysym.sym).unwrap()] = PRESSED;
                     #[cfg(feature = "gcw0")]
                     if input_axis.x != 0 || input_axis.y != 0 {
                         axis_is_active = true.into(); // 4 GCW-0 ; breaks cursor keys after axis has been active...
                     }
                 }
                 SDL_KEYUP => {
-                    let key = &*EVENT.key();
-                    CURRENT_MODIFIERS = key.keysym._mod;
-                    INPUT_STATE[usize::try_from(key.keysym.sym).unwrap()] = RELEASED;
+                    let key = &*self.input.event.key();
+                    self.input.current_modifiers = key.keysym._mod;
+                    self.input.input_state[usize::try_from(key.keysym.sym).unwrap()] = RELEASED;
                     #[cfg(feature = "gcw0")]
                     {
                         axis_is_active = false.into();
@@ -225,141 +281,141 @@ impl Data {
                 }
 
                 SDL_JOYAXISMOTION => {
-                    let jaxis = &*EVENT.jaxis();
+                    let jaxis = &*self.input.event.jaxis();
                     let axis = jaxis.axis;
-                    if axis == 0 || ((JOY_NUM_AXES >= 5) && (axis == 3))
+                    if axis == 0 || ((self.input.joy_num_axes >= 5) && (axis == 3))
                     /* x-axis */
                     {
-                        INPUT_AXIS.x = jaxis.value.into();
+                        self.input.input_axis.x = jaxis.value.into();
 
                         // this is a bit tricky, because we want to allow direction keys
                         // to be soft-released. When mapping the joystick->keyboard, we
                         // therefore have to make sure that this mapping only occurs when
                         // and actual _change_ of the joystick-direction ('digital') occurs
                         // so that it behaves like "set"/"release"
-                        if JOY_SENSITIVITY * i32::from(jaxis.value) > 10000 {
+                        if self.input.joy_sensitivity * i32::from(jaxis.value) > 10000 {
                             /* about half tilted */
-                            INPUT_STATE[PointerStates::JoyRight as usize] = PRESSED;
-                            INPUT_STATE[PointerStates::JoyLeft as usize] = false.into();
-                        } else if JOY_SENSITIVITY * i32::from(jaxis.value) < -10000 {
-                            INPUT_STATE[PointerStates::JoyLeft as usize] = PRESSED;
-                            INPUT_STATE[PointerStates::JoyRight as usize] = false.into();
+                            self.input.input_state[PointerStates::JoyRight as usize] = PRESSED;
+                            self.input.input_state[PointerStates::JoyLeft as usize] = false.into();
+                        } else if self.input.joy_sensitivity * i32::from(jaxis.value) < -10000 {
+                            self.input.input_state[PointerStates::JoyLeft as usize] = PRESSED;
+                            self.input.input_state[PointerStates::JoyRight as usize] = false.into();
                         } else {
-                            INPUT_STATE[PointerStates::JoyLeft as usize] = false.into();
-                            INPUT_STATE[PointerStates::JoyRight as usize] = false.into();
+                            self.input.input_state[PointerStates::JoyLeft as usize] = false.into();
+                            self.input.input_state[PointerStates::JoyRight as usize] = false.into();
                         }
-                    } else if (axis == 1) || ((JOY_NUM_AXES >= 5) && (axis == 4)) {
+                    } else if (axis == 1) || ((self.input.joy_num_axes >= 5) && (axis == 4)) {
                         /* y-axis */
-                        INPUT_AXIS.y = jaxis.value.into();
+                        self.input.input_axis.y = jaxis.value.into();
 
-                        if JOY_SENSITIVITY * i32::from(jaxis.value) > 10000 {
-                            INPUT_STATE[PointerStates::JoyDown as usize] = PRESSED;
-                            INPUT_STATE[PointerStates::JoyUp as usize] = false.into();
-                        } else if JOY_SENSITIVITY * i32::from(jaxis.value) < -10000 {
-                            INPUT_STATE[PointerStates::JoyUp as usize] = PRESSED;
-                            INPUT_STATE[PointerStates::JoyDown as usize] = false.into();
+                        if self.input.joy_sensitivity * i32::from(jaxis.value) > 10000 {
+                            self.input.input_state[PointerStates::JoyDown as usize] = PRESSED;
+                            self.input.input_state[PointerStates::JoyUp as usize] = false.into();
+                        } else if self.input.joy_sensitivity * i32::from(jaxis.value) < -10000 {
+                            self.input.input_state[PointerStates::JoyUp as usize] = PRESSED;
+                            self.input.input_state[PointerStates::JoyDown as usize] = false.into();
                         } else {
-                            INPUT_STATE[PointerStates::JoyUp as usize] = false.into();
-                            INPUT_STATE[PointerStates::JoyDown as usize] = false.into();
+                            self.input.input_state[PointerStates::JoyUp as usize] = false.into();
+                            self.input.input_state[PointerStates::JoyDown as usize] = false.into();
                         }
                     }
                 }
 
                 SDL_JOYBUTTONDOWN => {
-                    let jbutton = &*EVENT.jbutton();
+                    let jbutton = &*self.input.event.jbutton();
                     // first button
                     if jbutton.button == 0 {
-                        INPUT_STATE[PointerStates::JoyButton1 as usize] = PRESSED;
+                        self.input.input_state[PointerStates::JoyButton1 as usize] = PRESSED;
                     }
                     // second button
                     else if jbutton.button == 1 {
-                        INPUT_STATE[PointerStates::JoyButton2 as usize] = PRESSED;
+                        self.input.input_state[PointerStates::JoyButton2 as usize] = PRESSED;
                     }
                     // and third button
                     else if jbutton.button == 2 {
-                        INPUT_STATE[PointerStates::JoyButton3 as usize] = PRESSED;
+                        self.input.input_state[PointerStates::JoyButton3 as usize] = PRESSED;
                     }
                     // and fourth button
                     else if jbutton.button == 3 {
-                        INPUT_STATE[PointerStates::JoyButton4 as usize] = PRESSED;
+                        self.input.input_state[PointerStates::JoyButton4 as usize] = PRESSED;
                     }
 
-                    AXIS_IS_ACTIVE = true.into();
+                    self.input.axis_is_active = true.into();
                 }
 
                 SDL_JOYBUTTONUP => {
-                    let jbutton = &*EVENT.jbutton();
+                    let jbutton = &*self.input.event.jbutton();
                     // first button
                     if jbutton.button == 0 {
-                        INPUT_STATE[PointerStates::JoyButton1 as usize] = false.into();
+                        self.input.input_state[PointerStates::JoyButton1 as usize] = false.into();
                     }
                     // second button
                     else if jbutton.button == 1 {
-                        INPUT_STATE[PointerStates::JoyButton2 as usize] = false.into();
+                        self.input.input_state[PointerStates::JoyButton2 as usize] = false.into();
                     }
                     // and third button
                     else if jbutton.button == 2 {
-                        INPUT_STATE[PointerStates::JoyButton3 as usize] = false.into();
+                        self.input.input_state[PointerStates::JoyButton3 as usize] = false.into();
                     }
                     // and fourth button
                     else if jbutton.button == 3 {
-                        INPUT_STATE[PointerStates::JoyButton4 as usize] = false.into();
+                        self.input.input_state[PointerStates::JoyButton4 as usize] = false.into();
                     }
 
-                    AXIS_IS_ACTIVE = false.into();
+                    self.input.axis_is_active = false.into();
                 }
 
                 SDL_MOUSEMOTION => {
-                    let button = &*EVENT.button();
+                    let button = &*self.input.event.button();
                     let user_center = get_user_center();
-                    INPUT_AXIS.x = i32::from(button.x) - i32::from(user_center.x) + 16;
-                    INPUT_AXIS.y = i32::from(button.y) - i32::from(user_center.y) + 16;
+                    self.input.input_axis.x = i32::from(button.x) - i32::from(user_center.x) + 16;
+                    self.input.input_axis.y = i32::from(button.y) - i32::from(user_center.y) + 16;
 
-                    LAST_MOUSE_EVENT = SDL_GetTicks();
+                    self.input.last_mouse_event = SDL_GetTicks();
                 }
 
                 /* Mouse control */
                 SDL_MOUSEBUTTONDOWN => {
-                    let button = &*EVENT.button();
+                    let button = &*self.input.event.button();
                     if button.button == MouseState::Left as u8 {
-                        INPUT_STATE[PointerStates::MouseButton1 as usize] = PRESSED;
-                        AXIS_IS_ACTIVE = true.into();
+                        self.input.input_state[PointerStates::MouseButton1 as usize] = PRESSED;
+                        self.input.axis_is_active = true.into();
                     }
 
                     if button.button == MouseState::Right as u8 {
-                        INPUT_STATE[PointerStates::MouseButton2 as usize] = PRESSED;
+                        self.input.input_state[PointerStates::MouseButton2 as usize] = PRESSED;
                     }
 
                     if button.button == MouseState::Middle as u8 {
-                        INPUT_STATE[PointerStates::MouseButton3 as usize] = PRESSED;
+                        self.input.input_state[PointerStates::MouseButton3 as usize] = PRESSED;
                     }
 
                     // wheel events are immediately released, so we rather
                     // count the number of not yet read-out events
                     if button.button == MouseState::WheelUp as u8 {
-                        WHEEL_UP_EVENTS += 1;
+                        self.input.wheel_up_events += 1;
                     }
 
                     if button.button == MouseState::WheelDown as u8 {
-                        WHEEL_DOWN_EVENTS += 1;
+                        self.input.wheel_down_events += 1;
                     }
 
-                    LAST_MOUSE_EVENT = SDL_GetTicks();
+                    self.input.last_mouse_event = SDL_GetTicks();
                 }
 
                 SDL_MOUSEBUTTONUP => {
-                    let button = &*EVENT.button();
+                    let button = &*self.input.event.button();
                     if button.button == MouseState::Left as u8 {
-                        INPUT_STATE[PointerStates::MouseButton1 as usize] = false.into();
-                        AXIS_IS_ACTIVE = false.into();
+                        self.input.input_state[PointerStates::MouseButton1 as usize] = false.into();
+                        self.input.axis_is_active = false.into();
                     }
 
                     if button.button == MouseState::Right as u8 {
-                        INPUT_STATE[PointerStates::MouseButton2 as usize] = false.into();
+                        self.input.input_state[PointerStates::MouseButton2 as usize] = false.into();
                     }
 
                     if button.button == MouseState::Middle as u8 {
-                        INPUT_STATE[PointerStates::MouseButton3 as usize] = false.into();
+                        self.input.input_state[PointerStates::MouseButton3 as usize] = false.into();
                     }
                 }
 
@@ -373,27 +429,25 @@ impl Data {
     pub unsafe fn key_is_pressed(&mut self, key: c_int) -> bool {
         self.update_input();
 
-        (INPUT_STATE[usize::try_from(key).unwrap()] & PRESSED) == PRESSED
+        (self.input.input_state[usize::try_from(key).unwrap()] & PRESSED) == PRESSED
     }
 
     /// Does the same as KeyIsPressed, but automatically releases the key as well..
     pub unsafe fn key_is_pressed_r(&mut self, key: c_int) -> bool {
         let ret = self.key_is_pressed(key);
 
-        release_key(key);
+        self.release_key(key);
         ret
     }
-}
 
-pub unsafe fn release_key(key: c_int) {
-    INPUT_STATE[usize::try_from(key).unwrap()] = false.into();
-}
+    pub unsafe fn release_key(&mut self, key: c_int) {
+        self.input.input_state[usize::try_from(key).unwrap()] = false.into();
+    }
 
-impl Data {
     pub unsafe fn wheel_up_pressed(&mut self) -> bool {
         self.update_input();
-        if WHEEL_UP_EVENTS != 0 {
-            WHEEL_UP_EVENTS -= 1;
+        if self.input.wheel_up_events != 0 {
+            self.input.wheel_up_events -= 1;
             true
         } else {
             false
@@ -402,8 +456,8 @@ impl Data {
 
     pub unsafe fn wheel_down_pressed(&mut self) -> bool {
         self.update_input();
-        if WHEEL_DOWN_EVENTS != 0 {
-            WHEEL_DOWN_EVENTS -= 1;
+        if self.input.wheel_down_events != 0 {
+            self.input.wheel_down_events -= 1;
             true
         } else {
             false
@@ -412,18 +466,18 @@ impl Data {
 
     pub unsafe fn cmd_is_active(&mut self, cmd: Cmds) -> bool {
         let cmd = cmd as usize;
-        self.key_is_pressed(KEY_CMDS[cmd][0])
-            || self.key_is_pressed(KEY_CMDS[cmd][1])
-            || self.key_is_pressed(KEY_CMDS[cmd][2])
+        self.key_is_pressed(self.input.key_cmds[cmd][0])
+            || self.key_is_pressed(self.input.key_cmds[cmd][1])
+            || self.key_is_pressed(self.input.key_cmds[cmd][2])
     }
 
     /// the same but release the keys: use only for menus!
     pub unsafe fn cmd_is_active_r(&mut self, cmd: Cmds) -> bool {
         let cmd = cmd as usize;
 
-        let c1 = self.key_is_pressed_r(KEY_CMDS[cmd][0]);
-        let c2 = self.key_is_pressed_r(KEY_CMDS[cmd][1]);
-        let c3 = self.key_is_pressed_r(KEY_CMDS[cmd][2]);
+        let c1 = self.key_is_pressed_r(self.input.key_cmds[cmd][0]);
+        let c2 = self.key_is_pressed_r(self.input.key_cmds[cmd][1]);
+        let c3 = self.key_is_pressed_r(self.input.key_cmds[cmd][2]);
 
         c1 || c2 || c3
     }
@@ -432,11 +486,9 @@ impl Data {
         while self.any_key_is_pressed_r() {
             SDL_Delay(1);
         }
-        reset_mouse_wheel();
+        self.reset_mouse_wheel();
     }
-}
 
-impl Data {
     pub unsafe fn any_key_is_pressed_r(&mut self) -> bool {
         #[cfg(target_os = "android")]
         SDL_Flip(NE_SCREEN); // make sure we keep updating screen to read out Android inputs
@@ -444,7 +496,7 @@ impl Data {
         #[cfg(not(target_os = "android"))]
         self.update_input();
 
-        for state in &mut INPUT_STATE {
+        for state in &mut self.input.input_state {
             if (*state & PRESSED) != 0 {
                 *state = 0;
                 return true;
@@ -452,25 +504,23 @@ impl Data {
         }
         false
     }
-}
 
-// forget the wheel-counters
+    // forget the wheel-counters
+    pub unsafe fn reset_mouse_wheel(&mut self) {
+        self.input.wheel_up_events = 0;
+        self.input.wheel_down_events = 0;
+    }
 
-pub unsafe fn reset_mouse_wheel() {
-    WHEEL_UP_EVENTS = 0;
-    WHEEL_DOWN_EVENTS = 0;
-}
-
-impl Data {
     pub unsafe fn mod_is_pressed(&mut self, sdl_mod: SDLMod) -> bool {
         self.update_input();
-        (CURRENT_MODIFIERS & sdl_mod) != 0
+        (self.input.current_modifiers & sdl_mod) != 0
     }
 }
 
 impl Data {
     pub unsafe fn no_direction_pressed(&mut self) -> bool {
-        !((AXIS_IS_ACTIVE != 0 && (INPUT_AXIS.x != 0 || INPUT_AXIS.y != 0))
+        !((self.input.axis_is_active != 0
+            && (self.input.input_axis.x != 0 || self.input.input_axis.y != 0))
             || self.down_pressed()
             || self.up_pressed()
             || self.left_pressed()
@@ -519,215 +569,218 @@ impl Data {
         info!("{} Joysticks found!\n", num_joy);
 
         if num_joy > 0 {
-            JOY = SDL_JoystickOpen(0);
+            self.input.joy = SDL_JoystickOpen(0);
         }
 
-        if !JOY.is_null() {
+        if !self.input.joy.is_null() {
             info!(
                 "Identifier: {}",
                 get_joystick_name(0).unwrap_or_else(identity)
             );
 
-            JOY_NUM_AXES = SDL_JoystickNumAxes(JOY);
-            info!("Number of Axes: {}", JOY_NUM_AXES);
-            info!("Number of Buttons: {}", SDL_JoystickNumButtons(JOY));
+            self.input.joy_num_axes = SDL_JoystickNumAxes(self.input.joy);
+            info!("Number of Axes: {}", self.input.joy_num_axes);
+            info!(
+                "Number of Buttons: {}",
+                SDL_JoystickNumButtons(self.input.joy)
+            );
 
             /* aktivate Joystick event handling */
             SDL_JoystickEventState(SDL_ENABLE);
         } else {
-            JOY = null_mut(); /* signals that no yoystick is present */
+            self.input.joy = null_mut(); /* signals that no yoystick is present */
         }
     }
-}
 
-pub unsafe fn init_keystr() {
-    use sdl::keysym::*;
+    pub fn init_keystr(&mut self) {
+        use sdl::keysym::*;
 
-    KEYSTR[0] = cstr!("NONE").as_ptr(); // Empty bind will otherwise crash on some platforms - also, we choose "NONE" as a placeholder...
-    #[cfg(feature = "gcw0")]
-    {
-        // The GCW0 may change to joystick input altogether in the future - which will make these ifdefs unnecessary, I hope...
-        keystr[SDLK_BACKSPACE as usize] = cstr!("RSldr").as_ptr();
-        keystr[SDLK_TAB as usize] = cstr!("LSldr").as_ptr();
-        keystr[SDLK_RETURN as usize] = cstr!("Start").as_ptr();
-        keystr[SDLK_SPACE as usize] = cstr!("Y").as_ptr();
-        keystr[SDLK_ESCAPE as usize] = cstr!("Select").as_ptr();
+        self.input.keystr[0] = cstr!("NONE").as_ptr(); // Empty bind will otherwise crash on some platforms - also, we choose "NONE" as a placeholder...
+        #[cfg(feature = "gcw0")]
+        {
+            // The GCW0 may change to joystick input altogether in the future - which will make these ifdefs unnecessary, I hope...
+            self.input.keystr[SDLK_BACKSPACE as usize] = cstr!("RSldr").as_ptr();
+            self.input.keystr[SDLK_TAB as usize] = cstr!("LSldr").as_ptr();
+            self.input.keystr[SDLK_RETURN as usize] = cstr!("Start").as_ptr();
+            self.input.keystr[SDLK_SPACE as usize] = cstr!("Y").as_ptr();
+            self.input.keystr[SDLK_ESCAPE as usize] = cstr!("Select").as_ptr();
+        }
+
+        #[cfg(not(feature = "gcw0"))]
+        {
+            self.input.keystr[SDLK_BACKSPACE as usize] = cstr!("BS").as_ptr();
+            self.input.keystr[SDLK_TAB as usize] = cstr!("Tab").as_ptr();
+            self.input.keystr[SDLK_RETURN as usize] = cstr!("Return").as_ptr();
+            self.input.keystr[SDLK_SPACE as usize] = cstr!("Space").as_ptr();
+            self.input.keystr[SDLK_ESCAPE as usize] = cstr!("Esc").as_ptr();
+        }
+
+        self.input.keystr[SDLK_CLEAR as usize] = cstr!("Clear").as_ptr();
+        self.input.keystr[SDLK_PAUSE as usize] = cstr!("Pause").as_ptr();
+        self.input.keystr[SDLK_EXCLAIM as usize] = cstr!("!").as_ptr();
+        self.input.keystr[SDLK_QUOTEDBL as usize] = cstr!("\"").as_ptr();
+        self.input.keystr[SDLK_HASH as usize] = cstr!("#").as_ptr();
+        self.input.keystr[SDLK_DOLLAR as usize] = cstr!("$").as_ptr();
+        self.input.keystr[SDLK_AMPERSAND as usize] = cstr!("&").as_ptr();
+        self.input.keystr[SDLK_QUOTE as usize] = cstr!("'").as_ptr();
+        self.input.keystr[SDLK_LEFTPAREN as usize] = cstr!("(").as_ptr();
+        self.input.keystr[SDLK_RIGHTPAREN as usize] = cstr!(")").as_ptr();
+        self.input.keystr[SDLK_ASTERISK as usize] = cstr!("*").as_ptr();
+        self.input.keystr[SDLK_PLUS as usize] = cstr!("+").as_ptr();
+        self.input.keystr[SDLK_COMMA as usize] = cstr!(",").as_ptr();
+        self.input.keystr[SDLK_MINUS as usize] = cstr!("-").as_ptr();
+        self.input.keystr[SDLK_PERIOD as usize] = cstr!(".").as_ptr();
+        self.input.keystr[SDLK_SLASH as usize] = cstr!("/").as_ptr();
+        self.input.keystr[SDLK_0 as usize] = cstr!("0").as_ptr();
+        self.input.keystr[SDLK_1 as usize] = cstr!("1").as_ptr();
+        self.input.keystr[SDLK_2 as usize] = cstr!("2").as_ptr();
+        self.input.keystr[SDLK_3 as usize] = cstr!("3").as_ptr();
+        self.input.keystr[SDLK_4 as usize] = cstr!("4").as_ptr();
+        self.input.keystr[SDLK_5 as usize] = cstr!("5").as_ptr();
+        self.input.keystr[SDLK_6 as usize] = cstr!("6").as_ptr();
+        self.input.keystr[SDLK_7 as usize] = cstr!("7").as_ptr();
+        self.input.keystr[SDLK_8 as usize] = cstr!("8").as_ptr();
+        self.input.keystr[SDLK_9 as usize] = cstr!("9").as_ptr();
+        self.input.keystr[SDLK_COLON as usize] = cstr!(":").as_ptr();
+        self.input.keystr[SDLK_SEMICOLON as usize] = cstr!(";").as_ptr();
+        self.input.keystr[SDLK_LESS as usize] = cstr!("<").as_ptr();
+        self.input.keystr[SDLK_EQUALS as usize] = cstr!("=").as_ptr();
+        self.input.keystr[SDLK_GREATER as usize] = cstr!(">").as_ptr();
+        self.input.keystr[SDLK_QUESTION as usize] = cstr!("?").as_ptr();
+        self.input.keystr[SDLK_AT as usize] = cstr!("@").as_ptr();
+        self.input.keystr[SDLK_LEFTBRACKET as usize] = cstr!("[").as_ptr();
+        self.input.keystr[SDLK_BACKSLASH as usize] = cstr!("\\").as_ptr();
+        self.input.keystr[SDLK_RIGHTBRACKET as usize] = cstr!(" as usize]").as_ptr();
+        self.input.keystr[SDLK_CARET as usize] = cstr!("^").as_ptr();
+        self.input.keystr[SDLK_UNDERSCORE as usize] = cstr!("_").as_ptr();
+        self.input.keystr[SDLK_BACKQUOTE as usize] = cstr!("`").as_ptr();
+        self.input.keystr[SDLK_a as usize] = cstr!("a").as_ptr();
+        self.input.keystr[SDLK_b as usize] = cstr!("b").as_ptr();
+        self.input.keystr[SDLK_c as usize] = cstr!("c").as_ptr();
+        self.input.keystr[SDLK_d as usize] = cstr!("d").as_ptr();
+        self.input.keystr[SDLK_e as usize] = cstr!("e").as_ptr();
+        self.input.keystr[SDLK_f as usize] = cstr!("f").as_ptr();
+        self.input.keystr[SDLK_g as usize] = cstr!("g").as_ptr();
+        self.input.keystr[SDLK_h as usize] = cstr!("h").as_ptr();
+        self.input.keystr[SDLK_i as usize] = cstr!("i").as_ptr();
+        self.input.keystr[SDLK_j as usize] = cstr!("j").as_ptr();
+        self.input.keystr[SDLK_k as usize] = cstr!("k").as_ptr();
+        self.input.keystr[SDLK_l as usize] = cstr!("l").as_ptr();
+        self.input.keystr[SDLK_m as usize] = cstr!("m").as_ptr();
+        self.input.keystr[SDLK_n as usize] = cstr!("n").as_ptr();
+        self.input.keystr[SDLK_o as usize] = cstr!("o").as_ptr();
+        self.input.keystr[SDLK_p as usize] = cstr!("p").as_ptr();
+        self.input.keystr[SDLK_q as usize] = cstr!("q").as_ptr();
+        self.input.keystr[SDLK_r as usize] = cstr!("r").as_ptr();
+        self.input.keystr[SDLK_s as usize] = cstr!("s").as_ptr();
+        self.input.keystr[SDLK_t as usize] = cstr!("t").as_ptr();
+        self.input.keystr[SDLK_u as usize] = cstr!("u").as_ptr();
+        self.input.keystr[SDLK_v as usize] = cstr!("v").as_ptr();
+        self.input.keystr[SDLK_w as usize] = cstr!("w").as_ptr();
+        self.input.keystr[SDLK_x as usize] = cstr!("x").as_ptr();
+        self.input.keystr[SDLK_y as usize] = cstr!("y").as_ptr();
+        self.input.keystr[SDLK_z as usize] = cstr!("z").as_ptr();
+        self.input.keystr[SDLK_DELETE as usize] = cstr!("Del").as_ptr();
+
+        /* Numeric keypad */
+        self.input.keystr[SDLK_KP0 as usize] = cstr!("Num[0 as usize]").as_ptr();
+        self.input.keystr[SDLK_KP1 as usize] = cstr!("Num[1 as usize]").as_ptr();
+        self.input.keystr[SDLK_KP2 as usize] = cstr!("Num[2 as usize]").as_ptr();
+        self.input.keystr[SDLK_KP3 as usize] = cstr!("Num[3 as usize]").as_ptr();
+        self.input.keystr[SDLK_KP4 as usize] = cstr!("Num[4 as usize]").as_ptr();
+        self.input.keystr[SDLK_KP5 as usize] = cstr!("Num[5 as usize]").as_ptr();
+        self.input.keystr[SDLK_KP6 as usize] = cstr!("Num[6 as usize]").as_ptr();
+        self.input.keystr[SDLK_KP7 as usize] = cstr!("Num[7 as usize]").as_ptr();
+        self.input.keystr[SDLK_KP8 as usize] = cstr!("Num[8 as usize]").as_ptr();
+        self.input.keystr[SDLK_KP9 as usize] = cstr!("Num[9 as usize]").as_ptr();
+        self.input.keystr[SDLK_KP_PERIOD as usize] = cstr!("Num[. as usize]").as_ptr();
+        self.input.keystr[SDLK_KP_DIVIDE as usize] = cstr!("Num[/ as usize]").as_ptr();
+        self.input.keystr[SDLK_KP_MULTIPLY as usize] = cstr!("Num[* as usize]").as_ptr();
+        self.input.keystr[SDLK_KP_MINUS as usize] = cstr!("Num[- as usize]").as_ptr();
+        self.input.keystr[SDLK_KP_PLUS as usize] = cstr!("Num[+ as usize]").as_ptr();
+        self.input.keystr[SDLK_KP_ENTER as usize] = cstr!("Num[Enter as usize]").as_ptr();
+        self.input.keystr[SDLK_KP_EQUALS as usize] = cstr!("Num[= as usize]").as_ptr();
+
+        /* Arrows + Home/End pad */
+        self.input.keystr[SDLK_UP as usize] = cstr!("Up").as_ptr();
+        self.input.keystr[SDLK_DOWN as usize] = cstr!("Down").as_ptr();
+        self.input.keystr[SDLK_RIGHT as usize] = cstr!("Right").as_ptr();
+        self.input.keystr[SDLK_LEFT as usize] = cstr!("Left").as_ptr();
+        self.input.keystr[SDLK_INSERT as usize] = cstr!("Insert").as_ptr();
+        self.input.keystr[SDLK_HOME as usize] = cstr!("Home").as_ptr();
+        self.input.keystr[SDLK_END as usize] = cstr!("End").as_ptr();
+        self.input.keystr[SDLK_PAGEUP as usize] = cstr!("PageUp").as_ptr();
+        self.input.keystr[SDLK_PAGEDOWN as usize] = cstr!("PageDown").as_ptr();
+
+        /* Function keys */
+        self.input.keystr[SDLK_F1 as usize] = cstr!("F1").as_ptr();
+        self.input.keystr[SDLK_F2 as usize] = cstr!("F2").as_ptr();
+        self.input.keystr[SDLK_F3 as usize] = cstr!("F3").as_ptr();
+        self.input.keystr[SDLK_F4 as usize] = cstr!("F4").as_ptr();
+        self.input.keystr[SDLK_F5 as usize] = cstr!("F5").as_ptr();
+        self.input.keystr[SDLK_F6 as usize] = cstr!("F6").as_ptr();
+        self.input.keystr[SDLK_F7 as usize] = cstr!("F7").as_ptr();
+        self.input.keystr[SDLK_F8 as usize] = cstr!("F8").as_ptr();
+        self.input.keystr[SDLK_F9 as usize] = cstr!("F9").as_ptr();
+        self.input.keystr[SDLK_F10 as usize] = cstr!("F10").as_ptr();
+        self.input.keystr[SDLK_F11 as usize] = cstr!("F11").as_ptr();
+        self.input.keystr[SDLK_F12 as usize] = cstr!("F12").as_ptr();
+        self.input.keystr[SDLK_F13 as usize] = cstr!("F13").as_ptr();
+        self.input.keystr[SDLK_F14 as usize] = cstr!("F14").as_ptr();
+        self.input.keystr[SDLK_F15 as usize] = cstr!("F15").as_ptr();
+
+        /* Key state modifier keys */
+        self.input.keystr[SDLK_NUMLOCK as usize] = cstr!("NumLock").as_ptr();
+        self.input.keystr[SDLK_CAPSLOCK as usize] = cstr!("CapsLock").as_ptr();
+        self.input.keystr[SDLK_SCROLLOCK as usize] = cstr!("ScrlLock").as_ptr();
+        #[cfg(feature = "gcw0")]
+        {
+            keystr[SDLK_LSHIFT as usize] = cstr!("X").as_ptr();
+            keystr[SDLK_LCTRL as usize] = cstr!("A").as_ptr();
+            keystr[SDLK_LALT as usize] = cstr!("B").as_ptr();
+        }
+
+        #[cfg(not(feature = "gcw0"))]
+        {
+            self.input.keystr[SDLK_LSHIFT as usize] = cstr!("LShift").as_ptr();
+            self.input.keystr[SDLK_LCTRL as usize] = cstr!("LCtrl").as_ptr();
+            self.input.keystr[SDLK_LALT as usize] = cstr!("LAlt").as_ptr();
+        }
+
+        self.input.keystr[SDLK_RSHIFT as usize] = cstr!("RShift").as_ptr();
+        self.input.keystr[SDLK_RCTRL as usize] = cstr!("RCtrl").as_ptr();
+        self.input.keystr[SDLK_RALT as usize] = cstr!("RAlt").as_ptr();
+        self.input.keystr[SDLK_RMETA as usize] = cstr!("RMeta").as_ptr();
+        self.input.keystr[SDLK_LMETA as usize] = cstr!("LMeta").as_ptr();
+        self.input.keystr[SDLK_LSUPER as usize] = cstr!("LSuper").as_ptr();
+        self.input.keystr[SDLK_RSUPER as usize] = cstr!("RSuper").as_ptr();
+        self.input.keystr[SDLK_MODE as usize] = cstr!("Mode").as_ptr();
+        self.input.keystr[SDLK_COMPOSE as usize] = cstr!("Compose").as_ptr();
+
+        /* Miscellaneous function keys */
+        self.input.keystr[SDLK_HELP as usize] = cstr!("Help").as_ptr();
+        self.input.keystr[SDLK_PRINT as usize] = cstr!("Print").as_ptr();
+        self.input.keystr[SDLK_SYSREQ as usize] = cstr!("SysReq").as_ptr();
+        self.input.keystr[SDLK_BREAK as usize] = cstr!("Break").as_ptr();
+        self.input.keystr[SDLK_MENU as usize] = cstr!("Menu").as_ptr();
+        self.input.keystr[SDLK_POWER as usize] = cstr!("Power").as_ptr();
+        self.input.keystr[SDLK_EURO as usize] = cstr!("Euro").as_ptr();
+        self.input.keystr[SDLK_UNDO as usize] = cstr!("Undo").as_ptr();
+
+        /* Mouse und Joy buttons */
+        self.input.keystr[PointerStates::MouseButton1 as usize] = cstr!("Mouse1").as_ptr();
+        self.input.keystr[PointerStates::MouseButton2 as usize] = cstr!("Mouse2").as_ptr();
+        self.input.keystr[PointerStates::MouseButton3 as usize] = cstr!("Mouse3").as_ptr();
+        self.input.keystr[PointerStates::MouseWheelup as usize] = cstr!("WheelUp").as_ptr();
+        self.input.keystr[PointerStates::MouseWheeldown as usize] = cstr!("WheelDown").as_ptr();
+
+        self.input.keystr[PointerStates::JoyUp as usize] = cstr!("JoyUp").as_ptr();
+        self.input.keystr[PointerStates::JoyDown as usize] = cstr!("JoyDown").as_ptr();
+        self.input.keystr[PointerStates::JoyLeft as usize] = cstr!("JoyLeft").as_ptr();
+        self.input.keystr[PointerStates::JoyRight as usize] = cstr!("JoyRight").as_ptr();
+        self.input.keystr[PointerStates::JoyButton1 as usize] = cstr!("Joy-A").as_ptr();
+        self.input.keystr[PointerStates::JoyButton2 as usize] = cstr!("Joy-B").as_ptr();
+        self.input.keystr[PointerStates::JoyButton3 as usize] = cstr!("Joy-X").as_ptr();
+        self.input.keystr[PointerStates::JoyButton4 as usize] = cstr!("Joy-Y").as_ptr();
     }
-
-    #[cfg(not(feature = "gcw0"))]
-    {
-        KEYSTR[SDLK_BACKSPACE as usize] = cstr!("BS").as_ptr();
-        KEYSTR[SDLK_TAB as usize] = cstr!("Tab").as_ptr();
-        KEYSTR[SDLK_RETURN as usize] = cstr!("Return").as_ptr();
-        KEYSTR[SDLK_SPACE as usize] = cstr!("Space").as_ptr();
-        KEYSTR[SDLK_ESCAPE as usize] = cstr!("Esc").as_ptr();
-    }
-
-    KEYSTR[SDLK_CLEAR as usize] = cstr!("Clear").as_ptr();
-    KEYSTR[SDLK_PAUSE as usize] = cstr!("Pause").as_ptr();
-    KEYSTR[SDLK_EXCLAIM as usize] = cstr!("!").as_ptr();
-    KEYSTR[SDLK_QUOTEDBL as usize] = cstr!("\"").as_ptr();
-    KEYSTR[SDLK_HASH as usize] = cstr!("#").as_ptr();
-    KEYSTR[SDLK_DOLLAR as usize] = cstr!("$").as_ptr();
-    KEYSTR[SDLK_AMPERSAND as usize] = cstr!("&").as_ptr();
-    KEYSTR[SDLK_QUOTE as usize] = cstr!("'").as_ptr();
-    KEYSTR[SDLK_LEFTPAREN as usize] = cstr!("(").as_ptr();
-    KEYSTR[SDLK_RIGHTPAREN as usize] = cstr!(")").as_ptr();
-    KEYSTR[SDLK_ASTERISK as usize] = cstr!("*").as_ptr();
-    KEYSTR[SDLK_PLUS as usize] = cstr!("+").as_ptr();
-    KEYSTR[SDLK_COMMA as usize] = cstr!(",").as_ptr();
-    KEYSTR[SDLK_MINUS as usize] = cstr!("-").as_ptr();
-    KEYSTR[SDLK_PERIOD as usize] = cstr!(".").as_ptr();
-    KEYSTR[SDLK_SLASH as usize] = cstr!("/").as_ptr();
-    KEYSTR[SDLK_0 as usize] = cstr!("0").as_ptr();
-    KEYSTR[SDLK_1 as usize] = cstr!("1").as_ptr();
-    KEYSTR[SDLK_2 as usize] = cstr!("2").as_ptr();
-    KEYSTR[SDLK_3 as usize] = cstr!("3").as_ptr();
-    KEYSTR[SDLK_4 as usize] = cstr!("4").as_ptr();
-    KEYSTR[SDLK_5 as usize] = cstr!("5").as_ptr();
-    KEYSTR[SDLK_6 as usize] = cstr!("6").as_ptr();
-    KEYSTR[SDLK_7 as usize] = cstr!("7").as_ptr();
-    KEYSTR[SDLK_8 as usize] = cstr!("8").as_ptr();
-    KEYSTR[SDLK_9 as usize] = cstr!("9").as_ptr();
-    KEYSTR[SDLK_COLON as usize] = cstr!(":").as_ptr();
-    KEYSTR[SDLK_SEMICOLON as usize] = cstr!(";").as_ptr();
-    KEYSTR[SDLK_LESS as usize] = cstr!("<").as_ptr();
-    KEYSTR[SDLK_EQUALS as usize] = cstr!("=").as_ptr();
-    KEYSTR[SDLK_GREATER as usize] = cstr!(">").as_ptr();
-    KEYSTR[SDLK_QUESTION as usize] = cstr!("?").as_ptr();
-    KEYSTR[SDLK_AT as usize] = cstr!("@").as_ptr();
-    KEYSTR[SDLK_LEFTBRACKET as usize] = cstr!("[").as_ptr();
-    KEYSTR[SDLK_BACKSLASH as usize] = cstr!("\\").as_ptr();
-    KEYSTR[SDLK_RIGHTBRACKET as usize] = cstr!(" as usize]").as_ptr();
-    KEYSTR[SDLK_CARET as usize] = cstr!("^").as_ptr();
-    KEYSTR[SDLK_UNDERSCORE as usize] = cstr!("_").as_ptr();
-    KEYSTR[SDLK_BACKQUOTE as usize] = cstr!("`").as_ptr();
-    KEYSTR[SDLK_a as usize] = cstr!("a").as_ptr();
-    KEYSTR[SDLK_b as usize] = cstr!("b").as_ptr();
-    KEYSTR[SDLK_c as usize] = cstr!("c").as_ptr();
-    KEYSTR[SDLK_d as usize] = cstr!("d").as_ptr();
-    KEYSTR[SDLK_e as usize] = cstr!("e").as_ptr();
-    KEYSTR[SDLK_f as usize] = cstr!("f").as_ptr();
-    KEYSTR[SDLK_g as usize] = cstr!("g").as_ptr();
-    KEYSTR[SDLK_h as usize] = cstr!("h").as_ptr();
-    KEYSTR[SDLK_i as usize] = cstr!("i").as_ptr();
-    KEYSTR[SDLK_j as usize] = cstr!("j").as_ptr();
-    KEYSTR[SDLK_k as usize] = cstr!("k").as_ptr();
-    KEYSTR[SDLK_l as usize] = cstr!("l").as_ptr();
-    KEYSTR[SDLK_m as usize] = cstr!("m").as_ptr();
-    KEYSTR[SDLK_n as usize] = cstr!("n").as_ptr();
-    KEYSTR[SDLK_o as usize] = cstr!("o").as_ptr();
-    KEYSTR[SDLK_p as usize] = cstr!("p").as_ptr();
-    KEYSTR[SDLK_q as usize] = cstr!("q").as_ptr();
-    KEYSTR[SDLK_r as usize] = cstr!("r").as_ptr();
-    KEYSTR[SDLK_s as usize] = cstr!("s").as_ptr();
-    KEYSTR[SDLK_t as usize] = cstr!("t").as_ptr();
-    KEYSTR[SDLK_u as usize] = cstr!("u").as_ptr();
-    KEYSTR[SDLK_v as usize] = cstr!("v").as_ptr();
-    KEYSTR[SDLK_w as usize] = cstr!("w").as_ptr();
-    KEYSTR[SDLK_x as usize] = cstr!("x").as_ptr();
-    KEYSTR[SDLK_y as usize] = cstr!("y").as_ptr();
-    KEYSTR[SDLK_z as usize] = cstr!("z").as_ptr();
-    KEYSTR[SDLK_DELETE as usize] = cstr!("Del").as_ptr();
-
-    /* Numeric keypad */
-    KEYSTR[SDLK_KP0 as usize] = cstr!("Num[0 as usize]").as_ptr();
-    KEYSTR[SDLK_KP1 as usize] = cstr!("Num[1 as usize]").as_ptr();
-    KEYSTR[SDLK_KP2 as usize] = cstr!("Num[2 as usize]").as_ptr();
-    KEYSTR[SDLK_KP3 as usize] = cstr!("Num[3 as usize]").as_ptr();
-    KEYSTR[SDLK_KP4 as usize] = cstr!("Num[4 as usize]").as_ptr();
-    KEYSTR[SDLK_KP5 as usize] = cstr!("Num[5 as usize]").as_ptr();
-    KEYSTR[SDLK_KP6 as usize] = cstr!("Num[6 as usize]").as_ptr();
-    KEYSTR[SDLK_KP7 as usize] = cstr!("Num[7 as usize]").as_ptr();
-    KEYSTR[SDLK_KP8 as usize] = cstr!("Num[8 as usize]").as_ptr();
-    KEYSTR[SDLK_KP9 as usize] = cstr!("Num[9 as usize]").as_ptr();
-    KEYSTR[SDLK_KP_PERIOD as usize] = cstr!("Num[. as usize]").as_ptr();
-    KEYSTR[SDLK_KP_DIVIDE as usize] = cstr!("Num[/ as usize]").as_ptr();
-    KEYSTR[SDLK_KP_MULTIPLY as usize] = cstr!("Num[* as usize]").as_ptr();
-    KEYSTR[SDLK_KP_MINUS as usize] = cstr!("Num[- as usize]").as_ptr();
-    KEYSTR[SDLK_KP_PLUS as usize] = cstr!("Num[+ as usize]").as_ptr();
-    KEYSTR[SDLK_KP_ENTER as usize] = cstr!("Num[Enter as usize]").as_ptr();
-    KEYSTR[SDLK_KP_EQUALS as usize] = cstr!("Num[= as usize]").as_ptr();
-
-    /* Arrows + Home/End pad */
-    KEYSTR[SDLK_UP as usize] = cstr!("Up").as_ptr();
-    KEYSTR[SDLK_DOWN as usize] = cstr!("Down").as_ptr();
-    KEYSTR[SDLK_RIGHT as usize] = cstr!("Right").as_ptr();
-    KEYSTR[SDLK_LEFT as usize] = cstr!("Left").as_ptr();
-    KEYSTR[SDLK_INSERT as usize] = cstr!("Insert").as_ptr();
-    KEYSTR[SDLK_HOME as usize] = cstr!("Home").as_ptr();
-    KEYSTR[SDLK_END as usize] = cstr!("End").as_ptr();
-    KEYSTR[SDLK_PAGEUP as usize] = cstr!("PageUp").as_ptr();
-    KEYSTR[SDLK_PAGEDOWN as usize] = cstr!("PageDown").as_ptr();
-
-    /* Function keys */
-    KEYSTR[SDLK_F1 as usize] = cstr!("F1").as_ptr();
-    KEYSTR[SDLK_F2 as usize] = cstr!("F2").as_ptr();
-    KEYSTR[SDLK_F3 as usize] = cstr!("F3").as_ptr();
-    KEYSTR[SDLK_F4 as usize] = cstr!("F4").as_ptr();
-    KEYSTR[SDLK_F5 as usize] = cstr!("F5").as_ptr();
-    KEYSTR[SDLK_F6 as usize] = cstr!("F6").as_ptr();
-    KEYSTR[SDLK_F7 as usize] = cstr!("F7").as_ptr();
-    KEYSTR[SDLK_F8 as usize] = cstr!("F8").as_ptr();
-    KEYSTR[SDLK_F9 as usize] = cstr!("F9").as_ptr();
-    KEYSTR[SDLK_F10 as usize] = cstr!("F10").as_ptr();
-    KEYSTR[SDLK_F11 as usize] = cstr!("F11").as_ptr();
-    KEYSTR[SDLK_F12 as usize] = cstr!("F12").as_ptr();
-    KEYSTR[SDLK_F13 as usize] = cstr!("F13").as_ptr();
-    KEYSTR[SDLK_F14 as usize] = cstr!("F14").as_ptr();
-    KEYSTR[SDLK_F15 as usize] = cstr!("F15").as_ptr();
-
-    /* Key state modifier keys */
-    KEYSTR[SDLK_NUMLOCK as usize] = cstr!("NumLock").as_ptr();
-    KEYSTR[SDLK_CAPSLOCK as usize] = cstr!("CapsLock").as_ptr();
-    KEYSTR[SDLK_SCROLLOCK as usize] = cstr!("ScrlLock").as_ptr();
-    #[cfg(feature = "gcw0")]
-    {
-        keystr[SDLK_LSHIFT as usize] = cstr!("X").as_ptr();
-        keystr[SDLK_LCTRL as usize] = cstr!("A").as_ptr();
-        keystr[SDLK_LALT as usize] = cstr!("B").as_ptr();
-    }
-
-    #[cfg(not(feature = "gcw0"))]
-    {
-        KEYSTR[SDLK_LSHIFT as usize] = cstr!("LShift").as_ptr();
-        KEYSTR[SDLK_LCTRL as usize] = cstr!("LCtrl").as_ptr();
-        KEYSTR[SDLK_LALT as usize] = cstr!("LAlt").as_ptr();
-    }
-
-    KEYSTR[SDLK_RSHIFT as usize] = cstr!("RShift").as_ptr();
-    KEYSTR[SDLK_RCTRL as usize] = cstr!("RCtrl").as_ptr();
-    KEYSTR[SDLK_RALT as usize] = cstr!("RAlt").as_ptr();
-    KEYSTR[SDLK_RMETA as usize] = cstr!("RMeta").as_ptr();
-    KEYSTR[SDLK_LMETA as usize] = cstr!("LMeta").as_ptr();
-    KEYSTR[SDLK_LSUPER as usize] = cstr!("LSuper").as_ptr();
-    KEYSTR[SDLK_RSUPER as usize] = cstr!("RSuper").as_ptr();
-    KEYSTR[SDLK_MODE as usize] = cstr!("Mode").as_ptr();
-    KEYSTR[SDLK_COMPOSE as usize] = cstr!("Compose").as_ptr();
-
-    /* Miscellaneous function keys */
-    KEYSTR[SDLK_HELP as usize] = cstr!("Help").as_ptr();
-    KEYSTR[SDLK_PRINT as usize] = cstr!("Print").as_ptr();
-    KEYSTR[SDLK_SYSREQ as usize] = cstr!("SysReq").as_ptr();
-    KEYSTR[SDLK_BREAK as usize] = cstr!("Break").as_ptr();
-    KEYSTR[SDLK_MENU as usize] = cstr!("Menu").as_ptr();
-    KEYSTR[SDLK_POWER as usize] = cstr!("Power").as_ptr();
-    KEYSTR[SDLK_EURO as usize] = cstr!("Euro").as_ptr();
-    KEYSTR[SDLK_UNDO as usize] = cstr!("Undo").as_ptr();
-
-    /* Mouse und Joy buttons */
-    KEYSTR[PointerStates::MouseButton1 as usize] = cstr!("Mouse1").as_ptr();
-    KEYSTR[PointerStates::MouseButton2 as usize] = cstr!("Mouse2").as_ptr();
-    KEYSTR[PointerStates::MouseButton3 as usize] = cstr!("Mouse3").as_ptr();
-    KEYSTR[PointerStates::MouseWheelup as usize] = cstr!("WheelUp").as_ptr();
-    KEYSTR[PointerStates::MouseWheeldown as usize] = cstr!("WheelDown").as_ptr();
-
-    KEYSTR[PointerStates::JoyUp as usize] = cstr!("JoyUp").as_ptr();
-    KEYSTR[PointerStates::JoyDown as usize] = cstr!("JoyDown").as_ptr();
-    KEYSTR[PointerStates::JoyLeft as usize] = cstr!("JoyLeft").as_ptr();
-    KEYSTR[PointerStates::JoyRight as usize] = cstr!("JoyRight").as_ptr();
-    KEYSTR[PointerStates::JoyButton1 as usize] = cstr!("Joy-A").as_ptr();
-    KEYSTR[PointerStates::JoyButton2 as usize] = cstr!("Joy-B").as_ptr();
-    KEYSTR[PointerStates::JoyButton3 as usize] = cstr!("Joy-X").as_ptr();
-    KEYSTR[PointerStates::JoyButton4 as usize] = cstr!("Joy-Y").as_ptr();
 }

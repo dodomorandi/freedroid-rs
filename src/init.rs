@@ -16,11 +16,10 @@ use crate::{
         clear_graph_mem, make_grid_on_screen, ALL_THEMES, NE_SCREEN, NUMBER_OF_BULLET_TYPES, PIC999,
     },
     influencer::init_influ_position_history,
-    input::{SDL_Delay, JOY_SENSITIVITY},
+    input::SDL_Delay,
     misc::{
         activate_conservative_frame_computation, count_string_occurences, dealloc_c_string,
-        load_game_config, locate_string_in_data, my_random, read_value_from_string,
-        update_progress,
+        locate_string_in_data, my_random, read_value_from_string, update_progress,
     },
     structs::{BulletSpec, DruidSpec},
     vars::{
@@ -278,7 +277,7 @@ impl Data {
         GAME_CONFIG.empty_level_speedup = 1.0; // speed up *time* in empty levels (ie also energy-loss rate)
 
         // now load saved options from the config-file
-        load_game_config();
+        self.load_game_config();
 
         // call this _after_ default settings and LoadGameConfig() ==> cmdline has highest priority!
         self.parse_command_line();
@@ -385,7 +384,7 @@ impl Data {
                 panic!("\nJoystick sensitivity must lie in the range [0;32]");
             }
 
-            JOY_SENSITIVITY = sensitivity.into();
+            self.input.joy_sensitivity = sensitivity.into();
         }
 
         if opt.debug > 0 {
