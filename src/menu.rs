@@ -51,11 +51,54 @@ use std::{
     sync::atomic::AtomicBool,
 };
 
-static mut FONT_HEIGHT: i32 = 0;
-static mut MENU_BACKGROUND: *mut SDL_Surface = null_mut();
-static mut QUIT_MENU: bool = false;
+#[derive(Debug)]
+pub struct Menu {
+    font_height: i32,
+    menu_background: *mut SDL_Surface,
+    quit_menu: bool,
+    pub quit_level_editor: bool,
+    last_movekey_time: u32,
+    menu_action_directions: MenuActionDirections,
+    show_menu_last_move_tick: u32,
+    key_config_menu_last_move_tick: u32,
+    fname: [c_char; 255],
+    le_level_number_buf: [c_char; 256],
+    le_size_x_buf: [c_char; 256],
+    le_size_y_buf: [c_char; 256],
+    empty_level_speedup_buf: [c_char; 256],
+    music_volume_buf: [c_char; 256],
+    sound_volume_buf: [c_char; 256],
+}
 
-pub static mut QUIT_LEVEL_EDITOR: bool = false;
+#[derive(Debug, Default)]
+struct MenuActionDirections {
+    up: bool,
+    down: bool,
+    left: bool,
+    right: bool,
+}
+
+impl Default for Menu {
+    fn default() -> Self {
+        Self {
+            font_height: 0,
+            menu_background: null_mut(),
+            quit_menu: false,
+            quit_level_editor: false,
+            last_movekey_time: 0,
+            menu_action_directions: Default::default(),
+            show_menu_last_move_tick: 0,
+            key_config_menu_last_move_tick: 0,
+            fname: [0; 255],
+            le_level_number_buf: [0; 256],
+            le_size_x_buf: [0; 256],
+            le_size_y_buf: [0; 256],
+            empty_level_speedup_buf: [0; 256],
+            music_volume_buf: [0; 256],
+            sound_volume_buf: [0; 256],
+        }
+    }
+}
 
 // const FILENAME_LEN: u8 = 128;
 const SHIP_EXT_C: &CStr = cstr!(".shp");
@@ -205,7 +248,7 @@ impl Data {
 
         let text_width = self.text_width(QUIT_STRING);
         let text_x = i32::from(USER_RECT.x) + (i32::from(USER_RECT.w) - text_width) / 2;
-        let text_y = i32::from(USER_RECT.y) + (i32::from(USER_RECT.h) - FONT_HEIGHT) / 2;
+        let text_y = i32::from(USER_RECT.y) + (i32::from(USER_RECT.h) - self.menu.font_height) / 2;
         self.put_string(NE_SCREEN, text_x, text_y, QUIT_STRING);
         SDL_Flip(NE_SCREEN);
 
@@ -244,13 +287,11 @@ impl Data {
     pub unsafe fn show_main_menu(&mut self) {
         self.show_menu(MAIN_MENU.as_ptr());
     }
-}
 
-pub unsafe fn free_menu_data() {
-    SDL_FreeSurface(MENU_BACKGROUND);
-}
+    pub unsafe fn free_menu_data(&self) {
+        SDL_FreeSurface(self.menu.menu_background);
+    }
 
-impl Data {
     pub unsafe fn initiate_menu(&mut self, with_droids: bool) {
         // Here comes the standard initializer for all the menus and submenus
         // of the big escape menu.  This prepares the screen, so that we can
@@ -276,14 +317,14 @@ impl Data {
         SDL_SetClipRect(NE_SCREEN, null_mut());
         make_grid_on_screen(None);
 
-        if !MENU_BACKGROUND.is_null() {
-            SDL_FreeSurface(MENU_BACKGROUND);
+        if !self.menu.menu_background.is_null() {
+            SDL_FreeSurface(self.menu.menu_background);
         }
-        MENU_BACKGROUND = SDL_DisplayFormat(NE_SCREEN); // keep a global copy of background
+        self.menu.menu_background = SDL_DisplayFormat(NE_SCREEN); // keep a global copy of background
 
         SDL_ShowCursor(SDL_DISABLE); // deactivate mouse-cursor in menus
         self.b_font.current_font = MENU_B_FONT;
-        FONT_HEIGHT = font_height(&*self.b_font.current_font) + 2;
+        self.menu.font_height = font_height(&*self.b_font.current_font) + 2;
     }
 
     pub unsafe fn cheatmenu(&mut self) {
@@ -756,61 +797,61 @@ impl Data {
             }
         }
 
-        // ----- up/down motion: allow for key-repeat, but carefully control repeat rate (modelled on takeover game)
-        static mut LAST_MOVEKEY_TIME: u32 = 0;
-
-        static mut UP: bool = false;
-        static mut DOWN: bool = false;
-        static mut LEFT: bool = false;
-        static mut RIGHT: bool = false;
-
         // we register if there have been key-press events in the "waiting period" between move-ticks
-        if !UP && (self.up_pressed() || self.key_is_pressed(SDLK_UP as c_int)) {
-            UP = true;
-            LAST_MOVEKEY_TIME = SDL_GetTicks();
+        if !self.menu.menu_action_directions.up
+            && (self.up_pressed() || self.key_is_pressed(SDLK_UP as c_int))
+        {
+            self.menu.menu_action_directions.up = true;
+            self.menu.last_movekey_time = SDL_GetTicks();
             action |= MenuAction::UP;
         }
-        if !DOWN && (self.down_pressed() || self.key_is_pressed(SDLK_DOWN as c_int)) {
-            DOWN = true;
-            LAST_MOVEKEY_TIME = SDL_GetTicks();
+        if !self.menu.menu_action_directions.down
+            && (self.down_pressed() || self.key_is_pressed(SDLK_DOWN as c_int))
+        {
+            self.menu.menu_action_directions.down = true;
+            self.menu.last_movekey_time = SDL_GetTicks();
             action |= MenuAction::DOWN;
         }
-        if !LEFT && (self.left_pressed() || self.key_is_pressed(SDLK_LEFT as c_int)) {
-            LEFT = true;
-            LAST_MOVEKEY_TIME = SDL_GetTicks();
+        if !self.menu.menu_action_directions.left
+            && (self.left_pressed() || self.key_is_pressed(SDLK_LEFT as c_int))
+        {
+            self.menu.menu_action_directions.left = true;
+            self.menu.last_movekey_time = SDL_GetTicks();
             action |= MenuAction::LEFT;
         }
-        if !RIGHT && (self.right_pressed() || self.key_is_pressed(SDLK_RIGHT as c_int)) {
-            RIGHT = true;
-            LAST_MOVEKEY_TIME = SDL_GetTicks();
+        if !self.menu.menu_action_directions.right
+            && (self.right_pressed() || self.key_is_pressed(SDLK_RIGHT as c_int))
+        {
+            self.menu.menu_action_directions.right = true;
+            self.menu.last_movekey_time = SDL_GetTicks();
             action |= MenuAction::RIGHT;
         }
 
         if !(self.up_pressed() || self.key_is_pressed(SDLK_UP as c_int)) {
-            UP = false;
+            self.menu.menu_action_directions.up = false;
         }
         if !(self.down_pressed() || self.key_is_pressed(SDLK_DOWN as c_int)) {
-            DOWN = false;
+            self.menu.menu_action_directions.down = false;
         }
         if !(self.left_pressed() || self.key_is_pressed(SDLK_LEFT as c_int)) {
-            LEFT = false;
+            self.menu.menu_action_directions.left = false;
         }
         if !(self.right_pressed() || self.key_is_pressed(SDLK_RIGHT as c_int)) {
-            RIGHT = false;
+            self.menu.menu_action_directions.right = false;
         }
 
         // check if enough time since we registered last new move-action
-        if SDL_GetTicks() - LAST_MOVEKEY_TIME > wait_repeat_ticks {
-            if UP {
+        if SDL_GetTicks() - self.menu.last_movekey_time > wait_repeat_ticks {
+            if self.menu.menu_action_directions.up {
                 action |= MenuAction::UP;
             }
-            if DOWN {
+            if self.menu.menu_action_directions.down {
                 action |= MenuAction::DOWN;
             }
-            if LEFT {
+            if self.menu.menu_action_directions.left {
                 action |= MenuAction::LEFT;
             }
-            if RIGHT {
+            if self.menu.menu_action_directions.right {
                 action |= MenuAction::RIGHT;
             }
         }
@@ -853,24 +894,23 @@ impl Data {
         let menu_entries = std::slice::from_raw_parts(menu_entries, num_entries);
         let menu_width = menu_width.unwrap();
 
-        let menu_height = i32::try_from(num_entries).unwrap() * FONT_HEIGHT;
+        let menu_height = i32::try_from(num_entries).unwrap() * self.menu.font_height;
         let menu_x = i32::from(FULL_USER_RECT.x) + (i32::from(FULL_USER_RECT.w) - menu_width) / 2;
         let menu_y = i32::from(FULL_USER_RECT.y) + (i32::from(FULL_USER_RECT.h) - menu_height) / 2;
-        let influ_x = menu_x - i32::from(BLOCK_RECT.w) - FONT_HEIGHT;
+        let influ_x = menu_x - i32::from(BLOCK_RECT.w) - self.menu.font_height;
 
         let mut menu_pos = 0;
 
         let wait_move_ticks: u32 = 100;
-        static mut LAST_MOVE_TICK: u32 = 0;
         let mut finished = false;
-        QUIT_MENU = false;
+        self.menu.quit_menu = false;
         let mut need_update = true;
         while !finished {
             let handler = menu_entries[menu_pos].handler;
             let submenu = menu_entries[menu_pos].submenu;
 
             if need_update {
-                SDL_UpperBlit(MENU_BACKGROUND, null_mut(), NE_SCREEN, null_mut());
+                SDL_UpperBlit(self.menu.menu_background, null_mut(), NE_SCREEN, null_mut());
                 // print menu
                 menu_entries.iter().enumerate().for_each(|(i, entry)| {
                     let arg = entry
@@ -897,13 +937,13 @@ impl Data {
                     self.put_string(
                         NE_SCREEN,
                         menu_x,
-                        menu_y + i32::try_from(i).unwrap() * FONT_HEIGHT,
+                        menu_y + i32::try_from(i).unwrap() * self.menu.font_height,
                         &full_name[..position],
                     );
                 });
                 self.put_influence(
                     influ_x,
-                    menu_y + ((menu_pos as f64 - 0.5) * f64::from(FONT_HEIGHT)) as c_int,
+                    menu_y + ((menu_pos as f64 - 0.5) * f64::from(self.menu.font_height)) as c_int,
                 );
 
                 #[cfg(not(target_os = "android"))]
@@ -917,7 +957,8 @@ impl Data {
 
             let action = self.get_menu_action(250);
 
-            let time_for_move = SDL_GetTicks() - LAST_MOVE_TICK > wait_move_ticks;
+            let time_for_move =
+                SDL_GetTicks() - self.menu.show_menu_last_move_tick > wait_move_ticks;
             match action {
                 MenuAction::BACK => {
                     finished = true;
@@ -952,7 +993,7 @@ impl Data {
                     if let Some(handler) = handler {
                         (handler)(self, action);
                     }
-                    LAST_MOVE_TICK = SDL_GetTicks();
+                    self.menu.show_menu_last_move_tick = SDL_GetTicks();
                     need_update = true;
                 }
 
@@ -967,7 +1008,7 @@ impl Data {
                     } else {
                         menu_pos = num_entries - 1;
                     }
-                    LAST_MOVE_TICK = SDL_GetTicks();
+                    self.menu.show_menu_last_move_tick = SDL_GetTicks();
                     need_update = true;
                 }
 
@@ -982,14 +1023,14 @@ impl Data {
                     } else {
                         menu_pos = 0;
                     }
-                    LAST_MOVE_TICK = SDL_GetTicks();
+                    self.menu.show_menu_last_move_tick = SDL_GetTicks();
                     need_update = true;
                 }
 
                 _ => {}
             }
 
-            if QUIT_MENU {
+            if self.menu.quit_menu {
                 finished = true;
             }
 
@@ -1022,7 +1063,7 @@ impl Data {
         let col3 = col2 + (6.5 * f64::from(char_width(&*current_font, b'O'))) as i32;
         let lheight = font_height(&*FONT0_B_FONT) + 2;
 
-        SDL_UpperBlit(MENU_BACKGROUND, null_mut(), NE_SCREEN, null_mut());
+        SDL_UpperBlit(self.menu.menu_background, null_mut(), NE_SCREEN, null_mut());
 
         #[cfg(feature = "gcw0")]
         PrintStringFont(
@@ -1154,14 +1195,14 @@ impl Data {
         let mut selx = 1;
         let mut sely = 1; // currently selected menu-position
         const WAIT_MOVE_TICKS: u32 = 100;
-        static mut LAST_MOVE_TICK: u32 = 0;
 
         let mut finished = false;
         while !finished {
             self.display_key_config(i32::try_from(selx).unwrap(), i32::try_from(sely).unwrap());
 
             let action = self.get_menu_action(250);
-            let time_for_move = SDL_GetTicks() - LAST_MOVE_TICK > WAIT_MOVE_TICKS;
+            let time_for_move =
+                SDL_GetTicks() - self.menu.key_config_menu_last_move_tick > WAIT_MOVE_TICKS;
 
             match action {
                 MenuAction::BACK => {
@@ -1179,7 +1220,7 @@ impl Data {
                     );
                     self.input.key_cmds[sely - 1][selx - 1] = self.getchar_raw(); // includes joystick input!;
                     self.wait_for_all_keys_released();
-                    LAST_MOVE_TICK = SDL_GetTicks();
+                    self.menu.key_config_menu_last_move_tick = SDL_GetTicks();
                 }
 
                 MenuAction::UP | MenuAction::UP_WHEEL => {
@@ -1192,7 +1233,7 @@ impl Data {
                         sely = Cmds::Last as usize;
                     }
                     self.move_menu_position_sound();
-                    LAST_MOVE_TICK = SDL_GetTicks();
+                    self.menu.key_config_menu_last_move_tick = SDL_GetTicks();
                 }
 
                 MenuAction::DOWN | MenuAction::DOWN_WHEEL => {
@@ -1205,7 +1246,7 @@ impl Data {
                         sely = 1;
                     }
                     self.move_menu_position_sound();
-                    LAST_MOVE_TICK = SDL_GetTicks();
+                    self.menu.key_config_menu_last_move_tick = SDL_GetTicks();
                 }
 
                 MenuAction::RIGHT => {
@@ -1219,7 +1260,7 @@ impl Data {
                         selx = 1;
                     }
                     self.move_menu_position_sound();
-                    LAST_MOVE_TICK = SDL_GetTicks();
+                    self.menu.key_config_menu_last_move_tick = SDL_GetTicks();
                 }
 
                 MenuAction::LEFT => {
@@ -1233,7 +1274,7 @@ impl Data {
                         selx = 3;
                     }
                     self.move_menu_position_sound();
-                    LAST_MOVE_TICK = SDL_GetTicks();
+                    self.menu.key_config_menu_last_move_tick = SDL_GetTicks();
                 }
 
                 MenuAction::DELETE => {
@@ -1317,7 +1358,7 @@ impl Data {
 
     /// simple wrapper to ShowMenu() to provide the external entry point into the Level Editor menu
     pub unsafe fn show_level_editor_menu(&mut self) {
-        QUIT_LEVEL_EDITOR = false;
+        self.menu.quit_level_editor = false;
         self.show_menu(LEVEL_EDITOR_MENU.as_ptr());
     }
 
@@ -1351,17 +1392,16 @@ impl Data {
         use std::io::Write;
 
         const SHIPNAME: &CStr = cstr!("Testship");
-        static mut FNAME: [c_char; 255] = [0; 255];
         libc::snprintf(
-            FNAME.as_mut_ptr(),
-            FNAME.len() - 1,
+            self.menu.fname.as_mut_ptr(),
+            self.menu.fname.len() - 1,
             cstr!("%s%s").as_ptr() as *mut c_char,
             SHIPNAME.as_ptr() as *mut c_char,
             SHIP_EXT_C.as_ptr() as *mut c_char,
         );
 
         if action == MenuAction::INFO {
-            return FNAME.as_ptr();
+            return self.menu.fname.as_ptr();
         }
 
         if action == MenuAction::CLICK {
@@ -1371,7 +1411,7 @@ impl Data {
             write!(
                 cursor,
                 "Ship saved as '{}'",
-                CStr::from_ptr(FNAME.as_ptr()).to_str().unwrap()
+                CStr::from_ptr(self.menu.fname.as_ptr()).to_str().unwrap()
             )
             .unwrap();
             let position = usize::try_from(cursor.position()).unwrap();
@@ -1399,8 +1439,8 @@ impl Data {
         if action == MenuAction::CLICK {
             self.display_text(
                 cstr!("New level name: ").as_ptr() as *mut c_char,
-                i32::from(MENU_RECT.x) - 2 * FONT_HEIGHT,
-                i32::from(MENU_RECT.y) - 3 * FONT_HEIGHT,
+                i32::from(MENU_RECT.x) - 2 * self.menu.font_height,
+                i32::from(MENU_RECT.y) - 3 * self.menu.font_height,
                 &FULL_USER_RECT,
             );
             SDL_Flip(NE_SCREEN);
@@ -1428,22 +1468,21 @@ impl Data {
     pub unsafe fn handle_le_exit(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::CLICK {
             self.menu_item_selected_sound();
-            QUIT_LEVEL_EDITOR = true;
-            QUIT_MENU = true;
+            self.menu.quit_level_editor = true;
+            self.menu.quit_menu = true;
         }
         null_mut()
     }
 
     pub unsafe fn handle_le_level_number(&mut self, action: MenuAction) -> *const c_char {
-        static mut BUF: [c_char; 256] = [0; 256];
         let cur_level = &*CUR_LEVEL;
         if action == MenuAction::INFO {
             libc::sprintf(
-                BUF.as_mut_ptr(),
+                self.menu.le_level_number_buf.as_mut_ptr(),
                 cstr!("%d").as_ptr() as *mut c_char,
                 cur_level.levelnum,
             );
-            return BUF.as_ptr();
+            return self.menu.le_level_number_buf.as_ptr();
         }
 
         let mut curlevel = cur_level.levelnum;
@@ -1474,15 +1513,14 @@ impl Data {
     }
 
     pub unsafe fn handle_le_size_x(&mut self, action: MenuAction) -> *const c_char {
-        static mut BUF: [c_char; 256] = [0; 256];
         let cur_level = &mut *CUR_LEVEL;
         if action == MenuAction::INFO {
             libc::sprintf(
-                BUF.as_mut_ptr(),
+                self.menu.le_size_x_buf.as_mut_ptr(),
                 cstr!("%d").as_ptr() as *mut c_char,
                 cur_level.xlen,
             );
-            return BUF.as_ptr();
+            return self.menu.le_size_x_buf.as_ptr();
         }
 
         let oldxlen = cur_level.xlen;
@@ -1520,15 +1558,14 @@ impl Data {
     pub unsafe fn handle_le_size_y(&mut self, action: MenuAction) -> *const c_char {
         use std::cmp::Ordering;
 
-        static mut BUF: [c_char; 256] = [0; 256];
         let cur_level = &mut *CUR_LEVEL;
         if action == MenuAction::INFO {
             libc::sprintf(
-                BUF.as_mut_ptr(),
+                self.menu.le_size_y_buf.as_mut_ptr(),
                 cstr!("%d").as_ptr() as *mut c_char,
                 cur_level.ylen,
             );
-            return BUF.as_ptr();
+            return self.menu.le_size_y_buf.as_ptr();
         }
 
         let oldylen = cur_level.ylen;
@@ -1696,14 +1733,13 @@ impl Data {
     }
 
     pub unsafe fn handle_empty_level_speedup(&mut self, action: MenuAction) -> *const c_char {
-        static mut BUF: [c_char; 256] = [0; 256];
         if action == MenuAction::INFO {
             libc::sprintf(
-                BUF.as_mut_ptr(),
+                self.menu.empty_level_speedup_buf.as_mut_ptr(),
                 cstr!("%3.1f").as_ptr() as *mut c_char,
                 f64::from(GAME_CONFIG.empty_level_speedup),
             );
-            return BUF.as_ptr();
+            return self.menu.empty_level_speedup_buf.as_ptr();
         }
 
         self.menu_change_float(action, &mut GAME_CONFIG.empty_level_speedup, 0.1, 0.5, 2.0);
@@ -1711,14 +1747,13 @@ impl Data {
     }
 
     pub unsafe fn handle_music_volume(&mut self, action: MenuAction) -> *const c_char {
-        static mut BUF: [c_char; 256] = [0; 256];
         if action == MenuAction::INFO {
             libc::sprintf(
-                BUF.as_mut_ptr(),
+                self.menu.music_volume_buf.as_mut_ptr(),
                 cstr!("%4.2f").as_ptr() as *mut c_char,
                 f64::from(GAME_CONFIG.current_bg_music_volume),
             );
-            return BUF.as_ptr();
+            return self.menu.music_volume_buf.as_ptr();
         }
 
         self.menu_change_float(
@@ -1733,14 +1768,13 @@ impl Data {
     }
 
     pub unsafe fn handle_sound_volume(&mut self, action: MenuAction) -> *const c_char {
-        static mut BUF: [c_char; 256] = [0; 256];
         if action == MenuAction::INFO {
             libc::sprintf(
-                BUF.as_mut_ptr(),
+                self.menu.sound_volume_buf.as_mut_ptr(),
                 cstr!("%4.2f").as_ptr() as *mut c_char,
                 f64::from(GAME_CONFIG.current_sound_fx_volume),
             );
-            return BUF.as_ptr();
+            return self.menu.sound_volume_buf.as_ptr();
         }
 
         self.menu_change_float(

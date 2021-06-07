@@ -14,7 +14,6 @@ use crate::{
     },
     input::{SDL_Delay, CMD_STRINGS},
     map::free_ship_memory,
-    menu::free_menu_data,
     vars::{ME, PROGRESS_BAR_RECT, PROGRESS_METER_RECT, PROGRESS_TEXT_RECT},
     Data, ALL_BLASTS, ALL_ENEMYS, CONFIG_DIR, CUR_LEVEL, CUR_SHIP, F_P_SOVER1, NUM_ENEMYS,
 };
@@ -133,7 +132,7 @@ impl Data {
         self.free_droid_pics();
         free_graphics();
         self.free_sounds();
-        free_menu_data();
+        self.free_menu_data();
         self.free_game_mem();
 
         // ----- exit

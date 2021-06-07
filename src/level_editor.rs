@@ -10,7 +10,6 @@ use crate::{
         clear_graph_mem, draw_line_between_tiles, make_grid_on_screen, putpixel, NE_SCREEN,
     },
     input::SDL_Delay,
-    menu::QUIT_LEVEL_EDITOR,
     structs::{Level, Waypoint},
     vars::{BLOCK_RECT, FULL_USER_RECT, SCREEN_RECT, USER_RECT},
     view::{fill_rect, BLACK},
@@ -57,11 +56,11 @@ impl Data {
         while done.not() {
             if self.cmd_is_active_r(Cmds::Menu) {
                 self.show_level_editor_menu();
-                if QUIT_LEVEL_EDITOR {
+                if self.menu.quit_level_editor {
                     done = true;
                     CURRENT_COMBAT_SCALE_FACTOR = 1.;
                     self.set_combat_scale_to(CURRENT_COMBAT_SCALE_FACTOR);
-                    QUIT_LEVEL_EDITOR = false;
+                    self.menu.quit_level_editor = false;
                 }
                 continue;
             }

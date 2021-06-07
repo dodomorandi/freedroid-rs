@@ -45,6 +45,7 @@ use influencer::Influencer;
 use init::Init;
 use input::{Input, SDL_Delay};
 use map::{move_level_doors, ColorNames, Map};
+use menu::Menu;
 use misc::Misc;
 use ship::ShipData;
 use sound::Sound;
@@ -159,6 +160,7 @@ struct Data {
     misc: Misc,
     ship: ShipData,
     input: Input,
+    menu: Menu,
 }
 
 impl Default for Data {
@@ -176,6 +178,7 @@ impl Default for Data {
             misc: Default::default(),
             ship: Default::default(),
             input: Default::default(),
+            menu: Default::default(),
         }
     }
 }
