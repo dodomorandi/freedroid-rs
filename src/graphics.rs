@@ -11,8 +11,7 @@ use crate::{
         SHIP_ON_PIC_FILE_C, TAKEOVER_BG_PIC_FILE_C,
     },
     global::{
-        FONT0_B_FONT, FONT1_B_FONT, FONT2_B_FONT, GAME_CONFIG, HIGHSCORE_B_FONT, MENU_B_FONT,
-        PARA_B_FONT,
+        FONT0_B_FONT, FONT1_B_FONT, FONT2_B_FONT, HIGHSCORE_B_FONT, MENU_B_FONT, PARA_B_FONT,
     },
     input::SDL_Delay,
     misc::{activate_conservative_frame_computation, read_value_from_string, update_progress},
@@ -188,7 +187,7 @@ impl Data {
     pub unsafe fn toggle_fullscreen(&mut self) {
         let mut vid_flags = (*NE_SCREEN).flags;
 
-        if GAME_CONFIG.use_fullscreen != 0 {
+        if self.global.game_config.use_fullscreen != 0 {
             vid_flags &= !(VideoFlag::Fullscreen as u32);
         } else {
             vid_flags |= VideoFlag::Fullscreen as u32;
@@ -206,7 +205,7 @@ impl Data {
         if (*NE_SCREEN).flags != vid_flags {
             warn!("Failed to toggle windowed/fullscreen mode!");
         } else {
-            GAME_CONFIG.use_fullscreen = !GAME_CONFIG.use_fullscreen;
+            self.global.game_config.use_fullscreen = !self.global.game_config.use_fullscreen;
         }
     }
 }
@@ -830,7 +829,7 @@ impl Data {
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         );
-        PARA_B_FONT = self.load_font(fpath, GAME_CONFIG.scale);
+        PARA_B_FONT = self.load_font(fpath, self.global.game_config.scale);
         if PARA_B_FONT.is_null() {
             panic!("font file named {} was not found.", PARA_FONT_FILE);
         }
@@ -841,7 +840,7 @@ impl Data {
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         );
-        FONT0_B_FONT = self.load_font(fpath, GAME_CONFIG.scale);
+        FONT0_B_FONT = self.load_font(fpath, self.global.game_config.scale);
         if FONT0_B_FONT.is_null() {
             panic!("font file named {} was not found.\n", FONT0_FILE);
         }
@@ -852,7 +851,7 @@ impl Data {
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         );
-        FONT1_B_FONT = self.load_font(fpath, GAME_CONFIG.scale);
+        FONT1_B_FONT = self.load_font(fpath, self.global.game_config.scale);
         if FONT1_B_FONT.is_null() {
             panic!("font file named {} was not found.", FONT1_FILE);
         }
@@ -863,7 +862,7 @@ impl Data {
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         );
-        FONT2_B_FONT = self.load_font(fpath, GAME_CONFIG.scale);
+        FONT2_B_FONT = self.load_font(fpath, self.global.game_config.scale);
         if FONT2_B_FONT.is_null() {
             panic!("font file named {} was not found.", FONT2_FILE);
         }
@@ -987,7 +986,7 @@ impl Data {
         );
         info!("----------------------------------------------------------------------");
 
-        let vid_flags = if GAME_CONFIG.use_fullscreen != 0 {
+        let vid_flags = if self.global.game_config.use_fullscreen != 0 {
             VideoFlag::Fullscreen as u32
         } else {
             0
@@ -1034,7 +1033,7 @@ impl Data {
         info!("Got video mode: ");
 
         SDL_SetGamma(1., 1., 1.);
-        GAME_CONFIG.current_gamma_correction = 1.;
+        self.global.game_config.current_gamma_correction = 1.;
     }
 
     /// load a pic into memory and return the SDL_RWops pointer to it
@@ -1460,7 +1459,7 @@ impl Data {
             );
             if fpath.is_null() {
                 warn!("deactivated display of droid-decals");
-                GAME_CONFIG.show_decals = false.into();
+                self.global.game_config.show_decals = false.into();
             } else {
                 load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
                 DECAL_PICS[0] = load_block(null_mut(), 0, 0, &mut ORIG_BLOCK_RECT, 0);
@@ -1470,7 +1469,7 @@ impl Data {
 
         update_progress(96);
         // if scale != 1 then we need to rescale everything now
-        self.scale_graphics(GAME_CONFIG.scale);
+        self.scale_graphics(self.global.game_config.scale);
 
         update_progress(98);
 
@@ -1803,8 +1802,8 @@ impl Data {
             );
         }
 
-        if (GAME_CONFIG.scale - 1.).abs() > c_float::EPSILON {
-            scale_pic(&mut image, GAME_CONFIG.scale);
+        if (self.global.game_config.scale - 1.).abs() > c_float::EPSILON {
+            scale_pic(&mut image, self.global.game_config.scale);
         }
 
         SDL_UpperBlit(image, null_mut(), NE_SCREEN, null_mut());

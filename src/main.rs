@@ -38,7 +38,7 @@ use defs::{
     DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_LEVEL_RECTS,
     MAX_LIFTS, MAX_LIFT_ROWS, RESET, SHOW_WAIT, STANDARD_MISSION_C,
 };
-use global::{GAME_CONFIG, LEVEL_DOORS_NOT_MOVED_TIME, SKIP_A_FEW_FRAMES};
+use global::{Global, LEVEL_DOORS_NOT_MOVED_TIME, SKIP_A_FEW_FRAMES};
 use graphics::{clear_graph_mem, CROSSHAIR_CURSOR, NE_SCREEN};
 use highscore::Highscore;
 use influencer::Influencer;
@@ -161,6 +161,7 @@ struct Data {
     ship: ShipData,
     input: Input,
     menu: Menu,
+    global: Global,
 }
 
 impl Default for Data {
@@ -179,6 +180,7 @@ impl Default for Data {
             ship: Default::default(),
             input: Default::default(),
             menu: Default::default(),
+            global: Default::default(),
         }
     }
 }
@@ -207,7 +209,7 @@ fn main() {
             data.init_new_mission(STANDARD_MISSION_C.as_ptr() as *mut c_char);
 
             // scale Level-pic rects
-            let scale = GAME_CONFIG.scale;
+            let scale = data.global.game_config.scale;
             #[allow(clippy::clippy::float_cmp)]
             if scale != 1.0 {
                 CUR_SHIP.level_rects[0..usize::try_from(CUR_SHIP.num_levels).unwrap()]
@@ -297,7 +299,7 @@ fn main() {
                     data.set_time_factor(1.0);
                 } else if (*CUR_LEVEL).color == ColorNames::Dark as i32 {
                     // if level is already dark
-                    data.set_time_factor(GAME_CONFIG.empty_level_speedup);
+                    data.set_time_factor(data.global.game_config.empty_level_speedup);
                 } else if (*CUR_LEVEL).timer <= 0. {
                     // time to switch off the lights ...
                     (*CUR_LEVEL).color = ColorNames::Dark as i32;
@@ -306,7 +308,7 @@ fn main() {
 
                 data.check_if_mission_is_complete();
 
-                if GAME_CONFIG.hog_cpu == 0 {
+                if data.global.game_config.hog_cpu == 0 {
                     // don't use up 100% CPU unless requested
                     SDL_Delay(1);
                 }

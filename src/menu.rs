@@ -12,7 +12,7 @@ use crate::{
         MAX_MAP_COLS, MAX_MAP_ROWS,
     },
     global::{
-        CURRENT_COMBAT_SCALE_FACTOR, FONT0_B_FONT, FONT1_B_FONT, FONT2_B_FONT, GAME_CONFIG,
+        CURRENT_COMBAT_SCALE_FACTOR, FONT0_B_FONT, FONT1_B_FONT, FONT2_B_FONT,
         INFLUENCE_MODE_NAMES, MENU_B_FONT,
     },
     graphics::{
@@ -1604,15 +1604,15 @@ impl Data {
     pub unsafe fn handle_strictly_classic(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::CLICK {
             self.menu_item_selected_sound();
-            GAME_CONFIG.droid_talk = false.into();
-            GAME_CONFIG.show_decals = false.into();
-            GAME_CONFIG.takeover_activates = true.into();
-            GAME_CONFIG.fire_hold_takeover = true.into();
-            GAME_CONFIG.all_map_visible = true.into();
-            GAME_CONFIG.empty_level_speedup = 1.0;
+            self.global.game_config.droid_talk = false.into();
+            self.global.game_config.show_decals = false.into();
+            self.global.game_config.takeover_activates = true.into();
+            self.global.game_config.fire_hold_takeover = true.into();
+            self.global.game_config.all_map_visible = true.into();
+            self.global.game_config.empty_level_speedup = 1.0;
 
             // set window type
-            GAME_CONFIG.full_user_rect = false.into();
+            self.global.game_config.full_user_rect = false.into();
             USER_RECT = CLASSIC_USER_RECT;
             // set theme
             self.set_theme(CLASSIC_THEME_INDEX);
@@ -1624,7 +1624,7 @@ impl Data {
 
     pub unsafe fn handle_window_type(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::INFO {
-            return if GAME_CONFIG.full_user_rect != 0 {
+            return if self.global.game_config.full_user_rect != 0 {
                 cstr!("Full").as_ptr()
             } else {
                 cstr!("Classic").as_ptr()
@@ -1633,8 +1633,9 @@ impl Data {
 
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            self.flip_toggle(&mut GAME_CONFIG.full_user_rect);
-            if GAME_CONFIG.full_user_rect != 0 {
+            let toggle = &mut self.global.game_config.full_user_rect as *mut i32;
+            self.flip_toggle(toggle);
+            if self.global.game_config.full_user_rect != 0 {
                 USER_RECT = FULL_USER_RECT;
             } else {
                 USER_RECT = CLASSIC_USER_RECT;
@@ -1677,22 +1678,24 @@ impl Data {
 
     pub unsafe fn handle_droid_talk(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::INFO {
-            return is_toggle_on(GAME_CONFIG.droid_talk);
+            return is_toggle_on(self.global.game_config.droid_talk);
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            self.flip_toggle(&mut GAME_CONFIG.droid_talk);
+            let toggle = &mut self.global.game_config.droid_talk as *mut i32;
+            self.flip_toggle(toggle);
         }
         null_mut()
     }
 
     pub unsafe fn handle_all_map_visible(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::INFO {
-            return is_toggle_on(GAME_CONFIG.all_map_visible);
+            return is_toggle_on(self.global.game_config.all_map_visible);
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            self.flip_toggle(&mut GAME_CONFIG.all_map_visible);
+            let toggle = &mut self.global.game_config.all_map_visible as *mut i32;
+            self.flip_toggle(toggle);
             self.initiate_menu(false);
         }
         null_mut()
@@ -1700,11 +1703,12 @@ impl Data {
 
     pub unsafe fn handle_show_decals(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::INFO {
-            return is_toggle_on(GAME_CONFIG.show_decals);
+            return is_toggle_on(self.global.game_config.show_decals);
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            self.flip_toggle(&mut GAME_CONFIG.show_decals);
+            let toggle = &mut self.global.game_config.show_decals as *mut i32;
+            self.flip_toggle(toggle);
             self.initiate_menu(false);
         }
         null_mut()
@@ -1712,22 +1716,24 @@ impl Data {
 
     pub unsafe fn handle_transfer_is_activate(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::INFO {
-            return is_toggle_on(GAME_CONFIG.takeover_activates);
+            return is_toggle_on(self.global.game_config.takeover_activates);
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            self.flip_toggle(&mut GAME_CONFIG.takeover_activates);
+            let toggle = &mut self.global.game_config.takeover_activates as *mut i32;
+            self.flip_toggle(toggle);
         }
         null_mut()
     }
 
     pub unsafe fn handle_fire_is_transfer(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::INFO {
-            return is_toggle_on(GAME_CONFIG.fire_hold_takeover);
+            return is_toggle_on(self.global.game_config.fire_hold_takeover);
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            self.flip_toggle(&mut GAME_CONFIG.fire_hold_takeover);
+            let toggle = &mut self.global.game_config.fire_hold_takeover as *mut i32;
+            self.flip_toggle(toggle);
         }
         null_mut()
     }
@@ -1737,12 +1743,14 @@ impl Data {
             libc::sprintf(
                 self.menu.empty_level_speedup_buf.as_mut_ptr(),
                 cstr!("%3.1f").as_ptr() as *mut c_char,
-                f64::from(GAME_CONFIG.empty_level_speedup),
+                f64::from(self.global.game_config.empty_level_speedup),
             );
             return self.menu.empty_level_speedup_buf.as_ptr();
         }
 
-        self.menu_change_float(action, &mut GAME_CONFIG.empty_level_speedup, 0.1, 0.5, 2.0);
+        let mut f = self.global.game_config.empty_level_speedup;
+        self.menu_change_float(action, &mut f, 0.1, 0.5, 2.0);
+        self.global.game_config.empty_level_speedup = f;
         null_mut()
     }
 
@@ -1751,19 +1759,16 @@ impl Data {
             libc::sprintf(
                 self.menu.music_volume_buf.as_mut_ptr(),
                 cstr!("%4.2f").as_ptr() as *mut c_char,
-                f64::from(GAME_CONFIG.current_bg_music_volume),
+                f64::from(self.global.game_config.current_bg_music_volume),
             );
             return self.menu.music_volume_buf.as_ptr();
         }
 
-        self.menu_change_float(
-            action,
-            &mut GAME_CONFIG.current_bg_music_volume,
-            0.05,
-            0.,
-            1.,
-        );
-        set_bg_music_volume(GAME_CONFIG.current_bg_music_volume);
+        let mut f = self.global.game_config.current_bg_music_volume;
+        self.menu_change_float(action, &mut f, 0.05, 0., 1.);
+        self.global.game_config.current_bg_music_volume = f;
+
+        set_bg_music_volume(self.global.game_config.current_bg_music_volume);
         null_mut()
     }
 
@@ -1772,25 +1777,21 @@ impl Data {
             libc::sprintf(
                 self.menu.sound_volume_buf.as_mut_ptr(),
                 cstr!("%4.2f").as_ptr() as *mut c_char,
-                f64::from(GAME_CONFIG.current_sound_fx_volume),
+                f64::from(self.global.game_config.current_sound_fx_volume),
             );
             return self.menu.sound_volume_buf.as_ptr();
         }
 
-        self.menu_change_float(
-            action,
-            &mut GAME_CONFIG.current_sound_fx_volume,
-            0.05,
-            0.,
-            1.,
-        );
-        self.set_sound_f_x_volume(GAME_CONFIG.current_sound_fx_volume);
+        let mut f = self.global.game_config.current_sound_fx_volume;
+        self.menu_change_float(action, &mut f, 0.05, 0., 1.);
+        self.global.game_config.current_sound_fx_volume = f;
+        self.set_sound_f_x_volume(self.global.game_config.current_sound_fx_volume);
         null_mut()
     }
 
     pub unsafe fn handle_fullscreen(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::INFO {
-            return is_toggle_on(GAME_CONFIG.use_fullscreen);
+            return is_toggle_on(self.global.game_config.use_fullscreen);
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
@@ -1802,11 +1803,13 @@ impl Data {
 
     pub unsafe fn handle_show_position(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::INFO {
-            return is_toggle_on(GAME_CONFIG.draw_position);
+            return is_toggle_on(self.global.game_config.draw_position);
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            self.flip_toggle(&mut GAME_CONFIG.draw_position);
+            let mut f = self.global.game_config.draw_position;
+            self.flip_toggle(&mut f);
+            self.global.game_config.draw_position = f;
             self.initiate_menu(false);
         }
         null_mut()
@@ -1814,11 +1817,13 @@ impl Data {
 
     pub unsafe fn handle_show_framerate(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::INFO {
-            return is_toggle_on(GAME_CONFIG.draw_framerate);
+            return is_toggle_on(self.global.game_config.draw_framerate);
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            self.flip_toggle(&mut GAME_CONFIG.draw_framerate);
+            let mut f = self.global.game_config.draw_framerate;
+            self.flip_toggle(&mut f);
+            self.global.game_config.draw_framerate = f;
             self.initiate_menu(false);
         }
         null_mut()
@@ -1826,11 +1831,13 @@ impl Data {
 
     pub unsafe fn handle_show_energy(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::INFO {
-            return is_toggle_on(GAME_CONFIG.draw_energy);
+            return is_toggle_on(self.global.game_config.draw_energy);
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            self.flip_toggle(&mut GAME_CONFIG.draw_energy);
+            let mut f = self.global.game_config.draw_energy;
+            self.flip_toggle(&mut f);
+            self.global.game_config.draw_energy = f;
             self.initiate_menu(false);
         }
         null_mut()
@@ -1895,7 +1902,7 @@ impl Data {
 
         ALL_THEMES.cur_tnum = theme_index;
         libc::strcpy(
-            GAME_CONFIG.theme_name.as_mut_ptr(),
+            self.global.game_config.theme_name.as_mut_ptr(),
             ALL_THEMES.theme_name[usize::try_from(ALL_THEMES.cur_tnum).unwrap()] as *const c_char,
         );
         self.init_pictures();

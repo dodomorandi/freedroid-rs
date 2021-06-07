@@ -6,7 +6,6 @@ use crate::{
     global::{BLAST_DAMAGE_PER_SECOND, BLAST_RADIUS, DROID_RADIUS},
     map::{is_passable, is_visible},
     structs::{Finepoint, Vect},
-    text::{add_influ_burnt_text, enemy_hit_by_bullet_text},
     vars::{BLASTMAP, BULLETMAP, DRUIDMAP},
     Data, Status, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, INVINCIBLE_MODE,
     LAST_GOT_INTO_BLAST_SOUND, ME, NUM_ENEMYS,
@@ -76,7 +75,7 @@ impl Data {
                     {
                         enemy.energy -= (*BULLETMAP.add(BulletKind::Flash as usize)).damage as f32;
                         // Since the enemy just got hit, it might as well say so :)
-                        enemy_hit_by_bullet_text(i.try_into().unwrap());
+                        self.enemy_hit_by_bullet_text(i.try_into().unwrap());
                     }
                 }
 
@@ -308,7 +307,7 @@ impl Data {
                 // So the influencer got some damage from the hot blast
                 // Now most likely, he then will also say so :)
                 if cur_blast.message_was_done == 0 {
-                    add_influ_burnt_text();
+                    self.add_influ_burnt_text();
                     cur_blast.message_was_done = true.into();
                 }
             }

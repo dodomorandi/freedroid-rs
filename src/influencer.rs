@@ -8,10 +8,9 @@ use crate::{
     misc::my_random,
     ship::level_empty,
     structs::{Finepoint, Gps},
-    text::enemy_influ_collision_text,
     vars::{BULLETMAP, DRUIDMAP},
-    Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, GAME_CONFIG, INVINCIBLE_MODE,
-    LAST_REFRESH_SOUND, ME, NUM_ENEMYS, REAL_SCORE,
+    Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, INVINCIBLE_MODE, LAST_REFRESH_SOUND, ME,
+    NUM_ENEMYS, REAL_SCORE,
 };
 
 use cstr::cstr;
@@ -79,14 +78,14 @@ impl Data {
             }
 
             // since robots like the refresh, the influencer might also say so...
-            if GAME_CONFIG.droid_talk != 0 {
+            if self.global.game_config.droid_talk != 0 {
                 ME.text_to_be_displayed =
                     cstr!("Ahhh, that feels so good...").as_ptr() as *mut c_char;
                 ME.text_visible_time = 0.;
             }
         } else {
             // If nothing more is to be had, the influencer might also say so...
-            if GAME_CONFIG.droid_talk != 0 {
+            if self.global.game_config.droid_talk != 0 {
                 ME.text_to_be_displayed =
                     cstr!("Oh, it seems that was it again.").as_ptr() as *mut c_char;
                 ME.text_visible_time = 0.;
@@ -157,7 +156,7 @@ impl Data {
                     std::mem::swap(&mut enemy.nextwaypoint, &mut enemy.lastwaypoint);
 
                     // Add some funny text!
-                    enemy_influ_collision_text(i.try_into().unwrap());
+                    self.enemy_influ_collision_text(i.try_into().unwrap());
                 }
                 self.influ_enemy_collision_lose_energy(i.try_into().unwrap()); /* someone loses energy ! */
             } else {
@@ -452,7 +451,7 @@ impl Data {
             ME.status = Status::Activate as c_int;
         }
 
-        if GAME_CONFIG.fire_hold_takeover != 0
+        if self.global.game_config.fire_hold_takeover != 0
             && self.fire_pressed()
             && self.no_direction_pressed()
             && ME.status != Status::Weapon as c_int

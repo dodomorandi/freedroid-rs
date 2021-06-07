@@ -7,7 +7,7 @@ use crate::{
         GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE_C, PROGRESS_METER_FILE_C,
     },
     enemy::shuffle_enemys,
-    global::{GAME_CONFIG, SKIP_A_FEW_FRAMES},
+    global::SKIP_A_FEW_FRAMES,
     graphics::{
         free_graphics, load_block, scale_pic, BANNER_IS_DESTROYED, NE_SCREEN, PROGRESS_FILLER_PIC,
         PROGRESS_METER_PIC,
@@ -254,47 +254,62 @@ impl Data {
         writeln!(
             config,
             "{} = {}",
-            DRAW_FRAMERATE, GAME_CONFIG.draw_framerate
-        )
-        .unwrap();
-        writeln!(config, "{} = {}", DRAW_ENERGY, GAME_CONFIG.draw_energy).unwrap();
-        writeln!(config, "{} = {}", DRAW_POSITION, GAME_CONFIG.draw_position).unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            DRAW_DEATHCOUNT, GAME_CONFIG.draw_death_count
-        )
-        .unwrap();
-        writeln!(config, "{} = {}", DROID_TALK, GAME_CONFIG.droid_talk).unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            WANTED_TEXT_VISIBLE_TIME, GAME_CONFIG.wanted_text_visible_time,
+            DRAW_FRAMERATE, self.global.game_config.draw_framerate
         )
         .unwrap();
         writeln!(
             config,
             "{} = {}",
-            CURRENT_BG_MUSIC_VOLUME, GAME_CONFIG.current_bg_music_volume,
+            DRAW_ENERGY, self.global.game_config.draw_energy
         )
         .unwrap();
         writeln!(
             config,
             "{} = {}",
-            CURRENT_SOUND_FX_VOLUME, GAME_CONFIG.current_sound_fx_volume,
+            DRAW_POSITION, self.global.game_config.draw_position
         )
         .unwrap();
         writeln!(
             config,
             "{} = {}",
-            CURRENT_GAMMA_CORRECTION, GAME_CONFIG.current_gamma_correction,
+            DRAW_DEATHCOUNT, self.global.game_config.draw_death_count
+        )
+        .unwrap();
+        writeln!(
+            config,
+            "{} = {}",
+            DROID_TALK, self.global.game_config.droid_talk
+        )
+        .unwrap();
+        writeln!(
+            config,
+            "{} = {}",
+            WANTED_TEXT_VISIBLE_TIME, self.global.game_config.wanted_text_visible_time,
+        )
+        .unwrap();
+        writeln!(
+            config,
+            "{} = {}",
+            CURRENT_BG_MUSIC_VOLUME, self.global.game_config.current_bg_music_volume,
+        )
+        .unwrap();
+        writeln!(
+            config,
+            "{} = {}",
+            CURRENT_SOUND_FX_VOLUME, self.global.game_config.current_sound_fx_volume,
+        )
+        .unwrap();
+        writeln!(
+            config,
+            "{} = {}",
+            CURRENT_GAMMA_CORRECTION, self.global.game_config.current_gamma_correction,
         )
         .unwrap();
         writeln!(
             config,
             "{} = {}",
             THEME_NAME,
-            CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr())
+            CStr::from_ptr(self.global.game_config.theme_name.as_ptr())
                 .to_str()
                 .unwrap()
         )
@@ -302,40 +317,50 @@ impl Data {
         writeln!(
             config,
             "{} = {}",
-            FULL_USER_RECT, GAME_CONFIG.full_user_rect
+            FULL_USER_RECT, self.global.game_config.full_user_rect
         )
         .unwrap();
         writeln!(
             config,
             "{} = {}",
-            USE_FULLSCREEN, GAME_CONFIG.use_fullscreen
+            USE_FULLSCREEN, self.global.game_config.use_fullscreen
         )
         .unwrap();
         writeln!(
             config,
             "{} = {}",
-            TAKEOVER_ACTIVATES, GAME_CONFIG.takeover_activates,
+            TAKEOVER_ACTIVATES, self.global.game_config.takeover_activates,
         )
         .unwrap();
         writeln!(
             config,
             "{} = {}",
-            FIRE_HOLD_TAKEOVER, GAME_CONFIG.fire_hold_takeover,
+            FIRE_HOLD_TAKEOVER, self.global.game_config.fire_hold_takeover,
         )
         .unwrap();
-        writeln!(config, "{} = {}", SHOW_DECALS, GAME_CONFIG.show_decals).unwrap();
         writeln!(
             config,
             "{} = {}",
-            ALL_MAP_VISIBLE, GAME_CONFIG.all_map_visible
+            SHOW_DECALS, self.global.game_config.show_decals
         )
         .unwrap();
-        writeln!(config, "{} = {}", VID_SCALE_FACTOR, GAME_CONFIG.scale).unwrap();
-        writeln!(config, "{} = {}", HOG_CPU, GAME_CONFIG.hog_cpu).unwrap();
         writeln!(
             config,
             "{} = {}",
-            EMPTY_LEVEL_SPEEDUP, GAME_CONFIG.empty_level_speedup,
+            ALL_MAP_VISIBLE, self.global.game_config.all_map_visible
+        )
+        .unwrap();
+        writeln!(
+            config,
+            "{} = {}",
+            VID_SCALE_FACTOR, self.global.game_config.scale
+        )
+        .unwrap();
+        writeln!(config, "{} = {}", HOG_CPU, self.global.game_config.hog_cpu).unwrap();
+        writeln!(
+            config,
+            "{} = {}",
+            EMPTY_LEVEL_SPEEDUP, self.global.game_config.empty_level_speedup,
         )
         .unwrap();
 
@@ -466,7 +491,7 @@ impl Data {
             let theme_dir = if use_theme == Themed::UseTheme as c_int {
                 Cow::Owned(format!(
                     "{}_theme/",
-                    CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
+                    CStr::from_ptr(self.global.game_config.theme_name.as_ptr()).to_string_lossy(),
                 ))
             } else {
                 Cow::Borrowed("")
@@ -508,7 +533,8 @@ impl Data {
                         warn!(
                             "file {} not found in theme-dir: graphics/{}_theme/",
                             fname,
-                            CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
+                            CStr::from_ptr(self.global.game_config.theme_name.as_ptr())
+                                .to_string_lossy(),
                         );
                     } else {
                         warn!("file {} not found ", fname);
@@ -522,7 +548,7 @@ impl Data {
                         panic!(
                         "file {} not found in theme-dir: graphics/{}_theme/, cannot run without it!",
                         fname,
-                        CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
+                        CStr::from_ptr(self.global.game_config.theme_name.as_ptr()).to_string_lossy(),
                     );
                     } else {
                         panic!("file {} not found, cannot run without it!", fname);
@@ -548,7 +574,7 @@ impl Data {
                 Criticality::Critical as c_int,
             );
             PROGRESS_METER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
-            scale_pic(&mut PROGRESS_METER_PIC, GAME_CONFIG.scale);
+            scale_pic(&mut PROGRESS_METER_PIC, self.global.game_config.scale);
             fpath = self.find_file(
                 PROGRESS_FILLER_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
@@ -556,11 +582,11 @@ impl Data {
                 Criticality::Critical as c_int,
             );
             PROGRESS_FILLER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
-            scale_pic(&mut PROGRESS_FILLER_PIC, GAME_CONFIG.scale);
+            scale_pic(&mut PROGRESS_FILLER_PIC, self.global.game_config.scale);
 
-            scale_rect(&mut PROGRESS_METER_RECT, GAME_CONFIG.scale);
-            scale_rect(&mut PROGRESS_BAR_RECT, GAME_CONFIG.scale);
-            scale_rect(&mut PROGRESS_TEXT_RECT, GAME_CONFIG.scale);
+            scale_rect(&mut PROGRESS_METER_RECT, self.global.game_config.scale);
+            scale_rect(&mut PROGRESS_BAR_RECT, self.global.game_config.scale);
+            scale_rect(&mut PROGRESS_TEXT_RECT, self.global.game_config.scale);
         }
 
         SDL_SetClipRect(NE_SCREEN, null_mut()); // this unsets the clipping rectangle
@@ -1067,34 +1093,33 @@ impl Data {
         };
     }
 
-        parse_variable! { GAME_CONFIG.draw_framerate = DRAW_FRAMERATE; };
-        parse_variable! { GAME_CONFIG.draw_energy = DRAW_ENERGY; };
-        parse_variable! { GAME_CONFIG.draw_position = DRAW_POSITION; };
-        parse_variable! { GAME_CONFIG.draw_death_count = DRAW_DEATHCOUNT; };
-        parse_variable! { GAME_CONFIG.droid_talk = DROID_TALK; };
-        parse_variable! { GAME_CONFIG.wanted_text_visible_time = WANTED_TEXT_VISIBLE_TIME; };
-        parse_variable! { GAME_CONFIG.current_bg_music_volume = CURRENT_BG_MUSIC_VOLUME; };
-        parse_variable! { GAME_CONFIG.current_sound_fx_volume = CURRENT_SOUND_FX_VOLUME; };
-        parse_variable! { GAME_CONFIG.current_gamma_correction = CURRENT_GAMMA_CORRECTION; };
+        parse_variable! { self.global.game_config.draw_framerate = DRAW_FRAMERATE; };
+        parse_variable! { self.global.game_config.draw_energy = DRAW_ENERGY; };
+        parse_variable! { self.global.game_config.draw_position = DRAW_POSITION; };
+        parse_variable! { self.global.game_config.draw_death_count = DRAW_DEATHCOUNT; };
+        parse_variable! { self.global.game_config.droid_talk = DROID_TALK; };
+        parse_variable! { self.global.game_config.wanted_text_visible_time = WANTED_TEXT_VISIBLE_TIME; };
+        parse_variable! { self.global.game_config.current_bg_music_volume = CURRENT_BG_MUSIC_VOLUME; };
+        parse_variable! { self.global.game_config.current_sound_fx_volume = CURRENT_SOUND_FX_VOLUME; };
+        parse_variable! { self.global.game_config.current_gamma_correction = CURRENT_GAMMA_CORRECTION; };
         {
             let value = read_variable(&data, THEME_NAME);
             if let Some(value) = value {
-                GAME_CONFIG.theme_name[..value.len()].copy_from_slice(std::slice::from_raw_parts(
-                    value.as_ptr() as *const c_char,
-                    value.len(),
-                ));
-                GAME_CONFIG.theme_name[value.len()] = 0;
+                self.global.game_config.theme_name[..value.len()].copy_from_slice(
+                    std::slice::from_raw_parts(value.as_ptr() as *const c_char, value.len()),
+                );
+                self.global.game_config.theme_name[value.len()] = 0;
             }
         }
-        parse_variable! { GAME_CONFIG.full_user_rect = FULL_USER_RECT; };
-        parse_variable! { GAME_CONFIG.use_fullscreen = USE_FULLSCREEN; };
-        parse_variable! { GAME_CONFIG.takeover_activates = TAKEOVER_ACTIVATES; };
-        parse_variable! { GAME_CONFIG.fire_hold_takeover = FIRE_HOLD_TAKEOVER; };
-        parse_variable! { GAME_CONFIG.show_decals = SHOW_DECALS; };
-        parse_variable! { GAME_CONFIG.all_map_visible = ALL_MAP_VISIBLE; };
-        parse_variable! { GAME_CONFIG.scale = VID_SCALE_FACTOR; };
-        parse_variable! { GAME_CONFIG.hog_cpu = HOG_CPU; };
-        parse_variable! { GAME_CONFIG.empty_level_speedup = EMPTY_LEVEL_SPEEDUP; };
+        parse_variable! { self.global.game_config.full_user_rect = FULL_USER_RECT; };
+        parse_variable! { self.global.game_config.use_fullscreen = USE_FULLSCREEN; };
+        parse_variable! { self.global.game_config.takeover_activates = TAKEOVER_ACTIVATES; };
+        parse_variable! { self.global.game_config.fire_hold_takeover = FIRE_HOLD_TAKEOVER; };
+        parse_variable! { self.global.game_config.show_decals = SHOW_DECALS; };
+        parse_variable! { self.global.game_config.all_map_visible = ALL_MAP_VISIBLE; };
+        parse_variable! { self.global.game_config.scale = VID_SCALE_FACTOR; };
+        parse_variable! { self.global.game_config.hog_cpu = HOG_CPU; };
+        parse_variable! { self.global.game_config.empty_level_speedup = EMPTY_LEVEL_SPEEDUP; };
 
         // read in keyboard-config
         for (index, &cmd_string) in CMD_STRINGS.iter().enumerate() {

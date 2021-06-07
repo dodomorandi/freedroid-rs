@@ -4,9 +4,7 @@ use crate::{
         MAX_ALERTS_ON_LEVEL, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_REFRESHES_ON_LEVEL,
     },
     enemy::clear_enemys,
-    global::{
-        DROID_RADIUS, GAME_CONFIG, LEVEL_DOORS_NOT_MOVED_TIME, TIME_FOR_EACH_PHASE_OF_DOOR_MOVEMENT,
-    },
+    global::{DROID_RADIUS, LEVEL_DOORS_NOT_MOVED_TIME, TIME_FOR_EACH_PHASE_OF_DOOR_MOVEMENT},
     menu::SHIP_EXT,
     misc::{dealloc_c_string, locate_string_in_data, my_random, read_value_from_string},
     structs::{Finepoint, GrobPoint, Level},
@@ -1535,7 +1533,7 @@ impl Data {
                 Lift => {
                     if myspeed2 <= 1.0
                         && (ME.status == Status::Activate as c_int
-                            || (GAME_CONFIG.takeover_activates != 0
+                            || (self.global.game_config.takeover_activates != 0
                                 && ME.status == Status::Transfermode as c_int))
                     {
                         let cx = x.round() - x;
@@ -1550,7 +1548,7 @@ impl Data {
                 KonsoleR | KonsoleL | KonsoleO | KonsoleU => {
                     if myspeed2 <= 1.0
                         && (ME.status == Status::Activate as c_int
-                            || (GAME_CONFIG.takeover_activates != 0
+                            || (self.global.game_config.takeover_activates != 0
                                 && ME.status == Status::Transfermode as c_int))
                     {
                         self.enter_konsole();

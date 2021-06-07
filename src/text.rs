@@ -1,7 +1,6 @@
 use crate::{
     b_font::{char_width, font_height},
     defs::{Cmds, PointerStates, SHOW_WAIT, TEXT_STRETCH},
-    global::GAME_CONFIG,
     graphics::{NE_SCREEN, VID_BPP},
     input::SDL_Delay,
     misc::my_random,
@@ -506,100 +505,102 @@ impl Data {
 
         false
     }
-}
 
-pub unsafe fn enemy_hit_by_bullet_text(enemy: c_int) {
-    let robot = &mut ALL_ENEMYS[usize::try_from(enemy).unwrap()];
+    pub unsafe fn enemy_hit_by_bullet_text(&self, enemy: c_int) {
+        let robot = &mut ALL_ENEMYS[usize::try_from(enemy).unwrap()];
 
-    if GAME_CONFIG.droid_talk == 0 {
-        return;
+        if self.global.game_config.droid_talk == 0 {
+            return;
+        }
+
+        robot.text_visible_time = 0.;
+        match my_random(4) {
+            0 => {
+                robot.text_to_be_displayed =
+                    cstr!("Unhandled exception fault.  Press ok to reboot.").as_ptr()
+                        as *mut c_char;
+            }
+            1 => {
+                robot.text_to_be_displayed =
+                    cstr!("System fault. Please buy a newer version.").as_ptr() as *mut c_char;
+            }
+            2 => {
+                robot.text_to_be_displayed =
+                    cstr!("System error. Might be a virus.").as_ptr() as *mut c_char;
+            }
+            3 => {
+                robot.text_to_be_displayed =
+                    cstr!("System error. Pleae buy an upgrade from MS.").as_ptr() as *mut c_char;
+            }
+            4 => {
+                robot.text_to_be_displayed =
+                    cstr!("System error. Press any key to reboot.").as_ptr() as *mut c_char;
+            }
+            _ => unreachable!(),
+        }
     }
 
-    robot.text_visible_time = 0.;
-    match my_random(4) {
-        0 => {
-            robot.text_to_be_displayed =
-                cstr!("Unhandled exception fault.  Press ok to reboot.").as_ptr() as *mut c_char;
-        }
-        1 => {
-            robot.text_to_be_displayed =
-                cstr!("System fault. Please buy a newer version.").as_ptr() as *mut c_char;
-        }
-        2 => {
-            robot.text_to_be_displayed =
-                cstr!("System error. Might be a virus.").as_ptr() as *mut c_char;
-        }
-        3 => {
-            robot.text_to_be_displayed =
-                cstr!("System error. Pleae buy an upgrade from MS.").as_ptr() as *mut c_char;
-        }
-        4 => {
-            robot.text_to_be_displayed =
-                cstr!("System error. Press any key to reboot.").as_ptr() as *mut c_char;
-        }
-        _ => unreachable!(),
-    }
-}
+    pub unsafe fn enemy_influ_collision_text(&self, enemy: c_int) {
+        let robot = &mut ALL_ENEMYS[usize::try_from(enemy).unwrap()];
 
-pub unsafe fn enemy_influ_collision_text(enemy: c_int) {
-    let robot = &mut ALL_ENEMYS[usize::try_from(enemy).unwrap()];
+        if self.global.game_config.droid_talk == 0 {
+            return;
+        }
 
-    if GAME_CONFIG.droid_talk == 0 {
-        return;
+        robot.text_visible_time = 0.;
+        match my_random(1) {
+            0 => {
+                robot.text_to_be_displayed =
+                    cstr!("Hey, I'm from MS! Walk outa my way!").as_ptr() as *mut c_char;
+            }
+            1 => {
+                robot.text_to_be_displayed =
+                    cstr!("Hey, I know the big MS boss! You better go.").as_ptr() as *mut c_char;
+            }
+            _ => unreachable!(),
+        }
     }
 
-    robot.text_visible_time = 0.;
-    match my_random(1) {
-        0 => {
-            robot.text_to_be_displayed =
-                cstr!("Hey, I'm from MS! Walk outa my way!").as_ptr() as *mut c_char;
+    pub unsafe fn add_influ_burnt_text(&self) {
+        if self.global.game_config.droid_talk == 0 {
+            return;
         }
-        1 => {
-            robot.text_to_be_displayed =
-                cstr!("Hey, I know the big MS boss! You better go.").as_ptr() as *mut c_char;
+
+        ME.text_visible_time = 0.;
+
+        match my_random(6) {
+            0 => {
+                ME.text_to_be_displayed =
+                    cstr!("Aaarrgh, aah, that burnt me!").as_ptr() as *mut c_char
+            }
+            1 => {
+                ME.text_to_be_displayed = cstr!("Hell, that blast was hot!").as_ptr() as *mut c_char
+            }
+            2 => {
+                ME.text_to_be_displayed =
+                    cstr!("Ghaart, I hate to stain my chassis like that.").as_ptr() as *mut c_char
+            }
+            3 => {
+                ME.text_to_be_displayed =
+                    cstr!("Oh no!  I think I've burnt a cable!").as_ptr() as *mut c_char
+            }
+            4 => {
+                ME.text_to_be_displayed =
+                    cstr!("Oh no, my poor transfer connectors smolder!").as_ptr() as *mut c_char
+            }
+            5 => {
+                ME.text_to_be_displayed =
+                    cstr!("I hope that didn't melt any circuits!").as_ptr() as *mut c_char
+            }
+            6 => {
+                ME.text_to_be_displayed =
+                    cstr!("So that gives some more black scars on me ol' dented chassis!").as_ptr()
+                        as *mut c_char
+            }
+            _ => unreachable!(),
         }
-        _ => unreachable!(),
     }
-}
 
-pub unsafe fn add_influ_burnt_text() {
-    if GAME_CONFIG.droid_talk == 0 {
-        return;
-    }
-
-    ME.text_visible_time = 0.;
-
-    match my_random(6) {
-        0 => {
-            ME.text_to_be_displayed = cstr!("Aaarrgh, aah, that burnt me!").as_ptr() as *mut c_char
-        }
-        1 => ME.text_to_be_displayed = cstr!("Hell, that blast was hot!").as_ptr() as *mut c_char,
-        2 => {
-            ME.text_to_be_displayed =
-                cstr!("Ghaart, I hate to stain my chassis like that.").as_ptr() as *mut c_char
-        }
-        3 => {
-            ME.text_to_be_displayed =
-                cstr!("Oh no!  I think I've burnt a cable!").as_ptr() as *mut c_char
-        }
-        4 => {
-            ME.text_to_be_displayed =
-                cstr!("Oh no, my poor transfer connectors smolder!").as_ptr() as *mut c_char
-        }
-        5 => {
-            ME.text_to_be_displayed =
-                cstr!("I hope that didn't melt any circuits!").as_ptr() as *mut c_char
-        }
-        6 => {
-            ME.text_to_be_displayed =
-                cstr!("So that gives some more black scars on me ol' dented chassis!").as_ptr()
-                    as *mut c_char
-        }
-        _ => unreachable!(),
-    }
-}
-
-impl Data {
     /// Scrolls a given text down inside the given rect
     ///
     /// returns 0 if end of text was scolled out, 1 if user pressed fire
@@ -627,7 +628,7 @@ impl Data {
             }
             SDL_Flip(NE_SCREEN);
 
-            if GAME_CONFIG.hog_cpu != 0 {
+            if self.global.game_config.hog_cpu != 0 {
                 SDL_Delay(1);
             }
 

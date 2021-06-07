@@ -9,8 +9,8 @@ use crate::{
     enemy::shuffle_enemys,
     global::{
         BLAST_DAMAGE_PER_SECOND, BLAST_RADIUS, COLLISION_LOSE_ENERGY_CALIBRATOR,
-        CURRENT_COMBAT_SCALE_FACTOR, DROID_RADIUS, FONT0_B_FONT, GAME_CONFIG, PARA_B_FONT,
-        SKIP_A_FEW_FRAMES, TIME_FOR_EACH_PHASE_OF_DOOR_MOVEMENT,
+        CURRENT_COMBAT_SCALE_FACTOR, DROID_RADIUS, FONT0_B_FONT, PARA_B_FONT, SKIP_A_FEW_FRAMES,
+        TIME_FOR_EACH_PHASE_OF_DOOR_MOVEMENT,
     },
     graphics::{
         clear_graph_mem, make_grid_on_screen, ALL_THEMES, NE_SCREEN, NUMBER_OF_BULLET_TYPES, PIC999,
@@ -243,38 +243,38 @@ impl Data {
         ME.text_to_be_displayed = null_mut();
 
         // these are the hardcoded game-defaults, they can be overloaded by the config-file if present
-        GAME_CONFIG.current_bg_music_volume = 0.3;
-        GAME_CONFIG.current_sound_fx_volume = 0.5;
+        self.global.game_config.current_bg_music_volume = 0.3;
+        self.global.game_config.current_sound_fx_volume = 0.5;
 
-        GAME_CONFIG.wanted_text_visible_time = 3.;
-        GAME_CONFIG.droid_talk = false.into();
+        self.global.game_config.wanted_text_visible_time = 3.;
+        self.global.game_config.droid_talk = false.into();
 
-        GAME_CONFIG.draw_framerate = false.into();
-        GAME_CONFIG.draw_energy = false.into();
-        GAME_CONFIG.draw_death_count = false.into();
-        GAME_CONFIG.draw_position = false.into();
+        self.global.game_config.draw_framerate = false.into();
+        self.global.game_config.draw_energy = false.into();
+        self.global.game_config.draw_death_count = false.into();
+        self.global.game_config.draw_position = false.into();
 
         std::ptr::copy_nonoverlapping(
             b"classic\0".as_ptr(),
-            GAME_CONFIG.theme_name.as_mut_ptr() as *mut u8,
+            self.global.game_config.theme_name.as_mut_ptr() as *mut u8,
             b"classic\0".len(),
         );
-        GAME_CONFIG.full_user_rect = true.into();
-        GAME_CONFIG.use_fullscreen = false.into();
-        GAME_CONFIG.takeover_activates = true.into();
-        GAME_CONFIG.fire_hold_takeover = true.into();
-        GAME_CONFIG.show_decals = false.into();
-        GAME_CONFIG.all_map_visible = true.into(); // classic setting: map always visible
+        self.global.game_config.full_user_rect = true.into();
+        self.global.game_config.use_fullscreen = false.into();
+        self.global.game_config.takeover_activates = true.into();
+        self.global.game_config.fire_hold_takeover = true.into();
+        self.global.game_config.show_decals = false.into();
+        self.global.game_config.all_map_visible = true.into(); // classic setting: map always visible
 
         let scale = if cfg!(feature = "gcw0") {
             0.5 // Default for 320x200 device (GCW0)
         } else {
             1.0 // overall scaling of _all_ graphics (e.g. for 320x200 displays)
         };
-        GAME_CONFIG.scale = scale;
+        self.global.game_config.scale = scale;
 
-        GAME_CONFIG.hog_cpu = false.into(); // default to being nice
-        GAME_CONFIG.empty_level_speedup = 1.0; // speed up *time* in empty levels (ie also energy-loss rate)
+        self.global.game_config.hog_cpu = false.into(); // default to being nice
+        self.global.game_config.empty_level_speedup = 1.0; // speed up *time* in empty levels (ie also energy-loss rate)
 
         // now load saved options from the config-file
         self.load_game_config();
@@ -282,13 +282,13 @@ impl Data {
         // call this _after_ default settings and LoadGameConfig() ==> cmdline has highest priority!
         self.parse_command_line();
 
-        USER_RECT = if GAME_CONFIG.full_user_rect != 0 {
+        USER_RECT = if self.global.game_config.full_user_rect != 0 {
             FULL_USER_RECT
         } else {
             CLASSIC_USER_RECT
         };
 
-        scale_rect(&mut SCREEN_RECT, GAME_CONFIG.scale); // make sure we open a window of the right (rescaled) size!
+        scale_rect(&mut SCREEN_RECT, self.global.game_config.scale); // make sure we open a window of the right (rescaled) size!
         self.init_video();
 
         let image = self.find_file(
@@ -395,14 +395,14 @@ impl Data {
             if scale <= 0. {
                 panic!("illegal scale entered, needs to be >0: {}", scale);
             }
-            GAME_CONFIG.scale = scale;
+            self.global.game_config.scale = scale;
             info!("Graphics scale set to {}", scale);
         }
 
         if opt.fullscreen {
-            GAME_CONFIG.use_fullscreen = true.into();
+            self.global.game_config.use_fullscreen = true.into();
         } else if opt.window {
-            GAME_CONFIG.use_fullscreen = false.into();
+            self.global.game_config.use_fullscreen = false.into();
         }
     }
 
@@ -548,24 +548,27 @@ impl Data {
             .iter()
             .copied()
             .position(|theme_name| {
-                libc::strcmp(theme_name as *const _, GAME_CONFIG.theme_name.as_mut_ptr()) == 0
+                libc::strcmp(
+                    theme_name as *const _,
+                    self.global.game_config.theme_name.as_mut_ptr(),
+                ) == 0
             });
 
         match selected_theme_index {
             Some(index) => {
                 info!(
                     "Found selected theme {} from GameConfig.",
-                    CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
+                    CStr::from_ptr(self.global.game_config.theme_name.as_ptr()).to_string_lossy(),
                 );
                 ALL_THEMES.cur_tnum = index.try_into().unwrap();
             }
             None => {
                 warn!(
                     "selected theme {} not valid! Using classic theme.",
-                    CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy(),
+                    CStr::from_ptr(self.global.game_config.theme_name.as_ptr()).to_string_lossy(),
                 );
                 libc::strcpy(
-                    GAME_CONFIG.theme_name.as_mut_ptr(),
+                    self.global.game_config.theme_name.as_mut_ptr(),
                     ALL_THEMES.theme_name[classic_theme_index] as *const _,
                 );
                 ALL_THEMES.cur_tnum = classic_theme_index.try_into().unwrap();
@@ -574,7 +577,7 @@ impl Data {
 
         info!(
             "Game starts using theme: {}",
-            CStr::from_ptr(GAME_CONFIG.theme_name.as_ptr()).to_string_lossy()
+            CStr::from_ptr(self.global.game_config.theme_name.as_ptr()).to_string_lossy()
         );
     }
 

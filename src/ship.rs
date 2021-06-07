@@ -21,7 +21,7 @@ use crate::{
         SENSOR_NAMES, USER_RECT, WEAPON_NAMES,
     },
     view::fill_rect,
-    Data, ALERT_LEVEL, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, GAME_CONFIG, ME, NE_SCREEN, NUM_ENEMYS,
+    Data, ALERT_LEVEL, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, ME, NE_SCREEN, NUM_ENEMYS,
 };
 
 use log::{error, warn};
@@ -271,8 +271,8 @@ impl Data {
 
             // do we have to scale the droid pics
             #[allow(clippy::float_cmp)]
-            if GAME_CONFIG.scale != 1.0 {
-                scale_pic(&mut self.ship.droid_pics, GAME_CONFIG.scale);
+            if self.global.game_config.scale != 1.0 {
+                scale_pic(&mut self.ship.droid_pics, self.global.game_config.scale);
             }
 
             self.ship.last_droid_type = droid_type;
@@ -979,7 +979,7 @@ impl Data {
 
         let mut src = Rect {
             x: i16::try_from(CONS_MENU_RECTS[0].w).unwrap() * i16::try_from(pos).unwrap()
-                + (2. * pos as f32 * GAME_CONFIG.scale) as i16,
+                + (2. * pos as f32 * self.global.game_config.scale) as i16,
             y: 0,
             w: CONS_MENU_RECT.w,
             h: 4 * CONS_MENU_RECT.h,

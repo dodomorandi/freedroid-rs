@@ -5,7 +5,7 @@ use crate::{
         BLINKENERGY, CRY_SOUND_INTERVAL, FLASH_DURATION, LEFT_TEXT_LEN, MAXBLASTS, MAXBULLETS,
         RIGHT_TEXT_LEN, TRANSFER_SOUND_INTERVAL,
     },
-    global::{FONT0_B_FONT, GAME_CONFIG, INFLUENCE_MODE_NAMES, PARA_B_FONT},
+    global::{FONT0_B_FONT, INFLUENCE_MODE_NAMES, PARA_B_FONT},
     graphics::{
         apply_filter, BANNER_IS_DESTROYED, BANNER_PIC, BUILD_BLOCK, DECAL_PICS,
         ENEMY_DIGIT_SURFACE_POINTER, ENEMY_SURFACE_POINTER, INFLUENCER_SURFACE_POINTER,
@@ -101,7 +101,7 @@ impl Data {
 
         SDL_SetClipRect(NE_SCREEN, &USER_RECT);
 
-        if GAME_CONFIG.all_map_visible == 0 {
+        if self.global.game_config.all_map_visible == 0 {
             fill_rect(USER_RECT, BLACK);
         }
 
@@ -133,7 +133,7 @@ impl Data {
         (upleft.y..downright.y)
             .flat_map(|line| (upleft.x..downright.x).map(move |col| (line, col)))
             .for_each(|(line, col)| {
-                if GAME_CONFIG.all_map_visible == 0
+                if self.global.game_config.all_map_visible == 0
                     && ((mask & AssembleCombatWindowFlags::SHOW_FULL_MAP.bits() as i32) == 0x0)
                 {
                     pos.x = col.into();
@@ -182,11 +182,11 @@ impl Data {
             font_height(&*FONT0_B_FONT).try_into().unwrap(),
         );
         SDL_SetClipRect(NE_SCREEN, &text_rect);
-        if GAME_CONFIG.full_user_rect == 0 {
+        if self.global.game_config.full_user_rect == 0 {
             SDL_FillRect(NE_SCREEN, &mut text_rect, 0);
         }
 
-        if GAME_CONFIG.draw_position != 0 {
+        if self.global.game_config.draw_position != 0 {
             print_string_font(
                 NE_SCREEN,
                 FONT0_B_FONT,
@@ -203,7 +203,7 @@ impl Data {
         }
 
         if mask & AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits() as i32 == 0 {
-            if GAME_CONFIG.draw_framerate != 0 {
+            if self.global.game_config.draw_framerate != 0 {
                 TIME_SINCE_LAST_FPS_UPDATE.with(|time_cell| {
                     let mut time = time_cell.get();
                     time += self.frame_time();
@@ -230,7 +230,7 @@ impl Data {
                 });
             }
 
-            if GAME_CONFIG.draw_energy != 0 {
+            if self.global.game_config.draw_energy != 0 {
                 print_string_font(
                     NE_SCREEN,
                     FONT0_B_FONT,
@@ -240,7 +240,7 @@ impl Data {
                     format_args!("Energy: {:.0}", ME.energy),
                 );
             }
-            if GAME_CONFIG.draw_death_count != 0 {
+            if self.global.game_config.draw_death_count != 0 {
                 print_string_font(
                     NE_SCREEN,
                     FONT0_B_FONT,
@@ -259,7 +259,7 @@ impl Data {
                     && (enemy.levelnum == (*CUR_LEVEL).levelnum)
                     && is_visible(&enemy.pos) != 0
                 {
-                    put_ashes(enemy.pos.x, enemy.pos.y);
+                    self.put_ashes(enemy.pos.x, enemy.pos.y);
                 }
             }
 
@@ -314,27 +314,25 @@ impl Data {
 
         SDL_SetClipRect(NE_SCREEN, null_mut());
     }
-}
 
-/// put some ashes at (x,y)
-pub unsafe fn put_ashes(x: f32, y: f32) {
-    if GAME_CONFIG.show_decals == 0 {
-        return;
+    /// put some ashes at (x,y)
+    pub unsafe fn put_ashes(&self, x: f32, y: f32) {
+        if self.global.game_config.show_decals == 0 {
+            return;
+        }
+
+        let user_center = get_user_center();
+        let mut dst = Rect::new(
+            (f32::from(user_center.x) + (-ME.pos.x + x) * f32::from(BLOCK_RECT.w)
+                - f32::from(BLOCK_RECT.w / 2)) as i16,
+            (f32::from(user_center.y) + (-ME.pos.y + y) * f32::from(BLOCK_RECT.h)
+                - f32::from(BLOCK_RECT.h / 2)) as i16,
+            0,
+            0,
+        );
+        SDL_UpperBlit(DECAL_PICS[0], null_mut(), NE_SCREEN, &mut dst);
     }
 
-    let user_center = get_user_center();
-    let mut dst = Rect::new(
-        (f32::from(user_center.x) + (-ME.pos.x + x) * f32::from(BLOCK_RECT.w)
-            - f32::from(BLOCK_RECT.w / 2)) as i16,
-        (f32::from(user_center.y) + (-ME.pos.y + y) * f32::from(BLOCK_RECT.h)
-            - f32::from(BLOCK_RECT.h / 2)) as i16,
-        0,
-        0,
-    );
-    SDL_UpperBlit(DECAL_PICS[0], null_mut(), NE_SCREEN, &mut dst);
-}
-
-impl Data {
     pub unsafe fn put_enemy(&mut self, enemy_index: c_int, x: c_int, y: c_int) {
         let droid: &mut Enemy = &mut ALL_ENEMYS[usize::try_from(enemy_index).unwrap()];
         let ty = droid.ty;
@@ -415,8 +413,8 @@ impl Data {
         // So now we can add some text the enemys says.  That might be fun.
         //
         if x == -1
-            && droid.text_visible_time < GAME_CONFIG.wanted_text_visible_time
-            && GAME_CONFIG.droid_talk != 0
+            && droid.text_visible_time < self.global.game_config.wanted_text_visible_time
+            && self.global.game_config.droid_talk != 0
         {
             put_string_font(
                 NE_SCREEN,
@@ -542,8 +540,8 @@ impl Data {
         // so let him say it..
         //
         if x == -1
-            && ME.text_visible_time < GAME_CONFIG.wanted_text_visible_time
-            && GAME_CONFIG.droid_talk != 0
+            && ME.text_visible_time < self.global.game_config.wanted_text_visible_time
+            && self.global.game_config.droid_talk != 0
         {
             self.b_font.current_font = FONT0_B_FONT;
             self.display_text(

@@ -1,6 +1,5 @@
 use crate::{
     defs::{BulletKind, Criticality, SoundType, Themed, BYCOLOR, NUM_COLORS, SOUND_DIR_C},
-    global::GAME_CONFIG,
     Data, CUR_LEVEL, SOUND_ON,
 };
 
@@ -426,7 +425,9 @@ impl Data {
             Mix_PlayMusic(self.sound.tmp_mod_file, -1);
         }
 
-        Mix_VolumeMusic((GAME_CONFIG.current_bg_music_volume * f32::from(MIX_MAX_VOLUME)) as c_int);
+        Mix_VolumeMusic(
+            (self.global.game_config.current_bg_music_volume * f32::from(MIX_MAX_VOLUME)) as c_int,
+        );
     }
 
     pub unsafe fn countdown_sound(&self) {
@@ -569,6 +570,6 @@ impl Data {
         // the music and sound volumes accoridingly, i.e. as specifies by the users
         // configuration.
         //
-        self.set_sound_f_x_volume(GAME_CONFIG.current_sound_fx_volume);
+        self.set_sound_f_x_volume(self.global.game_config.current_sound_fx_volume);
     }
 }
