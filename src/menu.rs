@@ -11,17 +11,14 @@ use crate::{
         MapTile, MenuAction, Status, Themed, BYCOLOR, CREDITS_PIC_FILE_C, GRAPHICS_DIR_C,
         MAX_MAP_COLS, MAX_MAP_ROWS,
     },
-    global::{
-        CURRENT_COMBAT_SCALE_FACTOR, FONT0_B_FONT, FONT1_B_FONT, FONT2_B_FONT,
-        INFLUENCE_MODE_NAMES, MENU_B_FONT,
-    },
+    global::INFLUENCE_MODE_NAMES,
     graphics::{
         clear_graph_mem, make_grid_on_screen, ALL_THEMES, BANNER_IS_DESTROYED, CLASSIC_THEME_INDEX,
         NE_SCREEN,
     },
     input::{SDL_Delay, CMD_STRINGS},
     map::COLOR_NAMES,
-    misc::{activate_conservative_frame_computation, armageddon, dealloc_c_string},
+    misc::{armageddon, dealloc_c_string},
     sound::set_bg_music_volume,
     vars::{
         BLOCK_RECT, CLASSIC_USER_RECT, DRUIDMAP, FULL_USER_RECT, ME, MENU_RECT, SCREEN_RECT,
@@ -296,7 +293,7 @@ impl Data {
         // Here comes the standard initializer for all the menus and submenus
         // of the big escape menu.  This prepares the screen, so that we can
         // write on it further down.
-        activate_conservative_frame_computation();
+        self.activate_conservative_frame_computation();
 
         SDL_SetClipRect(NE_SCREEN, null_mut());
         ME.status = Status::Menu as i32;
@@ -323,16 +320,16 @@ impl Data {
         self.menu.menu_background = SDL_DisplayFormat(NE_SCREEN); // keep a global copy of background
 
         SDL_ShowCursor(SDL_DISABLE); // deactivate mouse-cursor in menus
-        self.b_font.current_font = MENU_B_FONT;
+        self.b_font.current_font = self.global.menu_b_font;
         self.menu.font_height = font_height(&*self.b_font.current_font) + 2;
     }
 
     pub unsafe fn cheatmenu(&mut self) {
         // Prevent distortion of framerate by the delay coming from
         // the time spend in the menu.
-        activate_conservative_frame_computation();
+        self.activate_conservative_frame_computation();
 
-        let font = FONT0_B_FONT;
+        let font = self.global.font0_b_font;
 
         self.b_font.current_font = font; /* not the ideal one, but there's currently */
         /* no other it seems.. */
@@ -434,17 +431,20 @@ impl Data {
                         NE_SCREEN,
                         X0,
                         Y0,
-                        format_args!("Current Zoom factor: {}\n", CURRENT_COMBAT_SCALE_FACTOR),
+                        format_args!(
+                            "Current Zoom factor: {}\n",
+                            self.global.current_combat_scale_factor.clone(),
+                        ),
                     );
                     self.printf_sdl(NE_SCREEN, -1, -1, format_args!("New zoom factor: "));
                     let input = self.get_string(40, 2);
                     libc::sscanf(
                         input,
                         cstr!("%f").as_ptr() as *mut c_char,
-                        &mut CURRENT_COMBAT_SCALE_FACTOR,
+                        &mut self.global.current_combat_scale_factor,
                     );
                     drop(Vec::from_raw_parts(input as *mut i8, 45, 45));
-                    self.set_combat_scale_to(CURRENT_COMBAT_SCALE_FACTOR);
+                    self.set_combat_scale_to(self.global.current_combat_scale_factor);
                 }
 
                 Some(b'a') => {
@@ -1061,7 +1061,7 @@ impl Data {
         let col1 = startx + (7.5 * f64::from(char_width(&*current_font, b'O'))) as i32;
         let col2 = col1 + (6.5 * f64::from(char_width(&*current_font, b'O'))) as i32;
         let col3 = col2 + (6.5 * f64::from(char_width(&*current_font, b'O'))) as i32;
-        let lheight = font_height(&*FONT0_B_FONT) + 2;
+        let lheight = font_height(&*self.global.font0_b_font) + 2;
 
         SDL_UpperBlit(self.menu.menu_background, null_mut(), NE_SCREEN, null_mut());
 
@@ -1078,14 +1078,14 @@ impl Data {
         {
             print_string_font(
                 NE_SCREEN,
-                FONT0_B_FONT,
+                self.global.font0_b_font,
                 col1,
                 starty,
                 format_args!("(RShldr to clear an entry)"),
             );
             print_string_font(
                 NE_SCREEN,
-                FONT0_B_FONT,
+                self.global.font0_b_font,
                 col1,
                 starty,
                 format_args!("(Backspace to clear an entry)"),
@@ -1095,28 +1095,28 @@ impl Data {
         let mut posy = 1;
         print_string_font(
             NE_SCREEN,
-            FONT0_B_FONT,
+            self.global.font0_b_font,
             startx,
             starty + (posy) * lheight,
             format_args!("Command"),
         );
         print_string_font(
             NE_SCREEN,
-            FONT0_B_FONT,
+            self.global.font0_b_font,
             col1,
             starty + (posy) * lheight,
             format_args!("Key1"),
         );
         print_string_font(
             NE_SCREEN,
-            FONT0_B_FONT,
+            self.global.font0_b_font,
             col2,
             starty + (posy) * lheight,
             format_args!("Key2"),
         );
         print_string_font(
             NE_SCREEN,
-            FONT0_B_FONT,
+            self.global.font0_b_font,
             col3,
             starty + (posy) * lheight,
             format_args!("Key3"),
@@ -1130,15 +1130,15 @@ impl Data {
         {
             let pos_font = |x, y| {
                 if x != selx || i32::try_from(y).unwrap() != sely {
-                    FONT1_B_FONT
+                    self.global.font1_b_font
                 } else {
-                    FONT2_B_FONT
+                    self.global.font2_b_font
                 }
             };
 
             print_string_font(
                 NE_SCREEN,
-                FONT0_B_FONT,
+                self.global.font0_b_font,
                 startx,
                 starty + (posy) * lheight,
                 format_args!("{}", CStr::from_ptr(cmd_string).to_str().unwrap()),
@@ -1291,8 +1291,8 @@ impl Data {
     pub unsafe fn show_credits(&mut self) {
         let col2 = 2 * i32::from(USER_RECT.w) / 3;
 
-        let h = font_height(&*MENU_B_FONT);
-        let em = char_width(&*MENU_B_FONT, b'm');
+        let h = font_height(&*self.global.menu_b_font);
+        let em = char_width(&*self.global.menu_b_font, b'm');
 
         let screen = SCREEN_RECT;
         SDL_SetClipRect(NE_SCREEN, null_mut());
@@ -1305,7 +1305,7 @@ impl Data {
         self.display_image(image);
         make_grid_on_screen(Some(&screen));
 
-        let oldfont = std::mem::replace(&mut self.b_font.current_font, FONT1_B_FONT);
+        let oldfont = std::mem::replace(&mut self.b_font.current_font, self.global.font1_b_font);
 
         self.printf_sdl(
             NE_SCREEN,
@@ -1417,7 +1417,7 @@ impl Data {
             let position = usize::try_from(cursor.position()).unwrap();
             self.centered_put_string(
                 NE_SCREEN,
-                3 * font_height(&*MENU_B_FONT),
+                3 * font_height(&*self.global.menu_b_font),
                 &output[..position],
             );
             SDL_Flip(NE_SCREEN);

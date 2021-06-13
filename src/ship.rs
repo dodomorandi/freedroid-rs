@@ -5,7 +5,6 @@ use crate::{
         get_user_center, AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction,
         SoundType, Status, DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET, TEXT_STRETCH, UPDATE,
     },
-    global::PARA_B_FONT,
     graphics::{
         clear_graph_mem, scale_pic, ARROW_CURSOR, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP,
         CONSOLE_BG_PIC1, CONSOLE_BG_PIC2, CONSOLE_PIC, CROSSHAIR_CURSOR, PACKED_PORTRAITS,
@@ -13,7 +12,6 @@ use crate::{
     },
     input::SDL_Delay,
     map::{get_current_lift, get_map_brick},
-    misc::activate_conservative_frame_computation,
     structs::Point,
     vars::{
         BRAIN_NAMES, CLASSES, CLASS_NAMES, CONS_DROID_RECT, CONS_HEADER_RECT, CONS_MENU_RECT,
@@ -331,7 +329,7 @@ impl Data {
         use std::io::Write;
 
         SDL_SetClipRect(NE_SCREEN, null_mut());
-        self.b_font.current_font = PARA_B_FONT;
+        self.b_font.current_font = self.global.para_b_font;
 
         let lineskip =
             ((f64::from(font_height(&*self.b_font.current_font)) * TEXT_STRETCH) as f32) as i16;
@@ -575,7 +573,7 @@ impl Data {
     pub unsafe fn enter_konsole(&mut self) {
         // Prevent distortion of framerate by the delay coming from
         // the time spend in the menu.
-        activate_conservative_frame_computation();
+        self.activate_conservative_frame_computation();
 
         let tmp_rect = USER_RECT;
         USER_RECT = FULL_USER_RECT;
@@ -590,7 +588,7 @@ impl Data {
 
         SDL_SetCursor(ARROW_CURSOR);
 
-        self.b_font.current_font = PARA_B_FONT;
+        self.b_font.current_font = self.global.para_b_font;
 
         let mut pos = 0; // starting menu position
         self.paint_console_menu(c_int::try_from(pos).unwrap(), 0);
@@ -991,7 +989,7 @@ impl Data {
     pub unsafe fn enter_lift(&mut self) {
         /* Prevent distortion of framerate by the delay coming from
          * the time spend in the menu. */
-        activate_conservative_frame_computation();
+        self.activate_conservative_frame_computation();
 
         /* make sure to release the fire-key */
         self.wait_for_all_keys_released();

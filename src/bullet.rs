@@ -3,7 +3,6 @@ use crate::{
         BulletKind, Direction, Explosion, BULLET_COLL_DIST2, COLLISION_STEPSIZE, FLASH_DURATION,
         MAXBLASTS, MAXBULLETS,
     },
-    global::{BLAST_DAMAGE_PER_SECOND, BLAST_RADIUS, DROID_RADIUS},
     map::{is_passable, is_visible},
     structs::{Finepoint, Vect},
     vars::{BLASTMAP, BULLETMAP, DRUIDMAP},
@@ -24,12 +23,12 @@ pub struct BulletData {
     fbt_counter: u32,
 }
 
-#[inline]
-unsafe fn get_druid_hit_dist_squared() -> f32 {
-    (0.3 + 4. / 64.) * (DROID_RADIUS + 4. / 64.)
-}
-
 impl Data {
+    #[inline]
+    fn get_druid_hit_dist_squared(&self) -> f32 {
+        (0.3 + 4. / 64.) * (self.global.droid_radius + 4. / 64.)
+    }
+
     pub unsafe fn check_bullet_collisions(&mut self, num: c_int) {
         let level = (*CUR_LEVEL).levelnum;
         let cur_bullet = &mut ALL_BULLETS[usize::try_from(num).unwrap()];
@@ -137,7 +136,7 @@ impl Data {
                         let xdist = ME.pos.x - cur_bullet.pos.x;
                         let ydist = ME.pos.y - cur_bullet.pos.y;
                         // FIXME: don't use DRUIDHITDIST2!!
-                        if (xdist * xdist + ydist * ydist) < get_druid_hit_dist_squared() {
+                        if (xdist * xdist + ydist * ydist) < self.get_druid_hit_dist_squared() {
                             self.got_hit_sound();
 
                             if INVINCIBLE_MODE == 0 {
@@ -162,7 +161,7 @@ impl Data {
                         let ydist = cur_bullet.pos.y - enemy.pos.y;
 
                         // FIXME
-                        if (xdist * xdist + ydist * ydist) < get_druid_hit_dist_squared() {
+                        if (xdist * xdist + ydist * ydist) < self.get_druid_hit_dist_squared() {
                             // The enemy who was hit, loses some energy, depending on the bullet
                             enemy.energy -=
                                 (*BULLETMAP.add(cur_bullet.ty.try_into().unwrap())).damage as f32;
@@ -255,7 +254,7 @@ impl Data {
                 y: cur_bullet.pos.y - cur_blast.py,
             };
             let dist = (vdist.x * vdist.x + vdist.y * vdist.y).sqrt();
-            if dist < BLAST_RADIUS {
+            if dist < self.global.blast_radius {
                 self.start_blast(
                     cur_bullet.pos.x,
                     cur_bullet.pos.y,
@@ -280,9 +279,9 @@ impl Data {
             };
             let dist = (vdist.x * vdist.x + vdist.y * vdist.y).sqrt();
 
-            if dist < BLAST_RADIUS + DROID_RADIUS {
+            if dist < self.global.blast_radius + self.global.droid_radius {
                 /* drag energy of enemy */
-                enemy.energy -= BLAST_DAMAGE_PER_SECOND * self.frame_time();
+                enemy.energy -= self.global.blast_damage_per_second * self.frame_time();
             }
 
             if enemy.energy < 0. {
@@ -299,10 +298,10 @@ impl Data {
 
         if ME.status != Status::Out as c_int
             && !cur_blast.mine
-            && dist < BLAST_RADIUS + DROID_RADIUS
+            && dist < self.global.blast_radius + self.global.droid_radius
         {
             if INVINCIBLE_MODE == 0 {
-                ME.energy -= BLAST_DAMAGE_PER_SECOND * self.frame_time();
+                ME.energy -= self.global.blast_damage_per_second * self.frame_time();
 
                 // So the influencer got some damage from the hot blast
                 // Now most likely, he then will also say so :)

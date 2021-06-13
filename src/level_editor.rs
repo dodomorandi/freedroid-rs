@@ -5,7 +5,6 @@ use crate::{
         MAX_WP_CONNECTIONS, NUM_MAP_BLOCKS,
     },
     enemy::shuffle_enemys,
-    global::{CURRENT_COMBAT_SCALE_FACTOR, FONT0_B_FONT, MENU_B_FONT},
     graphics::{
         clear_graph_mem, draw_line_between_tiles, make_grid_on_screen, putpixel, NE_SCREEN,
     },
@@ -58,8 +57,8 @@ impl Data {
                 self.show_level_editor_menu();
                 if self.menu.quit_level_editor {
                     done = true;
-                    CURRENT_COMBAT_SCALE_FACTOR = 1.;
-                    self.set_combat_scale_to(CURRENT_COMBAT_SCALE_FACTOR);
+                    self.global.current_combat_scale_factor = 1.;
+                    self.set_combat_scale_to(self.global.current_combat_scale_factor);
                     self.menu.quit_level_editor = false;
                 }
                 continue;
@@ -90,10 +89,10 @@ impl Data {
 
             print_string_font(
                 NE_SCREEN,
-                FONT0_B_FONT,
+                self.global.font0_b_font,
                 i32::from(FULL_USER_RECT.x) + i32::from(FULL_USER_RECT.w) / 3,
                 i32::from(FULL_USER_RECT.y) + i32::from(FULL_USER_RECT.h)
-                    - font_height(&*FONT0_B_FONT),
+                    - font_height(&*self.global.font0_b_font),
                 format_args!("Press F1 for keymap"),
             );
 
@@ -123,56 +122,56 @@ impl Data {
                 make_grid_on_screen(None);
                 self.centered_put_string(
                     NE_SCREEN,
-                    k * font_height(&*MENU_B_FONT),
+                    k * font_height(&*self.global.menu_b_font),
                     b"Level Editor Keymap",
                 );
                 k += 2;
                 self.put_string(
                     NE_SCREEN,
                     keymap_offset,
-                    (k) * font_height(&*MENU_B_FONT),
+                    (k) * font_height(&*self.global.menu_b_font),
                     b"Use cursor keys to move around.",
                 );
                 k += 1;
                 self.put_string(
                     NE_SCREEN,
                     keymap_offset,
-                    (k) * font_height(&*MENU_B_FONT),
+                    (k) * font_height(&*self.global.menu_b_font),
                     b"Use number pad to plant walls.",
                 );
                 k += 1;
                 self.put_string(
                     NE_SCREEN,
                     keymap_offset,
-                    (k) * font_height(&*MENU_B_FONT),
+                    (k) * font_height(&*self.global.menu_b_font),
                     b"Use shift and number pad to plant extras.",
                 );
                 k += 1;
                 self.put_string(
                     NE_SCREEN,
                     keymap_offset,
-                    (k) * font_height(&*MENU_B_FONT),
+                    (k) * font_height(&*self.global.menu_b_font),
                     b"R...Refresh, 1-5...Blocktype 1-5, L...Lift",
                 );
                 k += 1;
                 self.put_string(
                     NE_SCREEN,
                     keymap_offset,
-                    (k) * font_height(&*MENU_B_FONT),
+                    (k) * font_height(&*self.global.menu_b_font),
                     b"F...Fine grid, T/SHIFT + T...Doors",
                 );
                 k += 1;
                 self.put_string(
                     NE_SCREEN,
                     keymap_offset,
-                    (k) * font_height(&*MENU_B_FONT),
+                    (k) * font_height(&*self.global.menu_b_font),
                     b"M...Alert, E...Enter tile by number",
                 );
                 k += 1;
                 self.put_string(
                     NE_SCREEN,
                     keymap_offset,
-                    (k) * font_height(&*MENU_B_FONT),
+                    (k) * font_height(&*self.global.menu_b_font),
                     b"Space/Enter...Floor",
                 );
                 k += 2;
@@ -180,21 +179,21 @@ impl Data {
                 self.put_string(
                     NE_SCREEN,
                     keymap_offset,
-                    (k) * font_height(&*MENU_B_FONT),
+                    (k) * font_height(&*self.global.menu_b_font),
                     b"I/O...zoom INTO/OUT OF the map",
                 );
                 k += 2;
                 self.put_string(
                     NE_SCREEN,
                     keymap_offset,
-                    (k) * font_height(&*MENU_B_FONT),
+                    (k) * font_height(&*self.global.menu_b_font),
                     b"P...toggle wayPOINT on/off",
                 );
                 k += 1;
                 self.put_string(
                     NE_SCREEN,
                     keymap_offset,
-                    (k) * font_height(&*MENU_B_FONT),
+                    (k) * font_height(&*self.global.menu_b_font),
                     b"C...start/end waypoint CONNECTION",
                 );
 
@@ -215,7 +214,7 @@ impl Data {
             if self.key_is_pressed_r(b'e'.into()) {
                 self.centered_put_string(
                     NE_SCREEN,
-                    6 * font_height(&*MENU_B_FONT),
+                    6 * font_height(&*self.global.menu_b_font),
                     b"Please enter new value: ",
                 );
                 SDL_Flip(NE_SCREEN);
@@ -236,14 +235,14 @@ impl Data {
             //If the person using the level editor decides he/she wants a different
             //scale for the editing process, he/she may say so by using the O/I keys.
             if self.key_is_pressed_r(b'o'.into()) {
-                if CURRENT_COMBAT_SCALE_FACTOR > 0.25 {
-                    CURRENT_COMBAT_SCALE_FACTOR -= 0.25;
+                if self.global.current_combat_scale_factor > 0.25 {
+                    self.global.current_combat_scale_factor -= 0.25;
                 }
-                self.set_combat_scale_to(CURRENT_COMBAT_SCALE_FACTOR);
+                self.set_combat_scale_to(self.global.current_combat_scale_factor);
             }
             if self.key_is_pressed_r(b'i'.into()) {
-                CURRENT_COMBAT_SCALE_FACTOR += 0.25;
-                self.set_combat_scale_to(CURRENT_COMBAT_SCALE_FACTOR);
+                self.global.current_combat_scale_factor += 0.25;
+                self.set_combat_scale_to(self.global.current_combat_scale_factor);
             }
 
             // toggle waypoint on current square.  That means either removed or added.

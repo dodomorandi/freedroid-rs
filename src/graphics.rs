@@ -10,11 +10,8 @@ use crate::{
         NUM_DECAL_PICS, NUM_MAP_BLOCKS, PARA_FONT_FILE, PARA_FONT_FILE_C, SHIP_OFF_PIC_FILE_C,
         SHIP_ON_PIC_FILE_C, TAKEOVER_BG_PIC_FILE_C,
     },
-    global::{
-        FONT0_B_FONT, FONT1_B_FONT, FONT2_B_FONT, HIGHSCORE_B_FONT, MENU_B_FONT, PARA_B_FONT,
-    },
     input::SDL_Delay,
-    misc::{activate_conservative_frame_computation, read_value_from_string, update_progress},
+    misc::{read_value_from_string, update_progress},
     structs::ThemeList,
     takeover::{
         set_takeover_rects, CAPSULE_BLOCKS, CAPSULE_RECT, COLUMN_BLOCK, COLUMN_RECT, COLUMN_START,
@@ -222,7 +219,7 @@ impl Data {
     pub unsafe fn take_screenshot(&mut self) {
         static mut NUMBER_OF_SCREENSHOT: u32 = 0;
 
-        activate_conservative_frame_computation();
+        self.activate_conservative_frame_computation();
 
         let screenshot_filename = format!("Screenshot_{}.bmp\0", NUMBER_OF_SCREENSHOT);
         SDL_SaveBMP_RW(
@@ -264,74 +261,76 @@ unsafe fn free_surface_array(surfaces: &[*mut SDL_Surface]) {
         .for_each(|&surface| SDL_FreeSurface(surface));
 }
 
-pub unsafe fn free_graphics() {
-    // free RWops structures
-    PACKED_PORTRAITS
+impl Data {
+    pub unsafe fn free_graphics(&self) {
+        // free RWops structures
+        PACKED_PORTRAITS
+            .iter()
+            .filter(|packed_portrait| !packed_portrait.is_null())
+            .for_each(|&packed_portrait| {
+                let close: unsafe fn(context: *mut SDL_RWops) -> c_int =
+                    std::mem::transmute((*packed_portrait).close);
+                close(packed_portrait);
+            });
+
+        PORTRAIT_RAW_MEM.iter_mut().for_each(|mem| drop(mem.take()));
+
+        SDL_FreeSurface(NE_SCREEN);
+
+        free_surface_array(&ENEMY_SURFACE_POINTER);
+        free_surface_array(&INFLUENCER_SURFACE_POINTER);
+        free_surface_array(&INFLU_DIGIT_SURFACE_POINTER);
+        free_surface_array(&ENEMY_DIGIT_SURFACE_POINTER);
+        free_surface_array(&DECAL_PICS);
+
+        ORIG_MAP_BLOCK_SURFACE_POINTER
+            .iter()
+            .flat_map(|arr| arr.iter())
+            .for_each(|&surface| SDL_FreeSurface(surface));
+
+        SDL_FreeSurface(BUILD_BLOCK);
+        SDL_FreeSurface(BANNER_PIC);
+        SDL_FreeSurface(PIC999);
+        // SDL_RWops *packed_portraits[NUM_DROIDS];
+        SDL_FreeSurface(TAKEOVER_BG_PIC);
+        SDL_FreeSurface(CONSOLE_PIC);
+        SDL_FreeSurface(CONSOLE_BG_PIC1);
+        SDL_FreeSurface(CONSOLE_BG_PIC2);
+
+        SDL_FreeSurface(ARROW_UP);
+        SDL_FreeSurface(ARROW_DOWN);
+        SDL_FreeSurface(ARROW_RIGHT);
+        SDL_FreeSurface(ARROW_LEFT);
+
+        SDL_FreeSurface(SHIP_OFF_PIC);
+        SDL_FreeSurface(SHIP_ON_PIC);
+        SDL_FreeSurface(PROGRESS_METER_PIC);
+        SDL_FreeSurface(PROGRESS_FILLER_PIC);
+        SDL_FreeSurface(TO_BLOCKS);
+
+        // free fonts
+        [
+            self.global.menu_b_font,
+            self.global.para_b_font,
+            self.global.highscore_b_font,
+            self.global.font0_b_font,
+            self.global.font1_b_font,
+            self.global.font2_b_font,
+        ]
         .iter()
-        .filter(|packed_portrait| !packed_portrait.is_null())
-        .for_each(|&packed_portrait| {
-            let close: unsafe fn(context: *mut SDL_RWops) -> c_int =
-                std::mem::transmute((*packed_portrait).close);
-            close(packed_portrait);
+        .filter(|font| !font.is_null())
+        .for_each(|&font| {
+            SDL_FreeSurface((*font).surface);
+            dealloc(font as *mut u8, Layout::new::<BFontInfo>());
         });
 
-    PORTRAIT_RAW_MEM.iter_mut().for_each(|mem| drop(mem.take()));
+        // free Load_Block()-internal buffer
+        load_block(null_mut(), 0, 0, null_mut(), FREE_ONLY as i32);
 
-    SDL_FreeSurface(NE_SCREEN);
-
-    free_surface_array(&ENEMY_SURFACE_POINTER);
-    free_surface_array(&INFLUENCER_SURFACE_POINTER);
-    free_surface_array(&INFLU_DIGIT_SURFACE_POINTER);
-    free_surface_array(&ENEMY_DIGIT_SURFACE_POINTER);
-    free_surface_array(&DECAL_PICS);
-
-    ORIG_MAP_BLOCK_SURFACE_POINTER
-        .iter()
-        .flat_map(|arr| arr.iter())
-        .for_each(|&surface| SDL_FreeSurface(surface));
-
-    SDL_FreeSurface(BUILD_BLOCK);
-    SDL_FreeSurface(BANNER_PIC);
-    SDL_FreeSurface(PIC999);
-    // SDL_RWops *packed_portraits[NUM_DROIDS];
-    SDL_FreeSurface(TAKEOVER_BG_PIC);
-    SDL_FreeSurface(CONSOLE_PIC);
-    SDL_FreeSurface(CONSOLE_BG_PIC1);
-    SDL_FreeSurface(CONSOLE_BG_PIC2);
-
-    SDL_FreeSurface(ARROW_UP);
-    SDL_FreeSurface(ARROW_DOWN);
-    SDL_FreeSurface(ARROW_RIGHT);
-    SDL_FreeSurface(ARROW_LEFT);
-
-    SDL_FreeSurface(SHIP_OFF_PIC);
-    SDL_FreeSurface(SHIP_ON_PIC);
-    SDL_FreeSurface(PROGRESS_METER_PIC);
-    SDL_FreeSurface(PROGRESS_FILLER_PIC);
-    SDL_FreeSurface(TO_BLOCKS);
-
-    // free fonts
-    [
-        MENU_B_FONT,
-        PARA_B_FONT,
-        HIGHSCORE_B_FONT,
-        FONT0_B_FONT,
-        FONT1_B_FONT,
-        FONT2_B_FONT,
-    ]
-    .iter()
-    .filter(|font| !font.is_null())
-    .for_each(|&font| {
-        SDL_FreeSurface((*font).surface);
-        dealloc(font as *mut u8, Layout::new::<BFontInfo>());
-    });
-
-    // free Load_Block()-internal buffer
-    load_block(null_mut(), 0, 0, null_mut(), FREE_ONLY as i32);
-
-    // free cursors
-    SDL_FreeCursor(CROSSHAIR_CURSOR);
-    SDL_FreeCursor(ARROW_CURSOR);
+        // free cursors
+        SDL_FreeCursor(CROSSHAIR_CURSOR);
+        SDL_FreeCursor(ARROW_CURSOR);
+    }
 }
 
 /// Set the pixel at (x, y) to the given value
@@ -829,8 +828,8 @@ impl Data {
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         );
-        PARA_B_FONT = self.load_font(fpath, self.global.game_config.scale);
-        if PARA_B_FONT.is_null() {
+        self.global.para_b_font = self.load_font(fpath, self.global.game_config.scale);
+        if self.global.para_b_font.is_null() {
             panic!("font file named {} was not found.", PARA_FONT_FILE);
         }
 
@@ -840,8 +839,8 @@ impl Data {
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         );
-        FONT0_B_FONT = self.load_font(fpath, self.global.game_config.scale);
-        if FONT0_B_FONT.is_null() {
+        self.global.font0_b_font = self.load_font(fpath, self.global.game_config.scale);
+        if self.global.font0_b_font.is_null() {
             panic!("font file named {} was not found.\n", FONT0_FILE);
         }
 
@@ -851,8 +850,8 @@ impl Data {
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         );
-        FONT1_B_FONT = self.load_font(fpath, self.global.game_config.scale);
-        if FONT1_B_FONT.is_null() {
+        self.global.font1_b_font = self.load_font(fpath, self.global.game_config.scale);
+        if self.global.font1_b_font.is_null() {
             panic!("font file named {} was not found.", FONT1_FILE);
         }
 
@@ -862,13 +861,13 @@ impl Data {
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         );
-        FONT2_B_FONT = self.load_font(fpath, self.global.game_config.scale);
-        if FONT2_B_FONT.is_null() {
+        self.global.font2_b_font = self.load_font(fpath, self.global.game_config.scale);
+        if self.global.font2_b_font.is_null() {
             panic!("font file named {} was not found.", FONT2_FILE);
         }
 
-        MENU_B_FONT = self.duplicate_font(&*PARA_B_FONT);
-        HIGHSCORE_B_FONT = self.duplicate_font(&*PARA_B_FONT);
+        self.global.menu_b_font = self.duplicate_font(&*self.global.para_b_font);
+        self.global.highscore_b_font = self.duplicate_font(&*self.global.para_b_font);
 
         FONTS_LOADED = true.into();
 
@@ -1097,7 +1096,7 @@ impl Data {
         // Loading all these pictures might take a while...
         // and we do not want do deal with huge frametimes, which
         // could box the influencer out of the ship....
-        activate_conservative_frame_computation();
+        self.activate_conservative_frame_computation();
 
         let oldfont = self.b_font.current_font;
 
@@ -1105,7 +1104,7 @@ impl Data {
             self.load_fonts();
         }
 
-        self.b_font.current_font = FONT0_B_FONT;
+        self.b_font.current_font = self.global.font0_b_font;
 
         self.init_progress(cstr!("Loading pictures").as_ptr() as *mut c_char);
 

@@ -7,9 +7,8 @@ use crate::{
         GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE_C, PROGRESS_METER_FILE_C,
     },
     enemy::shuffle_enemys,
-    global::SKIP_A_FEW_FRAMES,
     graphics::{
-        free_graphics, load_block, scale_pic, BANNER_IS_DESTROYED, NE_SCREEN, PROGRESS_FILLER_PIC,
+        load_block, scale_pic, BANNER_IS_DESTROYED, NE_SCREEN, PROGRESS_FILLER_PIC,
         PROGRESS_METER_PIC,
     },
     input::{SDL_Delay, CMD_STRINGS},
@@ -99,7 +98,7 @@ impl Data {
     /// This counter is most conveniently set via the function
     /// Activate_Conservative_Frame_Computation, which can be conveniently called from eveywhere.
     pub unsafe fn frame_time(&mut self) -> c_float {
-        if SKIP_A_FEW_FRAMES != 0 {
+        if self.global.skip_a_few_frames != 0 {
             return self.misc.previous_time;
         }
 
@@ -130,7 +129,7 @@ impl Data {
         // ----- free memory
         free_ship_memory();
         self.free_droid_pics();
-        free_graphics();
+        self.free_graphics();
         self.free_sounds();
         self.free_menu_data();
         self.free_game_mem();
@@ -411,7 +410,7 @@ impl Data {
         // SPACE KEY, SO PLEASE DO NOT ERASE EITHER METHOD.  PLEASE ASK JP FIRST.
         //
 
-        if SKIP_A_FEW_FRAMES != 0 {
+        if self.global.skip_a_few_frames != 0 {
             return;
         }
 
@@ -431,18 +430,16 @@ impl Data {
         }; // avoid division by zero
         F_P_SOVER1 = (1000. / *one_frame_delay as f64) as f32;
     }
-}
 
-pub unsafe fn activate_conservative_frame_computation() {
-    SKIP_A_FEW_FRAMES = true.into();
+    pub unsafe fn activate_conservative_frame_computation(&mut self) {
+        self.global.skip_a_few_frames = true.into();
 
-    // Now we are in some form of pause.  It can't
-    // hurt to have the top status bar redrawn after that,
-    // so we set this variable...
-    BANNER_IS_DESTROYED = true.into();
-}
+        // Now we are in some form of pause.  It can't
+        // hurt to have the top status bar redrawn after that,
+        // so we set this variable...
+        BANNER_IS_DESTROYED = true.into();
+    }
 
-impl Data {
     /// Find a given filename in subdir relative to FD_DATADIR,
     ///
     /// if you pass NULL as "subdir", it will be ignored

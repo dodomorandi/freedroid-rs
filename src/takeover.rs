@@ -4,7 +4,7 @@ use crate::{
     },
     enemy::class_of_druid,
     graphics::{clear_graph_mem, NE_SCREEN, TAKEOVER_BG_PIC},
-    misc::{activate_conservative_frame_computation, my_random},
+    misc::my_random,
     structs::Point,
     vars::{CLASSIC_USER_RECT, CONS_DROID_RECT, DRUIDMAP, ME, USER_RECT},
     view::fill_rect,
@@ -1421,7 +1421,7 @@ impl Data {
         /* Prevent distortion of framerate by the delay coming from
          * the time spend in the menu.
          */
-        activate_conservative_frame_computation();
+        self.activate_conservative_frame_computation();
 
         // Takeover game always uses Classic User_Rect:
         let buf = USER_RECT;

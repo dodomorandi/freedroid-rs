@@ -5,7 +5,7 @@ use crate::{
         BLINKENERGY, CRY_SOUND_INTERVAL, FLASH_DURATION, LEFT_TEXT_LEN, MAXBLASTS, MAXBULLETS,
         RIGHT_TEXT_LEN, TRANSFER_SOUND_INTERVAL,
     },
-    global::{FONT0_B_FONT, INFLUENCE_MODE_NAMES, PARA_B_FONT},
+    global::INFLUENCE_MODE_NAMES,
     graphics::{
         apply_filter, BANNER_IS_DESTROYED, BANNER_PIC, BUILD_BLOCK, DECAL_PICS,
         ENEMY_DIGIT_SURFACE_POINTER, ENEMY_SURFACE_POINTER, INFLUENCER_SURFACE_POINTER,
@@ -175,11 +175,11 @@ impl Data {
         let mut text_rect = Rect::new(
             FULL_USER_RECT.x,
             (i32::from(FULL_USER_RECT.y) + i32::from(FULL_USER_RECT.h)
-                - font_height(&*FONT0_B_FONT))
+                - font_height(&*self.global.font0_b_font))
             .try_into()
             .unwrap(),
             FULL_USER_RECT.w,
-            font_height(&*FONT0_B_FONT).try_into().unwrap(),
+            font_height(&*self.global.font0_b_font).try_into().unwrap(),
         );
         SDL_SetClipRect(NE_SCREEN, &text_rect);
         if self.global.game_config.full_user_rect == 0 {
@@ -189,10 +189,10 @@ impl Data {
         if self.global.game_config.draw_position != 0 {
             print_string_font(
                 NE_SCREEN,
-                FONT0_B_FONT,
+                self.global.font0_b_font,
                 (FULL_USER_RECT.x + (FULL_USER_RECT.w / 6) as i16).into(),
                 i32::from(FULL_USER_RECT.y) + i32::from(FULL_USER_RECT.h)
-                    - font_height(&*FONT0_B_FONT),
+                    - font_height(&*self.global.font0_b_font),
                 format_args!(
                     "GPS: X={:.0} Y={:.0} Lev={}",
                     ME.pos.x.round(),
@@ -221,10 +221,10 @@ impl Data {
                 FPS_DISPLAYED.with(|fps_displayed| {
                     print_string_font(
                         NE_SCREEN,
-                        FONT0_B_FONT,
+                        self.global.font0_b_font,
                         FULL_USER_RECT.x.into(),
                         FULL_USER_RECT.y as i32 + FULL_USER_RECT.h as i32
-                            - font_height(&*FONT0_B_FONT) as i32,
+                            - font_height(&*self.global.font0_b_font) as i32,
                         format_args!("FPS: {} ", fps_displayed.get()),
                     );
                 });
@@ -233,20 +233,20 @@ impl Data {
             if self.global.game_config.draw_energy != 0 {
                 print_string_font(
                     NE_SCREEN,
-                    FONT0_B_FONT,
+                    self.global.font0_b_font,
                     i32::from(FULL_USER_RECT.x) + i32::from(FULL_USER_RECT.w) / 2,
                     i32::from(FULL_USER_RECT.y) + i32::from(FULL_USER_RECT.h)
-                        - font_height(&*FONT0_B_FONT),
+                        - font_height(&*self.global.font0_b_font),
                     format_args!("Energy: {:.0}", ME.energy),
                 );
             }
             if self.global.game_config.draw_death_count != 0 {
                 print_string_font(
                     NE_SCREEN,
-                    FONT0_B_FONT,
+                    self.global.font0_b_font,
                     i32::from(FULL_USER_RECT.x) + 2 * i32::from(FULL_USER_RECT.w) / 3,
                     i32::from(FULL_USER_RECT.y) + i32::from(FULL_USER_RECT.h)
-                        - font_height(&*FONT0_B_FONT),
+                        - font_height(&*self.global.font0_b_font),
                     format_args!("Deathcount: {:.0}", DEATH_COUNT,),
                 );
             }
@@ -418,7 +418,7 @@ impl Data {
         {
             put_string_font(
                 NE_SCREEN,
-                FONT0_B_FONT,
+                self.global.font0_b_font,
                 (f32::from(USER_RECT.x)
                     + f32::from(USER_RECT.w / 2)
                     + f32::from(BLOCK_RECT.w / 3)
@@ -543,7 +543,7 @@ impl Data {
             && ME.text_visible_time < self.global.game_config.wanted_text_visible_time
             && self.global.game_config.droid_talk != 0
         {
-            self.b_font.current_font = FONT0_B_FONT;
+            self.b_font.current_font = self.global.font0_b_font;
             self.display_text(
                 ME.text_to_be_displayed,
                 i32::from(USER_RECT.x) + i32::from(USER_RECT.w / 2) + i32::from(BLOCK_RECT.w / 3),
@@ -784,10 +784,11 @@ impl Data {
                 || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
             {
                 dst.x = LEFT_INFO_RECT.x;
-                dst.y = LEFT_INFO_RECT.y - i16::try_from(font_height(&*PARA_B_FONT)).unwrap();
+                dst.y = LEFT_INFO_RECT.y
+                    - i16::try_from(font_height(&*self.global.para_b_font)).unwrap();
                 print_string_font(
                     NE_SCREEN,
-                    PARA_B_FONT,
+                    self.global.para_b_font,
                     dst.x.into(),
                     dst.y.into(),
                     format_args!(
@@ -805,10 +806,11 @@ impl Data {
                 });
 
                 dst.x = RIGHT_INFO_RECT.x;
-                dst.y = RIGHT_INFO_RECT.y - i16::try_from(font_height(&*PARA_B_FONT)).unwrap();
+                dst.y = RIGHT_INFO_RECT.y
+                    - i16::try_from(font_height(&*self.global.para_b_font)).unwrap();
                 print_string_font(
                     NE_SCREEN,
-                    PARA_B_FONT,
+                    self.global.para_b_font,
                     dst.x.into(),
                     dst.y.into(),
                     format_args!(

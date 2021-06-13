@@ -4,7 +4,6 @@ use crate::{
         self, Criticality, DisplayBannerFlags, Status, Themed, DATE_LEN, GRAPHICS_DIR_C,
         HS_BACKGROUND_FILE_C, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
     },
-    global::{HIGHSCORE_B_FONT, PARA_B_FONT},
     graphics::{make_grid_on_screen, NE_SCREEN, PIC999},
     vars::{FULL_USER_RECT, ME, PORTRAIT_RECT, SCREEN_RECT, USER_RECT},
     Data, CONFIG_DIR, REAL_SCORE, SHOW_SCORE,
@@ -191,7 +190,8 @@ impl Data {
             None => return,
         };
 
-        let prev_font = std::mem::replace(&mut self.b_font.current_font, HIGHSCORE_B_FONT);
+        let prev_font =
+            std::mem::replace(&mut self.b_font.current_font, self.global.highscore_b_font);
 
         let user_center_x: i16 = USER_RECT.x + (USER_RECT.w / 2) as i16;
         let user_center_y: i16 = USER_RECT.y + (USER_RECT.h / 2) as i16;
@@ -205,7 +205,7 @@ impl Data {
             PORTRAIT_RECT.h,
         );
         SDL_UpperBlit(PIC999, null_mut(), NE_SCREEN, &mut dst);
-        let h = font_height(&*PARA_B_FONT);
+        let h = font_height(&*self.global.para_b_font);
         self.display_text(
             cstr!("Great Score !").as_ptr(),
             i32::from(dst.x) - h,
@@ -300,7 +300,8 @@ impl Data {
             DisplayBannerFlags::FORCE_UPDATE.bits().into(),
         );
 
-        let prev_font = std::mem::replace(&mut self.b_font.current_font, HIGHSCORE_B_FONT);
+        let prev_font =
+            std::mem::replace(&mut self.b_font.current_font, self.global.highscore_b_font);
 
         let len = char_width(&*self.b_font.current_font, b'9');
 

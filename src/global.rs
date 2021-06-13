@@ -83,18 +83,3 @@ impl Default for Global {
         }
     }
 }
-
-pub static mut MENU_B_FONT: *mut BFontInfo = null_mut();
-pub static mut PARA_B_FONT: *mut BFontInfo = null_mut();
-pub static mut HIGHSCORE_B_FONT: *mut BFontInfo = null_mut();
-pub static mut FONT0_B_FONT: *mut BFontInfo = null_mut();
-pub static mut FONT1_B_FONT: *mut BFontInfo = null_mut();
-pub static mut FONT2_B_FONT: *mut BFontInfo = null_mut();
-pub static mut SKIP_A_FEW_FRAMES: i32 = 0;
-pub static mut LEVEL_DOORS_NOT_MOVED_TIME: f32 = 0.;
-pub static mut DROID_RADIUS: f32 = 0.;
-pub static mut TIME_FOR_EACH_PHASE_OF_DOOR_MOVEMENT: f32 = 0.;
-pub static mut BLAST_RADIUS: f32 = 0.;
-pub static mut BLAST_DAMAGE_PER_SECOND: f32 = 0.;
-pub static mut CURRENT_COMBAT_SCALE_FACTOR: f32 = 0.;
-pub static mut COLLISION_LOSE_ENERGY_CALIBRATOR: f32 = 0.;

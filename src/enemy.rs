@@ -4,7 +4,6 @@ use crate::{
         MAXWAYPOINTS, MAX_ENEMYS_ON_SHIP, ROBOT_MAX_WAIT_BETWEEN_SHOTS, SLOWMO_FACTOR,
         WAIT_COLLISION, WAIT_LEVELEMPTY,
     },
-    global::DROID_RADIUS,
     map::is_visible,
     misc::my_random,
     ship::level_empty,
@@ -270,7 +269,7 @@ impl Data {
             let dist = (xdist * xdist + ydist * ydist).sqrt();
 
             // Is there a Collision?
-            if dist <= (2. * DROID_RADIUS) {
+            if dist <= (2. * self.global.droid_radius) {
                 // am I waiting already?  If so, keep waiting...
                 if cur_enemy.warten != 0. {
                     cur_enemy.warten = my_random(2 * WAIT_COLLISION) as f32;

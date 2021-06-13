@@ -3,8 +3,7 @@ use crate::{
         self, Direction, Droid, Explosion, MapTile, SoundType, Status, ENEMYPHASES, MAXBLASTS,
         MAXBULLETS, PUSHSPEED, WAIT_COLLISION,
     },
-    global::{COLLISION_LOSE_ENERGY_CALIBRATOR, DROID_RADIUS},
-    map::{druid_passable, get_map_brick},
+    map::get_map_brick,
     misc::my_random,
     ship::level_empty,
     structs::{Finepoint, Gps},
@@ -117,7 +116,7 @@ impl Data {
             }
 
             let dist2 = ((xdist * xdist) + (ydist * ydist)).sqrt();
-            if dist2 > 2. * DROID_RADIUS {
+            if dist2 > 2. * self.global.droid_radius {
                 continue;
             }
 
@@ -175,7 +174,7 @@ impl Data {
         let damage = ((*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).class
             - (*DRUIDMAP.add(usize::try_from(enemy_type).unwrap())).class)
             as f32
-            * COLLISION_LOSE_ENERGY_CALIBRATOR;
+            * self.global.collision_lose_energy_calibrator;
 
         if damage < 0. {
             // we took damage
@@ -212,8 +211,8 @@ impl Data {
             }
             let blast = &mut ALL_BLASTS[counter];
             blast.ty = Explosion::Druidblast as c_int;
-            blast.px = ME.pos.x - DROID_RADIUS / 2. + my_random(10) as f32 * 0.05;
-            blast.py = ME.pos.y - DROID_RADIUS / 2. + my_random(10) as f32 * 0.05;
+            blast.px = ME.pos.x - self.global.droid_radius / 2. + my_random(10) as f32 * 0.05;
+            blast.py = ME.pos.y - self.global.droid_radius / 2. + my_random(10) as f32 * 0.05;
             blast.phase = 0.2 * i as f32;
         }
 
@@ -235,7 +234,7 @@ impl Data {
             y: ME.pos.y - sy,
         };
 
-        let res = druid_passable(ME.pos.x, ME.pos.y);
+        let res = self.druid_passable(ME.pos.x, ME.pos.y);
 
         // Influence-Wall-Collision only has to be checked in case of
         // a collision of course, which is indicated by res not CENTER.
@@ -245,18 +244,15 @@ impl Data {
             // the ways are blocked and in which directions the ways are open.
             //
             let north_south_axis_blocked;
-            if !((druid_passable(
-                lastpos.x,
-                lastpos.y
-                    + (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * self.frame_time(),
-            ) != Direction::Center as c_int)
-                || (druid_passable(
-                    lastpos.x,
-                    lastpos.y
-                        - (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed
-                            * self.frame_time(),
-                ) != Direction::Center as c_int))
-            {
+            if !({
+                let pos_y = lastpos.y
+                    + (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * self.frame_time();
+                self.druid_passable(lastpos.x, pos_y) != Direction::Center as c_int
+            } || {
+                let pos_y = lastpos.y
+                    - (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * self.frame_time();
+                self.druid_passable(lastpos.x, pos_y) != Direction::Center as c_int
+            }) {
                 info!("North-south-Axis seems to be free.");
                 north_south_axis_blocked = false;
             } else {
@@ -264,18 +260,15 @@ impl Data {
             }
 
             let east_west_axis_blocked;
-            if (druid_passable(
-                lastpos.x
-                    + (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * self.frame_time(),
-                lastpos.y,
-            ) == Direction::Center as c_int)
-                && (druid_passable(
-                    lastpos.x
-                        - (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed
-                            * self.frame_time(),
-                    lastpos.y,
-                ) == Direction::Center as c_int)
-            {
+            if {
+                let pos_x = lastpos.x
+                    + (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * self.frame_time();
+                self.druid_passable(pos_x, lastpos.y) == Direction::Center as c_int
+            } && {
+                let pos_x = lastpos.x
+                    - (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).maxspeed * self.frame_time();
+                self.druid_passable(pos_x, lastpos.y) == Direction::Center as c_int
+            } {
                 east_west_axis_blocked = false;
             } else {
                 east_west_axis_blocked = true;
@@ -330,10 +323,10 @@ impl Data {
                 // try if this would make sense...
                 // (Of course we may only move into the one direction that is free)
                 //
-                if druid_passable(ME.pos.x + sx, ME.pos.y) == Direction::Center as c_int {
+                if self.druid_passable(ME.pos.x + sx, ME.pos.y) == Direction::Center as c_int {
                     ME.pos.x += sx;
                 }
-                if druid_passable(ME.pos.x, ME.pos.y + sy) == Direction::Center as c_int {
+                if self.druid_passable(ME.pos.x, ME.pos.y + sy) == Direction::Center as c_int {
                     ME.pos.y += sy;
                 }
             }
@@ -345,12 +338,12 @@ impl Data {
             // For this reason, a history of influ-coordinates has been introduced.  This will all
             // be done here and now:
 
-            if (druid_passable(ME.pos.x, ME.pos.y) != Direction::Center as c_int)
-                && (druid_passable(
+            if (self.druid_passable(ME.pos.x, ME.pos.y) != Direction::Center as c_int)
+                && (self.druid_passable(
                     self.get_influ_position_history_x(0),
                     self.get_influ_position_history_y(0),
                 ) != Direction::Center as c_int)
-                && (druid_passable(
+                && (self.druid_passable(
                     self.get_influ_position_history_x(1),
                     self.get_influ_position_history_y(1),
                 ) != Direction::Center as c_int)

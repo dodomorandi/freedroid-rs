@@ -4,7 +4,6 @@ use crate::{
         MAX_ALERTS_ON_LEVEL, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_REFRESHES_ON_LEVEL,
     },
     enemy::clear_enemys,
-    global::{DROID_RADIUS, LEVEL_DOORS_NOT_MOVED_TIME, TIME_FOR_EACH_PHASE_OF_DOOR_MOVEMENT},
     menu::SHIP_EXT,
     misc::{dealloc_c_string, locate_string_in_data, my_random, read_value_from_string},
     structs::{Finepoint, GrobPoint, Level},
@@ -541,94 +540,94 @@ freedroid-discussion@lists.sourceforge.net\n\
             }
         }
     }
-}
 
-/// This funtion moves the level doors in the sense that they are opened
-/// or closed depending on whether there is a robot close to the door or
-/// not.  Initially this function did not take into account the framerate
-/// and just worked every frame.  But this WASTES COMPUTATION time and it
-/// DOES THE ANIMATION TOO QUICKLY.  So, the most reasonable way out seems
-/// to be to operate this function only from time to time, e.g. after a
-/// specified delay has passed.
-pub unsafe fn move_level_doors() {
-    // This prevents animation going too quick.
-    // The constant should be replaced by a variable, that can be
-    // set from within the theme, but that may be done later...
-    if LEVEL_DOORS_NOT_MOVED_TIME < TIME_FOR_EACH_PHASE_OF_DOOR_MOVEMENT {
-        return;
-    }
-    LEVEL_DOORS_NOT_MOVED_TIME = 0.;
-
-    let cur_level = &*CUR_LEVEL;
-    for i in 0..MAX_DOORS_ON_LEVEL {
-        let doorx = cur_level.doors[i].x;
-        let doory = cur_level.doors[i].y;
-
-        /* Keine weiteren Tueren */
-        if doorx == -1 && doory == -1 {
-            break;
+    /// This funtion moves the level doors in the sense that they are opened
+    /// or closed depending on whether there is a robot close to the door or
+    /// not.  Initially this function did not take into account the framerate
+    /// and just worked every frame.  But this WASTES COMPUTATION time and it
+    /// DOES THE ANIMATION TOO QUICKLY.  So, the most reasonable way out seems
+    /// to be to operate this function only from time to time, e.g. after a
+    /// specified delay has passed.
+    pub unsafe fn move_level_doors(&mut self) {
+        // This prevents animation going too quick.
+        // The constant should be replaced by a variable, that can be
+        // set from within the theme, but that may be done later...
+        if self.global.level_doors_not_moved_time < self.global.time_for_each_phase_of_door_movement
+        {
+            return;
         }
+        self.global.level_doors_not_moved_time = 0.;
 
-        let pos =
-            cur_level.map[usize::try_from(doory).unwrap()].add(usize::try_from(doorx).unwrap());
+        let cur_level = &*CUR_LEVEL;
+        for i in 0..MAX_DOORS_ON_LEVEL {
+            let doorx = cur_level.doors[i].x;
+            let doory = cur_level.doors[i].y;
 
-        // NORMALISATION doorx = doorx * Block_Rect.w + Block_Rect.w / 2;
-        // NORMALISATION doory = doory * Block_Rect.h + Block_Rect.h / 2;
-
-        /* first check Influencer gegen Tuer */
-        let xdist = ME.pos.x - f32::from(doorx);
-        let ydist = ME.pos.y - f32::from(doory);
-        let dist2 = xdist * xdist + ydist * ydist;
-
-        const DOOROPENDIST2: f32 = 1.;
-        if dist2 < DOOROPENDIST2 {
-            if *pos != MapTile::HGanztuere as i8 && *pos != MapTile::VGanztuere as i8 {
-                *pos += 1;
+            /* Keine weiteren Tueren */
+            if doorx == -1 && doory == -1 {
+                break;
             }
-        } else {
-            /* alle Enemys checken */
-            let mut j = 0;
-            while j < usize::try_from(NUM_ENEMYS).unwrap() {
-                /* ignore druids that are dead or on other levels */
-                if ALL_ENEMYS[j].status == Status::Out as i32
-                    || ALL_ENEMYS[j].status == Status::Terminated as i32
-                    || ALL_ENEMYS[j].levelnum != cur_level.levelnum
-                {
-                    j += 1;
-                    continue;
+
+            let pos =
+                cur_level.map[usize::try_from(doory).unwrap()].add(usize::try_from(doorx).unwrap());
+
+            // NORMALISATION doorx = doorx * Block_Rect.w + Block_Rect.w / 2;
+            // NORMALISATION doory = doory * Block_Rect.h + Block_Rect.h / 2;
+
+            /* first check Influencer gegen Tuer */
+            let xdist = ME.pos.x - f32::from(doorx);
+            let ydist = ME.pos.y - f32::from(doory);
+            let dist2 = xdist * xdist + ydist * ydist;
+
+            const DOOROPENDIST2: f32 = 1.;
+            if dist2 < DOOROPENDIST2 {
+                if *pos != MapTile::HGanztuere as i8 && *pos != MapTile::VGanztuere as i8 {
+                    *pos += 1;
                 }
+            } else {
+                /* alle Enemys checken */
+                let mut j = 0;
+                while j < usize::try_from(NUM_ENEMYS).unwrap() {
+                    /* ignore druids that are dead or on other levels */
+                    if ALL_ENEMYS[j].status == Status::Out as i32
+                        || ALL_ENEMYS[j].status == Status::Terminated as i32
+                        || ALL_ENEMYS[j].levelnum != cur_level.levelnum
+                    {
+                        j += 1;
+                        continue;
+                    }
 
-                let xdist = (ALL_ENEMYS[j].pos.x - f32::from(doorx)).trunc().abs();
-                if xdist < BLOCK_RECT.w.into() {
-                    let ydist = (ALL_ENEMYS[j].pos.y - f32::from(doory)).trunc().abs();
-                    if ydist < BLOCK_RECT.h.into() {
-                        let dist2 = xdist * xdist + ydist * ydist;
-                        if dist2 < DOOROPENDIST2 {
-                            if *pos != MapTile::HGanztuere as i8
-                                && *pos != MapTile::VGanztuere as i8
-                            {
-                                *pos += 1;
+                    let xdist = (ALL_ENEMYS[j].pos.x - f32::from(doorx)).trunc().abs();
+                    if xdist < BLOCK_RECT.w.into() {
+                        let ydist = (ALL_ENEMYS[j].pos.y - f32::from(doory)).trunc().abs();
+                        if ydist < BLOCK_RECT.h.into() {
+                            let dist2 = xdist * xdist + ydist * ydist;
+                            if dist2 < DOOROPENDIST2 {
+                                if *pos != MapTile::HGanztuere as i8
+                                    && *pos != MapTile::VGanztuere as i8
+                                {
+                                    *pos += 1;
+                                }
+
+                                break; /* one druid is enough to open a door */
                             }
-
-                            break; /* one druid is enough to open a door */
                         }
                     }
+
+                    j += 1;
                 }
 
-                j += 1;
-            }
-
-            /* No druid near: close door if it isnt closed */
-            if j == usize::try_from(NUM_ENEMYS).unwrap()
-                && *pos != MapTile::VZutuere as i8
-                && *pos != MapTile::HZutuere as i8
-            {
-                *pos -= 1;
+                /* No druid near: close door if it isnt closed */
+                if j == usize::try_from(NUM_ENEMYS).unwrap()
+                    && *pos != MapTile::VZutuere as i8
+                    && *pos != MapTile::HZutuere as i8
+                {
+                    *pos -= 1;
+                }
             }
         }
     }
-}
-impl Data {
+
     /// Returns a pointer to Map in a memory field
     pub unsafe fn struct_to_mem(&mut self, level: *mut Level) -> *mut c_char {
         use std::io::Write;
@@ -748,57 +747,57 @@ unsafe fn reset_level_map(level: &mut Level) {
         });
 }
 
-pub unsafe fn druid_passable(x: c_float, y: c_float) -> c_int {
-    let testpos: [Finepoint; DIRECTIONS] = [
-        Finepoint {
-            x,
-            y: y - DROID_RADIUS,
-        },
-        Finepoint {
-            x: x + DROID_RADIUS,
-            y: y - DROID_RADIUS,
-        },
-        Finepoint {
-            x: x + DROID_RADIUS,
-            y,
-        },
-        Finepoint {
-            x: x + DROID_RADIUS,
-            y: y + DROID_RADIUS,
-        },
-        Finepoint {
-            x,
-            y: y + DROID_RADIUS,
-        },
-        Finepoint {
-            x: x - DROID_RADIUS,
-            y: y + DROID_RADIUS,
-        },
-        Finepoint {
-            x: x - DROID_RADIUS,
-            y,
-        },
-        Finepoint {
-            x: x - DROID_RADIUS,
-            y: y - DROID_RADIUS,
-        },
-    ];
-
-    testpos
-        .iter()
-        .enumerate()
-        .map(|(direction_index, test_pos)| {
-            is_passable(
-                test_pos.x,
-                test_pos.y,
-                c_int::try_from(direction_index).unwrap(),
-            )
-        })
-        .find(|&is_passable| is_passable != Direction::Center as c_int)
-        .unwrap_or(Direction::Center as c_int)
-}
-
 impl Data {
+    pub unsafe fn druid_passable(&self, x: c_float, y: c_float) -> c_int {
+        let testpos: [Finepoint; DIRECTIONS] = [
+            Finepoint {
+                x,
+                y: y - self.global.droid_radius,
+            },
+            Finepoint {
+                x: x + self.global.droid_radius,
+                y: y - self.global.droid_radius,
+            },
+            Finepoint {
+                x: x + self.global.droid_radius,
+                y,
+            },
+            Finepoint {
+                x: x + self.global.droid_radius,
+                y: y + self.global.droid_radius,
+            },
+            Finepoint {
+                x,
+                y: y + self.global.droid_radius,
+            },
+            Finepoint {
+                x: x - self.global.droid_radius,
+                y: y + self.global.droid_radius,
+            },
+            Finepoint {
+                x: x - self.global.droid_radius,
+                y,
+            },
+            Finepoint {
+                x: x - self.global.droid_radius,
+                y: y - self.global.droid_radius,
+            },
+        ];
+
+        testpos
+            .iter()
+            .enumerate()
+            .map(|(direction_index, test_pos)| {
+                is_passable(
+                    test_pos.x,
+                    test_pos.y,
+                    c_int::try_from(direction_index).unwrap(),
+                )
+            })
+            .find(|&is_passable| is_passable != Direction::Center as c_int)
+            .unwrap_or(Direction::Center as c_int)
+    }
+
     /// This function receives a pointer to the already read in crew section
     /// in a already read in droids file and decodes all the contents of that
     /// droid section to fill the AllEnemys array with droid types accoriding
@@ -1539,7 +1538,7 @@ impl Data {
                         let cx = x.round() - x;
                         let cy = y.round() - y;
 
-                        if cx * cx + cy * cy < DROID_RADIUS * DROID_RADIUS {
+                        if cx * cx + cy * cy < self.global.droid_radius * self.global.droid_radius {
                             self.enter_lift();
                         }
                     }

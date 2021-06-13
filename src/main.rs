@@ -38,13 +38,13 @@ use defs::{
     DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_LEVEL_RECTS,
     MAX_LIFTS, MAX_LIFT_ROWS, RESET, SHOW_WAIT, STANDARD_MISSION_C,
 };
-use global::{Global, LEVEL_DOORS_NOT_MOVED_TIME, SKIP_A_FEW_FRAMES};
+use global::Global;
 use graphics::{clear_graph_mem, CROSSHAIR_CURSOR, NE_SCREEN};
 use highscore::Highscore;
 use influencer::Influencer;
 use init::Init;
 use input::{Input, SDL_Delay};
-use map::{move_level_doors, ColorNames, Map};
+use map::{ColorNames, Map};
 use menu::Menu;
 use misc::Misc;
 use ship::ShipData;
@@ -264,7 +264,7 @@ fn main() {
                     SDL_ShowCursor(SDL_DISABLE);
                 }
 
-                move_level_doors();
+                data.move_level_doors();
 
                 data.animate_refresh();
 
@@ -348,9 +348,9 @@ impl Data {
 
         ME.last_transfer_sound_time += self.frame_time();
         ME.text_visible_time += self.frame_time();
-        LEVEL_DOORS_NOT_MOVED_TIME += self.frame_time();
-        if SKIP_A_FEW_FRAMES != 0 {
-            SKIP_A_FEW_FRAMES = 0;
+        self.global.level_doors_not_moved_time += self.frame_time();
+        if self.global.skip_a_few_frames != 0 {
+            self.global.skip_a_few_frames = 0;
         }
 
         if ME.firewait > 0. {

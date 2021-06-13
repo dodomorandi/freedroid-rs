@@ -7,19 +7,14 @@ use crate::{
         MAP_DIR_C, MAXBULLETS, SHOW_WAIT, SLOWMO_FACTOR, TITLE_PIC_FILE_C, WAIT_AFTER_KILLED,
     },
     enemy::shuffle_enemys,
-    global::{
-        BLAST_DAMAGE_PER_SECOND, BLAST_RADIUS, COLLISION_LOSE_ENERGY_CALIBRATOR,
-        CURRENT_COMBAT_SCALE_FACTOR, DROID_RADIUS, FONT0_B_FONT, PARA_B_FONT, SKIP_A_FEW_FRAMES,
-        TIME_FOR_EACH_PHASE_OF_DOOR_MOVEMENT,
-    },
     graphics::{
         clear_graph_mem, make_grid_on_screen, ALL_THEMES, NE_SCREEN, NUMBER_OF_BULLET_TYPES, PIC999,
     },
     influencer::init_influ_position_history,
     input::SDL_Delay,
     misc::{
-        activate_conservative_frame_computation, count_string_occurences, dealloc_c_string,
-        locate_string_in_data, my_random, read_value_from_string, update_progress,
+        count_string_occurences, dealloc_c_string, locate_string_in_data, my_random,
+        read_value_from_string, update_progress,
     },
     structs::{BulletSpec, DruidSpec},
     vars::{
@@ -28,8 +23,8 @@ use crate::{
     },
     Data, ALERT_BONUS_PER_SEC, ALERT_THRESHOLD, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL,
     CUR_SHIP, DEATH_COUNT, DEATH_COUNT_DRAIN_SPEED, DEBUG_LEVEL, LAST_GOT_INTO_BLAST_SOUND,
-    LAST_REFRESH_SOUND, LEVEL_DOORS_NOT_MOVED_TIME, ME, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
-    REAL_SCORE, SHOW_SCORE, SOUND_ON, THIS_MESSAGE_TIME,
+    LAST_REFRESH_SOUND, ME, NUMBER_OF_DROID_TYPES, NUM_ENEMYS, REAL_SCORE, SHOW_SCORE, SOUND_ON,
+    THIS_MESSAGE_TIME,
 };
 
 #[cfg(target_os = "windows")]
@@ -154,7 +149,7 @@ pub unsafe fn win32_disclaimer() {
     )); // show title pic
     make_grid_on_screen(Some(&Screen_Rect));
 
-    set_current_font(PARA_B_FONT);
+    set_current_font(self.global.para_b_font);
 
     let mut rect = Full_User_Rect;
     rect.x += 10;
@@ -221,7 +216,7 @@ impl Data {
         SDL_Flip(NE_SCREEN);
         rect.x += 10;
         rect.w -= 20; //leave some border
-        self.b_font.current_font = PARA_B_FONT;
+        self.b_font.current_font = self.global.para_b_font;
         self.scroll_text(self.init.debriefing_text, &mut rect, 6);
 
         self.wait_for_all_keys_released();
@@ -238,7 +233,7 @@ impl Data {
             bullet.surfaces_were_generated = false.into();
         }
 
-        SKIP_A_FEW_FRAMES = false.into();
+        self.global.skip_a_few_frames = false.into();
         ME.text_visible_time = 0.;
         ME.text_to_be_displayed = null_mut();
 
@@ -319,7 +314,7 @@ impl Data {
 
         // The default should be, that no rescaling of the
         // combat window at all is done.
-        CURRENT_COMBAT_SCALE_FACTOR = 1.;
+        self.global.current_combat_scale_factor = 1.;
 
         /*
          * Initialise random-number generator in order to make
@@ -611,11 +606,11 @@ impl Data {
         //--------------------
         //At first we do the things that must be done for all
         //missions, regardless of mission file given
-        activate_conservative_frame_computation();
+        self.activate_conservative_frame_computation();
         LAST_GOT_INTO_BLAST_SOUND = 2.;
         LAST_REFRESH_SOUND = 2.;
         THIS_MESSAGE_TIME = 0;
-        LEVEL_DOORS_NOT_MOVED_TIME = 0.0;
+        self.global.level_doors_not_moved_time = 0.0;
         DEATH_COUNT = 0.;
         self.set_time_factor(1.0);
 
@@ -640,7 +635,7 @@ impl Data {
         //For that, we must get it into memory first.
         //The procedure is the same as with LoadShip
 
-        let oldfont = std::mem::replace(&mut self.b_font.current_font, FONT0_B_FONT);
+        let oldfont = std::mem::replace(&mut self.b_font.current_font, self.global.font0_b_font);
 
         /* Read the whole mission data to memory */
         let fpath = self.find_file(
@@ -909,7 +904,7 @@ impl Data {
         make_grid_on_screen(Some(&SCREEN_RECT));
         ME.status = Status::Briefing as c_int;
 
-        self.b_font.current_font = PARA_B_FONT;
+        self.b_font.current_font = self.global.para_b_font;
 
         self.display_banner(
             null_mut(),
@@ -1511,7 +1506,7 @@ impl Data {
             data,
             COLLISION_LOSE_ENERGY_CALIBRATOR_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
-            &mut COLLISION_LOSE_ENERGY_CALIBRATOR as *mut _ as *mut c_void,
+            &mut self.global.collision_lose_energy_calibrator as *mut _ as *mut c_void,
         );
 
         // Now we read in the blast radius
@@ -1519,7 +1514,7 @@ impl Data {
             data,
             BLAST_RADIUS_SPECIFICATION_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
-            &mut BLAST_RADIUS as *mut _ as *mut c_void,
+            &mut self.global.blast_radius as *mut _ as *mut c_void,
         );
 
         // Now we read in the druid 'radius' in x direction
@@ -1527,7 +1522,7 @@ impl Data {
             data,
             DROID_RADIUS_SPECIFICATION_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
-            &mut DROID_RADIUS as *mut _ as *mut c_void,
+            &mut self.global.droid_radius as *mut _ as *mut c_void,
         );
 
         // Now we read in the blast damage amount per 'second' of contact with the blast
@@ -1535,7 +1530,7 @@ impl Data {
             data,
             BLAST_DAMAGE_SPECIFICATION_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
-            &mut BLAST_DAMAGE_PER_SECOND as *mut _ as *mut c_void,
+            &mut self.global.blast_damage_per_second as *mut _ as *mut c_void,
         );
 
         // Now we read in the time is takes for the door to move one phase
@@ -1543,7 +1538,7 @@ impl Data {
             data,
             TIME_FOR_DOOR_MOVEMENT_SPECIFICATION_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
-            &mut TIME_FOR_EACH_PHASE_OF_DOOR_MOVEMENT as *mut _ as *mut c_void,
+            &mut self.global.time_for_each_phase_of_door_movement as *mut _ as *mut c_void,
         );
     }
 
@@ -1578,7 +1573,7 @@ impl Data {
         Mix_HaltMusic();
 
         // important!!: don't forget to stop fps calculation here (bugfix: enemy piles after gameOver)
-        activate_conservative_frame_computation();
+        self.activate_conservative_frame_computation();
 
         self.white_noise(
             NE_SCREEN,
@@ -1598,8 +1593,8 @@ impl Data {
         SDL_UpperBlit(PIC999, null_mut(), NE_SCREEN, &mut dst);
         self.thou_art_defeated_sound();
 
-        self.b_font.current_font = PARA_B_FONT;
-        let h = font_height(&*PARA_B_FONT);
+        self.b_font.current_font = self.global.para_b_font;
+        let h = font_height(&*self.global.para_b_font);
         self.display_text(
             cstr!("Transmission").as_ptr() as *mut c_char,
             i32::from(dst.x) - h,
