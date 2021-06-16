@@ -7,7 +7,7 @@ use crate::{
     menu::SHIP_EXT,
     misc::{dealloc_c_string, locate_string_in_data, my_random, read_value_from_string},
     structs::{Finepoint, GrobPoint, Level},
-    vars::{BLOCK_RECT, DRUIDMAP},
+    vars::DRUIDMAP,
     Data, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, ME, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
 };
 
@@ -598,9 +598,9 @@ freedroid-discussion@lists.sourceforge.net\n\
                     }
 
                     let xdist = (ALL_ENEMYS[j].pos.x - f32::from(doorx)).trunc().abs();
-                    if xdist < BLOCK_RECT.w.into() {
+                    if xdist < self.vars.block_rect.w.into() {
                         let ydist = (ALL_ENEMYS[j].pos.y - f32::from(doory)).trunc().abs();
-                        if ydist < BLOCK_RECT.h.into() {
+                        if ydist < self.vars.block_rect.h.into() {
                             let dist2 = xdist * xdist + ydist * ydist;
                             if dist2 < DOOROPENDIST2 {
                                 if *pos != MapTile::HGanztuere as i8

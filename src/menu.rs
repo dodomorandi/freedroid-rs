@@ -20,10 +20,7 @@ use crate::{
     map::COLOR_NAMES,
     misc::{armageddon, dealloc_c_string},
     sound::set_bg_music_volume,
-    vars::{
-        BLOCK_RECT, CLASSIC_USER_RECT, DRUIDMAP, FULL_USER_RECT, ME, MENU_RECT, SCREEN_RECT,
-        USER_RECT,
-    },
+    vars::{CLASSIC_USER_RECT, DRUIDMAP, FULL_USER_RECT, ME, MENU_RECT, SCREEN_RECT, USER_RECT},
     Data, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, INVINCIBLE_MODE, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
     SHOW_ALL_DROIDS, SOUND_ON, STOP_INFLUENCER,
 };
@@ -897,7 +894,7 @@ impl Data {
         let menu_height = i32::try_from(num_entries).unwrap() * self.menu.font_height;
         let menu_x = i32::from(FULL_USER_RECT.x) + (i32::from(FULL_USER_RECT.w) - menu_width) / 2;
         let menu_y = i32::from(FULL_USER_RECT.y) + (i32::from(FULL_USER_RECT.h) - menu_height) / 2;
-        let influ_x = menu_x - i32::from(BLOCK_RECT.w) - self.menu.font_height;
+        let influ_x = menu_x - i32::from(self.vars.block_rect.w) - self.menu.font_height;
 
         let mut menu_pos = 0;
 
@@ -1050,13 +1047,11 @@ impl Data {
             SDL_Delay(1);
         }
     }
-}
 
-impl Data {
     /// subroutine to display the current key-config and highlight current selection
     pub unsafe fn display_key_config(&self, selx: c_int, sely: c_int) {
         let current_font = self.b_font.current_font;
-        let startx = i32::from(FULL_USER_RECT.x) + (1.2 * f32::from(BLOCK_RECT.w)) as i32;
+        let startx = i32::from(FULL_USER_RECT.x) + (1.2 * f32::from(self.vars.block_rect.w)) as i32;
         let starty = i32::from(FULL_USER_RECT.y) + font_height(&*current_font);
         let col1 = startx + (7.5 * f64::from(char_width(&*current_font, b'O'))) as i32;
         let col2 = col1 + (6.5 * f64::from(char_width(&*current_font, b'O'))) as i32;

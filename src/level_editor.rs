@@ -5,12 +5,10 @@ use crate::{
         MAX_WP_CONNECTIONS, NUM_MAP_BLOCKS,
     },
     enemy::shuffle_enemys,
-    graphics::{
-        clear_graph_mem, draw_line_between_tiles, make_grid_on_screen, putpixel, NE_SCREEN,
-    },
+    graphics::{clear_graph_mem, make_grid_on_screen, putpixel, NE_SCREEN},
     input::SDL_Delay,
     structs::{Level, Waypoint},
-    vars::{BLOCK_RECT, FULL_USER_RECT, SCREEN_RECT, USER_RECT},
+    vars::{FULL_USER_RECT, SCREEN_RECT, USER_RECT},
     view::{fill_rect, BLACK},
     Data, CUR_LEVEL, ME,
 };
@@ -69,12 +67,12 @@ impl Data {
 
             fill_rect(USER_RECT, BLACK);
             self.assemble_combat_picture(AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits().into());
-            highlight_current_block();
-            show_waypoints();
+            self.highlight_current_block();
+            self.show_waypoints();
 
             // show line between a selected connection-origin and the current block
             if origin_waypoint != -1 {
-                draw_line_between_tiles(
+                self.draw_line_between_tiles(
                     block_x as f32,
                     block_y as f32,
                     (*CUR_LEVEL).all_waypoints[usize::try_from(origin_waypoint).unwrap()]
@@ -487,197 +485,223 @@ fn delete_waypoint(level: &mut Level, num: c_int) {
     }
 }
 
-/// This function is used by the Level Editor integrated into
-/// freedroid.  It marks all waypoints with a cross.
-unsafe fn show_waypoints() {
-    let block_x = ME.pos.x.round();
-    let block_y = ME.pos.y.round();
+impl Data {
+    /// This function is used by the Level Editor integrated into
+    /// freedroid.  It marks all waypoints with a cross.
+    unsafe fn show_waypoints(&self) {
+        let block_x = ME.pos.x.round();
+        let block_y = ME.pos.y.round();
 
-    SDL_LockSurface(NE_SCREEN);
+        SDL_LockSurface(NE_SCREEN);
 
-    for wp in 0..usize::try_from((*CUR_LEVEL).num_waypoints).unwrap() {
-        let this_wp = &mut (*CUR_LEVEL).all_waypoints[wp];
-        // Draw the cross in the middle of the middle of the tile
-        for i in
-            i32::try_from(BLOCK_RECT.w / 4).unwrap()..i32::try_from(3 * BLOCK_RECT.w / 4).unwrap()
-        {
+        for wp in 0..usize::try_from((*CUR_LEVEL).num_waypoints).unwrap() {
+            let this_wp = &mut (*CUR_LEVEL).all_waypoints[wp];
+            // Draw the cross in the middle of the middle of the tile
+            for i in i32::try_from(self.vars.block_rect.w / 4).unwrap()
+                ..i32::try_from(3 * self.vars.block_rect.w / 4).unwrap()
+            {
+                // This draws a (double) line at the upper border of the current block
+                let mut x = i + i32::from(USER_RECT.x) + i32::from(USER_RECT.w / 2)
+                    - ((ME.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(self.vars.block_rect.w))
+                        as i32;
+                let user_center = get_user_center();
+                let mut y = i + i32::from(user_center.y)
+                    - ((ME.pos.y - f32::from(this_wp.y) + 0.5) * f32::from(self.vars.block_rect.h))
+                        as i32;
+                if x < i32::from(USER_RECT.x)
+                    || x > i32::from(USER_RECT.x) + i32::from(USER_RECT.w)
+                    || y < i32::from(USER_RECT.y)
+                    || y > i32::from(USER_RECT.y) + i32::from(USER_RECT.h)
+                {
+                    continue;
+                }
+                putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
+
+                x = i + i32::from(USER_RECT.x) + i32::from(USER_RECT.w / 2)
+                    - ((ME.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(self.vars.block_rect.w))
+                        as i32;
+                y = i + i32::from(user_center.y)
+                    - ((ME.pos.y - f32::from(this_wp.y) + 0.5) * f32::from(self.vars.block_rect.h))
+                        as i32
+                    + 1;
+                if x < i32::from(USER_RECT.x)
+                    || x > i32::from(USER_RECT.x) + i32::from(USER_RECT.w)
+                    || y < i32::from(USER_RECT.y)
+                    || y > i32::from(USER_RECT.y) + i32::from(USER_RECT.h)
+                {
+                    continue;
+                }
+                putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
+
+                // This draws a line at the lower border of the current block
+                x = i + i32::from(USER_RECT.x) + i32::from(USER_RECT.w / 2)
+                    - ((ME.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(self.vars.block_rect.w))
+                        as i32;
+                y = -i + i32::from(user_center.y)
+                    - ((ME.pos.y - f32::from(this_wp.y) - 0.5) * f32::from(self.vars.block_rect.h))
+                        as i32
+                    - 1;
+                if x < i32::from(USER_RECT.x)
+                    || x > i32::from(USER_RECT.x) + i32::from(USER_RECT.w)
+                    || y < i32::from(USER_RECT.y)
+                    || y > i32::from(USER_RECT.y) + i32::from(USER_RECT.h)
+                {
+                    continue;
+                }
+                putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
+
+                x = i + i32::from(USER_RECT.x) + i32::from(USER_RECT.w / 2)
+                    - ((ME.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(self.vars.block_rect.w))
+                        as i32;
+                y = -i + i32::from(user_center.y)
+                    - ((ME.pos.y - f32::from(this_wp.y) - 0.5) * f32::from(self.vars.block_rect.h))
+                        as i32
+                    - 2;
+                if x < i32::from(USER_RECT.x)
+                    || x > i32::from(USER_RECT.x) + i32::from(USER_RECT.w)
+                    || y < i32::from(USER_RECT.y)
+                    || y > i32::from(USER_RECT.y) + i32::from(USER_RECT.h)
+                {
+                    continue;
+                }
+                putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
+            }
+
+            // Draw the connections to other waypoints, BUT ONLY FOR THE WAYPOINT CURRENTLY TARGETED
+            if (block_x - f32::from(this_wp.x)).abs() <= f32::EPSILON
+                && (block_y - f32::from(this_wp.y)).abs() <= f32::EPSILON
+            {
+                for &connection in
+                    &this_wp.connections[0..usize::try_from(this_wp.num_connections).unwrap()]
+                {
+                    let connection = usize::try_from(connection).unwrap();
+                    self.draw_line_between_tiles(
+                        this_wp.x.into(),
+                        this_wp.y.into(),
+                        (*CUR_LEVEL).all_waypoints[connection].x.into(),
+                        (*CUR_LEVEL).all_waypoints[connection].y.into(),
+                        HIGHLIGHTCOLOR as i32,
+                    );
+                }
+            }
+        }
+
+        SDL_UnlockSurface(NE_SCREEN);
+    }
+
+    /// This function is used by the Level Editor integrated into
+    /// freedroid.  It highlights the map position that is currently
+    /// edited or would be edited, if the user pressed something.  I.e.
+    /// it provides a "cursor" for the Level Editor.
+    unsafe fn highlight_current_block(&self) {
+        SDL_LockSurface(NE_SCREEN);
+
+        let user_center = get_user_center();
+        for i in 0..i32::from(self.vars.block_rect.w) {
             // This draws a (double) line at the upper border of the current block
-            let mut x = i + i32::from(USER_RECT.x) + i32::from(USER_RECT.w / 2)
-                - ((ME.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(BLOCK_RECT.w)) as i32;
-            let user_center = get_user_center();
-            let mut y = i + i32::from(user_center.y)
-                - ((ME.pos.y - f32::from(this_wp.y) + 0.5) * f32::from(BLOCK_RECT.h)) as i32;
-            if x < i32::from(USER_RECT.x)
-                || x > i32::from(USER_RECT.x) + i32::from(USER_RECT.w)
-                || y < i32::from(USER_RECT.y)
-                || y > i32::from(USER_RECT.y) + i32::from(USER_RECT.h)
-            {
-                continue;
-            }
-            putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
-
-            x = i + i32::from(USER_RECT.x) + i32::from(USER_RECT.w / 2)
-                - ((ME.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(BLOCK_RECT.w)) as i32;
-            y = i + i32::from(user_center.y)
-                - ((ME.pos.y - f32::from(this_wp.y) + 0.5) * f32::from(BLOCK_RECT.h)) as i32
-                + 1;
-            if x < i32::from(USER_RECT.x)
-                || x > i32::from(USER_RECT.x) + i32::from(USER_RECT.w)
-                || y < i32::from(USER_RECT.y)
-                || y > i32::from(USER_RECT.y) + i32::from(USER_RECT.h)
-            {
-                continue;
-            }
-            putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
+            putpixel(
+                NE_SCREEN,
+                i + i32::from(USER_RECT.x)
+                    + i32::from(USER_RECT.w / 2)
+                    + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(self.vars.block_rect.w))
+                        as i32,
+                i32::from(user_center.y)
+                    + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(self.vars.block_rect.h))
+                        as i32,
+                HIGHLIGHTCOLOR,
+            );
+            putpixel(
+                NE_SCREEN,
+                i + i32::from(USER_RECT.x)
+                    + i32::from(USER_RECT.w / 2)
+                    + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(self.vars.block_rect.w))
+                        as i32,
+                i32::from(user_center.y)
+                    + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(self.vars.block_rect.h))
+                        as i32
+                    + 1,
+                HIGHLIGHTCOLOR,
+            );
 
             // This draws a line at the lower border of the current block
-            x = i + i32::from(USER_RECT.x) + i32::from(USER_RECT.w / 2)
-                - ((ME.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(BLOCK_RECT.w)) as i32;
-            y = -i + i32::from(user_center.y)
-                - ((ME.pos.y - f32::from(this_wp.y) - 0.5) * f32::from(BLOCK_RECT.h)) as i32
-                - 1;
-            if x < i32::from(USER_RECT.x)
-                || x > i32::from(USER_RECT.x) + i32::from(USER_RECT.w)
-                || y < i32::from(USER_RECT.y)
-                || y > i32::from(USER_RECT.y) + i32::from(USER_RECT.h)
-            {
-                continue;
-            }
-            putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
+            putpixel(
+                NE_SCREEN,
+                i + i32::from(USER_RECT.x)
+                    + i32::from(USER_RECT.w / 2)
+                    + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(self.vars.block_rect.w))
+                        as i32,
+                i32::from(user_center.y)
+                    + (((ME.pos.y).round() - ME.pos.y + 0.5) * f32::from(self.vars.block_rect.h))
+                        as i32
+                    - 1,
+                HIGHLIGHTCOLOR,
+            );
+            putpixel(
+                NE_SCREEN,
+                i + i32::from(USER_RECT.x)
+                    + i32::from(USER_RECT.w / 2)
+                    + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(self.vars.block_rect.w))
+                        as i32,
+                i32::from(user_center.y)
+                    + (((ME.pos.y).round() - ME.pos.y + 0.5) * f32::from(self.vars.block_rect.h))
+                        as i32
+                    - 2,
+                HIGHLIGHTCOLOR,
+            );
 
-            x = i + i32::from(USER_RECT.x) + i32::from(USER_RECT.w / 2)
-                - ((ME.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(BLOCK_RECT.w)) as i32;
-            y = -i + i32::from(user_center.y)
-                - ((ME.pos.y - f32::from(this_wp.y) - 0.5) * f32::from(BLOCK_RECT.h)) as i32
-                - 2;
-            if x < i32::from(USER_RECT.x)
-                || x > i32::from(USER_RECT.x) + i32::from(USER_RECT.w)
-                || y < i32::from(USER_RECT.y)
-                || y > i32::from(USER_RECT.y) + i32::from(USER_RECT.h)
-            {
-                continue;
-            }
-            putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
+            // This draws a line at the left border of the current block
+            putpixel(
+                NE_SCREEN,
+                i32::from(USER_RECT.x)
+                    + i32::from(USER_RECT.w / 2)
+                    + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(self.vars.block_rect.w))
+                        as i32,
+                i32::from(user_center.y)
+                    + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(self.vars.block_rect.h))
+                        as i32
+                    + i,
+                HIGHLIGHTCOLOR,
+            );
+            putpixel(
+                NE_SCREEN,
+                1 + i32::from(USER_RECT.x)
+                    + i32::from(USER_RECT.w / 2)
+                    + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(self.vars.block_rect.w))
+                        as i32,
+                i32::from(user_center.y)
+                    + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(self.vars.block_rect.h))
+                        as i32
+                    + i,
+                HIGHLIGHTCOLOR,
+            );
+
+            // This draws a line at the right border of the current block
+            putpixel(
+                NE_SCREEN,
+                -1 + i32::from(USER_RECT.x)
+                    + i32::from(USER_RECT.w / 2)
+                    + (((ME.pos.x).round() - ME.pos.x + 0.5) * f32::from(self.vars.block_rect.w))
+                        as i32,
+                i32::from(user_center.y)
+                    + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(self.vars.block_rect.h))
+                        as i32
+                    + i,
+                HIGHLIGHTCOLOR,
+            );
+            putpixel(
+                NE_SCREEN,
+                -2 + i32::from(USER_RECT.x)
+                    + i32::from(USER_RECT.w / 2)
+                    + (((ME.pos.x).round() - ME.pos.x + 0.5) * f32::from(self.vars.block_rect.w))
+                        as i32,
+                i32::from(user_center.y)
+                    + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(self.vars.block_rect.h))
+                        as i32
+                    + i,
+                HIGHLIGHTCOLOR,
+            );
         }
 
-        // Draw the connections to other waypoints, BUT ONLY FOR THE WAYPOINT CURRENTLY TARGETED
-        if (block_x - f32::from(this_wp.x)).abs() <= f32::EPSILON
-            && (block_y - f32::from(this_wp.y)).abs() <= f32::EPSILON
-        {
-            for &connection in
-                &this_wp.connections[0..usize::try_from(this_wp.num_connections).unwrap()]
-            {
-                let connection = usize::try_from(connection).unwrap();
-                draw_line_between_tiles(
-                    this_wp.x.into(),
-                    this_wp.y.into(),
-                    (*CUR_LEVEL).all_waypoints[connection].x.into(),
-                    (*CUR_LEVEL).all_waypoints[connection].y.into(),
-                    HIGHLIGHTCOLOR as i32,
-                );
-            }
-        }
+        SDL_UnlockSurface(NE_SCREEN);
     }
-
-    SDL_UnlockSurface(NE_SCREEN);
-}
-
-/// This function is used by the Level Editor integrated into
-/// freedroid.  It highlights the map position that is currently
-/// edited or would be edited, if the user pressed something.  I.e.
-/// it provides a "cursor" for the Level Editor.
-unsafe fn highlight_current_block() {
-    SDL_LockSurface(NE_SCREEN);
-
-    let user_center = get_user_center();
-    for i in 0..i32::from(BLOCK_RECT.w) {
-        // This draws a (double) line at the upper border of the current block
-        putpixel(
-            NE_SCREEN,
-            i + i32::from(USER_RECT.x)
-                + i32::from(USER_RECT.w / 2)
-                + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(BLOCK_RECT.w)) as i32,
-            i32::from(user_center.y)
-                + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(BLOCK_RECT.h)) as i32,
-            HIGHLIGHTCOLOR,
-        );
-        putpixel(
-            NE_SCREEN,
-            i + i32::from(USER_RECT.x)
-                + i32::from(USER_RECT.w / 2)
-                + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(BLOCK_RECT.w)) as i32,
-            i32::from(user_center.y)
-                + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(BLOCK_RECT.h)) as i32
-                + 1,
-            HIGHLIGHTCOLOR,
-        );
-
-        // This draws a line at the lower border of the current block
-        putpixel(
-            NE_SCREEN,
-            i + i32::from(USER_RECT.x)
-                + i32::from(USER_RECT.w / 2)
-                + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(BLOCK_RECT.w)) as i32,
-            i32::from(user_center.y)
-                + (((ME.pos.y).round() - ME.pos.y + 0.5) * f32::from(BLOCK_RECT.h)) as i32
-                - 1,
-            HIGHLIGHTCOLOR,
-        );
-        putpixel(
-            NE_SCREEN,
-            i + i32::from(USER_RECT.x)
-                + i32::from(USER_RECT.w / 2)
-                + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(BLOCK_RECT.w)) as i32,
-            i32::from(user_center.y)
-                + (((ME.pos.y).round() - ME.pos.y + 0.5) * f32::from(BLOCK_RECT.h)) as i32
-                - 2,
-            HIGHLIGHTCOLOR,
-        );
-
-        // This draws a line at the left border of the current block
-        putpixel(
-            NE_SCREEN,
-            i32::from(USER_RECT.x)
-                + i32::from(USER_RECT.w / 2)
-                + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(BLOCK_RECT.w)) as i32,
-            i32::from(user_center.y)
-                + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(BLOCK_RECT.h)) as i32
-                + i,
-            HIGHLIGHTCOLOR,
-        );
-        putpixel(
-            NE_SCREEN,
-            1 + i32::from(USER_RECT.x)
-                + i32::from(USER_RECT.w / 2)
-                + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(BLOCK_RECT.w)) as i32,
-            i32::from(user_center.y)
-                + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(BLOCK_RECT.h)) as i32
-                + i,
-            HIGHLIGHTCOLOR,
-        );
-
-        // This draws a line at the right border of the current block
-        putpixel(
-            NE_SCREEN,
-            -1 + i32::from(USER_RECT.x)
-                + i32::from(USER_RECT.w / 2)
-                + (((ME.pos.x).round() - ME.pos.x + 0.5) * f32::from(BLOCK_RECT.w)) as i32,
-            i32::from(user_center.y)
-                + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(BLOCK_RECT.h)) as i32
-                + i,
-            HIGHLIGHTCOLOR,
-        );
-        putpixel(
-            NE_SCREEN,
-            -2 + i32::from(USER_RECT.x)
-                + i32::from(USER_RECT.w / 2)
-                + (((ME.pos.x).round() - ME.pos.x + 0.5) * f32::from(BLOCK_RECT.w)) as i32,
-            i32::from(user_center.y)
-                + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(BLOCK_RECT.h)) as i32
-                + i,
-            HIGHLIGHTCOLOR,
-        );
-    }
-
-    SDL_UnlockSurface(NE_SCREEN);
 }

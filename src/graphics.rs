@@ -21,10 +21,10 @@ use crate::{
         TO_GROUND_BLOCKS,
     },
     vars::{
-        BANNER_RECT, BLASTMAP, BLOCK_RECT, BULLETMAP, CLASSIC_USER_RECT, CONS_DROID_RECT,
-        CONS_HEADER_RECT, CONS_MENU_ITEM_RECT, CONS_MENU_RECT, CONS_MENU_RECTS, CONS_TEXT_RECT,
-        DIGIT_RECT, DRUIDMAP, FULL_USER_RECT, LEFT_INFO_RECT, ME, MENU_RECT, OPTIONS_MENU_RECT,
-        ORIG_BLOCK_RECT, ORIG_DIGIT_RECT, PORTRAIT_RECT, RIGHT_INFO_RECT, SCREEN_RECT, USER_RECT,
+        BANNER_RECT, BLASTMAP, BULLETMAP, CLASSIC_USER_RECT, CONS_DROID_RECT, CONS_HEADER_RECT,
+        CONS_MENU_ITEM_RECT, CONS_MENU_RECT, CONS_MENU_RECTS, CONS_TEXT_RECT, DIGIT_RECT, DRUIDMAP,
+        FULL_USER_RECT, LEFT_INFO_RECT, ME, MENU_RECT, OPTIONS_MENU_RECT, ORIG_BLOCK_RECT,
+        ORIG_DIGIT_RECT, PORTRAIT_RECT, RIGHT_INFO_RECT, SCREEN_RECT, USER_RECT,
     },
     Data, ALL_BULLETS, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
 };
@@ -402,7 +402,7 @@ pub unsafe fn load_block(
     fpath: *mut c_char,
     line: c_int,
     col: c_int,
-    block: *mut SDL_Rect,
+    block: *const SDL_Rect,
     flags: c_int,
 ) -> *mut SDL_Surface {
     static mut PIC: *mut SDL_Surface = null_mut();
@@ -471,85 +471,87 @@ pub unsafe fn load_block(
     ret
 }
 
-/// scale all "static" rectangles, which are theme-independent
-pub unsafe fn scale_stat_rects(scale: c_float) {
-    macro_rules! scale {
-        ($rect:ident) => {
-            scale_rect(&mut $rect, scale);
-        };
+impl Data {
+    /// scale all "static" rectangles, which are theme-independent
+    pub unsafe fn scale_stat_rects(&mut self, scale: c_float) {
+        macro_rules! scale {
+            ($rect:expr) => {
+                scale_rect(&mut $rect, scale);
+            };
+        }
+
+        macro_rules! scale_point {
+            ($rect:ident) => {
+                scale_point(&mut $rect, scale);
+            };
+        }
+
+        scale!(self.vars.block_rect);
+        scale!(USER_RECT);
+        scale!(CLASSIC_USER_RECT);
+        scale!(FULL_USER_RECT);
+        scale!(BANNER_RECT);
+        scale!(PORTRAIT_RECT);
+        scale!(CONS_DROID_RECT);
+        scale!(MENU_RECT);
+        scale!(OPTIONS_MENU_RECT);
+        scale!(DIGIT_RECT);
+        scale!(CONS_HEADER_RECT);
+        scale!(CONS_MENU_RECT);
+        scale!(CONS_TEXT_RECT);
+
+        for block in &mut CONS_MENU_RECTS {
+            scale_rect(block, scale);
+        }
+
+        scale!(CONS_MENU_ITEM_RECT);
+
+        scale!(LEFT_INFO_RECT);
+        scale!(RIGHT_INFO_RECT);
+
+        for block in &mut FILL_BLOCKS {
+            scale_rect(block, scale);
+        }
+
+        for block in &mut CAPSULE_BLOCKS {
+            scale_rect(block, scale);
+        }
+
+        for block in &mut *TO_GAME_BLOCKS.lock().unwrap() {
+            scale_rect(block, scale);
+        }
+
+        for block in &mut *TO_GROUND_BLOCKS.lock().unwrap() {
+            scale_rect(block, scale);
+        }
+
+        scale!(COLUMN_BLOCK);
+        scale!(LEADER_BLOCK);
+
+        for point in &mut LEFT_CAPSULE_STARTS {
+            scale_point(point, scale);
+        }
+        for point in &mut CUR_CAPSULE_STARTS {
+            scale_point(point, scale);
+        }
+        for point in &mut PLAYGROUND_STARTS {
+            scale_point(point, scale);
+        }
+        for point in &mut DROID_STARTS {
+            scale_point(point, scale);
+        }
+        scale_point!(LEFT_GROUND_START);
+        scale_point!(COLUMN_START);
+        scale_point!(RIGHT_GROUND_START);
+        scale_point!(LEADER_BLOCK_START);
+
+        scale!(FILL_BLOCK);
+        scale!(ELEMENT_RECT);
+        scale!(CAPSULE_RECT);
+        scale!(LEADER_LED);
+        scale!(GROUND_RECT);
+        scale!(COLUMN_RECT);
     }
-
-    macro_rules! scale_point {
-        ($rect:ident) => {
-            scale_point(&mut $rect, scale);
-        };
-    }
-
-    scale!(BLOCK_RECT);
-    scale!(USER_RECT);
-    scale!(CLASSIC_USER_RECT);
-    scale!(FULL_USER_RECT);
-    scale!(BANNER_RECT);
-    scale!(PORTRAIT_RECT);
-    scale!(CONS_DROID_RECT);
-    scale!(MENU_RECT);
-    scale!(OPTIONS_MENU_RECT);
-    scale!(DIGIT_RECT);
-    scale!(CONS_HEADER_RECT);
-    scale!(CONS_MENU_RECT);
-    scale!(CONS_TEXT_RECT);
-
-    for block in &mut CONS_MENU_RECTS {
-        scale_rect(block, scale);
-    }
-
-    scale!(CONS_MENU_ITEM_RECT);
-
-    scale!(LEFT_INFO_RECT);
-    scale!(RIGHT_INFO_RECT);
-
-    for block in &mut FILL_BLOCKS {
-        scale_rect(block, scale);
-    }
-
-    for block in &mut CAPSULE_BLOCKS {
-        scale_rect(block, scale);
-    }
-
-    for block in &mut *TO_GAME_BLOCKS.lock().unwrap() {
-        scale_rect(block, scale);
-    }
-
-    for block in &mut *TO_GROUND_BLOCKS.lock().unwrap() {
-        scale_rect(block, scale);
-    }
-
-    scale!(COLUMN_BLOCK);
-    scale!(LEADER_BLOCK);
-
-    for point in &mut LEFT_CAPSULE_STARTS {
-        scale_point(point, scale);
-    }
-    for point in &mut CUR_CAPSULE_STARTS {
-        scale_point(point, scale);
-    }
-    for point in &mut PLAYGROUND_STARTS {
-        scale_point(point, scale);
-    }
-    for point in &mut DROID_STARTS {
-        scale_point(point, scale);
-    }
-    scale_point!(LEFT_GROUND_START);
-    scale_point!(COLUMN_START);
-    scale_point!(RIGHT_GROUND_START);
-    scale_point!(LEADER_BLOCK_START);
-
-    scale!(FILL_BLOCK);
-    scale!(ELEMENT_RECT);
-    scale!(CAPSULE_RECT);
-    scale!(LEADER_LED);
-    scale!(GROUND_RECT);
-    scale!(COLUMN_RECT);
 }
 
 pub unsafe fn scale_pic(pic: &mut *mut SDL_Surface, scale: c_float) {
@@ -592,7 +594,7 @@ impl Data {
         let mut init = false;
         INIT.call_once(|| {
             init = true;
-            scale_stat_rects(scale);
+            self.scale_stat_rects(scale);
         });
 
         //---------- rescale Map blocks
@@ -658,8 +660,8 @@ impl Data {
             free_if_unused(BUILD_BLOCK);
             let tmp = SDL_CreateRGBSurface(
                 0,
-                BLOCK_RECT.w.into(),
-                BLOCK_RECT.h.into(),
+                self.vars.block_rect.w.into(),
+                self.vars.block_rect.h.into(),
                 VID_BPP,
                 0,
                 0,
@@ -1139,7 +1141,7 @@ impl Data {
                     null_mut(),
                     color_index.try_into().unwrap(),
                     block_index.try_into().unwrap(),
-                    &mut ORIG_BLOCK_RECT,
+                    &ORIG_BLOCK_RECT,
                     0,
                 );
                 *surface = *orig_surface;
@@ -1161,7 +1163,7 @@ impl Data {
                     null_mut(),
                     0,
                     index.try_into().unwrap(),
-                    &mut ORIG_BLOCK_RECT,
+                    &ORIG_BLOCK_RECT,
                     0,
                 );
 
@@ -1179,7 +1181,7 @@ impl Data {
                     null_mut(),
                     1,
                     index.try_into().unwrap(),
-                    &mut ORIG_BLOCK_RECT,
+                    &ORIG_BLOCK_RECT,
                     0,
                 );
 
@@ -1212,7 +1214,7 @@ impl Data {
                     null_mut(),
                     bullet_type_index.try_into().unwrap(),
                     phase_index.try_into().unwrap(),
-                    &mut ORIG_BLOCK_RECT,
+                    &ORIG_BLOCK_RECT,
                     0,
                 );
             });
@@ -1243,7 +1245,7 @@ impl Data {
                     null_mut(),
                     blast_type_index.try_into().unwrap(),
                     surface_index.try_into().unwrap(),
-                    &mut ORIG_BLOCK_RECT,
+                    &ORIG_BLOCK_RECT,
                     0,
                 );
             });
@@ -1267,7 +1269,7 @@ impl Data {
                     null_mut(),
                     0,
                     index.try_into().unwrap(),
-                    &mut ORIG_DIGIT_RECT,
+                    &ORIG_DIGIT_RECT,
                     0,
                 );
             });
@@ -1280,7 +1282,7 @@ impl Data {
                     null_mut(),
                     0,
                     (index + 10).try_into().unwrap(),
-                    &mut ORIG_DIGIT_RECT,
+                    &ORIG_DIGIT_RECT,
                     0,
                 );
             });
@@ -1319,8 +1321,8 @@ impl Data {
             //  create the tmp block-build storage
             let tmp = SDL_CreateRGBSurface(
                 0,
-                BLOCK_RECT.w.into(),
-                BLOCK_RECT.h.into(),
+                self.vars.block_rect.w.into(),
+                self.vars.block_rect.h.into(),
                 VID_BPP,
                 0,
                 0,
@@ -1461,8 +1463,8 @@ impl Data {
                 self.global.game_config.show_decals = false.into();
             } else {
                 load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
-                DECAL_PICS[0] = load_block(null_mut(), 0, 0, &mut ORIG_BLOCK_RECT, 0);
-                DECAL_PICS[1] = load_block(null_mut(), 0, 1, &mut ORIG_BLOCK_RECT, 0);
+                DECAL_PICS[0] = load_block(null_mut(), 0, 0, &ORIG_BLOCK_RECT, 0);
+                DECAL_PICS[1] = load_block(null_mut(), 0, 1, &ORIG_BLOCK_RECT, 0);
             }
         });
 
@@ -1760,8 +1762,7 @@ impl Data {
     /// in the first call we assume the Block_Rect to be the original game-size
     /// and store this value for future rescalings
     pub unsafe fn set_combat_scale_to(&mut self, scale: c_float) {
-        use once_cell::sync::Lazy;
-        static ORIG_BLOCK: Lazy<Rect> = Lazy::new(|| unsafe { BLOCK_RECT });
+        use once_cell::sync::OnceCell;
 
         MAP_BLOCK_SURFACE_POINTER
             .iter_mut()
@@ -1782,8 +1783,11 @@ impl Data {
                 SDL_FreeSurface(tmp); // free the old surface
             });
 
-        BLOCK_RECT = *ORIG_BLOCK;
-        scale_rect(&mut BLOCK_RECT, scale);
+        static ORIG_BLOCK: OnceCell<Rect> = OnceCell::new();
+        let orig_block = ORIG_BLOCK.get_or_init(|| self.vars.block_rect);
+
+        self.vars.block_rect = *orig_block;
+        scale_rect(&mut self.vars.block_rect, scale);
     }
 
     /// This function load an image and displays it directly to the NE_SCREEN
@@ -1809,36 +1813,86 @@ impl Data {
 
         SDL_FreeSurface(image);
     }
-}
 
-pub unsafe fn draw_line_between_tiles(
-    mut x1: c_float,
-    mut y1: c_float,
-    mut x2: c_float,
-    mut y2: c_float,
-    color: c_int,
-) {
-    if (x1 - x2).abs() <= f32::EPSILON && (y1 - y2).abs() <= f32::EPSILON {
-        return;
-    }
+    pub unsafe fn draw_line_between_tiles(
+        &self,
+        mut x1: c_float,
+        mut y1: c_float,
+        mut x2: c_float,
+        mut y2: c_float,
+        color: c_int,
+    ) {
+        if (x1 - x2).abs() <= f32::EPSILON && (y1 - y2).abs() <= f32::EPSILON {
+            return;
+        }
 
-    if (x1 - x2).abs() <= f32::EPSILON
-    // infinite slope!! special case, that must be caught!
-    {
-        if y1 > y2
+        if (x1 - x2).abs() <= f32::EPSILON
+        // infinite slope!! special case, that must be caught!
+        {
+            if y1 > y2
+            // in this case, just interchange 1 and 2
+            {
+                std::mem::swap(&mut y1, &mut y2);
+            }
+
+            let mut i = 0.;
+            let max = (y2 - y1) * f32::from(self.vars.block_rect.w);
+            while i < max {
+                let pixx = f32::from(USER_RECT.x) + f32::from(USER_RECT.w / 2)
+                    - f32::from(self.vars.block_rect.w) * (ME.pos.x - x1);
+                let user_center = get_user_center();
+                let pixy = f32::from(user_center.y)
+                    - f32::from(self.vars.block_rect.h) * (ME.pos.y - y1)
+                    + i;
+                if pixx <= USER_RECT.x.into()
+                    || pixx >= f32::from(USER_RECT.x) + f32::from(USER_RECT.w) - 1.
+                    || pixy <= f32::from(USER_RECT.y)
+                    || pixy >= f32::from(USER_RECT.y) + f32::from(USER_RECT.h) - 1.
+                {
+                    i += 1.;
+                    continue;
+                }
+                putpixel(
+                    NE_SCREEN,
+                    pixx as c_int,
+                    pixy as c_int,
+                    color.try_into().unwrap(),
+                );
+                putpixel(
+                    NE_SCREEN,
+                    pixx as c_int - 1,
+                    pixy as c_int,
+                    color.try_into().unwrap(),
+                );
+
+                i += 1.;
+            }
+            return;
+        }
+
+        if x1 > x2
         // in this case, just interchange 1 and 2
         {
+            std::mem::swap(&mut x1, &mut x2);
             std::mem::swap(&mut y1, &mut y2);
         }
 
+        //--------------------
+        // Now we start the drawing process
+        //
+
+        let slope = (y2 - y1) / (x2 - x1);
         let mut i = 0.;
-        let max = (y2 - y1) * f32::from(BLOCK_RECT.w);
+        let max = (x2 - x1) * f32::from(self.vars.block_rect.w);
         while i < max {
             let pixx = f32::from(USER_RECT.x) + f32::from(USER_RECT.w / 2)
-                - f32::from(BLOCK_RECT.w) * (ME.pos.x - x1);
+                - f32::from(self.vars.block_rect.w) * (ME.pos.x - x1)
+                + i;
             let user_center = get_user_center();
-            let pixy = f32::from(user_center.y) - f32::from(BLOCK_RECT.h) * (ME.pos.y - y1) + i;
-            if pixx <= USER_RECT.x.into()
+            let pixy = f32::from(user_center.y)
+                - f32::from(self.vars.block_rect.h) * (ME.pos.y - y1)
+                + i * slope;
+            if pixx <= f32::from(USER_RECT.x)
                 || pixx >= f32::from(USER_RECT.x) + f32::from(USER_RECT.w) - 1.
                 || pixy <= f32::from(USER_RECT.y)
                 || pixy >= f32::from(USER_RECT.y) + f32::from(USER_RECT.h) - 1.
@@ -1854,56 +1908,11 @@ pub unsafe fn draw_line_between_tiles(
             );
             putpixel(
                 NE_SCREEN,
-                pixx as c_int - 1,
-                pixy as c_int,
+                pixx as c_int,
+                pixy as c_int - 1,
                 color.try_into().unwrap(),
             );
-
             i += 1.;
         }
-        return;
-    }
-
-    if x1 > x2
-    // in this case, just interchange 1 and 2
-    {
-        std::mem::swap(&mut x1, &mut x2);
-        std::mem::swap(&mut y1, &mut y2);
-    }
-
-    //--------------------
-    // Now we start the drawing process
-    //
-
-    let slope = (y2 - y1) / (x2 - x1);
-    let mut i = 0.;
-    let max = (x2 - x1) * f32::from(BLOCK_RECT.w);
-    while i < max {
-        let pixx = f32::from(USER_RECT.x) + f32::from(USER_RECT.w / 2)
-            - f32::from(BLOCK_RECT.w) * (ME.pos.x - x1)
-            + i;
-        let user_center = get_user_center();
-        let pixy = f32::from(user_center.y) - f32::from(BLOCK_RECT.h) * (ME.pos.y - y1) + i * slope;
-        if pixx <= f32::from(USER_RECT.x)
-            || pixx >= f32::from(USER_RECT.x) + f32::from(USER_RECT.w) - 1.
-            || pixy <= f32::from(USER_RECT.y)
-            || pixy >= f32::from(USER_RECT.y) + f32::from(USER_RECT.h) - 1.
-        {
-            i += 1.;
-            continue;
-        }
-        putpixel(
-            NE_SCREEN,
-            pixx as c_int,
-            pixy as c_int,
-            color.try_into().unwrap(),
-        );
-        putpixel(
-            NE_SCREEN,
-            pixx as c_int,
-            pixy as c_int - 1,
-            color.try_into().unwrap(),
-        );
-        i += 1.;
     }
 }

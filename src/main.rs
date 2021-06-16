@@ -51,7 +51,7 @@ use ship::ShipData;
 use sound::Sound;
 use structs::{Blast, Bullet, Enemy, Finepoint, Level, Lift, Ship};
 use text::Text;
-use vars::{CONS_DROID_RECT, ME, SHIP_EMPTY_COUNTER};
+use vars::{Vars, CONS_DROID_RECT, ME, SHIP_EMPTY_COUNTER};
 
 use sdl::{
     mouse::ll::{SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE},
@@ -162,6 +162,7 @@ struct Data {
     input: Input,
     menu: Menu,
     global: Global,
+    vars: Vars,
 }
 
 impl Default for Data {
@@ -181,6 +182,7 @@ impl Default for Data {
             input: Default::default(),
             menu: Default::default(),
             global: Default::default(),
+            vars: Default::default(),
         }
     }
 }

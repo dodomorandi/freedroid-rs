@@ -14,7 +14,7 @@ use crate::{
     map::{get_map_brick, is_visible},
     structs::{Enemy, Finepoint, GrobPoint},
     vars::{
-        BANNER_RECT, BLASTMAP, BLOCK_RECT, BULLETMAP, DRUIDMAP, FULL_USER_RECT, LEFT_INFO_RECT,
+        BANNER_RECT, BLASTMAP, BULLETMAP, DRUIDMAP, FULL_USER_RECT, LEFT_INFO_RECT,
         RIGHT_INFO_RECT, USER_RECT,
     },
     Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, DEATH_COUNT, FIRST_DIGIT_RECT, ME,
@@ -155,11 +155,12 @@ impl Data {
                 map_brick = get_map_brick(&*CUR_LEVEL, col.into(), line.into());
                 let user_center = get_user_center();
                 target_rectangle.x = user_center.x
-                    + ((-ME.pos.x + 1.0 * f32::from(col) - 0.5) * f32::from(BLOCK_RECT.w)).round()
-                        as i16;
+                    + ((-ME.pos.x + 1.0 * f32::from(col) - 0.5) * f32::from(self.vars.block_rect.w))
+                        .round() as i16;
                 target_rectangle.y = user_center.y
-                    + ((-ME.pos.y + 1.0 * f32::from(line) - 0.5) * f32::from(BLOCK_RECT.h)).round()
-                        as i16;
+                    + ((-ME.pos.y + 1.0 * f32::from(line) - 0.5)
+                        * f32::from(self.vars.block_rect.h))
+                    .round() as i16;
                 SDL_UpperBlit(
                     MAP_BLOCK_SURFACE_POINTER[usize::try_from((*CUR_LEVEL).color).unwrap()]
                         [usize::from(map_brick)],
@@ -282,14 +283,14 @@ impl Data {
                 .take(MAXBULLETS)
                 .enumerate()
                 .filter(|(_, bullet)| bullet.ty != Status::Out as u8)
-                .for_each(|(index, _)| put_bullet(index as i32));
+                .for_each(|(index, _)| self.put_bullet(index as i32));
 
             ALL_BLASTS
                 .iter()
                 .take(MAXBLASTS)
                 .enumerate()
                 .filter(|(_, blast)| blast.ty != Status::Out as i32)
-                .for_each(|(index, _)| put_blast(index as i32));
+                .for_each(|(index, _)| self.put_blast(index as i32));
         }
 
         // At this point we are done with the drawing procedure
@@ -323,10 +324,10 @@ impl Data {
 
         let user_center = get_user_center();
         let mut dst = Rect::new(
-            (f32::from(user_center.x) + (-ME.pos.x + x) * f32::from(BLOCK_RECT.w)
-                - f32::from(BLOCK_RECT.w / 2)) as i16,
-            (f32::from(user_center.y) + (-ME.pos.y + y) * f32::from(BLOCK_RECT.h)
-                - f32::from(BLOCK_RECT.h / 2)) as i16,
+            (f32::from(user_center.x) + (-ME.pos.x + x) * f32::from(self.vars.block_rect.w)
+                - f32::from(self.vars.block_rect.w / 2)) as i16,
+            (f32::from(user_center.y) + (-ME.pos.y + y) * f32::from(self.vars.block_rect.h)
+                - f32::from(self.vars.block_rect.h / 2)) as i16,
             0,
             0,
         );
@@ -396,10 +397,12 @@ impl Data {
         // now blit the whole construction to screen:
         if x == -1 {
             let user_center = get_user_center();
-            dst.x = (f32::from(user_center.x) + (droid.pos.x - ME.pos.x) * f32::from(BLOCK_RECT.w)
-                - f32::from(BLOCK_RECT.w / 2)) as i16;
-            dst.y = (f32::from(user_center.y) + (droid.pos.y - ME.pos.y) * f32::from(BLOCK_RECT.h)
-                - f32::from(BLOCK_RECT.h / 2)) as i16;
+            dst.x = (f32::from(user_center.x)
+                + (droid.pos.x - ME.pos.x) * f32::from(self.vars.block_rect.w)
+                - f32::from(self.vars.block_rect.w / 2)) as i16;
+            dst.y = (f32::from(user_center.y)
+                + (droid.pos.y - ME.pos.y) * f32::from(self.vars.block_rect.h)
+                - f32::from(self.vars.block_rect.h / 2)) as i16;
         } else {
             dst.x = x.try_into().unwrap();
             dst.y = y.try_into().unwrap();
@@ -421,10 +424,13 @@ impl Data {
                 self.global.font0_b_font,
                 (f32::from(USER_RECT.x)
                     + f32::from(USER_RECT.w / 2)
-                    + f32::from(BLOCK_RECT.w / 3)
-                    + (droid.pos.x - ME.pos.x) * f32::from(BLOCK_RECT.w)) as i32,
-                (f32::from(USER_RECT.y) + f32::from(USER_RECT.h / 2) - f32::from(BLOCK_RECT.h / 2)
-                    + (droid.pos.y - ME.pos.y) * f32::from(BLOCK_RECT.h)) as i32,
+                    + f32::from(self.vars.block_rect.w / 3)
+                    + (droid.pos.x - ME.pos.x) * f32::from(self.vars.block_rect.w))
+                    as i32,
+                (f32::from(USER_RECT.y) + f32::from(USER_RECT.h / 2)
+                    - f32::from(self.vars.block_rect.h / 2)
+                    + (droid.pos.y - ME.pos.y) * f32::from(self.vars.block_rect.h))
+                    as i32,
                 CStr::from_ptr(droid.text_to_be_displayed).to_bytes(),
             );
         }
@@ -438,9 +444,9 @@ impl Data {
     /// for using the influencer as a cursor in the menus.
     pub unsafe fn put_influence(&mut self, x: c_int, y: c_int) {
         let text_rect = Rect::new(
-            USER_RECT.x + (USER_RECT.w / 2) as i16 + (BLOCK_RECT.w / 3) as i16,
-            USER_RECT.y + (USER_RECT.h / 2) as i16 - (BLOCK_RECT.h / 2) as i16,
-            USER_RECT.w / 2 - BLOCK_RECT.w / 3,
+            USER_RECT.x + (USER_RECT.w / 2) as i16 + (self.vars.block_rect.w / 3) as i16,
+            USER_RECT.y + (USER_RECT.h / 2) as i16 - (self.vars.block_rect.h / 2) as i16,
+            USER_RECT.w / 2 - self.vars.block_rect.w / 3,
             USER_RECT.h / 2,
         );
 
@@ -526,8 +532,8 @@ impl Data {
 
         if x == -1 {
             let user_center = get_user_center();
-            dst.x = user_center.x - (BLOCK_RECT.w / 2) as i16;
-            dst.y = user_center.y - (BLOCK_RECT.h / 2) as i16;
+            dst.x = user_center.x - (self.vars.block_rect.w / 2) as i16;
+            dst.y = user_center.y - (self.vars.block_rect.h / 2) as i16;
         } else {
             dst.x = x.try_into().unwrap();
             dst.y = y.try_into().unwrap();
@@ -546,135 +552,136 @@ impl Data {
             self.b_font.current_font = self.global.font0_b_font;
             self.display_text(
                 ME.text_to_be_displayed,
-                i32::from(USER_RECT.x) + i32::from(USER_RECT.w / 2) + i32::from(BLOCK_RECT.w / 3),
-                i32::from(USER_RECT.y) + i32::from(USER_RECT.h / 2) - i32::from(BLOCK_RECT.h / 2),
+                i32::from(USER_RECT.x)
+                    + i32::from(USER_RECT.w / 2)
+                    + i32::from(self.vars.block_rect.w / 3),
+                i32::from(USER_RECT.y) + i32::from(USER_RECT.h / 2)
+                    - i32::from(self.vars.block_rect.h / 2),
                 &text_rect,
             );
         }
 
         trace!("PutInfluence: end of function reached.");
     }
-}
 
-/// PutBullet: draws a Bullet into the combat window.  The only
-/// parameter given is the number of the bullet in the AllBullets
-/// array. Everything else is computed in here.
-pub unsafe fn put_bullet(bullet_number: c_int) {
-    let cur_bullet = &mut ALL_BULLETS[usize::try_from(bullet_number).unwrap()];
+    /// PutBullet: draws a Bullet into the combat window.  The only
+    /// parameter given is the number of the bullet in the AllBullets
+    /// array. Everything else is computed in here.
+    pub unsafe fn put_bullet(&self, bullet_number: c_int) {
+        let cur_bullet = &mut ALL_BULLETS[usize::try_from(bullet_number).unwrap()];
 
-    trace!("PutBullet: real function call confirmed.");
+        trace!("PutBullet: real function call confirmed.");
 
-    //--------------------
-    // in case our bullet is of the type "FLASH", we only
-    // draw a big white or black rectangle right over the
-    // combat window, white for even frames and black for
-    // odd frames.
-    if cur_bullet.ty == BulletKind::Flash as u8 {
-        // Now the whole window will be filled with either white
-        // or black each frame until the flash is over.  (Flash
-        // deletion after some time is done in CheckBulletCollisions.)
-        if cur_bullet.time_in_seconds <= FLASH_DURATION / 4. {
-            fill_rect(USER_RECT, FLASH_LIGHT);
-        } else if cur_bullet.time_in_seconds <= FLASH_DURATION / 2. {
-            fill_rect(USER_RECT, FLASH_DARK);
-        } else if cur_bullet.time_in_seconds <= 3. * FLASH_DURATION / 4. {
-            fill_rect(USER_RECT, FLASH_LIGHT);
-        } else if cur_bullet.time_in_seconds <= FLASH_DURATION {
-            fill_rect(USER_RECT, FLASH_DARK);
+        //--------------------
+        // in case our bullet is of the type "FLASH", we only
+        // draw a big white or black rectangle right over the
+        // combat window, white for even frames and black for
+        // odd frames.
+        if cur_bullet.ty == BulletKind::Flash as u8 {
+            // Now the whole window will be filled with either white
+            // or black each frame until the flash is over.  (Flash
+            // deletion after some time is done in CheckBulletCollisions.)
+            if cur_bullet.time_in_seconds <= FLASH_DURATION / 4. {
+                fill_rect(USER_RECT, FLASH_LIGHT);
+            } else if cur_bullet.time_in_seconds <= FLASH_DURATION / 2. {
+                fill_rect(USER_RECT, FLASH_DARK);
+            } else if cur_bullet.time_in_seconds <= 3. * FLASH_DURATION / 4. {
+                fill_rect(USER_RECT, FLASH_LIGHT);
+            } else if cur_bullet.time_in_seconds <= FLASH_DURATION {
+                fill_rect(USER_RECT, FLASH_DARK);
+            }
+
+            return;
         }
 
-        return;
-    }
+        let bullet = &*BULLETMAP.offset(cur_bullet.ty.try_into().unwrap());
+        let mut phase_of_bullet =
+            (cur_bullet.time_in_seconds * bullet.phase_changes_per_second) as usize;
 
-    let bullet = &*BULLETMAP.offset(cur_bullet.ty.try_into().unwrap());
-    let mut phase_of_bullet =
-        (cur_bullet.time_in_seconds * bullet.phase_changes_per_second) as usize;
+        phase_of_bullet %= usize::try_from(bullet.phases).unwrap();
 
-    phase_of_bullet %= usize::try_from(bullet.phases).unwrap();
+        // DebugPrintf( 0 , "\nPhaseOfBullet: %d.", PhaseOfBullet );
 
-    // DebugPrintf( 0 , "\nPhaseOfBullet: %d.", PhaseOfBullet );
-
-    //--------------------
-    // Maybe it's the first time this bullet is displayed.  But then, the images
-    // of the rotated bullet in all phases are not yet attached to the bullet.
-    // Then, we'll have to generate these
-    //
-    //if ( cur_bullet.time_in_frames == 1 )
-    if cur_bullet.surfaces_were_generated == 0 {
-        for i in 0..usize::try_from(bullet.phases).unwrap() {
-            cur_bullet.surface_pointer[i] = rotozoomSurface(
-                bullet.surface_pointer[i],
-                cur_bullet.angle.into(),
-                1.0,
-                false.into(),
+        //--------------------
+        // Maybe it's the first time this bullet is displayed.  But then, the images
+        // of the rotated bullet in all phases are not yet attached to the bullet.
+        // Then, we'll have to generate these
+        //
+        //if ( cur_bullet.time_in_frames == 1 )
+        if cur_bullet.surfaces_were_generated == 0 {
+            for i in 0..usize::try_from(bullet.phases).unwrap() {
+                cur_bullet.surface_pointer[i] = rotozoomSurface(
+                    bullet.surface_pointer[i],
+                    cur_bullet.angle.into(),
+                    1.0,
+                    false.into(),
+                );
+            }
+            info!(
+                "This was the first time for this bullet, so images were generated... angle={}",
+                cur_bullet.angle
             );
+            cur_bullet.surfaces_were_generated = true.into();
         }
-        info!(
-            "This was the first time for this bullet, so images were generated... angle={}",
-            cur_bullet.angle
+
+        // WARNING!!! PAY ATTENTION HERE!! After the rotozoom was applied to the image, it is NO
+        // LONGER of dimension Block_Rect.w times Block_Rect.h, but of the dimesions of the smallest
+        // rectangle containing the full rotated Block_Rect.h x Block_Rect.w rectangle!!!
+        // This has to be taken into account when calculating the target position for the
+        // blit of these surfaces!!!!
+        let user_center = get_user_center();
+        let mut dst = Rect::new(
+            (f32::from(user_center.x)
+                - (ME.pos.x - cur_bullet.pos.x) * f32::from(self.vars.block_rect.w)
+                - ((*cur_bullet.surface_pointer[phase_of_bullet]).w / 2) as f32) as i16,
+            (f32::from(user_center.y)
+                - (ME.pos.y - cur_bullet.pos.y) * f32::from(self.vars.block_rect.w)
+                - ((*cur_bullet.surface_pointer[phase_of_bullet]).h / 2) as f32) as i16,
+            0,
+            0,
         );
-        cur_bullet.surfaces_were_generated = true.into();
+
+        SDL_UpperBlit(
+            cur_bullet.surface_pointer[phase_of_bullet],
+            null_mut(),
+            NE_SCREEN,
+            &mut dst,
+        );
+
+        trace!("PutBullet: end of function reached.");
     }
 
-    // WARNING!!! PAY ATTENTION HERE!! After the rotozoom was applied to the image, it is NO
-    // LONGER of dimension Block_Rect.w times Block_Rect.h, but of the dimesions of the smallest
-    // rectangle containing the full rotated Block_Rect.h x Block_Rect.w rectangle!!!
-    // This has to be taken into account when calculating the target position for the
-    // blit of these surfaces!!!!
-    let user_center = get_user_center();
-    let mut dst = Rect::new(
-        (f32::from(user_center.x)
-            - (ME.pos.x - cur_bullet.pos.x) * f32::from(BLOCK_RECT.w)
-            - ((*cur_bullet.surface_pointer[phase_of_bullet]).w / 2) as f32) as i16,
-        (f32::from(user_center.y)
-            - (ME.pos.y - cur_bullet.pos.y) * f32::from(BLOCK_RECT.w)
-            - ((*cur_bullet.surface_pointer[phase_of_bullet]).h / 2) as f32) as i16,
-        0,
-        0,
-    );
+    pub unsafe fn put_blast(&self, blast_number: c_int) {
+        trace!("PutBlast: real function call confirmed.");
 
-    SDL_UpperBlit(
-        cur_bullet.surface_pointer[phase_of_bullet],
-        null_mut(),
-        NE_SCREEN,
-        &mut dst,
-    );
+        let cur_blast = &mut ALL_BLASTS[usize::try_from(blast_number).unwrap()];
 
-    trace!("PutBullet: end of function reached.");
-}
+        // If the blast is already long deat, we need not do anything else here
+        if cur_blast.ty == Status::Out as i32 {
+            return;
+        }
 
-pub unsafe fn put_blast(blast_number: c_int) {
-    trace!("PutBlast: real function call confirmed.");
-
-    let cur_blast = &mut ALL_BLASTS[usize::try_from(blast_number).unwrap()];
-
-    // If the blast is already long deat, we need not do anything else here
-    if cur_blast.ty == Status::Out as i32 {
-        return;
+        let user_center = get_user_center();
+        let mut dst = Rect::new(
+            (f32::from(user_center.x)
+                - (ME.pos.x - cur_blast.px) * f32::from(self.vars.block_rect.w)
+                - f32::from(self.vars.block_rect.w / 2)) as i16,
+            (f32::from(user_center.y)
+                - (ME.pos.y - cur_blast.py) * f32::from(self.vars.block_rect.h)
+                - f32::from(self.vars.block_rect.h / 2)) as i16,
+            0,
+            0,
+        );
+        SDL_UpperBlit(
+            BLASTMAP[usize::try_from(cur_blast.ty).unwrap()].surface_pointer
+                [(cur_blast.phase).floor() as usize],
+            null_mut(),
+            NE_SCREEN,
+            &mut dst,
+        );
+        trace!("PutBlast: end of function reached.");
     }
 
-    let user_center = get_user_center();
-    let mut dst = Rect::new(
-        (f32::from(user_center.x)
-            - (ME.pos.x - cur_blast.px) * f32::from(BLOCK_RECT.w)
-            - f32::from(BLOCK_RECT.w / 2)) as i16,
-        (f32::from(user_center.y)
-            - (ME.pos.y - cur_blast.py) * f32::from(BLOCK_RECT.h)
-            - f32::from(BLOCK_RECT.h / 2)) as i16,
-        0,
-        0,
-    );
-    SDL_UpperBlit(
-        BLASTMAP[usize::try_from(cur_blast.ty).unwrap()].surface_pointer
-            [(cur_blast.phase).floor() as usize],
-        null_mut(),
-        NE_SCREEN,
-        &mut dst,
-    );
-    trace!("PutBlast: end of function reached.");
-}
-
-impl Data {
     /// This function updates the top status bar.
     ///
     /// To save framerate on slow machines however it will only work
