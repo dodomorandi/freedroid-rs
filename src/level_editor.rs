@@ -1,14 +1,13 @@
 use crate::{
     b_font::{font_height, print_string_font},
     defs::{
-        get_user_center, AssembleCombatWindowFlags, Cmds, MapTile, MAXWAYPOINTS,
-        MAX_WP_CONNECTIONS, NUM_MAP_BLOCKS,
+        AssembleCombatWindowFlags, Cmds, MapTile, MAXWAYPOINTS, MAX_WP_CONNECTIONS, NUM_MAP_BLOCKS,
     },
     enemy::shuffle_enemys,
-    graphics::{clear_graph_mem, make_grid_on_screen, putpixel, NE_SCREEN},
+    graphics::{clear_graph_mem, putpixel, NE_SCREEN},
     input::SDL_Delay,
     structs::{Level, Waypoint},
-    vars::{FULL_USER_RECT, SCREEN_RECT, USER_RECT},
+    vars::FULL_USER_RECT,
     view::{fill_rect, BLACK},
     Data, CUR_LEVEL, ME,
 };
@@ -46,8 +45,8 @@ impl Data {
 
         let keymap_offset = 15;
 
-        let rect = USER_RECT;
-        USER_RECT = SCREEN_RECT; // level editor can use the full screen!
+        let rect = self.vars.user_rect;
+        self.vars.user_rect = self.vars.screen_rect; // level editor can use the full screen!
         let mut src_wp = null_mut();
 
         while done.not() {
@@ -65,7 +64,7 @@ impl Data {
             let block_x = (ME.pos.x).round() as c_int;
             let block_y = (ME.pos.y).round() as c_int;
 
-            fill_rect(USER_RECT, BLACK);
+            fill_rect(self.vars.user_rect, BLACK);
             self.assemble_combat_picture(AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits().into());
             self.highlight_current_block();
             self.show_waypoints();
@@ -117,7 +116,7 @@ impl Data {
 
             if self.key_is_pressed_r(SDLK_F1.try_into().unwrap()) {
                 let mut k = 3;
-                make_grid_on_screen(None);
+                self.make_grid_on_screen(None);
                 self.centered_put_string(
                     NE_SCREEN,
                     k * font_height(&*self.global.menu_b_font),
@@ -412,7 +411,7 @@ impl Data {
 
         shuffle_enemys(); // now make sure droids get redestributed correctly!
 
-        USER_RECT = rect;
+        self.vars.user_rect = rect;
 
         clear_graph_mem();
     }
@@ -501,66 +500,67 @@ impl Data {
                 ..i32::try_from(3 * self.vars.block_rect.w / 4).unwrap()
             {
                 // This draws a (double) line at the upper border of the current block
-                let mut x = i + i32::from(USER_RECT.x) + i32::from(USER_RECT.w / 2)
-                    - ((ME.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(self.vars.block_rect.w))
-                        as i32;
-                let user_center = get_user_center();
+                let mut x =
+                    i + i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w / 2)
+                        - ((ME.pos.x - f32::from(this_wp.x) + 0.5)
+                            * f32::from(self.vars.block_rect.w)) as i32;
+                let user_center = self.get_user_center();
                 let mut y = i + i32::from(user_center.y)
                     - ((ME.pos.y - f32::from(this_wp.y) + 0.5) * f32::from(self.vars.block_rect.h))
                         as i32;
-                if x < i32::from(USER_RECT.x)
-                    || x > i32::from(USER_RECT.x) + i32::from(USER_RECT.w)
-                    || y < i32::from(USER_RECT.y)
-                    || y > i32::from(USER_RECT.y) + i32::from(USER_RECT.h)
+                if x < i32::from(self.vars.user_rect.x)
+                    || x > i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w)
+                    || y < i32::from(self.vars.user_rect.y)
+                    || y > i32::from(self.vars.user_rect.y) + i32::from(self.vars.user_rect.h)
                 {
                     continue;
                 }
                 putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
 
-                x = i + i32::from(USER_RECT.x) + i32::from(USER_RECT.w / 2)
+                x = i + i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w / 2)
                     - ((ME.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(self.vars.block_rect.w))
                         as i32;
                 y = i + i32::from(user_center.y)
                     - ((ME.pos.y - f32::from(this_wp.y) + 0.5) * f32::from(self.vars.block_rect.h))
                         as i32
                     + 1;
-                if x < i32::from(USER_RECT.x)
-                    || x > i32::from(USER_RECT.x) + i32::from(USER_RECT.w)
-                    || y < i32::from(USER_RECT.y)
-                    || y > i32::from(USER_RECT.y) + i32::from(USER_RECT.h)
+                if x < i32::from(self.vars.user_rect.x)
+                    || x > i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w)
+                    || y < i32::from(self.vars.user_rect.y)
+                    || y > i32::from(self.vars.user_rect.y) + i32::from(self.vars.user_rect.h)
                 {
                     continue;
                 }
                 putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
 
                 // This draws a line at the lower border of the current block
-                x = i + i32::from(USER_RECT.x) + i32::from(USER_RECT.w / 2)
+                x = i + i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w / 2)
                     - ((ME.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(self.vars.block_rect.w))
                         as i32;
                 y = -i + i32::from(user_center.y)
                     - ((ME.pos.y - f32::from(this_wp.y) - 0.5) * f32::from(self.vars.block_rect.h))
                         as i32
                     - 1;
-                if x < i32::from(USER_RECT.x)
-                    || x > i32::from(USER_RECT.x) + i32::from(USER_RECT.w)
-                    || y < i32::from(USER_RECT.y)
-                    || y > i32::from(USER_RECT.y) + i32::from(USER_RECT.h)
+                if x < i32::from(self.vars.user_rect.x)
+                    || x > i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w)
+                    || y < i32::from(self.vars.user_rect.y)
+                    || y > i32::from(self.vars.user_rect.y) + i32::from(self.vars.user_rect.h)
                 {
                     continue;
                 }
                 putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
 
-                x = i + i32::from(USER_RECT.x) + i32::from(USER_RECT.w / 2)
+                x = i + i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w / 2)
                     - ((ME.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(self.vars.block_rect.w))
                         as i32;
                 y = -i + i32::from(user_center.y)
                     - ((ME.pos.y - f32::from(this_wp.y) - 0.5) * f32::from(self.vars.block_rect.h))
                         as i32
                     - 2;
-                if x < i32::from(USER_RECT.x)
-                    || x > i32::from(USER_RECT.x) + i32::from(USER_RECT.w)
-                    || y < i32::from(USER_RECT.y)
-                    || y > i32::from(USER_RECT.y) + i32::from(USER_RECT.h)
+                if x < i32::from(self.vars.user_rect.x)
+                    || x > i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w)
+                    || y < i32::from(self.vars.user_rect.y)
+                    || y > i32::from(self.vars.user_rect.y) + i32::from(self.vars.user_rect.h)
                 {
                     continue;
                 }
@@ -596,13 +596,13 @@ impl Data {
     unsafe fn highlight_current_block(&self) {
         SDL_LockSurface(NE_SCREEN);
 
-        let user_center = get_user_center();
+        let user_center = self.get_user_center();
         for i in 0..i32::from(self.vars.block_rect.w) {
             // This draws a (double) line at the upper border of the current block
             putpixel(
                 NE_SCREEN,
-                i + i32::from(USER_RECT.x)
-                    + i32::from(USER_RECT.w / 2)
+                i + i32::from(self.vars.user_rect.x)
+                    + i32::from(self.vars.user_rect.w / 2)
                     + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(self.vars.block_rect.w))
                         as i32,
                 i32::from(user_center.y)
@@ -612,8 +612,8 @@ impl Data {
             );
             putpixel(
                 NE_SCREEN,
-                i + i32::from(USER_RECT.x)
-                    + i32::from(USER_RECT.w / 2)
+                i + i32::from(self.vars.user_rect.x)
+                    + i32::from(self.vars.user_rect.w / 2)
                     + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(self.vars.block_rect.w))
                         as i32,
                 i32::from(user_center.y)
@@ -626,8 +626,8 @@ impl Data {
             // This draws a line at the lower border of the current block
             putpixel(
                 NE_SCREEN,
-                i + i32::from(USER_RECT.x)
-                    + i32::from(USER_RECT.w / 2)
+                i + i32::from(self.vars.user_rect.x)
+                    + i32::from(self.vars.user_rect.w / 2)
                     + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(self.vars.block_rect.w))
                         as i32,
                 i32::from(user_center.y)
@@ -638,8 +638,8 @@ impl Data {
             );
             putpixel(
                 NE_SCREEN,
-                i + i32::from(USER_RECT.x)
-                    + i32::from(USER_RECT.w / 2)
+                i + i32::from(self.vars.user_rect.x)
+                    + i32::from(self.vars.user_rect.w / 2)
                     + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(self.vars.block_rect.w))
                         as i32,
                 i32::from(user_center.y)
@@ -652,8 +652,8 @@ impl Data {
             // This draws a line at the left border of the current block
             putpixel(
                 NE_SCREEN,
-                i32::from(USER_RECT.x)
-                    + i32::from(USER_RECT.w / 2)
+                i32::from(self.vars.user_rect.x)
+                    + i32::from(self.vars.user_rect.w / 2)
                     + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(self.vars.block_rect.w))
                         as i32,
                 i32::from(user_center.y)
@@ -664,8 +664,8 @@ impl Data {
             );
             putpixel(
                 NE_SCREEN,
-                1 + i32::from(USER_RECT.x)
-                    + i32::from(USER_RECT.w / 2)
+                1 + i32::from(self.vars.user_rect.x)
+                    + i32::from(self.vars.user_rect.w / 2)
                     + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(self.vars.block_rect.w))
                         as i32,
                 i32::from(user_center.y)
@@ -678,8 +678,8 @@ impl Data {
             // This draws a line at the right border of the current block
             putpixel(
                 NE_SCREEN,
-                -1 + i32::from(USER_RECT.x)
-                    + i32::from(USER_RECT.w / 2)
+                -1 + i32::from(self.vars.user_rect.x)
+                    + i32::from(self.vars.user_rect.w / 2)
                     + (((ME.pos.x).round() - ME.pos.x + 0.5) * f32::from(self.vars.block_rect.w))
                         as i32,
                 i32::from(user_center.y)
@@ -690,8 +690,8 @@ impl Data {
             );
             putpixel(
                 NE_SCREEN,
-                -2 + i32::from(USER_RECT.x)
-                    + i32::from(USER_RECT.w / 2)
+                -2 + i32::from(self.vars.user_rect.x)
+                    + i32::from(self.vars.user_rect.w / 2)
                     + (((ME.pos.x).round() - ME.pos.x + 0.5) * f32::from(self.vars.block_rect.w))
                         as i32,
                 i32::from(user_center.y)

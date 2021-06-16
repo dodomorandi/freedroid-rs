@@ -1,9 +1,9 @@
 use crate::{
     b_font::{font_height, print_string_font, put_string_font},
     defs::{
-        get_user_center, AssembleCombatWindowFlags, BulletKind, DisplayBannerFlags, Status,
-        BLINKENERGY, CRY_SOUND_INTERVAL, FLASH_DURATION, LEFT_TEXT_LEN, MAXBLASTS, MAXBULLETS,
-        RIGHT_TEXT_LEN, TRANSFER_SOUND_INTERVAL,
+        AssembleCombatWindowFlags, BulletKind, DisplayBannerFlags, Status, BLINKENERGY,
+        CRY_SOUND_INTERVAL, FLASH_DURATION, LEFT_TEXT_LEN, MAXBLASTS, MAXBULLETS, RIGHT_TEXT_LEN,
+        TRANSFER_SOUND_INTERVAL,
     },
     global::INFLUENCE_MODE_NAMES,
     graphics::{
@@ -14,8 +14,7 @@ use crate::{
     map::{get_map_brick, is_visible},
     structs::{Enemy, Finepoint, GrobPoint},
     vars::{
-        BANNER_RECT, BLASTMAP, BULLETMAP, DRUIDMAP, FULL_USER_RECT, LEFT_INFO_RECT,
-        RIGHT_INFO_RECT, USER_RECT,
+        BANNER_RECT, BLASTMAP, BULLETMAP, DRUIDMAP, FULL_USER_RECT, LEFT_INFO_RECT, RIGHT_INFO_RECT,
     },
     Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, DEATH_COUNT, FIRST_DIGIT_RECT, ME,
     NUMBER_OF_DROID_TYPES, SECOND_DIGIT_RECT, SHOW_ALL_DROIDS, SHOW_SCORE, THIRD_DIGIT_RECT,
@@ -99,10 +98,10 @@ impl Data {
 
         trace!("\nvoid Assemble_Combat_Picture(...): Real function call confirmed.");
 
-        SDL_SetClipRect(NE_SCREEN, &USER_RECT);
+        SDL_SetClipRect(NE_SCREEN, &self.vars.user_rect);
 
         if self.global.game_config.all_map_visible == 0 {
-            fill_rect(USER_RECT, BLACK);
+            fill_rect(self.vars.user_rect, BLACK);
         }
 
         let (upleft, downright) =
@@ -153,7 +152,7 @@ impl Data {
                 }
 
                 map_brick = get_map_brick(&*CUR_LEVEL, col.into(), line.into());
-                let user_center = get_user_center();
+                let user_center = self.get_user_center();
                 target_rectangle.x = user_center.x
                     + ((-ME.pos.x + 1.0 * f32::from(col) - 0.5) * f32::from(self.vars.block_rect.w))
                         .round() as i16;
@@ -252,7 +251,7 @@ impl Data {
                 );
             }
 
-            SDL_SetClipRect(NE_SCREEN, &USER_RECT);
+            SDL_SetClipRect(NE_SCREEN, &self.vars.user_rect);
 
             // make sure Ashes are displayed _before_ droids, so that they are _under_ them!
             for enemy in &mut ALL_ENEMYS {
@@ -299,10 +298,10 @@ impl Data {
         if mask & AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits() as i32 != 0 {
             SDL_UpdateRect(
                 NE_SCREEN,
-                USER_RECT.x.into(),
-                USER_RECT.y.into(),
-                USER_RECT.w.into(),
-                USER_RECT.h.into(),
+                self.vars.user_rect.x.into(),
+                self.vars.user_rect.y.into(),
+                self.vars.user_rect.w.into(),
+                self.vars.user_rect.h.into(),
             );
             SDL_UpdateRect(
                 NE_SCREEN,
@@ -322,7 +321,7 @@ impl Data {
             return;
         }
 
-        let user_center = get_user_center();
+        let user_center = self.get_user_center();
         let mut dst = Rect::new(
             (f32::from(user_center.x) + (-ME.pos.x + x) * f32::from(self.vars.block_rect.w)
                 - f32::from(self.vars.block_rect.w / 2)) as i16,
@@ -396,7 +395,7 @@ impl Data {
 
         // now blit the whole construction to screen:
         if x == -1 {
-            let user_center = get_user_center();
+            let user_center = self.get_user_center();
             dst.x = (f32::from(user_center.x)
                 + (droid.pos.x - ME.pos.x) * f32::from(self.vars.block_rect.w)
                 - f32::from(self.vars.block_rect.w / 2)) as i16;
@@ -422,12 +421,12 @@ impl Data {
             put_string_font(
                 NE_SCREEN,
                 self.global.font0_b_font,
-                (f32::from(USER_RECT.x)
-                    + f32::from(USER_RECT.w / 2)
+                (f32::from(self.vars.user_rect.x)
+                    + f32::from(self.vars.user_rect.w / 2)
                     + f32::from(self.vars.block_rect.w / 3)
                     + (droid.pos.x - ME.pos.x) * f32::from(self.vars.block_rect.w))
                     as i32,
-                (f32::from(USER_RECT.y) + f32::from(USER_RECT.h / 2)
+                (f32::from(self.vars.user_rect.y) + f32::from(self.vars.user_rect.h / 2)
                     - f32::from(self.vars.block_rect.h / 2)
                     + (droid.pos.y - ME.pos.y) * f32::from(self.vars.block_rect.h))
                     as i32,
@@ -444,10 +443,13 @@ impl Data {
     /// for using the influencer as a cursor in the menus.
     pub unsafe fn put_influence(&mut self, x: c_int, y: c_int) {
         let text_rect = Rect::new(
-            USER_RECT.x + (USER_RECT.w / 2) as i16 + (self.vars.block_rect.w / 3) as i16,
-            USER_RECT.y + (USER_RECT.h / 2) as i16 - (self.vars.block_rect.h / 2) as i16,
-            USER_RECT.w / 2 - self.vars.block_rect.w / 3,
-            USER_RECT.h / 2,
+            self.vars.user_rect.x
+                + (self.vars.user_rect.w / 2) as i16
+                + (self.vars.block_rect.w / 3) as i16,
+            self.vars.user_rect.y + (self.vars.user_rect.h / 2) as i16
+                - (self.vars.block_rect.h / 2) as i16,
+            self.vars.user_rect.w / 2 - self.vars.block_rect.w / 3,
+            self.vars.user_rect.h / 2,
         );
 
         trace!("PutInfluence real function call confirmed.");
@@ -531,7 +533,7 @@ impl Data {
         }
 
         if x == -1 {
-            let user_center = get_user_center();
+            let user_center = self.get_user_center();
             dst.x = user_center.x - (self.vars.block_rect.w / 2) as i16;
             dst.y = user_center.y - (self.vars.block_rect.h / 2) as i16;
         } else {
@@ -552,10 +554,10 @@ impl Data {
             self.b_font.current_font = self.global.font0_b_font;
             self.display_text(
                 ME.text_to_be_displayed,
-                i32::from(USER_RECT.x)
-                    + i32::from(USER_RECT.w / 2)
+                i32::from(self.vars.user_rect.x)
+                    + i32::from(self.vars.user_rect.w / 2)
                     + i32::from(self.vars.block_rect.w / 3),
-                i32::from(USER_RECT.y) + i32::from(USER_RECT.h / 2)
+                i32::from(self.vars.user_rect.y) + i32::from(self.vars.user_rect.h / 2)
                     - i32::from(self.vars.block_rect.h / 2),
                 &text_rect,
             );
@@ -582,13 +584,13 @@ impl Data {
             // or black each frame until the flash is over.  (Flash
             // deletion after some time is done in CheckBulletCollisions.)
             if cur_bullet.time_in_seconds <= FLASH_DURATION / 4. {
-                fill_rect(USER_RECT, FLASH_LIGHT);
+                fill_rect(self.vars.user_rect, FLASH_LIGHT);
             } else if cur_bullet.time_in_seconds <= FLASH_DURATION / 2. {
-                fill_rect(USER_RECT, FLASH_DARK);
+                fill_rect(self.vars.user_rect, FLASH_DARK);
             } else if cur_bullet.time_in_seconds <= 3. * FLASH_DURATION / 4. {
-                fill_rect(USER_RECT, FLASH_LIGHT);
+                fill_rect(self.vars.user_rect, FLASH_LIGHT);
             } else if cur_bullet.time_in_seconds <= FLASH_DURATION {
-                fill_rect(USER_RECT, FLASH_DARK);
+                fill_rect(self.vars.user_rect, FLASH_DARK);
             }
 
             return;
@@ -629,7 +631,7 @@ impl Data {
         // rectangle containing the full rotated Block_Rect.h x Block_Rect.w rectangle!!!
         // This has to be taken into account when calculating the target position for the
         // blit of these surfaces!!!!
-        let user_center = get_user_center();
+        let user_center = self.get_user_center();
         let mut dst = Rect::new(
             (f32::from(user_center.x)
                 - (ME.pos.x - cur_bullet.pos.x) * f32::from(self.vars.block_rect.w)
@@ -661,7 +663,7 @@ impl Data {
             return;
         }
 
-        let user_center = get_user_center();
+        let user_center = self.get_user_center();
         let mut dst = Rect::new(
             (f32::from(user_center.x)
                 - (ME.pos.x - cur_blast.px) * f32::from(self.vars.block_rect.w)

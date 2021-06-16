@@ -9,12 +9,16 @@ use std::{ffi::CStr, fmt, os::raw::c_int, ptr::null_mut};
 
 pub struct Vars {
     pub block_rect: Rect,
+    pub screen_rect: Rect,
+    pub user_rect: Rect,
 }
 
 impl Default for Vars {
     fn default() -> Self {
         Self {
             block_rect: rect! {0, 0, 64, 64},
+            screen_rect: rect! {0, 0, 640, 480},
+            user_rect: rect! {0, 0, 0, 0},
         }
     }
 }
@@ -41,16 +45,18 @@ impl fmt::Debug for Vars {
         }
 
         let block_rect = Rect::from(&self.block_rect);
+        let screen_rect = Rect::from(&self.screen_rect);
+        let user_rect = Rect::from(&self.user_rect);
 
         f.debug_struct("Vars")
             .field("block_rect", &block_rect)
+            .field("screen_rect", &screen_rect)
+            .field("user_rect", &user_rect)
             .finish()
     }
 }
 
 pub const ORIG_BLOCK_RECT: Rect = rect! {0, 0, 64, 64}; // not to be rescaled ever!!
-pub static mut SCREEN_RECT: Rect = rect! {0, 0, 640, 480};
-pub static mut USER_RECT: Rect = rect! {0, 0, 0, 0};
 pub static mut CLASSIC_USER_RECT: Rect = rect! {32, 150, 9*64, 4*64};
 pub static mut FULL_USER_RECT: Rect = rect! {0, 64, 640, 480 - 64};
 pub static mut BANNER_RECT: Rect = rect! {0, 0, 640, 64 };

@@ -1,6 +1,6 @@
 #[cfg(feature = "gcw0")]
 use crate::input::{key_is_pressed, key_is_pressed_r};
-use crate::{structs::Point, vars::USER_RECT, Data};
+use crate::{structs::Point, Data};
 
 use bitflags::bitflags;
 use cstr::cstr;
@@ -24,14 +24,16 @@ pub const FREE_ONLY: usize = 0x08;
 pub const DROID_ROTATION_TIME: f32 = 3.0;
 pub const NUM_DECAL_PICS: usize = 2;
 
-#[inline]
-pub unsafe fn get_user_center() -> Rect {
-    let Rect { x, y, w, h } = USER_RECT;
-    Rect {
-        x: x + (w / 2) as i16,
-        y: y + (h / 2) as i16,
-        w,
-        h,
+impl Data {
+    #[inline]
+    pub fn get_user_center(&self) -> Rect {
+        let Rect { x, y, w, h } = self.vars.user_rect;
+        Rect {
+            x: x + (w / 2) as i16,
+            y: y + (h / 2) as i16,
+            w,
+            h,
+        }
     }
 }
 

@@ -6,7 +6,7 @@ use crate::{
     graphics::{clear_graph_mem, NE_SCREEN, TAKEOVER_BG_PIC},
     misc::my_random,
     structs::Point,
-    vars::{CLASSIC_USER_RECT, CONS_DROID_RECT, DRUIDMAP, ME, USER_RECT},
+    vars::{CLASSIC_USER_RECT, CONS_DROID_RECT, DRUIDMAP, ME},
     view::fill_rect,
     Data, ALL_ENEMYS, DEATH_COUNT, INVINCIBLE_MODE, PRE_TAKE_ENERGY, REAL_SCORE,
 };
@@ -955,7 +955,12 @@ impl Data {
 
         SDL_SetClipRect(NE_SCREEN, null_mut());
 
-        SDL_UpperBlit(TAKEOVER_BG_PIC, &mut USER_RECT, NE_SCREEN, &mut USER_RECT);
+        SDL_UpperBlit(
+            TAKEOVER_BG_PIC,
+            &mut self.vars.user_rect,
+            NE_SCREEN,
+            &mut self.vars.user_rect,
+        );
 
         self.put_influence(
             i32::from(xoffs) + DROID_STARTS[your_color].x,
@@ -973,8 +978,8 @@ impl Data {
         let mut dst = Rect::new(
             xoffs + i16::try_from(LEFT_GROUND_START.x).unwrap(),
             yoffs + i16::try_from(LEFT_GROUND_START.y).unwrap(),
-            USER_RECT.w,
-            USER_RECT.h,
+            self.vars.user_rect.w,
+            self.vars.user_rect.h,
         );
 
         let mut to_ground_blocks = TO_GROUND_BLOCKS.lock().unwrap();
@@ -1424,8 +1429,8 @@ impl Data {
         self.activate_conservative_frame_computation();
 
         // Takeover game always uses Classic User_Rect:
-        let buf = USER_RECT;
-        USER_RECT = CLASSIC_USER_RECT;
+        let buf = self.vars.user_rect;
+        self.vars.user_rect = CLASSIC_USER_RECT;
 
         self.display_banner(
             null_mut(),
@@ -1439,7 +1444,7 @@ impl Data {
             b: 130,
             unused: 0,
         };
-        fill_rect(USER_RECT, BG_COLOR);
+        fill_rect(self.vars.user_rect, BG_COLOR);
 
         ME.status = Status::Mobile as i32; /* the new status _after_ the takeover game */
 
@@ -1594,7 +1599,7 @@ impl Data {
         }
 
         // restore User_Rect
-        USER_RECT = buf;
+        self.vars.user_rect = buf;
 
         clear_graph_mem();
 

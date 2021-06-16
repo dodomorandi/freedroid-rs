@@ -4,8 +4,8 @@ use crate::{
         self, Criticality, DisplayBannerFlags, Status, Themed, DATE_LEN, GRAPHICS_DIR_C,
         HS_BACKGROUND_FILE_C, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
     },
-    graphics::{make_grid_on_screen, NE_SCREEN, PIC999},
-    vars::{FULL_USER_RECT, ME, PORTRAIT_RECT, SCREEN_RECT, USER_RECT},
+    graphics::{NE_SCREEN, PIC999},
+    vars::{FULL_USER_RECT, ME, PORTRAIT_RECT},
     Data, CONFIG_DIR, REAL_SCORE, SHOW_SCORE,
 };
 
@@ -193,11 +193,11 @@ impl Data {
         let prev_font =
             std::mem::replace(&mut self.b_font.current_font, self.global.highscore_b_font);
 
-        let user_center_x: i16 = USER_RECT.x + (USER_RECT.w / 2) as i16;
-        let user_center_y: i16 = USER_RECT.y + (USER_RECT.h / 2) as i16;
+        let user_center_x: i16 = self.vars.user_rect.x + (self.vars.user_rect.w / 2) as i16;
+        let user_center_y: i16 = self.vars.user_rect.y + (self.vars.user_rect.h / 2) as i16;
 
         self.assemble_combat_picture(0);
-        make_grid_on_screen(Some(&USER_RECT));
+        self.make_grid_on_screen(Some(&self.vars.user_rect));
         let mut dst = SDL_Rect::new(
             user_center_x - (PORTRAIT_RECT.w / 2) as i16,
             user_center_y - (PORTRAIT_RECT.h / 2) as i16,
@@ -210,7 +210,7 @@ impl Data {
             cstr!("Great Score !").as_ptr(),
             i32::from(dst.x) - h,
             i32::from(dst.y) - h,
-            &USER_RECT,
+            &self.vars.user_rect,
         );
 
         // TODO ARCADEINPUT
@@ -219,7 +219,7 @@ impl Data {
             cstr!("Enter your name: ").as_ptr(),
             i32::from(dst.x) - 5 * h,
             i32::from(dst.y) + i32::from(dst.h),
-            &USER_RECT,
+            &self.vars.user_rect,
         );
 
         #[cfg(target_os = "android")]
@@ -293,7 +293,7 @@ impl Data {
         if fpath.is_null().not() {
             self.display_image(fpath);
         }
-        make_grid_on_screen(Some(&SCREEN_RECT));
+        self.make_grid_on_screen(Some(&self.vars.screen_rect));
         self.display_banner(
             null_mut(),
             null_mut(),
@@ -305,7 +305,7 @@ impl Data {
 
         let len = char_width(&*self.b_font.current_font, b'9');
 
-        let x0 = i32::from(SCREEN_RECT.w) / 8;
+        let x0 = i32::from(self.vars.screen_rect.w) / 8;
         let x1 = x0 + 2 * len;
         let x2 = x1 + 11 * len;
         let x3 = x2 + i32::try_from(MAX_NAME_LEN).unwrap() * len;

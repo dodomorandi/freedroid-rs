@@ -7,20 +7,17 @@ use crate::{
 use crate::{
     b_font::{char_width, font_height, print_string_font},
     defs::{
-        get_user_center, AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags, Droid,
-        MapTile, MenuAction, Status, Themed, BYCOLOR, CREDITS_PIC_FILE_C, GRAPHICS_DIR_C,
-        MAX_MAP_COLS, MAX_MAP_ROWS,
+        AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags, Droid, MapTile,
+        MenuAction, Status, Themed, BYCOLOR, CREDITS_PIC_FILE_C, GRAPHICS_DIR_C, MAX_MAP_COLS,
+        MAX_MAP_ROWS,
     },
     global::INFLUENCE_MODE_NAMES,
-    graphics::{
-        clear_graph_mem, make_grid_on_screen, ALL_THEMES, BANNER_IS_DESTROYED, CLASSIC_THEME_INDEX,
-        NE_SCREEN,
-    },
+    graphics::{clear_graph_mem, ALL_THEMES, BANNER_IS_DESTROYED, CLASSIC_THEME_INDEX, NE_SCREEN},
     input::{SDL_Delay, CMD_STRINGS},
     map::COLOR_NAMES,
     misc::{armageddon, dealloc_c_string},
     sound::set_bg_music_volume,
-    vars::{CLASSIC_USER_RECT, DRUIDMAP, FULL_USER_RECT, ME, MENU_RECT, SCREEN_RECT, USER_RECT},
+    vars::{CLASSIC_USER_RECT, DRUIDMAP, FULL_USER_RECT, ME, MENU_RECT},
     Data, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, INVINCIBLE_MODE, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
     SHOW_ALL_DROIDS, SOUND_ON, STOP_INFLUENCER,
 };
@@ -241,8 +238,10 @@ impl Data {
         const QUIT_STRING: &[u8] = b"Hit 'y' or press Fire to quit";
 
         let text_width = self.text_width(QUIT_STRING);
-        let text_x = i32::from(USER_RECT.x) + (i32::from(USER_RECT.w) - text_width) / 2;
-        let text_y = i32::from(USER_RECT.y) + (i32::from(USER_RECT.h) - self.menu.font_height) / 2;
+        let text_x =
+            i32::from(self.vars.user_rect.x) + (i32::from(self.vars.user_rect.w) - text_width) / 2;
+        let text_y = i32::from(self.vars.user_rect.y)
+            + (i32::from(self.vars.user_rect.h) - self.menu.font_height) / 2;
         self.put_string(NE_SCREEN, text_x, text_y, QUIT_STRING);
         SDL_Flip(NE_SCREEN);
 
@@ -309,7 +308,7 @@ impl Data {
         }
 
         SDL_SetClipRect(NE_SCREEN, null_mut());
-        make_grid_on_screen(None);
+        self.make_grid_on_screen(None);
 
         if !self.menu.menu_background.is_null() {
             SDL_FreeSurface(self.menu.menu_background);
@@ -1284,12 +1283,12 @@ impl Data {
     }
 
     pub unsafe fn show_credits(&mut self) {
-        let col2 = 2 * i32::from(USER_RECT.w) / 3;
+        let col2 = 2 * i32::from(self.vars.user_rect.w) / 3;
 
         let h = font_height(&*self.global.menu_b_font);
         let em = char_width(&*self.global.menu_b_font, b'm');
 
-        let screen = SCREEN_RECT;
+        let screen = self.vars.screen_rect;
         SDL_SetClipRect(NE_SCREEN, null_mut());
         let image = self.find_file(
             CREDITS_PIC_FILE_C.as_ptr() as *mut c_char,
@@ -1298,13 +1297,13 @@ impl Data {
             Criticality::Critical as i32,
         );
         self.display_image(image);
-        make_grid_on_screen(Some(&screen));
+        self.make_grid_on_screen(Some(&screen));
 
         let oldfont = std::mem::replace(&mut self.b_font.current_font, self.global.font1_b_font);
 
         self.printf_sdl(
             NE_SCREEN,
-            i32::from(get_user_center().x) - 2 * em,
+            i32::from(self.get_user_center().x) - 2 * em,
             h,
             format_args!("CREDITS\n"),
         );
@@ -1608,7 +1607,7 @@ impl Data {
 
             // set window type
             self.global.game_config.full_user_rect = false.into();
-            USER_RECT = CLASSIC_USER_RECT;
+            self.vars.user_rect = CLASSIC_USER_RECT;
             // set theme
             self.set_theme(CLASSIC_THEME_INDEX);
             self.initiate_menu(false);
@@ -1631,9 +1630,9 @@ impl Data {
             let toggle = &mut self.global.game_config.full_user_rect as *mut i32;
             self.flip_toggle(toggle);
             if self.global.game_config.full_user_rect != 0 {
-                USER_RECT = FULL_USER_RECT;
+                self.vars.user_rect = FULL_USER_RECT;
             } else {
-                USER_RECT = CLASSIC_USER_RECT;
+                self.vars.user_rect = CLASSIC_USER_RECT;
             }
 
             self.initiate_menu(false);

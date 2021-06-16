@@ -1,14 +1,14 @@
 use crate::{
     b_font::{put_pixel, BFontInfo},
     defs::{
-        self, free_if_unused, get_user_center, scale_point, scale_rect, Cmds, Criticality,
-        DisplayBannerFlags, Droid, SoundType, Themed, BANNER_BLOCK_FILE_C, BLAST_BLOCK_FILE_C,
-        BULLET_BLOCK_FILE_C, CONSOLE_BG_PIC1_FILE_C, CONSOLE_BG_PIC2_FILE_C, CONSOLE_PIC_FILE_C,
-        DIGITNUMBER, DIGIT_BLOCK_FILE_C, DROID_BLOCK_FILE_C, ENEMYPHASES, FONT0_FILE, FONT0_FILE_C,
-        FONT1_FILE, FONT1_FILE_C, FONT2_FILE, FONT2_FILE_C, FREE_ONLY, GRAPHICS_DIR_C, ICON_FILE,
-        ICON_FILE_C, INIT_ONLY, MAP_BLOCK_FILE_C, MAXBULLETS, MAX_THEMES, NUM_COLORS,
-        NUM_DECAL_PICS, NUM_MAP_BLOCKS, PARA_FONT_FILE, PARA_FONT_FILE_C, SHIP_OFF_PIC_FILE_C,
-        SHIP_ON_PIC_FILE_C, TAKEOVER_BG_PIC_FILE_C,
+        self, free_if_unused, scale_point, scale_rect, Cmds, Criticality, DisplayBannerFlags,
+        Droid, SoundType, Themed, BANNER_BLOCK_FILE_C, BLAST_BLOCK_FILE_C, BULLET_BLOCK_FILE_C,
+        CONSOLE_BG_PIC1_FILE_C, CONSOLE_BG_PIC2_FILE_C, CONSOLE_PIC_FILE_C, DIGITNUMBER,
+        DIGIT_BLOCK_FILE_C, DROID_BLOCK_FILE_C, ENEMYPHASES, FONT0_FILE, FONT0_FILE_C, FONT1_FILE,
+        FONT1_FILE_C, FONT2_FILE, FONT2_FILE_C, FREE_ONLY, GRAPHICS_DIR_C, ICON_FILE, ICON_FILE_C,
+        INIT_ONLY, MAP_BLOCK_FILE_C, MAXBULLETS, MAX_THEMES, NUM_COLORS, NUM_DECAL_PICS,
+        NUM_MAP_BLOCKS, PARA_FONT_FILE, PARA_FONT_FILE_C, SHIP_OFF_PIC_FILE_C, SHIP_ON_PIC_FILE_C,
+        TAKEOVER_BG_PIC_FILE_C,
     },
     input::SDL_Delay,
     misc::{read_value_from_string, update_progress},
@@ -24,7 +24,7 @@ use crate::{
         BANNER_RECT, BLASTMAP, BULLETMAP, CLASSIC_USER_RECT, CONS_DROID_RECT, CONS_HEADER_RECT,
         CONS_MENU_ITEM_RECT, CONS_MENU_RECT, CONS_MENU_RECTS, CONS_TEXT_RECT, DIGIT_RECT, DRUIDMAP,
         FULL_USER_RECT, LEFT_INFO_RECT, ME, MENU_RECT, OPTIONS_MENU_RECT, ORIG_BLOCK_RECT,
-        ORIG_DIGIT_RECT, PORTRAIT_RECT, RIGHT_INFO_RECT, SCREEN_RECT, USER_RECT,
+        ORIG_DIGIT_RECT, PORTRAIT_RECT, RIGHT_INFO_RECT,
     },
     Data, ALL_BULLETS, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
 };
@@ -125,24 +125,26 @@ extern "C" {
     pub fn SDL_RWFromMem(mem: *mut c_void, size: c_int) -> *mut SDL_RWops;
 }
 
-/// This function draws a "grid" on the screen, that means every
-/// "second" pixel is blacked out, thereby generation a fading
-/// effect.  This function was created to fade the background of the
-/// Escape menu and its submenus.
-pub unsafe fn make_grid_on_screen(grid_rectangle: Option<&SDL_Rect>) {
-    let grid_rectangle = grid_rectangle.unwrap_or(&USER_RECT);
+impl Data {
+    /// This function draws a "grid" on the screen, that means every
+    /// "second" pixel is blacked out, thereby generation a fading
+    /// effect.  This function was created to fade the background of the
+    /// Escape menu and its submenus.
+    pub unsafe fn make_grid_on_screen(&self, grid_rectangle: Option<&SDL_Rect>) {
+        let grid_rectangle = grid_rectangle.unwrap_or(&self.vars.user_rect);
 
-    trace!("MakeGridOnScreen(...): real function call confirmed.");
-    SDL_LockSurface(NE_SCREEN);
-    let rect_x = i32::from(grid_rectangle.x);
-    let rect_y = i32::from(grid_rectangle.y);
-    (rect_y..(rect_y + i32::from(grid_rectangle.y)))
-        .flat_map(|y| (rect_x..(rect_x + i32::from(grid_rectangle.w))).map(move |x| (x, y)))
-        .filter(|(x, y)| (x + y) % 2 == 0)
-        .for_each(|(x, y)| putpixel(NE_SCREEN, x, y, 0));
+        trace!("MakeGridOnScreen(...): real function call confirmed.");
+        SDL_LockSurface(NE_SCREEN);
+        let rect_x = i32::from(grid_rectangle.x);
+        let rect_y = i32::from(grid_rectangle.y);
+        (rect_y..(rect_y + i32::from(grid_rectangle.y)))
+            .flat_map(|y| (rect_x..(rect_x + i32::from(grid_rectangle.w))).map(move |x| (x, y)))
+            .filter(|(x, y)| (x + y) % 2 == 0)
+            .for_each(|(x, y)| putpixel(NE_SCREEN, x, y, 0));
 
-    SDL_UnlockSurface(NE_SCREEN);
-    trace!("MakeGridOnScreen(...): end of function reached.");
+        SDL_UnlockSurface(NE_SCREEN);
+        trace!("MakeGridOnScreen(...): end of function reached.");
+    }
 }
 
 pub unsafe fn apply_filter(
@@ -190,11 +192,16 @@ impl Data {
             vid_flags |= VideoFlag::Fullscreen as u32;
         }
 
-        NE_SCREEN = SDL_SetVideoMode(SCREEN_RECT.w.into(), SCREEN_RECT.h.into(), 0, vid_flags);
+        NE_SCREEN = SDL_SetVideoMode(
+            self.vars.screen_rect.w.into(),
+            self.vars.screen_rect.h.into(),
+            0,
+            vid_flags,
+        );
         if NE_SCREEN.is_null() {
             error!(
                 "unable to toggle windowed/fullscreen {} x {} video mode.",
-                SCREEN_RECT.w, SCREEN_RECT.h,
+                self.vars.screen_rect.w, self.vars.screen_rect.h,
             );
             panic!("SDL-Error: {}", get_error());
         }
@@ -205,9 +212,7 @@ impl Data {
             self.global.game_config.use_fullscreen = !self.global.game_config.use_fullscreen;
         }
     }
-}
 
-impl Data {
     /// This function saves a screenshot to disk.
     ///
     /// The screenshots are names "Screenshot_XX.bmp" where XX is a
@@ -238,7 +243,7 @@ impl Data {
                 .bits()
                 .into(),
         );
-        make_grid_on_screen(None);
+        self.make_grid_on_screen(None);
         SDL_Flip(NE_SCREEN);
         self.play_sound(SoundType::Screenshot as i32);
 
@@ -487,7 +492,7 @@ impl Data {
         }
 
         scale!(self.vars.block_rect);
-        scale!(USER_RECT);
+        scale!(self.vars.user_rect);
         scale!(CLASSIC_USER_RECT);
         scale!(FULL_USER_RECT);
         scale!(BANNER_RECT);
@@ -1018,12 +1023,17 @@ impl Data {
             }
         }
 
-        NE_SCREEN = SDL_SetVideoMode(SCREEN_RECT.w.into(), SCREEN_RECT.h.into(), 0, vid_flags);
+        NE_SCREEN = SDL_SetVideoMode(
+            self.vars.screen_rect.w.into(),
+            self.vars.screen_rect.h.into(),
+            0,
+            vid_flags,
+        );
         if NE_SCREEN.is_null() {
             error!(
                 "Couldn't set {} x {} video mode. SDL: {}",
-                SCREEN_RECT.w,
-                SCREEN_RECT.h,
+                self.vars.screen_rect.w,
+                self.vars.screen_rect.h,
                 get_error(),
             );
             std::process::exit(-1);
@@ -1838,16 +1848,18 @@ impl Data {
             let mut i = 0.;
             let max = (y2 - y1) * f32::from(self.vars.block_rect.w);
             while i < max {
-                let pixx = f32::from(USER_RECT.x) + f32::from(USER_RECT.w / 2)
+                let pixx = f32::from(self.vars.user_rect.x) + f32::from(self.vars.user_rect.w / 2)
                     - f32::from(self.vars.block_rect.w) * (ME.pos.x - x1);
-                let user_center = get_user_center();
+                let user_center = self.get_user_center();
                 let pixy = f32::from(user_center.y)
                     - f32::from(self.vars.block_rect.h) * (ME.pos.y - y1)
                     + i;
-                if pixx <= USER_RECT.x.into()
-                    || pixx >= f32::from(USER_RECT.x) + f32::from(USER_RECT.w) - 1.
-                    || pixy <= f32::from(USER_RECT.y)
-                    || pixy >= f32::from(USER_RECT.y) + f32::from(USER_RECT.h) - 1.
+                if pixx <= self.vars.user_rect.x.into()
+                    || pixx
+                        >= f32::from(self.vars.user_rect.x) + f32::from(self.vars.user_rect.w) - 1.
+                    || pixy <= f32::from(self.vars.user_rect.y)
+                    || pixy
+                        >= f32::from(self.vars.user_rect.y) + f32::from(self.vars.user_rect.h) - 1.
                 {
                     i += 1.;
                     continue;
@@ -1885,17 +1897,17 @@ impl Data {
         let mut i = 0.;
         let max = (x2 - x1) * f32::from(self.vars.block_rect.w);
         while i < max {
-            let pixx = f32::from(USER_RECT.x) + f32::from(USER_RECT.w / 2)
+            let pixx = f32::from(self.vars.user_rect.x) + f32::from(self.vars.user_rect.w / 2)
                 - f32::from(self.vars.block_rect.w) * (ME.pos.x - x1)
                 + i;
-            let user_center = get_user_center();
+            let user_center = self.get_user_center();
             let pixy = f32::from(user_center.y)
                 - f32::from(self.vars.block_rect.h) * (ME.pos.y - y1)
                 + i * slope;
-            if pixx <= f32::from(USER_RECT.x)
-                || pixx >= f32::from(USER_RECT.x) + f32::from(USER_RECT.w) - 1.
-                || pixy <= f32::from(USER_RECT.y)
-                || pixy >= f32::from(USER_RECT.y) + f32::from(USER_RECT.h) - 1.
+            if pixx <= f32::from(self.vars.user_rect.x)
+                || pixx >= f32::from(self.vars.user_rect.x) + f32::from(self.vars.user_rect.w) - 1.
+                || pixy <= f32::from(self.vars.user_rect.y)
+                || pixy >= f32::from(self.vars.user_rect.y) + f32::from(self.vars.user_rect.h) - 1.
             {
                 i += 1.;
                 continue;

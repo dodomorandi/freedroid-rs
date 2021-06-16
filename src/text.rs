@@ -4,7 +4,7 @@ use crate::{
     graphics::{NE_SCREEN, VID_BPP},
     input::SDL_Delay,
     misc::my_random,
-    vars::{ME, SCREEN_RECT},
+    vars::ME,
     Data, ALL_ENEMYS,
 };
 
@@ -100,11 +100,20 @@ impl Data {
         let y0 = self.text.my_cursor_y;
         let height = font_height(&*self.b_font.current_font);
 
-        let store = SDL_CreateRGBSurface(0, SCREEN_RECT.w.into(), height, VID_BPP, 0, 0, 0, 0);
+        let store = SDL_CreateRGBSurface(
+            0,
+            self.vars.screen_rect.w.into(),
+            height,
+            VID_BPP,
+            0,
+            0,
+            0,
+            0,
+        );
         let mut store_rect = Rect::new(
             x0.try_into().unwrap(),
             y0.try_into().unwrap(),
-            SCREEN_RECT.w,
+            self.vars.screen_rect.w,
             height.try_into().unwrap(),
         );
         SDL_UpperBlit(NE_SCREEN, &mut store_rect, store, null_mut());
@@ -412,7 +421,7 @@ impl Data {
         if !clip.is_null() {
             SDL_SetClipRect(NE_SCREEN, clip);
         } else {
-            temp_clipping_rect = Rect::new(0, 0, SCREEN_RECT.w, SCREEN_RECT.h);
+            temp_clipping_rect = Rect::new(0, 0, self.vars.screen_rect.w, self.vars.screen_rect.h);
             clip = &mut temp_clipping_rect;
         }
 

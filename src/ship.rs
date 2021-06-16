@@ -2,8 +2,8 @@ use crate::{
     b_font::font_height,
     bullet::{delete_blast, delete_bullet},
     defs::{
-        get_user_center, AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction,
-        SoundType, Status, DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET, TEXT_STRETCH, UPDATE,
+        AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction, SoundType, Status,
+        DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET, TEXT_STRETCH, UPDATE,
     },
     graphics::{
         clear_graph_mem, scale_pic, ARROW_CURSOR, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP,
@@ -16,7 +16,7 @@ use crate::{
     vars::{
         BRAIN_NAMES, CLASSES, CLASS_NAMES, CONS_DROID_RECT, CONS_HEADER_RECT, CONS_MENU_RECT,
         CONS_MENU_RECTS, CONS_TEXT_RECT, DRIVE_NAMES, DRUIDMAP, FULL_USER_RECT, PORTRAIT_RECT,
-        SENSOR_NAMES, USER_RECT, WEAPON_NAMES,
+        SENSOR_NAMES, WEAPON_NAMES,
     },
     view::fill_rect,
     Data, ALERT_LEVEL, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, ME, NE_SCREEN, NUM_ENEMYS,
@@ -575,8 +575,8 @@ impl Data {
         // the time spend in the menu.
         self.activate_conservative_frame_computation();
 
-        let tmp_rect = USER_RECT;
-        USER_RECT = FULL_USER_RECT;
+        let tmp_rect = self.vars.user_rect;
+        self.vars.user_rect = FULL_USER_RECT;
 
         self.wait_for_all_keys_released();
 
@@ -704,7 +704,7 @@ impl Data {
                                     null_mut(),
                                     DisplayBannerFlags::FORCE_UPDATE.bits().into(),
                                 );
-                                show_lifts((*CUR_LEVEL).levelnum, -1);
+                                self.show_lifts((*CUR_LEVEL).levelnum, -1);
                                 self.wait_for_key_pressed();
                                 self.paint_console_menu(pos.try_into().unwrap(), 0);
                             }
@@ -733,7 +733,7 @@ impl Data {
             SDL_Delay(1); // don't hog CPU
         }
 
-        USER_RECT = tmp_rect;
+        self.vars.user_rect = tmp_rect;
 
         ME.status = Status::Mobile as c_int;
 
@@ -858,7 +858,7 @@ impl Data {
 
     /// This function should check if the mouse cursor is in the given Rectangle
     pub unsafe fn cursor_is_on_rect(&self, rect: &Rect) -> c_int {
-        let user_center = get_user_center();
+        let user_center = self.get_user_center();
         let cur_pos = Point {
             x: self.input.input_axis.x + (i32::from(user_center.x) - 16),
             y: self.input.input_axis.y + (i32::from(user_center.y) - 16),
@@ -870,58 +870,56 @@ impl Data {
             && cur_pos.y <= i32::from(rect.y) + i32::from(rect.h))
         .into()
     }
-}
 
-/// @Desc: show side-view of the ship, and hightlight the current
-///        level + lift
-///
-///  if level==-1: don't highlight any level
-///  if liftrow==-1: dont' highlight any liftrows
-pub unsafe fn show_lifts(level: c_int, liftrow: c_int) {
-    let lift_bg_color = SDL_Color {
-        r: 0,
-        g: 0,
-        b: 0,
-        unused: 0,
-    }; /* black... */
-    let xoffs: i16 = (USER_RECT.w / 20).try_into().unwrap();
-    let yoffs: i16 = (USER_RECT.h / 5).try_into().unwrap();
+    /// @Desc: show side-view of the ship, and hightlight the current
+    ///        level + lift
+    ///
+    ///  if level==-1: don't highlight any level
+    ///  if liftrow==-1: dont' highlight any liftrows
+    pub unsafe fn show_lifts(&self, level: c_int, liftrow: c_int) {
+        let lift_bg_color = SDL_Color {
+            r: 0,
+            g: 0,
+            b: 0,
+            unused: 0,
+        }; /* black... */
+        let xoffs: i16 = (self.vars.user_rect.w / 20).try_into().unwrap();
+        let yoffs: i16 = (self.vars.user_rect.h / 5).try_into().unwrap();
 
-    SDL_ShowCursor(SDL_DISABLE);
-    // fill the user fenster with some color
-    fill_rect(USER_RECT, lift_bg_color);
+        SDL_ShowCursor(SDL_DISABLE);
+        // fill the user fenster with some color
+        fill_rect(self.vars.user_rect, lift_bg_color);
 
-    /* First blit ship "lights off" */
-    let mut dst = USER_RECT;
-    SDL_SetClipRect(NE_SCREEN, &dst);
-    dst = USER_RECT;
-    dst.x += xoffs;
-    dst.y += yoffs;
-    SDL_UpperBlit(SHIP_OFF_PIC, null_mut(), NE_SCREEN, &mut dst);
+        /* First blit ship "lights off" */
+        let mut dst = self.vars.user_rect;
+        SDL_SetClipRect(NE_SCREEN, &dst);
+        dst = self.vars.user_rect;
+        dst.x += xoffs;
+        dst.y += yoffs;
+        SDL_UpperBlit(SHIP_OFF_PIC, null_mut(), NE_SCREEN, &mut dst);
 
-    if level >= 0 {
-        for i in 0..CUR_SHIP.num_level_rects[usize::try_from(level).unwrap()] {
-            let mut src =
-                CUR_SHIP.level_rects[usize::try_from(level).unwrap()][usize::try_from(i).unwrap()];
+        if level >= 0 {
+            for i in 0..CUR_SHIP.num_level_rects[usize::try_from(level).unwrap()] {
+                let mut src = CUR_SHIP.level_rects[usize::try_from(level).unwrap()]
+                    [usize::try_from(i).unwrap()];
+                dst = src;
+                dst.x += self.vars.user_rect.x + xoffs; /* offset respective to User-Rectangle */
+                dst.y += self.vars.user_rect.y + yoffs;
+                SDL_UpperBlit(SHIP_ON_PIC, &mut src, NE_SCREEN, &mut dst);
+            }
+        }
+
+        if liftrow >= 0 {
+            let mut src = CUR_SHIP.lift_row_rect[usize::try_from(liftrow).unwrap()];
             dst = src;
-            dst.x += USER_RECT.x + xoffs; /* offset respective to User-Rectangle */
-            dst.y += USER_RECT.y + yoffs;
+            dst.x += self.vars.user_rect.x + xoffs; /* offset respective to User-Rectangle */
+            dst.y += self.vars.user_rect.y + yoffs;
             SDL_UpperBlit(SHIP_ON_PIC, &mut src, NE_SCREEN, &mut dst);
         }
+
+        SDL_Flip(NE_SCREEN);
     }
 
-    if liftrow >= 0 {
-        let mut src = CUR_SHIP.lift_row_rect[usize::try_from(liftrow).unwrap()];
-        dst = src;
-        dst.x += USER_RECT.x + xoffs; /* offset respective to User-Rectangle */
-        dst.y += USER_RECT.y + yoffs;
-        SDL_UpperBlit(SHIP_ON_PIC, &mut src, NE_SCREEN, &mut dst);
-    }
-
-    SDL_Flip(NE_SCREEN);
-}
-
-impl Data {
     /// diese Funktion zeigt die m"oglichen Auswahlpunkte des Menus
     /// Sie soll die Schriftfarben nicht ver"andern
     ///
@@ -1028,7 +1026,7 @@ impl Data {
         let wait_move_ticks: u32 = 100;
         let mut finished = false;
         while !finished {
-            show_lifts(cur_level, liftrow);
+            self.show_lifts(cur_level, liftrow);
 
             let action = self.get_menu_action(500);
             if SDL_GetTicks() - self.ship.enter_lift_last_move_tick > wait_move_ticks {
@@ -1048,7 +1046,7 @@ impl Data {
                                 cur_lift = up_lift.try_into().unwrap();
                                 cur_level = CUR_SHIP.all_lifts[cur_lift].level;
                                 up_lift = CUR_SHIP.all_lifts[cur_lift].up;
-                                show_lifts(cur_level, liftrow);
+                                self.show_lifts(cur_level, liftrow);
                                 self.move_lift_sound();
                             }
                         }
@@ -1064,7 +1062,7 @@ impl Data {
                                 cur_lift = down_lift.try_into().unwrap();
                                 cur_level = CUR_SHIP.all_lifts[cur_lift].level;
                                 down_lift = CUR_SHIP.all_lifts[cur_lift].down;
-                                show_lifts(cur_level, liftrow);
+                                self.show_lifts(cur_level, liftrow);
                                 self.move_lift_sound();
                             }
                         }

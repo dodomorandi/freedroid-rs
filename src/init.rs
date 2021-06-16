@@ -2,14 +2,12 @@ use crate::{
     b_font::font_height,
     bullet::delete_bullet,
     defs::{
-        self, get_user_center, scale_rect, AssembleCombatWindowFlags, Criticality,
-        DisplayBannerFlags, Droid, Status, Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR,
-        MAP_DIR_C, MAXBULLETS, SHOW_WAIT, SLOWMO_FACTOR, TITLE_PIC_FILE_C, WAIT_AFTER_KILLED,
+        self, scale_rect, AssembleCombatWindowFlags, Criticality, DisplayBannerFlags, Droid,
+        Status, Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAP_DIR_C, MAXBULLETS,
+        SHOW_WAIT, SLOWMO_FACTOR, TITLE_PIC_FILE_C, WAIT_AFTER_KILLED,
     },
     enemy::shuffle_enemys,
-    graphics::{
-        clear_graph_mem, make_grid_on_screen, ALL_THEMES, NE_SCREEN, NUMBER_OF_BULLET_TYPES, PIC999,
-    },
+    graphics::{clear_graph_mem, ALL_THEMES, NE_SCREEN, NUMBER_OF_BULLET_TYPES, PIC999},
     influencer::init_influ_position_history,
     input::SDL_Delay,
     misc::{
@@ -17,10 +15,7 @@ use crate::{
         read_value_from_string, update_progress,
     },
     structs::{BulletSpec, DruidSpec},
-    vars::{
-        BLASTMAP, BULLETMAP, CLASSIC_USER_RECT, DRUIDMAP, FULL_USER_RECT, PORTRAIT_RECT,
-        SCREEN_RECT, USER_RECT,
-    },
+    vars::{BLASTMAP, BULLETMAP, CLASSIC_USER_RECT, DRUIDMAP, FULL_USER_RECT, PORTRAIT_RECT},
     Data, ALERT_BONUS_PER_SEC, ALERT_THRESHOLD, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL,
     CUR_SHIP, DEATH_COUNT, DEATH_COUNT_DRAIN_SPEED, DEBUG_LEVEL, LAST_GOT_INTO_BLAST_SOUND,
     LAST_REFRESH_SOUND, ME, NUMBER_OF_DROID_TYPES, NUM_ENEMYS, REAL_SCORE, SHOW_SCORE, SOUND_ON,
@@ -212,7 +207,7 @@ impl Data {
 
         let mut rect = FULL_USER_RECT;
         SDL_SetClipRect(NE_SCREEN, null_mut());
-        make_grid_on_screen(Some(&rect));
+        self.make_grid_on_screen(Some(&rect));
         SDL_Flip(NE_SCREEN);
         rect.x += 10;
         rect.w -= 20; //leave some border
@@ -277,13 +272,13 @@ impl Data {
         // call this _after_ default settings and LoadGameConfig() ==> cmdline has highest priority!
         self.parse_command_line();
 
-        USER_RECT = if self.global.game_config.full_user_rect != 0 {
+        self.vars.user_rect = if self.global.game_config.full_user_rect != 0 {
             FULL_USER_RECT
         } else {
             CLASSIC_USER_RECT
         };
 
-        scale_rect(&mut SCREEN_RECT, self.global.game_config.scale); // make sure we open a window of the right (rescaled) size!
+        scale_rect(&mut self.vars.screen_rect, self.global.game_config.scale); // make sure we open a window of the right (rescaled) size!
         self.init_video();
 
         let image = self.find_file(
@@ -901,7 +896,7 @@ impl Data {
             Criticality::Critical as c_int,
         );
         self.display_image(image);
-        make_grid_on_screen(Some(&SCREEN_RECT));
+        self.make_grid_on_screen(Some(&self.vars.screen_rect));
         ME.status = Status::Briefing as c_int;
 
         self.b_font.current_font = self.global.para_b_font;
@@ -1575,18 +1570,21 @@ impl Data {
         // important!!: don't forget to stop fps calculation here (bugfix: enemy piles after gameOver)
         self.activate_conservative_frame_computation();
 
+        // TODO: avoid a temporary backup
+        let mut user_rect = std::mem::replace(&mut self.vars.user_rect, rect!(0, 0, 0, 0));
         self.white_noise(
             NE_SCREEN,
-            &mut USER_RECT,
+            &mut user_rect,
             WAIT_AFTER_KILLED.try_into().unwrap(),
         );
+        self.vars.user_rect = user_rect;
 
         self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
-        make_grid_on_screen(Some(&USER_RECT));
+        self.make_grid_on_screen(Some(&self.vars.user_rect));
 
         let mut dst = Rect {
-            x: get_user_center().x - i16::try_from(PORTRAIT_RECT.w / 2).unwrap(),
-            y: get_user_center().y - i16::try_from(PORTRAIT_RECT.h / 2).unwrap(),
+            x: self.get_user_center().x - i16::try_from(PORTRAIT_RECT.w / 2).unwrap(),
+            y: self.get_user_center().y - i16::try_from(PORTRAIT_RECT.h / 2).unwrap(),
             w: PORTRAIT_RECT.w,
             h: PORTRAIT_RECT.h,
         };
@@ -1599,13 +1597,13 @@ impl Data {
             cstr!("Transmission").as_ptr() as *mut c_char,
             i32::from(dst.x) - h,
             i32::from(dst.y) - h,
-            &USER_RECT,
+            &self.vars.user_rect,
         );
         self.display_text(
             cstr!("Terminated").as_ptr() as *mut c_char,
             i32::from(dst.x) - h,
             i32::from(dst.y) + i32::from(dst.h),
-            &USER_RECT,
+            &self.vars.user_rect,
         );
         self.printf_sdl(NE_SCREEN, -1, -1, format_args!("\n"));
         SDL_Flip(NE_SCREEN);
