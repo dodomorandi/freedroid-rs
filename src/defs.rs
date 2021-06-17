@@ -428,13 +428,13 @@ pub enum AlertNames {
 }
 
 impl AlertNames {
-    pub fn to_str(&self) -> &'static str {
+    pub fn to_str(self) -> &'static str {
         self.into()
     }
 }
 
-impl From<&AlertNames> for &'static str {
-    fn from(alert_name: &AlertNames) -> Self {
+impl From<AlertNames> for &'static str {
+    fn from(alert_name: AlertNames) -> Self {
         use AlertNames::*;
         match alert_name {
             Green => "green",

@@ -212,7 +212,7 @@ fn main() {
 
             // scale Level-pic rects
             let scale = data.global.game_config.scale;
-            #[allow(clippy::clippy::float_cmp)]
+            #[allow(clippy::float_cmp)]
             if scale != 1.0 {
                 CUR_SHIP.level_rects[0..usize::try_from(CUR_SHIP.num_levels).unwrap()]
                     .iter_mut()

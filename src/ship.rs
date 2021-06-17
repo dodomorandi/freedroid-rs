@@ -1133,11 +1133,11 @@ pub unsafe fn level_empty() -> c_int {
 
     ALL_ENEMYS[0..usize::try_from(NUM_ENEMYS).unwrap()]
         .iter()
-        .find(|enemy| {
+        .any(|enemy| {
             enemy.levelnum == levelnum
                 && enemy.status != Status::Out as c_int
                 && enemy.status != Status::Terminated as c_int
         })
-        .is_none()
+        .not()
         .into()
 }
