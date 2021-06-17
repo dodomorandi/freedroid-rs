@@ -13,11 +13,7 @@ use crate::{
     input::SDL_Delay,
     map::{get_current_lift, get_map_brick},
     structs::Point,
-    vars::{
-        BRAIN_NAMES, CLASSES, CLASS_NAMES, CONS_DROID_RECT, CONS_HEADER_RECT, CONS_MENU_RECT,
-        CONS_MENU_RECTS, CONS_TEXT_RECT, DRIVE_NAMES, DRUIDMAP, FULL_USER_RECT, PORTRAIT_RECT,
-        SENSOR_NAMES, WEAPON_NAMES,
-    },
+    vars::{BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, DRUIDMAP, SENSOR_NAMES, WEAPON_NAMES},
     view::fill_rect,
     Data, ALERT_LEVEL, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, ME, NE_SCREEN, NUM_ENEMYS,
 };
@@ -231,7 +227,7 @@ impl Data {
             self.ship.droid_background = SDL_DisplayFormat(tmp);
             SDL_FreeSurface(tmp);
             SDL_UpperBlit(NE_SCREEN, &mut dst, self.ship.droid_background, null_mut());
-            self.ship.src_rect = PORTRAIT_RECT;
+            self.ship.src_rect = self.vars.portrait_rect;
         }
 
         if flags & RESET != 0 {
@@ -277,13 +273,13 @@ impl Data {
         }
 
         let droid_pics_ref = &*self.ship.droid_pics;
-        let mut num_frames = droid_pics_ref.w / c_int::from(PORTRAIT_RECT.w);
+        let mut num_frames = droid_pics_ref.w / c_int::from(self.vars.portrait_rect.w);
 
         // sanity check
         if num_frames == 0 {
             warn!(
                 "Only one frame found. Width droid-pics={}, Frame-width={}",
-                droid_pics_ref.w, PORTRAIT_RECT.w,
+                droid_pics_ref.w, self.vars.portrait_rect.w,
             );
             num_frames = 1; // continue and hope for the best
         }
@@ -333,29 +329,32 @@ impl Data {
 
         let lineskip =
             ((f64::from(font_height(&*self.b_font.current_font)) * TEXT_STRETCH) as f32) as i16;
-        let lastline = CONS_HEADER_RECT.y + i16::try_from(CONS_HEADER_RECT.h).unwrap();
+        let lastline =
+            self.vars.cons_header_rect.y + i16::try_from(self.vars.cons_header_rect.h).unwrap();
         self.ship.up_rect = Rect {
-            x: CONS_HEADER_RECT.x,
+            x: self.vars.cons_header_rect.x,
             y: lastline - lineskip,
             w: 25,
             h: 13,
         };
         self.ship.down_rect = Rect {
-            x: CONS_HEADER_RECT.x,
+            x: self.vars.cons_header_rect.x,
             y: (f32::from(lastline) - 0.5 * f32::from(lineskip)) as i16,
             w: 25,
             h: 13,
         };
         self.ship.left_rect = Rect {
-            x: (f32::from(CONS_HEADER_RECT.x + i16::try_from(CONS_HEADER_RECT.w).unwrap())
-                - 1.5 * f32::from(lineskip)) as i16,
+            x: (f32::from(
+                self.vars.cons_header_rect.x + i16::try_from(self.vars.cons_header_rect.w).unwrap(),
+            ) - 1.5 * f32::from(lineskip)) as i16,
             y: (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
             w: 13,
             h: 25,
         };
         self.ship.right_rect = Rect {
-            x: (f32::from(CONS_HEADER_RECT.x + i16::try_from(CONS_HEADER_RECT.w).unwrap())
-                - 1.0 * f32::from(lineskip)) as i16,
+            x: (f32::from(
+                self.vars.cons_header_rect.x + i16::try_from(self.vars.cons_header_rect.w).unwrap(),
+            ) - 1.0 * f32::from(lineskip)) as i16,
             y: (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
             w: 13,
             h: 25,
@@ -470,9 +469,9 @@ Paradroid to eliminate all rogue robots.\0",
         // if UPDATE_ONLY then the background has not been cleared, so we have do it
         // it for each menu-rect:
         if flags & i32::from(UPDATE_ONLY) != 0 {
-            SDL_SetClipRect(NE_SCREEN, &CONS_TEXT_RECT);
+            SDL_SetClipRect(NE_SCREEN, &self.vars.cons_text_rect);
             SDL_UpperBlit(CONSOLE_BG_PIC2, null_mut(), NE_SCREEN, null_mut());
-            SDL_SetClipRect(NE_SCREEN, &CONS_HEADER_RECT);
+            SDL_SetClipRect(NE_SCREEN, &self.vars.cons_header_rect);
             SDL_UpperBlit(CONSOLE_BG_PIC2, null_mut(), NE_SCREEN, null_mut());
             SDL_SetClipRect(NE_SCREEN, null_mut());
         } else {
@@ -489,14 +488,14 @@ Paradroid to eliminate all rogue robots.\0",
 
         self.display_text(
             info_text.as_mut_ptr() as *mut c_char,
-            CONS_TEXT_RECT.x.into(),
-            CONS_TEXT_RECT.y.into(),
-            &CONS_TEXT_RECT,
+            self.vars.cons_text_rect.x.into(),
+            self.vars.cons_text_rect.y.into(),
+            &self.vars.cons_text_rect,
         );
 
         self.display_text(
             droid_name.as_mut_ptr() as *mut c_char,
-            i32::from(CONS_HEADER_RECT.x) + i32::from(lineskip),
+            i32::from(self.vars.cons_header_rect.x) + i32::from(lineskip),
             (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i32,
             null_mut(),
         );
@@ -525,8 +524,8 @@ Paradroid to eliminate all rogue robots.\0",
         }
 
         if flags & i32::from(UPDATE_ONLY) != 0 {
-            SDL_UpdateRects(NE_SCREEN, 1, &mut CONS_HEADER_RECT);
-            SDL_UpdateRects(NE_SCREEN, 1, &mut CONS_TEXT_RECT);
+            SDL_UpdateRects(NE_SCREEN, 1, &mut self.vars.cons_header_rect);
+            SDL_UpdateRects(NE_SCREEN, 1, &mut self.vars.cons_text_rect);
         } else {
             SDL_Flip(NE_SCREEN);
         }
@@ -576,7 +575,7 @@ impl Data {
         self.activate_conservative_frame_computation();
 
         let tmp_rect = self.vars.user_rect;
-        self.vars.user_rect = FULL_USER_RECT;
+        self.vars.user_rect = self.vars.full_user_rect;
 
         self.wait_for_all_keys_released();
 
@@ -604,7 +603,7 @@ impl Data {
             }
 
             // check if the mouse-cursor is on any of the console-menu points
-            for (i, rect) in CONS_MENU_RECTS.iter_mut().enumerate() {
+            for (i, rect) in self.vars.cons_menu_rects.iter().enumerate() {
                 if self.input.show_cursor && pos != i && self.cursor_is_on_rect(rect) != 0 {
                     self.move_menu_position_sound();
                     pos = i;
@@ -630,12 +629,12 @@ impl Data {
                         if self.input.show_cursor {
                             let mousemove_buf = self.input.last_mouse_event;
                             SDL_WarpMouse(
-                                (CONS_MENU_RECTS[pos].x
-                                    + i16::try_from(CONS_MENU_RECTS[pos].w / 2).unwrap())
+                                (self.vars.cons_menu_rects[pos].x
+                                    + i16::try_from(self.vars.cons_menu_rects[pos].w / 2).unwrap())
                                 .try_into()
                                 .unwrap(),
-                                (CONS_MENU_RECTS[pos].y
-                                    + i16::try_from(CONS_MENU_RECTS[pos].h / 2).unwrap())
+                                (self.vars.cons_menu_rects[pos].y
+                                    + i16::try_from(self.vars.cons_menu_rects[pos].h / 2).unwrap())
                                 .try_into()
                                 .unwrap(),
                             );
@@ -658,12 +657,12 @@ impl Data {
                         if self.input.show_cursor {
                             let mousemove_buf = self.input.last_mouse_event;
                             SDL_WarpMouse(
-                                (CONS_MENU_RECTS[pos].x
-                                    + i16::try_from(CONS_MENU_RECTS[pos].w / 2).unwrap())
+                                (self.vars.cons_menu_rects[pos].x
+                                    + i16::try_from(self.vars.cons_menu_rects[pos].w / 2).unwrap())
                                 .try_into()
                                 .unwrap(),
-                                (CONS_MENU_RECTS[pos].y
-                                    + i16::try_from(CONS_MENU_RECTS[pos].h / 2).unwrap())
+                                (self.vars.cons_menu_rects[pos].y
+                                    + i16::try_from(self.vars.cons_menu_rects[pos].h / 2).unwrap())
                                 .try_into()
                                 .unwrap(),
                             );
@@ -754,14 +753,14 @@ impl Data {
         let mut page = 0;
 
         self.show_droid_info(droidtype, page, 0);
-        self.show_droid_portrait(CONS_DROID_RECT, droidtype, 0.0, UPDATE | RESET);
+        self.show_droid_portrait(self.vars.cons_droid_rect, droidtype, 0.0, UPDATE | RESET);
 
         self.wait_for_all_keys_released();
         let mut need_update = true;
         let wait_move_ticks: u32 = 100;
 
         while !finished {
-            self.show_droid_portrait(CONS_DROID_RECT, droidtype, DROID_ROTATION_TIME, 0);
+            self.show_droid_portrait(self.vars.cons_droid_rect, droidtype, DROID_ROTATION_TIME, 0);
 
             if self.input.show_cursor {
                 SDL_ShowCursor(SDL_ENABLE);
@@ -955,9 +954,9 @@ impl Data {
             .unwrap();
             self.display_text(
                 menu_text.as_mut_ptr() as *mut c_char,
-                CONS_HEADER_RECT.x.into(),
-                CONS_HEADER_RECT.y.into(),
-                &CONS_HEADER_RECT,
+                self.vars.cons_header_rect.x.into(),
+                self.vars.cons_header_rect.y.into(),
+                &self.vars.cons_header_rect,
             );
 
             write!(
@@ -967,20 +966,25 @@ impl Data {
             .unwrap();
             self.display_text(
                 menu_text.as_mut_ptr() as *mut c_char,
-                CONS_TEXT_RECT.x.into(),
-                c_int::from(CONS_TEXT_RECT.y) + 25,
-                &CONS_TEXT_RECT,
+                self.vars.cons_text_rect.x.into(),
+                c_int::from(self.vars.cons_text_rect.y) + 25,
+                &self.vars.cons_text_rect,
             );
         } // only if not UPDATE_ONLY was required
 
         let mut src = Rect {
-            x: i16::try_from(CONS_MENU_RECTS[0].w).unwrap() * i16::try_from(pos).unwrap()
+            x: i16::try_from(self.vars.cons_menu_rects[0].w).unwrap() * i16::try_from(pos).unwrap()
                 + (2. * pos as f32 * self.global.game_config.scale) as i16,
             y: 0,
-            w: CONS_MENU_RECT.w,
-            h: 4 * CONS_MENU_RECT.h,
+            w: self.vars.cons_menu_rect.w,
+            h: 4 * self.vars.cons_menu_rect.h,
         };
-        SDL_UpperBlit(CONSOLE_PIC, &mut src, NE_SCREEN, &mut CONS_MENU_RECT);
+        SDL_UpperBlit(
+            CONSOLE_PIC,
+            &mut src,
+            NE_SCREEN,
+            &mut self.vars.cons_menu_rect,
+        );
     }
 
     /// does all the work when we enter a lift

@@ -5,7 +5,7 @@ use crate::{
         HS_BACKGROUND_FILE_C, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
     },
     graphics::{NE_SCREEN, PIC999},
-    vars::{FULL_USER_RECT, ME, PORTRAIT_RECT},
+    vars::ME,
     Data, CONFIG_DIR, REAL_SCORE, SHOW_SCORE,
 };
 
@@ -199,10 +199,10 @@ impl Data {
         self.assemble_combat_picture(0);
         self.make_grid_on_screen(Some(&self.vars.user_rect));
         let mut dst = SDL_Rect::new(
-            user_center_x - (PORTRAIT_RECT.w / 2) as i16,
-            user_center_y - (PORTRAIT_RECT.h / 2) as i16,
-            PORTRAIT_RECT.w,
-            PORTRAIT_RECT.h,
+            user_center_x - (self.vars.portrait_rect.w / 2) as i16,
+            user_center_y - (self.vars.portrait_rect.h / 2) as i16,
+            self.vars.portrait_rect.w,
+            self.vars.portrait_rect.h,
         );
         SDL_UpperBlit(PIC999, null_mut(), NE_SCREEN, &mut dst);
         let h = font_height(&*self.global.para_b_font);
@@ -312,7 +312,7 @@ impl Data {
 
         let height = font_height(&*self.b_font.current_font);
 
-        let y0 = i32::from(FULL_USER_RECT.y) + height;
+        let y0 = i32::from(self.vars.full_user_rect.y) + height;
 
         self.centered_print_string(
             NE_SCREEN,

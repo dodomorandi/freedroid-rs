@@ -15,7 +15,7 @@ use crate::{
         read_value_from_string, update_progress,
     },
     structs::{BulletSpec, DruidSpec},
-    vars::{BLASTMAP, BULLETMAP, CLASSIC_USER_RECT, DRUIDMAP, FULL_USER_RECT, PORTRAIT_RECT},
+    vars::{BLASTMAP, BULLETMAP, DRUIDMAP},
     Data, ALERT_BONUS_PER_SEC, ALERT_THRESHOLD, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL,
     CUR_SHIP, DEATH_COUNT, DEATH_COUNT_DRAIN_SPEED, DEBUG_LEVEL, LAST_GOT_INTO_BLAST_SOUND,
     LAST_REFRESH_SOUND, ME, NUMBER_OF_DROID_TYPES, NUM_ENEMYS, REAL_SCORE, SHOW_SCORE, SOUND_ON,
@@ -205,7 +205,7 @@ impl Data {
             self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
         }
 
-        let mut rect = FULL_USER_RECT;
+        let mut rect = self.vars.full_user_rect;
         SDL_SetClipRect(NE_SCREEN, null_mut());
         self.make_grid_on_screen(Some(&rect));
         SDL_Flip(NE_SCREEN);
@@ -273,9 +273,9 @@ impl Data {
         self.parse_command_line();
 
         self.vars.user_rect = if self.global.game_config.full_user_rect != 0 {
-            FULL_USER_RECT
+            self.vars.full_user_rect
         } else {
-            CLASSIC_USER_RECT
+            self.vars.classic_user_rect
         };
 
         scale_rect(&mut self.vars.screen_rect, self.global.game_config.scale); // make sure we open a window of the right (rescaled) size!
@@ -947,7 +947,7 @@ impl Data {
             );
             *prepared_briefing_text.offset(this_text_length) = 0;
 
-            let mut rect = FULL_USER_RECT;
+            let mut rect = self.vars.full_user_rect;
             rect.x += 10;
             rect.w -= 10; //leave some border
             if self.scroll_text(prepared_briefing_text, &mut rect, 0) == 1 {
@@ -1583,10 +1583,10 @@ impl Data {
         self.make_grid_on_screen(Some(&self.vars.user_rect));
 
         let mut dst = Rect {
-            x: self.get_user_center().x - i16::try_from(PORTRAIT_RECT.w / 2).unwrap(),
-            y: self.get_user_center().y - i16::try_from(PORTRAIT_RECT.h / 2).unwrap(),
-            w: PORTRAIT_RECT.w,
-            h: PORTRAIT_RECT.h,
+            x: self.get_user_center().x - i16::try_from(self.vars.portrait_rect.w / 2).unwrap(),
+            y: self.get_user_center().y - i16::try_from(self.vars.portrait_rect.h / 2).unwrap(),
+            w: self.vars.portrait_rect.w,
+            h: self.vars.portrait_rect.h,
         };
         SDL_UpperBlit(PIC999, null_mut(), NE_SCREEN, &mut dst);
         self.thou_art_defeated_sound();

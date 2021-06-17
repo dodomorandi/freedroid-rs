@@ -13,9 +13,7 @@ use crate::{
     },
     map::{get_map_brick, is_visible},
     structs::{Enemy, Finepoint, GrobPoint},
-    vars::{
-        BANNER_RECT, BLASTMAP, BULLETMAP, DRUIDMAP, FULL_USER_RECT, LEFT_INFO_RECT, RIGHT_INFO_RECT,
-    },
+    vars::{BLASTMAP, BULLETMAP, DRUIDMAP, LEFT_INFO_RECT, RIGHT_INFO_RECT},
     Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, DEATH_COUNT, FIRST_DIGIT_RECT, ME,
     NUMBER_OF_DROID_TYPES, SECOND_DIGIT_RECT, SHOW_ALL_DROIDS, SHOW_SCORE, THIRD_DIGIT_RECT,
 };
@@ -173,12 +171,12 @@ impl Data {
         // for the info-line text:
 
         let mut text_rect = Rect::new(
-            FULL_USER_RECT.x,
-            (i32::from(FULL_USER_RECT.y) + i32::from(FULL_USER_RECT.h)
+            self.vars.full_user_rect.x,
+            (i32::from(self.vars.full_user_rect.y) + i32::from(self.vars.full_user_rect.h)
                 - font_height(&*self.global.font0_b_font))
             .try_into()
             .unwrap(),
-            FULL_USER_RECT.w,
+            self.vars.full_user_rect.w,
             font_height(&*self.global.font0_b_font).try_into().unwrap(),
         );
         SDL_SetClipRect(NE_SCREEN, &text_rect);
@@ -190,8 +188,8 @@ impl Data {
             print_string_font(
                 NE_SCREEN,
                 self.global.font0_b_font,
-                (FULL_USER_RECT.x + (FULL_USER_RECT.w / 6) as i16).into(),
-                i32::from(FULL_USER_RECT.y) + i32::from(FULL_USER_RECT.h)
+                (self.vars.full_user_rect.x + (self.vars.full_user_rect.w / 6) as i16).into(),
+                i32::from(self.vars.full_user_rect.y) + i32::from(self.vars.full_user_rect.h)
                     - font_height(&*self.global.font0_b_font),
                 format_args!(
                     "GPS: X={:.0} Y={:.0} Lev={}",
@@ -222,8 +220,8 @@ impl Data {
                     print_string_font(
                         NE_SCREEN,
                         self.global.font0_b_font,
-                        FULL_USER_RECT.x.into(),
-                        FULL_USER_RECT.y as i32 + FULL_USER_RECT.h as i32
+                        self.vars.full_user_rect.x.into(),
+                        self.vars.full_user_rect.y as i32 + self.vars.full_user_rect.h as i32
                             - font_height(&*self.global.font0_b_font) as i32,
                         format_args!("FPS: {} ", fps_displayed.get()),
                     );
@@ -234,8 +232,9 @@ impl Data {
                 print_string_font(
                     NE_SCREEN,
                     self.global.font0_b_font,
-                    i32::from(FULL_USER_RECT.x) + i32::from(FULL_USER_RECT.w) / 2,
-                    i32::from(FULL_USER_RECT.y) + i32::from(FULL_USER_RECT.h)
+                    i32::from(self.vars.full_user_rect.x)
+                        + i32::from(self.vars.full_user_rect.w) / 2,
+                    i32::from(self.vars.full_user_rect.y) + i32::from(self.vars.full_user_rect.h)
                         - font_height(&*self.global.font0_b_font),
                     format_args!("Energy: {:.0}", ME.energy),
                 );
@@ -244,8 +243,9 @@ impl Data {
                 print_string_font(
                     NE_SCREEN,
                     self.global.font0_b_font,
-                    i32::from(FULL_USER_RECT.x) + 2 * i32::from(FULL_USER_RECT.w) / 3,
-                    i32::from(FULL_USER_RECT.y) + i32::from(FULL_USER_RECT.h)
+                    i32::from(self.vars.full_user_rect.x)
+                        + 2 * i32::from(self.vars.full_user_rect.w) / 3,
+                    i32::from(self.vars.full_user_rect.y) + i32::from(self.vars.full_user_rect.h)
                         - font_height(&*self.global.font0_b_font),
                     format_args!("Deathcount: {:.0}", DEATH_COUNT,),
                 );
@@ -840,7 +840,13 @@ impl Data {
 
             // finally update the whole top status box
             if (flags & i32::from(DisplayBannerFlags::NO_SDL_UPDATE.bits())) == 0 {
-                SDL_UpdateRect(NE_SCREEN, 0, 0, BANNER_RECT.w.into(), BANNER_RECT.h.into());
+                SDL_UpdateRect(
+                    NE_SCREEN,
+                    0,
+                    0,
+                    self.vars.banner_rect.w.into(),
+                    self.vars.banner_rect.h.into(),
+                );
             }
 
             BANNER_IS_DESTROYED = false.into();

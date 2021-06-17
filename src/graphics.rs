@@ -21,10 +21,8 @@ use crate::{
         TO_GROUND_BLOCKS,
     },
     vars::{
-        BANNER_RECT, BLASTMAP, BULLETMAP, CLASSIC_USER_RECT, CONS_DROID_RECT, CONS_HEADER_RECT,
-        CONS_MENU_ITEM_RECT, CONS_MENU_RECT, CONS_MENU_RECTS, CONS_TEXT_RECT, DIGIT_RECT, DRUIDMAP,
-        FULL_USER_RECT, LEFT_INFO_RECT, ME, MENU_RECT, OPTIONS_MENU_RECT, ORIG_BLOCK_RECT,
-        ORIG_DIGIT_RECT, PORTRAIT_RECT, RIGHT_INFO_RECT,
+        BLASTMAP, BULLETMAP, CONS_MENU_ITEM_RECT, DRUIDMAP, LEFT_INFO_RECT, ME, ORIG_BLOCK_RECT,
+        ORIG_DIGIT_RECT, RIGHT_INFO_RECT,
     },
     Data, ALL_BULLETS, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
 };
@@ -493,19 +491,19 @@ impl Data {
 
         scale!(self.vars.block_rect);
         scale!(self.vars.user_rect);
-        scale!(CLASSIC_USER_RECT);
-        scale!(FULL_USER_RECT);
-        scale!(BANNER_RECT);
-        scale!(PORTRAIT_RECT);
-        scale!(CONS_DROID_RECT);
-        scale!(MENU_RECT);
-        scale!(OPTIONS_MENU_RECT);
-        scale!(DIGIT_RECT);
-        scale!(CONS_HEADER_RECT);
-        scale!(CONS_MENU_RECT);
-        scale!(CONS_TEXT_RECT);
+        scale!(self.vars.classic_user_rect);
+        scale!(self.vars.full_user_rect);
+        scale!(self.vars.banner_rect);
+        scale!(self.vars.portrait_rect);
+        scale!(self.vars.cons_droid_rect);
+        scale!(self.vars.menu_rect);
+        scale!(self.vars.options_menu_rect);
+        scale!(self.vars.digit_rect);
+        scale!(self.vars.cons_header_rect);
+        scale!(self.vars.cons_menu_rect);
+        scale!(self.vars.cons_text_rect);
 
-        for block in &mut CONS_MENU_RECTS {
+        for block in &mut self.vars.cons_menu_rects {
             scale_rect(block, scale);
         }
 

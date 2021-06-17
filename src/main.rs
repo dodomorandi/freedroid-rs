@@ -51,7 +51,7 @@ use ship::ShipData;
 use sound::Sound;
 use structs::{Blast, Bullet, Enemy, Finepoint, Level, Lift, Ship};
 use text::Text;
-use vars::{Vars, CONS_DROID_RECT, ME, SHIP_EMPTY_COUNTER};
+use vars::{Vars, ME, SHIP_EMPTY_COUNTER};
 
 use sdl::{
     mouse::ll::{SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE},
@@ -233,10 +233,10 @@ fn main() {
             data.wait_for_all_keys_released();
 
             data.show_droid_info(ME.ty, -3, 0); // show unit-intro page
-            data.show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, RESET);
+            data.show_droid_portrait(data.vars.cons_droid_rect, ME.ty, DROID_ROTATION_TIME, RESET);
             let now = SDL_GetTicks();
             while SDL_GetTicks() - now < SHOW_WAIT && !data.fire_pressed_r() {
-                data.show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, 0);
+                data.show_droid_portrait(data.vars.cons_droid_rect, ME.ty, DROID_ROTATION_TIME, 0);
                 SDL_Delay(1);
             }
 

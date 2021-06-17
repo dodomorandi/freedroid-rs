@@ -11,6 +11,19 @@ pub struct Vars {
     pub block_rect: Rect,
     pub screen_rect: Rect,
     pub user_rect: Rect,
+    pub classic_user_rect: Rect,
+    pub full_user_rect: Rect,
+    pub banner_rect: Rect,
+    // for droid-pic display in console
+    pub portrait_rect: Rect,
+    pub cons_droid_rect: Rect,
+    pub menu_rect: Rect,
+    pub options_menu_rect: Rect,
+    pub digit_rect: Rect,
+    pub cons_header_rect: Rect,
+    pub cons_menu_rect: Rect,
+    pub cons_text_rect: Rect,
+    pub cons_menu_rects: [Rect; 4],
 }
 
 impl Default for Vars {
@@ -19,6 +32,23 @@ impl Default for Vars {
             block_rect: rect! {0, 0, 64, 64},
             screen_rect: rect! {0, 0, 640, 480},
             user_rect: rect! {0, 0, 0, 0},
+            classic_user_rect: rect! {32, 150, 9*64, 4*64},
+            full_user_rect: rect! {0, 64, 640, 480 - 64},
+            banner_rect: rect! {0, 0, 640, 64 },
+            portrait_rect: rect! {0, 0, 132, 180},
+            cons_droid_rect: rect! {30, 190, 132, 180},
+            menu_rect: rect! {2*64, 150, 640 - 3*64, 480 - 64},
+            options_menu_rect: rect! {232, 0, 0, 0},
+            digit_rect: rect! {0, 0, 16, 18},
+            cons_header_rect: rect! {75, 64+40, 640 - 80, 135 - 64},
+            cons_menu_rect: rect! {60, 180, 100, 256},
+            cons_text_rect: rect! {180, 180, 640-185, 480 - 185},
+            cons_menu_rects: [
+                rect! {60, 180, 100, 62},
+                rect! {60, 181 + 64, 100, 62},
+                rect! {60, 181 + 2*64, 100, 62},
+                rect! {60, 181 + 3*64, 100, 62},
+            ],
         }
     }
 }
@@ -47,34 +77,46 @@ impl fmt::Debug for Vars {
         let block_rect = Rect::from(&self.block_rect);
         let screen_rect = Rect::from(&self.screen_rect);
         let user_rect = Rect::from(&self.user_rect);
+        let classic_user_rect = Rect::from(&self.classic_user_rect);
+        let full_user_rect = Rect::from(&self.full_user_rect);
+        let banner_rect = Rect::from(&self.banner_rect);
+        let portrait_rect = Rect::from(&self.portrait_rect);
+        let cons_droid_rect = Rect::from(&self.cons_droid_rect);
+        let menu_rect = Rect::from(&self.menu_rect);
+        let options_menu_rect = Rect::from(&self.options_menu_rect);
+        let digit_rect = Rect::from(&self.digit_rect);
+        let cons_header_rect = Rect::from(&self.cons_header_rect);
+        let cons_menu_rect = Rect::from(&self.cons_menu_rect);
+        let cons_text_rect = Rect::from(&self.cons_text_rect);
+        let cons_menu_rects = [
+            Rect::from(&self.cons_menu_rects[0]),
+            Rect::from(&self.cons_menu_rects[1]),
+            Rect::from(&self.cons_menu_rects[2]),
+            Rect::from(&self.cons_menu_rects[3]),
+        ];
 
         f.debug_struct("Vars")
             .field("block_rect", &block_rect)
             .field("screen_rect", &screen_rect)
             .field("user_rect", &user_rect)
+            .field("classic_user_rect", &classic_user_rect)
+            .field("full_user_rect", &full_user_rect)
+            .field("banner_rect", &banner_rect)
+            .field("portrait_rect", &portrait_rect)
+            .field("cons_droid_rect", &cons_droid_rect)
+            .field("menu_rect", &menu_rect)
+            .field("options_menu_rect", &options_menu_rect)
+            .field("digit_rect", &digit_rect)
+            .field("cons_header_rect", &cons_header_rect)
+            .field("cons_menu_rect", &cons_menu_rect)
+            .field("cons_text_rect", &cons_text_rect)
+            .field("cons_menu_rects", &cons_menu_rects)
             .finish()
     }
 }
 
 pub const ORIG_BLOCK_RECT: Rect = rect! {0, 0, 64, 64}; // not to be rescaled ever!!
-pub static mut CLASSIC_USER_RECT: Rect = rect! {32, 150, 9*64, 4*64};
-pub static mut FULL_USER_RECT: Rect = rect! {0, 64, 640, 480 - 64};
-pub static mut BANNER_RECT: Rect = rect! {0, 0, 640, 64 };
-pub static mut PORTRAIT_RECT: Rect = rect! {0, 0, 132, 180}; // for droid-pic display in console
-pub static mut CONS_DROID_RECT: Rect = rect! {30, 190, 132, 180};
-pub static mut MENU_RECT: Rect = rect! {2*64, 150, 640 - 3*64, 480 - 64};
-pub static mut OPTIONS_MENU_RECT: Rect = rect! {232, 0, 0, 0};
-pub static mut ORIG_DIGIT_RECT: Rect = rect! {0, 0, 16, 18}; // not to be rescaled!
-pub static mut DIGIT_RECT: Rect = rect! {0, 0, 16, 18};
-pub static mut CONS_HEADER_RECT: Rect = rect! {75, 64+40, 640 - 80, 135 - 64};
-pub static mut CONS_MENU_RECT: Rect = rect! {60, 180, 100, 256};
-pub static mut CONS_TEXT_RECT: Rect = rect! {180, 180, 640-185, 480 - 185};
-pub static mut CONS_MENU_RECTS: [Rect; 4] = [
-    rect! {60, 180, 100, 62},
-    rect! {60, 181 + 64, 100, 62},
-    rect! {60, 181 + 2*64, 100, 62},
-    rect! {60, 181 + 3*64, 100, 62},
-];
+pub const ORIG_DIGIT_RECT: Rect = rect! {0, 0, 16, 18}; // not to be rescaled!
 
 // Startpos + dimensions of Banner-Texts
 

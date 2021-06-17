@@ -6,7 +6,7 @@ use crate::{
     graphics::{clear_graph_mem, NE_SCREEN, TAKEOVER_BG_PIC},
     misc::my_random,
     structs::Point,
-    vars::{CLASSIC_USER_RECT, CONS_DROID_RECT, DRUIDMAP, ME},
+    vars::{DRUIDMAP, ME},
     view::fill_rect,
     Data, ALL_ENEMYS, DEATH_COUNT, INVINCIBLE_MODE, PRE_TAKE_ENERGY, REAL_SCORE,
 };
@@ -950,8 +950,8 @@ impl Data {
         let your_color: usize = YOUR_COLOR.into();
         let opponent_color: usize = OPPONENT_COLOR.into();
 
-        let xoffs = CLASSIC_USER_RECT.x;
-        let yoffs = CLASSIC_USER_RECT.y;
+        let xoffs = self.vars.classic_user_rect.x;
+        let yoffs = self.vars.classic_user_rect.y;
 
         SDL_SetClipRect(NE_SCREEN, null_mut());
 
@@ -1414,9 +1414,7 @@ impl Data {
             SDL_Delay(1); // don't hog CPU
         }
     }
-}
 
-impl Data {
     /// play takeover-game against a druid
     ///
     /// Returns true if the user won, false otherwise
@@ -1430,7 +1428,7 @@ impl Data {
 
         // Takeover game always uses Classic User_Rect:
         let buf = self.vars.user_rect;
-        self.vars.user_rect = CLASSIC_USER_RECT;
+        self.vars.user_rect = self.vars.classic_user_rect;
 
         self.display_banner(
             null_mut(),
@@ -1451,18 +1449,23 @@ impl Data {
         SDL_ShowCursor(SDL_DISABLE); // no mouse-cursor in takeover game!
 
         self.show_droid_info(ME.ty, -1, 0);
-        self.show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, UPDATE);
+        self.show_droid_portrait(
+            self.vars.cons_droid_rect,
+            ME.ty,
+            DROID_ROTATION_TIME,
+            UPDATE,
+        );
 
         self.wait_for_all_keys_released();
         while !self.fire_pressed_r() {
-            self.show_droid_portrait(CONS_DROID_RECT, ME.ty, DROID_ROTATION_TIME, 0);
+            self.show_droid_portrait(self.vars.cons_droid_rect, ME.ty, DROID_ROTATION_TIME, 0);
             SDL_Delay(1);
         }
 
         let enemy_index: usize = enemynum.try_into().unwrap();
         self.show_droid_info(ALL_ENEMYS[enemy_index].ty, -2, 0);
         self.show_droid_portrait(
-            CONS_DROID_RECT,
+            self.vars.cons_droid_rect,
             ALL_ENEMYS[enemy_index].ty,
             DROID_ROTATION_TIME,
             UPDATE,
@@ -1470,7 +1473,7 @@ impl Data {
         self.wait_for_all_keys_released();
         while !self.fire_pressed_r() {
             self.show_droid_portrait(
-                CONS_DROID_RECT,
+                self.vars.cons_droid_rect,
                 ALL_ENEMYS[enemy_index].ty,
                 DROID_ROTATION_TIME,
                 0,

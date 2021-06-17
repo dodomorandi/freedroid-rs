@@ -7,7 +7,6 @@ use crate::{
     graphics::{clear_graph_mem, putpixel, NE_SCREEN},
     input::SDL_Delay,
     structs::{Level, Waypoint},
-    vars::FULL_USER_RECT,
     view::{fill_rect, BLACK},
     Data, CUR_LEVEL, ME,
 };
@@ -87,8 +86,8 @@ impl Data {
             print_string_font(
                 NE_SCREEN,
                 self.global.font0_b_font,
-                i32::from(FULL_USER_RECT.x) + i32::from(FULL_USER_RECT.w) / 3,
-                i32::from(FULL_USER_RECT.y) + i32::from(FULL_USER_RECT.h)
+                i32::from(self.vars.full_user_rect.x) + i32::from(self.vars.full_user_rect.w) / 3,
+                i32::from(self.vars.full_user_rect.y) + i32::from(self.vars.full_user_rect.h)
                     - font_height(&*self.global.font0_b_font),
                 format_args!("Press F1 for keymap"),
             );

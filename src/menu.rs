@@ -17,7 +17,7 @@ use crate::{
     map::COLOR_NAMES,
     misc::{armageddon, dealloc_c_string},
     sound::set_bg_music_volume,
-    vars::{CLASSIC_USER_RECT, DRUIDMAP, FULL_USER_RECT, ME, MENU_RECT},
+    vars::{DRUIDMAP, ME},
     Data, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, INVINCIBLE_MODE, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
     SHOW_ALL_DROIDS, SOUND_ON, STOP_INFLUENCER,
 };
@@ -891,8 +891,10 @@ impl Data {
         let menu_width = menu_width.unwrap();
 
         let menu_height = i32::try_from(num_entries).unwrap() * self.menu.font_height;
-        let menu_x = i32::from(FULL_USER_RECT.x) + (i32::from(FULL_USER_RECT.w) - menu_width) / 2;
-        let menu_y = i32::from(FULL_USER_RECT.y) + (i32::from(FULL_USER_RECT.h) - menu_height) / 2;
+        let menu_x = i32::from(self.vars.full_user_rect.x)
+            + (i32::from(self.vars.full_user_rect.w) - menu_width) / 2;
+        let menu_y = i32::from(self.vars.full_user_rect.y)
+            + (i32::from(self.vars.full_user_rect.h) - menu_height) / 2;
         let influ_x = menu_x - i32::from(self.vars.block_rect.w) - self.menu.font_height;
 
         let mut menu_pos = 0;
@@ -1050,8 +1052,9 @@ impl Data {
     /// subroutine to display the current key-config and highlight current selection
     pub unsafe fn display_key_config(&self, selx: c_int, sely: c_int) {
         let current_font = self.b_font.current_font;
-        let startx = i32::from(FULL_USER_RECT.x) + (1.2 * f32::from(self.vars.block_rect.w)) as i32;
-        let starty = i32::from(FULL_USER_RECT.y) + font_height(&*current_font);
+        let startx = i32::from(self.vars.full_user_rect.x)
+            + (1.2 * f32::from(self.vars.block_rect.w)) as i32;
+        let starty = i32::from(self.vars.full_user_rect.y) + font_height(&*current_font);
         let col1 = startx + (7.5 * f64::from(char_width(&*current_font, b'O'))) as i32;
         let col2 = col1 + (6.5 * f64::from(char_width(&*current_font, b'O'))) as i32;
         let col3 = col2 + (6.5 * f64::from(char_width(&*current_font, b'O'))) as i32;
@@ -1433,9 +1436,9 @@ impl Data {
         if action == MenuAction::CLICK {
             self.display_text(
                 cstr!("New level name: ").as_ptr() as *mut c_char,
-                i32::from(MENU_RECT.x) - 2 * self.menu.font_height,
-                i32::from(MENU_RECT.y) - 3 * self.menu.font_height,
-                &FULL_USER_RECT,
+                i32::from(self.vars.menu_rect.x) - 2 * self.menu.font_height,
+                i32::from(self.vars.menu_rect.y) - 3 * self.menu.font_height,
+                &self.vars.full_user_rect,
             );
             SDL_Flip(NE_SCREEN);
             static ALREADY_FREED: AtomicBool = AtomicBool::new(false);
@@ -1607,7 +1610,7 @@ impl Data {
 
             // set window type
             self.global.game_config.full_user_rect = false.into();
-            self.vars.user_rect = CLASSIC_USER_RECT;
+            self.vars.user_rect = self.vars.classic_user_rect;
             // set theme
             self.set_theme(CLASSIC_THEME_INDEX);
             self.initiate_menu(false);
@@ -1630,9 +1633,9 @@ impl Data {
             let toggle = &mut self.global.game_config.full_user_rect as *mut i32;
             self.flip_toggle(toggle);
             if self.global.game_config.full_user_rect != 0 {
-                self.vars.user_rect = FULL_USER_RECT;
+                self.vars.user_rect = self.vars.full_user_rect;
             } else {
-                self.vars.user_rect = CLASSIC_USER_RECT;
+                self.vars.user_rect = self.vars.classic_user_rect;
             }
 
             self.initiate_menu(false);
