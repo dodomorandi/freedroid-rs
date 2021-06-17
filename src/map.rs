@@ -8,7 +8,7 @@ use crate::{
     misc::{dealloc_c_string, locate_string_in_data, my_random, read_value_from_string},
     structs::{Finepoint, GrobPoint, Level},
     vars::DRUIDMAP,
-    Data, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, ME, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
+    Data, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
 };
 
 use cstr::cstr;
@@ -69,38 +69,42 @@ pub struct Map {
     inner_wait_counter: f32,
 }
 
-/// Determines wether object on x/y is visible to the 001 or not
-pub unsafe fn is_visible(objpos: &Finepoint) -> c_int {
-    let influ_x = ME.pos.x;
-    let influ_y = ME.pos.y;
+impl Data {
+    /// Determines wether object on x/y is visible to the 001 or not
+    pub unsafe fn is_visible(&self, objpos: &Finepoint) -> c_int {
+        let influ_x = self.vars.me.pos.x;
+        let influ_y = self.vars.me.pos.y;
 
-    let a_x = influ_x - objpos.x;
-    let a_y = influ_y - objpos.y;
+        let a_x = influ_x - objpos.x;
+        let a_y = influ_y - objpos.y;
 
-    let a_len = (a_x * a_x + a_y * a_y).sqrt();
-    let mut step_num = a_len * 4.0;
+        let a_len = (a_x * a_x + a_y * a_y).sqrt();
+        let mut step_num = a_len * 4.0;
 
-    if step_num == 0. {
-        step_num = 1.;
-    }
-    let step = Finepoint {
-        x: a_x / step_num,
-        y: a_y / step_num,
-    };
-
-    let mut testpos = *objpos;
-
-    let step_num = step_num as i32;
-    for _ in 1..step_num {
-        testpos.x += step.x;
-        testpos.y += step.y;
-
-        if is_passable(testpos.x, testpos.y, Direction::Light as i32) != Direction::Center as i32 {
-            return false.into();
+        if step_num == 0. {
+            step_num = 1.;
         }
-    }
+        let step = Finepoint {
+            x: a_x / step_num,
+            y: a_y / step_num,
+        };
 
-    true.into()
+        let mut testpos = *objpos;
+
+        let step_num = step_num as i32;
+        for _ in 1..step_num {
+            testpos.x += step.x;
+            testpos.y += step.y;
+
+            if self.is_passable(testpos.x, testpos.y, Direction::Light as i32)
+                != Direction::Center as i32
+            {
+                return false.into();
+            }
+        }
+
+        true.into()
+    }
 }
 
 pub unsafe fn get_map_brick(deck: &Level, x: c_float, y: c_float) -> c_uchar {
@@ -168,246 +172,246 @@ impl Data {
                     as c_char;
             });
     }
-}
 
-pub unsafe fn is_passable(x: c_float, y: c_float, check_pos: c_int) -> c_int {
-    let map_brick = get_map_brick(&*CUR_LEVEL, x, y);
+    pub unsafe fn is_passable(&self, x: c_float, y: c_float, check_pos: c_int) -> c_int {
+        let map_brick = get_map_brick(&*CUR_LEVEL, x, y);
 
-    let fx = (x - 0.5) - (x - 0.5).floor();
-    let fy = (y - 0.5) - (y - 0.5).floor();
+        let fx = (x - 0.5) - (x - 0.5).floor();
+        let fy = (y - 0.5) - (y - 0.5).floor();
 
-    let map_tile = match MapTile::try_from(map_brick) {
-        Ok(map_tile) => map_tile,
-        Err(_) => return -1,
-    };
+        let map_tile = match MapTile::try_from(map_brick) {
+            Ok(map_tile) => map_tile,
+            Err(_) => return -1,
+        };
 
-    use Direction::*;
-    use MapTile::*;
-    match map_tile {
-        Floor | Lift | Void | Block4 | Block5 | Refresh1 | Refresh2 | Refresh3 | Refresh4
-        | FineGrid => {
-            Center as c_int /* these are passable */
-        }
-
-        AlertGreen | AlertYellow | AlertAmber | AlertRed => {
-            if check_pos.try_into() == Ok(Light) {
-                Center as c_int
-            } else {
-                -1
+        use Direction::*;
+        use MapTile::*;
+        match map_tile {
+            Floor | Lift | Void | Block4 | Block5 | Refresh1 | Refresh2 | Refresh3 | Refresh4
+            | FineGrid => {
+                Center as c_int /* these are passable */
             }
-        }
 
-        KonsoleL => {
-            if check_pos.try_into() == Ok(Light) || fx > 1.0 - KONSOLEPASS_X {
-                Center as c_int
-            } else {
-                -1
-            }
-        }
-
-        KonsoleR => {
-            if check_pos.try_into() == Ok(Light) || fx < KONSOLEPASS_X {
-                Center as c_int
-            } else {
-                -1
-            }
-        }
-
-        KonsoleO => {
-            if check_pos.try_into() == Ok(Light) || fy > 1. - KONSOLEPASS_Y {
-                Center as c_int
-            } else {
-                -1
-            }
-        }
-
-        KonsoleU => {
-            if check_pos.try_into() == Ok(Light) || fy < KONSOLEPASS_Y {
-                Center as c_int
-            } else {
-                -1
-            }
-        }
-
-        HWall => {
-            if (WALLPASS..=1. - WALLPASS).contains(&fy).not() {
-                Center as c_int
-            } else {
-                -1
-            }
-        }
-
-        VWall => {
-            if (WALLPASS..=1. - WALLPASS).contains(&fx).not() {
-                Center as c_int
-            } else {
-                -1
-            }
-        }
-
-        EckRo => {
-            if fx > 1. - WALLPASS || fy < WALLPASS || (fx < WALLPASS && fy > 1. - WALLPASS) {
-                Center as c_int
-            } else {
-                -1
-            }
-        }
-
-        EckRu => {
-            if fx > 1. - WALLPASS || fy > 1. - WALLPASS || (fx < WALLPASS && fy < WALLPASS) {
-                Center as c_int
-            } else {
-                -1
-            }
-        }
-
-        EckLu => {
-            if fx < WALLPASS || fy > 1. - WALLPASS || (fx > 1. - WALLPASS && fy < WALLPASS) {
-                Center as c_int
-            } else {
-                -1
-            }
-        }
-
-        EckLo => {
-            if fx < WALLPASS || fy < WALLPASS || (fx > 1. - WALLPASS && fy > 1. - WALLPASS) {
-                Center as c_int
-            } else {
-                -1
-            }
-        }
-
-        To => {
-            if fy < WALLPASS
-                || (fy > 1. - WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fx).not())
-            {
-                Center as c_int
-            } else {
-                -1
-            }
-        }
-
-        Tr => {
-            if fx > 1. - WALLPASS
-                || (fx < WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fy).not())
-            {
-                Center as c_int
-            } else {
-                -1
-            }
-        }
-
-        Tu => {
-            if fy > 1. - WALLPASS
-                || (fy < WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fx).not())
-            {
-                Center as c_int
-            } else {
-                -1
-            }
-        }
-
-        Tl => {
-            if fx < WALLPASS
-                || (fx > 1. - WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fy).not())
-            {
-                Center as c_int
-            } else {
-                -1
-            }
-        }
-
-        HGanztuere | HHalbtuere3 | HHalbtuere2 if (check_pos.try_into() == Ok(Light)) => {
-            Center as c_int
-        }
-        HHalbtuere1 | HZutuere if (check_pos.try_into() == Ok(Light)) => -1,
-
-        HGanztuere | HHalbtuere3 | HHalbtuere2 | HHalbtuere1 | HZutuere => {
-            if (H_RANDBREITE..=1. - H_RANDBREITE).contains(&fx).not()
-                && (H_RANDSPACE..=1. - H_RANDSPACE).contains(&fy)
-            {
-                let check_pos = match check_pos.try_into() {
-                    Ok(check_pos) => check_pos,
-                    Err(_) => return -1,
-                };
-                if check_pos != Center && check_pos != Light && ME.speed.y != 0. {
-                    match check_pos {
-                        Rechtsoben | Rechtsunten | Rechts => {
-                            if fx > 1. - H_RANDBREITE {
-                                Links as c_int
-                            } else {
-                                -1
-                            }
-                        }
-                        Linksoben | Linksunten | Links => {
-                            if fx < H_RANDBREITE {
-                                Rechts as c_int
-                            } else {
-                                -1
-                            }
-                        }
-                        _ => -1, /* switch check_pos */
-                    }
-                }
-                /* if DRUID && Me.speed.y != 0 */
-                else {
-                    -1
-                }
-            } else if map_tile == HGanztuere
-                || map_tile == HHalbtuere3
-                || fy < TUERBREITE
-                || fy > 1. - TUERBREITE
-            {
-                Center as c_int
-            } else {
-                -1
-            }
-        }
-        VGanztuere | VHalbtuere3 | VHalbtuere2 if (check_pos.try_into() == Ok(Light)) => {
-            Center as c_int
-        }
-
-        VHalbtuere1 | VZutuere if (check_pos.try_into() == Ok(Light)) => -1,
-        VGanztuere | VHalbtuere3 | VHalbtuere2 | VHalbtuere1 | VZutuere => {
-            if (V_RANDBREITE..=1. - V_RANDBREITE).contains(&fy).not()
-                && (V_RANDSPACE..=1. - V_RANDSPACE).contains(&fx)
-            {
-                let check_pos = match check_pos.try_into() {
-                    Ok(check_pos) => check_pos,
-                    Err(_) => return -1,
-                };
-                if check_pos != Center && check_pos != Light && ME.speed.x != 0. {
-                    match check_pos {
-                        Rechtsoben | Linksoben | Oben => {
-                            if fy < V_RANDBREITE {
-                                Unten as c_int
-                            } else {
-                                -1
-                            }
-                        }
-                        Rechtsunten | Linksunten | Unten => {
-                            if fy > 1. - V_RANDBREITE {
-                                Oben as c_int
-                            } else {
-                                -1
-                            }
-                        }
-                        _ => -1,
-                    }
+            AlertGreen | AlertYellow | AlertAmber | AlertRed => {
+                if check_pos.try_into() == Ok(Light) {
+                    Center as c_int
                 } else {
                     -1
                 }
-            } else if map_tile == VGanztuere
-                || map_tile == VHalbtuere3
-                || fx < TUERBREITE
-                || fx > 1. - TUERBREITE
-            {
-                Center as c_int
-            } else {
-                -1
             }
+
+            KonsoleL => {
+                if check_pos.try_into() == Ok(Light) || fx > 1.0 - KONSOLEPASS_X {
+                    Center as c_int
+                } else {
+                    -1
+                }
+            }
+
+            KonsoleR => {
+                if check_pos.try_into() == Ok(Light) || fx < KONSOLEPASS_X {
+                    Center as c_int
+                } else {
+                    -1
+                }
+            }
+
+            KonsoleO => {
+                if check_pos.try_into() == Ok(Light) || fy > 1. - KONSOLEPASS_Y {
+                    Center as c_int
+                } else {
+                    -1
+                }
+            }
+
+            KonsoleU => {
+                if check_pos.try_into() == Ok(Light) || fy < KONSOLEPASS_Y {
+                    Center as c_int
+                } else {
+                    -1
+                }
+            }
+
+            HWall => {
+                if (WALLPASS..=1. - WALLPASS).contains(&fy).not() {
+                    Center as c_int
+                } else {
+                    -1
+                }
+            }
+
+            VWall => {
+                if (WALLPASS..=1. - WALLPASS).contains(&fx).not() {
+                    Center as c_int
+                } else {
+                    -1
+                }
+            }
+
+            EckRo => {
+                if fx > 1. - WALLPASS || fy < WALLPASS || (fx < WALLPASS && fy > 1. - WALLPASS) {
+                    Center as c_int
+                } else {
+                    -1
+                }
+            }
+
+            EckRu => {
+                if fx > 1. - WALLPASS || fy > 1. - WALLPASS || (fx < WALLPASS && fy < WALLPASS) {
+                    Center as c_int
+                } else {
+                    -1
+                }
+            }
+
+            EckLu => {
+                if fx < WALLPASS || fy > 1. - WALLPASS || (fx > 1. - WALLPASS && fy < WALLPASS) {
+                    Center as c_int
+                } else {
+                    -1
+                }
+            }
+
+            EckLo => {
+                if fx < WALLPASS || fy < WALLPASS || (fx > 1. - WALLPASS && fy > 1. - WALLPASS) {
+                    Center as c_int
+                } else {
+                    -1
+                }
+            }
+
+            To => {
+                if fy < WALLPASS
+                    || (fy > 1. - WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fx).not())
+                {
+                    Center as c_int
+                } else {
+                    -1
+                }
+            }
+
+            Tr => {
+                if fx > 1. - WALLPASS
+                    || (fx < WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fy).not())
+                {
+                    Center as c_int
+                } else {
+                    -1
+                }
+            }
+
+            Tu => {
+                if fy > 1. - WALLPASS
+                    || (fy < WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fx).not())
+                {
+                    Center as c_int
+                } else {
+                    -1
+                }
+            }
+
+            Tl => {
+                if fx < WALLPASS
+                    || (fx > 1. - WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fy).not())
+                {
+                    Center as c_int
+                } else {
+                    -1
+                }
+            }
+
+            HGanztuere | HHalbtuere3 | HHalbtuere2 if (check_pos.try_into() == Ok(Light)) => {
+                Center as c_int
+            }
+            HHalbtuere1 | HZutuere if (check_pos.try_into() == Ok(Light)) => -1,
+
+            HGanztuere | HHalbtuere3 | HHalbtuere2 | HHalbtuere1 | HZutuere => {
+                if (H_RANDBREITE..=1. - H_RANDBREITE).contains(&fx).not()
+                    && (H_RANDSPACE..=1. - H_RANDSPACE).contains(&fy)
+                {
+                    let check_pos = match check_pos.try_into() {
+                        Ok(check_pos) => check_pos,
+                        Err(_) => return -1,
+                    };
+                    if check_pos != Center && check_pos != Light && self.vars.me.speed.y != 0. {
+                        match check_pos {
+                            Rechtsoben | Rechtsunten | Rechts => {
+                                if fx > 1. - H_RANDBREITE {
+                                    Links as c_int
+                                } else {
+                                    -1
+                                }
+                            }
+                            Linksoben | Linksunten | Links => {
+                                if fx < H_RANDBREITE {
+                                    Rechts as c_int
+                                } else {
+                                    -1
+                                }
+                            }
+                            _ => -1, /* switch check_pos */
+                        }
+                    }
+                    /* if DRUID && Me.speed.y != 0 */
+                    else {
+                        -1
+                    }
+                } else if map_tile == HGanztuere
+                    || map_tile == HHalbtuere3
+                    || fy < TUERBREITE
+                    || fy > 1. - TUERBREITE
+                {
+                    Center as c_int
+                } else {
+                    -1
+                }
+            }
+            VGanztuere | VHalbtuere3 | VHalbtuere2 if (check_pos.try_into() == Ok(Light)) => {
+                Center as c_int
+            }
+
+            VHalbtuere1 | VZutuere if (check_pos.try_into() == Ok(Light)) => -1,
+            VGanztuere | VHalbtuere3 | VHalbtuere2 | VHalbtuere1 | VZutuere => {
+                if (V_RANDBREITE..=1. - V_RANDBREITE).contains(&fy).not()
+                    && (V_RANDSPACE..=1. - V_RANDSPACE).contains(&fx)
+                {
+                    let check_pos = match check_pos.try_into() {
+                        Ok(check_pos) => check_pos,
+                        Err(_) => return -1,
+                    };
+                    if check_pos != Center && check_pos != Light && self.vars.me.speed.x != 0. {
+                        match check_pos {
+                            Rechtsoben | Linksoben | Oben => {
+                                if fy < V_RANDBREITE {
+                                    Unten as c_int
+                                } else {
+                                    -1
+                                }
+                            }
+                            Rechtsunten | Linksunten | Unten => {
+                                if fy > 1. - V_RANDBREITE {
+                                    Oben as c_int
+                                } else {
+                                    -1
+                                }
+                            }
+                            _ => -1,
+                        }
+                    } else {
+                        -1
+                    }
+                } else if map_tile == VGanztuere
+                    || map_tile == VHalbtuere3
+                    || fx < TUERBREITE
+                    || fx > 1. - TUERBREITE
+                {
+                    Center as c_int
+                } else {
+                    -1
+                }
+            }
+            _ => -1,
         }
-        _ => -1,
     }
 }
 
@@ -575,8 +579,8 @@ freedroid-discussion@lists.sourceforge.net\n\
             // NORMALISATION doory = doory * Block_Rect.h + Block_Rect.h / 2;
 
             /* first check Influencer gegen Tuer */
-            let xdist = ME.pos.x - f32::from(doorx);
-            let ydist = ME.pos.y - f32::from(doory);
+            let xdist = self.vars.me.pos.x - f32::from(doorx);
+            let ydist = self.vars.me.pos.y - f32::from(doory);
             let dist2 = xdist * xdist + ydist * ydist;
 
             const DOOROPENDIST2: f32 = 1.;
@@ -788,7 +792,7 @@ impl Data {
             .iter()
             .enumerate()
             .map(|(direction_index, test_pos)| {
-                is_passable(
+                self.is_passable(
                     test_pos.x,
                     test_pos.y,
                     c_int::try_from(direction_index).unwrap(),
@@ -1524,16 +1528,17 @@ impl Data {
     pub unsafe fn act_special_field(&mut self, x: c_float, y: c_float) {
         let map_tile = get_map_brick(&*CUR_LEVEL, x, y);
 
-        let myspeed2 = ME.speed.x * ME.speed.x + ME.speed.y * ME.speed.y;
+        let myspeed2 = self.vars.me.speed.x * self.vars.me.speed.x
+            + self.vars.me.speed.y * self.vars.me.speed.y;
 
         if let Ok(map_tile) = MapTile::try_from(map_tile) {
             use MapTile::*;
             match map_tile {
                 Lift => {
                     if myspeed2 <= 1.0
-                        && (ME.status == Status::Activate as c_int
+                        && (self.vars.me.status == Status::Activate as c_int
                             || (self.global.game_config.takeover_activates != 0
-                                && ME.status == Status::Transfermode as c_int))
+                                && self.vars.me.status == Status::Transfermode as c_int))
                     {
                         let cx = x.round() - x;
                         let cy = y.round() - y;
@@ -1546,9 +1551,9 @@ impl Data {
 
                 KonsoleR | KonsoleL | KonsoleO | KonsoleU => {
                     if myspeed2 <= 1.0
-                        && (ME.status == Status::Activate as c_int
+                        && (self.vars.me.status == Status::Activate as c_int
                             || (self.global.game_config.takeover_activates != 0
-                                && ME.status == Status::Transfermode as c_int))
+                                && self.vars.me.status == Status::Transfermode as c_int))
                     {
                         self.enter_konsole();
                     }
@@ -1558,43 +1563,43 @@ impl Data {
             }
         }
     }
-}
 
-pub unsafe fn get_current_lift() -> c_int {
-    let curlev = (*CUR_LEVEL).levelnum;
+    pub unsafe fn get_current_lift(&self) -> c_int {
+        let curlev = (*CUR_LEVEL).levelnum;
 
-    let gx = ME.pos.x.round() as c_int;
-    let gy = ME.pos.y.round() as c_int;
+        let gx = self.vars.me.pos.x.round() as c_int;
+        let gy = self.vars.me.pos.y.round() as c_int;
 
-    info!("curlev={} gx={} gy={}", curlev, gx, gy);
-    info!("List of elevators:");
-    for i in 0..usize::try_from(CUR_SHIP.num_lifts).unwrap() + 1 {
-        info!(
-            "Index={} level={} gx={} gy={}",
-            i, CUR_SHIP.all_lifts[i].level, CUR_SHIP.all_lifts[i].x, CUR_SHIP.all_lifts[i].y
-        );
-    }
+        info!("curlev={} gx={} gy={}", curlev, gx, gy);
+        info!("List of elevators:");
+        for i in 0..usize::try_from(CUR_SHIP.num_lifts).unwrap() + 1 {
+            info!(
+                "Index={} level={} gx={} gy={}",
+                i, CUR_SHIP.all_lifts[i].level, CUR_SHIP.all_lifts[i].x, CUR_SHIP.all_lifts[i].y
+            );
+        }
 
-    let mut i = 0;
-    while i < usize::try_from(CUR_SHIP.num_lifts).unwrap() + 1
-    // we check for one more than present, so the last reached
-    // will really mean: NONE FOUND.
-    {
-        if CUR_SHIP.all_lifts[i].level != curlev {
+        let mut i = 0;
+        while i < usize::try_from(CUR_SHIP.num_lifts).unwrap() + 1
+        // we check for one more than present, so the last reached
+        // will really mean: NONE FOUND.
+        {
+            if CUR_SHIP.all_lifts[i].level != curlev {
+                i += 1;
+                continue;
+            }
+            if CUR_SHIP.all_lifts[i].x == gx && CUR_SHIP.all_lifts[i].y == gy {
+                break;
+            }
+
             i += 1;
-            continue;
-        }
-        if CUR_SHIP.all_lifts[i].x == gx && CUR_SHIP.all_lifts[i].y == gy {
-            break;
         }
 
-        i += 1;
-    }
-
-    if i == usize::try_from(CUR_SHIP.num_lifts).unwrap() + 1 {
-        // none found
-        -1
-    } else {
-        i.try_into().unwrap()
+        if i == usize::try_from(CUR_SHIP.num_lifts).unwrap() + 1 {
+            // none found
+            -1
+        } else {
+            i.try_into().unwrap()
+        }
     }
 }

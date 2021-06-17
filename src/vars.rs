@@ -34,6 +34,7 @@ pub struct Vars {
 
     /* counter to Message: you have won(this ship */
     pub ship_empty_counter: c_int,
+    pub me: Influence,
 }
 
 impl Default for Vars {
@@ -66,6 +67,23 @@ impl Default for Vars {
             progress_bar_rect: rect! {446, 155, 22, 111},
             progress_text_rect: rect! {213, 390, 157, 30},
             ship_empty_counter: 0,
+            me: Influence {
+                ty: Droid::Droid001 as i32,
+                status: Status::Transfermode as i32,
+                speed: Finepoint { x: 0., y: 0. },
+                pos: Finepoint { x: 120., y: 48. },
+                health: 100.,
+                energy: 100.,
+                firewait: 0.,
+                phase: 0.,
+                timer: 0.,
+                last_crysound_time: 0.,
+                last_transfer_sound_time: 0.,
+                text_visible_time: 0.,
+                text_to_be_displayed: null_mut(),
+                position_history_ring_buffer: [Gps { x: 0., y: 0., z: 0 };
+                    MAX_INFLU_POSITION_HISTORY],
+            },
         }
     }
 }
@@ -141,29 +159,13 @@ impl fmt::Debug for Vars {
             .field("progress_bar_rect", &progress_bar_rect)
             .field("progress_text_rect", &progress_text_rect)
             .field("ship_empty_counter", &self.ship_empty_counter)
+            .field("me", &self.me)
             .finish()
     }
 }
 
 pub const ORIG_BLOCK_RECT: Rect = rect! {0, 0, 64, 64}; // not to be rescaled ever!!
 pub const ORIG_DIGIT_RECT: Rect = rect! {0, 0, 16, 18}; // not to be rescaled!
-
-pub static mut ME: Influence = Influence {
-    ty: Droid::Droid001 as i32,
-    status: Status::Transfermode as i32,
-    speed: Finepoint { x: 0., y: 0. },
-    pos: Finepoint { x: 120., y: 48. },
-    health: 100.,
-    energy: 100.,
-    firewait: 0.,
-    phase: 0.,
-    timer: 0.,
-    last_crysound_time: 0.,
-    last_transfer_sound_time: 0.,
-    text_visible_time: 0.,
-    text_to_be_displayed: null_mut(),
-    position_history_ring_buffer: [Gps { x: 0., y: 0., z: 0 }; MAX_INFLU_POSITION_HISTORY],
-};
 
 pub static mut DRUIDMAP: *mut DruidSpec = null_mut();
 pub static mut BULLETMAP: *mut BulletSpec = null_mut();

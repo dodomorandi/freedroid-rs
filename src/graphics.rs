@@ -20,7 +20,7 @@ use crate::{
         PLAYGROUND_STARTS, RIGHT_GROUND_START, TO_BLOCKS, TO_BLOCK_FILE_C, TO_GAME_BLOCKS,
         TO_GROUND_BLOCKS,
     },
-    vars::{BLASTMAP, BULLETMAP, DRUIDMAP, ME, ORIG_BLOCK_RECT, ORIG_DIGIT_RECT},
+    vars::{BLASTMAP, BULLETMAP, DRUIDMAP, ORIG_BLOCK_RECT, ORIG_DIGIT_RECT},
     Data, ALL_BULLETS, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
 };
 
@@ -1844,10 +1844,10 @@ impl Data {
             let max = (y2 - y1) * f32::from(self.vars.block_rect.w);
             while i < max {
                 let pixx = f32::from(self.vars.user_rect.x) + f32::from(self.vars.user_rect.w / 2)
-                    - f32::from(self.vars.block_rect.w) * (ME.pos.x - x1);
+                    - f32::from(self.vars.block_rect.w) * (self.vars.me.pos.x - x1);
                 let user_center = self.get_user_center();
                 let pixy = f32::from(user_center.y)
-                    - f32::from(self.vars.block_rect.h) * (ME.pos.y - y1)
+                    - f32::from(self.vars.block_rect.h) * (self.vars.me.pos.y - y1)
                     + i;
                 if pixx <= self.vars.user_rect.x.into()
                     || pixx
@@ -1893,11 +1893,11 @@ impl Data {
         let max = (x2 - x1) * f32::from(self.vars.block_rect.w);
         while i < max {
             let pixx = f32::from(self.vars.user_rect.x) + f32::from(self.vars.user_rect.w / 2)
-                - f32::from(self.vars.block_rect.w) * (ME.pos.x - x1)
+                - f32::from(self.vars.block_rect.w) * (self.vars.me.pos.x - x1)
                 + i;
             let user_center = self.get_user_center();
             let pixy = f32::from(user_center.y)
-                - f32::from(self.vars.block_rect.h) * (ME.pos.y - y1)
+                - f32::from(self.vars.block_rect.h) * (self.vars.me.pos.y - y1)
                 + i * slope;
             if pixx <= f32::from(self.vars.user_rect.x)
                 || pixx >= f32::from(self.vars.user_rect.x) + f32::from(self.vars.user_rect.w) - 1.

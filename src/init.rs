@@ -8,7 +8,6 @@ use crate::{
     },
     enemy::shuffle_enemys,
     graphics::{clear_graph_mem, ALL_THEMES, NE_SCREEN, NUMBER_OF_BULLET_TYPES, PIC999},
-    influencer::init_influ_position_history,
     input::SDL_Delay,
     misc::{
         count_string_occurences, dealloc_c_string, locate_string_in_data, my_random,
@@ -18,7 +17,7 @@ use crate::{
     vars::{BLASTMAP, BULLETMAP, DRUIDMAP},
     Data, ALERT_BONUS_PER_SEC, ALERT_THRESHOLD, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL,
     CUR_SHIP, DEATH_COUNT, DEATH_COUNT_DRAIN_SPEED, DEBUG_LEVEL, LAST_GOT_INTO_BLAST_SOUND,
-    LAST_REFRESH_SOUND, ME, NUMBER_OF_DROID_TYPES, NUM_ENEMYS, REAL_SCORE, SHOW_SCORE, SOUND_ON,
+    LAST_REFRESH_SOUND, NUMBER_OF_DROID_TYPES, NUM_ENEMYS, REAL_SCORE, SHOW_SCORE, SOUND_ON,
     THIS_MESSAGE_TIME,
 };
 
@@ -187,7 +186,7 @@ impl Data {
         SDL_ShowCursor(SDL_DISABLE);
 
         SHOW_SCORE = REAL_SCORE as c_long;
-        ME.status = Status::Victory as c_int;
+        self.vars.me.status = Status::Victory as c_int;
         self.display_banner(
             null_mut(),
             null_mut(),
@@ -229,8 +228,8 @@ impl Data {
         }
 
         self.global.skip_a_few_frames = false.into();
-        ME.text_visible_time = 0.;
-        ME.text_to_be_displayed = null_mut();
+        self.vars.me.text_visible_time = 0.;
+        self.vars.me.text_to_be_displayed = null_mut();
 
         // these are the hardcoded game-defaults, they can be overloaded by the config-file if present
         self.global.game_config.current_bg_music_volume = 0.3;
@@ -699,9 +698,9 @@ impl Data {
         // here would SegFault eventually!
         //  if (Me.TextToBeDisplayed) free (Me.TextToBeDisplayed);
 
-        ME.text_to_be_displayed =
+        self.vars.me.text_to_be_displayed =
             cstr!("Ok. I'm on board.  Let's get to work.").as_ptr() as *mut c_char; // taken from Paradroid.mission
-        ME.text_visible_time = 0.;
+        self.vars.me.text_visible_time = 0.;
 
         //--------------------
         // Now its time to get the crew file name from the mission file and
@@ -790,7 +789,7 @@ impl Data {
             cstr!("%d").as_ptr() as *mut c_char,
             &mut starting_x_pos,
         );
-        ME.pos.x = starting_x_pos as c_float;
+        self.vars.me.pos.x = starting_x_pos as c_float;
         start_point_pointer = libc::strstr(start_point_pointer, cstr!("YPos=").as_ptr())
             .add(libc::strlen(cstr!("YPos=").as_ptr()));
         libc::sscanf(
@@ -798,7 +797,7 @@ impl Data {
             cstr!("%d").as_ptr() as *mut c_char,
             &mut starting_y_pos,
         );
-        ME.pos.y = starting_y_pos as c_float;
+        self.vars.me.pos.y = starting_y_pos as c_float;
         info!(
             "Final starting position: Level={} XPos={} YPos={}.",
             starting_level, starting_x_pos, starting_y_pos,
@@ -814,7 +813,7 @@ impl Data {
         //--------------------
         // At this point the position history can be initialized
         //
-        init_influ_position_history();
+        self.init_influ_position_history();
         self.b_font.current_font = oldfont;
         //--------------------
         // We start with doing the briefing things...
@@ -847,14 +846,14 @@ impl Data {
         // Now that the briefing and all that is done,
         // the influence structure can be initialized for
         // the new mission:
-        ME.ty = Droid::Droid001 as c_int;
-        ME.speed.x = 0.;
-        ME.speed.y = 0.;
-        ME.energy = (*DRUIDMAP.add(Droid::Droid001 as usize)).maxenergy;
-        ME.health = ME.energy; /* start with max. health */
-        ME.status = Status::Mobile as c_int;
-        ME.phase = 0.;
-        ME.timer = 0.0; // set clock to 0
+        self.vars.me.ty = Droid::Droid001 as c_int;
+        self.vars.me.speed.x = 0.;
+        self.vars.me.speed.y = 0.;
+        self.vars.me.energy = (*DRUIDMAP.add(Droid::Droid001 as usize)).maxenergy;
+        self.vars.me.health = self.vars.me.energy; /* start with max. health */
+        self.vars.me.status = Status::Mobile as c_int;
+        self.vars.me.phase = 0.;
+        self.vars.me.timer = 0.0; // set clock to 0
 
         info!("done."); // this matches the printf at the beginning of this function
     }
@@ -897,7 +896,7 @@ impl Data {
         );
         self.display_image(image);
         self.make_grid_on_screen(Some(&self.vars.screen_rect));
-        ME.status = Status::Briefing as c_int;
+        self.vars.me.status = Status::Briefing as c_int;
 
         self.b_font.current_font = self.global.para_b_font;
 
@@ -1539,7 +1538,7 @@ impl Data {
 
     /// Show end-screen
     pub(crate) unsafe fn thou_art_defeated(&mut self) {
-        ME.status = Status::Terminated as c_int;
+        self.vars.me.status = Status::Terminated as c_int;
         SDL_ShowCursor(SDL_DISABLE);
 
         self.explode_influencer();

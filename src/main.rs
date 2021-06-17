@@ -51,7 +51,7 @@ use ship::ShipData;
 use sound::Sound;
 use structs::{Blast, Bullet, Enemy, Finepoint, Level, Lift, Ship};
 use text::Text;
-use vars::{Vars, ME};
+use vars::Vars;
 
 use sdl::{
     mouse::ll::{SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE},
@@ -232,11 +232,21 @@ fn main() {
             // release all keys
             data.wait_for_all_keys_released();
 
-            data.show_droid_info(ME.ty, -3, 0); // show unit-intro page
-            data.show_droid_portrait(data.vars.cons_droid_rect, ME.ty, DROID_ROTATION_TIME, RESET);
+            data.show_droid_info(data.vars.me.ty, -3, 0); // show unit-intro page
+            data.show_droid_portrait(
+                data.vars.cons_droid_rect,
+                data.vars.me.ty,
+                DROID_ROTATION_TIME,
+                RESET,
+            );
             let now = SDL_GetTicks();
             while SDL_GetTicks() - now < SHOW_WAIT && !data.fire_pressed_r() {
-                data.show_droid_portrait(data.vars.cons_droid_rect, ME.ty, DROID_ROTATION_TIME, 0);
+                data.show_droid_portrait(
+                    data.vars.cons_droid_rect,
+                    data.vars.me.ty,
+                    DROID_ROTATION_TIME,
+                    0,
+                );
                 SDL_Delay(1);
             }
 
@@ -340,25 +350,25 @@ impl Data {
 
         LAST_GOT_INTO_BLAST_SOUND += self.frame_time();
         LAST_REFRESH_SOUND += self.frame_time();
-        ME.last_crysound_time += self.frame_time();
-        ME.timer += self.frame_time();
+        self.vars.me.last_crysound_time += self.frame_time();
+        self.vars.me.timer += self.frame_time();
 
         let cur_level = &mut *CUR_LEVEL;
         if cur_level.timer >= 0.0 {
             cur_level.timer -= self.frame_time();
         }
 
-        ME.last_transfer_sound_time += self.frame_time();
-        ME.text_visible_time += self.frame_time();
+        self.vars.me.last_transfer_sound_time += self.frame_time();
+        self.vars.me.text_visible_time += self.frame_time();
         self.global.level_doors_not_moved_time += self.frame_time();
         if self.global.skip_a_few_frames != 0 {
             self.global.skip_a_few_frames = 0;
         }
 
-        if ME.firewait > 0. {
-            ME.firewait -= self.frame_time();
-            if ME.firewait < 0. {
-                ME.firewait = 0.;
+        if self.vars.me.firewait > 0. {
+            self.vars.me.firewait -= self.frame_time();
+            if self.vars.me.firewait < 0. {
+                self.vars.me.firewait = 0.;
             }
         }
         if self.vars.ship_empty_counter > 1 {

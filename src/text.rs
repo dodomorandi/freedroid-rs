@@ -4,7 +4,6 @@ use crate::{
     graphics::{NE_SCREEN, VID_BPP},
     input::SDL_Delay,
     misc::my_random,
-    vars::ME,
     Data, ALL_ENEMYS,
 };
 
@@ -570,39 +569,40 @@ impl Data {
         }
     }
 
-    pub unsafe fn add_influ_burnt_text(&self) {
+    pub unsafe fn add_influ_burnt_text(&mut self) {
         if self.global.game_config.droid_talk == 0 {
             return;
         }
 
-        ME.text_visible_time = 0.;
+        self.vars.me.text_visible_time = 0.;
 
         match my_random(6) {
             0 => {
-                ME.text_to_be_displayed =
+                self.vars.me.text_to_be_displayed =
                     cstr!("Aaarrgh, aah, that burnt me!").as_ptr() as *mut c_char
             }
             1 => {
-                ME.text_to_be_displayed = cstr!("Hell, that blast was hot!").as_ptr() as *mut c_char
+                self.vars.me.text_to_be_displayed =
+                    cstr!("Hell, that blast was hot!").as_ptr() as *mut c_char
             }
             2 => {
-                ME.text_to_be_displayed =
+                self.vars.me.text_to_be_displayed =
                     cstr!("Ghaart, I hate to stain my chassis like that.").as_ptr() as *mut c_char
             }
             3 => {
-                ME.text_to_be_displayed =
+                self.vars.me.text_to_be_displayed =
                     cstr!("Oh no!  I think I've burnt a cable!").as_ptr() as *mut c_char
             }
             4 => {
-                ME.text_to_be_displayed =
+                self.vars.me.text_to_be_displayed =
                     cstr!("Oh no, my poor transfer connectors smolder!").as_ptr() as *mut c_char
             }
             5 => {
-                ME.text_to_be_displayed =
+                self.vars.me.text_to_be_displayed =
                     cstr!("I hope that didn't melt any circuits!").as_ptr() as *mut c_char
             }
             6 => {
-                ME.text_to_be_displayed =
+                self.vars.me.text_to_be_displayed =
                     cstr!("So that gives some more black scars on me ol' dented chassis!").as_ptr()
                         as *mut c_char
             }

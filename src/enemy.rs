@@ -4,11 +4,10 @@ use crate::{
         MAXWAYPOINTS, MAX_ENEMYS_ON_SHIP, ROBOT_MAX_WAIT_BETWEEN_SHOTS, SLOWMO_FACTOR,
         WAIT_COLLISION, WAIT_LEVELEMPTY,
     },
-    map::is_visible,
     misc::my_random,
     ship::level_empty,
     structs::Finepoint,
-    vars::{BULLETMAP, DRUIDMAP, ME},
+    vars::{BULLETMAP, DRUIDMAP},
     Data, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, DEATH_COUNT, NUM_ENEMYS, REAL_SCORE,
 };
 
@@ -103,8 +102,8 @@ impl Data {
             return;
         }
 
-        let mut xdist = ME.pos.x - this_robot.pos.x;
-        let mut ydist = ME.pos.y - this_robot.pos.y;
+        let mut xdist = self.vars.me.pos.x - this_robot.pos.x;
+        let mut ydist = self.vars.me.pos.y - this_robot.pos.y;
 
         // Add some security against division by zero
         if xdist == 0. {
@@ -125,7 +124,8 @@ impl Data {
         //
 
         // distance limitation only for MS mechs
-        if dist2 >= FIREDIST2 || this_robot.firewait != 0. || is_visible(&this_robot.pos) == 0 {
+        if dist2 >= FIREDIST2 || this_robot.firewait != 0. || self.is_visible(&this_robot.pos) == 0
+        {
             return;
         }
 

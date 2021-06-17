@@ -11,11 +11,11 @@ use crate::{
         SHIP_OFF_PIC, SHIP_ON_PIC, VID_BPP,
     },
     input::SDL_Delay,
-    map::{get_current_lift, get_map_brick},
+    map::get_map_brick,
     structs::Point,
     vars::{BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, DRUIDMAP, SENSOR_NAMES, WEAPON_NAMES},
     view::fill_rect,
-    Data, ALERT_LEVEL, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, ME, NE_SCREEN, NUM_ENEMYS,
+    Data, ALERT_LEVEL, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, NE_SCREEN, NUM_ENEMYS,
 };
 
 use log::{error, warn};
@@ -501,7 +501,7 @@ Paradroid to eliminate all rogue robots.\0",
         );
 
         if show_arrows {
-            if ME.ty > droid_type {
+            if self.vars.me.ty > droid_type {
                 SDL_UpperBlit(ARROW_UP, null_mut(), NE_SCREEN, &mut self.ship.up_rect);
             }
 
@@ -538,11 +538,11 @@ impl Data {
     /// Note: we no longer wait here for a key-press, but return
     /// immediately
     pub unsafe fn show_deck_map(&mut self) {
-        let tmp = ME.pos;
+        let tmp = self.vars.me.pos;
 
         let cur_level = &*CUR_LEVEL;
-        ME.pos.x = (cur_level.xlen / 2) as f32;
-        ME.pos.y = (cur_level.ylen / 2) as f32;
+        self.vars.me.pos.x = (cur_level.xlen / 2) as f32;
+        self.vars.me.pos.y = (cur_level.ylen / 2) as f32;
 
         SDL_ShowCursor(SDL_DISABLE);
 
@@ -556,7 +556,7 @@ impl Data {
 
         SDL_Flip(NE_SCREEN);
 
-        ME.pos = tmp;
+        self.vars.me.pos = tmp;
 
         self.wait_for_key_pressed();
 
@@ -579,7 +579,7 @@ impl Data {
 
         self.wait_for_all_keys_released();
 
-        ME.status = Status::Console as c_int;
+        self.vars.me.status = Status::Console as c_int;
 
         if cfg!(target_os = "android") {
             self.input.show_cursor = false;
@@ -734,7 +734,7 @@ impl Data {
 
         self.vars.user_rect = tmp_rect;
 
-        ME.status = Status::Mobile as c_int;
+        self.vars.me.status = Status::Mobile as c_int;
 
         clear_graph_mem();
 
@@ -749,7 +749,7 @@ impl Data {
     pub unsafe fn great_druid_show(&mut self) {
         let mut finished = false;
 
-        let mut droidtype = ME.ty;
+        let mut droidtype = self.vars.me.ty;
         let mut page = 0;
 
         self.show_droid_info(droidtype, page, 0);
@@ -802,7 +802,7 @@ impl Data {
                         continue;
                     }
 
-                    if droidtype < ME.ty {
+                    if droidtype < self.vars.me.ty {
                         self.move_menu_position_sound();
                         droidtype += 1;
                         need_update = true;
@@ -998,13 +998,13 @@ impl Data {
 
         /* Prevent the influ from coming out of the lift in transfer mode
          * by turning off transfer mode as soon as the influ enters the lift */
-        ME.status = Status::Elevator as c_int;
+        self.vars.me.status = Status::Elevator as c_int;
 
         SDL_ShowCursor(SDL_DISABLE);
 
         let mut cur_level = (*CUR_LEVEL).levelnum;
 
-        let cur_lift = get_current_lift();
+        let cur_lift = self.get_current_lift();
         if cur_lift == -1 {
             error!("Lift out of order, I'm so sorry !");
             return;
@@ -1100,8 +1100,8 @@ impl Data {
             CUR_LEVEL = CUR_SHIP.all_levels[array_num];
 
             // set the position of the influencer to the correct locatiohn
-            ME.pos.x = CUR_SHIP.all_lifts[cur_lift].x as f32;
-            ME.pos.y = CUR_SHIP.all_lifts[cur_lift].y as f32;
+            self.vars.me.pos.x = CUR_SHIP.all_lifts[cur_lift].x as f32;
+            self.vars.me.pos.y = CUR_SHIP.all_lifts[cur_lift].y as f32;
 
             for i in 0..c_int::try_from(MAXBLASTS).unwrap() {
                 delete_blast(i);
@@ -1121,9 +1121,9 @@ impl Data {
             DisplayBannerFlags::FORCE_UPDATE.bits().into(),
         );
 
-        ME.status = Status::Mobile as c_int;
-        ME.text_visible_time = 0.;
-        ME.text_to_be_displayed = cur_level.level_enter_comment;
+        self.vars.me.status = Status::Mobile as c_int;
+        self.vars.me.text_visible_time = 0.;
+        self.vars.me.text_to_be_displayed = cur_level.level_enter_comment;
     }
 }
 

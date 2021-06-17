@@ -3,11 +3,10 @@ use crate::{
         BulletKind, Direction, Explosion, BULLET_COLL_DIST2, COLLISION_STEPSIZE, FLASH_DURATION,
         MAXBLASTS, MAXBULLETS,
     },
-    map::{is_passable, is_visible},
     structs::{Finepoint, Vect},
     vars::{BLASTMAP, BULLETMAP, DRUIDMAP},
     Data, Status, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, INVINCIBLE_MODE,
-    LAST_GOT_INTO_BLAST_SOUND, ME, NUM_ENEMYS,
+    LAST_GOT_INTO_BLAST_SOUND, NUM_ENEMYS,
 };
 
 use log::info;
@@ -69,7 +68,7 @@ impl Data {
                         continue;
                     }
 
-                    if is_visible(&enemy.pos) != 0
+                    if self.is_visible(&enemy.pos) != 0
                         && (*DRUIDMAP.add(usize::try_from(enemy.ty).unwrap())).flashimmune == 0
                     {
                         enemy.energy -= (*BULLETMAP.add(BulletKind::Flash as usize)).damage as f32;
@@ -81,9 +80,10 @@ impl Data {
                 // droids with flash are always flash-immune!
                 // -> we don't get hurt by our own flashes!
                 if INVINCIBLE_MODE == 0
-                    && (*DRUIDMAP.add(usize::try_from(ME.ty).unwrap())).flashimmune == 0
+                    && (*DRUIDMAP.add(usize::try_from(self.vars.me.ty).unwrap())).flashimmune == 0
                 {
-                    ME.energy -= (*BULLETMAP.add(BulletKind::Flash as usize)).damage as f32;
+                    self.vars.me.energy -=
+                        (*BULLETMAP.add(BulletKind::Flash as usize)).damage as f32;
                 }
             }
 
@@ -116,7 +116,7 @@ impl Data {
                     cur_bullet.pos.x += step.x;
                     cur_bullet.pos.y += step.y;
 
-                    if is_passable(
+                    if self.is_passable(
                         cur_bullet.pos.x,
                         cur_bullet.pos.y,
                         Direction::Center as c_int,
@@ -133,14 +133,15 @@ impl Data {
 
                     // check for collision with influencer
                     if !cur_bullet.mine {
-                        let xdist = ME.pos.x - cur_bullet.pos.x;
-                        let ydist = ME.pos.y - cur_bullet.pos.y;
+                        let xdist = self.vars.me.pos.x - cur_bullet.pos.x;
+                        let ydist = self.vars.me.pos.y - cur_bullet.pos.y;
                         // FIXME: don't use DRUIDHITDIST2!!
                         if (xdist * xdist + ydist * ydist) < self.get_druid_hit_dist_squared() {
                             self.got_hit_sound();
 
                             if INVINCIBLE_MODE == 0 {
-                                ME.energy -= (*BULLETMAP.add(cur_bullet.ty.into())).damage as f32;
+                                self.vars.me.energy -=
+                                    (*BULLETMAP.add(cur_bullet.ty.into())).damage as f32;
                             }
 
                             delete_bullet(num);
@@ -291,17 +292,17 @@ impl Data {
 
         /* Check influence-Blast collisions */
         let vdist = Vect {
-            x: ME.pos.x - cur_blast.px,
-            y: ME.pos.y - cur_blast.py,
+            x: self.vars.me.pos.x - cur_blast.px,
+            y: self.vars.me.pos.y - cur_blast.py,
         };
         let dist = (vdist.x * vdist.x + vdist.y * vdist.y).sqrt();
 
-        if ME.status != Status::Out as c_int
+        if self.vars.me.status != Status::Out as c_int
             && !cur_blast.mine
             && dist < self.global.blast_radius + self.global.droid_radius
         {
             if INVINCIBLE_MODE == 0 {
-                ME.energy -= self.global.blast_damage_per_second * self.frame_time();
+                self.vars.me.energy -= self.global.blast_damage_per_second * self.frame_time();
 
                 // So the influencer got some damage from the hot blast
                 // Now most likely, he then will also say so :)

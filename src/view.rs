@@ -11,10 +11,10 @@ use crate::{
         ENEMY_DIGIT_SURFACE_POINTER, ENEMY_SURFACE_POINTER, INFLUENCER_SURFACE_POINTER,
         INFLU_DIGIT_SURFACE_POINTER, MAP_BLOCK_SURFACE_POINTER, NE_SCREEN,
     },
-    map::{get_map_brick, is_visible},
+    map::get_map_brick,
     structs::{Enemy, Finepoint, GrobPoint},
     vars::{BLASTMAP, BULLETMAP, DRUIDMAP},
-    Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, DEATH_COUNT, FIRST_DIGIT_RECT, ME,
+    Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, DEATH_COUNT, FIRST_DIGIT_RECT,
     NUMBER_OF_DROID_TYPES, SECOND_DIGIT_RECT, SHOW_ALL_DROIDS, SHOW_SCORE, THIRD_DIGIT_RECT,
 };
 
@@ -112,12 +112,12 @@ impl Data {
                 (upleft, downright)
             } else {
                 let upleft = GrobPoint {
-                    x: ME.pos.x as i8 - 6,
-                    y: ME.pos.y as i8 - 5,
+                    x: self.vars.me.pos.x as i8 - 6,
+                    y: self.vars.me.pos.y as i8 - 5,
                 };
                 let downright = GrobPoint {
-                    x: ME.pos.x as i8 + 7,
-                    y: ME.pos.y as i8 + 5,
+                    x: self.vars.me.pos.x as i8 + 7,
+                    y: self.vars.me.pos.y as i8 + 5,
                 };
                 (upleft, downright)
             };
@@ -135,8 +135,8 @@ impl Data {
                 {
                     pos.x = col.into();
                     pos.y = line.into();
-                    vect.x = ME.pos.x - pos.x;
-                    vect.y = ME.pos.y - pos.y;
+                    vect.x = self.vars.me.pos.x - pos.x;
+                    vect.y = self.vars.me.pos.y - pos.y;
                     len = (vect.x * vect.x + vect.y * vect.y).sqrt() + 0.01;
                     vect.x /= len;
                     vect.y /= len;
@@ -144,7 +144,7 @@ impl Data {
                         pos.x += vect.x;
                         pos.y += vect.y;
                     }
-                    if is_visible(&pos) == 0 {
+                    if self.is_visible(&pos) == 0 {
                         return;
                     }
                 }
@@ -152,10 +152,11 @@ impl Data {
                 map_brick = get_map_brick(&*CUR_LEVEL, col.into(), line.into());
                 let user_center = self.get_user_center();
                 target_rectangle.x = user_center.x
-                    + ((-ME.pos.x + 1.0 * f32::from(col) - 0.5) * f32::from(self.vars.block_rect.w))
-                        .round() as i16;
+                    + ((-self.vars.me.pos.x + 1.0 * f32::from(col) - 0.5)
+                        * f32::from(self.vars.block_rect.w))
+                    .round() as i16;
                 target_rectangle.y = user_center.y
-                    + ((-ME.pos.y + 1.0 * f32::from(line) - 0.5)
+                    + ((-self.vars.me.pos.y + 1.0 * f32::from(line) - 0.5)
                         * f32::from(self.vars.block_rect.h))
                     .round() as i16;
                 SDL_UpperBlit(
@@ -193,8 +194,8 @@ impl Data {
                     - font_height(&*self.global.font0_b_font),
                 format_args!(
                     "GPS: X={:.0} Y={:.0} Lev={}",
-                    ME.pos.x.round(),
-                    ME.pos.y.round(),
+                    self.vars.me.pos.x.round(),
+                    self.vars.me.pos.y.round(),
                     (*CUR_LEVEL).levelnum,
                 ),
             );
@@ -236,7 +237,7 @@ impl Data {
                         + i32::from(self.vars.full_user_rect.w) / 2,
                     i32::from(self.vars.full_user_rect.y) + i32::from(self.vars.full_user_rect.h)
                         - font_height(&*self.global.font0_b_font),
-                    format_args!("Energy: {:.0}", ME.energy),
+                    format_args!("Energy: {:.0}", self.vars.me.energy),
                 );
             }
             if self.global.game_config.draw_death_count != 0 {
@@ -257,7 +258,7 @@ impl Data {
             for enemy in &mut ALL_ENEMYS {
                 if (enemy.status == Status::Terminated as i32)
                     && (enemy.levelnum == (*CUR_LEVEL).levelnum)
-                    && is_visible(&enemy.pos) != 0
+                    && self.is_visible(&enemy.pos) != 0
                 {
                     self.put_ashes(enemy.pos.x, enemy.pos.y);
                 }
@@ -273,7 +274,7 @@ impl Data {
                 })
                 .for_each(|(index, _)| self.put_enemy(index as c_int, -1, -1));
 
-            if ME.energy > 0. {
+            if self.vars.me.energy > 0. {
                 self.put_influence(-1, -1);
             }
 
@@ -323,9 +324,11 @@ impl Data {
 
         let user_center = self.get_user_center();
         let mut dst = Rect::new(
-            (f32::from(user_center.x) + (-ME.pos.x + x) * f32::from(self.vars.block_rect.w)
+            (f32::from(user_center.x)
+                + (-self.vars.me.pos.x + x) * f32::from(self.vars.block_rect.w)
                 - f32::from(self.vars.block_rect.w / 2)) as i16,
-            (f32::from(user_center.y) + (-ME.pos.y + y) * f32::from(self.vars.block_rect.h)
+            (f32::from(user_center.y)
+                + (-self.vars.me.pos.y + y) * f32::from(self.vars.block_rect.h)
                 - f32::from(self.vars.block_rect.h / 2)) as i16,
             0,
             0,
@@ -347,7 +350,7 @@ impl Data {
         }
 
         // if the enemy is out of sight, we need not do anything more here
-        if SHOW_ALL_DROIDS == 0 && is_visible(&droid.pos) == 0 {
+        if SHOW_ALL_DROIDS == 0 && self.is_visible(&droid.pos) == 0 {
             trace!("ONSCREEN=FALSE --> usual end of function reached.");
             return;
         }
@@ -397,10 +400,10 @@ impl Data {
         if x == -1 {
             let user_center = self.get_user_center();
             dst.x = (f32::from(user_center.x)
-                + (droid.pos.x - ME.pos.x) * f32::from(self.vars.block_rect.w)
+                + (droid.pos.x - self.vars.me.pos.x) * f32::from(self.vars.block_rect.w)
                 - f32::from(self.vars.block_rect.w / 2)) as i16;
             dst.y = (f32::from(user_center.y)
-                + (droid.pos.y - ME.pos.y) * f32::from(self.vars.block_rect.h)
+                + (droid.pos.y - self.vars.me.pos.y) * f32::from(self.vars.block_rect.h)
                 - f32::from(self.vars.block_rect.h / 2)) as i16;
         } else {
             dst.x = x.try_into().unwrap();
@@ -424,11 +427,11 @@ impl Data {
                 (f32::from(self.vars.user_rect.x)
                     + f32::from(self.vars.user_rect.w / 2)
                     + f32::from(self.vars.block_rect.w / 3)
-                    + (droid.pos.x - ME.pos.x) * f32::from(self.vars.block_rect.w))
+                    + (droid.pos.x - self.vars.me.pos.x) * f32::from(self.vars.block_rect.w))
                     as i32,
                 (f32::from(self.vars.user_rect.y) + f32::from(self.vars.user_rect.h / 2)
                     - f32::from(self.vars.block_rect.h / 2)
-                    + (droid.pos.y - ME.pos.y) * f32::from(self.vars.block_rect.h))
+                    + (droid.pos.y - self.vars.me.pos.y) * f32::from(self.vars.block_rect.h))
                     as i32,
                 CStr::from_ptr(droid.text_to_be_displayed).to_bytes(),
             );
@@ -456,7 +459,7 @@ impl Data {
 
         // Now we draw the hat and shoes of the influencer
         SDL_UpperBlit(
-            INFLUENCER_SURFACE_POINTER[(ME.phase).floor() as usize],
+            INFLUENCER_SURFACE_POINTER[(self.vars.me.phase).floor() as usize],
             null_mut(),
             BUILD_BLOCK,
             null_mut(),
@@ -466,7 +469,8 @@ impl Data {
         let mut dst = FIRST_DIGIT_RECT;
         SDL_UpperBlit(
             INFLU_DIGIT_SURFACE_POINTER[usize::try_from(
-                (*DRUIDMAP.offset(ME.ty.try_into().unwrap())).druidname[0] - b'1' as i8 + 1,
+                (*DRUIDMAP.offset(self.vars.me.ty.try_into().unwrap())).druidname[0] - b'1' as i8
+                    + 1,
             )
             .unwrap()],
             null_mut(),
@@ -478,7 +482,8 @@ impl Data {
         dst = SECOND_DIGIT_RECT;
         SDL_UpperBlit(
             INFLU_DIGIT_SURFACE_POINTER[usize::try_from(
-                (*DRUIDMAP.offset(ME.ty.try_into().unwrap())).druidname[1] - b'1' as i8 + 1,
+                (*DRUIDMAP.offset(self.vars.me.ty.try_into().unwrap())).druidname[1] - b'1' as i8
+                    + 1,
             )
             .unwrap()],
             null_mut(),
@@ -490,7 +495,8 @@ impl Data {
         dst = THIRD_DIGIT_RECT;
         SDL_UpperBlit(
             INFLU_DIGIT_SURFACE_POINTER[usize::try_from(
-                (*DRUIDMAP.offset(ME.ty.try_into().unwrap())).druidname[2] - b'1' as i8 + 1,
+                (*DRUIDMAP.offset(self.vars.me.ty.try_into().unwrap())).druidname[2] - b'1' as i8
+                    + 1,
             )
             .unwrap()],
             null_mut(),
@@ -498,11 +504,13 @@ impl Data {
             &mut dst,
         );
 
-        if ME.energy * 100. / (*DRUIDMAP.offset(ME.ty.try_into().unwrap())).maxenergy <= BLINKENERGY
+        if self.vars.me.energy * 100.
+            / (*DRUIDMAP.offset(self.vars.me.ty.try_into().unwrap())).maxenergy
+            <= BLINKENERGY
             && x == -1
         {
             // In case of low energy, do the fading effect...
-            let rest = ME.timer % BLINK_LEN; // period of fading is given by BLINK_LEN
+            let rest = self.vars.me.timer % BLINK_LEN; // period of fading is given by BLINK_LEN
             let filt = if rest < BLINK_LEN / 2. {
                 0.40 + (1.0 - 2.0 * rest / BLINK_LEN) * 0.60 // decrease white->grey
             } else {
@@ -513,8 +521,8 @@ impl Data {
 
             // ... and also maybe start a new cry-sound
 
-            if ME.last_crysound_time > CRY_SOUND_INTERVAL {
-                ME.last_crysound_time = 0.;
+            if self.vars.me.last_crysound_time > CRY_SOUND_INTERVAL {
+                self.vars.me.last_crysound_time = 0.;
                 self.cry_sound();
             }
         }
@@ -523,11 +531,11 @@ impl Data {
         // In case of transfer mode, we produce the transfer mode sound
         // but of course only in some periodic intervall...
 
-        if ME.status == Status::Transfermode as i32 && x == -1 {
+        if self.vars.me.status == Status::Transfermode as i32 && x == -1 {
             apply_filter(&mut *BUILD_BLOCK, 1.0, 0.0, 0.0);
 
-            if ME.last_transfer_sound_time > TRANSFER_SOUND_INTERVAL {
-                ME.last_transfer_sound_time = 0.;
+            if self.vars.me.last_transfer_sound_time > TRANSFER_SOUND_INTERVAL {
+                self.vars.me.last_transfer_sound_time = 0.;
                 self.transfer_sound();
             }
         }
@@ -548,12 +556,12 @@ impl Data {
         // so let him say it..
         //
         if x == -1
-            && ME.text_visible_time < self.global.game_config.wanted_text_visible_time
+            && self.vars.me.text_visible_time < self.global.game_config.wanted_text_visible_time
             && self.global.game_config.droid_talk != 0
         {
             self.b_font.current_font = self.global.font0_b_font;
             self.display_text(
-                ME.text_to_be_displayed,
+                self.vars.me.text_to_be_displayed,
                 i32::from(self.vars.user_rect.x)
                     + i32::from(self.vars.user_rect.w / 2)
                     + i32::from(self.vars.block_rect.w / 3),
@@ -634,10 +642,10 @@ impl Data {
         let user_center = self.get_user_center();
         let mut dst = Rect::new(
             (f32::from(user_center.x)
-                - (ME.pos.x - cur_bullet.pos.x) * f32::from(self.vars.block_rect.w)
+                - (self.vars.me.pos.x - cur_bullet.pos.x) * f32::from(self.vars.block_rect.w)
                 - ((*cur_bullet.surface_pointer[phase_of_bullet]).w / 2) as f32) as i16,
             (f32::from(user_center.y)
-                - (ME.pos.y - cur_bullet.pos.y) * f32::from(self.vars.block_rect.w)
+                - (self.vars.me.pos.y - cur_bullet.pos.y) * f32::from(self.vars.block_rect.w)
                 - ((*cur_bullet.surface_pointer[phase_of_bullet]).h / 2) as f32) as i16,
             0,
             0,
@@ -666,10 +674,10 @@ impl Data {
         let user_center = self.get_user_center();
         let mut dst = Rect::new(
             (f32::from(user_center.x)
-                - (ME.pos.x - cur_blast.px) * f32::from(self.vars.block_rect.w)
+                - (self.vars.me.pos.x - cur_blast.px) * f32::from(self.vars.block_rect.w)
                 - f32::from(self.vars.block_rect.w / 2)) as i16,
             (f32::from(user_center.y)
-                - (ME.pos.y - cur_blast.py) * f32::from(self.vars.block_rect.h)
+                - (self.vars.me.pos.y - cur_blast.py) * f32::from(self.vars.block_rect.h)
                 - f32::from(self.vars.block_rect.h / 2)) as i16,
             0,
             0,
@@ -726,7 +734,7 @@ impl Data {
 
         if left.is_null() {
             /* Left-DEFAULT: Mode */
-            left = INFLUENCE_MODE_NAMES[ME.status as usize].as_ptr();
+            left = INFLUENCE_MODE_NAMES[self.vars.me.status as usize].as_ptr();
         }
 
         if right.is_null()

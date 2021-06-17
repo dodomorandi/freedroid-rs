@@ -13,7 +13,6 @@ use crate::{
     },
     input::{SDL_Delay, CMD_STRINGS},
     map::free_ship_memory,
-    vars::ME,
     Data, ALL_BLASTS, ALL_ENEMYS, CONFIG_DIR, CUR_LEVEL, CUR_SHIP, F_P_SOVER1, NUM_ENEMYS,
 };
 
@@ -171,7 +170,7 @@ impl Data {
     /// a feature from the original program that should probably
     /// allow for better screenshots.
     pub unsafe fn pause(&mut self) {
-        ME.status = Status::Pause as i32;
+        self.vars.me.status = Status::Pause as i32;
         self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
 
         let mut cheese = false;
@@ -197,10 +196,10 @@ impl Data {
             let cond = self.key_is_pressed_r(b'c'.into());
 
             if cond {
-                if ME.status != Status::Cheese as i32 {
-                    ME.status = Status::Cheese as i32;
+                if self.vars.me.status != Status::Cheese as i32 {
+                    self.vars.me.status = Status::Cheese as i32;
                 } else {
-                    ME.status = Status::Pause as i32;
+                    self.vars.me.status = Status::Pause as i32;
                 }
                 cheese = !cheese;
             }
@@ -830,7 +829,7 @@ pub unsafe fn locate_string_in_data(
 impl Data {
     /// This function teleports the influencer to a new position on the
     /// ship.  THIS CAN BE A POSITION ON A DIFFERENT LEVEL.
-    pub unsafe fn teleport(&self, level_num: c_int, x: c_int, y: c_int) {
+    pub unsafe fn teleport(&mut self, level_num: c_int, x: c_int, y: c_int) {
         let cur_level = level_num;
         let mut array_num = 0;
 
@@ -856,8 +855,8 @@ impl Data {
 
             shuffle_enemys();
 
-            ME.pos.x = x as f32;
-            ME.pos.y = y as f32;
+            self.vars.me.pos.x = x as f32;
+            self.vars.me.pos.y = y as f32;
 
             // turn off all blasts and bullets from the old level
             ALL_BLASTS
@@ -870,8 +869,8 @@ impl Data {
             // If no real level change has occured, everything
             // is simple and we just need to set the new coordinates, haha
             //
-            ME.pos.x = x as f32;
-            ME.pos.y = y as f32;
+            self.vars.me.pos.x = x as f32;
+            self.vars.me.pos.y = y as f32;
         }
 
         self.leave_lift_sound();

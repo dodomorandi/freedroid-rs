@@ -5,7 +5,6 @@ use crate::{
         HS_BACKGROUND_FILE_C, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
     },
     graphics::{NE_SCREEN, PIC999},
-    vars::ME,
     Data, CONFIG_DIR, REAL_SCORE, SHOW_SCORE,
 };
 
@@ -176,7 +175,7 @@ impl Data {
             return;
         }
 
-        ME.status = Status::Debriefing as c_int;
+        self.vars.me.status = Status::Debriefing as c_int;
 
         let entry_pos = match self
             .highscore

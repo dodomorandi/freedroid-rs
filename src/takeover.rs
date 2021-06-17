@@ -6,7 +6,7 @@ use crate::{
     graphics::{clear_graph_mem, NE_SCREEN, TAKEOVER_BG_PIC},
     misc::my_random,
     structs::Point,
-    vars::{DRUIDMAP, ME},
+    vars::DRUIDMAP,
     view::fill_rect,
     Data, ALL_ENEMYS, DEATH_COUNT, INVINCIBLE_MODE, PRE_TAKE_ENERGY, REAL_SCORE,
 };
@@ -1444,21 +1444,26 @@ impl Data {
         };
         fill_rect(self.vars.user_rect, BG_COLOR);
 
-        ME.status = Status::Mobile as i32; /* the new status _after_ the takeover game */
+        self.vars.me.status = Status::Mobile as i32; /* the new status _after_ the takeover game */
 
         SDL_ShowCursor(SDL_DISABLE); // no mouse-cursor in takeover game!
 
-        self.show_droid_info(ME.ty, -1, 0);
+        self.show_droid_info(self.vars.me.ty, -1, 0);
         self.show_droid_portrait(
             self.vars.cons_droid_rect,
-            ME.ty,
+            self.vars.me.ty,
             DROID_ROTATION_TIME,
             UPDATE,
         );
 
         self.wait_for_all_keys_released();
         while !self.fire_pressed_r() {
-            self.show_droid_portrait(self.vars.cons_droid_rect, ME.ty, DROID_ROTATION_TIME, 0);
+            self.show_droid_portrait(
+                self.vars.cons_droid_rect,
+                self.vars.me.ty,
+                DROID_ROTATION_TIME,
+                0,
+            );
             SDL_Delay(1);
         }
 
@@ -1509,7 +1514,7 @@ impl Data {
 
             DROID_NUM = enemynum;
             OPPONENT_TYPE = ALL_ENEMYS[enemy_index].ty;
-            NUM_CAPSULES[Opponents::You as usize] = 3 + class_of_druid(ME.ty);
+            NUM_CAPSULES[Opponents::You as usize] = 3 + class_of_druid(self.vars.me.ty);
             NUM_CAPSULES[Opponents::Enemy as usize] = 4 + class_of_druid(OPPONENT_TYPE);
 
             invent_playground();
@@ -1527,28 +1532,28 @@ impl Data {
             /* Ausgang beurteilen und returnen */
             if INVINCIBLE_MODE != 0 || LEADER_COLOR == YOUR_COLOR {
                 self.takeover_game_won_sound();
-                if ME.ty == Droid::Droid001 as c_int {
-                    REJECT_ENERGY = ME.energy as c_int;
-                    PRE_TAKE_ENERGY = ME.energy as c_int;
+                if self.vars.me.ty == Droid::Droid001 as c_int {
+                    REJECT_ENERGY = self.vars.me.energy as c_int;
+                    PRE_TAKE_ENERGY = self.vars.me.energy as c_int;
                 }
 
                 // We provide some security agains too high energy/health values gained
                 // by very rapid successions of successful takeover attempts
                 let droid_map = std::slice::from_raw_parts(DRUIDMAP, Droid::NumDroids as usize);
-                if ME.energy > droid_map[Droid::Droid001 as usize].maxenergy {
-                    ME.energy = droid_map[Droid::Droid001 as usize].maxenergy;
+                if self.vars.me.energy > droid_map[Droid::Droid001 as usize].maxenergy {
+                    self.vars.me.energy = droid_map[Droid::Droid001 as usize].maxenergy;
                 }
-                if ME.health > droid_map[Droid::Droid001 as usize].maxenergy {
-                    ME.health = droid_map[Droid::Droid001 as usize].maxenergy;
+                if self.vars.me.health > droid_map[Droid::Droid001 as usize].maxenergy {
+                    self.vars.me.health = droid_map[Droid::Droid001 as usize].maxenergy;
                 }
 
                 // We allow to gain the current energy/full health that was still in the
                 // other droid, since all previous damage must be due to fighting damage,
                 // and this is exactly the sort of damage can usually be cured in refreshes.
-                ME.energy += ALL_ENEMYS[enemy_index].energy;
-                ME.health += droid_map[usize::try_from(OPPONENT_TYPE).unwrap()].maxenergy;
+                self.vars.me.energy += ALL_ENEMYS[enemy_index].energy;
+                self.vars.me.health += droid_map[usize::try_from(OPPONENT_TYPE).unwrap()].maxenergy;
 
-                ME.ty = ALL_ENEMYS[enemy_index].ty;
+                self.vars.me.ty = ALL_ENEMYS[enemy_index].ty;
 
                 REAL_SCORE += droid_map[usize::try_from(OPPONENT_TYPE).unwrap()].score as f32;
 
@@ -1571,13 +1576,13 @@ impl Data {
                 ALL_ENEMYS[enemy_index].energy = -1.0; /* to be sure */
 
                 self.takeover_game_lost_sound();
-                if ME.ty != Droid::Droid001 as c_int {
+                if self.vars.me.ty != Droid::Droid001 as c_int {
                     message = cstr!("Rejected");
-                    ME.ty = Droid::Droid001 as c_int;
-                    ME.energy = REJECT_ENERGY as f32;
+                    self.vars.me.ty = Droid::Droid001 as c_int;
+                    self.vars.me.energy = REJECT_ENERGY as f32;
                 } else {
                     message = cstr!("Burnt Out");
-                    ME.energy = 0.;
+                    self.vars.me.energy = 0.;
                 }
                 finish_takeover = true;
             } else {

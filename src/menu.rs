@@ -17,7 +17,7 @@ use crate::{
     map::COLOR_NAMES,
     misc::{armageddon, dealloc_c_string},
     sound::set_bg_music_volume,
-    vars::{DRUIDMAP, ME},
+    vars::DRUIDMAP,
     Data, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, INVINCIBLE_MODE, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
     SHOW_ALL_DROIDS, SOUND_ON, STOP_INFLUENCER,
 };
@@ -292,7 +292,7 @@ impl Data {
         self.activate_conservative_frame_computation();
 
         SDL_SetClipRect(NE_SCREEN, null_mut());
-        ME.status = Status::Menu as i32;
+        self.vars.me.status = Status::Menu as i32;
         clear_graph_mem();
         self.display_banner(
             null_mut(),
@@ -343,7 +343,9 @@ impl Data {
                 Y0,
                 format_args!(
                     "Current position: Level={}, X={:.0}, Y={:.0}\n",
-                    cur_level.levelnum, ME.pos.x, ME.pos.y,
+                    cur_level.levelnum,
+                    self.vars.me.pos.x.clone(),
+                    self.vars.me.pos.y.clone(),
                 ),
             );
             self.printf_sdl(
@@ -646,9 +648,10 @@ impl Data {
                         self.getchar_raw();
                         clear_graph_mem();
                     } else {
-                        ME.ty = i.try_into().unwrap();
-                        ME.energy = droid_map[usize::try_from(ME.ty).unwrap()].maxenergy;
-                        ME.health = ME.energy;
+                        self.vars.me.ty = i.try_into().unwrap();
+                        self.vars.me.energy =
+                            droid_map[usize::try_from(self.vars.me.ty).unwrap()].maxenergy;
+                        self.vars.me.health = self.vars.me.energy;
                         self.printf_sdl(
                             NE_SCREEN,
                             X0,
@@ -675,16 +678,16 @@ impl Data {
                         NE_SCREEN,
                         X0,
                         Y0,
-                        format_args!("Current energy: {}\n", ME.energy,),
+                        format_args!("Current energy: {}\n", self.vars.me.energy.clone()),
                     );
                     self.printf_sdl(NE_SCREEN, -1, -1, format_args!("Enter your new energy: "));
                     let input = self.get_string(40, 2);
                     let mut num = 0;
                     libc::sscanf(input, cstr!("%d").as_ptr() as *mut c_char, &mut num);
                     drop(Vec::from_raw_parts(input as *mut i8, 45, 45));
-                    ME.energy = num as f32;
-                    if ME.energy > ME.health {
-                        ME.health = ME.energy;
+                    self.vars.me.energy = num as f32;
+                    if self.vars.me.energy > self.vars.me.health {
+                        self.vars.me.health = self.vars.me.energy;
                     }
                 }
 
@@ -1040,7 +1043,7 @@ impl Data {
                                     // Since we've faded out the whole scren, it can't hurt
                                     // to have the top status bar redrawn...
         BANNER_IS_DESTROYED = true.into();
-        ME.status = Status::Mobile as i32;
+        self.vars.me.status = Status::Mobile as i32;
 
         while self.any_key_is_pressed_r()
         // wait for all key/controller-release

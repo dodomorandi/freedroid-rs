@@ -8,7 +8,7 @@ use crate::{
     input::SDL_Delay,
     structs::{Level, Waypoint},
     view::{fill_rect, BLACK},
-    Data, CUR_LEVEL, ME,
+    Data, CUR_LEVEL,
 };
 
 use cstr::cstr;
@@ -60,8 +60,8 @@ impl Data {
                 continue;
             }
 
-            let block_x = (ME.pos.x).round() as c_int;
-            let block_y = (ME.pos.y).round() as c_int;
+            let block_x = (self.vars.me.pos.x).round() as c_int;
+            let block_y = (self.vars.me.pos.y).round() as c_int;
 
             fill_rect(self.vars.user_rect, BLACK);
             self.assemble_combat_picture(AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits().into());
@@ -97,20 +97,24 @@ impl Data {
             // If the user of the Level editor pressed some cursor keys, move the
             // highlited filed (that is Me.pos) accordingly. This is done here:
             //
-            if self.left_pressed_r() && ME.pos.x.round() > 0. {
-                ME.pos.x -= 1.;
+            if self.left_pressed_r() && self.vars.me.pos.x.round() > 0. {
+                self.vars.me.pos.x -= 1.;
             }
 
-            if self.right_pressed_r() && (ME.pos.x.round() as c_int) < (*CUR_LEVEL).xlen - 1 {
-                ME.pos.x += 1.;
+            if self.right_pressed_r()
+                && (self.vars.me.pos.x.round() as c_int) < (*CUR_LEVEL).xlen - 1
+            {
+                self.vars.me.pos.x += 1.;
             }
 
-            if self.up_pressed_r() && ME.pos.y.round() > 0. {
-                ME.pos.y -= 1.;
+            if self.up_pressed_r() && self.vars.me.pos.y.round() > 0. {
+                self.vars.me.pos.y -= 1.;
             }
 
-            if self.down_pressed_r() && (ME.pos.y.round() as c_int) < (*CUR_LEVEL).ylen - 1 {
-                ME.pos.y += 1.;
+            if self.down_pressed_r()
+                && (self.vars.me.pos.y.round() as c_int) < (*CUR_LEVEL).ylen - 1
+            {
+                self.vars.me.pos.y += 1.;
             }
 
             if self.key_is_pressed_r(SDLK_F1.try_into().unwrap()) {
@@ -487,8 +491,8 @@ impl Data {
     /// This function is used by the Level Editor integrated into
     /// freedroid.  It marks all waypoints with a cross.
     unsafe fn show_waypoints(&self) {
-        let block_x = ME.pos.x.round();
-        let block_y = ME.pos.y.round();
+        let block_x = self.vars.me.pos.x.round();
+        let block_y = self.vars.me.pos.y.round();
 
         SDL_LockSurface(NE_SCREEN);
 
@@ -501,12 +505,12 @@ impl Data {
                 // This draws a (double) line at the upper border of the current block
                 let mut x =
                     i + i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w / 2)
-                        - ((ME.pos.x - f32::from(this_wp.x) + 0.5)
+                        - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
                             * f32::from(self.vars.block_rect.w)) as i32;
                 let user_center = self.get_user_center();
                 let mut y = i + i32::from(user_center.y)
-                    - ((ME.pos.y - f32::from(this_wp.y) + 0.5) * f32::from(self.vars.block_rect.h))
-                        as i32;
+                    - ((self.vars.me.pos.y - f32::from(this_wp.y) + 0.5)
+                        * f32::from(self.vars.block_rect.h)) as i32;
                 if x < i32::from(self.vars.user_rect.x)
                     || x > i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w)
                     || y < i32::from(self.vars.user_rect.y)
@@ -517,11 +521,11 @@ impl Data {
                 putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
 
                 x = i + i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w / 2)
-                    - ((ME.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(self.vars.block_rect.w))
-                        as i32;
+                    - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
+                        * f32::from(self.vars.block_rect.w)) as i32;
                 y = i + i32::from(user_center.y)
-                    - ((ME.pos.y - f32::from(this_wp.y) + 0.5) * f32::from(self.vars.block_rect.h))
-                        as i32
+                    - ((self.vars.me.pos.y - f32::from(this_wp.y) + 0.5)
+                        * f32::from(self.vars.block_rect.h)) as i32
                     + 1;
                 if x < i32::from(self.vars.user_rect.x)
                     || x > i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w)
@@ -534,11 +538,11 @@ impl Data {
 
                 // This draws a line at the lower border of the current block
                 x = i + i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w / 2)
-                    - ((ME.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(self.vars.block_rect.w))
-                        as i32;
+                    - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
+                        * f32::from(self.vars.block_rect.w)) as i32;
                 y = -i + i32::from(user_center.y)
-                    - ((ME.pos.y - f32::from(this_wp.y) - 0.5) * f32::from(self.vars.block_rect.h))
-                        as i32
+                    - ((self.vars.me.pos.y - f32::from(this_wp.y) - 0.5)
+                        * f32::from(self.vars.block_rect.h)) as i32
                     - 1;
                 if x < i32::from(self.vars.user_rect.x)
                     || x > i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w)
@@ -550,11 +554,11 @@ impl Data {
                 putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
 
                 x = i + i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w / 2)
-                    - ((ME.pos.x - f32::from(this_wp.x) + 0.5) * f32::from(self.vars.block_rect.w))
-                        as i32;
+                    - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
+                        * f32::from(self.vars.block_rect.w)) as i32;
                 y = -i + i32::from(user_center.y)
-                    - ((ME.pos.y - f32::from(this_wp.y) - 0.5) * f32::from(self.vars.block_rect.h))
-                        as i32
+                    - ((self.vars.me.pos.y - f32::from(this_wp.y) - 0.5)
+                        * f32::from(self.vars.block_rect.h)) as i32
                     - 2;
                 if x < i32::from(self.vars.user_rect.x)
                     || x > i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w)
@@ -602,22 +606,22 @@ impl Data {
                 NE_SCREEN,
                 i + i32::from(self.vars.user_rect.x)
                     + i32::from(self.vars.user_rect.w / 2)
-                    + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(self.vars.block_rect.w))
-                        as i32,
+                    + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
+                        * f32::from(self.vars.block_rect.w)) as i32,
                 i32::from(user_center.y)
-                    + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(self.vars.block_rect.h))
-                        as i32,
+                    + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
+                        * f32::from(self.vars.block_rect.h)) as i32,
                 HIGHLIGHTCOLOR,
             );
             putpixel(
                 NE_SCREEN,
                 i + i32::from(self.vars.user_rect.x)
                     + i32::from(self.vars.user_rect.w / 2)
-                    + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(self.vars.block_rect.w))
-                        as i32,
+                    + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
+                        * f32::from(self.vars.block_rect.w)) as i32,
                 i32::from(user_center.y)
-                    + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(self.vars.block_rect.h))
-                        as i32
+                    + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
+                        * f32::from(self.vars.block_rect.h)) as i32
                     + 1,
                 HIGHLIGHTCOLOR,
             );
@@ -627,11 +631,11 @@ impl Data {
                 NE_SCREEN,
                 i + i32::from(self.vars.user_rect.x)
                     + i32::from(self.vars.user_rect.w / 2)
-                    + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(self.vars.block_rect.w))
-                        as i32,
+                    + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
+                        * f32::from(self.vars.block_rect.w)) as i32,
                 i32::from(user_center.y)
-                    + (((ME.pos.y).round() - ME.pos.y + 0.5) * f32::from(self.vars.block_rect.h))
-                        as i32
+                    + (((self.vars.me.pos.y).round() - self.vars.me.pos.y + 0.5)
+                        * f32::from(self.vars.block_rect.h)) as i32
                     - 1,
                 HIGHLIGHTCOLOR,
             );
@@ -639,11 +643,11 @@ impl Data {
                 NE_SCREEN,
                 i + i32::from(self.vars.user_rect.x)
                     + i32::from(self.vars.user_rect.w / 2)
-                    + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(self.vars.block_rect.w))
-                        as i32,
+                    + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
+                        * f32::from(self.vars.block_rect.w)) as i32,
                 i32::from(user_center.y)
-                    + (((ME.pos.y).round() - ME.pos.y + 0.5) * f32::from(self.vars.block_rect.h))
-                        as i32
+                    + (((self.vars.me.pos.y).round() - self.vars.me.pos.y + 0.5)
+                        * f32::from(self.vars.block_rect.h)) as i32
                     - 2,
                 HIGHLIGHTCOLOR,
             );
@@ -653,11 +657,11 @@ impl Data {
                 NE_SCREEN,
                 i32::from(self.vars.user_rect.x)
                     + i32::from(self.vars.user_rect.w / 2)
-                    + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(self.vars.block_rect.w))
-                        as i32,
+                    + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
+                        * f32::from(self.vars.block_rect.w)) as i32,
                 i32::from(user_center.y)
-                    + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(self.vars.block_rect.h))
-                        as i32
+                    + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
+                        * f32::from(self.vars.block_rect.h)) as i32
                     + i,
                 HIGHLIGHTCOLOR,
             );
@@ -665,11 +669,11 @@ impl Data {
                 NE_SCREEN,
                 1 + i32::from(self.vars.user_rect.x)
                     + i32::from(self.vars.user_rect.w / 2)
-                    + (((ME.pos.x).round() - ME.pos.x - 0.5) * f32::from(self.vars.block_rect.w))
-                        as i32,
+                    + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
+                        * f32::from(self.vars.block_rect.w)) as i32,
                 i32::from(user_center.y)
-                    + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(self.vars.block_rect.h))
-                        as i32
+                    + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
+                        * f32::from(self.vars.block_rect.h)) as i32
                     + i,
                 HIGHLIGHTCOLOR,
             );
@@ -679,11 +683,11 @@ impl Data {
                 NE_SCREEN,
                 -1 + i32::from(self.vars.user_rect.x)
                     + i32::from(self.vars.user_rect.w / 2)
-                    + (((ME.pos.x).round() - ME.pos.x + 0.5) * f32::from(self.vars.block_rect.w))
-                        as i32,
+                    + (((self.vars.me.pos.x).round() - self.vars.me.pos.x + 0.5)
+                        * f32::from(self.vars.block_rect.w)) as i32,
                 i32::from(user_center.y)
-                    + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(self.vars.block_rect.h))
-                        as i32
+                    + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
+                        * f32::from(self.vars.block_rect.h)) as i32
                     + i,
                 HIGHLIGHTCOLOR,
             );
@@ -691,11 +695,11 @@ impl Data {
                 NE_SCREEN,
                 -2 + i32::from(self.vars.user_rect.x)
                     + i32::from(self.vars.user_rect.w / 2)
-                    + (((ME.pos.x).round() - ME.pos.x + 0.5) * f32::from(self.vars.block_rect.w))
-                        as i32,
+                    + (((self.vars.me.pos.x).round() - self.vars.me.pos.x + 0.5)
+                        * f32::from(self.vars.block_rect.w)) as i32,
                 i32::from(user_center.y)
-                    + (((ME.pos.y).round() - ME.pos.y - 0.5) * f32::from(self.vars.block_rect.h))
-                        as i32
+                    + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
+                        * f32::from(self.vars.block_rect.h)) as i32
                     + i,
                 HIGHLIGHTCOLOR,
             );
