@@ -12,7 +12,7 @@ use crate::{
     input::SDL_Delay,
     misc::{
         count_string_occurences, dealloc_c_string, locate_string_in_data, my_random,
-        read_value_from_string, update_progress,
+        read_value_from_string,
     },
     structs::{BulletSpec, DruidSpec},
     vars::{BLASTMAP, BULLETMAP, DRUIDMAP},
@@ -296,7 +296,7 @@ impl Data {
 
         self.find_all_themes(); // put all found themes into a list: AllThemes[]
 
-        update_progress(5);
+        self.update_progress(5);
 
         self.init_audio();
 
@@ -305,7 +305,7 @@ impl Data {
         self.init_game_data(cstr!("freedroid.ruleset").as_ptr() as *mut c_char); // load the default ruleset. This can be */
                                                                                  // overwritten from the mission file.
 
-        update_progress(10);
+        self.update_progress(10);
 
         // The default should be, that no rescaling of the
         // combat window at all is done.
@@ -325,7 +325,7 @@ impl Data {
             panic!("Error in InitPictures reported back...");
         }
 
-        update_progress(100); // finished init
+        self.update_progress(100); // finished init
     }
 }
 

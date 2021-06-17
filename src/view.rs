@@ -13,7 +13,7 @@ use crate::{
     },
     map::{get_map_brick, is_visible},
     structs::{Enemy, Finepoint, GrobPoint},
-    vars::{BLASTMAP, BULLETMAP, DRUIDMAP, LEFT_INFO_RECT, RIGHT_INFO_RECT},
+    vars::{BLASTMAP, BULLETMAP, DRUIDMAP},
     Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, DEATH_COUNT, FIRST_DIGIT_RECT, ME,
     NUMBER_OF_DROID_TYPES, SECOND_DIGIT_RECT, SHOW_ALL_DROIDS, SHOW_SCORE, THIRD_DIGIT_RECT,
 };
@@ -792,8 +792,8 @@ impl Data {
                 || previous_right_check
                 || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
             {
-                dst.x = LEFT_INFO_RECT.x;
-                dst.y = LEFT_INFO_RECT.y
+                dst.x = self.vars.left_info_rect.x;
+                dst.y = self.vars.left_info_rect.y
                     - i16::try_from(font_height(&*self.global.para_b_font)).unwrap();
                 print_string_font(
                     NE_SCREEN,
@@ -814,8 +814,8 @@ impl Data {
                     previous_left_box[left_box_len] = b'\0';
                 });
 
-                dst.x = RIGHT_INFO_RECT.x;
-                dst.y = RIGHT_INFO_RECT.y
+                dst.x = self.vars.right_info_rect.x;
+                dst.y = self.vars.right_info_rect.y
                     - i16::try_from(font_height(&*self.global.para_b_font)).unwrap();
                 print_string_font(
                     NE_SCREEN,

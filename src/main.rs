@@ -51,7 +51,7 @@ use ship::ShipData;
 use sound::Sound;
 use structs::{Blast, Bullet, Enemy, Finepoint, Level, Lift, Ship};
 use text::Text;
-use vars::{Vars, ME, SHIP_EMPTY_COUNTER};
+use vars::{Vars, ME};
 
 use sdl::{
     mouse::ll::{SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE},
@@ -361,8 +361,8 @@ impl Data {
                 ME.firewait = 0.;
             }
         }
-        if SHIP_EMPTY_COUNTER > 1 {
-            SHIP_EMPTY_COUNTER -= 1;
+        if self.vars.ship_empty_counter > 1 {
+            self.vars.ship_empty_counter -= 1;
         }
         if cur_level.empty > 2 {
             cur_level.empty -= 1;

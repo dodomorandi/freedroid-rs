@@ -24,6 +24,16 @@ pub struct Vars {
     pub cons_menu_rect: Rect,
     pub cons_text_rect: Rect,
     pub cons_menu_rects: [Rect; 4],
+    pub cons_menu_item_rect: Rect,
+
+    pub left_info_rect: Rect,
+    pub right_info_rect: Rect,
+    pub progress_meter_rect: Rect,
+    pub progress_bar_rect: Rect,
+    pub progress_text_rect: Rect,
+
+    /* counter to Message: you have won(this ship */
+    pub ship_empty_counter: c_int,
 }
 
 impl Default for Vars {
@@ -49,6 +59,13 @@ impl Default for Vars {
                 rect! {60, 181 + 2*64, 100, 62},
                 rect! {60, 181 + 3*64, 100, 62},
             ],
+            cons_menu_item_rect: rect! {0, 0, 0, 0},
+            left_info_rect: rect! { 26, 44, 0, 0 },
+            right_info_rect: rect! {484, 44, 0, 0 },
+            progress_meter_rect: rect! {0, 0, 640, 480},
+            progress_bar_rect: rect! {446, 155, 22, 111},
+            progress_text_rect: rect! {213, 390, 157, 30},
+            ship_empty_counter: 0,
         }
     }
 }
@@ -94,6 +111,12 @@ impl fmt::Debug for Vars {
             Rect::from(&self.cons_menu_rects[2]),
             Rect::from(&self.cons_menu_rects[3]),
         ];
+        let cons_menu_item_rect = Rect::from(&self.cons_menu_item_rect);
+        let left_info_rect = Rect::from(&self.left_info_rect);
+        let right_info_rect = Rect::from(&self.right_info_rect);
+        let progress_meter_rect = Rect::from(&self.progress_meter_rect);
+        let progress_bar_rect = Rect::from(&self.progress_bar_rect);
+        let progress_text_rect = Rect::from(&self.progress_text_rect);
 
         f.debug_struct("Vars")
             .field("block_rect", &block_rect)
@@ -111,6 +134,13 @@ impl fmt::Debug for Vars {
             .field("cons_menu_rect", &cons_menu_rect)
             .field("cons_text_rect", &cons_text_rect)
             .field("cons_menu_rects", &cons_menu_rects)
+            .field("cons_menu_item_rect", &cons_menu_item_rect)
+            .field("left_info_rect", &left_info_rect)
+            .field("right_info_rect", &right_info_rect)
+            .field("progress_meter_rect", &progress_meter_rect)
+            .field("progress_bar_rect", &progress_bar_rect)
+            .field("progress_text_rect", &progress_text_rect)
+            .field("ship_empty_counter", &self.ship_empty_counter)
             .finish()
     }
 }
@@ -118,15 +148,6 @@ impl fmt::Debug for Vars {
 pub const ORIG_BLOCK_RECT: Rect = rect! {0, 0, 64, 64}; // not to be rescaled ever!!
 pub const ORIG_DIGIT_RECT: Rect = rect! {0, 0, 16, 18}; // not to be rescaled!
 
-// Startpos + dimensions of Banner-Texts
-
-pub static mut LEFT_INFO_RECT: Rect = rect! { 26, 44, 0, 0 };
-pub static mut RIGHT_INFO_RECT: Rect = rect! {484, 44, 0, 0 };
-pub static mut PROGRESS_METER_RECT: Rect = rect! {0, 0, 640, 480};
-pub static mut PROGRESS_BAR_RECT: Rect = rect! {446, 155, 22, 111};
-pub static mut PROGRESS_TEXT_RECT: Rect = rect! {213, 390, 157, 30};
-pub static mut SHIP_EMPTY_COUNTER: c_int = 0; /* counter to Message: you have won(this ship */
-pub static mut CONS_MENU_ITEM_RECT: Rect = rect! {0, 0, 0, 0};
 pub static mut ME: Influence = Influence {
     ty: Droid::Droid001 as i32,
     status: Status::Transfermode as i32,

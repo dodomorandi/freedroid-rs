@@ -11,7 +11,7 @@ use crate::{
         TAKEOVER_BG_PIC_FILE_C,
     },
     input::SDL_Delay,
-    misc::{read_value_from_string, update_progress},
+    misc::read_value_from_string,
     structs::ThemeList,
     takeover::{
         set_takeover_rects, CAPSULE_BLOCKS, CAPSULE_RECT, COLUMN_BLOCK, COLUMN_RECT, COLUMN_START,
@@ -20,10 +20,7 @@ use crate::{
         PLAYGROUND_STARTS, RIGHT_GROUND_START, TO_BLOCKS, TO_BLOCK_FILE_C, TO_GAME_BLOCKS,
         TO_GROUND_BLOCKS,
     },
-    vars::{
-        BLASTMAP, BULLETMAP, CONS_MENU_ITEM_RECT, DRUIDMAP, LEFT_INFO_RECT, ME, ORIG_BLOCK_RECT,
-        ORIG_DIGIT_RECT, RIGHT_INFO_RECT,
-    },
+    vars::{BLASTMAP, BULLETMAP, DRUIDMAP, ME, ORIG_BLOCK_RECT, ORIG_DIGIT_RECT},
     Data, ALL_BULLETS, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
 };
 
@@ -507,10 +504,10 @@ impl Data {
             scale_rect(block, scale);
         }
 
-        scale!(CONS_MENU_ITEM_RECT);
+        scale!(self.vars.cons_menu_item_rect);
 
-        scale!(LEFT_INFO_RECT);
-        scale!(RIGHT_INFO_RECT);
+        scale!(self.vars.left_info_rect);
+        scale!(self.vars.right_info_rect);
 
         for block in &mut FILL_BLOCKS {
             scale_rect(block, scale);
@@ -1120,7 +1117,7 @@ impl Data {
 
         self.load_theme_configuration_file();
 
-        update_progress(15);
+        self.update_progress(15);
 
         //---------- get Map blocks
         let fpath = self.find_file(
@@ -1155,7 +1152,7 @@ impl Data {
                 *surface = *orig_surface;
             });
 
-        update_progress(20);
+        self.update_progress(20);
         //---------- get Droid-model  blocks
         let fpath = self.find_file(
             DROID_BLOCK_FILE_C.as_ptr() as *mut c_char,
@@ -1197,7 +1194,7 @@ impl Data {
                 SDL_SetAlpha(*enemy_surface, 0, 0);
             });
 
-        update_progress(30);
+        self.update_progress(30);
         //---------- get Bullet blocks
         let fpath = self.find_file(
             BULLET_BLOCK_FILE_C.as_ptr() as *mut c_char,
@@ -1227,7 +1224,7 @@ impl Data {
                 );
             });
 
-        update_progress(35);
+        self.update_progress(35);
 
         //---------- get Blast blocks
         let fpath = self.find_file(
@@ -1258,7 +1255,7 @@ impl Data {
                 );
             });
 
-        update_progress(45);
+        self.update_progress(45);
 
         //---------- get Digit blocks
         let fpath = self.find_file(
@@ -1295,7 +1292,7 @@ impl Data {
                 );
             });
 
-        update_progress(50);
+        self.update_progress(50);
 
         //---------- get Takeover pics
         free_if_unused(TO_BLOCKS); /* this happens when we do theme-switching */
@@ -1307,7 +1304,7 @@ impl Data {
         );
         TO_BLOCKS = load_block(fpath, 0, 0, null_mut(), 0);
 
-        update_progress(60);
+        self.update_progress(60);
 
         free_if_unused(SHIP_ON_PIC);
         SHIP_ON_PIC = IMG_Load(self.find_file(
@@ -1376,7 +1373,7 @@ impl Data {
             );
             CONSOLE_BG_PIC2 = load_block(fpath, 0, 0, null_mut(), 0);
 
-            update_progress(80);
+            self.update_progress(80);
 
             ARROW_UP = IMG_Load(self.find_file(
                 cstr!("arrow_up.png").as_ptr() as *mut c_char,
@@ -1411,7 +1408,7 @@ impl Data {
             );
             BANNER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
 
-            update_progress(90);
+            self.update_progress(90);
             //---------- get Droid images ----------
             let droids = std::slice::from_raw_parts(DRUIDMAP, Droid::NumDroids as usize);
             droids
@@ -1443,7 +1440,7 @@ impl Data {
                     *packed_portrait = self.load_raw_pic(fpath, raw_portrait);
                 });
 
-            update_progress(95);
+            self.update_progress(95);
             // we need the 999.png in any case for transparency!
             libc::strcpy(
                 fname.as_mut_ptr(),
@@ -1476,11 +1473,11 @@ impl Data {
             }
         });
 
-        update_progress(96);
+        self.update_progress(96);
         // if scale != 1 then we need to rescale everything now
         self.scale_graphics(self.global.game_config.scale);
 
-        update_progress(98);
+        self.update_progress(98);
 
         // make sure bullet-surfaces get re-generated!
         ALL_BULLETS

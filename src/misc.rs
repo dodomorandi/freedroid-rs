@@ -13,7 +13,7 @@ use crate::{
     },
     input::{SDL_Delay, CMD_STRINGS},
     map::free_ship_memory,
-    vars::{ME, PROGRESS_BAR_RECT, PROGRESS_METER_RECT, PROGRESS_TEXT_RECT},
+    vars::ME,
     Data, ALL_BLASTS, ALL_ENEMYS, CONFIG_DIR, CUR_LEVEL, CUR_SHIP, F_P_SOVER1, NUM_ENEMYS,
 };
 
@@ -65,22 +65,30 @@ impl Default for Misc {
     }
 }
 
-pub unsafe fn update_progress(percent: c_int) {
-    let h = (f64::from(PROGRESS_BAR_RECT.h) * f64::from(percent) / 100.) as u16;
-    let mut dst = Rect::new(
-        PROGRESS_BAR_RECT.x + PROGRESS_METER_RECT.x,
-        PROGRESS_BAR_RECT.y + PROGRESS_METER_RECT.y + PROGRESS_BAR_RECT.h as i16 - h as i16,
-        PROGRESS_BAR_RECT.w,
-        h,
-    );
-
-    let mut src = Rect::new(0, PROGRESS_BAR_RECT.h as i16 - dst.h as i16, dst.h, 0);
-
-    SDL_UpperBlit(PROGRESS_FILLER_PIC, &mut src, NE_SCREEN, &mut dst);
-    SDL_UpdateRects(NE_SCREEN, 1, &mut dst);
-}
-
 impl Data {
+    pub unsafe fn update_progress(&self, percent: c_int) {
+        let h = (f64::from(self.vars.progress_bar_rect.h) * f64::from(percent) / 100.) as u16;
+        let mut dst = Rect::new(
+            self.vars.progress_bar_rect.x + self.vars.progress_meter_rect.x,
+            self.vars.progress_bar_rect.y
+                + self.vars.progress_meter_rect.y
+                + self.vars.progress_bar_rect.h as i16
+                - h as i16,
+            self.vars.progress_bar_rect.w,
+            h,
+        );
+
+        let mut src = Rect::new(
+            0,
+            self.vars.progress_bar_rect.h as i16 - dst.h as i16,
+            dst.h,
+            0,
+        );
+
+        SDL_UpperBlit(PROGRESS_FILLER_PIC, &mut src, NE_SCREEN, &mut dst);
+        SDL_UpdateRects(NE_SCREEN, 1, &mut dst);
+    }
+
     /// This function is the key to independence of the framerate for various game elements.
     /// It returns the average time needed to draw one frame.
     /// Other functions use this to calculate new positions of moving objects, etc..
@@ -581,9 +589,18 @@ impl Data {
             PROGRESS_FILLER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
             scale_pic(&mut PROGRESS_FILLER_PIC, self.global.game_config.scale);
 
-            scale_rect(&mut PROGRESS_METER_RECT, self.global.game_config.scale);
-            scale_rect(&mut PROGRESS_BAR_RECT, self.global.game_config.scale);
-            scale_rect(&mut PROGRESS_TEXT_RECT, self.global.game_config.scale);
+            scale_rect(
+                &mut self.vars.progress_meter_rect,
+                self.global.game_config.scale,
+            );
+            scale_rect(
+                &mut self.vars.progress_bar_rect,
+                self.global.game_config.scale,
+            );
+            scale_rect(
+                &mut self.vars.progress_text_rect,
+                self.global.game_config.scale,
+            );
         }
 
         SDL_SetClipRect(NE_SCREEN, null_mut()); // this unsets the clipping rectangle
@@ -591,12 +608,12 @@ impl Data {
             PROGRESS_METER_PIC,
             null_mut(),
             NE_SCREEN,
-            &mut PROGRESS_METER_RECT,
+            &mut self.vars.progress_meter_rect,
         );
 
-        let mut dst = PROGRESS_TEXT_RECT;
-        dst.x += PROGRESS_METER_RECT.x;
-        dst.y += PROGRESS_METER_RECT.y;
+        let mut dst = self.vars.progress_text_rect;
+        dst.x += self.vars.progress_meter_rect.x;
+        dst.y += self.vars.progress_meter_rect.y;
 
         self.printf_sdl(
             NE_SCREEN,
