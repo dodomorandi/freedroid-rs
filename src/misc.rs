@@ -1,7 +1,6 @@
 #[cfg(feature = "gcw0")]
 use crate::defs::{gcw0_ls_pressed_r, gcw0_rs_pressed_r};
 use crate::{
-    bullet::delete_bullet,
     defs::{
         self, scale_rect, AssembleCombatWindowFlags, Cmds, Criticality, Status, Themed, FD_DATADIR,
         GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE_C, PROGRESS_METER_FILE_C,
@@ -13,7 +12,7 @@ use crate::{
     },
     input::{SDL_Delay, CMD_STRINGS},
     map::free_ship_memory,
-    Data, ALL_BLASTS, ALL_ENEMYS, CONFIG_DIR, CUR_LEVEL, CUR_SHIP, F_P_SOVER1, NUM_ENEMYS,
+    Data, Global, ALL_BLASTS, ALL_ENEMYS, CONFIG_DIR, CUR_LEVEL, CUR_SHIP, F_P_SOVER1, NUM_ENEMYS,
 };
 
 use cstr::cstr;
@@ -105,24 +104,16 @@ impl Data {
     /// This counter is most conveniently set via the function
     /// Activate_Conservative_Frame_Computation, which can be conveniently called from eveywhere.
     pub unsafe fn frame_time(&mut self) -> c_float {
-        if self.global.skip_a_few_frames != 0 {
-            return self.misc.previous_time;
-        }
+        let Self { global, misc, .. } = self;
 
-        if F_P_SOVER1 > 0. {
-            self.misc.previous_time = 1.0 / F_P_SOVER1;
-        }
-
-        self.misc.previous_time * self.misc.current_time_factor
+        misc.frame_time(global)
     }
 
     /// Update the factor affecting the current speed of 'time flow'
     pub fn set_time_factor(&mut self, time_factor: c_float) {
         self.misc.current_time_factor = time_factor;
     }
-}
 
-impl Data {
     /// This function is used for terminating freedroid.  It will close
     /// the SDL submodules and exit.
     pub unsafe fn quit_successfully(&mut self) -> ! {
@@ -863,7 +854,7 @@ impl Data {
                 .iter_mut()
                 .take(MAXBLASTS)
                 .for_each(|blast| blast.ty = Status::Out as i32);
-            (0..MAXBULLETS).for_each(|bullet| delete_bullet(bullet.try_into().unwrap()));
+            (0..MAXBULLETS).for_each(|bullet| self.delete_bullet(bullet.try_into().unwrap()));
         } else {
             //--------------------
             // If no real level change has occured, everything
@@ -1157,4 +1148,18 @@ fn read_variable<'a>(data: &'a [u8], var_name: &str) -> Option<&'a [u8]> {
         .filter_map(|line| line.trim_start().strip_prefix(b"="))
         .map(|line| line.trim())
         .next()
+}
+
+impl Misc {
+    pub unsafe fn frame_time(&mut self, global: &Global) -> c_float {
+        if global.skip_a_few_frames != 0 {
+            return self.previous_time;
+        }
+
+        if F_P_SOVER1 > 0. {
+            self.previous_time = 1.0 / F_P_SOVER1;
+        }
+
+        self.previous_time * self.current_time_factor
+    }
 }

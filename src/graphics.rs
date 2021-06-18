@@ -20,7 +20,7 @@ use crate::{
         PLAYGROUND_STARTS, RIGHT_GROUND_START, TO_BLOCKS, TO_BLOCK_FILE_C, TO_GAME_BLOCKS,
         TO_GROUND_BLOCKS,
     },
-    vars::{BLASTMAP, BULLETMAP, DRUIDMAP, ORIG_BLOCK_RECT, ORIG_DIGIT_RECT},
+    vars::{ORIG_BLOCK_RECT, ORIG_DIGIT_RECT},
     Data, ALL_BULLETS, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
 };
 
@@ -624,7 +624,7 @@ impl Data {
 
         //---------- rescale Bullet blocks
         let bulletmap = std::slice::from_raw_parts_mut(
-            BULLETMAP,
+            self.vars.bulletmap,
             usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap(),
         );
         bulletmap
@@ -633,7 +633,8 @@ impl Data {
             .for_each(|surface| scale_pic(surface, scale));
 
         //---------- rescale Blast blocks
-        BLASTMAP
+        self.vars
+            .blastmap
             .iter_mut()
             .flat_map(|blast| blast.surface_pointer.iter_mut())
             .for_each(|surface| scale_pic(surface, scale));
@@ -1203,26 +1204,29 @@ impl Data {
             Criticality::Critical as c_int,
         );
         load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
-        std::slice::from_raw_parts_mut(BULLETMAP, NUMBER_OF_BULLET_TYPES.try_into().unwrap())
-            .iter_mut()
-            .enumerate()
-            .flat_map(|(bullet_type_index, bullet)| {
-                bullet
-                    .surface_pointer
-                    .iter_mut()
-                    .enumerate()
-                    .map(move |(phase_index, surface)| (bullet_type_index, phase_index, surface))
-            })
-            .for_each(|(bullet_type_index, phase_index, surface)| {
-                free_if_unused(*surface);
-                *surface = load_block(
-                    null_mut(),
-                    bullet_type_index.try_into().unwrap(),
-                    phase_index.try_into().unwrap(),
-                    &ORIG_BLOCK_RECT,
-                    0,
-                );
-            });
+        std::slice::from_raw_parts_mut(
+            self.vars.bulletmap,
+            NUMBER_OF_BULLET_TYPES.try_into().unwrap(),
+        )
+        .iter_mut()
+        .enumerate()
+        .flat_map(|(bullet_type_index, bullet)| {
+            bullet
+                .surface_pointer
+                .iter_mut()
+                .enumerate()
+                .map(move |(phase_index, surface)| (bullet_type_index, phase_index, surface))
+        })
+        .for_each(|(bullet_type_index, phase_index, surface)| {
+            free_if_unused(*surface);
+            *surface = load_block(
+                null_mut(),
+                bullet_type_index.try_into().unwrap(),
+                phase_index.try_into().unwrap(),
+                &ORIG_BLOCK_RECT,
+                0,
+            );
+        });
 
         self.update_progress(35);
 
@@ -1234,7 +1238,8 @@ impl Data {
             Criticality::Critical as c_int,
         );
         load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
-        BLASTMAP
+        self.vars
+            .blastmap
             .iter_mut()
             .enumerate()
             .flat_map(|(blast_type_index, blast)| {
@@ -1410,7 +1415,7 @@ impl Data {
 
             self.update_progress(90);
             //---------- get Droid images ----------
-            let droids = std::slice::from_raw_parts(DRUIDMAP, Droid::NumDroids as usize);
+            let droids = std::slice::from_raw_parts(self.vars.droidmap, Droid::NumDroids as usize);
             droids
                 .iter()
                 .zip(PACKED_PORTRAITS.iter_mut())
@@ -1647,14 +1652,14 @@ impl Data {
             data.as_ptr() as *mut c_char,
             BLAST_ONE_NUMBER_OF_PHASES_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
-            &mut BLASTMAP[0].phases as *mut c_int as *mut c_void,
+            &mut self.vars.blastmap[0].phases as *mut c_int as *mut c_void,
         );
 
         read_value_from_string(
             data.as_ptr() as *mut c_char,
             BLAST_TWO_NUMBER_OF_PHASES_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
-            &mut BLASTMAP[1].phases as *mut c_int as *mut c_void,
+            &mut self.vars.blastmap[1].phases as *mut c_int as *mut c_void,
         );
 
         // Next we read in the number of phases that are to be used for each bullet type
@@ -1695,15 +1700,15 @@ impl Data {
                 read.as_ptr() as *mut c_char,
                 cstr!("we will use number of phases=").as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*BULLETMAP.offset(bullet_index.try_into().unwrap())).phases as *mut c_int
-                    as *mut c_void,
+                &mut (*self.vars.bulletmap.offset(bullet_index.try_into().unwrap())).phases
+                    as *mut c_int as *mut c_void,
             );
             read_value_from_string(
                 read.as_ptr() as *mut c_char,
                 cstr!("and number of phase changes per second=").as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
-                &mut (*BULLETMAP.offset(bullet_index.try_into().unwrap())).phase_changes_per_second
-                    as *mut c_float as *mut c_void,
+                &mut (*self.vars.bulletmap.offset(bullet_index.try_into().unwrap()))
+                    .phase_changes_per_second as *mut c_float as *mut c_void,
             );
             reader = &reader[read_start + 1..];
         }

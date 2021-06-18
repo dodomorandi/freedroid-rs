@@ -7,7 +7,6 @@ use crate::{
     misc::my_random,
     ship::level_empty,
     structs::{Finepoint, Gps},
-    vars::{BULLETMAP, DRUIDMAP},
     Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, INVINCIBLE_MODE, LAST_REFRESH_SOUND,
     NUM_ENEMYS, REAL_SCORE,
 };
@@ -173,8 +172,12 @@ impl Data {
     pub unsafe fn influ_enemy_collision_lose_energy(&mut self, enemy_num: c_int) {
         let enemy_type = ALL_ENEMYS[usize::try_from(enemy_num).unwrap()].ty;
 
-        let damage = ((*DRUIDMAP.add(usize::try_from(self.vars.me.ty).unwrap())).class
-            - (*DRUIDMAP.add(usize::try_from(enemy_type).unwrap())).class)
+        let damage = ((*self
+            .vars
+            .droidmap
+            .add(usize::try_from(self.vars.me.ty).unwrap()))
+        .class
+            - (*self.vars.droidmap.add(usize::try_from(enemy_type).unwrap())).class)
             as f32
             * self.global.collision_lose_energy_calibrator;
 
@@ -250,12 +253,20 @@ impl Data {
             let north_south_axis_blocked;
             if !({
                 let pos_y = lastpos.y
-                    + (*DRUIDMAP.add(usize::try_from(self.vars.me.ty).unwrap())).maxspeed
+                    + (*self
+                        .vars
+                        .droidmap
+                        .add(usize::try_from(self.vars.me.ty).unwrap()))
+                    .maxspeed
                         * self.frame_time();
                 self.druid_passable(lastpos.x, pos_y) != Direction::Center as c_int
             } || {
                 let pos_y = lastpos.y
-                    - (*DRUIDMAP.add(usize::try_from(self.vars.me.ty).unwrap())).maxspeed
+                    - (*self
+                        .vars
+                        .droidmap
+                        .add(usize::try_from(self.vars.me.ty).unwrap()))
+                    .maxspeed
                         * self.frame_time();
                 self.druid_passable(lastpos.x, pos_y) != Direction::Center as c_int
             }) {
@@ -268,12 +279,20 @@ impl Data {
             let east_west_axis_blocked;
             if {
                 let pos_x = lastpos.x
-                    + (*DRUIDMAP.add(usize::try_from(self.vars.me.ty).unwrap())).maxspeed
+                    + (*self
+                        .vars
+                        .droidmap
+                        .add(usize::try_from(self.vars.me.ty).unwrap()))
+                    .maxspeed
                         * self.frame_time();
                 self.druid_passable(pos_x, lastpos.y) == Direction::Center as c_int
             } && {
                 let pos_x = lastpos.x
-                    - (*DRUIDMAP.add(usize::try_from(self.vars.me.ty).unwrap())).maxspeed
+                    - (*self
+                        .vars
+                        .droidmap
+                        .add(usize::try_from(self.vars.me.ty).unwrap()))
+                    .maxspeed
                         * self.frame_time();
                 self.druid_passable(pos_x, lastpos.y) == Direction::Center as c_int
             } {
@@ -378,14 +397,18 @@ impl Data {
     pub unsafe fn animate_influence(&mut self) {
         if self.vars.me.ty != Droid::Droid001 as c_int {
             self.vars.me.phase += (self.vars.me.energy
-                / ((*DRUIDMAP.add(usize::try_from(self.vars.me.ty).unwrap())).maxenergy
-                    + (*DRUIDMAP.add(Droid::Droid001 as usize)).maxenergy))
+                / ((*self
+                    .vars
+                    .droidmap
+                    .add(usize::try_from(self.vars.me.ty).unwrap()))
+                .maxenergy
+                    + (*self.vars.droidmap.add(Droid::Droid001 as usize)).maxenergy))
                 * self.frame_time()
                 * f32::from(ENEMYPHASES)
                 * 3.;
         } else {
             self.vars.me.phase += (self.vars.me.energy
-                / ((*DRUIDMAP.add(Droid::Droid001 as usize)).maxenergy))
+                / ((*self.vars.droidmap.add(Droid::Droid001 as usize)).maxenergy))
                 * self.frame_time()
                 * f32::from(ENEMYPHASES)
                 * 3.;
@@ -399,8 +422,12 @@ impl Data {
     /// This function moves the influencer, adjusts his speed according to
     /// keys pressed and also adjusts his status and current "phase" of his rotation.
     pub(crate) unsafe fn move_influence(&mut self) {
-        let accel =
-            (*DRUIDMAP.add(usize::try_from(self.vars.me.ty).unwrap())).accel * self.frame_time();
+        let accel = (*self
+            .vars
+            .droidmap
+            .add(usize::try_from(self.vars.me.ty).unwrap()))
+        .accel
+            * self.frame_time();
 
         // We store the influencers position for the history record and so that others
         // can follow his trail.
@@ -544,8 +571,11 @@ impl Data {
         }
 
         /* health decreases with time */
-        self.vars.me.health -= (*DRUIDMAP.add(usize::try_from(self.vars.me.ty).unwrap()))
-            .lose_health
+        self.vars.me.health -= (*self
+            .vars
+            .droidmap
+            .add(usize::try_from(self.vars.me.ty).unwrap()))
+        .lose_health
             * self.frame_time();
 
         /* you cant have more energy than health */
@@ -556,13 +586,18 @@ impl Data {
 
     /// Fire-Routine for the Influencer only !! (should be changed)
     pub unsafe fn fire_bullet(&mut self) {
-        let guntype = (*DRUIDMAP.add(usize::try_from(self.vars.me.ty).unwrap())).gun; /* which gun do we have ? */
-        let bullet_speed = (*BULLETMAP.add(usize::try_from(guntype).unwrap())).speed;
+        let guntype = (*self
+            .vars
+            .droidmap
+            .add(usize::try_from(self.vars.me.ty).unwrap()))
+        .gun; /* which gun do we have ? */
+        let bullet_speed = (*self.vars.bulletmap.add(usize::try_from(guntype).unwrap())).speed;
 
         if self.vars.me.firewait > 0. {
             return;
         }
-        self.vars.me.firewait = (*BULLETMAP.add(usize::try_from(guntype).unwrap())).recharging_time;
+        self.vars.me.firewait =
+            (*self.vars.bulletmap.add(usize::try_from(guntype).unwrap())).recharging_time;
 
         self.fire_bullet_sound(guntype);
 
@@ -655,7 +690,11 @@ impl Data {
     }
 
     pub unsafe fn adjust_speed(&mut self) {
-        let maxspeed = (*DRUIDMAP.add(usize::try_from(self.vars.me.ty).unwrap())).maxspeed;
+        let maxspeed = (*self
+            .vars
+            .droidmap
+            .add(usize::try_from(self.vars.me.ty).unwrap()))
+        .maxspeed;
         self.vars.me.speed.x = self.vars.me.speed.x.clamp(-maxspeed, maxspeed);
         self.vars.me.speed.y = self.vars.me.speed.y.clamp(-maxspeed, maxspeed);
     }

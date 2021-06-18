@@ -2,11 +2,9 @@ use crate::{
     defs::{
         self, DisplayBannerFlags, Droid, MenuAction, Status, DROID_ROTATION_TIME, SHOW_WAIT, UPDATE,
     },
-    enemy::class_of_druid,
     graphics::{clear_graph_mem, NE_SCREEN, TAKEOVER_BG_PIC},
     misc::my_random,
     structs::Point,
-    vars::DRUIDMAP,
     view::fill_rect,
     Data, ALL_ENEMYS, DEATH_COUNT, INVINCIBLE_MODE, PRE_TAKE_ENERGY, REAL_SCORE,
 };
@@ -1514,8 +1512,8 @@ impl Data {
 
             DROID_NUM = enemynum;
             OPPONENT_TYPE = ALL_ENEMYS[enemy_index].ty;
-            NUM_CAPSULES[Opponents::You as usize] = 3 + class_of_druid(self.vars.me.ty);
-            NUM_CAPSULES[Opponents::Enemy as usize] = 4 + class_of_druid(OPPONENT_TYPE);
+            NUM_CAPSULES[Opponents::You as usize] = 3 + self.class_of_druid(self.vars.me.ty);
+            NUM_CAPSULES[Opponents::Enemy as usize] = 4 + self.class_of_druid(OPPONENT_TYPE);
 
             invent_playground();
 
@@ -1539,7 +1537,8 @@ impl Data {
 
                 // We provide some security agains too high energy/health values gained
                 // by very rapid successions of successful takeover attempts
-                let droid_map = std::slice::from_raw_parts(DRUIDMAP, Droid::NumDroids as usize);
+                let droid_map =
+                    std::slice::from_raw_parts(self.vars.droidmap, Droid::NumDroids as usize);
                 if self.vars.me.energy > droid_map[Droid::Droid001 as usize].maxenergy {
                     self.vars.me.energy = droid_map[Droid::Droid001 as usize].maxenergy;
                 }

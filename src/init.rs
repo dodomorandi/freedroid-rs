@@ -1,6 +1,5 @@
 use crate::{
     b_font::font_height,
-    bullet::delete_bullet,
     defs::{
         self, scale_rect, AssembleCombatWindowFlags, Criticality, DisplayBannerFlags, Droid,
         Status, Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAP_DIR_C, MAXBULLETS,
@@ -14,7 +13,6 @@ use crate::{
         read_value_from_string,
     },
     structs::{BulletSpec, DruidSpec},
-    vars::{BLASTMAP, BULLETMAP, DRUIDMAP},
     Data, ALERT_BONUS_PER_SEC, ALERT_THRESHOLD, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL,
     CUR_SHIP, DEATH_COUNT, DEATH_COUNT_DRAIN_SPEED, DEBUG_LEVEL, LAST_GOT_INTO_BLAST_SOUND,
     LAST_REFRESH_SOUND, NUMBER_OF_DROID_TYPES, NUM_ENEMYS, REAL_SCORE, SHOW_SCORE, SOUND_ON,
@@ -76,9 +74,9 @@ For more information about these matters, see the file named COPYING.";
 impl Data {
     pub unsafe fn free_game_mem(&mut self) {
         // free bullet map
-        if BULLETMAP.is_null().not() {
+        if self.vars.bulletmap.is_null().not() {
             let bullet_map = std::slice::from_raw_parts_mut(
-                BULLETMAP,
+                self.vars.bulletmap,
                 usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap(),
             );
             for bullet in bullet_map {
@@ -87,15 +85,15 @@ impl Data {
                 }
             }
             dealloc(
-                BULLETMAP as *mut u8,
+                self.vars.bulletmap as *mut u8,
                 Layout::array::<BulletSpec>(usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap())
                     .unwrap(),
             );
-            BULLETMAP = null_mut();
+            self.vars.bulletmap = null_mut();
         }
 
         // free blast map
-        for blast_type in &mut BLASTMAP {
+        for blast_type in &mut self.vars.blastmap {
             for surface in &mut blast_type.surface_pointer {
                 SDL_FreeSurface(*surface);
                 *surface = null_mut();
@@ -103,7 +101,7 @@ impl Data {
         }
 
         // free droid map
-        free_druidmap();
+        self.free_druidmap();
 
         // free highscores list
         drop(self.highscore.entries.take());
@@ -112,23 +110,25 @@ impl Data {
         dealloc_c_string(self.init.debriefing_text);
         self.init.debriefing_text = null_mut();
     }
-}
 
-pub unsafe fn free_druidmap() {
-    if DRUIDMAP.is_null() {
-        return;
-    }
-    let droid_map =
-        std::slice::from_raw_parts(DRUIDMAP, usize::try_from(NUMBER_OF_DROID_TYPES).unwrap());
-    for droid in droid_map {
-        dealloc_c_string(droid.notes);
-    }
+    pub unsafe fn free_druidmap(&mut self) {
+        if self.vars.droidmap.is_null() {
+            return;
+        }
+        let droid_map = std::slice::from_raw_parts(
+            self.vars.droidmap,
+            usize::try_from(NUMBER_OF_DROID_TYPES).unwrap(),
+        );
+        for droid in droid_map {
+            dealloc_c_string(droid.notes);
+        }
 
-    dealloc(
-        DRUIDMAP as *mut u8,
-        Layout::array::<DruidSpec>(usize::try_from(NUMBER_OF_DROID_TYPES).unwrap()).unwrap(),
-    );
-    DRUIDMAP = null_mut();
+        dealloc(
+            self.vars.droidmap as *mut u8,
+            Layout::array::<DruidSpec>(usize::try_from(NUMBER_OF_DROID_TYPES).unwrap()).unwrap(),
+        );
+        self.vars.droidmap = null_mut();
+    }
 }
 
 /// put some ideology message for our poor friends enslaved by M$-Win32 ;)
@@ -221,7 +221,7 @@ impl Data {
     /// This must not be confused with initnewgame, which
     /// only initializes a new mission for the game.
     pub unsafe fn init_freedroid(&mut self) {
-        BULLETMAP = null_mut(); // That will cause the memory to be allocated later
+        self.vars.bulletmap = null_mut(); // That will cause the memory to be allocated later
 
         for bullet in &mut ALL_BULLETS {
             bullet.surfaces_were_generated = false.into();
@@ -610,7 +610,7 @@ impl Data {
 
         /* Delete all bullets and blasts */
         for bullet in 0..MAXBULLETS {
-            delete_bullet(bullet.try_into().unwrap());
+            self.delete_bullet(bullet.try_into().unwrap());
         }
 
         info!("InitNewMission: All bullets have been deleted.");
@@ -849,7 +849,7 @@ impl Data {
         self.vars.me.ty = Droid::Droid001 as c_int;
         self.vars.me.speed.x = 0.;
         self.vars.me.speed.y = 0.;
-        self.vars.me.energy = (*DRUIDMAP.add(Droid::Droid001 as usize)).maxenergy;
+        self.vars.me.energy = (*self.vars.droidmap.add(Droid::Droid001 as usize)).maxenergy;
         self.vars.me.health = self.vars.me.energy; /* start with max. health */
         self.vars.me.status = Status::Mobile as c_int;
         self.vars.me.phase = 0.;
@@ -995,13 +995,13 @@ impl Data {
             data.as_mut_ptr(),
             BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
-            &mut BLASTMAP[0].total_animation_time as *mut f32 as *mut c_void,
+            &mut self.vars.blastmap[0].total_animation_time as *mut f32 as *mut c_void,
         );
         read_value_from_string(
             data.as_mut_ptr(),
             BLAST_TWO_TOTAL_AMOUNT_OF_TIME_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
-            &mut BLASTMAP[1].total_animation_time as *mut f32 as *mut c_void,
+            &mut self.vars.blastmap[1].total_animation_time as *mut f32 as *mut c_void,
         );
     }
 
@@ -1112,7 +1112,7 @@ impl Data {
         info!("Starting to read Robot data...");
 
         // cleanup if previously allocated:
-        free_druidmap();
+        self.free_druidmap();
 
         // At first, we must allocate memory for the droid specifications.
         // How much?  That depends on the number of droids defined in freedroid.ruleset.
@@ -1124,7 +1124,7 @@ impl Data {
 
         // Now that we know how many robots are defined in freedroid.ruleset, we can allocate
         // a fitting amount of memory.
-        DRUIDMAP = alloc_zeroed(
+        self.vars.droidmap = alloc_zeroed(
             Layout::array::<DruidSpec>(usize::try_from(NUMBER_OF_DROID_TYPES).unwrap()).unwrap(),
         ) as *mut DruidSpec;
         info!(
@@ -1148,7 +1148,7 @@ impl Data {
                 robot_pointer,
                 DROIDNAME_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%s").as_ptr() as *mut c_char,
-                &mut (*DRUIDMAP.add(robot_index)).druidname as *mut _ as *mut c_void,
+                &mut (*self.vars.droidmap.add(robot_index)).druidname as *mut _ as *mut c_void,
             );
 
             // Now we read in the maximal speed this droid can go.
@@ -1156,7 +1156,7 @@ impl Data {
                 robot_pointer,
                 MAXSPEED_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
-                &mut (*DRUIDMAP.add(robot_index)).maxspeed as *mut _ as *mut c_void,
+                &mut (*self.vars.droidmap.add(robot_index)).maxspeed as *mut _ as *mut c_void,
             );
 
             // Now we read in the class of this droid.
@@ -1164,7 +1164,7 @@ impl Data {
                 robot_pointer,
                 CLASS_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*DRUIDMAP.add(robot_index)).class as *mut _ as *mut c_void,
+                &mut (*self.vars.droidmap.add(robot_index)).class as *mut _ as *mut c_void,
             );
 
             // Now we read in the maximal acceleration this droid can go.
@@ -1172,7 +1172,7 @@ impl Data {
                 robot_pointer,
                 ACCELERATION_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
-                &mut (*DRUIDMAP.add(robot_index)).accel as *mut _ as *mut c_void,
+                &mut (*self.vars.droidmap.add(robot_index)).accel as *mut _ as *mut c_void,
             );
 
             // Now we read in the maximal energy this droid can store.
@@ -1180,7 +1180,7 @@ impl Data {
                 robot_pointer,
                 MAXENERGY_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
-                &mut (*DRUIDMAP.add(robot_index)).maxenergy as *mut _ as *mut c_void,
+                &mut (*self.vars.droidmap.add(robot_index)).maxenergy as *mut _ as *mut c_void,
             );
 
             // Now we read in the lose_health rate.
@@ -1188,7 +1188,7 @@ impl Data {
                 robot_pointer,
                 LOSEHEALTH_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
-                &mut (*DRUIDMAP.add(robot_index)).lose_health as *mut _ as *mut c_void,
+                &mut (*self.vars.droidmap.add(robot_index)).lose_health as *mut _ as *mut c_void,
             );
 
             // Now we read in the class of this droid.
@@ -1196,7 +1196,7 @@ impl Data {
                 robot_pointer,
                 GUN_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*DRUIDMAP.add(robot_index)).gun as *mut _ as *mut c_void,
+                &mut (*self.vars.droidmap.add(robot_index)).gun as *mut _ as *mut c_void,
             );
 
             // Now we read in the aggression rate of this droid.
@@ -1204,7 +1204,7 @@ impl Data {
                 robot_pointer,
                 AGGRESSION_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*DRUIDMAP.add(robot_index)).aggression as *mut _ as *mut c_void,
+                &mut (*self.vars.droidmap.add(robot_index)).aggression as *mut _ as *mut c_void,
             );
 
             // Now we read in the flash immunity of this droid.
@@ -1212,7 +1212,7 @@ impl Data {
                 robot_pointer,
                 FLASHIMMUNE_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*DRUIDMAP.add(robot_index)).flashimmune as *mut _ as *mut c_void,
+                &mut (*self.vars.droidmap.add(robot_index)).flashimmune as *mut _ as *mut c_void,
             );
 
             // Now we score to be had for destroying one droid of this type
@@ -1220,7 +1220,7 @@ impl Data {
                 robot_pointer,
                 SCORE_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*DRUIDMAP.add(robot_index)).score as *mut _ as *mut c_void,
+                &mut (*self.vars.droidmap.add(robot_index)).score as *mut _ as *mut c_void,
             );
 
             // Now we read in the height of this droid of this type
@@ -1228,7 +1228,7 @@ impl Data {
                 robot_pointer,
                 HEIGHT_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
-                &mut (*DRUIDMAP.add(robot_index)).height as *mut _ as *mut c_void,
+                &mut (*self.vars.droidmap.add(robot_index)).height as *mut _ as *mut c_void,
             );
 
             // Now we read in the weight of this droid type
@@ -1236,7 +1236,7 @@ impl Data {
                 robot_pointer,
                 WEIGHT_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*DRUIDMAP.add(robot_index)).weight as *mut _ as *mut c_void,
+                &mut (*self.vars.droidmap.add(robot_index)).weight as *mut _ as *mut c_void,
             );
 
             // Now we read in the drive of this droid of this type
@@ -1244,7 +1244,7 @@ impl Data {
                 robot_pointer,
                 DRIVE_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*DRUIDMAP.add(robot_index)).drive as *mut _ as *mut c_void,
+                &mut (*self.vars.droidmap.add(robot_index)).drive as *mut _ as *mut c_void,
             );
 
             // Now we read in the brain of this droid of this type
@@ -1252,7 +1252,7 @@ impl Data {
                 robot_pointer,
                 BRAIN_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*DRUIDMAP.add(robot_index)).brain as *mut _ as *mut c_void,
+                &mut (*self.vars.droidmap.add(robot_index)).brain as *mut _ as *mut c_void,
             );
 
             // Now we read in the sensor 1, 2 and 3 of this droid type
@@ -1260,24 +1260,24 @@ impl Data {
                 robot_pointer,
                 SENSOR1_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*DRUIDMAP.add(robot_index)).sensor1 as *mut _ as *mut c_void,
+                &mut (*self.vars.droidmap.add(robot_index)).sensor1 as *mut _ as *mut c_void,
             );
             read_value_from_string(
                 robot_pointer,
                 SENSOR2_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*DRUIDMAP.add(robot_index)).sensor2 as *mut _ as *mut c_void,
+                &mut (*self.vars.droidmap.add(robot_index)).sensor2 as *mut _ as *mut c_void,
             );
             read_value_from_string(
                 robot_pointer,
                 SENSOR3_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*DRUIDMAP.add(robot_index)).sensor3 as *mut _ as *mut c_void,
+                &mut (*self.vars.droidmap.add(robot_index)).sensor3 as *mut _ as *mut c_void,
             );
 
             // Now we read in the notes concerning this droid.  We consider as notes all the rest of the
             // line after the NOTES_BEGIN_STRING until the "\n" is found.
-            (*DRUIDMAP.add(robot_index)).notes = self.read_and_malloc_string_from_data(
+            (*self.vars.droidmap.add(robot_index)).notes = self.read_and_malloc_string_from_data(
                 robot_pointer,
                 NOTES_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("\n").as_ptr() as *mut c_char,
@@ -1291,9 +1291,10 @@ impl Data {
         info!("That must have been the last robot.  We're done reading the robot data.");
         info!("Applying the calibration factors to all droids...");
 
-        for droid in
-            std::slice::from_raw_parts_mut(DRUIDMAP, NUMBER_OF_DROID_TYPES.try_into().unwrap())
-        {
+        for droid in std::slice::from_raw_parts_mut(
+            self.vars.droidmap,
+            NUMBER_OF_DROID_TYPES.try_into().unwrap(),
+        ) {
             droid.maxspeed *= maxspeed_calibrator;
             droid.accel *= acceleration_calibrator;
             droid.maxenergy *= maxenergy_calibrator;
@@ -1347,13 +1348,13 @@ impl Data {
         // If we would do that in any case, every Init_Game_Data call would destroy the loaded
         // image files AND MOST LIKELY CAUSE A SEGFAULT!!!
         //
-        if BULLETMAP.is_null() {
-            BULLETMAP = alloc_zeroed(
+        if self.vars.bulletmap.is_null() {
+            self.vars.bulletmap = alloc_zeroed(
                 Layout::array::<BulletSpec>(usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap())
                     .unwrap(),
             ) as *mut BulletSpec;
             std::ptr::write_bytes(
-                BULLETMAP,
+                self.vars.bulletmap,
                 0,
                 usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap(),
             );
@@ -1381,7 +1382,8 @@ impl Data {
                 bullet_pointer,
                 BULLET_RECHARGE_TIME_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
-                &mut (*BULLETMAP.add(bullet_index)).recharging_time as *mut _ as *mut c_void,
+                &mut (*self.vars.bulletmap.add(bullet_index)).recharging_time as *mut _
+                    as *mut c_void,
             );
 
             // Now we read in the maximal speed this type of bullet can go.
@@ -1389,7 +1391,7 @@ impl Data {
                 bullet_pointer,
                 BULLET_SPEED_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
-                &mut (*BULLETMAP.add(bullet_index)).speed as *mut _ as *mut c_void,
+                &mut (*self.vars.bulletmap.add(bullet_index)).speed as *mut _ as *mut c_void,
             );
 
             // Now we read in the damage this bullet can do
@@ -1397,7 +1399,7 @@ impl Data {
                 bullet_pointer,
                 BULLET_DAMAGE_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*BULLETMAP.add(bullet_index)).damage as *mut _ as *mut c_void,
+                &mut (*self.vars.bulletmap.add(bullet_index)).damage as *mut _ as *mut c_void,
             );
 
             // Now we read in the number of phases that are designed for this bullet type
@@ -1410,7 +1412,7 @@ impl Data {
                 bullet_pointer,
                 BULLET_BLAST_TYPE_CAUSED_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*BULLETMAP.add(bullet_index)).blast as *mut _ as *mut c_void,
+                &mut (*self.vars.bulletmap.add(bullet_index)).blast as *mut _ as *mut c_void,
             );
 
             bullet_index += 1;
@@ -1444,7 +1446,7 @@ impl Data {
         // Now that all the calibrations factors have been read in, we can start to
         // apply them to all the bullet types
         for bullet in std::slice::from_raw_parts_mut(
-            BULLETMAP,
+            self.vars.bulletmap,
             usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap(),
         ) {
             bullet.speed *= bullet_speed_calibrator;

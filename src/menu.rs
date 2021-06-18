@@ -17,7 +17,6 @@ use crate::{
     map::COLOR_NAMES,
     misc::{armageddon, dealloc_c_string},
     sound::set_bg_music_volume,
-    vars::DRUIDMAP,
     Data, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, INVINCIBLE_MODE, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
     SHOW_ALL_DROIDS, SOUND_ON, STOP_INFLUENCER,
 };
@@ -333,7 +332,7 @@ impl Data {
         const Y0: i32 = 20;
 
         let cur_level = &mut *CUR_LEVEL;
-        let droid_map = std::slice::from_raw_parts(DRUIDMAP, Droid::NumDroids as usize);
+        let droid_map = std::slice::from_raw_parts(self.vars.droidmap, Droid::NumDroids as usize);
         let mut resume = false;
         while !resume {
             clear_graph_mem();

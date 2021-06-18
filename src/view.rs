@@ -13,7 +13,6 @@ use crate::{
     },
     map::get_map_brick,
     structs::{Enemy, Finepoint, GrobPoint},
-    vars::{BLASTMAP, BULLETMAP, DRUIDMAP},
     Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, DEATH_COUNT, FIRST_DIGIT_RECT,
     NUMBER_OF_DROID_TYPES, SECOND_DIGIT_RECT, SHOW_ALL_DROIDS, SHOW_SCORE, THIRD_DIGIT_RECT,
 };
@@ -340,7 +339,7 @@ impl Data {
         let droid: &mut Enemy = &mut ALL_ENEMYS[usize::try_from(enemy_index).unwrap()];
         let ty = droid.ty;
         let phase = droid.phase;
-        let name = &mut (*DRUIDMAP.offset(ty.try_into().unwrap())).druidname;
+        let name = &mut (*self.vars.droidmap.offset(ty.try_into().unwrap())).druidname;
 
         if (droid.status == Status::Terminated as i32)
             || (droid.status == Status::Out as i32)
@@ -469,7 +468,12 @@ impl Data {
         let mut dst = FIRST_DIGIT_RECT;
         SDL_UpperBlit(
             INFLU_DIGIT_SURFACE_POINTER[usize::try_from(
-                (*DRUIDMAP.offset(self.vars.me.ty.try_into().unwrap())).druidname[0] - b'1' as i8
+                (*self
+                    .vars
+                    .droidmap
+                    .offset(self.vars.me.ty.try_into().unwrap()))
+                .druidname[0]
+                    - b'1' as i8
                     + 1,
             )
             .unwrap()],
@@ -482,7 +486,12 @@ impl Data {
         dst = SECOND_DIGIT_RECT;
         SDL_UpperBlit(
             INFLU_DIGIT_SURFACE_POINTER[usize::try_from(
-                (*DRUIDMAP.offset(self.vars.me.ty.try_into().unwrap())).druidname[1] - b'1' as i8
+                (*self
+                    .vars
+                    .droidmap
+                    .offset(self.vars.me.ty.try_into().unwrap()))
+                .druidname[1]
+                    - b'1' as i8
                     + 1,
             )
             .unwrap()],
@@ -495,7 +504,12 @@ impl Data {
         dst = THIRD_DIGIT_RECT;
         SDL_UpperBlit(
             INFLU_DIGIT_SURFACE_POINTER[usize::try_from(
-                (*DRUIDMAP.offset(self.vars.me.ty.try_into().unwrap())).druidname[2] - b'1' as i8
+                (*self
+                    .vars
+                    .droidmap
+                    .offset(self.vars.me.ty.try_into().unwrap()))
+                .druidname[2]
+                    - b'1' as i8
                     + 1,
             )
             .unwrap()],
@@ -505,7 +519,11 @@ impl Data {
         );
 
         if self.vars.me.energy * 100.
-            / (*DRUIDMAP.offset(self.vars.me.ty.try_into().unwrap())).maxenergy
+            / (*self
+                .vars
+                .droidmap
+                .offset(self.vars.me.ty.try_into().unwrap()))
+            .maxenergy
             <= BLINKENERGY
             && x == -1
         {
@@ -604,7 +622,10 @@ impl Data {
             return;
         }
 
-        let bullet = &*BULLETMAP.offset(cur_bullet.ty.try_into().unwrap());
+        let bullet = &*self
+            .vars
+            .bulletmap
+            .offset(cur_bullet.ty.try_into().unwrap());
         let mut phase_of_bullet =
             (cur_bullet.time_in_seconds * bullet.phase_changes_per_second) as usize;
 
@@ -683,7 +704,7 @@ impl Data {
             0,
         );
         SDL_UpperBlit(
-            BLASTMAP[usize::try_from(cur_blast.ty).unwrap()].surface_pointer
+            self.vars.blastmap[usize::try_from(cur_blast.ty).unwrap()].surface_pointer
                 [(cur_blast.phase).floor() as usize],
             null_mut(),
             NE_SCREEN,

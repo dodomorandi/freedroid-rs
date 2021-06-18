@@ -35,6 +35,10 @@ pub struct Vars {
     /* counter to Message: you have won(this ship */
     pub ship_empty_counter: c_int,
     pub me: Influence,
+
+    pub droidmap: *mut DruidSpec,
+    pub bulletmap: *mut BulletSpec,
+    pub blastmap: [BlastSpec; ALLBLASTTYPES],
 }
 
 impl Default for Vars {
@@ -84,6 +88,9 @@ impl Default for Vars {
                 position_history_ring_buffer: [Gps { x: 0., y: 0., z: 0 };
                     MAX_INFLU_POSITION_HISTORY],
             },
+            droidmap: null_mut(),
+            bulletmap: null_mut(),
+            blastmap: [BlastSpec::default_const(); ALLBLASTTYPES],
         }
     }
 }
@@ -160,6 +167,9 @@ impl fmt::Debug for Vars {
             .field("progress_text_rect", &progress_text_rect)
             .field("ship_empty_counter", &self.ship_empty_counter)
             .field("me", &self.me)
+            .field("droidmap", &self.droidmap)
+            .field("bulletmap", &self.bulletmap)
+            .field("blastmap", &self.blastmap)
             .finish()
     }
 }
@@ -167,9 +177,6 @@ impl fmt::Debug for Vars {
 pub const ORIG_BLOCK_RECT: Rect = rect! {0, 0, 64, 64}; // not to be rescaled ever!!
 pub const ORIG_DIGIT_RECT: Rect = rect! {0, 0, 16, 18}; // not to be rescaled!
 
-pub static mut DRUIDMAP: *mut DruidSpec = null_mut();
-pub static mut BULLETMAP: *mut BulletSpec = null_mut();
-pub static mut BLASTMAP: [BlastSpec; ALLBLASTTYPES] = [BlastSpec::default_const(); ALLBLASTTYPES];
 pub const CLASS_NAMES: [&CStr; 10] = [
     cstr!("Influence device"),
     cstr!("Disposal robot"),

@@ -1,6 +1,6 @@
 use crate::{
     b_font::font_height,
-    bullet::{delete_blast, delete_bullet},
+    bullet::delete_blast,
     defs::{
         AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction, SoundType, Status,
         DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET, TEXT_STRETCH, UPDATE,
@@ -13,7 +13,7 @@ use crate::{
     input::SDL_Delay,
     map::get_map_brick,
     structs::Point,
-    vars::{BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, DRUIDMAP, SENSOR_NAMES, WEAPON_NAMES},
+    vars::{BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES, WEAPON_NAMES},
     view::fill_rect,
     Data, ALERT_LEVEL, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, NE_SCREEN, NUM_ENEMYS,
 };
@@ -361,7 +361,7 @@ impl Data {
         };
 
         let mut droid_name = [0u8; 80];
-        let droid = &*DRUIDMAP.add(usize::try_from(droid_type).unwrap());
+        let droid = &*self.vars.droidmap.add(usize::try_from(droid_type).unwrap());
         write!(
             droid_name.as_mut(),
             "  Unit type {} - {}\0",
@@ -1107,7 +1107,7 @@ impl Data {
                 delete_blast(i);
             }
             for i in 0..c_int::try_from(MAXBULLETS).unwrap() {
-                delete_bullet(i);
+                self.delete_bullet(i);
             }
         }
 

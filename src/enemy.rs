@@ -7,7 +7,6 @@ use crate::{
     misc::my_random,
     ship::level_empty,
     structs::Finepoint,
-    vars::{BULLETMAP, DRUIDMAP},
     Data, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, DEATH_COUNT, NUM_ENEMYS, REAL_SCORE,
 };
 
@@ -25,16 +24,17 @@ const FIREDIST2: f32 = 8.;
 
 const COL_SPEED: f32 = 3.;
 
-pub unsafe fn class_of_druid(druid_type: c_int) -> c_int {
-    /* first digit is class */
-    let class_char = (*DRUIDMAP.add(usize::try_from(druid_type).unwrap())).druidname[0] as u8;
-    match class_char {
-        b'0'..=b'9' => (class_char - b'0').into(),
-        _ => 0,
-    }
-}
-
 impl Data {
+    pub unsafe fn class_of_druid(&self, druid_type: c_int) -> c_int {
+        /* first digit is class */
+        let class_char =
+            (*self.vars.droidmap.add(usize::try_from(druid_type).unwrap())).druidname[0] as u8;
+        match class_char {
+            b'0'..=b'9' => (class_char - b'0').into(),
+            _ => 0,
+        }
+    }
+
     pub unsafe fn animate_enemys(&mut self) {
         for enemy in &mut ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()] {
             /* ignore enemys that are dead or on other levels or dummys */
@@ -45,7 +45,8 @@ impl Data {
                 continue;
             }
 
-            enemy.phase += (enemy.energy / (*DRUIDMAP.add(enemy.ty.try_into().unwrap())).maxenergy)
+            enemy.phase += (enemy.energy
+                / (*self.vars.droidmap.add(enemy.ty.try_into().unwrap())).maxenergy)
                 * self.frame_time()
                 * ENEMYPHASES as f32
                 * 2.5;
@@ -77,7 +78,7 @@ impl Data {
             self.move_this_enemy(i.try_into().unwrap());
 
             // If its a combat droid, then if might attack...
-            if (*DRUIDMAP.add(usize::try_from(enemy.ty).unwrap())).aggression != 0 {
+            if (*self.vars.droidmap.add(usize::try_from(enemy.ty).unwrap())).aggression != 0 {
                 self.attack_influence(i.try_into().unwrap());
             }
         }
@@ -114,7 +115,7 @@ impl Data {
         }
 
         // if odds are good, make a shot at your target
-        let guntype = (*DRUIDMAP.add(this_robot.ty.try_into().unwrap())).gun;
+        let guntype = (*self.vars.droidmap.add(this_robot.ty.try_into().unwrap())).gun;
 
         let dist2 = (xdist * xdist + ydist * ydist).sqrt();
 
@@ -129,7 +130,8 @@ impl Data {
             return;
         }
 
-        if my_random(AGGRESSIONMAX) >= (*DRUIDMAP.add(this_robot.ty.try_into().unwrap())).aggression
+        if my_random(AGGRESSIONMAX)
+            >= (*self.vars.droidmap.add(this_robot.ty.try_into().unwrap())).aggression
         {
             this_robot.firewait += my_random(1000) as f32 * ROBOT_MAX_WAIT_BETWEEN_SHOTS / 1000.0;
             return;
@@ -157,7 +159,7 @@ impl Data {
         // the target
 
         if xdist.abs() > ydist.abs() {
-            cur_bullet.speed.x = (*BULLETMAP.add(guntype.try_into().unwrap())).speed;
+            cur_bullet.speed.x = (*self.vars.bulletmap.add(guntype.try_into().unwrap())).speed;
             cur_bullet.speed.y = ydist * cur_bullet.speed.x / xdist;
             if xdist < 0. {
                 cur_bullet.speed.x = -cur_bullet.speed.x;
@@ -166,7 +168,7 @@ impl Data {
         }
 
         if xdist.abs() < ydist.abs() {
-            cur_bullet.speed.y = (*BULLETMAP.add(guntype.try_into().unwrap())).speed;
+            cur_bullet.speed.y = (*self.vars.bulletmap.add(guntype.try_into().unwrap())).speed;
             cur_bullet.speed.x = xdist * cur_bullet.speed.y / ydist;
             if ydist < 0. {
                 cur_bullet.speed.x = -cur_bullet.speed.x;
@@ -181,14 +183,14 @@ impl Data {
         cur_bullet.pos.y = this_robot.pos.y;
 
         cur_bullet.pos.x += (cur_bullet.speed.x)
-            / ((*BULLETMAP.add(guntype.try_into().unwrap())).speed).abs()
+            / ((*self.vars.bulletmap.add(guntype.try_into().unwrap())).speed).abs()
             * 0.5;
         cur_bullet.pos.y += (cur_bullet.speed.y)
-            / ((*BULLETMAP.add(guntype.try_into().unwrap())).speed).abs()
+            / ((*self.vars.bulletmap.add(guntype.try_into().unwrap())).speed).abs()
             * 0.5;
 
-        this_robot.firewait = (*BULLETMAP.add(
-            (*DRUIDMAP.add(this_robot.ty.try_into().unwrap()))
+        this_robot.firewait = (*self.vars.bulletmap.add(
+            (*self.vars.droidmap.add(this_robot.ty.try_into().unwrap()))
                 .gun
                 .try_into()
                 .unwrap(),
@@ -208,7 +210,11 @@ impl Data {
         // explosion and all that...
         if this_robot.energy <= 0. && (this_robot.status != Status::Terminated as c_int) {
             this_robot.status = Status::Terminated as c_int;
-            REAL_SCORE += (*DRUIDMAP.add(usize::try_from(this_robot.ty).unwrap())).score as f32;
+            REAL_SCORE += (*self
+                .vars
+                .droidmap
+                .add(usize::try_from(this_robot.ty).unwrap()))
+            .score as f32;
 
             DEATH_COUNT += (this_robot.ty * this_robot.ty) as f32; // quadratic "importance", max=529
 
@@ -393,7 +399,11 @@ impl Data {
         // We do some definitions to save us some more typing later...
         let wp_list = (*CUR_LEVEL).all_waypoints;
         let nextwp: usize = this_robot.nextwaypoint.try_into().unwrap();
-        let maxspeed = (*DRUIDMAP.add(usize::try_from(this_robot.ty).unwrap())).maxspeed;
+        let maxspeed = (*self
+            .vars
+            .droidmap
+            .add(usize::try_from(this_robot.ty).unwrap()))
+        .maxspeed;
 
         let nextwp_pos = Finepoint {
             x: wp_list[nextwp].x.into(),
@@ -446,16 +456,22 @@ pub unsafe fn clear_enemys() {
 
 impl Data {
     pub unsafe fn permanent_heal_robots(&mut self) {
+        let Self {
+            vars, misc, global, ..
+        } = self;
+
         ALL_ENEMYS[0..usize::try_from(NUM_ENEMYS).unwrap()]
             .iter_mut()
             .filter(|enemy| {
                 enemy.status != Status::Out as c_int
                     && enemy.energy > 0.
-                    && enemy.energy < (*DRUIDMAP.add(usize::try_from(enemy.ty).unwrap())).maxenergy
+                    && enemy.energy
+                        < (*vars.droidmap.add(usize::try_from(enemy.ty).unwrap())).maxenergy
             })
             .for_each(|enemy| {
-                enemy.energy += (*DRUIDMAP.add(usize::try_from(enemy.ty).unwrap())).lose_health
-                    * self.frame_time();
+                enemy.energy += (*vars.droidmap.add(usize::try_from(enemy.ty).unwrap()))
+                    .lose_health
+                    * misc.frame_time(global);
             });
     }
 }

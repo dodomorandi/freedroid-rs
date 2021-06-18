@@ -4,7 +4,6 @@ use crate::{
         MAXBLASTS, MAXBULLETS,
     },
     structs::{Finepoint, Vect},
-    vars::{BLASTMAP, BULLETMAP, DRUIDMAP},
     Data, Status, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, INVINCIBLE_MODE,
     LAST_GOT_INTO_BLAST_SOUND, NUM_ENEMYS,
 };
@@ -69,9 +68,11 @@ impl Data {
                     }
 
                     if self.is_visible(&enemy.pos) != 0
-                        && (*DRUIDMAP.add(usize::try_from(enemy.ty).unwrap())).flashimmune == 0
+                        && (*self.vars.droidmap.add(usize::try_from(enemy.ty).unwrap())).flashimmune
+                            == 0
                     {
-                        enemy.energy -= (*BULLETMAP.add(BulletKind::Flash as usize)).damage as f32;
+                        enemy.energy -=
+                            (*self.vars.bulletmap.add(BulletKind::Flash as usize)).damage as f32;
                         // Since the enemy just got hit, it might as well say so :)
                         self.enemy_hit_by_bullet_text(i.try_into().unwrap());
                     }
@@ -80,10 +81,15 @@ impl Data {
                 // droids with flash are always flash-immune!
                 // -> we don't get hurt by our own flashes!
                 if INVINCIBLE_MODE == 0
-                    && (*DRUIDMAP.add(usize::try_from(self.vars.me.ty).unwrap())).flashimmune == 0
+                    && (*self
+                        .vars
+                        .droidmap
+                        .add(usize::try_from(self.vars.me.ty).unwrap()))
+                    .flashimmune
+                        == 0
                 {
                     self.vars.me.energy -=
-                        (*BULLETMAP.add(BulletKind::Flash as usize)).damage as f32;
+                        (*self.vars.bulletmap.add(BulletKind::Flash as usize)).damage as f32;
                 }
             }
 
@@ -127,7 +133,7 @@ impl Data {
                             cur_bullet.pos.y,
                             Explosion::Bulletblast as c_int,
                         );
-                        delete_bullet(num);
+                        self.delete_bullet(num);
                         return;
                     }
 
@@ -141,10 +147,10 @@ impl Data {
 
                             if INVINCIBLE_MODE == 0 {
                                 self.vars.me.energy -=
-                                    (*BULLETMAP.add(cur_bullet.ty.into())).damage as f32;
+                                    (*self.vars.bulletmap.add(cur_bullet.ty.into())).damage as f32;
                             }
 
-                            delete_bullet(num);
+                            self.delete_bullet(num);
                             return;
                         }
                     }
@@ -164,10 +170,13 @@ impl Data {
                         // FIXME
                         if (xdist * xdist + ydist * ydist) < self.get_druid_hit_dist_squared() {
                             // The enemy who was hit, loses some energy, depending on the bullet
-                            enemy.energy -=
-                                (*BULLETMAP.add(cur_bullet.ty.try_into().unwrap())).damage as f32;
+                            enemy.energy -= (*self
+                                .vars
+                                .bulletmap
+                                .add(cur_bullet.ty.try_into().unwrap()))
+                            .damage as f32;
 
-                            delete_bullet(num);
+                            self.delete_bullet(num);
                             self.got_hit_sound();
 
                             if !cur_bullet.mine {
@@ -207,8 +216,8 @@ impl Data {
                             Explosion::Druidblast as c_int,
                         );
 
-                        delete_bullet(num);
-                        delete_bullet(i.try_into().unwrap());
+                        self.delete_bullet(num);
+                        self.delete_bullet(i.try_into().unwrap());
                     }
                 }
             }
@@ -231,9 +240,10 @@ impl Data {
                     self.check_blast_collisions(i.try_into().unwrap());
                 }
 
-                let blast_spec = &BLASTMAP[usize::try_from(cur_blast.ty).unwrap()];
+                let frame_time = self.frame_time();
+                let blast_spec = &self.vars.blastmap[usize::try_from(cur_blast.ty).unwrap()];
                 cur_blast.phase +=
-                    self.frame_time() * blast_spec.phases as f32 / blast_spec.total_animation_time;
+                    frame_time * blast_spec.phases as f32 / blast_spec.total_animation_time;
                 if cur_blast.phase.floor() as c_int >= blast_spec.phases {
                     delete_blast(i.try_into().unwrap());
                 }
@@ -261,7 +271,7 @@ impl Data {
                     cur_bullet.pos.y,
                     Explosion::Bulletblast as c_int,
                 );
-                delete_bullet(i.try_into().unwrap());
+                self.delete_bullet(i.try_into().unwrap());
             }
         }
 
@@ -356,56 +366,54 @@ impl Data {
             self.druid_blast_sound();
         }
     }
-}
 
-/// delete bullet of given number, set it type=OUT, put it at x/y=-1/-1
-/// and create a Bullet-blast if with_blast==TRUE
-pub unsafe fn delete_bullet(bullet_number: c_int) {
-    let cur_bullet = &mut ALL_BULLETS[usize::try_from(bullet_number).unwrap()];
+    /// delete bullet of given number, set it type=OUT, put it at x/y=-1/-1
+    /// and create a Bullet-blast if with_blast==TRUE
+    pub unsafe fn delete_bullet(&self, bullet_number: c_int) {
+        let cur_bullet = &mut ALL_BULLETS[usize::try_from(bullet_number).unwrap()];
 
-    if cur_bullet.ty == Status::Out as u8 {
-        // ignore dead bullets
-        return;
-    }
-
-    //--------------------
-    // At first we generate the blast at the collision spot of the bullet,
-    // cause later, after the bullet is deleted, it will be hard to know
-    // the correct location ;)
-
-    // RP (18/11/02): nay, we do that manually before DeleteBullet() now,
-    // --> not all bullets should create Blasts (i.e. not if droid was hit)
-    //  StartBlast (CurBullet->pos.x, CurBullet->pos.y, BULLETBLAST);
-
-    //--------------------
-    // maybe, the bullet had several SDL_Surfaces attached to it.  Then we need to
-    // free the SDL_Surfaces again as well...
-    //
-    if cur_bullet.surfaces_were_generated != 0 {
-        info!("DeleteBullet: freeing this bullets attached surfaces...");
-        let bullet_spec = &*BULLETMAP.add(cur_bullet.ty.into());
-        for phase in 0..usize::try_from(bullet_spec.phases).unwrap() {
-            SDL_FreeSurface(cur_bullet.surface_pointer[phase]);
-            cur_bullet.surface_pointer[phase] = null_mut();
+        if cur_bullet.ty == Status::Out as u8 {
+            // ignore dead bullets
+            return;
         }
-        cur_bullet.surfaces_were_generated = false.into();
+
+        //--------------------
+        // At first we generate the blast at the collision spot of the bullet,
+        // cause later, after the bullet is deleted, it will be hard to know
+        // the correct location ;)
+
+        // RP (18/11/02): nay, we do that manually before DeleteBullet() now,
+        // --> not all bullets should create Blasts (i.e. not if droid was hit)
+        //  StartBlast (CurBullet->pos.x, CurBullet->pos.y, BULLETBLAST);
+
+        //--------------------
+        // maybe, the bullet had several SDL_Surfaces attached to it.  Then we need to
+        // free the SDL_Surfaces again as well...
+        //
+        if cur_bullet.surfaces_were_generated != 0 {
+            info!("DeleteBullet: freeing this bullets attached surfaces...");
+            let bullet_spec = &*self.vars.bulletmap.add(cur_bullet.ty.into());
+            for phase in 0..usize::try_from(bullet_spec.phases).unwrap() {
+                SDL_FreeSurface(cur_bullet.surface_pointer[phase]);
+                cur_bullet.surface_pointer[phase] = null_mut();
+            }
+            cur_bullet.surfaces_were_generated = false.into();
+        }
+
+        //--------------------
+        // Now that the memory has been freed again, we can finally delete this bullet entry.
+        // Hope, that this does not give us a SEGFAULT, but it should not do so.
+        //
+        cur_bullet.ty = Status::Out as u8;
+        cur_bullet.time_in_seconds = 0.;
+        cur_bullet.time_in_frames = 0;
+        cur_bullet.mine = false;
+        cur_bullet.phase = 0;
+        cur_bullet.pos.x = -1.;
+        cur_bullet.pos.y = -1.;
+        cur_bullet.angle = 0.;
     }
 
-    //--------------------
-    // Now that the memory has been freed again, we can finally delete this bullet entry.
-    // Hope, that this does not give us a SEGFAULT, but it should not do so.
-    //
-    cur_bullet.ty = Status::Out as u8;
-    cur_bullet.time_in_seconds = 0.;
-    cur_bullet.time_in_frames = 0;
-    cur_bullet.mine = false;
-    cur_bullet.phase = 0;
-    cur_bullet.pos.x = -1.;
-    cur_bullet.pos.y = -1.;
-    cur_bullet.angle = 0.;
-}
-
-impl Data {
     /// This function moves all the bullets according to their speeds.
     ///
     /// NEW: this function also takes into accoung the current framerate.

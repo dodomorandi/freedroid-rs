@@ -7,7 +7,6 @@ use crate::{
     menu::SHIP_EXT,
     misc::{dealloc_c_string, locate_string_in_data, my_random, read_value_from_string},
     structs::{Finepoint, GrobPoint, Level},
-    vars::DRUIDMAP,
     Data, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
 };
 
@@ -864,7 +863,7 @@ impl Data {
             let mut list_index = 0;
             while list_index < NUMBER_OF_DROID_TYPES {
                 if libc::strcmp(
-                    (*DRUIDMAP.add(usize::try_from(list_index).unwrap()))
+                    (*self.vars.droidmap.add(usize::try_from(list_index).unwrap()))
                         .druidname
                         .as_ptr(),
                     type_indication_string.as_ptr(),
@@ -997,7 +996,7 @@ impl Data {
                 // Do nothing to unused entries
                 continue;
             }
-            enemy.energy = (*DRUIDMAP.add(usize::try_from(ty).unwrap())).maxenergy;
+            enemy.energy = (*self.vars.droidmap.add(usize::try_from(ty).unwrap())).maxenergy;
             enemy.status = Status::Mobile as c_int;
             NUM_ENEMYS += 1;
         }
