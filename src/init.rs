@@ -6,7 +6,7 @@ use crate::{
         SHOW_WAIT, SLOWMO_FACTOR, TITLE_PIC_FILE_C, WAIT_AFTER_KILLED,
     },
     enemy::shuffle_enemys,
-    graphics::{clear_graph_mem, ALL_THEMES, NE_SCREEN, NUMBER_OF_BULLET_TYPES, PIC999},
+    graphics::{ALL_THEMES, NE_SCREEN, NUMBER_OF_BULLET_TYPES},
     input::SDL_Delay,
     misc::{
         count_string_occurences, dealloc_c_string, locate_string_in_data, my_random,
@@ -826,7 +826,7 @@ impl Data {
         self.title(briefing_section_pointer);
 
         /* Den Banner fuer das Spiel anzeigen */
-        clear_graph_mem();
+        self.clear_graph_mem();
         self.display_banner(
             null_mut(),
             null_mut(),
@@ -1589,7 +1589,7 @@ impl Data {
             w: self.vars.portrait_rect.w,
             h: self.vars.portrait_rect.h,
         };
-        SDL_UpperBlit(PIC999, null_mut(), NE_SCREEN, &mut dst);
+        SDL_UpperBlit(self.graphics.pic999, null_mut(), NE_SCREEN, &mut dst);
         self.thou_art_defeated_sound();
 
         self.b_font.current_font = self.global.para_b_font;

@@ -2,7 +2,7 @@ use crate::{
     defs::{
         self, DisplayBannerFlags, Droid, MenuAction, Status, DROID_ROTATION_TIME, SHOW_WAIT, UPDATE,
     },
-    graphics::{clear_graph_mem, NE_SCREEN, TAKEOVER_BG_PIC},
+    graphics::{NE_SCREEN, TAKEOVER_BG_PIC},
     misc::my_random,
     structs::Point,
     view::fill_rect,
@@ -1937,7 +1937,7 @@ impl Data {
         // restore User_Rect
         self.vars.user_rect = buf;
 
-        clear_graph_mem();
+        self.clear_graph_mem();
 
         (self.takeover.leader_color == self.takeover.your_color).into()
     }

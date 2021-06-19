@@ -12,7 +12,7 @@ use crate::{
         MAX_MAP_ROWS,
     },
     global::INFLUENCE_MODE_NAMES,
-    graphics::{clear_graph_mem, ALL_THEMES, BANNER_IS_DESTROYED, CLASSIC_THEME_INDEX, NE_SCREEN},
+    graphics::{ALL_THEMES, CLASSIC_THEME_INDEX, NE_SCREEN},
     input::{SDL_Delay, CMD_STRINGS},
     map::COLOR_NAMES,
     misc::{armageddon, dealloc_c_string},
@@ -292,7 +292,7 @@ impl Data {
 
         SDL_SetClipRect(NE_SCREEN, null_mut());
         self.vars.me.status = Status::Menu as i32;
-        clear_graph_mem();
+        self.clear_graph_mem();
         self.display_banner(
             null_mut(),
             null_mut(),
@@ -335,7 +335,7 @@ impl Data {
         let droid_map = std::slice::from_raw_parts(self.vars.droidmap, Droid::NumDroids as usize);
         let mut resume = false;
         while !resume {
-            clear_graph_mem();
+            self.clear_graph_mem();
             self.printf_sdl(
                 NE_SCREEN,
                 X0,
@@ -423,7 +423,7 @@ impl Data {
                 }
 
                 Some(b'z') => {
-                    clear_graph_mem();
+                    self.clear_graph_mem();
                     self.printf_sdl(
                         NE_SCREEN,
                         X0,
@@ -467,7 +467,7 @@ impl Data {
                                 }
                             }
                             if l % 20 == 0 {
-                                clear_graph_mem();
+                                self.clear_graph_mem();
                                 self.printf_sdl(
                                     NE_SCREEN,
                                     X0,
@@ -537,7 +537,7 @@ impl Data {
                             }
                         }
                         if i % 13 == 0 {
-                            clear_graph_mem();
+                            self.clear_graph_mem();
                             self.printf_sdl(
                                 NE_SCREEN,
                                 X0,
@@ -598,7 +598,7 @@ impl Data {
 
                 Some(b't') => {
                     /* Teleportation */
-                    clear_graph_mem();
+                    self.clear_graph_mem();
                     self.printf_sdl(NE_SCREEN, X0, Y0, format_args!("Enter Level, X, Y: "));
                     let input = self.get_string(40, 2);
                     let mut l_num = 0;
@@ -618,7 +618,7 @@ impl Data {
 
                 Some(b'r') => {
                     /* change to new robot type */
-                    clear_graph_mem();
+                    self.clear_graph_mem();
                     self.printf_sdl(
                         NE_SCREEN,
                         X0,
@@ -645,7 +645,7 @@ impl Data {
                             ),
                         );
                         self.getchar_raw();
-                        clear_graph_mem();
+                        self.clear_graph_mem();
                     } else {
                         self.vars.me.ty = i.try_into().unwrap();
                         self.vars.me.energy =
@@ -672,7 +672,7 @@ impl Data {
 
                 Some(b'e') => {
                     /* complete heal */
-                    clear_graph_mem();
+                    self.clear_graph_mem();
                     self.printf_sdl(
                         NE_SCREEN,
                         X0,
@@ -721,7 +721,7 @@ impl Data {
                             }
                         }
                         if i % 20 == 0 {
-                            clear_graph_mem();
+                            self.clear_graph_mem();
                             self.printf_sdl(
                                 NE_SCREEN,
                                 X0,
@@ -763,7 +763,7 @@ impl Data {
             }
         }
 
-        clear_graph_mem();
+        self.clear_graph_mem();
 
         self.update_input(); /* treat all pending keyboard events */
     }
@@ -1037,11 +1037,11 @@ impl Data {
             SDL_Delay(1); // don't hog CPU
         }
 
-        clear_graph_mem();
+        self.clear_graph_mem();
         SDL_ShowCursor(SDL_ENABLE); // reactivate mouse-cursor for game
                                     // Since we've faded out the whole scren, it can't hurt
                                     // to have the top status bar redrawn...
-        BANNER_IS_DESTROYED = true.into();
+        self.graphics.banner_is_destroyed = true.into();
         self.vars.me.status = Status::Mobile as i32;
 
         while self.any_key_is_pressed_r()

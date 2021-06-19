@@ -4,7 +4,7 @@ use crate::{
         AssembleCombatWindowFlags, Cmds, MapTile, MAXWAYPOINTS, MAX_WP_CONNECTIONS, NUM_MAP_BLOCKS,
     },
     enemy::shuffle_enemys,
-    graphics::{clear_graph_mem, putpixel, NE_SCREEN},
+    graphics::{putpixel, NE_SCREEN},
     input::SDL_Delay,
     structs::{Level, Waypoint},
     view::{fill_rect, BLACK},
@@ -416,7 +416,7 @@ impl Data {
 
         self.vars.user_rect = rect;
 
-        clear_graph_mem();
+        self.clear_graph_mem();
     }
 }
 

@@ -6,10 +6,7 @@ use crate::{
         GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE_C, PROGRESS_METER_FILE_C,
     },
     enemy::shuffle_enemys,
-    graphics::{
-        load_block, scale_pic, BANNER_IS_DESTROYED, NE_SCREEN, PROGRESS_FILLER_PIC,
-        PROGRESS_METER_PIC,
-    },
+    graphics::{scale_pic, NE_SCREEN, PROGRESS_FILLER_PIC, PROGRESS_METER_PIC},
     input::{SDL_Delay, CMD_STRINGS},
     map::free_ship_memory,
     Data, Global, ALL_BLASTS, ALL_ENEMYS, CONFIG_DIR, CUR_LEVEL, CUR_SHIP, F_P_SOVER1, NUM_ENEMYS,
@@ -435,7 +432,7 @@ impl Data {
         // Now we are in some form of pause.  It can't
         // hurt to have the top status bar redrawn after that,
         // so we set this variable...
-        BANNER_IS_DESTROYED = true.into();
+        self.graphics.banner_is_destroyed = true.into();
     }
 
     /// Find a given filename in subdir relative to FD_DATADIR,
@@ -456,6 +453,18 @@ impl Data {
     /// or to keep using it after a new call to find_file!
     pub unsafe fn find_file(
         &mut self,
+        fname: *const c_char,
+        subdir: *mut c_char,
+        use_theme: c_int,
+        critical: c_int,
+    ) -> *mut c_char {
+        let Self { global, misc, .. } = self;
+        Self::find_file_static(global, misc, fname, subdir, use_theme, critical)
+    }
+
+    pub unsafe fn find_file_static(
+        global: &Global,
+        misc: &mut Misc,
         fname: *const c_char,
         mut subdir: *mut c_char,
         use_theme: c_int,
@@ -486,14 +495,14 @@ impl Data {
             let theme_dir = if use_theme == Themed::UseTheme as c_int {
                 Cow::Owned(format!(
                     "{}_theme/",
-                    CStr::from_ptr(self.global.game_config.theme_name.as_ptr()).to_string_lossy(),
+                    CStr::from_ptr(global.game_config.theme_name.as_ptr()).to_string_lossy(),
                 ))
             } else {
                 Cow::Borrowed("")
             };
 
             write!(
-                &mut self.misc.file_path[..],
+                &mut misc.file_path[..],
                 "{}/{}/{}/{}\0",
                 datadir,
                 CStr::from_ptr(subdir).to_string_lossy(),
@@ -502,7 +511,7 @@ impl Data {
             )
             .unwrap();
 
-            CStr::from_ptr(self.misc.file_path.as_ptr() as *const c_char)
+            CStr::from_ptr(misc.file_path.as_ptr() as *const c_char)
                 .to_str()
                 .map(|file_path| Path::new(file_path).exists())
                 .unwrap_or(false)
@@ -528,7 +537,7 @@ impl Data {
                         warn!(
                             "file {} not found in theme-dir: graphics/{}_theme/",
                             fname,
-                            CStr::from_ptr(self.global.game_config.theme_name.as_ptr())
+                            CStr::from_ptr(global.game_config.theme_name.as_ptr())
                                 .to_string_lossy(),
                         );
                     } else {
@@ -543,7 +552,7 @@ impl Data {
                         panic!(
                         "file {} not found in theme-dir: graphics/{}_theme/, cannot run without it!",
                         fname,
-                        CStr::from_ptr(self.global.game_config.theme_name.as_ptr()).to_string_lossy(),
+                        CStr::from_ptr(global.game_config.theme_name.as_ptr()).to_string_lossy(),
                     );
                     } else {
                         panic!("file {} not found, cannot run without it!", fname);
@@ -552,7 +561,7 @@ impl Data {
             }
         }
 
-        self.misc.file_path.as_mut_ptr() as *mut c_char
+        misc.file_path.as_mut_ptr() as *mut c_char
     }
 
     /// show_progress: display empty progress meter with given text
@@ -568,7 +577,7 @@ impl Data {
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            PROGRESS_METER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
+            PROGRESS_METER_PIC = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
             scale_pic(&mut PROGRESS_METER_PIC, self.global.game_config.scale);
             fpath = self.find_file(
                 PROGRESS_FILLER_FILE_C.as_ptr() as *mut c_char,
@@ -576,7 +585,7 @@ impl Data {
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            PROGRESS_FILLER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
+            PROGRESS_FILLER_PIC = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
             scale_pic(&mut PROGRESS_FILLER_PIC, self.global.game_config.scale);
 
             scale_rect(

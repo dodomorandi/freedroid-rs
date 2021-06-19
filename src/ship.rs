@@ -6,9 +6,8 @@ use crate::{
         DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET, TEXT_STRETCH, UPDATE,
     },
     graphics::{
-        clear_graph_mem, scale_pic, ARROW_CURSOR, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP,
-        CONSOLE_BG_PIC1, CONSOLE_BG_PIC2, CONSOLE_PIC, CROSSHAIR_CURSOR, PACKED_PORTRAITS,
-        SHIP_OFF_PIC, SHIP_ON_PIC, VID_BPP,
+        scale_pic, ARROW_CURSOR, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP, CONSOLE_BG_PIC1,
+        CONSOLE_BG_PIC2, CONSOLE_PIC, CROSSHAIR_CURSOR, SHIP_OFF_PIC, SHIP_ON_PIC,
     },
     input::SDL_Delay,
     map::get_map_brick,
@@ -223,7 +222,16 @@ impl Data {
 
         if self.ship.droid_background.is_null() {
             // first call
-            let tmp = SDL_CreateRGBSurface(0, dst.w.into(), dst.h.into(), VID_BPP, 0, 0, 0, 0);
+            let tmp = SDL_CreateRGBSurface(
+                0,
+                dst.w.into(),
+                dst.h.into(),
+                self.graphics.vid_bpp,
+                0,
+                0,
+                0,
+                0,
+            );
             self.ship.droid_background = SDL_DisplayFormat(tmp);
             SDL_FreeSurface(tmp);
             SDL_UpperBlit(NE_SCREEN, &mut dst, self.ship.droid_background, null_mut());
@@ -242,7 +250,8 @@ impl Data {
                 SDL_FreeSurface(self.ship.droid_pics);
             }
             self.ship.droid_pics = null_mut();
-            let packed_portrait = PACKED_PORTRAITS[usize::try_from(droid_type).unwrap()];
+            let packed_portrait =
+                self.graphics.packed_portraits[usize::try_from(droid_type).unwrap()];
             let tmp = IMG_Load_RW(packed_portrait, 0);
             // important: return seek-position to beginning of RWops for next operation to succeed!
             sdl_rw_seek(packed_portrait, 0, libc::SEEK_SET);
@@ -687,7 +696,7 @@ impl Data {
                                 self.paint_console_menu(pos.try_into().unwrap(), 0);
                             }
                             2 => {
-                                clear_graph_mem();
+                                self.clear_graph_mem();
                                 self.display_banner(
                                     null_mut(),
                                     null_mut(),
@@ -697,7 +706,7 @@ impl Data {
                                 self.paint_console_menu(pos.try_into().unwrap(), 0);
                             }
                             3 => {
-                                clear_graph_mem();
+                                self.clear_graph_mem();
                                 self.display_banner(
                                     null_mut(),
                                     null_mut(),
@@ -736,7 +745,7 @@ impl Data {
 
         self.vars.me.status = Status::Mobile as c_int;
 
-        clear_graph_mem();
+        self.clear_graph_mem();
 
         SDL_SetCursor(CROSSHAIR_CURSOR);
         if !self.input.show_cursor {
@@ -932,7 +941,7 @@ impl Data {
         let mut menu_text: [u8; 200] = [0; 200];
 
         if (flag & i32::from(UPDATE_ONLY)) == 0 {
-            clear_graph_mem();
+            self.clear_graph_mem();
             SDL_SetClipRect(NE_SCREEN, null_mut());
             SDL_UpperBlit(CONSOLE_BG_PIC1, null_mut(), NE_SCREEN, null_mut());
 
@@ -1020,7 +1029,7 @@ impl Data {
         let liftrow = CUR_SHIP.all_lifts[cur_lift].lift_row;
 
         // clear the whole screen
-        clear_graph_mem();
+        self.clear_graph_mem();
         self.display_banner(
             null_mut(),
             null_mut(),
@@ -1114,7 +1123,7 @@ impl Data {
         let cur_level = &*CUR_LEVEL;
         self.leave_lift_sound();
         self.switch_background_music_to(cur_level.background_song_name);
-        clear_graph_mem();
+        self.clear_graph_mem();
         self.display_banner(
             null_mut(),
             null_mut(),

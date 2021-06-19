@@ -49,22 +49,43 @@ use std::{
     ptr::null_mut,
 };
 
-pub static mut VID_INFO: *const SDL_VideoInfo = null_mut();
-pub static mut VID_BPP: c_int = 0;
-pub static mut PORTRAIT_RAW_MEM: once_cell::sync::Lazy<
-    [Option<Box<[u8]>>; Droid::NumDroids as usize],
-> = once_cell::sync::Lazy::new(|| array_init::array_init(|_| None));
-pub static mut FONTS_LOADED: c_int = 0;
-pub static mut MAP_BLOCK_SURFACE_POINTER: [[*mut SDL_Surface; NUM_MAP_BLOCKS]; NUM_COLORS] =
-    [[null_mut(); NUM_MAP_BLOCKS]; NUM_COLORS]; // A pointer to the surfaces containing the map-pics, which may be rescaled with respect to
-pub static mut ORIG_MAP_BLOCK_SURFACE_POINTER: [[*mut SDL_Surface; NUM_MAP_BLOCKS]; NUM_COLORS] =
-    [[null_mut(); NUM_MAP_BLOCKS]; NUM_COLORS]; // A pointer to the surfaces containing the original map-pics as read from disk
-pub static mut BUILD_BLOCK: *mut SDL_Surface = null_mut(); // a block for temporary pic-construction
-pub static mut BANNER_IS_DESTROYED: i32 = 0;
-pub static mut BANNER_PIC: *mut SDL_Surface = null_mut(); /* the banner pic */
-pub static mut PIC999: *mut SDL_Surface = null_mut();
-pub static mut PACKED_PORTRAITS: [*mut SDL_RWops; Droid::NumDroids as usize] =
-    [null_mut(); Droid::NumDroids as usize];
+#[derive(Debug)]
+pub struct Graphics {
+    vid_info: *const SDL_VideoInfo,
+    pub vid_bpp: c_int,
+    portrait_raw_mem: [Option<Box<[u8]>>; Droid::NumDroids as usize],
+    fonts_loaded: c_int,
+    // A pointer to the surfaces containing the map-pics, which may be rescaled with respect to
+    pub map_block_surface_pointer: [[*mut SDL_Surface; NUM_MAP_BLOCKS]; NUM_COLORS],
+    // A pointer to the surfaces containing the original map-pics as read from disk
+    orig_map_block_surface_pointer: [[*mut SDL_Surface; NUM_MAP_BLOCKS]; NUM_COLORS],
+    // a block for temporary pic-construction
+    pub build_block: *mut SDL_Surface,
+    pub banner_is_destroyed: i32,
+    /* the banner pic */
+    pub banner_pic: *mut SDL_Surface,
+    pub pic999: *mut SDL_Surface,
+    pub packed_portraits: [*mut SDL_RWops; Droid::NumDroids as usize],
+}
+
+impl Default for Graphics {
+    fn default() -> Self {
+        Self {
+            vid_info: null_mut(),
+            vid_bpp: 0,
+            portrait_raw_mem: array_init(|_| None),
+            fonts_loaded: 0,
+            map_block_surface_pointer: [[null_mut(); NUM_MAP_BLOCKS]; NUM_COLORS],
+            orig_map_block_surface_pointer: [[null_mut(); NUM_MAP_BLOCKS]; NUM_COLORS],
+            build_block: null_mut(),
+            banner_is_destroyed: 0,
+            banner_pic: null_mut(),
+            pic999: null_mut(),
+            packed_portraits: [null_mut(); Droid::NumDroids as usize],
+        }
+    }
+}
+
 pub static mut DECAL_PICS: [*mut SDL_Surface; NUM_DECAL_PICS] = [null_mut(); NUM_DECAL_PICS];
 pub static mut TAKEOVER_BG_PIC: *mut SDL_Surface = null_mut();
 pub static mut CONSOLE_PIC: *mut SDL_Surface = null_mut();
@@ -256,9 +277,10 @@ unsafe fn free_surface_array(surfaces: &[*mut SDL_Surface]) {
 }
 
 impl Data {
-    pub unsafe fn free_graphics(&self) {
+    pub unsafe fn free_graphics(&mut self) {
         // free RWops structures
-        PACKED_PORTRAITS
+        self.graphics
+            .packed_portraits
             .iter()
             .filter(|packed_portrait| !packed_portrait.is_null())
             .for_each(|&packed_portrait| {
@@ -267,7 +289,10 @@ impl Data {
                 close(packed_portrait);
             });
 
-        PORTRAIT_RAW_MEM.iter_mut().for_each(|mem| drop(mem.take()));
+        self.graphics
+            .portrait_raw_mem
+            .iter_mut()
+            .for_each(|mem| drop(mem.take()));
 
         SDL_FreeSurface(NE_SCREEN);
 
@@ -277,14 +302,15 @@ impl Data {
         free_surface_array(&ENEMY_DIGIT_SURFACE_POINTER);
         free_surface_array(&DECAL_PICS);
 
-        ORIG_MAP_BLOCK_SURFACE_POINTER
+        self.graphics
+            .orig_map_block_surface_pointer
             .iter()
             .flat_map(|arr| arr.iter())
             .for_each(|&surface| SDL_FreeSurface(surface));
 
-        SDL_FreeSurface(BUILD_BLOCK);
-        SDL_FreeSurface(BANNER_PIC);
-        SDL_FreeSurface(PIC999);
+        SDL_FreeSurface(self.graphics.build_block);
+        SDL_FreeSurface(self.graphics.banner_pic);
+        SDL_FreeSurface(self.graphics.pic999);
         // SDL_RWops *packed_portraits[NUM_DROIDS];
         SDL_FreeSurface(TAKEOVER_BG_PIC);
         SDL_FreeSurface(CONSOLE_PIC);
@@ -319,7 +345,8 @@ impl Data {
         });
 
         // free Load_Block()-internal buffer
-        load_block(null_mut(), 0, 0, null_mut(), FREE_ONLY as i32);
+        self.graphics
+            .load_block(null_mut(), 0, 0, null_mut(), FREE_ONLY as i32);
 
         // free cursors
         SDL_FreeCursor(CROSSHAIR_CURSOR);
@@ -382,87 +409,101 @@ pub unsafe fn get_rgba(
     SDL_GetRGBA(pixel, fmt, red, green, blue, alpha);
 }
 
-/// General block-reading routine: get block from pic-file
-///
-/// fpath: full pathname of picture-file; if NULL: use previous SDL-surf
-/// line, col: block-position in pic-file to read block from
-/// block: dimension of blocks to consider: if NULL: copy whole pic
-/// NOTE: only w and h of block are used!!
-///
-/// NOTE: to avoid memory-leaks, use (flags | INIT_ONLY) if you only
-///       call this function to set up a new pic-file to be read.
-///       This will avoid copying & mallocing a new pic, NULL will be returned
-pub unsafe fn load_block(
-    fpath: *mut c_char,
-    line: c_int,
-    col: c_int,
-    block: *const SDL_Rect,
-    flags: c_int,
-) -> *mut SDL_Surface {
-    static mut PIC: *mut SDL_Surface = null_mut();
-
-    if fpath.is_null() && PIC.is_null() {
-        /* we need some info.. */
-        return null_mut();
+impl Graphics {
+    /// General block-reading routine: get block from pic-file
+    ///
+    /// fpath: full pathname of picture-file; if NULL: use previous SDL-surf
+    /// line, col: block-position in pic-file to read block from
+    /// block: dimension of blocks to consider: if NULL: copy whole pic
+    /// NOTE: only w and h of block are used!!
+    ///
+    /// NOTE: to avoid memory-leaks, use (flags | INIT_ONLY) if you only
+    ///       call this function to set up a new pic-file to be read.
+    ///       This will avoid copying & mallocing a new pic, NULL will be returned
+    pub unsafe fn load_block(
+        &self,
+        fpath: *mut c_char,
+        line: c_int,
+        col: c_int,
+        block: *const SDL_Rect,
+        flags: c_int,
+    ) -> *mut SDL_Surface {
+        Self::load_block_vid_bpp(self.vid_bpp, fpath, line, col, block, flags)
     }
 
-    if !PIC.is_null() && flags == FREE_ONLY as c_int {
-        SDL_FreeSurface(PIC);
-        return null_mut();
-    }
+    pub unsafe fn load_block_vid_bpp(
+        vid_bpp: i32,
+        fpath: *mut c_char,
+        line: c_int,
+        col: c_int,
+        block: *const SDL_Rect,
+        flags: c_int,
+    ) -> *mut SDL_Surface {
+        static mut PIC: *mut SDL_Surface = null_mut();
 
-    if !fpath.is_null() {
-        // initialize: read & malloc new PIC, dont' return a copy!!
-
-        if !PIC.is_null() {
-            // previous PIC?
-            SDL_FreeSurface(PIC);
+        if fpath.is_null() && PIC.is_null() {
+            /* we need some info.. */
+            return null_mut();
         }
-        PIC = IMG_Load(fpath);
-    }
 
-    if (flags & INIT_ONLY as c_int) != 0 {
-        return null_mut(); // that's it guys, only initialzing...
-    }
+        if !PIC.is_null() && flags == FREE_ONLY as c_int {
+            SDL_FreeSurface(PIC);
+            return null_mut();
+        }
 
-    assert!(!PIC.is_null());
-    let pic = &mut *PIC;
-    let dim = if block.is_null() {
-        Rect::new(0, 0, pic.w.try_into().unwrap(), pic.h.try_into().unwrap())
-    } else {
-        let block = &*block;
-        Rect::new(0, 0, block.w, block.h)
-    };
+        if !fpath.is_null() {
+            // initialize: read & malloc new PIC, dont' return a copy!!
 
-    let usealpha = (*pic.format).Amask != 0;
+            if !PIC.is_null() {
+                // previous PIC?
+                SDL_FreeSurface(PIC);
+            }
+            PIC = IMG_Load(fpath);
+        }
 
-    if usealpha {
-        SDL_SetAlpha(pic, 0, 0); /* clear per-surf alpha for internal blit */
-    }
-    let tmp = SDL_CreateRGBSurface(0, dim.w.into(), dim.h.into(), VID_BPP, 0, 0, 0, 0);
-    let ret = if usealpha {
-        SDL_DisplayFormatAlpha(tmp)
-    } else {
-        SDL_DisplayFormat(tmp)
-    };
-    SDL_FreeSurface(tmp);
+        if (flags & INIT_ONLY as c_int) != 0 {
+            return null_mut(); // that's it guys, only initialzing...
+        }
 
-    let mut src = Rect::new(
-        i16::try_from(col).unwrap() * i16::try_from(dim.w + 2).unwrap(),
-        i16::try_from(line).unwrap() * i16::try_from(dim.h + 2).unwrap(),
-        dim.w,
-        dim.h,
-    );
-    SDL_UpperBlit(pic, &mut src, ret, null_mut());
-    if usealpha {
-        SDL_SetAlpha(
-            ret,
-            SurfaceFlag::SrcAlpha as u32 | SurfaceFlag::RLEAccel as u32,
-            255,
+        assert!(!PIC.is_null());
+        let pic = &mut *PIC;
+        let dim = if block.is_null() {
+            Rect::new(0, 0, pic.w.try_into().unwrap(), pic.h.try_into().unwrap())
+        } else {
+            let block = &*block;
+            Rect::new(0, 0, block.w, block.h)
+        };
+
+        let usealpha = (*pic.format).Amask != 0;
+
+        if usealpha {
+            SDL_SetAlpha(pic, 0, 0); /* clear per-surf alpha for internal blit */
+        }
+        let tmp = SDL_CreateRGBSurface(0, dim.w.into(), dim.h.into(), vid_bpp, 0, 0, 0, 0);
+        let ret = if usealpha {
+            SDL_DisplayFormatAlpha(tmp)
+        } else {
+            SDL_DisplayFormat(tmp)
+        };
+        SDL_FreeSurface(tmp);
+
+        let mut src = Rect::new(
+            i16::try_from(col).unwrap() * i16::try_from(dim.w + 2).unwrap(),
+            i16::try_from(line).unwrap() * i16::try_from(dim.h + 2).unwrap(),
+            dim.w,
+            dim.h,
         );
-    }
+        SDL_UpperBlit(pic, &mut src, ret, null_mut());
+        if usealpha {
+            SDL_SetAlpha(
+                ret,
+                SurfaceFlag::SrcAlpha as u32 | SurfaceFlag::RLEAccel as u32,
+                255,
+            );
+        }
 
-    ret
+        ret
+    }
 }
 
 impl Data {
@@ -593,11 +634,13 @@ impl Data {
         });
 
         //---------- rescale Map blocks
-        ORIG_MAP_BLOCK_SURFACE_POINTER
+        self.graphics
+            .orig_map_block_surface_pointer
             .iter_mut()
             .flat_map(|surfaces| surfaces.iter_mut())
             .zip(
-                MAP_BLOCK_SURFACE_POINTER
+                self.graphics
+                    .map_block_surface_pointer
                     .iter_mut()
                     .flat_map(|surfaces| surfaces.iter_mut()),
             )
@@ -653,18 +696,18 @@ impl Data {
         // the following are not theme-specific and are therefore only loaded once!
         if init {
             //  create a new tmp block-build storage
-            free_if_unused(BUILD_BLOCK);
+            free_if_unused(self.graphics.build_block);
             let tmp = SDL_CreateRGBSurface(
                 0,
                 self.vars.block_rect.w.into(),
                 self.vars.block_rect.h.into(),
-                VID_BPP,
+                self.graphics.vid_bpp,
                 0,
                 0,
                 0,
                 0,
             );
-            BUILD_BLOCK = SDL_DisplayFormatAlpha(tmp);
+            self.graphics.build_block = SDL_DisplayFormatAlpha(tmp);
             SDL_FreeSurface(tmp);
 
             // takeover pics
@@ -679,9 +722,9 @@ impl Data {
             scale_pic(&mut ARROW_RIGHT, scale);
             scale_pic(&mut ARROW_LEFT, scale);
             //---------- Banner
-            scale_pic(&mut BANNER_PIC, scale);
+            scale_pic(&mut self.graphics.banner_pic, scale);
 
-            scale_pic(&mut PIC999, scale);
+            scale_pic(&mut self.graphics.pic999, scale);
 
             // get the Ashes pics
             if !DECAL_PICS[0].is_null() {
@@ -721,7 +764,16 @@ impl Data {
         });
 
         // produce the tiles
-        let tmp = SDL_CreateRGBSurface(0, rect.w.into(), rect.h.into(), VID_BPP, 0, 0, 0, 0);
+        let tmp = SDL_CreateRGBSurface(
+            0,
+            rect.w.into(),
+            rect.h.into(),
+            self.graphics.vid_bpp,
+            0,
+            0,
+            0,
+            0,
+        );
         let tmp2 = SDL_DisplayFormat(tmp);
         SDL_FreeSurface(tmp);
         SDL_UpperBlit(bitmap, rect, tmp2, null_mut());
@@ -867,26 +919,24 @@ impl Data {
         self.global.menu_b_font = self.duplicate_font(&*self.global.para_b_font);
         self.global.highscore_b_font = self.duplicate_font(&*self.global.para_b_font);
 
-        FONTS_LOADED = true.into();
+        self.graphics.fonts_loaded = true.into();
 
         defs::OK.into()
     }
-}
 
-pub unsafe fn clear_graph_mem() {
-    // One this function is done, the rahmen at the
-    // top of the screen surely is destroyed.  We inform the
-    // DisplayBanner function of the matter...
-    BANNER_IS_DESTROYED = true.into();
+    pub unsafe fn clear_graph_mem(&mut self) {
+        // One this function is done, the rahmen at the
+        // top of the screen surely is destroyed.  We inform the
+        // DisplayBanner function of the matter...
+        self.graphics.banner_is_destroyed = true.into();
 
-    SDL_SetClipRect(NE_SCREEN, null_mut());
+        SDL_SetClipRect(NE_SCREEN, null_mut());
 
-    // Now we fill the screen with black color...
-    SDL_FillRect(NE_SCREEN, null_mut(), 0);
-    SDL_Flip(NE_SCREEN);
-}
+        // Now we fill the screen with black color...
+        SDL_FillRect(NE_SCREEN, null_mut(), 0);
+        SDL_Flip(NE_SCREEN);
+    }
 
-impl Data {
     /// Initialise the Video display and graphics engine
     pub unsafe fn init_video(&mut self) {
         const YN: [&str; 2] = ["no", "yes"];
@@ -911,15 +961,15 @@ impl Data {
         /* clean up on exit */
         libc::atexit(std::mem::transmute(SDL_Quit as unsafe extern "C" fn()));
 
-        VID_INFO = SDL_GetVideoInfo(); /* just curious */
+        self.graphics.vid_info = SDL_GetVideoInfo(); /* just curious */
         let mut vid_driver: [c_char; 81] = [0; 81];
         SDL_VideoDriverName(vid_driver.as_mut_ptr(), 80);
 
-        let vid_info_ref = *VID_INFO;
+        let vid_info_ref = *self.graphics.vid_info;
         if cfg!(os_target = "android") {
-            VID_BPP = 16; // Hardcoded Android default
+            self.graphics.vid_bpp = 16; // Hardcoded Android default
         } else {
-            VID_BPP = (*vid_info_ref.vfmt).BitsPerPixel.into();
+            self.graphics.vid_bpp = (*vid_info_ref.vfmt).BitsPerPixel.into();
         }
 
         macro_rules! flag {
@@ -974,7 +1024,7 @@ impl Data {
         );
         info!(
             "Pixel format of the video device: bpp = {}, bytes/pixel = {}",
-            VID_BPP,
+            self.graphics.vid_bpp,
             (*vid_info_ref.vfmt).BytesPerPixel
         );
         info!(
@@ -1030,7 +1080,7 @@ impl Data {
             std::process::exit(-1);
         }
 
-        VID_INFO = SDL_GetVideoInfo(); /* info about current video mode */
+        self.graphics.vid_info = SDL_GetVideoInfo(); /* info about current video mode */
 
         info!("Got video mode: ");
 
@@ -1040,7 +1090,6 @@ impl Data {
 
     /// load a pic into memory and return the SDL_RWops pointer to it
     pub unsafe fn load_raw_pic(
-        &mut self,
         fpath: *const c_char,
         raw_mem: &mut Option<Box<[u8]>>,
     ) -> *mut SDL_RWops {
@@ -1103,7 +1152,7 @@ impl Data {
 
         let oldfont = self.b_font.current_font;
 
-        if FONTS_LOADED == 0 {
+        if self.graphics.fonts_loaded == 0 {
             self.load_fonts();
         }
 
@@ -1122,11 +1171,22 @@ impl Data {
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
-        load_block(fpath, 0, 0, null_mut(), INIT_ONLY as i32); /* init function */
-        ORIG_MAP_BLOCK_SURFACE_POINTER
+        self.graphics
+            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as i32); /* init function */
+        let Self {
+            graphics:
+                Graphics {
+                    map_block_surface_pointer,
+                    vid_bpp,
+                    ..
+                },
+            ..
+        } = self;
+        self.graphics
+            .orig_map_block_surface_pointer
             .iter_mut()
             .enumerate()
-            .zip(MAP_BLOCK_SURFACE_POINTER.iter_mut())
+            .zip(map_block_surface_pointer.iter_mut())
             .flat_map(|((color_index, orig_color_map), color_map)| {
                 orig_color_map
                     .iter_mut()
@@ -1138,7 +1198,8 @@ impl Data {
             })
             .for_each(|((color_index, block_index, orig_surface), surface)| {
                 free_if_unused(*orig_surface);
-                *orig_surface = load_block(
+                *orig_surface = Graphics::load_block_vid_bpp(
+                    *vid_bpp,
                     null_mut(),
                     color_index.try_into().unwrap(),
                     block_index.try_into().unwrap(),
@@ -1156,11 +1217,12 @@ impl Data {
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
-        load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+        self.graphics
+            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
         INFLUENCER_SURFACE_POINTER.iter_mut().enumerate().for_each(
             |(index, influencer_surface)| {
                 free_if_unused(*influencer_surface);
-                *influencer_surface = load_block(
+                *influencer_surface = self.graphics.load_block(
                     null_mut(),
                     0,
                     index.try_into().unwrap(),
@@ -1178,7 +1240,7 @@ impl Data {
             .enumerate()
             .for_each(|(index, enemy_surface)| {
                 free_if_unused(*enemy_surface);
-                *enemy_surface = load_block(
+                *enemy_surface = self.graphics.load_block(
                     null_mut(),
                     1,
                     index.try_into().unwrap(),
@@ -1198,7 +1260,8 @@ impl Data {
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
-        load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+        self.graphics
+            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
         std::slice::from_raw_parts_mut(
             self.vars.bulletmap,
             NUMBER_OF_BULLET_TYPES.try_into().unwrap(),
@@ -1214,7 +1277,7 @@ impl Data {
         })
         .for_each(|(bullet_type_index, phase_index, surface)| {
             free_if_unused(*surface);
-            *surface = load_block(
+            *surface = self.graphics.load_block(
                 null_mut(),
                 bullet_type_index.try_into().unwrap(),
                 phase_index.try_into().unwrap(),
@@ -1232,9 +1295,11 @@ impl Data {
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
-        load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
-        self.vars
-            .blastmap
+        self.graphics
+            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+
+        let Self { vars, graphics, .. } = self;
+        vars.blastmap
             .iter_mut()
             .enumerate()
             .flat_map(|(blast_type_index, blast)| {
@@ -1246,7 +1311,7 @@ impl Data {
             })
             .for_each(|(blast_type_index, surface_index, surface)| {
                 free_if_unused(*surface);
-                *surface = load_block(
+                *surface = graphics.load_block(
                     null_mut(),
                     blast_type_index.try_into().unwrap(),
                     surface_index.try_into().unwrap(),
@@ -1264,13 +1329,14 @@ impl Data {
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
-        load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+        self.graphics
+            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
         INFLU_DIGIT_SURFACE_POINTER
             .iter_mut()
             .enumerate()
             .for_each(|(index, surface)| {
                 free_if_unused(*surface);
-                *surface = load_block(
+                *surface = self.graphics.load_block(
                     null_mut(),
                     0,
                     index.try_into().unwrap(),
@@ -1283,7 +1349,7 @@ impl Data {
             .enumerate()
             .for_each(|(index, surface)| {
                 free_if_unused(*surface);
-                *surface = load_block(
+                *surface = self.graphics.load_block(
                     null_mut(),
                     0,
                     (index + 10).try_into().unwrap(),
@@ -1302,7 +1368,7 @@ impl Data {
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
-        self.takeover.to_blocks = load_block(fpath, 0, 0, null_mut(), 0);
+        self.takeover.to_blocks = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
 
         self.update_progress(60);
 
@@ -1328,13 +1394,13 @@ impl Data {
                 0,
                 self.vars.block_rect.w.into(),
                 self.vars.block_rect.h.into(),
-                VID_BPP,
+                self.graphics.vid_bpp,
                 0,
                 0,
                 0,
                 0,
             );
-            BUILD_BLOCK = SDL_DisplayFormatAlpha(tmp);
+            self.graphics.build_block = SDL_DisplayFormatAlpha(tmp);
             SDL_FreeSurface(tmp);
 
             // takeover background pics
@@ -1344,7 +1410,7 @@ impl Data {
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            TAKEOVER_BG_PIC = load_block(fpath, 0, 0, null_mut(), 0);
+            TAKEOVER_BG_PIC = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
             self.set_takeover_rects(); // setup takeover rectangles
 
             // cursor shapes
@@ -1357,21 +1423,21 @@ impl Data {
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            CONSOLE_PIC = load_block(fpath, 0, 0, null_mut(), 0);
+            CONSOLE_PIC = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
             let fpath = self.find_file(
                 CONSOLE_BG_PIC1_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            CONSOLE_BG_PIC1 = load_block(fpath, 0, 0, null_mut(), 0);
+            CONSOLE_BG_PIC1 = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
             let fpath = self.find_file(
                 CONSOLE_BG_PIC2_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            CONSOLE_BG_PIC2 = load_block(fpath, 0, 0, null_mut(), 0);
+            CONSOLE_BG_PIC2 = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
 
             self.update_progress(80);
 
@@ -1406,20 +1472,28 @@ impl Data {
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            BANNER_PIC = load_block(fpath, 0, 0, null_mut(), 0);
+            self.graphics.banner_pic = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
 
             self.update_progress(90);
             //---------- get Droid images ----------
             let droids = std::slice::from_raw_parts(self.vars.droidmap, Droid::NumDroids as usize);
+            let Self {
+                graphics,
+                global,
+                misc,
+                ..
+            } = self;
             droids
                 .iter()
-                .zip(PACKED_PORTRAITS.iter_mut())
-                .zip(PORTRAIT_RAW_MEM.iter_mut())
+                .zip(graphics.packed_portraits.iter_mut())
+                .zip(graphics.portrait_raw_mem.iter_mut())
                 .for_each(|((droid, packed_portrait), raw_portrait)| {
                     // first check if we find a file with rotation-frames: first try .jpg
                     libc::strcpy(fname.as_mut_ptr(), droid.druidname.as_ptr());
                     libc::strcat(fname.as_mut_ptr(), cstr!(".jpg").as_ptr());
-                    let mut fpath = self.find_file(
+                    let mut fpath = Self::find_file_static(
+                        global,
+                        misc,
                         fname.as_mut_ptr(),
                         GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                         Themed::NoTheme as c_int,
@@ -1429,7 +1503,9 @@ impl Data {
                     if fpath.is_null() {
                         libc::strcpy(fname.as_mut_ptr(), droid.druidname.as_ptr());
                         libc::strcat(fname.as_mut_ptr(), cstr!(".png").as_ptr());
-                        fpath = self.find_file(
+                        fpath = Self::find_file_static(
+                            global,
+                            misc,
                             fname.as_mut_ptr(),
                             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                             Themed::NoTheme as c_int,
@@ -1437,7 +1513,7 @@ impl Data {
                         );
                     }
 
-                    *packed_portrait = self.load_raw_pic(fpath, raw_portrait);
+                    *packed_portrait = Self::load_raw_pic(fpath, raw_portrait);
                 });
 
             self.update_progress(95);
@@ -1453,7 +1529,7 @@ impl Data {
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            PIC999 = load_block(fpath, 0, 0, null_mut(), 0);
+            self.graphics.pic999 = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
 
             // get the Ashes pics
             libc::strcpy(fname.as_mut_ptr(), cstr!("Ashes.png").as_ptr());
@@ -1467,9 +1543,14 @@ impl Data {
                 warn!("deactivated display of droid-decals");
                 self.global.game_config.show_decals = false.into();
             } else {
-                load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
-                DECAL_PICS[0] = load_block(null_mut(), 0, 0, &ORIG_BLOCK_RECT, 0);
-                DECAL_PICS[1] = load_block(null_mut(), 0, 1, &ORIG_BLOCK_RECT, 0);
+                self.graphics
+                    .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+                DECAL_PICS[0] = self
+                    .graphics
+                    .load_block(null_mut(), 0, 0, &ORIG_BLOCK_RECT, 0);
+                DECAL_PICS[1] = self
+                    .graphics
+                    .load_block(null_mut(), 0, 1, &ORIG_BLOCK_RECT, 0);
             }
         });
 
@@ -1769,9 +1850,10 @@ impl Data {
     pub unsafe fn set_combat_scale_to(&mut self, scale: c_float) {
         use once_cell::sync::OnceCell;
 
-        MAP_BLOCK_SURFACE_POINTER
+        self.graphics
+            .map_block_surface_pointer
             .iter_mut()
-            .zip(ORIG_MAP_BLOCK_SURFACE_POINTER.iter())
+            .zip(self.graphics.orig_map_block_surface_pointer.iter())
             .flat_map(|(map_block, orig_map_block)| map_block.iter_mut().zip(orig_map_block.iter()))
             .for_each(|(surface, &orig_surface)| {
                 // if there's already a rescaled version, free it

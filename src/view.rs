@@ -7,9 +7,8 @@ use crate::{
     },
     global::INFLUENCE_MODE_NAMES,
     graphics::{
-        apply_filter, BANNER_IS_DESTROYED, BANNER_PIC, BUILD_BLOCK, DECAL_PICS,
-        ENEMY_DIGIT_SURFACE_POINTER, ENEMY_SURFACE_POINTER, INFLUENCER_SURFACE_POINTER,
-        INFLU_DIGIT_SURFACE_POINTER, MAP_BLOCK_SURFACE_POINTER, NE_SCREEN,
+        apply_filter, DECAL_PICS, ENEMY_DIGIT_SURFACE_POINTER, ENEMY_SURFACE_POINTER,
+        INFLUENCER_SURFACE_POINTER, INFLU_DIGIT_SURFACE_POINTER, NE_SCREEN,
     },
     map::get_map_brick,
     structs::{Enemy, Finepoint, GrobPoint},
@@ -159,8 +158,8 @@ impl Data {
                         * f32::from(self.vars.block_rect.h))
                     .round() as i16;
                 SDL_UpperBlit(
-                    MAP_BLOCK_SURFACE_POINTER[usize::try_from((*CUR_LEVEL).color).unwrap()]
-                        [usize::from(map_brick)],
+                    self.graphics.map_block_surface_pointer
+                        [usize::try_from((*CUR_LEVEL).color).unwrap()][usize::from(map_brick)],
                     null_mut(),
                     NE_SCREEN,
                     &mut target_rectangle,
@@ -365,7 +364,7 @@ impl Data {
         SDL_UpperBlit(
             ENEMY_SURFACE_POINTER[phase as usize],
             null_mut(),
-            BUILD_BLOCK,
+            self.graphics.build_block,
             null_mut(),
         );
 
@@ -375,7 +374,7 @@ impl Data {
         SDL_UpperBlit(
             ENEMY_DIGIT_SURFACE_POINTER[usize::try_from(name[0] - b'1' as i8 + 1).unwrap()],
             null_mut(),
-            BUILD_BLOCK,
+            self.graphics.build_block,
             &mut dst,
         );
 
@@ -383,7 +382,7 @@ impl Data {
         SDL_UpperBlit(
             ENEMY_DIGIT_SURFACE_POINTER[usize::try_from(name[1] - b'1' as i8 + 1).unwrap()],
             null_mut(),
-            BUILD_BLOCK,
+            self.graphics.build_block,
             &mut dst,
         );
 
@@ -391,7 +390,7 @@ impl Data {
         SDL_UpperBlit(
             ENEMY_DIGIT_SURFACE_POINTER[usize::try_from(name[2] - b'1' as i8 + 1).unwrap()],
             null_mut(),
-            BUILD_BLOCK,
+            self.graphics.build_block,
             &mut dst,
         );
 
@@ -408,7 +407,7 @@ impl Data {
             dst.x = x.try_into().unwrap();
             dst.y = y.try_into().unwrap();
         }
-        SDL_UpperBlit(BUILD_BLOCK, null_mut(), NE_SCREEN, &mut dst);
+        SDL_UpperBlit(self.graphics.build_block, null_mut(), NE_SCREEN, &mut dst);
 
         //--------------------
         // At this point we can assume, that the enemys has been blittet to the
@@ -460,7 +459,7 @@ impl Data {
         SDL_UpperBlit(
             INFLUENCER_SURFACE_POINTER[(self.vars.me.phase).floor() as usize],
             null_mut(),
-            BUILD_BLOCK,
+            self.graphics.build_block,
             null_mut(),
         );
 
@@ -478,7 +477,7 @@ impl Data {
             )
             .unwrap()],
             null_mut(),
-            BUILD_BLOCK,
+            self.graphics.build_block,
             &mut dst,
         );
 
@@ -496,7 +495,7 @@ impl Data {
             )
             .unwrap()],
             null_mut(),
-            BUILD_BLOCK,
+            self.graphics.build_block,
             &mut dst,
         );
 
@@ -514,7 +513,7 @@ impl Data {
             )
             .unwrap()],
             null_mut(),
-            BUILD_BLOCK,
+            self.graphics.build_block,
             &mut dst,
         );
 
@@ -535,7 +534,7 @@ impl Data {
                 0.40 + (2.0 * rest / BLINK_LEN - 1.0) * 0.60 // increase back to white
             };
 
-            apply_filter(&mut *BUILD_BLOCK, filt, filt, filt);
+            apply_filter(&mut *self.graphics.build_block, filt, filt, filt);
 
             // ... and also maybe start a new cry-sound
 
@@ -550,7 +549,7 @@ impl Data {
         // but of course only in some periodic intervall...
 
         if self.vars.me.status == Status::Transfermode as i32 && x == -1 {
-            apply_filter(&mut *BUILD_BLOCK, 1.0, 0.0, 0.0);
+            apply_filter(&mut *self.graphics.build_block, 1.0, 0.0, 0.0);
 
             if self.vars.me.last_transfer_sound_time > TRANSFER_SOUND_INTERVAL {
                 self.vars.me.last_transfer_sound_time = 0.;
@@ -567,7 +566,7 @@ impl Data {
             dst.y = y.try_into().unwrap();
         }
 
-        SDL_UpperBlit(BUILD_BLOCK, null_mut(), NE_SCREEN, &mut dst);
+        SDL_UpperBlit(self.graphics.build_block, null_mut(), NE_SCREEN, &mut dst);
 
         //--------------------
         // Maybe the influencer has something to say :)
@@ -797,7 +796,7 @@ impl Data {
         // --------------------
         // No we see if the screen need an update...
 
-        let screen_needs_update = BANNER_IS_DESTROYED != 0
+        let screen_needs_update = self.graphics.banner_is_destroyed != 0
             || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
             || PREVIOUS_LEFT_BOX
                 .with(|previous_left_box| left_box.as_ref() != previous_left_box.borrow().as_ref())
@@ -808,7 +807,7 @@ impl Data {
             // Redraw the whole background of the top status bar
             let mut dst = Rect::new(0, 0, 0, 0);
             SDL_SetClipRect(NE_SCREEN, null_mut()); // this unsets the clipping rectangle
-            SDL_UpperBlit(BANNER_PIC, null_mut(), NE_SCREEN, &mut dst);
+            SDL_UpperBlit(self.graphics.banner_pic, null_mut(), NE_SCREEN, &mut dst);
 
             // Now the text should be ready and its
             // time to display it...
@@ -878,7 +877,7 @@ impl Data {
                 );
             }
 
-            BANNER_IS_DESTROYED = false.into();
+            self.graphics.banner_is_destroyed = false.into();
         }
     }
 }

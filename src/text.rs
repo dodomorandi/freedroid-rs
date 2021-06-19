@@ -1,7 +1,7 @@
 use crate::{
     b_font::{char_width, font_height},
     defs::{Cmds, PointerStates, SHOW_WAIT, TEXT_STRETCH},
-    graphics::{NE_SCREEN, VID_BPP},
+    graphics::NE_SCREEN,
     input::SDL_Delay,
     misc::my_random,
     Data, ALL_ENEMYS,
@@ -103,7 +103,7 @@ impl Data {
             0,
             self.vars.screen_rect.w.into(),
             height,
-            VID_BPP,
+            self.graphics.vid_bpp,
             0,
             0,
             0,

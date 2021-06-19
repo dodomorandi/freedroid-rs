@@ -45,7 +45,7 @@ use defs::{
     MAX_LIFTS, MAX_LIFT_ROWS, RESET, SHOW_WAIT, STANDARD_MISSION_C,
 };
 use global::Global;
-use graphics::{clear_graph_mem, CROSSHAIR_CURSOR, NE_SCREEN};
+use graphics::{Graphics, CROSSHAIR_CURSOR, NE_SCREEN};
 use highscore::Highscore;
 use influencer::Influencer;
 use init::Init;
@@ -171,6 +171,7 @@ struct Data {
     global: Global,
     vars: Vars,
     takeover: Takeover,
+    graphics: Graphics,
 }
 
 impl Default for Data {
@@ -192,6 +193,7 @@ impl Default for Data {
             global: Default::default(),
             vars: Default::default(),
             takeover: Default::default(),
+            graphics: Default::default(),
         }
     }
 }
@@ -259,7 +261,7 @@ fn main() {
                 SDL_Delay(1);
             }
 
-            clear_graph_mem();
+            data.clear_graph_mem();
             data.display_banner(
                 null_mut(),
                 null_mut(),
