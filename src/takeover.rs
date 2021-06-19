@@ -10,7 +10,6 @@ use crate::{
 };
 
 use cstr::cstr;
-use once_cell::sync::Lazy;
 use sdl::{
     mouse::ll::{SDL_ShowCursor, SDL_DISABLE},
     sdl::ll::SDL_GetTicks,
@@ -20,10 +19,10 @@ use sdl::{
 use std::{
     convert::{Infallible, TryFrom, TryInto},
     ffi::CStr,
+    fmt,
     ops::{Deref, DerefMut},
     os::raw::{c_char, c_int},
     ptr::null_mut,
-    sync::Mutex,
 };
 
 extern "C" {
@@ -216,13 +215,28 @@ impl<T> MapExt for Map<T> {
 
 type Playground = Map<Block>;
 type ActivationMap = Map<Condition>;
+type CapsulesCountdown = Map<Option<u8>>;
 
-#[derive(Debug)]
 pub struct Takeover {
     capsule_cur_row: [c_int; COLORS],
     num_capsules: [c_int; COLORS],
     playground: Playground,
     activation_map: ActivationMap,
+    capsules_countdown: CapsulesCountdown,
+    display_column: [Color; NUM_LINES],
+    leader_color: Color,
+    your_color: Color,
+    opponent_color: Color,
+    droid_num: c_int,
+    opponent_type: c_int,
+    pub to_game_blocks: [Rect; NUM_TO_BLOCKS],
+    pub to_ground_blocks: [Rect; NUM_GROUND_BLOCKS],
+    pub column_block: Rect,
+    pub leader_block: Rect,
+    pub left_ground_start: Point,
+    pub right_ground_start: Point,
+    pub column_start: Point,
+    pub leader_block_start: Point,
 }
 
 impl Default for Takeover {
@@ -232,73 +246,99 @@ impl Default for Takeover {
             num_capsules: [0, 0],
             playground: [[[Block::Cable; NUM_LINES]; NUM_LAYERS]; COLORS].into(),
             activation_map: [[[Condition::Inactive; NUM_LINES]; NUM_LAYERS]; COLORS].into(),
+            capsules_countdown: [[[None; NUM_LINES]; NUM_LAYERS]; COLORS].into(),
+            display_column: [
+                Color::Yellow,
+                Color::Violet,
+                Color::Yellow,
+                Color::Violet,
+                Color::Yellow,
+                Color::Violet,
+                Color::Yellow,
+                Color::Violet,
+                Color::Yellow,
+                Color::Violet,
+                Color::Yellow,
+                Color::Violet,
+            ],
+            leader_color: Color::Yellow,
+            your_color: Color::Yellow,
+            opponent_color: Color::Violet,
+            droid_num: 0,
+            opponent_type: 0,
+            to_game_blocks: [rect!(); NUM_TO_BLOCKS],
+            to_ground_blocks: [rect!(); NUM_GROUND_BLOCKS],
+            column_block: rect!(),
+            leader_block: rect!(),
+            left_ground_start: Point {
+                x: 2 * 10,
+                y: 2 * 15,
+            },
+            right_ground_start: Point {
+                x: 2 * 255,
+                y: 2 * 15,
+            },
+            column_start: Point {
+                x: 2 * 136,
+                y: 2 * 27,
+            },
+            leader_block_start: Point {
+                x: 2 * 129,
+                y: 2 * 8,
+            },
         }
     }
 }
 
-static mut CAPSULES_COUNTDOWN: [[[Option<u8>; NUM_LINES]; NUM_LAYERS]; COLORS] =
-    [[[None; NUM_LINES]; NUM_LAYERS]; COLORS];
+impl fmt::Debug for Takeover {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        #[derive(Debug)]
+        struct Rect {
+            x: i16,
+            y: i16,
+            w: u16,
+            h: u16,
+        }
 
-static mut DISPLAY_COLUMN: [Color; NUM_LINES] = [
-    Color::Yellow,
-    Color::Violet,
-    Color::Yellow,
-    Color::Violet,
-    Color::Yellow,
-    Color::Violet,
-    Color::Yellow,
-    Color::Violet,
-    Color::Yellow,
-    Color::Violet,
-    Color::Yellow,
-    Color::Violet,
-];
+        impl From<&::sdl::Rect> for Rect {
+            fn from(rect: &::sdl::Rect) -> Rect {
+                Rect {
+                    x: rect.x,
+                    y: rect.y,
+                    w: rect.w,
+                    h: rect.h,
+                }
+            }
+        }
 
-static mut LEADER_COLOR: Color = Color::Yellow;
-static mut YOUR_COLOR: Color = Color::Yellow;
-static mut OPPONENT_COLOR: Color = Color::Violet;
-static mut DROID_NUM: c_int = 0;
-static mut OPPONENT_TYPE: c_int = 0;
+        let to_game_blocks = self.to_game_blocks.each_ref().map(Rect::from);
+        let to_ground_blocks = self.to_ground_blocks.each_ref().map(Rect::from);
+        let column_block = Rect::from(&self.column_block);
+        let leader_block = Rect::from(&self.leader_block);
 
-pub static TO_GAME_BLOCKS: Lazy<Mutex<[Rect; NUM_TO_BLOCKS]>> =
-    Lazy::new(|| Mutex::new(array_init::array_init(|_| Rect::new(0, 0, 0, 0))));
-
-pub static TO_GROUND_BLOCKS: Lazy<Mutex<[Rect; NUM_GROUND_BLOCKS]>> =
-    Lazy::new(|| Mutex::new(array_init::array_init(|_| Rect::new(0, 0, 0, 0))));
-
-pub static mut COLUMN_BLOCK: Rect = Rect {
-    x: 0,
-    y: 0,
-    w: 0,
-    h: 0,
-};
-
-pub static mut LEADER_BLOCK: Rect = Rect {
-    x: 0,
-    y: 0,
-    w: 0,
-    h: 0,
-};
-
-pub static mut LEFT_GROUND_START: Point = Point {
-    x: 2 * 10,
-    y: 2 * 15,
-};
-
-pub static mut RIGHT_GROUND_START: Point = Point {
-    x: 2 * 255,
-    y: 2 * 15,
-};
-
-pub static mut COLUMN_START: Point = Point {
-    x: 2 * 136,
-    y: 2 * 27,
-};
-
-pub static mut LEADER_BLOCK_START: Point = Point {
-    x: 2 * 129,
-    y: 2 * 8,
-};
+        f.debug_struct("Takeover")
+            .field("capsule_cur_row", &self.capsule_cur_row)
+            .field("num_capsules", &self.num_capsules)
+            .field("playground", &self.playground)
+            .field("activation_map", &self.activation_map)
+            .field("capsules_countdown", &self.capsules_countdown)
+            .field("display_column", &self.display_column)
+            .field("leader_color", &self.leader_color)
+            .field("your_color", &self.your_color)
+            .field("opponent_color", &self.opponent_color)
+            .field("droid_num", &self.droid_num)
+            .field("opponent_type", &self.opponent_type)
+            .field("to_game_blocks", &to_game_blocks)
+            .field("to_ground_blocks", &to_ground_blocks)
+            .field("column_block", &column_block)
+            .field("leader_block", &leader_block)
+            .field("left_ground_start", &self.left_ground_start)
+            .field("right_ground_start", &self.right_ground_start)
+            .field("column_start", &self.column_start)
+            .field("leader_block_start", &self.leader_block_start)
+            .finish()
+    }
+}
 
 pub static mut LEADER_LED: Rect = Rect {
     x: 2 * 136,
@@ -638,73 +678,74 @@ impl From<Block> for usize {
 }
 
 /// Define all the SDL_Rects for the takeover-game
-pub unsafe fn set_takeover_rects() -> c_int {
-    /* Set the fill-blocks */
-    FILL_BLOCKS
-        .iter_mut()
-        .zip((0..).step_by(usize::from(FILL_BLOCK.w) + 2))
-        .for_each(|(rect, cur_x)| *rect = Rect::new(cur_x, 0, FILL_BLOCK.w, FILL_BLOCK.h));
-
-    /* Set the capsule Blocks */
-    let start_x =
-        i16::try_from(FILL_BLOCKS.len()).unwrap() * (i16::try_from(FILL_BLOCK.w).unwrap() + 2);
-    CAPSULE_BLOCKS
-        .iter_mut()
-        .zip((start_x..).step_by(usize::try_from(CAPSULE_RECT.w).unwrap() + 2))
-        .for_each(|(rect, cur_x)| *rect = Rect::new(cur_x, 0, CAPSULE_RECT.w, CAPSULE_RECT.h - 2));
-
-    /* get the game-blocks */
-    TO_GAME_BLOCKS
-        .lock()
-        .unwrap()
-        .iter_mut()
-        .zip(
-            ((FILL_BLOCK.h + 2)..)
-                .step_by(usize::try_from(ELEMENT_RECT.h).unwrap() + 2)
-                .flat_map(|cur_y| {
-                    (0..)
-                        .step_by(usize::try_from(ELEMENT_RECT.w).unwrap() + 2)
-                        .take(TO_BLOCKS_N)
-                        .map(move |cur_x| (cur_x, cur_y))
-                }),
-        )
-        .for_each(|(rect, (cur_x, cur_y))| {
-            *rect = Rect::new(
-                cur_x,
-                cur_y.try_into().unwrap(),
-                ELEMENT_RECT.w,
-                ELEMENT_RECT.h,
-            )
-        });
-    let mut cur_y =
-        (FILL_BLOCK.h + 2) + (ELEMENT_RECT.h + 2) * u16::try_from(NUM_PHASES).unwrap() * 2;
-
-    /* Get the ground, column and leader blocks */
-    TO_GROUND_BLOCKS
-        .lock()
-        .unwrap()
-        .iter_mut()
-        .zip((0..).step_by(usize::try_from(GROUND_RECT.w).unwrap() + 2))
-        .for_each(|(rect, cur_x)| {
-            *rect = Rect::new(
-                cur_x,
-                cur_y.try_into().unwrap(),
-                GROUND_RECT.w,
-                GROUND_RECT.h,
-            )
-        });
-    cur_y += GROUND_RECT.h + 2;
-    COLUMN_BLOCK = Rect::new(0, cur_y.try_into().unwrap(), COLUMN_RECT.w, COLUMN_RECT.h);
-    LEADER_BLOCK = Rect::new(
-        i16::try_from(COLUMN_RECT.w).unwrap() + 2,
-        cur_y.try_into().unwrap(),
-        LEADER_LED.w * 2 - 4,
-        LEADER_LED.h,
-    );
-    defs::OK.into()
-}
-
 impl Data {
+    pub unsafe fn set_takeover_rects(&mut self) -> c_int {
+        /* Set the fill-blocks */
+        FILL_BLOCKS
+            .iter_mut()
+            .zip((0..).step_by(usize::from(FILL_BLOCK.w) + 2))
+            .for_each(|(rect, cur_x)| *rect = Rect::new(cur_x, 0, FILL_BLOCK.w, FILL_BLOCK.h));
+
+        /* Set the capsule Blocks */
+        let start_x =
+            i16::try_from(FILL_BLOCKS.len()).unwrap() * (i16::try_from(FILL_BLOCK.w).unwrap() + 2);
+        CAPSULE_BLOCKS
+            .iter_mut()
+            .zip((start_x..).step_by(usize::try_from(CAPSULE_RECT.w).unwrap() + 2))
+            .for_each(|(rect, cur_x)| {
+                *rect = Rect::new(cur_x, 0, CAPSULE_RECT.w, CAPSULE_RECT.h - 2)
+            });
+
+        /* get the game-blocks */
+        self.takeover
+            .to_game_blocks
+            .iter_mut()
+            .zip(
+                ((FILL_BLOCK.h + 2)..)
+                    .step_by(usize::try_from(ELEMENT_RECT.h).unwrap() + 2)
+                    .flat_map(|cur_y| {
+                        (0..)
+                            .step_by(usize::try_from(ELEMENT_RECT.w).unwrap() + 2)
+                            .take(TO_BLOCKS_N)
+                            .map(move |cur_x| (cur_x, cur_y))
+                    }),
+            )
+            .for_each(|(rect, (cur_x, cur_y))| {
+                *rect = Rect::new(
+                    cur_x,
+                    cur_y.try_into().unwrap(),
+                    ELEMENT_RECT.w,
+                    ELEMENT_RECT.h,
+                )
+            });
+        let mut cur_y =
+            (FILL_BLOCK.h + 2) + (ELEMENT_RECT.h + 2) * u16::try_from(NUM_PHASES).unwrap() * 2;
+
+        /* Get the ground, column and leader blocks */
+        self.takeover
+            .to_ground_blocks
+            .iter_mut()
+            .zip((0..).step_by(usize::try_from(GROUND_RECT.w).unwrap() + 2))
+            .for_each(|(rect, cur_x)| {
+                *rect = Rect::new(
+                    cur_x,
+                    cur_y.try_into().unwrap(),
+                    GROUND_RECT.w,
+                    GROUND_RECT.h,
+                )
+            });
+        cur_y += GROUND_RECT.h + 2;
+        self.takeover.column_block =
+            Rect::new(0, cur_y.try_into().unwrap(), COLUMN_RECT.w, COLUMN_RECT.h);
+        self.takeover.leader_block = Rect::new(
+            i16::try_from(COLUMN_RECT.w).unwrap() + 2,
+            cur_y.try_into().unwrap(),
+            LEADER_LED.w * 2 - 4,
+            LEADER_LED.h,
+        );
+        defs::OK.into()
+    }
+
     unsafe fn enemy_movements(&mut self) {
         const ACTIONS: i32 = 3;
         const MOVE_PROBABILITY: i32 = 100;
@@ -712,7 +753,7 @@ impl Data {
         const SET_PROBABILITY: i32 = 80;
 
         static mut DIRECTION: i32 = 1; /* start with this direction */
-        let opponent_color = OPPONENT_COLOR as usize;
+        let opponent_color = self.takeover.opponent_color as usize;
         let mut row = self.takeover.capsule_cur_row[opponent_color] - 1;
 
         if self.takeover.num_capsules[Opponents::Enemy as usize] == 0 {
@@ -758,7 +799,8 @@ impl Data {
                         self.takeover_set_capsule_sound();
                         self.takeover.playground[opponent_color][0][row] = Block::Repeater;
                         self.takeover.activation_map[opponent_color][0][row] = Condition::Active1;
-                        CAPSULES_COUNTDOWN[opponent_color][0][row] = Some(CAPSULE_COUNTDOWN * 2);
+                        self.takeover.capsules_countdown[opponent_color][0][row] =
+                            Some(CAPSULE_COUNTDOWN * 2);
                         0
                     }
                     _ => row + 1,
@@ -785,7 +827,8 @@ impl Data {
 
     /// does the countdown of the capsules and kills them if too old
     unsafe fn process_capsules(&mut self) {
-        CAPSULES_COUNTDOWN
+        self.takeover
+            .capsules_countdown
             .iter_mut()
             .flat_map(|color_countdown| color_countdown.iter_mut())
             .map(|countdown| &mut countdown[0])
@@ -816,18 +859,29 @@ impl Data {
             });
     }
 
-    unsafe fn process_display_column(&self) {
+    unsafe fn process_display_column(&mut self) {
         const CONNECTION_LAYER: usize = 3;
         static mut FLICKER_COLOR: i32 = 0;
 
         FLICKER_COLOR = !FLICKER_COLOR;
 
-        self.takeover.activation_map[Color::Yellow as usize][CONNECTION_LAYER]
+        let Self {
+            takeover:
+                Takeover {
+                    activation_map,
+                    playground,
+                    display_column,
+                    ..
+                },
+            ..
+        } = self;
+
+        activation_map[Color::Yellow as usize][CONNECTION_LAYER]
             .iter()
-            .zip(self.takeover.activation_map[Color::Violet as usize][CONNECTION_LAYER].iter())
-            .zip(self.takeover.playground[Color::Yellow as usize][CONNECTION_LAYER - 1].iter())
-            .zip(self.takeover.playground[Color::Violet as usize][CONNECTION_LAYER - 1].iter())
-            .zip(DISPLAY_COLUMN.iter_mut())
+            .zip(activation_map[Color::Violet as usize][CONNECTION_LAYER].iter())
+            .zip(playground[Color::Yellow as usize][CONNECTION_LAYER - 1].iter())
+            .zip(playground[Color::Violet as usize][CONNECTION_LAYER - 1].iter())
+            .zip(display_column.iter_mut())
             .for_each(
                 |(
                     (
@@ -867,7 +921,7 @@ impl Data {
 
         let mut yellow_counter = 0;
         let mut violet_counter = 0;
-        for &color in DISPLAY_COLUMN.iter() {
+        for &color in display_column.iter() {
             if color == Color::Yellow {
                 yellow_counter += 1;
             } else {
@@ -877,9 +931,9 @@ impl Data {
 
         use std::cmp::Ordering;
         match violet_counter.cmp(&yellow_counter) {
-            Ordering::Less => LEADER_COLOR = Color::Yellow,
-            Ordering::Greater => LEADER_COLOR = Color::Violet,
-            Ordering::Equal => LEADER_COLOR = Color::Draw,
+            Ordering::Less => self.takeover.leader_color = Color::Yellow,
+            Ordering::Greater => self.takeover.leader_color = Color::Violet,
+            Ordering::Equal => self.takeover.leader_color = Color::Draw,
         }
     }
 
@@ -1146,7 +1200,8 @@ impl Data {
             .flatten()
             .for_each(|block| *block = Block::Cable);
 
-        DISPLAY_COLUMN
+        self.takeover
+            .display_column
             .iter_mut()
             .enumerate()
             .for_each(|(row, display_column)| *display_column = (row % 2).try_into().unwrap());
@@ -1157,8 +1212,8 @@ impl Data {
     /// NOTE: this function should only change the USERFENSTER part
     ///       so that we can do Infoline-setting before this
     unsafe fn show_playground(&mut self) {
-        let your_color: usize = YOUR_COLOR.into();
-        let opponent_color: usize = OPPONENT_COLOR.into();
+        let your_color: usize = self.takeover.your_color.into();
+        let opponent_color: usize = self.takeover.opponent_color.into();
 
         let xoffs = self.vars.classic_user_rect.x;
         let yoffs = self.vars.classic_user_rect.y;
@@ -1177,25 +1232,26 @@ impl Data {
             i32::from(yoffs) + DROID_STARTS[your_color].y,
         );
 
-        if ALL_ENEMYS[usize::try_from(DROID_NUM).unwrap()].status != Status::Out as i32 {
+        if ALL_ENEMYS[usize::try_from(self.takeover.droid_num).unwrap()].status
+            != Status::Out as i32
+        {
             self.put_enemy(
-                DROID_NUM,
+                self.takeover.droid_num,
                 i32::from(xoffs) + DROID_STARTS[opponent_color].x,
                 i32::from(yoffs) + DROID_STARTS[opponent_color].y,
             );
         }
 
         let mut dst = Rect::new(
-            xoffs + i16::try_from(LEFT_GROUND_START.x).unwrap(),
-            yoffs + i16::try_from(LEFT_GROUND_START.y).unwrap(),
+            xoffs + i16::try_from(self.takeover.left_ground_start.x).unwrap(),
+            yoffs + i16::try_from(self.takeover.left_ground_start.y).unwrap(),
             self.vars.user_rect.w,
             self.vars.user_rect.h,
         );
 
-        let mut to_ground_blocks = TO_GROUND_BLOCKS.lock().unwrap();
         SDL_UpperBlit(
             TO_BLOCKS,
-            &mut to_ground_blocks[GroundBlock::YellowAbove as usize],
+            &mut self.takeover.to_ground_blocks[GroundBlock::YellowAbove as usize],
             NE_SCREEN,
             &mut dst,
         );
@@ -1205,7 +1261,7 @@ impl Data {
         for _ in 0..12 {
             SDL_UpperBlit(
                 TO_BLOCKS,
-                &mut to_ground_blocks[GroundBlock::YellowMiddle as usize],
+                &mut self.takeover.to_ground_blocks[GroundBlock::YellowMiddle as usize],
                 NE_SCREEN,
                 &mut dst,
             );
@@ -1215,36 +1271,46 @@ impl Data {
 
         SDL_UpperBlit(
             TO_BLOCKS,
-            &mut to_ground_blocks[GroundBlock::YellowBelow as usize],
+            &mut self.takeover.to_ground_blocks[GroundBlock::YellowBelow as usize],
             NE_SCREEN,
             &mut dst,
         );
 
         dst = Rect::new(
-            xoffs + i16::try_from(LEADER_BLOCK_START.x).unwrap(),
-            yoffs + i16::try_from(LEADER_BLOCK_START.y).unwrap(),
+            xoffs + i16::try_from(self.takeover.leader_block_start.x).unwrap(),
+            yoffs + i16::try_from(self.takeover.leader_block_start.y).unwrap(),
             0,
             0,
         );
-        SDL_UpperBlit(TO_BLOCKS, &mut LEADER_BLOCK, NE_SCREEN, &mut dst);
+        SDL_UpperBlit(
+            TO_BLOCKS,
+            &mut self.takeover.leader_block,
+            NE_SCREEN,
+            &mut dst,
+        );
 
         dst.y += i16::try_from(LEADER_LED.h).unwrap();
         for _ in 0..12 {
-            SDL_UpperBlit(TO_BLOCKS, &mut COLUMN_BLOCK, NE_SCREEN, &mut dst);
+            SDL_UpperBlit(
+                TO_BLOCKS,
+                &mut self.takeover.column_block,
+                NE_SCREEN,
+                &mut dst,
+            );
             dst.y += i16::try_from(COLUMN_RECT.h).unwrap();
         }
 
         /* rechte Saeule */
         dst = Rect::new(
-            xoffs + i16::try_from(RIGHT_GROUND_START.x).unwrap(),
-            yoffs + i16::try_from(RIGHT_GROUND_START.y).unwrap(),
+            xoffs + i16::try_from(self.takeover.right_ground_start.x).unwrap(),
+            yoffs + i16::try_from(self.takeover.right_ground_start.y).unwrap(),
             0,
             0,
         );
 
         SDL_UpperBlit(
             TO_BLOCKS,
-            &mut to_ground_blocks[GroundBlock::VioletAbove as usize],
+            &mut self.takeover.to_ground_blocks[GroundBlock::VioletAbove as usize],
             NE_SCREEN,
             &mut dst,
         );
@@ -1253,7 +1319,7 @@ impl Data {
         for _ in 0..12 {
             SDL_UpperBlit(
                 TO_BLOCKS,
-                &mut to_ground_blocks[GroundBlock::VioletMiddle as usize],
+                &mut self.takeover.to_ground_blocks[GroundBlock::VioletMiddle as usize],
                 NE_SCREEN,
                 &mut dst,
             );
@@ -1262,14 +1328,13 @@ impl Data {
 
         SDL_UpperBlit(
             TO_BLOCKS,
-            &mut to_ground_blocks[GroundBlock::VioletBelow as usize],
+            &mut self.takeover.to_ground_blocks[GroundBlock::VioletBelow as usize],
             NE_SCREEN,
             &mut dst,
         );
-        drop(to_ground_blocks);
 
         /* Fill the Leader-LED with its color */
-        let leader_color = usize::try_from(LEADER_COLOR).unwrap();
+        let leader_color = usize::try_from(self.takeover.leader_color).unwrap();
         dst = Rect::new(xoffs + LEADER_LED.x, yoffs + LEADER_LED.y, 0, 0);
         SDL_UpperBlit(
             TO_BLOCKS,
@@ -1286,15 +1351,16 @@ impl Data {
         );
 
         /* Fill the Display Column with its leds */
-        DISPLAY_COLUMN
+        self.takeover
+            .display_column
             .iter()
             .copied()
             .enumerate()
             .for_each(|(line, display_column)| {
                 dst = Rect::new(
-                    xoffs + i16::try_from(COLUMN_START.x).unwrap(),
+                    xoffs + i16::try_from(self.takeover.column_start.x).unwrap(),
                     yoffs
-                        + i16::try_from(COLUMN_START.y).unwrap()
+                        + i16::try_from(self.takeover.column_start.y).unwrap()
                         + i16::try_from(line).unwrap() * i16::try_from(COLUMN_RECT.h).unwrap(),
                     0,
                     0,
@@ -1307,13 +1373,22 @@ impl Data {
                 );
             });
 
+        let Self {
+            takeover:
+                Takeover {
+                    playground,
+                    activation_map,
+                    to_game_blocks,
+                    ..
+                },
+            ..
+        } = self;
         /* Show the yellow playground */
-        let mut to_game_blocks = TO_GAME_BLOCKS.lock().unwrap();
-        self.takeover.playground[Color::Yellow as usize]
+        playground[Color::Yellow as usize]
             .iter()
             .take(NUM_LAYERS - 1)
             .zip(
-                self.takeover.activation_map[Color::Yellow as usize]
+                activation_map[Color::Yellow as usize]
                     .iter()
                     .take(NUM_LAYERS - 1),
             )
@@ -1353,11 +1428,11 @@ impl Data {
             );
 
         /* Show the violet playground */
-        self.takeover.playground[Color::Violet as usize]
+        playground[Color::Violet as usize]
             .iter()
             .take(NUM_LAYERS - 1)
             .zip(
-                self.takeover.activation_map[Color::Violet as usize]
+                activation_map[Color::Violet as usize]
                     .iter()
                     .take(NUM_LAYERS - 1),
             )
@@ -1451,7 +1526,7 @@ impl Data {
 
         self.countdown_sound();
         let mut finish_takeover = false;
-        let your_color = usize::try_from(YOUR_COLOR).unwrap();
+        let your_color = usize::try_from(self.takeover.your_color).unwrap();
         while !finish_takeover {
             let cur_time = SDL_GetTicks();
 
@@ -1491,7 +1566,7 @@ impl Data {
                 let action = self.get_menu_action(key_repeat_delay);
                 /* allow for a WIN-key that give immedate victory */
                 if self.key_is_pressed_r(b'w'.into()) && self.ctrl_pressed() && self.alt_pressed() {
-                    LEADER_COLOR = YOUR_COLOR; /* simple as that */
+                    self.takeover.leader_color = self.takeover.your_color; /* simple as that */
                     return;
                 }
 
@@ -1521,7 +1596,8 @@ impl Data {
                             self.takeover.capsule_cur_row[your_color] = 0;
                             self.takeover.playground[your_color][0][row] = Block::Repeater;
                             self.takeover.activation_map[your_color][0][row] = Condition::Active1;
-                            CAPSULES_COUNTDOWN[your_color][0][row] = Some(CAPSULE_COUNTDOWN * 2);
+                            self.takeover.capsules_countdown[your_color][0][row] =
+                                Some(CAPSULE_COUNTDOWN * 2);
                             self.takeover_set_capsule_sound();
                         }
                     }
@@ -1590,19 +1666,19 @@ impl Data {
         while !color_chosen {
             let action = self.get_menu_action(110);
             if action.intersects(MenuAction::RIGHT | MenuAction::DOWN_WHEEL) {
-                if YOUR_COLOR != Color::Violet {
+                if self.takeover.your_color != Color::Violet {
                     self.move_menu_position_sound();
                 }
-                YOUR_COLOR = Color::Violet;
-                OPPONENT_COLOR = Color::Yellow;
+                self.takeover.your_color = Color::Violet;
+                self.takeover.opponent_color = Color::Yellow;
             }
 
             if action.intersects(MenuAction::LEFT | MenuAction::UP_WHEEL) {
-                if YOUR_COLOR != Color::Yellow {
+                if self.takeover.your_color != Color::Yellow {
                     self.move_menu_position_sound();
                 }
-                YOUR_COLOR = Color::Yellow;
-                OPPONENT_COLOR = Color::Violet;
+                self.takeover.your_color = Color::Yellow;
+                self.takeover.opponent_color = Color::Violet;
             }
 
             if action.intersects(MenuAction::CLICK) {
@@ -1710,27 +1786,29 @@ impl Data {
         let mut finish_takeover = false;
         while !finish_takeover {
             /* Init Color-column and Capsule-Number for each opponenet and your color */
-            DISPLAY_COLUMN
+            self.takeover
+                .display_column
                 .iter_mut()
                 .enumerate()
                 .for_each(|(row, column)| *column = (row % 2).try_into().unwrap());
-            CAPSULES_COUNTDOWN
+            self.takeover
+                .capsules_countdown
                 .iter_mut()
                 .flat_map(|color_countdown| color_countdown[0].iter_mut())
                 .for_each(|x| *x = None);
 
-            YOUR_COLOR = Color::Yellow;
-            OPPONENT_COLOR = Color::Violet;
+            self.takeover.your_color = Color::Yellow;
+            self.takeover.opponent_color = Color::Violet;
 
             self.takeover.capsule_cur_row[usize::from(Color::Yellow)] = 0;
             self.takeover.capsule_cur_row[usize::from(Color::Violet)] = 0;
 
-            DROID_NUM = enemynum;
-            OPPONENT_TYPE = ALL_ENEMYS[enemy_index].ty;
+            self.takeover.droid_num = enemynum;
+            self.takeover.opponent_type = ALL_ENEMYS[enemy_index].ty;
             self.takeover.num_capsules[Opponents::You as usize] =
                 3 + self.class_of_druid(self.vars.me.ty);
             self.takeover.num_capsules[Opponents::Enemy as usize] =
-                4 + self.class_of_druid(OPPONENT_TYPE);
+                4 + self.class_of_druid(self.takeover.opponent_type);
 
             self.invent_playground();
 
@@ -1745,7 +1823,7 @@ impl Data {
 
             let message;
             /* Ausgang beurteilen und returnen */
-            if INVINCIBLE_MODE != 0 || LEADER_COLOR == YOUR_COLOR {
+            if INVINCIBLE_MODE != 0 || self.takeover.leader_color == self.takeover.your_color {
                 self.takeover_game_won_sound();
                 if self.vars.me.ty == Droid::Droid001 as c_int {
                     REJECT_ENERGY = self.vars.me.energy as c_int;
@@ -1767,17 +1845,19 @@ impl Data {
                 // other droid, since all previous damage must be due to fighting damage,
                 // and this is exactly the sort of damage can usually be cured in refreshes.
                 self.vars.me.energy += ALL_ENEMYS[enemy_index].energy;
-                self.vars.me.health += droid_map[usize::try_from(OPPONENT_TYPE).unwrap()].maxenergy;
+                self.vars.me.health +=
+                    droid_map[usize::try_from(self.takeover.opponent_type).unwrap()].maxenergy;
 
                 self.vars.me.ty = ALL_ENEMYS[enemy_index].ty;
 
-                REAL_SCORE += droid_map[usize::try_from(OPPONENT_TYPE).unwrap()].score as f32;
+                REAL_SCORE +=
+                    droid_map[usize::try_from(self.takeover.opponent_type).unwrap()].score as f32;
 
-                DEATH_COUNT += (OPPONENT_TYPE * OPPONENT_TYPE) as f32; // quadratic "importance", max=529
+                DEATH_COUNT += (self.takeover.opponent_type * self.takeover.opponent_type) as f32; // quadratic "importance", max=529
 
                 ALL_ENEMYS[enemy_index].status = Status::Out as c_int; // removed droid silently (no blast!)
 
-                if LEADER_COLOR != YOUR_COLOR {
+                if self.takeover.leader_color != self.takeover.your_color {
                     /* only won because of InvincibleMode */
                     message = cstr!("You cheat")
                 } else {
@@ -1786,8 +1866,8 @@ impl Data {
                 };
 
                 finish_takeover = true;
-            } else if LEADER_COLOR == OPPONENT_COLOR {
-                /* LEADER_COLOR == YOUR_COLOR */
+            } else if self.takeover.leader_color == self.takeover.opponent_color {
+                /* self.takeover.leader_color == self.takeover.your_color */
                 // you lost, but enemy is killed too --> blast it!
                 ALL_ENEMYS[enemy_index].energy = -1.0; /* to be sure */
 
@@ -1802,7 +1882,7 @@ impl Data {
                 }
                 finish_takeover = true;
             } else {
-                /* LeadColor == OPPONENT_COLOR */
+                /* LeadColor == self.takeover.opponent_color */
 
                 self.takeover_game_deadlock_sound();
                 message = cstr!("Deadlock");
@@ -1827,6 +1907,6 @@ impl Data {
 
         clear_graph_mem();
 
-        (LEADER_COLOR == YOUR_COLOR).into()
+        (self.takeover.leader_color == self.takeover.your_color).into()
     }
 }

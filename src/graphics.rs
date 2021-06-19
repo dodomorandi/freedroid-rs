@@ -14,11 +14,9 @@ use crate::{
     misc::read_value_from_string,
     structs::ThemeList,
     takeover::{
-        set_takeover_rects, CAPSULE_BLOCKS, CAPSULE_RECT, COLUMN_BLOCK, COLUMN_RECT, COLUMN_START,
-        CUR_CAPSULE_STARTS, DROID_STARTS, ELEMENT_RECT, FILL_BLOCK, FILL_BLOCKS, GROUND_RECT,
-        LEADER_BLOCK, LEADER_BLOCK_START, LEADER_LED, LEFT_CAPSULE_STARTS, LEFT_GROUND_START,
-        PLAYGROUND_STARTS, RIGHT_GROUND_START, TO_BLOCKS, TO_BLOCK_FILE_C, TO_GAME_BLOCKS,
-        TO_GROUND_BLOCKS,
+        CAPSULE_BLOCKS, CAPSULE_RECT, COLUMN_RECT, CUR_CAPSULE_STARTS, DROID_STARTS, ELEMENT_RECT,
+        FILL_BLOCK, FILL_BLOCKS, GROUND_RECT, LEADER_LED, LEFT_CAPSULE_STARTS, PLAYGROUND_STARTS,
+        TO_BLOCKS, TO_BLOCK_FILE_C,
     },
     vars::{ORIG_BLOCK_RECT, ORIG_DIGIT_RECT},
     Data, ALL_BULLETS, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
@@ -481,8 +479,8 @@ impl Data {
         }
 
         macro_rules! scale_point {
-            ($rect:ident) => {
-                scale_point(&mut $rect, scale);
+            ($point:expr) => {
+                scale_point(&mut $point, scale);
             };
         }
 
@@ -517,16 +515,16 @@ impl Data {
             scale_rect(block, scale);
         }
 
-        for block in &mut *TO_GAME_BLOCKS.lock().unwrap() {
+        for block in &mut self.takeover.to_game_blocks {
             scale_rect(block, scale);
         }
 
-        for block in &mut *TO_GROUND_BLOCKS.lock().unwrap() {
+        for block in &mut self.takeover.to_ground_blocks {
             scale_rect(block, scale);
         }
 
-        scale!(COLUMN_BLOCK);
-        scale!(LEADER_BLOCK);
+        scale!(self.takeover.column_block);
+        scale!(self.takeover.leader_block);
 
         for point in &mut LEFT_CAPSULE_STARTS {
             scale_point(point, scale);
@@ -540,10 +538,11 @@ impl Data {
         for point in &mut DROID_STARTS {
             scale_point(point, scale);
         }
-        scale_point!(LEFT_GROUND_START);
-        scale_point!(COLUMN_START);
-        scale_point!(RIGHT_GROUND_START);
-        scale_point!(LEADER_BLOCK_START);
+        scale_point!(self.takeover.left_ground_start);
+        scale_point!(self.takeover.left_ground_start);
+        scale_point!(self.takeover.column_start);
+        scale_point!(self.takeover.right_ground_start);
+        scale_point!(self.takeover.leader_block_start);
 
         scale!(FILL_BLOCK);
         scale!(ELEMENT_RECT);
@@ -1350,7 +1349,7 @@ impl Data {
                 Criticality::Critical as c_int,
             );
             TAKEOVER_BG_PIC = load_block(fpath, 0, 0, null_mut(), 0);
-            set_takeover_rects(); // setup takeover rectangles
+            self.set_takeover_rects(); // setup takeover rectangles
 
             // cursor shapes
             ARROW_CURSOR = init_system_cursor(&ARROW_XPM);

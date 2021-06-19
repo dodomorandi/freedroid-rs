@@ -2,6 +2,9 @@
 #![feature(array_methods)]
 
 macro_rules! rect {
+    () => {
+        rect!(0, 0, 0, 0)
+    };
     ($x:expr, $y:expr, $w:expr, $h:expr) => {
         ::sdl::Rect {
             x: $x,
