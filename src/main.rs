@@ -1,3 +1,6 @@
+#![feature(array_map)]
+#![feature(array_methods)]
+
 macro_rules! rect {
     ($x:expr, $y:expr, $w:expr, $h:expr) => {
         ::sdl::Rect {
@@ -50,6 +53,7 @@ use misc::Misc;
 use ship::ShipData;
 use sound::Sound;
 use structs::{Blast, Bullet, Enemy, Finepoint, Level, Lift, Ship};
+use takeover::Takeover;
 use text::Text;
 use vars::Vars;
 
@@ -163,6 +167,7 @@ struct Data {
     menu: Menu,
     global: Global,
     vars: Vars,
+    takeover: Takeover,
 }
 
 impl Default for Data {
@@ -183,6 +188,7 @@ impl Default for Data {
             menu: Default::default(),
             global: Default::default(),
             vars: Default::default(),
+            takeover: Default::default(),
         }
     }
 }

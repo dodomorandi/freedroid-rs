@@ -20,6 +20,7 @@ use sdl::{
 use std::{
     convert::{Infallible, TryFrom, TryInto},
     ffi::CStr,
+    ops::{Deref, DerefMut},
     os::raw::{c_char, c_int},
     ptr::null_mut,
     sync::Mutex,
@@ -29,13 +30,211 @@ extern "C" {
     pub fn SDL_Delay(ms: u32);
 }
 
-static mut CAPSULE_CUR_ROW: [c_int; COLORS] = [0, 0];
-static mut NUM_CAPSULES: [c_int; COLORS] = [0, 0];
-static mut PLAYGROUND: [[[Block; NUM_LINES]; NUM_LAYERS]; COLORS] =
-    [[[Block::Cable; NUM_LINES]; NUM_LAYERS]; COLORS];
+#[derive(Debug)]
+struct Map<T>([map::Line<T>; COLORS]);
 
-static mut ACTIVATION_MAP: [[[Condition; NUM_LINES]; NUM_LAYERS]; COLORS] =
-    [[[Condition::Inactive; NUM_LINES]; NUM_LAYERS]; COLORS];
+mod map {
+    use std::{
+        iter::IntoIterator,
+        ops::{Deref, DerefMut, Index, IndexMut},
+    };
+
+    use super::*;
+
+    macro_rules! impl_traits {
+        ($ty:ident, $inner:ident) => {
+            impl<T> From<$inner<T>> for $ty<T> {
+                fn from(inner: $inner<T>) -> Self {
+                    Self(inner)
+                }
+            }
+
+            impl<T> AsRef<$inner<T>> for $ty<T> {
+                fn as_ref(&self) -> &$inner<T> {
+                    &self.0
+                }
+            }
+
+            impl<T> AsMut<$inner<T>> for $ty<T> {
+                fn as_mut(&mut self) -> &mut $inner<T> {
+                    &mut self.0
+                }
+            }
+
+            impl<I, T> Index<I> for $ty<T>
+            where
+                $inner<T>: Index<I>,
+            {
+                type Output = <$inner<T> as Index<I>>::Output;
+
+                fn index(&self, idx: I) -> &Self::Output {
+                    &self.0[idx]
+                }
+            }
+
+            impl<I, T> IndexMut<I> for $ty<T>
+            where
+                $inner<T>: IndexMut<I>,
+            {
+                fn index_mut(&mut self, idx: I) -> &mut Self::Output {
+                    &mut self.0[idx]
+                }
+            }
+
+            impl<T> IntoIterator for $ty<T> {
+                type Item = <$inner<T> as IntoIterator>::Item;
+                type IntoIter = <$inner<T> as IntoIterator>::IntoIter;
+
+                fn into_iter(self) -> Self::IntoIter {
+                    IntoIterator::into_iter(self.0)
+                }
+            }
+
+            impl<'a, T> IntoIterator for &'a $ty<T> {
+                type Item = <&'a $inner<T> as IntoIterator>::Item;
+                type IntoIter = <&'a $inner<T> as IntoIterator>::IntoIter;
+
+                fn into_iter(self) -> Self::IntoIter {
+                    IntoIterator::into_iter(&self.0)
+                }
+            }
+
+            impl<'a, T> IntoIterator for &'a mut $ty<T> {
+                type Item = <&'a mut $inner<T> as IntoIterator>::Item;
+                type IntoIter = <&'a mut $inner<T> as IntoIterator>::IntoIter;
+
+                fn into_iter(self) -> Self::IntoIter {
+                    IntoIterator::into_iter(&mut self.0)
+                }
+            }
+
+            impl<T> $ty<T> {
+                pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
+                    IntoIterator::into_iter(&self.0)
+                }
+
+                pub fn iter_mut(&mut self) -> <&mut Self as IntoIterator>::IntoIter {
+                    IntoIterator::into_iter(&mut self.0)
+                }
+
+                pub fn into_iter(self) -> <Self as IntoIterator>::IntoIter {
+                    IntoIterator::into_iter(self.0)
+                }
+            }
+
+            impl<T> Deref for $ty<T> {
+                type Target = $inner<T>;
+
+                fn deref(&self) -> &Self::Target {
+                    &self.0
+                }
+            }
+
+            impl<T> DerefMut for $ty<T> {
+                fn deref_mut(&mut self) -> &mut Self::Target {
+                    &mut self.0
+                }
+            }
+        };
+    }
+
+    type LineInner<T> = [Layer<T>; NUM_LAYERS];
+
+    #[derive(Debug)]
+    pub struct Line<T>(LineInner<T>);
+
+    impl<T> Line<T> {
+        pub fn proximal_connection(&self) -> &Layer<T> {
+            &self.0[2]
+        }
+
+        pub fn distal_connection(&self) -> &Layer<T> {
+            &self.0[3]
+        }
+
+        pub fn layers_mut(&mut self) -> [&mut Layer<T>; NUM_LAYERS] {
+            self.0.each_mut()
+        }
+    }
+
+    type LayerInner<T> = [T; NUM_LINES];
+
+    #[derive(Debug)]
+    pub struct Layer<T>(LayerInner<T>);
+
+    impl_traits!(Line, LineInner);
+    impl_traits!(Layer, LayerInner);
+}
+
+impl<T> From<[[[T; NUM_LINES]; NUM_LAYERS]; COLORS]> for Map<T> {
+    fn from(map: [[[T; NUM_LINES]; NUM_LAYERS]; COLORS]) -> Self {
+        Self(map.map(|line| line.map(map::Layer::from).into()))
+    }
+}
+
+impl<T> AsRef<<Self as MapExt>::Map> for Map<T> {
+    fn as_ref(&self) -> &<Self as MapExt>::Map {
+        &self.0
+    }
+}
+
+impl<T> AsMut<<Self as MapExt>::Map> for Map<T> {
+    fn as_mut(&mut self) -> &mut <Self as MapExt>::Map {
+        &mut self.0
+    }
+}
+
+impl<T> Deref for Map<T> {
+    type Target = <Self as MapExt>::Map;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> DerefMut for Map<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+trait MapExt {
+    type Item;
+    type Layer;
+    type Line;
+    type Map;
+    type RawMap;
+}
+
+impl<T> MapExt for Map<T> {
+    type Item = T;
+    type Layer = [T; NUM_LINES];
+    type Line = [Self::Layer; NUM_LAYERS];
+    type Map = [map::Line<T>; COLORS];
+    type RawMap = [Self::Line; COLORS];
+}
+
+type Playground = Map<Block>;
+type ActivationMap = Map<Condition>;
+
+#[derive(Debug)]
+pub struct Takeover {
+    capsule_cur_row: [c_int; COLORS],
+    num_capsules: [c_int; COLORS],
+    playground: Playground,
+    activation_map: ActivationMap,
+}
+
+impl Default for Takeover {
+    fn default() -> Self {
+        Self {
+            capsule_cur_row: [0, 0],
+            num_capsules: [0, 0],
+            playground: [[[Block::Cable; NUM_LINES]; NUM_LAYERS]; COLORS].into(),
+            activation_map: [[[Condition::Inactive; NUM_LINES]; NUM_LAYERS]; COLORS].into(),
+        }
+    }
+}
 
 static mut CAPSULES_COUNTDOWN: [[[Option<u8>; NUM_LINES]; NUM_LAYERS]; COLORS] =
     [[[None; NUM_LINES]; NUM_LAYERS]; COLORS];
@@ -506,7 +705,7 @@ pub unsafe fn set_takeover_rects() -> c_int {
 }
 
 impl Data {
-    unsafe fn enemy_movements(&self) {
+    unsafe fn enemy_movements(&mut self) {
         const ACTIONS: i32 = 3;
         const MOVE_PROBABILITY: i32 = 100;
         const TURN_PROBABILITY: i32 = 10;
@@ -514,9 +713,9 @@ impl Data {
 
         static mut DIRECTION: i32 = 1; /* start with this direction */
         let opponent_color = OPPONENT_COLOR as usize;
-        let mut row = CAPSULE_CUR_ROW[opponent_color] - 1;
+        let mut row = self.takeover.capsule_cur_row[opponent_color] - 1;
 
-        if NUM_CAPSULES[Opponents::Enemy as usize] == 0 {
+        if self.takeover.num_capsules[Opponents::Enemy as usize] == 0 {
             return;
         }
 
@@ -550,13 +749,15 @@ impl Data {
                 match usize::try_from(row) {
                     Ok(row)
                         if my_random(100) <= SET_PROBABILITY
-                            && PLAYGROUND[opponent_color][0][row] != Block::CableEnd
-                            && ACTIVATION_MAP[opponent_color][0][row] == Condition::Inactive =>
+                            && self.takeover.playground[opponent_color][0][row]
+                                != Block::CableEnd
+                            && self.takeover.activation_map[opponent_color][0][row]
+                                == Condition::Inactive =>
                     {
-                        NUM_CAPSULES[Opponents::Enemy as usize] -= 1;
+                        self.takeover.num_capsules[Opponents::Enemy as usize] -= 1;
                         self.takeover_set_capsule_sound();
-                        PLAYGROUND[opponent_color][0][row] = Block::Repeater;
-                        ACTIVATION_MAP[opponent_color][0][row] = Condition::Active1;
+                        self.takeover.playground[opponent_color][0][row] = Block::Repeater;
+                        self.takeover.activation_map[opponent_color][0][row] = Condition::Active1;
                         CAPSULES_COUNTDOWN[opponent_color][0][row] = Some(CAPSULE_COUNTDOWN * 2);
                         0
                     }
@@ -566,179 +767,178 @@ impl Data {
             _ => row + 1,
         };
 
-        CAPSULE_CUR_ROW[opponent_color] = next_row;
+        self.takeover.capsule_cur_row[opponent_color] = next_row;
     }
-}
 
-/// Animate the active cables: this is done by cycling over
-/// the active phases ACTIVE1-ACTIVE3, which are represented by
-/// different pictures in the playground
-unsafe fn animate_currents() {
-    ACTIVATION_MAP
-        .iter_mut()
-        .flat_map(|color_map| color_map.iter_mut())
-        .flat_map(|layer_map| layer_map.iter_mut())
-        .filter(|condition| condition.is_active())
-        .for_each(|condition| *condition = condition.next_active());
-}
-
-unsafe fn is_active(color: c_int, row: c_int) -> c_int {
-    const CONNECTION_LAYER: usize = 3; /* the connective Layer */
-    let test_element = PLAYGROUND[usize::try_from(color).unwrap()][CONNECTION_LAYER - 1]
-        [usize::try_from(row).unwrap()];
-
-    if ACTIVATION_MAP[usize::try_from(color).unwrap()][CONNECTION_LAYER - 1]
-        [usize::try_from(row).unwrap()]
-    .is_active()
-        && test_element.is_connector()
-    {
-        true.into()
-    } else {
-        false.into()
+    /// Animate the active cables: this is done by cycling over
+    /// the active phases ACTIVE1-ACTIVE3, which are represented by
+    /// different pictures in the playground
+    unsafe fn animate_currents(&mut self) {
+        self.takeover
+            .activation_map
+            .iter_mut()
+            .flat_map(|color_map| color_map.iter_mut())
+            .flat_map(|layer_map| layer_map.iter_mut())
+            .filter(|condition| condition.is_active())
+            .for_each(|condition| *condition = condition.next_active());
     }
-}
 
-/// does the countdown of the capsules and kills them if too old
-unsafe fn process_capsules() {
-    CAPSULES_COUNTDOWN
-        .iter_mut()
-        .flat_map(|color_countdown| color_countdown.iter_mut())
-        .map(|countdown| &mut countdown[0])
-        .zip(
-            ACTIVATION_MAP
-                .iter_mut()
-                .flat_map(|color_activation| color_activation.iter_mut())
-                .map(|activation| &mut activation[0]),
-        )
-        .zip(
-            PLAYGROUND
-                .iter_mut()
-                .flat_map(|color_playground| color_playground.iter_mut())
-                .map(|playground| &mut playground[0]),
-        )
-        .for_each(|((countdown, activation), playground)| {
-            if let Some(count) = countdown.as_mut() {
-                *count = count.saturating_sub(1);
+    /// does the countdown of the capsules and kills them if too old
+    unsafe fn process_capsules(&mut self) {
+        CAPSULES_COUNTDOWN
+            .iter_mut()
+            .flat_map(|color_countdown| color_countdown.iter_mut())
+            .map(|countdown| &mut countdown[0])
+            .zip(
+                self.takeover
+                    .activation_map
+                    .iter_mut()
+                    .flat_map(|color_activation| color_activation.iter_mut())
+                    .map(|activation| &mut activation[0]),
+            )
+            .zip(
+                self.takeover
+                    .playground
+                    .iter_mut()
+                    .flat_map(|color_playground| color_playground.iter_mut())
+                    .map(|playground| &mut playground[0]),
+            )
+            .for_each(|((countdown, activation), playground)| {
+                if let Some(count) = countdown.as_mut() {
+                    *count = count.saturating_sub(1);
 
-                if *count == 0 {
-                    *countdown = None;
-                    *activation = Condition::Inactive;
-                    *playground = Block::Cable;
+                    if *count == 0 {
+                        *countdown = None;
+                        *activation = Condition::Inactive;
+                        *playground = Block::Cable;
+                    }
                 }
+            });
+    }
+
+    unsafe fn process_display_column(&self) {
+        const CONNECTION_LAYER: usize = 3;
+        static mut FLICKER_COLOR: i32 = 0;
+
+        FLICKER_COLOR = !FLICKER_COLOR;
+
+        self.takeover.activation_map[Color::Yellow as usize][CONNECTION_LAYER]
+            .iter()
+            .zip(self.takeover.activation_map[Color::Violet as usize][CONNECTION_LAYER].iter())
+            .zip(self.takeover.playground[Color::Yellow as usize][CONNECTION_LAYER - 1].iter())
+            .zip(self.takeover.playground[Color::Violet as usize][CONNECTION_LAYER - 1].iter())
+            .zip(DISPLAY_COLUMN.iter_mut())
+            .for_each(
+                |(
+                    (
+                        ((&yellow_activation, &violet_activation), &yellow_playground),
+                        &violet_playground,
+                    ),
+                    display,
+                )| {
+                    if yellow_activation.is_active() && violet_activation.is_inactive() {
+                        if yellow_playground == Block::ColorSwapper {
+                            *display = Color::Violet;
+                        } else {
+                            *display = Color::Yellow;
+                        }
+                    } else if yellow_activation.is_inactive() && violet_activation.is_active() {
+                        if violet_playground == Block::ColorSwapper {
+                            *display = Color::Yellow;
+                        } else {
+                            *display = Color::Violet;
+                        }
+                    } else if yellow_activation.is_active() && violet_activation.is_active() {
+                        if yellow_playground == Block::ColorSwapper
+                            && violet_playground != Block::ColorSwapper
+                        {
+                            *display = Color::Violet;
+                        } else if (yellow_playground != Block::ColorSwapper
+                            && violet_playground == Block::ColorSwapper)
+                            || FLICKER_COLOR == 0
+                        {
+                            *display = Color::Yellow;
+                        } else {
+                            *display = Color::Violet;
+                        }
+                    }
+                },
+            );
+
+        let mut yellow_counter = 0;
+        let mut violet_counter = 0;
+        for &color in DISPLAY_COLUMN.iter() {
+            if color == Color::Yellow {
+                yellow_counter += 1;
+            } else {
+                violet_counter += 1;
             }
-        });
-}
+        }
 
-unsafe fn process_display_column() {
-    const CONNECTION_LAYER: usize = 3;
-    static mut FLICKER_COLOR: i32 = 0;
-
-    FLICKER_COLOR = !FLICKER_COLOR;
-
-    ACTIVATION_MAP[Color::Yellow as usize][CONNECTION_LAYER]
-        .iter()
-        .zip(ACTIVATION_MAP[Color::Violet as usize][CONNECTION_LAYER].iter())
-        .zip(PLAYGROUND[Color::Yellow as usize][CONNECTION_LAYER - 1].iter())
-        .zip(PLAYGROUND[Color::Violet as usize][CONNECTION_LAYER - 1].iter())
-        .zip(DISPLAY_COLUMN.iter_mut())
-        .for_each(
-            |(
-                (
-                    ((&yellow_activation, &violet_activation), &yellow_playground),
-                    &violet_playground,
-                ),
-                display,
-            )| {
-                if yellow_activation.is_active() && violet_activation.is_inactive() {
-                    if yellow_playground == Block::ColorSwapper {
-                        *display = Color::Violet;
-                    } else {
-                        *display = Color::Yellow;
-                    }
-                } else if yellow_activation.is_inactive() && violet_activation.is_active() {
-                    if violet_playground == Block::ColorSwapper {
-                        *display = Color::Yellow;
-                    } else {
-                        *display = Color::Violet;
-                    }
-                } else if yellow_activation.is_active() && violet_activation.is_active() {
-                    if yellow_playground == Block::ColorSwapper
-                        && violet_playground != Block::ColorSwapper
-                    {
-                        *display = Color::Violet;
-                    } else if (yellow_playground != Block::ColorSwapper
-                        && violet_playground == Block::ColorSwapper)
-                        || FLICKER_COLOR == 0
-                    {
-                        *display = Color::Yellow;
-                    } else {
-                        *display = Color::Violet;
-                    }
-                }
-            },
-        );
-
-    let mut yellow_counter = 0;
-    let mut violet_counter = 0;
-    for &color in DISPLAY_COLUMN.iter() {
-        if color == Color::Yellow {
-            yellow_counter += 1;
-        } else {
-            violet_counter += 1;
+        use std::cmp::Ordering;
+        match violet_counter.cmp(&yellow_counter) {
+            Ordering::Less => LEADER_COLOR = Color::Yellow,
+            Ordering::Greater => LEADER_COLOR = Color::Violet,
+            Ordering::Equal => LEADER_COLOR = Color::Draw,
         }
     }
 
-    use std::cmp::Ordering;
-    match violet_counter.cmp(&yellow_counter) {
-        Ordering::Less => LEADER_COLOR = Color::Yellow,
-        Ordering::Greater => LEADER_COLOR = Color::Violet,
-        Ordering::Equal => LEADER_COLOR = Color::Draw,
+    /// process the playground following its intrinsic logic
+    unsafe fn process_playground(&mut self) {
+        self.takeover.process_playground();
     }
 }
 
-/// process the playground following its intrinsic logic
-unsafe fn process_playground() {
-    ACTIVATION_MAP
-        .iter_mut()
-        .zip(PLAYGROUND.iter())
-        .enumerate()
-        .for_each(|(color, (activation_color, playground_color))| {
-            playground_color
-                .iter()
-                .enumerate()
-                .skip(1)
-                .for_each(|(layer, playground_layer)| {
-                    let (activation_layer_last, activation_layer) =
-                        activation_color.split_at_mut(layer);
-                    let activation_layer_last = activation_layer_last.last().unwrap();
-                    let activation_layer = &mut activation_layer[0];
+impl Takeover {
+    unsafe fn process_playground(&mut self) {
+        let Self {
+            activation_map,
+            playground,
+            ..
+        } = self;
 
-                    playground_layer
-                        .iter()
-                        .enumerate()
-                        .for_each(|(row, playground)| {
-                            process_playground_row(
-                                row,
-                                playground,
-                                activation_layer_last,
-                                activation_layer,
-                            )
-                        });
-                });
+        activation_map.iter_mut().zip(playground.iter()).for_each(
+            |(activation_line, playground_line)| {
+                playground_line
+                    .iter()
+                    .enumerate()
+                    .skip(1)
+                    .for_each(|(layer, playground_layer)| {
+                        let (activation_layer_last, activation_layer) =
+                            activation_line.split_at_mut(layer);
+                        let activation_layer_last = activation_layer_last.last().unwrap();
+                        let activation_layer = &mut activation_layer[0];
 
-            activation_color
-                .last_mut()
-                .unwrap()
-                .iter_mut()
-                .enumerate()
-                .for_each(|(row, activation)| {
-                    if is_active(color.try_into().unwrap(), row.try_into().unwrap()) != 0 {
-                        *activation = Condition::Active1;
-                    } else {
-                        *activation = Condition::Inactive;
-                    }
-                });
-        });
+                        playground_layer
+                            .iter()
+                            .enumerate()
+                            .for_each(|(row, playground_block)| {
+                                process_playground_row(
+                                    row,
+                                    playground_block,
+                                    &**activation_layer_last,
+                                    &mut **activation_layer,
+                                )
+                            });
+                    });
+
+                let [.., proximal_activation_layer, distal_activation_layer] =
+                    activation_line.layers_mut();
+                distal_activation_layer
+                    .iter_mut()
+                    .enumerate()
+                    .for_each(|(row, activation)| {
+                        let test_element = playground_line.proximal_connection()[row];
+                        if proximal_activation_layer[row].is_active() && test_element.is_connector()
+                        {
+                            *activation = Condition::Active1;
+                        } else {
+                            *activation = Condition::Inactive;
+                        }
+                    });
+            },
+        );
+    }
 }
 
 #[inline]
@@ -791,155 +991,167 @@ fn process_playground_row(
     }
 }
 
-/// generate a random Playground
-unsafe fn invent_playground() {
-    use std::ops::Not;
+impl Data {
+    /// generate a random Playground
+    unsafe fn invent_playground(&mut self) {
+        use std::ops::Not;
 
-    const MAX_PROB: i32 = 100;
-    const ELEMENTS_PROBABILITIES: [i32; TO_ELEMENTS] = [
-        100, /* Cable */
-        2,   /* CableEnd */
-        5,   /* Repeater */
-        5,   /* ColorSwapper: only on last layer */
-        5,   /* Branch */
-        5,   /* Gate */
-    ];
+        const MAX_PROB: i32 = 100;
+        const ELEMENTS_PROBABILITIES: [i32; TO_ELEMENTS] = [
+            100, /* Cable */
+            2,   /* CableEnd */
+            5,   /* Repeater */
+            5,   /* ColorSwapper: only on last layer */
+            5,   /* Branch */
+            5,   /* Gate */
+        ];
 
-    fn cut_cable(block: &mut Block) {
-        if block.is_connector() {
-            *block = Block::CableEnd;
-        }
-    }
-
-    /* first clear the playground: we depend on this !! */
-    clear_playground();
-
-    PLAYGROUND.iter_mut().for_each(|playground_color| {
-        for layer in 1..NUM_LAYERS {
-            let (playground_prev_layers, playground_layer) = playground_color.split_at_mut(layer);
-            let playground_prev_layer = playground_prev_layers.last_mut().unwrap();
-            let playground_layer = &mut playground_layer[0];
-
-            let mut row = 0;
-            while row < NUM_LINES {
-                let block = &mut playground_layer[row];
-                if !matches!(block, Block::Cable) {
-                    row += 1;
-                    continue;
-                }
-
-                let new_element =
-                    u8::try_from(my_random((TO_ELEMENTS - 1).try_into().unwrap())).unwrap();
-                if my_random(MAX_PROB) > ELEMENTS_PROBABILITIES[usize::from(new_element)] {
-                    continue;
-                }
-
-                let prev_block = playground_prev_layer[row];
-                match ToElement::try_from(new_element).unwrap() {
-                    ToElement::Cable => {
-                        if prev_block.is_connector().not() {
-                            *block = Block::Empty;
-                        }
-                    }
-                    ToElement::CableEnd => {
-                        if prev_block.is_connector() {
-                            *block = Block::CableEnd;
-                        } else {
-                            *block = Block::Empty;
-                        }
-                    }
-                    ToElement::Repeater => {
-                        if prev_block.is_connector() {
-                            *block = Block::Repeater;
-                        } else {
-                            *block = Block::Empty;
-                        }
-                    }
-                    ToElement::ColorSwapper => {
-                        if layer != 2 {
-                            continue;
-                        }
-                        if prev_block.is_connector() {
-                            *block = Block::ColorSwapper;
-                        } else {
-                            *block = Block::Empty;
-                        }
-                    }
-                    ToElement::Branch => {
-                        if row > NUM_LINES - 3 {
-                            continue;
-                        }
-                        let next_block = playground_prev_layer[row + 1];
-                        if next_block.is_connector().not() {
-                            continue;
-                        }
-                        let (prev_layer_block, prev_layer_next_blocks) =
-                            playground_prev_layer[row..].split_first_mut().unwrap();
-                        if matches!(prev_layer_block, Block::BranchAbove | Block::BranchBelow) {
-                            continue;
-                        }
-                        let next_next_block = &mut prev_layer_next_blocks[1];
-                        if matches!(next_next_block, Block::BranchAbove | Block::BranchBelow) {
-                            continue;
-                        }
-                        cut_cable(prev_layer_block);
-                        cut_cable(next_next_block);
-
-                        *block = Block::BranchAbove;
-                        playground_layer[row + 1] = Block::BranchMiddle;
-                        playground_layer[row + 2] = Block::BranchBelow;
-                        row += 2;
-                    }
-                    ToElement::Gate => {
-                        if row > NUM_LINES - 3 {
-                            continue;
-                        }
-
-                        let prev_layer_block = playground_prev_layer[row];
-                        if prev_layer_block.is_connector().not() {
-                            continue;
-                        }
-
-                        let next_next_block = playground_prev_layer[row + 2];
-                        if next_next_block.is_connector().not() {
-                            continue;
-                        }
-                        cut_cable(&mut playground_prev_layer[row + 1]);
-
-                        *block = Block::GateAbove;
-                        playground_layer[row + 1] = Block::GateMiddle;
-                        playground_layer[row + 2] = Block::GateBelow;
-                        row += 2;
-                    }
-                }
-
-                row += 1;
+        fn cut_cable(block: &mut Block) {
+            if block.is_connector() {
+                *block = Block::CableEnd;
             }
         }
-    });
-}
 
-/// Clears Playground (and ACTIVATION_MAP) to default start-values
-unsafe fn clear_playground() {
-    ACTIVATION_MAP
-        .iter_mut()
-        .flatten()
-        .flatten()
-        .for_each(|activation| *activation = Condition::Inactive);
+        /* first clear the playground: we depend on this !! */
+        self.clear_playground();
 
-    PLAYGROUND
-        .iter_mut()
-        .flatten()
-        .flatten()
-        .for_each(|block| *block = Block::Cable);
+        self.takeover
+            .playground
+            .iter_mut()
+            .for_each(|playground_color| {
+                for layer in 1..NUM_LAYERS {
+                    let (playground_prev_layers, playground_layer) =
+                        playground_color.split_at_mut(layer);
+                    let playground_prev_layer = playground_prev_layers.last_mut().unwrap();
+                    let playground_layer = &mut playground_layer[0];
 
-    DISPLAY_COLUMN
-        .iter_mut()
-        .enumerate()
-        .for_each(|(row, display_column)| *display_column = (row % 2).try_into().unwrap());
-}
+                    let mut row = 0;
+                    while row < NUM_LINES {
+                        let block = &mut playground_layer[row];
+                        if !matches!(block, Block::Cable) {
+                            row += 1;
+                            continue;
+                        }
 
-impl Data {
+                        let new_element =
+                            u8::try_from(my_random((TO_ELEMENTS - 1).try_into().unwrap())).unwrap();
+                        if my_random(MAX_PROB) > ELEMENTS_PROBABILITIES[usize::from(new_element)] {
+                            continue;
+                        }
+
+                        let prev_block = playground_prev_layer[row];
+                        match ToElement::try_from(new_element).unwrap() {
+                            ToElement::Cable => {
+                                if prev_block.is_connector().not() {
+                                    *block = Block::Empty;
+                                }
+                            }
+                            ToElement::CableEnd => {
+                                if prev_block.is_connector() {
+                                    *block = Block::CableEnd;
+                                } else {
+                                    *block = Block::Empty;
+                                }
+                            }
+                            ToElement::Repeater => {
+                                if prev_block.is_connector() {
+                                    *block = Block::Repeater;
+                                } else {
+                                    *block = Block::Empty;
+                                }
+                            }
+                            ToElement::ColorSwapper => {
+                                if layer != 2 {
+                                    continue;
+                                }
+                                if prev_block.is_connector() {
+                                    *block = Block::ColorSwapper;
+                                } else {
+                                    *block = Block::Empty;
+                                }
+                            }
+                            ToElement::Branch => {
+                                if row > NUM_LINES - 3 {
+                                    continue;
+                                }
+                                let next_block = playground_prev_layer[row + 1];
+                                if next_block.is_connector().not() {
+                                    continue;
+                                }
+                                let (prev_layer_block, prev_layer_next_blocks) =
+                                    playground_prev_layer[row..].split_first_mut().unwrap();
+                                if matches!(
+                                    prev_layer_block,
+                                    Block::BranchAbove | Block::BranchBelow
+                                ) {
+                                    continue;
+                                }
+                                let next_next_block = &mut prev_layer_next_blocks[1];
+                                if matches!(
+                                    next_next_block,
+                                    Block::BranchAbove | Block::BranchBelow
+                                ) {
+                                    continue;
+                                }
+                                cut_cable(prev_layer_block);
+                                cut_cable(next_next_block);
+
+                                *block = Block::BranchAbove;
+                                playground_layer[row + 1] = Block::BranchMiddle;
+                                playground_layer[row + 2] = Block::BranchBelow;
+                                row += 2;
+                            }
+                            ToElement::Gate => {
+                                if row > NUM_LINES - 3 {
+                                    continue;
+                                }
+
+                                let prev_layer_block = playground_prev_layer[row];
+                                if prev_layer_block.is_connector().not() {
+                                    continue;
+                                }
+
+                                let next_next_block = playground_prev_layer[row + 2];
+                                if next_next_block.is_connector().not() {
+                                    continue;
+                                }
+                                cut_cable(&mut playground_prev_layer[row + 1]);
+
+                                *block = Block::GateAbove;
+                                playground_layer[row + 1] = Block::GateMiddle;
+                                playground_layer[row + 2] = Block::GateBelow;
+                                row += 2;
+                            }
+                        }
+
+                        row += 1;
+                    }
+                }
+            });
+    }
+
+    /// Clears Playground (and self.takeover.activation_map) to default start-values
+    unsafe fn clear_playground(&mut self) {
+        self.takeover
+            .activation_map
+            .iter_mut()
+            .flatten()
+            .flatten()
+            .for_each(|activation| *activation = Condition::Inactive);
+
+        self.takeover
+            .playground
+            .iter_mut()
+            .flatten()
+            .flatten()
+            .for_each(|block| *block = Block::Cable);
+
+        DISPLAY_COLUMN
+            .iter_mut()
+            .enumerate()
+            .for_each(|(row, display_column)| *display_column = (row % 2).try_into().unwrap());
+    }
+
     /// prepares _and displays_ the current Playground
     ///
     /// NOTE: this function should only change the USERFENSTER part
@@ -1097,11 +1309,11 @@ impl Data {
 
         /* Show the yellow playground */
         let mut to_game_blocks = TO_GAME_BLOCKS.lock().unwrap();
-        PLAYGROUND[Color::Yellow as usize]
+        self.takeover.playground[Color::Yellow as usize]
             .iter()
             .take(NUM_LAYERS - 1)
             .zip(
-                ACTIVATION_MAP[Color::Yellow as usize]
+                self.takeover.activation_map[Color::Yellow as usize]
                     .iter()
                     .take(NUM_LAYERS - 1),
             )
@@ -1141,11 +1353,11 @@ impl Data {
             );
 
         /* Show the violet playground */
-        PLAYGROUND[Color::Violet as usize]
+        self.takeover.playground[Color::Violet as usize]
             .iter()
             .take(NUM_LAYERS - 1)
             .zip(
-                ACTIVATION_MAP[Color::Violet as usize]
+                self.takeover.activation_map[Color::Violet as usize]
                     .iter()
                     .take(NUM_LAYERS - 1),
             )
@@ -1185,7 +1397,8 @@ impl Data {
             );
 
         /* Show the capsules left for each player */
-        NUM_CAPSULES
+        self.takeover
+            .num_capsules
             .iter()
             .copied()
             .enumerate()
@@ -1200,7 +1413,7 @@ impl Data {
                     xoffs + i16::try_from(CUR_CAPSULE_STARTS[color].x).unwrap(),
                     yoffs
                         + i16::try_from(CUR_CAPSULE_STARTS[color].y).unwrap()
-                        + i16::try_from(CAPSULE_CUR_ROW[color]).unwrap()
+                        + i16::try_from(self.takeover.capsule_cur_row[color]).unwrap()
                             * i16::try_from(CAPSULE_RECT.h).unwrap(),
                     0,
                     0,
@@ -1262,7 +1475,7 @@ impl Data {
                     finish_takeover = true;
                 }
 
-                animate_currents(); /* do some animation on the active cables */
+                self.animate_currents(); /* do some animation on the active cables */
             }
 
             let do_update_move = cur_time > prev_move_tick + MOVE_TICK_LEN;
@@ -1283,29 +1496,31 @@ impl Data {
                 }
 
                 if action.intersects(MenuAction::UP | MenuAction::UP_WHEEL) {
-                    CAPSULE_CUR_ROW[your_color] -= 1;
-                    if CAPSULE_CUR_ROW[your_color] < 1 {
-                        CAPSULE_CUR_ROW[your_color] = NUM_LINES.try_into().unwrap();
+                    self.takeover.capsule_cur_row[your_color] -= 1;
+                    if self.takeover.capsule_cur_row[your_color] < 1 {
+                        self.takeover.capsule_cur_row[your_color] = NUM_LINES.try_into().unwrap();
                     }
                 }
 
                 if action.intersects(MenuAction::DOWN | MenuAction::DOWN_WHEEL) {
-                    CAPSULE_CUR_ROW[your_color] += 1;
-                    if CAPSULE_CUR_ROW[your_color] > NUM_LINES.try_into().unwrap() {
-                        CAPSULE_CUR_ROW[your_color] = 1;
+                    self.takeover.capsule_cur_row[your_color] += 1;
+                    if self.takeover.capsule_cur_row[your_color] > NUM_LINES.try_into().unwrap() {
+                        self.takeover.capsule_cur_row[your_color] = 1;
                     }
                 }
 
                 if action.intersects(MenuAction::CLICK) {
-                    if let Ok(row) = usize::try_from(CAPSULE_CUR_ROW[your_color] - 1) {
-                        if NUM_CAPSULES[Opponents::You as usize] > 0
-                            && PLAYGROUND[your_color][0][row] != Block::CableEnd
-                            && ACTIVATION_MAP[your_color][0][row] == Condition::Inactive
+                    if let Ok(row) = usize::try_from(self.takeover.capsule_cur_row[your_color] - 1)
+                    {
+                        if self.takeover.num_capsules[Opponents::You as usize] > 0
+                            && self.takeover.playground[your_color][0][row] != Block::CableEnd
+                            && self.takeover.activation_map[your_color][0][row]
+                                == Condition::Inactive
                         {
-                            NUM_CAPSULES[Opponents::You as usize] -= 1;
-                            CAPSULE_CUR_ROW[your_color] = 0;
-                            PLAYGROUND[your_color][0][row] = Block::Repeater;
-                            ACTIVATION_MAP[your_color][0][row] = Condition::Active1;
+                            self.takeover.num_capsules[Opponents::You as usize] -= 1;
+                            self.takeover.capsule_cur_row[your_color] = 0;
+                            self.takeover.playground[your_color][0][row] = Block::Repeater;
+                            self.takeover.activation_map[your_color][0][row] = Condition::Active1;
                             CAPSULES_COUNTDOWN[your_color][0][row] = Some(CAPSULE_COUNTDOWN * 2);
                             self.takeover_set_capsule_sound();
                         }
@@ -1313,14 +1528,14 @@ impl Data {
                 }
 
                 self.enemy_movements();
-                process_capsules(); /* count down the lifetime of the capsules */
+                self.process_capsules(); /* count down the lifetime of the capsules */
 
-                process_playground();
-                process_playground();
-                process_playground();
-                process_playground(); /* this has to be done several times to be sure */
+                self.process_playground();
+                self.process_playground();
+                self.process_playground();
+                self.process_playground(); /* this has to be done several times to be sure */
 
-                process_display_column();
+                self.process_display_column();
                 self.show_playground();
             } // if do_update_move
 
@@ -1346,14 +1561,14 @@ impl Data {
                 fast_forward = true;
             }
             prev_count_tick += COUNT_TICK_LEN;
-            process_capsules(); /* count down the lifetime of the capsules */
-            process_capsules(); /* do it twice this time to be faster */
-            animate_currents();
-            process_playground();
-            process_playground();
-            process_playground();
-            process_playground(); /* this has to be done several times to be sure */
-            process_display_column();
+            self.process_capsules(); /* count down the lifetime of the capsules */
+            self.process_capsules(); /* do it twice this time to be faster */
+            self.animate_currents();
+            self.process_playground();
+            self.process_playground();
+            self.process_playground();
+            self.process_playground(); /* this has to be done several times to be sure */
+            self.process_display_column();
             self.show_playground();
             SDL_Delay(1);
             SDL_Flip(NE_SCREEN);
@@ -1507,15 +1722,17 @@ impl Data {
             YOUR_COLOR = Color::Yellow;
             OPPONENT_COLOR = Color::Violet;
 
-            CAPSULE_CUR_ROW[usize::from(Color::Yellow)] = 0;
-            CAPSULE_CUR_ROW[usize::from(Color::Violet)] = 0;
+            self.takeover.capsule_cur_row[usize::from(Color::Yellow)] = 0;
+            self.takeover.capsule_cur_row[usize::from(Color::Violet)] = 0;
 
             DROID_NUM = enemynum;
             OPPONENT_TYPE = ALL_ENEMYS[enemy_index].ty;
-            NUM_CAPSULES[Opponents::You as usize] = 3 + self.class_of_druid(self.vars.me.ty);
-            NUM_CAPSULES[Opponents::Enemy as usize] = 4 + self.class_of_druid(OPPONENT_TYPE);
+            self.takeover.num_capsules[Opponents::You as usize] =
+                3 + self.class_of_druid(self.vars.me.ty);
+            self.takeover.num_capsules[Opponents::Enemy as usize] =
+                4 + self.class_of_druid(OPPONENT_TYPE);
 
-            invent_playground();
+            self.invent_playground();
 
             self.show_playground();
             SDL_Flip(NE_SCREEN);
