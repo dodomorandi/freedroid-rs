@@ -13,11 +13,7 @@ use crate::{
     input::SDL_Delay,
     misc::read_value_from_string,
     structs::ThemeList,
-    takeover::{
-        CAPSULE_BLOCKS, CAPSULE_RECT, COLUMN_RECT, CUR_CAPSULE_STARTS, DROID_STARTS, ELEMENT_RECT,
-        FILL_BLOCK, FILL_BLOCKS, GROUND_RECT, LEADER_LED, LEFT_CAPSULE_STARTS, PLAYGROUND_STARTS,
-        TO_BLOCKS, TO_BLOCK_FILE_C,
-    },
+    takeover::TO_BLOCK_FILE_C,
     vars::{ORIG_BLOCK_RECT, ORIG_DIGIT_RECT},
     Data, ALL_BULLETS, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
 };
@@ -304,7 +300,7 @@ impl Data {
         SDL_FreeSurface(SHIP_ON_PIC);
         SDL_FreeSurface(PROGRESS_METER_PIC);
         SDL_FreeSurface(PROGRESS_FILLER_PIC);
-        SDL_FreeSurface(TO_BLOCKS);
+        SDL_FreeSurface(self.takeover.to_blocks);
 
         // free fonts
         [
@@ -507,11 +503,11 @@ impl Data {
         scale!(self.vars.left_info_rect);
         scale!(self.vars.right_info_rect);
 
-        for block in &mut FILL_BLOCKS {
+        for block in &mut self.takeover.fill_blocks {
             scale_rect(block, scale);
         }
 
-        for block in &mut CAPSULE_BLOCKS {
+        for block in &mut self.takeover.capsule_blocks {
             scale_rect(block, scale);
         }
 
@@ -526,16 +522,16 @@ impl Data {
         scale!(self.takeover.column_block);
         scale!(self.takeover.leader_block);
 
-        for point in &mut LEFT_CAPSULE_STARTS {
+        for point in &mut self.takeover.left_capsule_starts {
             scale_point(point, scale);
         }
-        for point in &mut CUR_CAPSULE_STARTS {
+        for point in &mut self.takeover.cur_capsule_starts {
             scale_point(point, scale);
         }
-        for point in &mut PLAYGROUND_STARTS {
+        for point in &mut self.takeover.playground_starts {
             scale_point(point, scale);
         }
-        for point in &mut DROID_STARTS {
+        for point in &mut self.takeover.droid_starts {
             scale_point(point, scale);
         }
         scale_point!(self.takeover.left_ground_start);
@@ -544,12 +540,12 @@ impl Data {
         scale_point!(self.takeover.right_ground_start);
         scale_point!(self.takeover.leader_block_start);
 
-        scale!(FILL_BLOCK);
-        scale!(ELEMENT_RECT);
-        scale!(CAPSULE_RECT);
-        scale!(LEADER_LED);
-        scale!(GROUND_RECT);
-        scale!(COLUMN_RECT);
+        scale!(self.takeover.fill_block);
+        scale!(self.takeover.element_rect);
+        scale!(self.takeover.capsule_rect);
+        scale!(self.takeover.leader_led);
+        scale!(self.takeover.ground_rect);
+        scale!(self.takeover.column_rect);
     }
 }
 
@@ -649,7 +645,7 @@ impl Data {
         }
 
         //---------- rescale Takeover pics
-        scale_pic(&mut TO_BLOCKS, scale);
+        scale_pic(&mut self.takeover.to_blocks, scale);
 
         scale_pic(&mut SHIP_ON_PIC, scale);
         scale_pic(&mut SHIP_OFF_PIC, scale);
@@ -1299,14 +1295,14 @@ impl Data {
         self.update_progress(50);
 
         //---------- get Takeover pics
-        free_if_unused(TO_BLOCKS); /* this happens when we do theme-switching */
+        free_if_unused(self.takeover.to_blocks); /* this happens when we do theme-switching */
         let fpath = self.find_file(
             TO_BLOCK_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
-        TO_BLOCKS = load_block(fpath, 0, 0, null_mut(), 0);
+        self.takeover.to_blocks = load_block(fpath, 0, 0, null_mut(), 0);
 
         self.update_progress(60);
 

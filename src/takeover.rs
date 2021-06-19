@@ -237,6 +237,25 @@ pub struct Takeover {
     pub right_ground_start: Point,
     pub column_start: Point,
     pub leader_block_start: Point,
+    pub leader_led: Rect,
+    pub fill_block: Rect,
+    pub element_rect: Rect,
+    pub capsule_rect: Rect,
+    pub ground_rect: Rect,
+    pub column_rect: Rect,
+    // the global surface containing all game-blocks
+    pub to_blocks: *mut SDL_Surface,
+    // the rectangles containing the blocks
+    pub fill_blocks: [Rect; NUM_FILL_BLOCKS],
+    pub capsule_blocks: [Rect; NUM_CAPS_BLOCKS],
+    pub left_capsule_starts: [Point; COLORS],
+    pub cur_capsule_starts: [Point; COLORS],
+    pub playground_starts: [Point; COLORS],
+    pub droid_starts: [Point; COLORS],
+    direction: i32,
+    flicker_color: i32,
+    // your energy if you're rejected
+    reject_energy: c_int,
 }
 
 impl Default for Takeover {
@@ -286,6 +305,76 @@ impl Default for Takeover {
                 x: 2 * 129,
                 y: 2 * 8,
             },
+            leader_led: rect! {
+                2 * 136,
+                2 * 11,
+                2 * 16,
+                2 * 19,
+            },
+            fill_block: rect! {
+                0,
+                0,
+                2 * 16,
+                2 * 7,
+            },
+            element_rect: rect! {
+                0,
+                0,
+                2 * 32,
+                2 * 8,
+            },
+            capsule_rect: rect! {
+                0,
+                0,
+                2 * 7,
+                2 * 8,
+            },
+            ground_rect: rect! {
+                0,
+                0,
+                2 * 23,
+                2 * 8,
+            },
+            column_rect: rect! {
+                0,
+                0,
+                2 * 30,
+                2 * 8,
+            },
+            to_blocks: null_mut(),
+            fill_blocks: [rect!(); NUM_FILL_BLOCKS],
+            capsule_blocks: [rect!(); NUM_CAPS_BLOCKS],
+            left_capsule_starts: [
+                Point { x: 4, y: 2 * 27 },
+                Point {
+                    x: 2 * 255 + 2 * 30 - 10,
+                    y: 2 * 27,
+                },
+            ],
+            cur_capsule_starts: [
+                Point {
+                    x: 2 * 26,
+                    y: 2 * 19,
+                },
+                Point {
+                    x: 2 * 255,
+                    y: 2 * 19,
+                },
+            ],
+            playground_starts: [
+                Point {
+                    x: 2 * 33,
+                    y: 2 * 26,
+                },
+                Point {
+                    x: 2 * 159,
+                    y: 2 * 26,
+                },
+            ],
+            droid_starts: [Point { x: 2 * 40, y: -4 }, Point { x: 2 * 220, y: -4 }],
+            direction: 1,
+            flicker_color: 0,
+            reject_energy: 0,
         }
     }
 }
@@ -315,6 +404,14 @@ impl fmt::Debug for Takeover {
         let to_ground_blocks = self.to_ground_blocks.each_ref().map(Rect::from);
         let column_block = Rect::from(&self.column_block);
         let leader_block = Rect::from(&self.leader_block);
+        let leader_led = Rect::from(&self.leader_led);
+        let fill_block = Rect::from(&self.fill_block);
+        let element_rect = Rect::from(&self.element_rect);
+        let capsule_rect = Rect::from(&self.capsule_rect);
+        let ground_rect = Rect::from(&self.ground_rect);
+        let column_rect = Rect::from(&self.column_rect);
+        let fill_blocks = self.fill_blocks.each_ref().map(Rect::from);
+        let capsule_blocks = self.capsule_blocks.each_ref().map(Rect::from);
 
         f.debug_struct("Takeover")
             .field("capsule_cur_row", &self.capsule_cur_row)
@@ -336,128 +433,25 @@ impl fmt::Debug for Takeover {
             .field("right_ground_start", &self.right_ground_start)
             .field("column_start", &self.column_start)
             .field("leader_block_start", &self.leader_block_start)
+            .field("leader_led", &leader_led)
+            .field("fill_block", &fill_block)
+            .field("element_rect", &element_rect)
+            .field("capsule_rect", &capsule_rect)
+            .field("ground_rect", &ground_rect)
+            .field("column_rect", &column_rect)
+            .field("to_blocks", &self.to_blocks)
+            .field("fill_blocks", &fill_blocks)
+            .field("capsule_blocks", &capsule_blocks)
+            .field("left_capsule_starts", &self.left_capsule_starts)
+            .field("cur_capsule_starts", &self.cur_capsule_starts)
+            .field("playground_starts", &self.playground_starts)
+            .field("droid_starts", &self.droid_starts)
+            .field("direction", &self.direction)
+            .field("flicker_color", &self.flicker_color)
+            .field("reject_energy", &self.reject_energy)
             .finish()
     }
 }
-
-pub static mut LEADER_LED: Rect = Rect {
-    x: 2 * 136,
-    y: 2 * 11,
-    w: 2 * 16,
-    h: 2 * 19,
-};
-
-pub static mut FILL_BLOCK: Rect = Rect {
-    x: 0,
-    y: 0,
-    w: 2 * 16,
-    h: 2 * 7,
-};
-
-pub static mut ELEMENT_RECT: Rect = Rect {
-    x: 0,
-    y: 0,
-    w: 2 * 32,
-    h: 2 * 8,
-};
-
-pub static mut CAPSULE_RECT: Rect = Rect {
-    x: 0,
-    y: 0,
-    w: 2 * 7,
-    h: 2 * 8,
-};
-
-pub static mut GROUND_RECT: Rect = Rect {
-    x: 0,
-    y: 0,
-    w: 2 * 23,
-    h: 2 * 8,
-};
-
-pub static mut COLUMN_RECT: Rect = Rect {
-    x: 0,
-    y: 0,
-    w: 2 * 30,
-    h: 2 * 8,
-};
-
-pub static mut TO_BLOCKS: *mut SDL_Surface = null_mut(); /* the global surface containing all game-blocks */
-
-/* the rectangles containing the blocks */
-pub static mut FILL_BLOCKS: [Rect; NUM_FILL_BLOCKS] = [
-    Rect {
-        x: 0,
-        y: 0,
-        w: 0,
-        h: 0,
-    },
-    Rect {
-        x: 0,
-        y: 0,
-        w: 0,
-        h: 0,
-    },
-    Rect {
-        x: 0,
-        y: 0,
-        w: 0,
-        h: 0,
-    },
-];
-
-pub static mut CAPSULE_BLOCKS: [Rect; NUM_CAPS_BLOCKS] = [
-    Rect {
-        x: 0,
-        y: 0,
-        w: 0,
-        h: 0,
-    },
-    Rect {
-        x: 0,
-        y: 0,
-        w: 0,
-        h: 0,
-    },
-    Rect {
-        x: 0,
-        y: 0,
-        w: 0,
-        h: 0,
-    },
-];
-
-pub static mut LEFT_CAPSULE_STARTS: [Point; COLORS] = [
-    Point { x: 4, y: 2 * 27 },
-    Point {
-        x: 2 * 255 + 2 * 30 - 10,
-        y: 2 * 27,
-    },
-];
-
-pub static mut CUR_CAPSULE_STARTS: [Point; COLORS] = [
-    Point {
-        x: 2 * 26,
-        y: 2 * 19,
-    },
-    Point {
-        x: 2 * 255,
-        y: 2 * 19,
-    },
-];
-
-pub static mut PLAYGROUND_STARTS: [Point; COLORS] = [
-    Point {
-        x: 2 * 33,
-        y: 2 * 26,
-    },
-    Point {
-        x: 2 * 159,
-        y: 2 * 26,
-    },
-];
-pub static mut DROID_STARTS: [Point; COLORS] =
-    [Point { x: 2 * 40, y: -4 }, Point { x: 2 * 220, y: -4 }];
 
 /* File containing the Takeover-blocks */
 pub const TO_BLOCK_FILE_C: &CStr = cstr!("to_elem.png");
@@ -680,32 +674,54 @@ impl From<Block> for usize {
 /// Define all the SDL_Rects for the takeover-game
 impl Data {
     pub unsafe fn set_takeover_rects(&mut self) -> c_int {
+        let Self {
+            takeover:
+                Takeover {
+                    fill_blocks,
+                    fill_block,
+                    capsule_rect,
+                    capsule_blocks,
+                    ..
+                },
+            ..
+        } = self;
         /* Set the fill-blocks */
-        FILL_BLOCKS
+        fill_blocks
             .iter_mut()
-            .zip((0..).step_by(usize::from(FILL_BLOCK.w) + 2))
-            .for_each(|(rect, cur_x)| *rect = Rect::new(cur_x, 0, FILL_BLOCK.w, FILL_BLOCK.h));
+            .zip((0..).step_by(usize::from(fill_block.w) + 2))
+            .for_each(|(rect, cur_x)| *rect = Rect::new(cur_x, 0, fill_block.w, fill_block.h));
 
         /* Set the capsule Blocks */
-        let start_x =
-            i16::try_from(FILL_BLOCKS.len()).unwrap() * (i16::try_from(FILL_BLOCK.w).unwrap() + 2);
-        CAPSULE_BLOCKS
+        let start_x = i16::try_from(self.takeover.fill_blocks.len()).unwrap()
+            * (i16::try_from(self.takeover.fill_block.w).unwrap() + 2);
+        capsule_blocks
             .iter_mut()
-            .zip((start_x..).step_by(usize::try_from(CAPSULE_RECT.w).unwrap() + 2))
+            .zip((start_x..).step_by(usize::try_from(capsule_rect.w).unwrap() + 2))
             .for_each(|(rect, cur_x)| {
-                *rect = Rect::new(cur_x, 0, CAPSULE_RECT.w, CAPSULE_RECT.h - 2)
+                *rect = Rect::new(cur_x, 0, capsule_rect.w, capsule_rect.h - 2)
             });
 
         /* get the game-blocks */
-        self.takeover
-            .to_game_blocks
+        let Self {
+            takeover:
+                Takeover {
+                    to_game_blocks,
+                    to_ground_blocks,
+                    fill_block,
+                    element_rect,
+                    ground_rect,
+                    ..
+                },
+            ..
+        } = self;
+        to_game_blocks
             .iter_mut()
             .zip(
-                ((FILL_BLOCK.h + 2)..)
-                    .step_by(usize::try_from(ELEMENT_RECT.h).unwrap() + 2)
+                ((fill_block.h + 2)..)
+                    .step_by(usize::try_from(element_rect.h).unwrap() + 2)
                     .flat_map(|cur_y| {
                         (0..)
-                            .step_by(usize::try_from(ELEMENT_RECT.w).unwrap() + 2)
+                            .step_by(usize::try_from(element_rect.w).unwrap() + 2)
                             .take(TO_BLOCKS_N)
                             .map(move |cur_x| (cur_x, cur_y))
                     }),
@@ -714,34 +730,37 @@ impl Data {
                 *rect = Rect::new(
                     cur_x,
                     cur_y.try_into().unwrap(),
-                    ELEMENT_RECT.w,
-                    ELEMENT_RECT.h,
+                    element_rect.w,
+                    element_rect.h,
                 )
             });
-        let mut cur_y =
-            (FILL_BLOCK.h + 2) + (ELEMENT_RECT.h + 2) * u16::try_from(NUM_PHASES).unwrap() * 2;
+        let mut cur_y = (self.takeover.fill_block.h + 2)
+            + (self.takeover.element_rect.h + 2) * u16::try_from(NUM_PHASES).unwrap() * 2;
 
         /* Get the ground, column and leader blocks */
-        self.takeover
-            .to_ground_blocks
+        to_ground_blocks
             .iter_mut()
-            .zip((0..).step_by(usize::try_from(GROUND_RECT.w).unwrap() + 2))
+            .zip((0..).step_by(usize::try_from(ground_rect.w).unwrap() + 2))
             .for_each(|(rect, cur_x)| {
                 *rect = Rect::new(
                     cur_x,
                     cur_y.try_into().unwrap(),
-                    GROUND_RECT.w,
-                    GROUND_RECT.h,
+                    ground_rect.w,
+                    ground_rect.h,
                 )
             });
-        cur_y += GROUND_RECT.h + 2;
-        self.takeover.column_block =
-            Rect::new(0, cur_y.try_into().unwrap(), COLUMN_RECT.w, COLUMN_RECT.h);
-        self.takeover.leader_block = Rect::new(
-            i16::try_from(COLUMN_RECT.w).unwrap() + 2,
+        cur_y += self.takeover.ground_rect.h + 2;
+        self.takeover.column_block = Rect::new(
+            0,
             cur_y.try_into().unwrap(),
-            LEADER_LED.w * 2 - 4,
-            LEADER_LED.h,
+            self.takeover.column_rect.w,
+            self.takeover.column_rect.h,
+        );
+        self.takeover.leader_block = Rect::new(
+            i16::try_from(self.takeover.column_rect.w).unwrap() + 2,
+            cur_y.try_into().unwrap(),
+            self.takeover.leader_led.w * 2 - 4,
+            self.takeover.leader_led.h,
         );
         defs::OK.into()
     }
@@ -752,7 +771,6 @@ impl Data {
         const TURN_PROBABILITY: i32 = 10;
         const SET_PROBABILITY: i32 = 80;
 
-        static mut DIRECTION: i32 = 1; /* start with this direction */
         let opponent_color = self.takeover.opponent_color as usize;
         let mut row = self.takeover.capsule_cur_row[opponent_color] - 1;
 
@@ -764,7 +782,7 @@ impl Data {
             0 => {
                 /* Move along */
                 if my_random(100) <= MOVE_PROBABILITY {
-                    row += DIRECTION;
+                    row += self.takeover.direction;
                     if row > i32::try_from(NUM_LINES).unwrap() - 1 {
                         1
                     } else if row < 0 {
@@ -780,7 +798,7 @@ impl Data {
             1 => {
                 /* Turn around */
                 if my_random(100) <= TURN_PROBABILITY {
-                    DIRECTION *= -1;
+                    self.takeover.direction *= -1;
                 }
                 row + 1
             }
@@ -861,9 +879,8 @@ impl Data {
 
     unsafe fn process_display_column(&mut self) {
         const CONNECTION_LAYER: usize = 3;
-        static mut FLICKER_COLOR: i32 = 0;
 
-        FLICKER_COLOR = !FLICKER_COLOR;
+        self.takeover.flicker_color = !self.takeover.flicker_color;
 
         let Self {
             takeover:
@@ -871,6 +888,7 @@ impl Data {
                     activation_map,
                     playground,
                     display_column,
+                    ref flicker_color,
                     ..
                 },
             ..
@@ -909,7 +927,7 @@ impl Data {
                             *display = Color::Violet;
                         } else if (yellow_playground != Block::ColorSwapper
                             && violet_playground == Block::ColorSwapper)
-                            || FLICKER_COLOR == 0
+                            || *flicker_color == 0
                         {
                             *display = Color::Yellow;
                         } else {
@@ -1228,8 +1246,8 @@ impl Data {
         );
 
         self.put_influence(
-            i32::from(xoffs) + DROID_STARTS[your_color].x,
-            i32::from(yoffs) + DROID_STARTS[your_color].y,
+            i32::from(xoffs) + self.takeover.droid_starts[your_color].x,
+            i32::from(yoffs) + self.takeover.droid_starts[your_color].y,
         );
 
         if ALL_ENEMYS[usize::try_from(self.takeover.droid_num).unwrap()].status
@@ -1237,8 +1255,8 @@ impl Data {
         {
             self.put_enemy(
                 self.takeover.droid_num,
-                i32::from(xoffs) + DROID_STARTS[opponent_color].x,
-                i32::from(yoffs) + DROID_STARTS[opponent_color].y,
+                i32::from(xoffs) + self.takeover.droid_starts[opponent_color].x,
+                i32::from(yoffs) + self.takeover.droid_starts[opponent_color].y,
             );
         }
 
@@ -1250,27 +1268,27 @@ impl Data {
         );
 
         SDL_UpperBlit(
-            TO_BLOCKS,
+            self.takeover.to_blocks,
             &mut self.takeover.to_ground_blocks[GroundBlock::YellowAbove as usize],
             NE_SCREEN,
             &mut dst,
         );
 
-        dst.y += i16::try_from(GROUND_RECT.h).unwrap();
+        dst.y += i16::try_from(self.takeover.ground_rect.h).unwrap();
 
         for _ in 0..12 {
             SDL_UpperBlit(
-                TO_BLOCKS,
+                self.takeover.to_blocks,
                 &mut self.takeover.to_ground_blocks[GroundBlock::YellowMiddle as usize],
                 NE_SCREEN,
                 &mut dst,
             );
 
-            dst.y += i16::try_from(GROUND_RECT.h).unwrap();
+            dst.y += i16::try_from(self.takeover.ground_rect.h).unwrap();
         }
 
         SDL_UpperBlit(
-            TO_BLOCKS,
+            self.takeover.to_blocks,
             &mut self.takeover.to_ground_blocks[GroundBlock::YellowBelow as usize],
             NE_SCREEN,
             &mut dst,
@@ -1283,21 +1301,21 @@ impl Data {
             0,
         );
         SDL_UpperBlit(
-            TO_BLOCKS,
+            self.takeover.to_blocks,
             &mut self.takeover.leader_block,
             NE_SCREEN,
             &mut dst,
         );
 
-        dst.y += i16::try_from(LEADER_LED.h).unwrap();
+        dst.y += i16::try_from(self.takeover.leader_led.h).unwrap();
         for _ in 0..12 {
             SDL_UpperBlit(
-                TO_BLOCKS,
+                self.takeover.to_blocks,
                 &mut self.takeover.column_block,
                 NE_SCREEN,
                 &mut dst,
             );
-            dst.y += i16::try_from(COLUMN_RECT.h).unwrap();
+            dst.y += i16::try_from(self.takeover.column_rect.h).unwrap();
         }
 
         /* rechte Saeule */
@@ -1309,25 +1327,25 @@ impl Data {
         );
 
         SDL_UpperBlit(
-            TO_BLOCKS,
+            self.takeover.to_blocks,
             &mut self.takeover.to_ground_blocks[GroundBlock::VioletAbove as usize],
             NE_SCREEN,
             &mut dst,
         );
-        dst.y += i16::try_from(GROUND_RECT.h).unwrap();
+        dst.y += i16::try_from(self.takeover.ground_rect.h).unwrap();
 
         for _ in 0..12 {
             SDL_UpperBlit(
-                TO_BLOCKS,
+                self.takeover.to_blocks,
                 &mut self.takeover.to_ground_blocks[GroundBlock::VioletMiddle as usize],
                 NE_SCREEN,
                 &mut dst,
             );
-            dst.y += i16::try_from(GROUND_RECT.h).unwrap();
+            dst.y += i16::try_from(self.takeover.ground_rect.h).unwrap();
         }
 
         SDL_UpperBlit(
-            TO_BLOCKS,
+            self.takeover.to_blocks,
             &mut self.takeover.to_ground_blocks[GroundBlock::VioletBelow as usize],
             NE_SCREEN,
             &mut dst,
@@ -1335,43 +1353,25 @@ impl Data {
 
         /* Fill the Leader-LED with its color */
         let leader_color = usize::try_from(self.takeover.leader_color).unwrap();
-        dst = Rect::new(xoffs + LEADER_LED.x, yoffs + LEADER_LED.y, 0, 0);
+        dst = Rect::new(
+            xoffs + self.takeover.leader_led.x,
+            yoffs + self.takeover.leader_led.y,
+            0,
+            0,
+        );
         SDL_UpperBlit(
-            TO_BLOCKS,
-            &mut FILL_BLOCKS[leader_color],
+            self.takeover.to_blocks,
+            &mut self.takeover.fill_blocks[leader_color],
             NE_SCREEN,
             &mut dst,
         );
-        dst.y += i16::try_from(FILL_BLOCK.h).unwrap();
+        dst.y += i16::try_from(self.takeover.fill_block.h).unwrap();
         SDL_UpperBlit(
-            TO_BLOCKS,
-            &mut FILL_BLOCKS[leader_color],
+            self.takeover.to_blocks,
+            &mut self.takeover.fill_blocks[leader_color],
             NE_SCREEN,
             &mut dst,
         );
-
-        /* Fill the Display Column with its leds */
-        self.takeover
-            .display_column
-            .iter()
-            .copied()
-            .enumerate()
-            .for_each(|(line, display_column)| {
-                dst = Rect::new(
-                    xoffs + i16::try_from(self.takeover.column_start.x).unwrap(),
-                    yoffs
-                        + i16::try_from(self.takeover.column_start.y).unwrap()
-                        + i16::try_from(line).unwrap() * i16::try_from(COLUMN_RECT.h).unwrap(),
-                    0,
-                    0,
-                );
-                SDL_UpperBlit(
-                    TO_BLOCKS,
-                    &mut FILL_BLOCKS[usize::try_from(display_column).unwrap()],
-                    NE_SCREEN,
-                    &mut dst,
-                );
-            });
 
         let Self {
             takeover:
@@ -1379,10 +1379,45 @@ impl Data {
                     playground,
                     activation_map,
                     to_game_blocks,
+                    element_rect,
+                    to_blocks,
+                    display_column,
+                    column_start,
+                    column_rect,
+                    fill_blocks,
+                    num_capsules,
+                    capsule_cur_row,
+                    capsule_rect,
+                    capsule_blocks,
+                    left_capsule_starts,
+                    cur_capsule_starts,
+                    playground_starts,
                     ..
                 },
             ..
         } = self;
+        /* Fill the Display Column with its leds */
+        display_column
+            .iter()
+            .copied()
+            .enumerate()
+            .for_each(|(line, display_column)| {
+                dst = Rect::new(
+                    xoffs + i16::try_from(column_start.x).unwrap(),
+                    yoffs
+                        + i16::try_from(column_start.y).unwrap()
+                        + i16::try_from(line).unwrap() * i16::try_from(column_rect.h).unwrap(),
+                    0,
+                    0,
+                );
+                SDL_UpperBlit(
+                    *to_blocks,
+                    &mut fill_blocks[usize::try_from(display_column).unwrap()],
+                    NE_SCREEN,
+                    &mut dst,
+                );
+            });
+
         /* Show the yellow playground */
         playground[Color::Yellow as usize]
             .iter()
@@ -1413,17 +1448,17 @@ impl Data {
                 |(layer_index, line_index, playground_line, activation_line)| {
                     dst = Rect::new(
                         xoffs
-                            + i16::try_from(PLAYGROUND_STARTS[Color::Yellow as usize].x).unwrap()
-                            + layer_index * i16::try_from(ELEMENT_RECT.w).unwrap(),
+                            + i16::try_from(playground_starts[Color::Yellow as usize].x).unwrap()
+                            + layer_index * i16::try_from(element_rect.w).unwrap(),
                         yoffs
-                            + i16::try_from(PLAYGROUND_STARTS[Color::Yellow as usize].y).unwrap()
-                            + line_index * i16::try_from(ELEMENT_RECT.h).unwrap(),
+                            + i16::try_from(playground_starts[Color::Yellow as usize].y).unwrap()
+                            + line_index * i16::try_from(element_rect.h).unwrap(),
                         0,
                         0,
                     );
 
                     let block = playground_line + activation_line * TO_BLOCKS_N;
-                    SDL_UpperBlit(TO_BLOCKS, &mut to_game_blocks[block], NE_SCREEN, &mut dst);
+                    SDL_UpperBlit(*to_blocks, &mut to_game_blocks[block], NE_SCREEN, &mut dst);
                 },
             );
 
@@ -1457,23 +1492,22 @@ impl Data {
                 |(layer_index, line_index, playground_line, activation_line)| {
                     dst = Rect::new(
                         xoffs
-                            + i16::try_from(PLAYGROUND_STARTS[Color::Violet as usize].x).unwrap()
+                            + i16::try_from(playground_starts[Color::Violet as usize].x).unwrap()
                             + (i16::try_from(NUM_LAYERS).unwrap() - layer_index - 2)
-                                * i16::try_from(ELEMENT_RECT.w).unwrap(),
+                                * i16::try_from(element_rect.w).unwrap(),
                         yoffs
-                            + i16::try_from(PLAYGROUND_STARTS[Color::Violet as usize].y).unwrap()
-                            + line_index * i16::try_from(ELEMENT_RECT.h).unwrap(),
+                            + i16::try_from(playground_starts[Color::Violet as usize].y).unwrap()
+                            + line_index * i16::try_from(element_rect.h).unwrap(),
                         0,
                         0,
                     );
                     let block = playground_line + (NUM_PHASES + activation_line) * TO_BLOCKS_N;
-                    SDL_UpperBlit(TO_BLOCKS, &mut to_game_blocks[block], NE_SCREEN, &mut dst);
+                    SDL_UpperBlit(*to_blocks, &mut to_game_blocks[block], NE_SCREEN, &mut dst);
                 },
             );
 
         /* Show the capsules left for each player */
-        self.takeover
-            .num_capsules
+        num_capsules
             .iter()
             .copied()
             .enumerate()
@@ -1485,29 +1519,29 @@ impl Data {
                 };
 
                 dst = Rect::new(
-                    xoffs + i16::try_from(CUR_CAPSULE_STARTS[color].x).unwrap(),
+                    xoffs + i16::try_from(cur_capsule_starts[color].x).unwrap(),
                     yoffs
-                        + i16::try_from(CUR_CAPSULE_STARTS[color].y).unwrap()
-                        + i16::try_from(self.takeover.capsule_cur_row[color]).unwrap()
-                            * i16::try_from(CAPSULE_RECT.h).unwrap(),
+                        + i16::try_from(cur_capsule_starts[color].y).unwrap()
+                        + i16::try_from(capsule_cur_row[color]).unwrap()
+                            * i16::try_from(capsule_rect.h).unwrap(),
                     0,
                     0,
                 );
                 if capsules != 0 {
-                    SDL_UpperBlit(TO_BLOCKS, &mut CAPSULE_BLOCKS[color], NE_SCREEN, &mut dst);
+                    SDL_UpperBlit(*to_blocks, &mut capsule_blocks[color], NE_SCREEN, &mut dst);
                 }
 
                 for capsule in 0..capsules.saturating_sub(1) {
                     dst = Rect::new(
-                        xoffs + i16::try_from(LEFT_CAPSULE_STARTS[color].x).unwrap(),
+                        xoffs + i16::try_from(left_capsule_starts[color].x).unwrap(),
                         yoffs
-                            + i16::try_from(LEFT_CAPSULE_STARTS[color].y).unwrap()
+                            + i16::try_from(left_capsule_starts[color].y).unwrap()
                             + i16::try_from(capsule).unwrap()
-                                * i16::try_from(CAPSULE_RECT.h).unwrap(),
+                                * i16::try_from(capsule_rect.h).unwrap(),
                         0,
                         0,
                     );
-                    SDL_UpperBlit(TO_BLOCKS, &mut CAPSULE_BLOCKS[color], NE_SCREEN, &mut dst);
+                    SDL_UpperBlit(*to_blocks, &mut capsule_blocks[color], NE_SCREEN, &mut dst);
                 }
             });
     }
@@ -1708,8 +1742,6 @@ impl Data {
     ///
     /// Returns true if the user won, false otherwise
     pub unsafe fn takeover(&mut self, enemynum: c_int) -> c_int {
-        static mut REJECT_ENERGY: c_int = 0; /* your energy if you're rejected */
-
         /* Prevent distortion of framerate by the delay coming from
          * the time spend in the menu.
          */
@@ -1826,7 +1858,7 @@ impl Data {
             if INVINCIBLE_MODE != 0 || self.takeover.leader_color == self.takeover.your_color {
                 self.takeover_game_won_sound();
                 if self.vars.me.ty == Droid::Droid001 as c_int {
-                    REJECT_ENERGY = self.vars.me.energy as c_int;
+                    self.takeover.reject_energy = self.vars.me.energy as c_int;
                     PRE_TAKE_ENERGY = self.vars.me.energy as c_int;
                 }
 
@@ -1875,7 +1907,7 @@ impl Data {
                 if self.vars.me.ty != Droid::Droid001 as c_int {
                     message = cstr!("Rejected");
                     self.vars.me.ty = Droid::Droid001 as c_int;
-                    self.vars.me.energy = REJECT_ENERGY as f32;
+                    self.vars.me.energy = self.takeover.reject_energy as f32;
                 } else {
                     message = cstr!("Burnt Out");
                     self.vars.me.energy = 0.;
