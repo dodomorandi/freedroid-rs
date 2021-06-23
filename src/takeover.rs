@@ -2,7 +2,7 @@ use crate::{
     defs::{
         self, DisplayBannerFlags, Droid, MenuAction, Status, DROID_ROTATION_TIME, SHOW_WAIT, UPDATE,
     },
-    graphics::{NE_SCREEN, TAKEOVER_BG_PIC},
+    graphics::NE_SCREEN,
     misc::my_random,
     structs::Point,
     view::fill_rect,
@@ -1239,7 +1239,7 @@ impl Data {
         SDL_SetClipRect(NE_SCREEN, null_mut());
 
         SDL_UpperBlit(
-            TAKEOVER_BG_PIC,
+            self.graphics.takeover_bg_pic,
             &mut self.vars.user_rect,
             NE_SCREEN,
             &mut self.vars.user_rect,
@@ -1807,7 +1807,12 @@ impl Data {
             SDL_Delay(1);
         }
 
-        SDL_UpperBlit(TAKEOVER_BG_PIC, null_mut(), NE_SCREEN, null_mut());
+        SDL_UpperBlit(
+            self.graphics.takeover_bg_pic,
+            null_mut(),
+            NE_SCREEN,
+            null_mut(),
+        );
         self.display_banner(
             null_mut(),
             null_mut(),

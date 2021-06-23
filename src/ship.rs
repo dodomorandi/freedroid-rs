@@ -5,10 +5,7 @@ use crate::{
         AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction, SoundType, Status,
         DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET, TEXT_STRETCH, UPDATE,
     },
-    graphics::{
-        scale_pic, ARROW_CURSOR, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP, CONSOLE_BG_PIC1,
-        CONSOLE_BG_PIC2, CONSOLE_PIC, CROSSHAIR_CURSOR, SHIP_OFF_PIC, SHIP_ON_PIC,
-    },
+    graphics::{scale_pic, ARROW_CURSOR, CROSSHAIR_CURSOR},
     input::SDL_Delay,
     map::get_map_brick,
     structs::Point,
@@ -479,13 +476,28 @@ Paradroid to eliminate all rogue robots.\0",
         // it for each menu-rect:
         if flags & i32::from(UPDATE_ONLY) != 0 {
             SDL_SetClipRect(NE_SCREEN, &self.vars.cons_text_rect);
-            SDL_UpperBlit(CONSOLE_BG_PIC2, null_mut(), NE_SCREEN, null_mut());
+            SDL_UpperBlit(
+                self.graphics.console_bg_pic2,
+                null_mut(),
+                NE_SCREEN,
+                null_mut(),
+            );
             SDL_SetClipRect(NE_SCREEN, &self.vars.cons_header_rect);
-            SDL_UpperBlit(CONSOLE_BG_PIC2, null_mut(), NE_SCREEN, null_mut());
+            SDL_UpperBlit(
+                self.graphics.console_bg_pic2,
+                null_mut(),
+                NE_SCREEN,
+                null_mut(),
+            );
             SDL_SetClipRect(NE_SCREEN, null_mut());
         } else {
             // otherwise we just redraw the whole screen
-            SDL_UpperBlit(CONSOLE_BG_PIC2, null_mut(), NE_SCREEN, null_mut());
+            SDL_UpperBlit(
+                self.graphics.console_bg_pic2,
+                null_mut(),
+                NE_SCREEN,
+                null_mut(),
+            );
             self.display_banner(
                 null_mut(),
                 null_mut(),
@@ -511,20 +523,35 @@ Paradroid to eliminate all rogue robots.\0",
 
         if show_arrows {
             if self.vars.me.ty > droid_type {
-                SDL_UpperBlit(ARROW_UP, null_mut(), NE_SCREEN, &mut self.ship.up_rect);
+                SDL_UpperBlit(
+                    self.graphics.arrow_up,
+                    null_mut(),
+                    NE_SCREEN,
+                    &mut self.ship.up_rect,
+                );
             }
 
             if droid_type > 0 {
-                SDL_UpperBlit(ARROW_DOWN, null_mut(), NE_SCREEN, &mut self.ship.down_rect);
+                SDL_UpperBlit(
+                    self.graphics.arrow_down,
+                    null_mut(),
+                    NE_SCREEN,
+                    &mut self.ship.down_rect,
+                );
             }
 
             if page > 0 {
-                SDL_UpperBlit(ARROW_LEFT, null_mut(), NE_SCREEN, &mut self.ship.left_rect);
+                SDL_UpperBlit(
+                    self.graphics.arrow_left,
+                    null_mut(),
+                    NE_SCREEN,
+                    &mut self.ship.left_rect,
+                );
             }
 
             if page < 2 {
                 SDL_UpperBlit(
-                    ARROW_RIGHT,
+                    self.graphics.arrow_right,
                     null_mut(),
                     NE_SCREEN,
                     &mut self.ship.right_rect,
@@ -904,7 +931,7 @@ impl Data {
         dst = self.vars.user_rect;
         dst.x += xoffs;
         dst.y += yoffs;
-        SDL_UpperBlit(SHIP_OFF_PIC, null_mut(), NE_SCREEN, &mut dst);
+        SDL_UpperBlit(self.graphics.ship_off_pic, null_mut(), NE_SCREEN, &mut dst);
 
         if level >= 0 {
             for i in 0..CUR_SHIP.num_level_rects[usize::try_from(level).unwrap()] {
@@ -913,7 +940,7 @@ impl Data {
                 dst = src;
                 dst.x += self.vars.user_rect.x + xoffs; /* offset respective to User-Rectangle */
                 dst.y += self.vars.user_rect.y + yoffs;
-                SDL_UpperBlit(SHIP_ON_PIC, &mut src, NE_SCREEN, &mut dst);
+                SDL_UpperBlit(self.graphics.ship_on_pic, &mut src, NE_SCREEN, &mut dst);
             }
         }
 
@@ -922,7 +949,7 @@ impl Data {
             dst = src;
             dst.x += self.vars.user_rect.x + xoffs; /* offset respective to User-Rectangle */
             dst.y += self.vars.user_rect.y + yoffs;
-            SDL_UpperBlit(SHIP_ON_PIC, &mut src, NE_SCREEN, &mut dst);
+            SDL_UpperBlit(self.graphics.ship_on_pic, &mut src, NE_SCREEN, &mut dst);
         }
 
         SDL_Flip(NE_SCREEN);
@@ -943,7 +970,12 @@ impl Data {
         if (flag & i32::from(UPDATE_ONLY)) == 0 {
             self.clear_graph_mem();
             SDL_SetClipRect(NE_SCREEN, null_mut());
-            SDL_UpperBlit(CONSOLE_BG_PIC1, null_mut(), NE_SCREEN, null_mut());
+            SDL_UpperBlit(
+                self.graphics.console_bg_pic1,
+                null_mut(),
+                NE_SCREEN,
+                null_mut(),
+            );
 
             self.display_banner(
                 null_mut(),
@@ -989,7 +1021,7 @@ impl Data {
             h: 4 * self.vars.cons_menu_rect.h,
         };
         SDL_UpperBlit(
-            CONSOLE_PIC,
+            self.graphics.console_pic,
             &mut src,
             NE_SCREEN,
             &mut self.vars.cons_menu_rect,

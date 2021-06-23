@@ -7,7 +7,7 @@ use crate::{
     },
     global::INFLUENCE_MODE_NAMES,
     graphics::{
-        apply_filter, DECAL_PICS, ENEMY_DIGIT_SURFACE_POINTER, ENEMY_SURFACE_POINTER,
+        apply_filter, ENEMY_DIGIT_SURFACE_POINTER, ENEMY_SURFACE_POINTER,
         INFLUENCER_SURFACE_POINTER, INFLU_DIGIT_SURFACE_POINTER, NE_SCREEN,
     },
     map::get_map_brick,
@@ -331,7 +331,7 @@ impl Data {
             0,
             0,
         );
-        SDL_UpperBlit(DECAL_PICS[0], null_mut(), NE_SCREEN, &mut dst);
+        SDL_UpperBlit(self.graphics.decal_pics[0], null_mut(), NE_SCREEN, &mut dst);
     }
 
     pub unsafe fn put_enemy(&mut self, enemy_index: c_int, x: c_int, y: c_int) {

@@ -6,7 +6,7 @@ use crate::{
         GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE_C, PROGRESS_METER_FILE_C,
     },
     enemy::shuffle_enemys,
-    graphics::{scale_pic, NE_SCREEN, PROGRESS_FILLER_PIC, PROGRESS_METER_PIC},
+    graphics::{scale_pic, NE_SCREEN},
     input::{SDL_Delay, CMD_STRINGS},
     map::free_ship_memory,
     Data, Global, ALL_BLASTS, ALL_ENEMYS, CONFIG_DIR, CUR_LEVEL, CUR_SHIP, F_P_SOVER1, NUM_ENEMYS,
@@ -80,7 +80,12 @@ impl Data {
             0,
         );
 
-        SDL_UpperBlit(PROGRESS_FILLER_PIC, &mut src, NE_SCREEN, &mut dst);
+        SDL_UpperBlit(
+            self.graphics.progress_filler_pic,
+            &mut src,
+            NE_SCREEN,
+            &mut dst,
+        );
         SDL_UpdateRects(NE_SCREEN, 1, &mut dst);
     }
 
@@ -570,23 +575,30 @@ impl Data {
             text = cstr!("Progress...").as_ptr() as *mut c_char;
         }
 
-        if PROGRESS_METER_PIC.is_null() {
+        if self.graphics.progress_meter_pic.is_null() {
             let mut fpath = self.find_file(
                 PROGRESS_METER_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            PROGRESS_METER_PIC = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
-            scale_pic(&mut PROGRESS_METER_PIC, self.global.game_config.scale);
+            self.graphics.progress_meter_pic = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
+            scale_pic(
+                &mut self.graphics.progress_meter_pic,
+                self.global.game_config.scale,
+            );
             fpath = self.find_file(
                 PROGRESS_FILLER_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            PROGRESS_FILLER_PIC = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
-            scale_pic(&mut PROGRESS_FILLER_PIC, self.global.game_config.scale);
+            self.graphics.progress_filler_pic =
+                self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
+            scale_pic(
+                &mut self.graphics.progress_filler_pic,
+                self.global.game_config.scale,
+            );
 
             scale_rect(
                 &mut self.vars.progress_meter_rect,
@@ -604,7 +616,7 @@ impl Data {
 
         SDL_SetClipRect(NE_SCREEN, null_mut()); // this unsets the clipping rectangle
         SDL_UpperBlit(
-            PROGRESS_METER_PIC,
+            self.graphics.progress_meter_pic,
             null_mut(),
             NE_SCREEN,
             &mut self.vars.progress_meter_rect,

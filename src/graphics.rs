@@ -66,6 +66,21 @@ pub struct Graphics {
     pub banner_pic: *mut SDL_Surface,
     pub pic999: *mut SDL_Surface,
     pub packed_portraits: [*mut SDL_RWops; Droid::NumDroids as usize],
+    pub decal_pics: [*mut SDL_Surface; NUM_DECAL_PICS],
+    pub takeover_bg_pic: *mut SDL_Surface,
+    pub console_pic: *mut SDL_Surface,
+    pub console_bg_pic1: *mut SDL_Surface,
+    pub console_bg_pic2: *mut SDL_Surface,
+    pub arrow_up: *mut SDL_Surface,
+    pub arrow_down: *mut SDL_Surface,
+    pub arrow_right: *mut SDL_Surface,
+    pub arrow_left: *mut SDL_Surface,
+    // Side-view of ship: lights off
+    pub ship_off_pic: *mut SDL_Surface,
+    // Side-view of ship: lights on
+    pub ship_on_pic: *mut SDL_Surface,
+    pub progress_meter_pic: *mut SDL_Surface,
+    pub progress_filler_pic: *mut SDL_Surface,
 }
 
 impl Default for Graphics {
@@ -82,23 +97,23 @@ impl Default for Graphics {
             banner_pic: null_mut(),
             pic999: null_mut(),
             packed_portraits: [null_mut(); Droid::NumDroids as usize],
+            decal_pics: [null_mut(); NUM_DECAL_PICS],
+            takeover_bg_pic: null_mut(),
+            console_pic: null_mut(),
+            console_bg_pic1: null_mut(),
+            console_bg_pic2: null_mut(),
+            arrow_up: null_mut(),
+            arrow_down: null_mut(),
+            arrow_right: null_mut(),
+            arrow_left: null_mut(),
+            ship_off_pic: null_mut(),
+            ship_on_pic: null_mut(),
+            progress_meter_pic: null_mut(),
+            progress_filler_pic: null_mut(),
         }
     }
 }
 
-pub static mut DECAL_PICS: [*mut SDL_Surface; NUM_DECAL_PICS] = [null_mut(); NUM_DECAL_PICS];
-pub static mut TAKEOVER_BG_PIC: *mut SDL_Surface = null_mut();
-pub static mut CONSOLE_PIC: *mut SDL_Surface = null_mut();
-pub static mut CONSOLE_BG_PIC1: *mut SDL_Surface = null_mut();
-pub static mut CONSOLE_BG_PIC2: *mut SDL_Surface = null_mut();
-pub static mut ARROW_UP: *mut SDL_Surface = null_mut();
-pub static mut ARROW_DOWN: *mut SDL_Surface = null_mut();
-pub static mut ARROW_RIGHT: *mut SDL_Surface = null_mut();
-pub static mut ARROW_LEFT: *mut SDL_Surface = null_mut();
-pub static mut SHIP_OFF_PIC: *mut SDL_Surface = null_mut(); /* Side-view of ship: lights off */
-pub static mut SHIP_ON_PIC: *mut SDL_Surface = null_mut(); /* Side-view of ship: lights on */
-pub static mut PROGRESS_METER_PIC: *mut SDL_Surface = null_mut();
-pub static mut PROGRESS_FILLER_PIC: *mut SDL_Surface = null_mut();
 pub static mut NE_SCREEN: *mut SDL_Surface = null_mut(); /* the graphics display */
 pub static mut ENEMY_SURFACE_POINTER: [*mut SDL_Surface; ENEMYPHASES as usize] =
     [null_mut(); ENEMYPHASES as usize]; // A pointer to the surfaces containing the pictures of the
@@ -300,7 +315,7 @@ impl Data {
         free_surface_array(&INFLUENCER_SURFACE_POINTER);
         free_surface_array(&INFLU_DIGIT_SURFACE_POINTER);
         free_surface_array(&ENEMY_DIGIT_SURFACE_POINTER);
-        free_surface_array(&DECAL_PICS);
+        free_surface_array(&self.graphics.decal_pics);
 
         self.graphics
             .orig_map_block_surface_pointer
@@ -312,20 +327,20 @@ impl Data {
         SDL_FreeSurface(self.graphics.banner_pic);
         SDL_FreeSurface(self.graphics.pic999);
         // SDL_RWops *packed_portraits[NUM_DROIDS];
-        SDL_FreeSurface(TAKEOVER_BG_PIC);
-        SDL_FreeSurface(CONSOLE_PIC);
-        SDL_FreeSurface(CONSOLE_BG_PIC1);
-        SDL_FreeSurface(CONSOLE_BG_PIC2);
+        SDL_FreeSurface(self.graphics.takeover_bg_pic);
+        SDL_FreeSurface(self.graphics.console_pic);
+        SDL_FreeSurface(self.graphics.console_bg_pic1);
+        SDL_FreeSurface(self.graphics.console_bg_pic2);
 
-        SDL_FreeSurface(ARROW_UP);
-        SDL_FreeSurface(ARROW_DOWN);
-        SDL_FreeSurface(ARROW_RIGHT);
-        SDL_FreeSurface(ARROW_LEFT);
+        SDL_FreeSurface(self.graphics.arrow_up);
+        SDL_FreeSurface(self.graphics.arrow_down);
+        SDL_FreeSurface(self.graphics.arrow_right);
+        SDL_FreeSurface(self.graphics.arrow_left);
 
-        SDL_FreeSurface(SHIP_OFF_PIC);
-        SDL_FreeSurface(SHIP_ON_PIC);
-        SDL_FreeSurface(PROGRESS_METER_PIC);
-        SDL_FreeSurface(PROGRESS_FILLER_PIC);
+        SDL_FreeSurface(self.graphics.ship_off_pic);
+        SDL_FreeSurface(self.graphics.ship_on_pic);
+        SDL_FreeSurface(self.graphics.progress_meter_pic);
+        SDL_FreeSurface(self.graphics.progress_filler_pic);
         SDL_FreeSurface(self.takeover.to_blocks);
 
         // free fonts
@@ -690,8 +705,8 @@ impl Data {
         //---------- rescale Takeover pics
         scale_pic(&mut self.takeover.to_blocks, scale);
 
-        scale_pic(&mut SHIP_ON_PIC, scale);
-        scale_pic(&mut SHIP_OFF_PIC, scale);
+        scale_pic(&mut self.graphics.ship_on_pic, scale);
+        scale_pic(&mut self.graphics.ship_off_pic, scale);
 
         // the following are not theme-specific and are therefore only loaded once!
         if init {
@@ -711,27 +726,27 @@ impl Data {
             SDL_FreeSurface(tmp);
 
             // takeover pics
-            scale_pic(&mut TAKEOVER_BG_PIC, scale);
+            scale_pic(&mut self.graphics.takeover_bg_pic, scale);
 
             //---------- Console pictures
-            scale_pic(&mut CONSOLE_PIC, scale);
-            scale_pic(&mut CONSOLE_BG_PIC1, scale);
-            scale_pic(&mut CONSOLE_BG_PIC2, scale);
-            scale_pic(&mut ARROW_UP, scale);
-            scale_pic(&mut ARROW_DOWN, scale);
-            scale_pic(&mut ARROW_RIGHT, scale);
-            scale_pic(&mut ARROW_LEFT, scale);
+            scale_pic(&mut self.graphics.console_pic, scale);
+            scale_pic(&mut self.graphics.console_bg_pic1, scale);
+            scale_pic(&mut self.graphics.console_bg_pic2, scale);
+            scale_pic(&mut self.graphics.arrow_up, scale);
+            scale_pic(&mut self.graphics.arrow_down, scale);
+            scale_pic(&mut self.graphics.arrow_right, scale);
+            scale_pic(&mut self.graphics.arrow_left, scale);
             //---------- Banner
             scale_pic(&mut self.graphics.banner_pic, scale);
 
             scale_pic(&mut self.graphics.pic999, scale);
 
             // get the Ashes pics
-            if !DECAL_PICS[0].is_null() {
-                scale_pic(&mut DECAL_PICS[0], scale);
+            if !self.graphics.decal_pics[0].is_null() {
+                scale_pic(&mut self.graphics.decal_pics[0], scale);
             }
-            if !DECAL_PICS[1].is_null() {
-                scale_pic(&mut DECAL_PICS[1], scale);
+            if !self.graphics.decal_pics[1].is_null() {
+                scale_pic(&mut self.graphics.decal_pics[1], scale);
             }
         }
 
@@ -1372,15 +1387,15 @@ impl Data {
 
         self.update_progress(60);
 
-        free_if_unused(SHIP_ON_PIC);
-        SHIP_ON_PIC = IMG_Load(self.find_file(
+        free_if_unused(self.graphics.ship_on_pic);
+        self.graphics.ship_on_pic = IMG_Load(self.find_file(
             SHIP_ON_PIC_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         ));
-        free_if_unused(SHIP_OFF_PIC);
-        SHIP_OFF_PIC = IMG_Load(self.find_file(
+        free_if_unused(self.graphics.ship_off_pic);
+        self.graphics.ship_off_pic = IMG_Load(self.find_file(
             SHIP_OFF_PIC_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
             Themed::UseTheme as c_int,
@@ -1410,7 +1425,7 @@ impl Data {
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            TAKEOVER_BG_PIC = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
+            self.graphics.takeover_bg_pic = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
             self.set_takeover_rects(); // setup takeover rectangles
 
             // cursor shapes
@@ -1423,43 +1438,43 @@ impl Data {
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            CONSOLE_PIC = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
+            self.graphics.console_pic = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
             let fpath = self.find_file(
                 CONSOLE_BG_PIC1_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            CONSOLE_BG_PIC1 = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
+            self.graphics.console_bg_pic1 = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
             let fpath = self.find_file(
                 CONSOLE_BG_PIC2_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            CONSOLE_BG_PIC2 = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
+            self.graphics.console_bg_pic2 = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
 
             self.update_progress(80);
 
-            ARROW_UP = IMG_Load(self.find_file(
+            self.graphics.arrow_up = IMG_Load(self.find_file(
                 cstr!("arrow_up.png").as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             ));
-            ARROW_DOWN = IMG_Load(self.find_file(
+            self.graphics.arrow_down = IMG_Load(self.find_file(
                 cstr!("arrow_down.png").as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             ));
-            ARROW_RIGHT = IMG_Load(self.find_file(
+            self.graphics.arrow_right = IMG_Load(self.find_file(
                 cstr!("arrow_right.png").as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             ));
-            ARROW_LEFT = IMG_Load(self.find_file(
+            self.graphics.arrow_left = IMG_Load(self.find_file(
                 cstr!("arrow_left.png").as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
@@ -1545,12 +1560,12 @@ impl Data {
             } else {
                 self.graphics
                     .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
-                DECAL_PICS[0] = self
-                    .graphics
-                    .load_block(null_mut(), 0, 0, &ORIG_BLOCK_RECT, 0);
-                DECAL_PICS[1] = self
-                    .graphics
-                    .load_block(null_mut(), 0, 1, &ORIG_BLOCK_RECT, 0);
+                self.graphics.decal_pics[0] =
+                    self.graphics
+                        .load_block(null_mut(), 0, 0, &ORIG_BLOCK_RECT, 0);
+                self.graphics.decal_pics[1] =
+                    self.graphics
+                        .load_block(null_mut(), 0, 1, &ORIG_BLOCK_RECT, 0);
             }
         });
 
@@ -1692,7 +1707,7 @@ fn init_system_cursor(image: &[&[u8]]) -> *mut SDL_Cursor {
         }
     }
 
-    let last_line = std::str::from_utf8(&image[4 + 32]).unwrap();
+    let last_line = std::str::from_utf8(image[4 + 32]).unwrap();
     let mut hots = last_line.splitn(2, ',').map(|x| x.parse().unwrap());
     let hot_x = hots.next().unwrap();
     let hot_y = hots.next().unwrap();
