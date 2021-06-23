@@ -4,10 +4,10 @@ use crate::{
         AssembleCombatWindowFlags, Cmds, MapTile, MAXWAYPOINTS, MAX_WP_CONNECTIONS, NUM_MAP_BLOCKS,
     },
     enemy::shuffle_enemys,
-    graphics::{putpixel, NE_SCREEN},
+    graphics::putpixel,
     input::SDL_Delay,
     structs::{Level, Waypoint},
-    view::{fill_rect, BLACK},
+    view::BLACK,
     Data, CUR_LEVEL,
 };
 
@@ -63,7 +63,7 @@ impl Data {
             let block_x = (self.vars.me.pos.x).round() as c_int;
             let block_y = (self.vars.me.pos.y).round() as c_int;
 
-            fill_rect(self.vars.user_rect, BLACK);
+            self.fill_rect(self.vars.user_rect, BLACK);
             self.assemble_combat_picture(AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits().into());
             self.highlight_current_block();
             self.show_waypoints();
@@ -84,7 +84,7 @@ impl Data {
             }
 
             print_string_font(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 self.global.font0_b_font,
                 i32::from(self.vars.full_user_rect.x) + i32::from(self.vars.full_user_rect.w) / 3,
                 i32::from(self.vars.full_user_rect.y) + i32::from(self.vars.full_user_rect.h)
@@ -92,7 +92,7 @@ impl Data {
                 format_args!("Press F1 for keymap"),
             );
 
-            SDL_Flip(NE_SCREEN);
+            SDL_Flip(self.graphics.ne_screen);
 
             // If the user of the Level editor pressed some cursor keys, move the
             // highlited filed (that is Me.pos) accordingly. This is done here:
@@ -121,55 +121,55 @@ impl Data {
                 let mut k = 3;
                 self.make_grid_on_screen(None);
                 self.centered_put_string(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     k * font_height(&*self.global.menu_b_font),
                     b"Level Editor Keymap",
                 );
                 k += 2;
                 self.put_string(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     keymap_offset,
                     (k) * font_height(&*self.global.menu_b_font),
                     b"Use cursor keys to move around.",
                 );
                 k += 1;
                 self.put_string(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     keymap_offset,
                     (k) * font_height(&*self.global.menu_b_font),
                     b"Use number pad to plant walls.",
                 );
                 k += 1;
                 self.put_string(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     keymap_offset,
                     (k) * font_height(&*self.global.menu_b_font),
                     b"Use shift and number pad to plant extras.",
                 );
                 k += 1;
                 self.put_string(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     keymap_offset,
                     (k) * font_height(&*self.global.menu_b_font),
                     b"R...Refresh, 1-5...Blocktype 1-5, L...Lift",
                 );
                 k += 1;
                 self.put_string(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     keymap_offset,
                     (k) * font_height(&*self.global.menu_b_font),
                     b"F...Fine grid, T/SHIFT + T...Doors",
                 );
                 k += 1;
                 self.put_string(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     keymap_offset,
                     (k) * font_height(&*self.global.menu_b_font),
                     b"M...Alert, E...Enter tile by number",
                 );
                 k += 1;
                 self.put_string(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     keymap_offset,
                     (k) * font_height(&*self.global.menu_b_font),
                     b"Space/Enter...Floor",
@@ -177,27 +177,27 @@ impl Data {
                 k += 2;
 
                 self.put_string(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     keymap_offset,
                     (k) * font_height(&*self.global.menu_b_font),
                     b"I/O...zoom INTO/OUT OF the map",
                 );
                 k += 2;
                 self.put_string(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     keymap_offset,
                     (k) * font_height(&*self.global.menu_b_font),
                     b"P...toggle wayPOINT on/off",
                 );
                 k += 1;
                 self.put_string(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     keymap_offset,
                     (k) * font_height(&*self.global.menu_b_font),
                     b"C...start/end waypoint CONNECTION",
                 );
 
-                SDL_Flip(NE_SCREEN);
+                SDL_Flip(self.graphics.ne_screen);
                 while !self.fire_pressed_r() && !self.escape_pressed_r() && !self.return_pressed_r()
                 {
                     SDL_Delay(1);
@@ -213,11 +213,11 @@ impl Data {
             //
             if self.key_is_pressed_r(b'e'.into()) {
                 self.centered_put_string(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     6 * font_height(&*self.global.menu_b_font),
                     b"Please enter new value: ",
                 );
-                SDL_Flip(NE_SCREEN);
+                SDL_Flip(self.graphics.ne_screen);
                 let numeric_input_string = self.get_string(10, 2);
                 let mut special_map_value: c_int = 0;
                 libc::sscanf(
@@ -494,7 +494,7 @@ impl Data {
         let block_x = self.vars.me.pos.x.round();
         let block_y = self.vars.me.pos.y.round();
 
-        SDL_LockSurface(NE_SCREEN);
+        SDL_LockSurface(self.graphics.ne_screen);
 
         for wp in 0..usize::try_from((*CUR_LEVEL).num_waypoints).unwrap() {
             let this_wp = &mut (*CUR_LEVEL).all_waypoints[wp];
@@ -518,7 +518,7 @@ impl Data {
                 {
                     continue;
                 }
-                putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
+                putpixel(self.graphics.ne_screen, x, y, HIGHLIGHTCOLOR);
 
                 x = i + i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w / 2)
                     - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
@@ -534,7 +534,7 @@ impl Data {
                 {
                     continue;
                 }
-                putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
+                putpixel(self.graphics.ne_screen, x, y, HIGHLIGHTCOLOR);
 
                 // This draws a line at the lower border of the current block
                 x = i + i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w / 2)
@@ -551,7 +551,7 @@ impl Data {
                 {
                     continue;
                 }
-                putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
+                putpixel(self.graphics.ne_screen, x, y, HIGHLIGHTCOLOR);
 
                 x = i + i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w / 2)
                     - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
@@ -567,7 +567,7 @@ impl Data {
                 {
                     continue;
                 }
-                putpixel(NE_SCREEN, x, y, HIGHLIGHTCOLOR);
+                putpixel(self.graphics.ne_screen, x, y, HIGHLIGHTCOLOR);
             }
 
             // Draw the connections to other waypoints, BUT ONLY FOR THE WAYPOINT CURRENTLY TARGETED
@@ -589,7 +589,7 @@ impl Data {
             }
         }
 
-        SDL_UnlockSurface(NE_SCREEN);
+        SDL_UnlockSurface(self.graphics.ne_screen);
     }
 
     /// This function is used by the Level Editor integrated into
@@ -597,13 +597,13 @@ impl Data {
     /// edited or would be edited, if the user pressed something.  I.e.
     /// it provides a "cursor" for the Level Editor.
     unsafe fn highlight_current_block(&self) {
-        SDL_LockSurface(NE_SCREEN);
+        SDL_LockSurface(self.graphics.ne_screen);
 
         let user_center = self.get_user_center();
         for i in 0..i32::from(self.vars.block_rect.w) {
             // This draws a (double) line at the upper border of the current block
             putpixel(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 i + i32::from(self.vars.user_rect.x)
                     + i32::from(self.vars.user_rect.w / 2)
                     + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
@@ -614,7 +614,7 @@ impl Data {
                 HIGHLIGHTCOLOR,
             );
             putpixel(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 i + i32::from(self.vars.user_rect.x)
                     + i32::from(self.vars.user_rect.w / 2)
                     + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
@@ -628,7 +628,7 @@ impl Data {
 
             // This draws a line at the lower border of the current block
             putpixel(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 i + i32::from(self.vars.user_rect.x)
                     + i32::from(self.vars.user_rect.w / 2)
                     + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
@@ -640,7 +640,7 @@ impl Data {
                 HIGHLIGHTCOLOR,
             );
             putpixel(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 i + i32::from(self.vars.user_rect.x)
                     + i32::from(self.vars.user_rect.w / 2)
                     + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
@@ -654,7 +654,7 @@ impl Data {
 
             // This draws a line at the left border of the current block
             putpixel(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 i32::from(self.vars.user_rect.x)
                     + i32::from(self.vars.user_rect.w / 2)
                     + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
@@ -666,7 +666,7 @@ impl Data {
                 HIGHLIGHTCOLOR,
             );
             putpixel(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 1 + i32::from(self.vars.user_rect.x)
                     + i32::from(self.vars.user_rect.w / 2)
                     + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
@@ -680,7 +680,7 @@ impl Data {
 
             // This draws a line at the right border of the current block
             putpixel(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 -1 + i32::from(self.vars.user_rect.x)
                     + i32::from(self.vars.user_rect.w / 2)
                     + (((self.vars.me.pos.x).round() - self.vars.me.pos.x + 0.5)
@@ -692,7 +692,7 @@ impl Data {
                 HIGHLIGHTCOLOR,
             );
             putpixel(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 -2 + i32::from(self.vars.user_rect.x)
                     + i32::from(self.vars.user_rect.w / 2)
                     + (((self.vars.me.pos.x).round() - self.vars.me.pos.x + 0.5)
@@ -705,6 +705,6 @@ impl Data {
             );
         }
 
-        SDL_UnlockSurface(NE_SCREEN);
+        SDL_UnlockSurface(self.graphics.ne_screen);
     }
 }

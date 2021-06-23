@@ -81,6 +81,19 @@ pub struct Graphics {
     pub ship_on_pic: *mut SDL_Surface,
     pub progress_meter_pic: *mut SDL_Surface,
     pub progress_filler_pic: *mut SDL_Surface,
+    /* the graphics display */
+    pub ne_screen: *mut SDL_Surface,
+    pub enemy_surface_pointer: [*mut SDL_Surface; ENEMYPHASES as usize],
+    pub influencer_surface_pointer: [*mut SDL_Surface; ENEMYPHASES as usize],
+    pub influ_digit_surface_pointer: [*mut SDL_Surface; DIGITNUMBER],
+    pub enemy_digit_surface_pointer: [*mut SDL_Surface; DIGITNUMBER],
+    pub crosshair_cursor: *mut SDL_Cursor,
+    pub arrow_cursor: *mut SDL_Cursor,
+    pub number_of_bullet_types: i32,
+    pub all_themes: ThemeList,
+    pub classic_theme_index: i32,
+    number_of_screenshot: u32,
+    pic: *mut SDL_Surface,
 }
 
 impl Default for Graphics {
@@ -110,28 +123,25 @@ impl Default for Graphics {
             ship_on_pic: null_mut(),
             progress_meter_pic: null_mut(),
             progress_filler_pic: null_mut(),
+            ne_screen: null_mut(),
+            enemy_surface_pointer: [null_mut(); ENEMYPHASES as usize],
+            influencer_surface_pointer: [null_mut(); ENEMYPHASES as usize],
+            influ_digit_surface_pointer: [null_mut(); DIGITNUMBER],
+            enemy_digit_surface_pointer: [null_mut(); DIGITNUMBER],
+            crosshair_cursor: null_mut(),
+            arrow_cursor: null_mut(),
+            number_of_bullet_types: 0,
+            all_themes: ThemeList {
+                num_themes: 0,
+                cur_tnum: 0,
+                theme_name: [null_mut(); MAX_THEMES],
+            },
+            classic_theme_index: 0,
+            number_of_screenshot: 0,
+            pic: null_mut(),
         }
     }
 }
-
-pub static mut NE_SCREEN: *mut SDL_Surface = null_mut(); /* the graphics display */
-pub static mut ENEMY_SURFACE_POINTER: [*mut SDL_Surface; ENEMYPHASES as usize] =
-    [null_mut(); ENEMYPHASES as usize]; // A pointer to the surfaces containing the pictures of the
-pub static mut INFLUENCER_SURFACE_POINTER: [*mut SDL_Surface; ENEMYPHASES as usize] =
-    [null_mut(); ENEMYPHASES as usize]; // A pointer to the surfaces containing the pictures of the
-pub static mut INFLU_DIGIT_SURFACE_POINTER: [*mut SDL_Surface; DIGITNUMBER] =
-    [null_mut(); DIGITNUMBER]; // A pointer to the surfaces containing the pictures of the
-pub static mut ENEMY_DIGIT_SURFACE_POINTER: [*mut SDL_Surface; DIGITNUMBER] =
-    [null_mut(); DIGITNUMBER]; // A pointer to the surfaces containing the pictures of the
-pub static mut CROSSHAIR_CURSOR: *mut SDL_Cursor = null_mut();
-pub static mut ARROW_CURSOR: *mut SDL_Cursor = null_mut();
-pub static mut NUMBER_OF_BULLET_TYPES: i32 = 0;
-pub static mut ALL_THEMES: ThemeList = ThemeList {
-    num_themes: 0,
-    cur_tnum: 0,
-    theme_name: [null_mut(); MAX_THEMES],
-};
-pub static mut CLASSIC_THEME_INDEX: i32 = 0;
 
 #[link(name = "SDL_image")]
 extern "C" {
@@ -159,15 +169,15 @@ impl Data {
         let grid_rectangle = grid_rectangle.unwrap_or(&self.vars.user_rect);
 
         trace!("MakeGridOnScreen(...): real function call confirmed.");
-        SDL_LockSurface(NE_SCREEN);
+        SDL_LockSurface(self.graphics.ne_screen);
         let rect_x = i32::from(grid_rectangle.x);
         let rect_y = i32::from(grid_rectangle.y);
         (rect_y..(rect_y + i32::from(grid_rectangle.y)))
             .flat_map(|y| (rect_x..(rect_x + i32::from(grid_rectangle.w))).map(move |x| (x, y)))
             .filter(|(x, y)| (x + y) % 2 == 0)
-            .for_each(|(x, y)| putpixel(NE_SCREEN, x, y, 0));
+            .for_each(|(x, y)| putpixel(self.graphics.ne_screen, x, y, 0));
 
-        SDL_UnlockSurface(NE_SCREEN);
+        SDL_UnlockSurface(self.graphics.ne_screen);
         trace!("MakeGridOnScreen(...): end of function reached.");
     }
 }
@@ -209,7 +219,7 @@ pub unsafe fn apply_filter(
 
 impl Data {
     pub unsafe fn toggle_fullscreen(&mut self) {
-        let mut vid_flags = (*NE_SCREEN).flags;
+        let mut vid_flags = (*self.graphics.ne_screen).flags;
 
         if self.global.game_config.use_fullscreen != 0 {
             vid_flags &= !(VideoFlag::Fullscreen as u32);
@@ -217,13 +227,13 @@ impl Data {
             vid_flags |= VideoFlag::Fullscreen as u32;
         }
 
-        NE_SCREEN = SDL_SetVideoMode(
+        self.graphics.ne_screen = SDL_SetVideoMode(
             self.vars.screen_rect.w.into(),
             self.vars.screen_rect.h.into(),
             0,
             vid_flags,
         );
-        if NE_SCREEN.is_null() {
+        if self.graphics.ne_screen.is_null() {
             error!(
                 "unable to toggle windowed/fullscreen {} x {} video mode.",
                 self.vars.screen_rect.w, self.vars.screen_rect.h,
@@ -231,7 +241,7 @@ impl Data {
             panic!("SDL-Error: {}", get_error());
         }
 
-        if (*NE_SCREEN).flags != vid_flags {
+        if (*self.graphics.ne_screen).flags != vid_flags {
             warn!("Failed to toggle windowed/fullscreen mode!");
         } else {
             self.global.game_config.use_fullscreen = !self.global.game_config.use_fullscreen;
@@ -247,20 +257,19 @@ impl Data {
     ///        but will silently overwrite them.  No problem in most
     ///        cases I think.
     pub unsafe fn take_screenshot(&mut self) {
-        static mut NUMBER_OF_SCREENSHOT: u32 = 0;
-
         self.activate_conservative_frame_computation();
 
-        let screenshot_filename = format!("Screenshot_{}.bmp\0", NUMBER_OF_SCREENSHOT);
+        let screenshot_filename =
+            format!("Screenshot_{}.bmp\0", self.graphics.number_of_screenshot);
         SDL_SaveBMP_RW(
-            NE_SCREEN,
+            self.graphics.ne_screen,
             SDL_RWFromFile(
                 screenshot_filename.as_ptr() as *const c_char,
                 cstr!("wb").as_ptr(),
             ),
             1,
         );
-        NUMBER_OF_SCREENSHOT = NUMBER_OF_SCREENSHOT.wrapping_add(1);
+        self.graphics.number_of_screenshot = self.graphics.number_of_screenshot.wrapping_add(1);
         self.display_banner(
             cstr!("Screenshot").as_ptr(),
             null_mut(),
@@ -269,7 +278,7 @@ impl Data {
                 .into(),
         );
         self.make_grid_on_screen(None);
-        SDL_Flip(NE_SCREEN);
+        SDL_Flip(self.graphics.ne_screen);
         self.play_sound(SoundType::Screenshot as i32);
 
         while self.cmd_is_active(Cmds::Screenshot) {
@@ -309,12 +318,12 @@ impl Data {
             .iter_mut()
             .for_each(|mem| drop(mem.take()));
 
-        SDL_FreeSurface(NE_SCREEN);
+        SDL_FreeSurface(self.graphics.ne_screen);
 
-        free_surface_array(&ENEMY_SURFACE_POINTER);
-        free_surface_array(&INFLUENCER_SURFACE_POINTER);
-        free_surface_array(&INFLU_DIGIT_SURFACE_POINTER);
-        free_surface_array(&ENEMY_DIGIT_SURFACE_POINTER);
+        free_surface_array(&self.graphics.enemy_surface_pointer);
+        free_surface_array(&self.graphics.influencer_surface_pointer);
+        free_surface_array(&self.graphics.influ_digit_surface_pointer);
+        free_surface_array(&self.graphics.enemy_digit_surface_pointer);
         free_surface_array(&self.graphics.decal_pics);
 
         self.graphics
@@ -364,8 +373,8 @@ impl Data {
             .load_block(null_mut(), 0, 0, null_mut(), FREE_ONLY as i32);
 
         // free cursors
-        SDL_FreeCursor(CROSSHAIR_CURSOR);
-        SDL_FreeCursor(ARROW_CURSOR);
+        SDL_FreeCursor(self.graphics.crosshair_cursor);
+        SDL_FreeCursor(self.graphics.arrow_cursor);
     }
 }
 
@@ -436,52 +445,51 @@ impl Graphics {
     ///       call this function to set up a new pic-file to be read.
     ///       This will avoid copying & mallocing a new pic, NULL will be returned
     pub unsafe fn load_block(
-        &self,
+        &mut self,
         fpath: *mut c_char,
         line: c_int,
         col: c_int,
         block: *const SDL_Rect,
         flags: c_int,
     ) -> *mut SDL_Surface {
-        Self::load_block_vid_bpp(self.vid_bpp, fpath, line, col, block, flags)
+        Self::load_block_vid_bpp_pic(self.vid_bpp, &mut self.pic, fpath, line, col, block, flags)
     }
 
-    pub unsafe fn load_block_vid_bpp(
+    pub unsafe fn load_block_vid_bpp_pic(
         vid_bpp: i32,
+        pic: &mut *mut SDL_Surface,
         fpath: *mut c_char,
         line: c_int,
         col: c_int,
         block: *const SDL_Rect,
         flags: c_int,
     ) -> *mut SDL_Surface {
-        static mut PIC: *mut SDL_Surface = null_mut();
-
-        if fpath.is_null() && PIC.is_null() {
+        if fpath.is_null() && pic.is_null() {
             /* we need some info.. */
             return null_mut();
         }
 
-        if !PIC.is_null() && flags == FREE_ONLY as c_int {
-            SDL_FreeSurface(PIC);
+        if !pic.is_null() && flags == FREE_ONLY as c_int {
+            SDL_FreeSurface(*pic);
             return null_mut();
         }
 
         if !fpath.is_null() {
-            // initialize: read & malloc new PIC, dont' return a copy!!
+            // initialize: read & malloc new pic, dont' return a copy!!
 
-            if !PIC.is_null() {
-                // previous PIC?
-                SDL_FreeSurface(PIC);
+            if !pic.is_null() {
+                // previous pic?
+                SDL_FreeSurface(*pic);
             }
-            PIC = IMG_Load(fpath);
+            *pic = IMG_Load(fpath);
         }
 
         if (flags & INIT_ONLY as c_int) != 0 {
             return null_mut(); // that's it guys, only initialzing...
         }
 
-        assert!(!PIC.is_null());
-        let pic = &mut *PIC;
+        assert!(!pic.is_null());
+        let pic = &mut **pic;
         let dim = if block.is_null() {
             Rect::new(0, 0, pic.w.try_into().unwrap(), pic.h.try_into().unwrap())
         } else {
@@ -625,10 +633,10 @@ impl Data {
 
         /* For some reason we need to SetAlpha every time on OS X */
         /* Digits are only used in _internal_ blits ==> clear per-surf alpha */
-        for &surface in &INFLU_DIGIT_SURFACE_POINTER {
+        for &surface in &self.graphics.influ_digit_surface_pointer {
             SDL_SetAlpha(surface, 0, 0);
         }
-        for &surface in &ENEMY_DIGIT_SURFACE_POINTER {
+        for &surface in &self.graphics.enemy_digit_surface_pointer {
             SDL_SetAlpha(surface, 0, 0);
         }
         if (scale - 1.).abs() <= f32::EPSILON {
@@ -666,11 +674,11 @@ impl Data {
 
         //---------- rescale Droid-model  blocks
         /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
-        for surface in &mut INFLUENCER_SURFACE_POINTER {
+        for surface in &mut self.graphics.influencer_surface_pointer {
             scale_pic(surface, scale);
             SDL_SetAlpha(*surface, 0, 0);
         }
-        for surface in &mut ENEMY_SURFACE_POINTER {
+        for surface in &mut self.graphics.enemy_surface_pointer {
             scale_pic(surface, scale);
             SDL_SetAlpha(*surface, 0, 0);
         }
@@ -678,7 +686,7 @@ impl Data {
         //---------- rescale Bullet blocks
         let bulletmap = std::slice::from_raw_parts_mut(
             self.vars.bulletmap,
-            usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap(),
+            usize::try_from(self.graphics.number_of_bullet_types).unwrap(),
         );
         bulletmap
             .iter_mut()
@@ -693,11 +701,11 @@ impl Data {
             .for_each(|surface| scale_pic(surface, scale));
 
         //---------- rescale Digit blocks
-        for surface in &mut INFLU_DIGIT_SURFACE_POINTER {
+        for surface in &mut self.graphics.influ_digit_surface_pointer {
             scale_pic(surface, scale);
             SDL_SetAlpha(*surface, 0, 0);
         }
-        for surface in &mut ENEMY_DIGIT_SURFACE_POINTER {
+        for surface in &mut self.graphics.enemy_digit_surface_pointer {
             scale_pic(surface, scale);
             SDL_SetAlpha(*surface, 0, 0);
         }
@@ -750,7 +758,7 @@ impl Data {
             }
         }
 
-        self.printf_sdl(NE_SCREEN, -1, -1, format_args!(" ok\n"));
+        self.printf_sdl(self.graphics.ne_screen, -1, -1, format_args!(" ok\n"));
     }
 
     /// display "white noise" effect in Rect.
@@ -775,7 +783,7 @@ impl Data {
 
         let grey: [u32; NOISE_COLORS] = array_init(|index| {
             let color = (((index as f64 + 1.0) / (NOISE_COLORS as f64)) * 255.0) as u8;
-            SDL_MapRGB((*NE_SCREEN).format, color, color, color)
+            SDL_MapRGB((*self.graphics.ne_screen).format, color, color, color)
         });
 
         // produce the tiles
@@ -835,17 +843,17 @@ impl Data {
             *used_tiles.last_mut().unwrap() = next_tile;
 
             // make sure we can blit the full rect without clipping! (would change *rect!)
-            SDL_GetClipRect(NE_SCREEN, &mut clip_rect);
-            SDL_SetClipRect(NE_SCREEN, null_mut());
+            SDL_GetClipRect(self.graphics.ne_screen, &mut clip_rect);
+            SDL_SetClipRect(self.graphics.ne_screen, null_mut());
             // set it
             SDL_UpperBlit(
                 noise_tiles[usize::try_from(next_tile).unwrap()],
                 null_mut(),
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 rect,
             );
             SDL_UpdateRect(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 rect.x.into(),
                 rect.y.into(),
                 rect.w.into(),
@@ -863,7 +871,7 @@ impl Data {
         }
 
         //restore previous clip-rectange
-        SDL_SetClipRect(NE_SCREEN, &clip_rect);
+        SDL_SetClipRect(self.graphics.ne_screen, &clip_rect);
 
         for &tile in &noise_tiles {
             SDL_FreeSurface(tile);
@@ -945,11 +953,11 @@ impl Data {
         // DisplayBanner function of the matter...
         self.graphics.banner_is_destroyed = true.into();
 
-        SDL_SetClipRect(NE_SCREEN, null_mut());
+        SDL_SetClipRect(self.graphics.ne_screen, null_mut());
 
         // Now we fill the screen with black color...
-        SDL_FillRect(NE_SCREEN, null_mut(), 0);
-        SDL_Flip(NE_SCREEN);
+        SDL_FillRect(self.graphics.ne_screen, null_mut(), 0);
+        SDL_Flip(self.graphics.ne_screen);
     }
 
     /// Initialise the Video display and graphics engine
@@ -1079,13 +1087,13 @@ impl Data {
             }
         }
 
-        NE_SCREEN = SDL_SetVideoMode(
+        self.graphics.ne_screen = SDL_SetVideoMode(
             self.vars.screen_rect.w.into(),
             self.vars.screen_rect.h.into(),
             0,
             vid_flags,
         );
-        if NE_SCREEN.is_null() {
+        if self.graphics.ne_screen.is_null() {
             error!(
                 "Couldn't set {} x {} video mode. SDL: {}",
                 self.vars.screen_rect.w,
@@ -1193,12 +1201,13 @@ impl Data {
                 Graphics {
                     map_block_surface_pointer,
                     vid_bpp,
+                    orig_map_block_surface_pointer,
+                    pic,
                     ..
                 },
             ..
         } = self;
-        self.graphics
-            .orig_map_block_surface_pointer
+        orig_map_block_surface_pointer
             .iter_mut()
             .enumerate()
             .zip(map_block_surface_pointer.iter_mut())
@@ -1213,8 +1222,9 @@ impl Data {
             })
             .for_each(|((color_index, block_index, orig_surface), surface)| {
                 free_if_unused(*orig_surface);
-                *orig_surface = Graphics::load_block_vid_bpp(
+                *orig_surface = Graphics::load_block_vid_bpp_pic(
                     *vid_bpp,
+                    pic,
                     null_mut(),
                     color_index.try_into().unwrap(),
                     block_index.try_into().unwrap(),
@@ -1234,10 +1244,25 @@ impl Data {
         );
         self.graphics
             .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
-        INFLUENCER_SURFACE_POINTER.iter_mut().enumerate().for_each(
+
+        let Self {
+            graphics:
+                Graphics {
+                    vid_bpp,
+                    pic,
+                    influencer_surface_pointer,
+                    enemy_surface_pointer,
+                    ..
+                },
+            ..
+        } = self;
+
+        influencer_surface_pointer.iter_mut().enumerate().for_each(
             |(index, influencer_surface)| {
                 free_if_unused(*influencer_surface);
-                *influencer_surface = self.graphics.load_block(
+                *influencer_surface = Graphics::load_block_vid_bpp_pic(
+                    *vid_bpp,
+                    pic,
                     null_mut(),
                     0,
                     index.try_into().unwrap(),
@@ -1250,12 +1275,14 @@ impl Data {
             },
         );
 
-        ENEMY_SURFACE_POINTER
+        enemy_surface_pointer
             .iter_mut()
             .enumerate()
             .for_each(|(index, enemy_surface)| {
                 free_if_unused(*enemy_surface);
-                *enemy_surface = self.graphics.load_block(
+                *enemy_surface = Graphics::load_block_vid_bpp_pic(
+                    *vid_bpp,
+                    pic,
                     null_mut(),
                     1,
                     index.try_into().unwrap(),
@@ -1279,7 +1306,7 @@ impl Data {
             .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
         std::slice::from_raw_parts_mut(
             self.vars.bulletmap,
-            NUMBER_OF_BULLET_TYPES.try_into().unwrap(),
+            self.graphics.number_of_bullet_types.try_into().unwrap(),
         )
         .iter_mut()
         .enumerate()
@@ -1346,12 +1373,25 @@ impl Data {
         );
         self.graphics
             .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
-        INFLU_DIGIT_SURFACE_POINTER
+        let Self {
+            graphics:
+                Graphics {
+                    vid_bpp,
+                    pic,
+                    influ_digit_surface_pointer,
+                    enemy_digit_surface_pointer,
+                    ..
+                },
+            ..
+        } = self;
+        influ_digit_surface_pointer
             .iter_mut()
             .enumerate()
             .for_each(|(index, surface)| {
                 free_if_unused(*surface);
-                *surface = self.graphics.load_block(
+                *surface = Graphics::load_block_vid_bpp_pic(
+                    *vid_bpp,
+                    pic,
                     null_mut(),
                     0,
                     index.try_into().unwrap(),
@@ -1359,12 +1399,14 @@ impl Data {
                     0,
                 );
             });
-        ENEMY_DIGIT_SURFACE_POINTER
+        enemy_digit_surface_pointer
             .iter_mut()
             .enumerate()
             .for_each(|(index, surface)| {
                 free_if_unused(*surface);
-                *surface = self.graphics.load_block(
+                *surface = Graphics::load_block_vid_bpp_pic(
+                    *vid_bpp,
+                    pic,
                     null_mut(),
                     0,
                     (index + 10).try_into().unwrap(),
@@ -1429,8 +1471,8 @@ impl Data {
             self.set_takeover_rects(); // setup takeover rectangles
 
             // cursor shapes
-            ARROW_CURSOR = init_system_cursor(&ARROW_XPM);
-            CROSSHAIR_CURSOR = init_system_cursor(&CROSSHAIR_XPM);
+            self.graphics.arrow_cursor = init_system_cursor(&ARROW_XPM);
+            self.graphics.crosshair_cursor = init_system_cursor(&CROSSHAIR_XPM);
             //---------- get Console pictures
             let fpath = self.find_file(
                 CONSOLE_PIC_FILE_C.as_ptr() as *mut c_char,
@@ -1764,7 +1806,7 @@ impl Data {
                 cstr!("%d").as_ptr() as *mut c_char,
                 &mut bullet_index as *mut c_int as *mut c_void,
             );
-            if bullet_index >= NUMBER_OF_BULLET_TYPES {
+            if bullet_index >= self.graphics.number_of_bullet_types {
                 panic!(
                     "----------------------------------------------------------------------\n\
                  Freedroid has encountered a problem:\n\
@@ -1892,7 +1934,7 @@ impl Data {
         scale_rect(&mut self.vars.block_rect, scale);
     }
 
-    /// This function load an image and displays it directly to the NE_SCREEN
+    /// This function load an image and displays it directly to the self.graphics.ne_screen
     /// but without updating it.
     /// This might be very handy, especially in the Title() function to
     /// display the title image and perhaps also for displaying the ship
@@ -1911,7 +1953,7 @@ impl Data {
             scale_pic(&mut image, self.global.game_config.scale);
         }
 
-        SDL_UpperBlit(image, null_mut(), NE_SCREEN, null_mut());
+        SDL_UpperBlit(image, null_mut(), self.graphics.ne_screen, null_mut());
 
         SDL_FreeSurface(image);
     }
@@ -1957,13 +1999,13 @@ impl Data {
                     continue;
                 }
                 putpixel(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     pixx as c_int,
                     pixy as c_int,
                     color.try_into().unwrap(),
                 );
                 putpixel(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     pixx as c_int - 1,
                     pixy as c_int,
                     color.try_into().unwrap(),
@@ -2005,13 +2047,13 @@ impl Data {
                 continue;
             }
             putpixel(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 pixx as c_int,
                 pixy as c_int,
                 color.try_into().unwrap(),
             );
             putpixel(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 pixx as c_int,
                 pixy as c_int - 1,
                 color.try_into().unwrap(),

@@ -5,13 +5,12 @@ use crate::{
         AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction, SoundType, Status,
         DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET, TEXT_STRETCH, UPDATE,
     },
-    graphics::{scale_pic, ARROW_CURSOR, CROSSHAIR_CURSOR},
+    graphics::scale_pic,
     input::SDL_Delay,
     map::get_map_brick,
     structs::Point,
     vars::{BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES, WEAPON_NAMES},
-    view::fill_rect,
-    Data, ALERT_LEVEL, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, NE_SCREEN, NUM_ENEMYS,
+    Data, ALERT_LEVEL, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, NUM_ENEMYS,
 };
 
 use log::{error, warn};
@@ -215,7 +214,7 @@ impl Data {
     ) {
         let mut need_new_frame = false;
 
-        SDL_SetClipRect(NE_SCREEN, &dst);
+        SDL_SetClipRect(self.graphics.ne_screen, &dst);
 
         if self.ship.droid_background.is_null() {
             // first call
@@ -231,12 +230,22 @@ impl Data {
             );
             self.ship.droid_background = SDL_DisplayFormat(tmp);
             SDL_FreeSurface(tmp);
-            SDL_UpperBlit(NE_SCREEN, &mut dst, self.ship.droid_background, null_mut());
+            SDL_UpperBlit(
+                self.graphics.ne_screen,
+                &mut dst,
+                self.ship.droid_background,
+                null_mut(),
+            );
             self.ship.src_rect = self.vars.portrait_rect;
         }
 
         if flags & RESET != 0 {
-            SDL_UpperBlit(NE_SCREEN, &mut dst, self.ship.droid_background, null_mut());
+            SDL_UpperBlit(
+                self.graphics.ne_screen,
+                &mut dst,
+                self.ship.droid_background,
+                null_mut(),
+            );
             self.ship.frame_num = 0;
             self.ship.last_frame_time = SDL_GetTicks();
         }
@@ -305,20 +314,25 @@ impl Data {
             self.ship.src_rect.x = i16::try_from(self.ship.frame_num).unwrap()
                 * i16::try_from(self.ship.src_rect.w).unwrap();
 
-            SDL_UpperBlit(self.ship.droid_background, null_mut(), NE_SCREEN, &mut dst);
+            SDL_UpperBlit(
+                self.ship.droid_background,
+                null_mut(),
+                self.graphics.ne_screen,
+                &mut dst,
+            );
             SDL_UpperBlit(
                 self.ship.droid_pics,
                 &mut self.ship.src_rect,
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 &mut dst,
             );
 
-            SDL_UpdateRects(NE_SCREEN, 1, &mut dst);
+            SDL_UpdateRects(self.graphics.ne_screen, 1, &mut dst);
 
             self.ship.last_frame_time = SDL_GetTicks();
         }
 
-        SDL_SetClipRect(NE_SCREEN, null_mut());
+        SDL_SetClipRect(self.graphics.ne_screen, null_mut());
     }
 
     /// display infopage page of droidtype
@@ -330,7 +344,7 @@ impl Data {
     pub unsafe fn show_droid_info(&mut self, droid_type: c_int, page: c_int, flags: c_int) {
         use std::io::Write;
 
-        SDL_SetClipRect(NE_SCREEN, null_mut());
+        SDL_SetClipRect(self.graphics.ne_screen, null_mut());
         self.b_font.current_font = self.global.para_b_font;
 
         let lineskip =
@@ -475,27 +489,27 @@ Paradroid to eliminate all rogue robots.\0",
         // if UPDATE_ONLY then the background has not been cleared, so we have do it
         // it for each menu-rect:
         if flags & i32::from(UPDATE_ONLY) != 0 {
-            SDL_SetClipRect(NE_SCREEN, &self.vars.cons_text_rect);
+            SDL_SetClipRect(self.graphics.ne_screen, &self.vars.cons_text_rect);
             SDL_UpperBlit(
                 self.graphics.console_bg_pic2,
                 null_mut(),
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 null_mut(),
             );
-            SDL_SetClipRect(NE_SCREEN, &self.vars.cons_header_rect);
+            SDL_SetClipRect(self.graphics.ne_screen, &self.vars.cons_header_rect);
             SDL_UpperBlit(
                 self.graphics.console_bg_pic2,
                 null_mut(),
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 null_mut(),
             );
-            SDL_SetClipRect(NE_SCREEN, null_mut());
+            SDL_SetClipRect(self.graphics.ne_screen, null_mut());
         } else {
             // otherwise we just redraw the whole screen
             SDL_UpperBlit(
                 self.graphics.console_bg_pic2,
                 null_mut(),
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 null_mut(),
             );
             self.display_banner(
@@ -526,7 +540,7 @@ Paradroid to eliminate all rogue robots.\0",
                 SDL_UpperBlit(
                     self.graphics.arrow_up,
                     null_mut(),
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     &mut self.ship.up_rect,
                 );
             }
@@ -535,7 +549,7 @@ Paradroid to eliminate all rogue robots.\0",
                 SDL_UpperBlit(
                     self.graphics.arrow_down,
                     null_mut(),
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     &mut self.ship.down_rect,
                 );
             }
@@ -544,7 +558,7 @@ Paradroid to eliminate all rogue robots.\0",
                 SDL_UpperBlit(
                     self.graphics.arrow_left,
                     null_mut(),
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     &mut self.ship.left_rect,
                 );
             }
@@ -553,17 +567,17 @@ Paradroid to eliminate all rogue robots.\0",
                 SDL_UpperBlit(
                     self.graphics.arrow_right,
                     null_mut(),
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     &mut self.ship.right_rect,
                 );
             }
         }
 
         if flags & i32::from(UPDATE_ONLY) != 0 {
-            SDL_UpdateRects(NE_SCREEN, 1, &mut self.vars.cons_header_rect);
-            SDL_UpdateRects(NE_SCREEN, 1, &mut self.vars.cons_text_rect);
+            SDL_UpdateRects(self.graphics.ne_screen, 1, &mut self.vars.cons_header_rect);
+            SDL_UpdateRects(self.graphics.ne_screen, 1, &mut self.vars.cons_text_rect);
         } else {
-            SDL_Flip(NE_SCREEN);
+            SDL_Flip(self.graphics.ne_screen);
         }
     }
 }
@@ -590,7 +604,7 @@ impl Data {
                 .into(),
         );
 
-        SDL_Flip(NE_SCREEN);
+        SDL_Flip(self.graphics.ne_screen);
 
         self.vars.me.pos = tmp;
 
@@ -621,7 +635,7 @@ impl Data {
             self.input.show_cursor = false;
         }
 
-        SDL_SetCursor(ARROW_CURSOR);
+        SDL_SetCursor(self.graphics.arrow_cursor);
 
         self.b_font.current_font = self.global.para_b_font;
 
@@ -756,13 +770,13 @@ impl Data {
             if need_update {
                 self.paint_console_menu(pos.try_into().unwrap(), UPDATE_ONLY.into());
                 if cfg!(not(target_os = "android")) {
-                    SDL_Flip(NE_SCREEN);
+                    SDL_Flip(self.graphics.ne_screen);
                 }
 
                 need_update = false;
             }
             if cfg!(target_os = "android") {
-                SDL_Flip(NE_SCREEN); // for responsive input on Android, we need to run this every cycle
+                SDL_Flip(self.graphics.ne_screen); // for responsive input on Android, we need to run this every cycle
             }
 
             SDL_Delay(1); // don't hog CPU
@@ -774,7 +788,7 @@ impl Data {
 
         self.clear_graph_mem();
 
-        SDL_SetCursor(CROSSHAIR_CURSOR);
+        SDL_SetCursor(self.graphics.crosshair_cursor);
         if !self.input.show_cursor {
             SDL_ShowCursor(SDL_DISABLE);
         }
@@ -923,15 +937,20 @@ impl Data {
 
         SDL_ShowCursor(SDL_DISABLE);
         // fill the user fenster with some color
-        fill_rect(self.vars.user_rect, lift_bg_color);
+        self.fill_rect(self.vars.user_rect, lift_bg_color);
 
         /* First blit ship "lights off" */
         let mut dst = self.vars.user_rect;
-        SDL_SetClipRect(NE_SCREEN, &dst);
+        SDL_SetClipRect(self.graphics.ne_screen, &dst);
         dst = self.vars.user_rect;
         dst.x += xoffs;
         dst.y += yoffs;
-        SDL_UpperBlit(self.graphics.ship_off_pic, null_mut(), NE_SCREEN, &mut dst);
+        SDL_UpperBlit(
+            self.graphics.ship_off_pic,
+            null_mut(),
+            self.graphics.ne_screen,
+            &mut dst,
+        );
 
         if level >= 0 {
             for i in 0..CUR_SHIP.num_level_rects[usize::try_from(level).unwrap()] {
@@ -940,7 +959,12 @@ impl Data {
                 dst = src;
                 dst.x += self.vars.user_rect.x + xoffs; /* offset respective to User-Rectangle */
                 dst.y += self.vars.user_rect.y + yoffs;
-                SDL_UpperBlit(self.graphics.ship_on_pic, &mut src, NE_SCREEN, &mut dst);
+                SDL_UpperBlit(
+                    self.graphics.ship_on_pic,
+                    &mut src,
+                    self.graphics.ne_screen,
+                    &mut dst,
+                );
             }
         }
 
@@ -949,10 +973,15 @@ impl Data {
             dst = src;
             dst.x += self.vars.user_rect.x + xoffs; /* offset respective to User-Rectangle */
             dst.y += self.vars.user_rect.y + yoffs;
-            SDL_UpperBlit(self.graphics.ship_on_pic, &mut src, NE_SCREEN, &mut dst);
+            SDL_UpperBlit(
+                self.graphics.ship_on_pic,
+                &mut src,
+                self.graphics.ne_screen,
+                &mut dst,
+            );
         }
 
-        SDL_Flip(NE_SCREEN);
+        SDL_Flip(self.graphics.ne_screen);
     }
 
     /// diese Funktion zeigt die m"oglichen Auswahlpunkte des Menus
@@ -969,11 +998,11 @@ impl Data {
 
         if (flag & i32::from(UPDATE_ONLY)) == 0 {
             self.clear_graph_mem();
-            SDL_SetClipRect(NE_SCREEN, null_mut());
+            SDL_SetClipRect(self.graphics.ne_screen, null_mut());
             SDL_UpperBlit(
                 self.graphics.console_bg_pic1,
                 null_mut(),
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 null_mut(),
             );
 
@@ -1023,7 +1052,7 @@ impl Data {
         SDL_UpperBlit(
             self.graphics.console_pic,
             &mut src,
-            NE_SCREEN,
+            self.graphics.ne_screen,
             &mut self.vars.cons_menu_rect,
         );
     }

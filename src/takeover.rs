@@ -2,10 +2,9 @@ use crate::{
     defs::{
         self, DisplayBannerFlags, Droid, MenuAction, Status, DROID_ROTATION_TIME, SHOW_WAIT, UPDATE,
     },
-    graphics::NE_SCREEN,
+    graphics::Graphics,
     misc::my_random,
     structs::Point,
-    view::fill_rect,
     Data, ALL_ENEMYS, DEATH_COUNT, INVINCIBLE_MODE, PRE_TAKE_ENERGY, REAL_SCORE,
 };
 
@@ -1236,12 +1235,12 @@ impl Data {
         let xoffs = self.vars.classic_user_rect.x;
         let yoffs = self.vars.classic_user_rect.y;
 
-        SDL_SetClipRect(NE_SCREEN, null_mut());
+        SDL_SetClipRect(self.graphics.ne_screen, null_mut());
 
         SDL_UpperBlit(
             self.graphics.takeover_bg_pic,
             &mut self.vars.user_rect,
-            NE_SCREEN,
+            self.graphics.ne_screen,
             &mut self.vars.user_rect,
         );
 
@@ -1270,7 +1269,7 @@ impl Data {
         SDL_UpperBlit(
             self.takeover.to_blocks,
             &mut self.takeover.to_ground_blocks[GroundBlock::YellowAbove as usize],
-            NE_SCREEN,
+            self.graphics.ne_screen,
             &mut dst,
         );
 
@@ -1280,7 +1279,7 @@ impl Data {
             SDL_UpperBlit(
                 self.takeover.to_blocks,
                 &mut self.takeover.to_ground_blocks[GroundBlock::YellowMiddle as usize],
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 &mut dst,
             );
 
@@ -1290,7 +1289,7 @@ impl Data {
         SDL_UpperBlit(
             self.takeover.to_blocks,
             &mut self.takeover.to_ground_blocks[GroundBlock::YellowBelow as usize],
-            NE_SCREEN,
+            self.graphics.ne_screen,
             &mut dst,
         );
 
@@ -1303,7 +1302,7 @@ impl Data {
         SDL_UpperBlit(
             self.takeover.to_blocks,
             &mut self.takeover.leader_block,
-            NE_SCREEN,
+            self.graphics.ne_screen,
             &mut dst,
         );
 
@@ -1312,7 +1311,7 @@ impl Data {
             SDL_UpperBlit(
                 self.takeover.to_blocks,
                 &mut self.takeover.column_block,
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 &mut dst,
             );
             dst.y += i16::try_from(self.takeover.column_rect.h).unwrap();
@@ -1329,7 +1328,7 @@ impl Data {
         SDL_UpperBlit(
             self.takeover.to_blocks,
             &mut self.takeover.to_ground_blocks[GroundBlock::VioletAbove as usize],
-            NE_SCREEN,
+            self.graphics.ne_screen,
             &mut dst,
         );
         dst.y += i16::try_from(self.takeover.ground_rect.h).unwrap();
@@ -1338,7 +1337,7 @@ impl Data {
             SDL_UpperBlit(
                 self.takeover.to_blocks,
                 &mut self.takeover.to_ground_blocks[GroundBlock::VioletMiddle as usize],
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 &mut dst,
             );
             dst.y += i16::try_from(self.takeover.ground_rect.h).unwrap();
@@ -1347,7 +1346,7 @@ impl Data {
         SDL_UpperBlit(
             self.takeover.to_blocks,
             &mut self.takeover.to_ground_blocks[GroundBlock::VioletBelow as usize],
-            NE_SCREEN,
+            self.graphics.ne_screen,
             &mut dst,
         );
 
@@ -1362,14 +1361,14 @@ impl Data {
         SDL_UpperBlit(
             self.takeover.to_blocks,
             &mut self.takeover.fill_blocks[leader_color],
-            NE_SCREEN,
+            self.graphics.ne_screen,
             &mut dst,
         );
         dst.y += i16::try_from(self.takeover.fill_block.h).unwrap();
         SDL_UpperBlit(
             self.takeover.to_blocks,
             &mut self.takeover.fill_blocks[leader_color],
-            NE_SCREEN,
+            self.graphics.ne_screen,
             &mut dst,
         );
 
@@ -1394,6 +1393,7 @@ impl Data {
                     playground_starts,
                     ..
                 },
+            graphics: Graphics { ne_screen, .. },
             ..
         } = self;
         /* Fill the Display Column with its leds */
@@ -1413,7 +1413,7 @@ impl Data {
                 SDL_UpperBlit(
                     *to_blocks,
                     &mut fill_blocks[usize::try_from(display_column).unwrap()],
-                    NE_SCREEN,
+                    *ne_screen,
                     &mut dst,
                 );
             });
@@ -1458,7 +1458,7 @@ impl Data {
                     );
 
                     let block = playground_line + activation_line * TO_BLOCKS_N;
-                    SDL_UpperBlit(*to_blocks, &mut to_game_blocks[block], NE_SCREEN, &mut dst);
+                    SDL_UpperBlit(*to_blocks, &mut to_game_blocks[block], *ne_screen, &mut dst);
                 },
             );
 
@@ -1502,7 +1502,7 @@ impl Data {
                         0,
                     );
                     let block = playground_line + (NUM_PHASES + activation_line) * TO_BLOCKS_N;
-                    SDL_UpperBlit(*to_blocks, &mut to_game_blocks[block], NE_SCREEN, &mut dst);
+                    SDL_UpperBlit(*to_blocks, &mut to_game_blocks[block], *ne_screen, &mut dst);
                 },
             );
 
@@ -1528,7 +1528,7 @@ impl Data {
                     0,
                 );
                 if capsules != 0 {
-                    SDL_UpperBlit(*to_blocks, &mut capsule_blocks[color], NE_SCREEN, &mut dst);
+                    SDL_UpperBlit(*to_blocks, &mut capsule_blocks[color], *ne_screen, &mut dst);
                 }
 
                 for capsule in 0..capsules.saturating_sub(1) {
@@ -1541,7 +1541,7 @@ impl Data {
                         0,
                         0,
                     );
-                    SDL_UpperBlit(*to_blocks, &mut capsule_blocks[color], NE_SCREEN, &mut dst);
+                    SDL_UpperBlit(*to_blocks, &mut capsule_blocks[color], *ne_screen, &mut dst);
                 }
             });
     }
@@ -1649,7 +1649,7 @@ impl Data {
                 self.show_playground();
             } // if do_update_move
 
-            SDL_Flip(NE_SCREEN);
+            SDL_Flip(self.graphics.ne_screen);
             SDL_Delay(1);
         } /* while !FinishTakeover */
 
@@ -1681,7 +1681,7 @@ impl Data {
             self.process_display_column();
             self.show_playground();
             SDL_Delay(1);
-            SDL_Flip(NE_SCREEN);
+            SDL_Flip(self.graphics.ne_screen);
         } /* while (countdown) */
 
         self.wait_for_all_keys_released();
@@ -1733,7 +1733,7 @@ impl Data {
                 color_chosen = true;
             }
 
-            SDL_Flip(NE_SCREEN);
+            SDL_Flip(self.graphics.ne_screen);
             SDL_Delay(1); // don't hog CPU
         }
     }
@@ -1763,7 +1763,7 @@ impl Data {
             b: 130,
             unused: 0,
         };
-        fill_rect(self.vars.user_rect, BG_COLOR);
+        self.fill_rect(self.vars.user_rect, BG_COLOR);
 
         self.vars.me.status = Status::Mobile as i32; /* the new status _after_ the takeover game */
 
@@ -1810,7 +1810,7 @@ impl Data {
         SDL_UpperBlit(
             self.graphics.takeover_bg_pic,
             null_mut(),
-            NE_SCREEN,
+            self.graphics.ne_screen,
             null_mut(),
         );
         self.display_banner(
@@ -1850,7 +1850,7 @@ impl Data {
             self.invent_playground();
 
             self.show_playground();
-            SDL_Flip(NE_SCREEN);
+            SDL_Flip(self.graphics.ne_screen);
 
             self.choose_color();
             self.wait_for_all_keys_released();
@@ -1927,13 +1927,13 @@ impl Data {
 
             self.display_banner(message.as_ptr(), null_mut(), 0);
             self.show_playground();
-            SDL_Flip(NE_SCREEN);
+            SDL_Flip(self.graphics.ne_screen);
 
             self.wait_for_all_keys_released();
             let now = SDL_GetTicks();
             while !self.fire_pressed_r() && SDL_GetTicks() - now < SHOW_WAIT {
                 #[cfg(target_os = "android")]
-                SDL_Flip(NE_SCREEN);
+                SDL_Flip(self.graphics.ne_screen);
 
                 SDL_Delay(1);
             }

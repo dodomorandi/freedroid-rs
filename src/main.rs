@@ -45,7 +45,7 @@ use defs::{
     MAX_LIFTS, MAX_LIFT_ROWS, RESET, SHOW_WAIT, STANDARD_MISSION_C,
 };
 use global::Global;
-use graphics::{Graphics, CROSSHAIR_CURSOR, NE_SCREEN};
+use graphics::Graphics;
 use highscore::Highscore;
 use influencer::Influencer;
 use init::Init;
@@ -269,9 +269,9 @@ fn main() {
                     .bits()
                     .into(),
             );
-            SDL_Flip(NE_SCREEN);
+            SDL_Flip(data.graphics.ne_screen);
 
-            SDL_SetCursor(CROSSHAIR_CURSOR); // default cursor is a crosshair
+            SDL_SetCursor(data.graphics.crosshair_cursor); // default cursor is a crosshair
             SDL_ShowCursor(SDL_ENABLE);
 
             while data.game_over.not() {

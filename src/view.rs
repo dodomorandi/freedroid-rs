@@ -6,10 +6,7 @@ use crate::{
         TRANSFER_SOUND_INTERVAL,
     },
     global::INFLUENCE_MODE_NAMES,
-    graphics::{
-        apply_filter, ENEMY_DIGIT_SURFACE_POINTER, ENEMY_SURFACE_POINTER,
-        INFLUENCER_SURFACE_POINTER, INFLU_DIGIT_SURFACE_POINTER, NE_SCREEN,
-    },
+    graphics::apply_filter,
     map::get_map_brick,
     structs::{Enemy, Finepoint, GrobPoint},
     Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, DEATH_COUNT, FIRST_DIGIT_RECT,
@@ -64,15 +61,15 @@ const FLASH_DARK: SDL_Color = SDL_Color {
     unused: 0,
 };
 
-pub unsafe fn fill_rect(mut rect: Rect, color: SDL_Color) {
-    let pixcolor = SDL_MapRGB((*NE_SCREEN).format, color.r, color.g, color.b);
-
-    SDL_FillRect(NE_SCREEN, &mut rect, pixcolor);
-}
-
 impl Data {
+    pub unsafe fn fill_rect(&self, mut rect: Rect, color: SDL_Color) {
+        let pixcolor = SDL_MapRGB((*self.graphics.ne_screen).format, color.r, color.g, color.b);
+
+        SDL_FillRect(self.graphics.ne_screen, &mut rect, pixcolor);
+    }
+
     /// This function assembles the contents of the combat window
-    /// in NE_SCREEN.
+    /// in self.graphics.ne_screen.
     ///
     /// Several FLAGS can be used to control its behaviour:
     ///
@@ -94,10 +91,10 @@ impl Data {
 
         trace!("\nvoid Assemble_Combat_Picture(...): Real function call confirmed.");
 
-        SDL_SetClipRect(NE_SCREEN, &self.vars.user_rect);
+        SDL_SetClipRect(self.graphics.ne_screen, &self.vars.user_rect);
 
         if self.global.game_config.all_map_visible == 0 {
-            fill_rect(self.vars.user_rect, BLACK);
+            self.fill_rect(self.vars.user_rect, BLACK);
         }
 
         let (upleft, downright) =
@@ -161,7 +158,7 @@ impl Data {
                     self.graphics.map_block_surface_pointer
                         [usize::try_from((*CUR_LEVEL).color).unwrap()][usize::from(map_brick)],
                     null_mut(),
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     &mut target_rectangle,
                 );
             });
@@ -178,14 +175,14 @@ impl Data {
             self.vars.full_user_rect.w,
             font_height(&*self.global.font0_b_font).try_into().unwrap(),
         );
-        SDL_SetClipRect(NE_SCREEN, &text_rect);
+        SDL_SetClipRect(self.graphics.ne_screen, &text_rect);
         if self.global.game_config.full_user_rect == 0 {
-            SDL_FillRect(NE_SCREEN, &mut text_rect, 0);
+            SDL_FillRect(self.graphics.ne_screen, &mut text_rect, 0);
         }
 
         if self.global.game_config.draw_position != 0 {
             print_string_font(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 self.global.font0_b_font,
                 (self.vars.full_user_rect.x + (self.vars.full_user_rect.w / 6) as i16).into(),
                 i32::from(self.vars.full_user_rect.y) + i32::from(self.vars.full_user_rect.h)
@@ -217,7 +214,7 @@ impl Data {
 
                 FPS_DISPLAYED.with(|fps_displayed| {
                     print_string_font(
-                        NE_SCREEN,
+                        self.graphics.ne_screen,
                         self.global.font0_b_font,
                         self.vars.full_user_rect.x.into(),
                         self.vars.full_user_rect.y as i32 + self.vars.full_user_rect.h as i32
@@ -229,7 +226,7 @@ impl Data {
 
             if self.global.game_config.draw_energy != 0 {
                 print_string_font(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     self.global.font0_b_font,
                     i32::from(self.vars.full_user_rect.x)
                         + i32::from(self.vars.full_user_rect.w) / 2,
@@ -240,7 +237,7 @@ impl Data {
             }
             if self.global.game_config.draw_death_count != 0 {
                 print_string_font(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     self.global.font0_b_font,
                     i32::from(self.vars.full_user_rect.x)
                         + 2 * i32::from(self.vars.full_user_rect.w) / 3,
@@ -250,7 +247,7 @@ impl Data {
                 );
             }
 
-            SDL_SetClipRect(NE_SCREEN, &self.vars.user_rect);
+            SDL_SetClipRect(self.graphics.ne_screen, &self.vars.user_rect);
 
             // make sure Ashes are displayed _before_ droids, so that they are _under_ them!
             for enemy in &mut ALL_ENEMYS {
@@ -296,14 +293,14 @@ impl Data {
 
         if mask & AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits() as i32 != 0 {
             SDL_UpdateRect(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 self.vars.user_rect.x.into(),
                 self.vars.user_rect.y.into(),
                 self.vars.user_rect.w.into(),
                 self.vars.user_rect.h.into(),
             );
             SDL_UpdateRect(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 text_rect.x.into(),
                 text_rect.y.into(),
                 text_rect.w.into(),
@@ -311,7 +308,7 @@ impl Data {
             );
         }
 
-        SDL_SetClipRect(NE_SCREEN, null_mut());
+        SDL_SetClipRect(self.graphics.ne_screen, null_mut());
     }
 
     /// put some ashes at (x,y)
@@ -331,7 +328,12 @@ impl Data {
             0,
             0,
         );
-        SDL_UpperBlit(self.graphics.decal_pics[0], null_mut(), NE_SCREEN, &mut dst);
+        SDL_UpperBlit(
+            self.graphics.decal_pics[0],
+            null_mut(),
+            self.graphics.ne_screen,
+            &mut dst,
+        );
     }
 
     pub unsafe fn put_enemy(&mut self, enemy_index: c_int, x: c_int, y: c_int) {
@@ -362,7 +364,7 @@ impl Data {
         //--------------------
         // First blit just the enemy hat and shoes.
         SDL_UpperBlit(
-            ENEMY_SURFACE_POINTER[phase as usize],
+            self.graphics.enemy_surface_pointer[phase as usize],
             null_mut(),
             self.graphics.build_block,
             null_mut(),
@@ -372,7 +374,8 @@ impl Data {
         // Now the numbers should be blittet.
         let mut dst = FIRST_DIGIT_RECT;
         SDL_UpperBlit(
-            ENEMY_DIGIT_SURFACE_POINTER[usize::try_from(name[0] - b'1' as i8 + 1).unwrap()],
+            self.graphics.enemy_digit_surface_pointer
+                [usize::try_from(name[0] - b'1' as i8 + 1).unwrap()],
             null_mut(),
             self.graphics.build_block,
             &mut dst,
@@ -380,7 +383,8 @@ impl Data {
 
         dst = SECOND_DIGIT_RECT;
         SDL_UpperBlit(
-            ENEMY_DIGIT_SURFACE_POINTER[usize::try_from(name[1] - b'1' as i8 + 1).unwrap()],
+            self.graphics.enemy_digit_surface_pointer
+                [usize::try_from(name[1] - b'1' as i8 + 1).unwrap()],
             null_mut(),
             self.graphics.build_block,
             &mut dst,
@@ -388,7 +392,8 @@ impl Data {
 
         dst = THIRD_DIGIT_RECT;
         SDL_UpperBlit(
-            ENEMY_DIGIT_SURFACE_POINTER[usize::try_from(name[2] - b'1' as i8 + 1).unwrap()],
+            self.graphics.enemy_digit_surface_pointer
+                [usize::try_from(name[2] - b'1' as i8 + 1).unwrap()],
             null_mut(),
             self.graphics.build_block,
             &mut dst,
@@ -407,7 +412,12 @@ impl Data {
             dst.x = x.try_into().unwrap();
             dst.y = y.try_into().unwrap();
         }
-        SDL_UpperBlit(self.graphics.build_block, null_mut(), NE_SCREEN, &mut dst);
+        SDL_UpperBlit(
+            self.graphics.build_block,
+            null_mut(),
+            self.graphics.ne_screen,
+            &mut dst,
+        );
 
         //--------------------
         // At this point we can assume, that the enemys has been blittet to the
@@ -420,7 +430,7 @@ impl Data {
             && self.global.game_config.droid_talk != 0
         {
             put_string_font(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 self.global.font0_b_font,
                 (f32::from(self.vars.user_rect.x)
                     + f32::from(self.vars.user_rect.w / 2)
@@ -457,7 +467,7 @@ impl Data {
 
         // Now we draw the hat and shoes of the influencer
         SDL_UpperBlit(
-            INFLUENCER_SURFACE_POINTER[(self.vars.me.phase).floor() as usize],
+            self.graphics.influencer_surface_pointer[(self.vars.me.phase).floor() as usize],
             null_mut(),
             self.graphics.build_block,
             null_mut(),
@@ -466,7 +476,7 @@ impl Data {
         // Now we draw the first digit of the influencers current number.
         let mut dst = FIRST_DIGIT_RECT;
         SDL_UpperBlit(
-            INFLU_DIGIT_SURFACE_POINTER[usize::try_from(
+            self.graphics.influ_digit_surface_pointer[usize::try_from(
                 (*self
                     .vars
                     .droidmap
@@ -484,7 +494,7 @@ impl Data {
         // Now we draw the second digit of the influencers current number.
         dst = SECOND_DIGIT_RECT;
         SDL_UpperBlit(
-            INFLU_DIGIT_SURFACE_POINTER[usize::try_from(
+            self.graphics.influ_digit_surface_pointer[usize::try_from(
                 (*self
                     .vars
                     .droidmap
@@ -502,7 +512,7 @@ impl Data {
         // Now we draw the third digit of the influencers current number.
         dst = THIRD_DIGIT_RECT;
         SDL_UpperBlit(
-            INFLU_DIGIT_SURFACE_POINTER[usize::try_from(
+            self.graphics.influ_digit_surface_pointer[usize::try_from(
                 (*self
                     .vars
                     .droidmap
@@ -566,7 +576,12 @@ impl Data {
             dst.y = y.try_into().unwrap();
         }
 
-        SDL_UpperBlit(self.graphics.build_block, null_mut(), NE_SCREEN, &mut dst);
+        SDL_UpperBlit(
+            self.graphics.build_block,
+            null_mut(),
+            self.graphics.ne_screen,
+            &mut dst,
+        );
 
         //--------------------
         // Maybe the influencer has something to say :)
@@ -609,13 +624,13 @@ impl Data {
             // or black each frame until the flash is over.  (Flash
             // deletion after some time is done in CheckBulletCollisions.)
             if cur_bullet.time_in_seconds <= FLASH_DURATION / 4. {
-                fill_rect(self.vars.user_rect, FLASH_LIGHT);
+                self.fill_rect(self.vars.user_rect, FLASH_LIGHT);
             } else if cur_bullet.time_in_seconds <= FLASH_DURATION / 2. {
-                fill_rect(self.vars.user_rect, FLASH_DARK);
+                self.fill_rect(self.vars.user_rect, FLASH_DARK);
             } else if cur_bullet.time_in_seconds <= 3. * FLASH_DURATION / 4. {
-                fill_rect(self.vars.user_rect, FLASH_LIGHT);
+                self.fill_rect(self.vars.user_rect, FLASH_LIGHT);
             } else if cur_bullet.time_in_seconds <= FLASH_DURATION {
-                fill_rect(self.vars.user_rect, FLASH_DARK);
+                self.fill_rect(self.vars.user_rect, FLASH_DARK);
             }
 
             return;
@@ -674,7 +689,7 @@ impl Data {
         SDL_UpperBlit(
             cur_bullet.surface_pointer[phase_of_bullet],
             null_mut(),
-            NE_SCREEN,
+            self.graphics.ne_screen,
             &mut dst,
         );
 
@@ -706,7 +721,7 @@ impl Data {
             self.vars.blastmap[usize::try_from(cur_blast.ty).unwrap()].surface_pointer
                 [(cur_blast.phase).floor() as usize],
             null_mut(),
-            NE_SCREEN,
+            self.graphics.ne_screen,
             &mut dst,
         );
         trace!("PutBlast: end of function reached.");
@@ -806,8 +821,13 @@ impl Data {
         if screen_needs_update {
             // Redraw the whole background of the top status bar
             let mut dst = Rect::new(0, 0, 0, 0);
-            SDL_SetClipRect(NE_SCREEN, null_mut()); // this unsets the clipping rectangle
-            SDL_UpperBlit(self.graphics.banner_pic, null_mut(), NE_SCREEN, &mut dst);
+            SDL_SetClipRect(self.graphics.ne_screen, null_mut()); // this unsets the clipping rectangle
+            SDL_UpperBlit(
+                self.graphics.banner_pic,
+                null_mut(),
+                self.graphics.ne_screen,
+                &mut dst,
+            );
 
             // Now the text should be ready and its
             // time to display it...
@@ -824,7 +844,7 @@ impl Data {
                 dst.y = self.vars.left_info_rect.y
                     - i16::try_from(font_height(&*self.global.para_b_font)).unwrap();
                 print_string_font(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     self.global.para_b_font,
                     dst.x.into(),
                     dst.y.into(),
@@ -846,7 +866,7 @@ impl Data {
                 dst.y = self.vars.right_info_rect.y
                     - i16::try_from(font_height(&*self.global.para_b_font)).unwrap();
                 print_string_font(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     self.global.para_b_font,
                     dst.x.into(),
                     dst.y.into(),
@@ -869,7 +889,7 @@ impl Data {
             // finally update the whole top status box
             if (flags & i32::from(DisplayBannerFlags::NO_SDL_UPDATE.bits())) == 0 {
                 SDL_UpdateRect(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     0,
                     0,
                     self.vars.banner_rect.w.into(),

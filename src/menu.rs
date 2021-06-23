@@ -12,7 +12,6 @@ use crate::{
         MAX_MAP_ROWS,
     },
     global::INFLUENCE_MODE_NAMES,
-    graphics::{ALL_THEMES, CLASSIC_THEME_INDEX, NE_SCREEN},
     input::{SDL_Delay, CMD_STRINGS},
     map::COLOR_NAMES,
     misc::{armageddon, dealloc_c_string},
@@ -241,8 +240,8 @@ impl Data {
             i32::from(self.vars.user_rect.x) + (i32::from(self.vars.user_rect.w) - text_width) / 2;
         let text_y = i32::from(self.vars.user_rect.y)
             + (i32::from(self.vars.user_rect.h) - self.menu.font_height) / 2;
-        self.put_string(NE_SCREEN, text_x, text_y, QUIT_STRING);
-        SDL_Flip(NE_SCREEN);
+        self.put_string(self.graphics.ne_screen, text_x, text_y, QUIT_STRING);
+        SDL_Flip(self.graphics.ne_screen);
 
         #[cfg(feature = "gcw0")]
         {
@@ -290,7 +289,7 @@ impl Data {
         // write on it further down.
         self.activate_conservative_frame_computation();
 
-        SDL_SetClipRect(NE_SCREEN, null_mut());
+        SDL_SetClipRect(self.graphics.ne_screen, null_mut());
         self.vars.me.status = Status::Menu as i32;
         self.clear_graph_mem();
         self.display_banner(
@@ -306,13 +305,13 @@ impl Data {
             self.assemble_combat_picture(AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits().into());
         }
 
-        SDL_SetClipRect(NE_SCREEN, null_mut());
+        SDL_SetClipRect(self.graphics.ne_screen, null_mut());
         self.make_grid_on_screen(None);
 
         if !self.menu.menu_background.is_null() {
             SDL_FreeSurface(self.menu.menu_background);
         }
-        self.menu.menu_background = SDL_DisplayFormat(NE_SCREEN); // keep a global copy of background
+        self.menu.menu_background = SDL_DisplayFormat(self.graphics.ne_screen); // keep a global copy of background
 
         SDL_ShowCursor(SDL_DISABLE); // deactivate mouse-cursor in menus
         self.b_font.current_font = self.global.menu_b_font;
@@ -337,7 +336,7 @@ impl Data {
         while !resume {
             self.clear_graph_mem();
             self.printf_sdl(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 X0,
                 Y0,
                 format_args!(
@@ -348,33 +347,43 @@ impl Data {
                 ),
             );
             self.printf_sdl(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 -1,
                 -1,
                 format_args!(" a. Armageddon (alle Robots sprengen)\n"),
             );
             self.printf_sdl(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 -1,
                 -1,
                 format_args!(" l. robot list of current level\n"),
             );
-            self.printf_sdl(NE_SCREEN, -1, -1, format_args!(" g. complete robot list\n"));
             self.printf_sdl(
-                NE_SCREEN,
+                self.graphics.ne_screen,
+                -1,
+                -1,
+                format_args!(" g. complete robot list\n"),
+            );
+            self.printf_sdl(
+                self.graphics.ne_screen,
                 -1,
                 -1,
                 format_args!(" d. destroy robots on current level\n"),
             );
-            self.printf_sdl(NE_SCREEN, -1, -1, format_args!(" t. Teleportation\n"));
             self.printf_sdl(
-                NE_SCREEN,
+                self.graphics.ne_screen,
+                -1,
+                -1,
+                format_args!(" t. Teleportation\n"),
+            );
+            self.printf_sdl(
+                self.graphics.ne_screen,
                 -1,
                 -1,
                 format_args!(" r. change to new robot type\n"),
             );
             self.printf_sdl(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 -1,
                 -1,
                 format_args!(
@@ -382,9 +391,14 @@ impl Data {
                     if INVINCIBLE_MODE != 0 { "ON" } else { "OFF" },
                 ),
             );
-            self.printf_sdl(NE_SCREEN, -1, -1, format_args!(" e. set energy\n"));
             self.printf_sdl(
-                NE_SCREEN,
+                self.graphics.ne_screen,
+                -1,
+                -1,
+                format_args!(" e. set energy\n"),
+            );
+            self.printf_sdl(
+                self.graphics.ne_screen,
                 -1,
                 -1,
                 format_args!(
@@ -392,22 +406,32 @@ impl Data {
                     if SHOW_ALL_DROIDS != 0 { "ON" } else { "OFF" },
                 ),
             );
-            self.printf_sdl(NE_SCREEN, -1, -1, format_args!(" m. Map of Deck xy\n"));
             self.printf_sdl(
-                NE_SCREEN,
+                self.graphics.ne_screen,
+                -1,
+                -1,
+                format_args!(" m. Map of Deck xy\n"),
+            );
+            self.printf_sdl(
+                self.graphics.ne_screen,
                 -1,
                 -1,
                 format_args!(" s. Sound: {}\n", if SOUND_ON != 0 { "ON" } else { "OFF" }),
             );
             self.printf_sdl(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 -1,
                 -1,
                 format_args!(" w. Print current waypoints\n"),
             );
-            self.printf_sdl(NE_SCREEN, -1, -1, format_args!(" z. change Zoom factor\n"));
             self.printf_sdl(
-                NE_SCREEN,
+                self.graphics.ne_screen,
+                -1,
+                -1,
+                format_args!(" z. change Zoom factor\n"),
+            );
+            self.printf_sdl(
+                self.graphics.ne_screen,
                 -1,
                 -1,
                 format_args!(
@@ -415,7 +439,12 @@ impl Data {
                     if STOP_INFLUENCER != 0 { "ON" } else { "OFF" },
                 ),
             );
-            self.printf_sdl(NE_SCREEN, -1, -1, format_args!(" q. RESUME game\n"));
+            self.printf_sdl(
+                self.graphics.ne_screen,
+                -1,
+                -1,
+                format_args!(" q. RESUME game\n"),
+            );
 
             match u8::try_from(self.getchar_raw()).ok() {
                 Some(b'f') => {
@@ -425,7 +454,7 @@ impl Data {
                 Some(b'z') => {
                     self.clear_graph_mem();
                     self.printf_sdl(
-                        NE_SCREEN,
+                        self.graphics.ne_screen,
                         X0,
                         Y0,
                         format_args!(
@@ -433,7 +462,12 @@ impl Data {
                             self.global.current_combat_scale_factor.clone(),
                         ),
                     );
-                    self.printf_sdl(NE_SCREEN, -1, -1, format_args!("New zoom factor: "));
+                    self.printf_sdl(
+                        self.graphics.ne_screen,
+                        -1,
+                        -1,
+                        format_args!("New zoom factor: "),
+                    );
                     let input = self.get_string(40, 2);
                     libc::sscanf(
                         input,
@@ -457,7 +491,7 @@ impl Data {
                         if ALL_ENEMYS[i].levelnum == cur_level.levelnum {
                             if l != 0 && l % 20 == 0 {
                                 self.printf_sdl(
-                                    NE_SCREEN,
+                                    self.graphics.ne_screen,
                                     -1,
                                     -1,
                                     format_args!(" --- MORE --- \n"),
@@ -469,13 +503,13 @@ impl Data {
                             if l % 20 == 0 {
                                 self.clear_graph_mem();
                                 self.printf_sdl(
-                                    NE_SCREEN,
+                                    self.graphics.ne_screen,
                                     X0,
                                     Y0,
                                     format_args!(" NR.   ID  X    Y   ENERGY   Status\n"),
                                 );
                                 self.printf_sdl(
-                                    NE_SCREEN,
+                                    self.graphics.ne_screen,
                                     -1,
                                     -1,
                                     format_args!("---------------------------------------------\n"),
@@ -492,7 +526,7 @@ impl Data {
                             };
 
                             self.printf_sdl(
-                                NE_SCREEN,
+                                self.graphics.ne_screen,
                                 -1,
                                 -1,
                                 format_args!(
@@ -514,7 +548,12 @@ impl Data {
                         }
                     }
 
-                    self.printf_sdl(NE_SCREEN, -1, -1, format_args!(" --- END --- \n"));
+                    self.printf_sdl(
+                        self.graphics.ne_screen,
+                        -1,
+                        -1,
+                        format_args!(" --- END --- \n"),
+                    );
                     self.getchar_raw();
                 }
 
@@ -527,7 +566,7 @@ impl Data {
 
                         if i != 0 && !i % 13 == 0 {
                             self.printf_sdl(
-                                NE_SCREEN,
+                                self.graphics.ne_screen,
                                 -1,
                                 -1,
                                 format_args!(" --- MORE --- ('q' to quit)\n"),
@@ -539,13 +578,13 @@ impl Data {
                         if i % 13 == 0 {
                             self.clear_graph_mem();
                             self.printf_sdl(
-                                NE_SCREEN,
+                                self.graphics.ne_screen,
                                 X0,
                                 Y0,
                                 format_args!("Nr.  Lev. ID  Energy  Status.\n"),
                             );
                             self.printf_sdl(
-                                NE_SCREEN,
+                                self.graphics.ne_screen,
                                 -1,
                                 -1,
                                 format_args!("------------------------------\n"),
@@ -553,7 +592,7 @@ impl Data {
                         }
 
                         self.printf_sdl(
-                            NE_SCREEN,
+                            self.graphics.ne_screen,
                             -1,
                             -1,
                             format_args!(
@@ -576,7 +615,12 @@ impl Data {
                         );
                     }
 
-                    self.printf_sdl(NE_SCREEN, -1, -1, format_args!(" --- END ---\n"));
+                    self.printf_sdl(
+                        self.graphics.ne_screen,
+                        -1,
+                        -1,
+                        format_args!(" --- END ---\n"),
+                    );
                     self.getchar_raw();
                 }
 
@@ -588,7 +632,7 @@ impl Data {
                         }
                     }
                     self.printf_sdl(
-                        NE_SCREEN,
+                        self.graphics.ne_screen,
                         -1,
                         -1,
                         format_args!("All robots on this deck killed!\n"),
@@ -599,7 +643,12 @@ impl Data {
                 Some(b't') => {
                     /* Teleportation */
                     self.clear_graph_mem();
-                    self.printf_sdl(NE_SCREEN, X0, Y0, format_args!("Enter Level, X, Y: "));
+                    self.printf_sdl(
+                        self.graphics.ne_screen,
+                        X0,
+                        Y0,
+                        format_args!("Enter Level, X, Y: "),
+                    );
                     let input = self.get_string(40, 2);
                     let mut l_num = 0;
                     let mut x = 0;
@@ -620,7 +669,7 @@ impl Data {
                     /* change to new robot type */
                     self.clear_graph_mem();
                     self.printf_sdl(
-                        NE_SCREEN,
+                        self.graphics.ne_screen,
                         X0,
                         Y0,
                         format_args!("Type number of new robot: "),
@@ -636,7 +685,7 @@ impl Data {
 
                     if i == usize::try_from(NUMBER_OF_DROID_TYPES).unwrap() {
                         self.printf_sdl(
-                            NE_SCREEN,
+                            self.graphics.ne_screen,
                             X0,
                             Y0 + 20,
                             format_args!(
@@ -652,7 +701,7 @@ impl Data {
                             droid_map[usize::try_from(self.vars.me.ty).unwrap()].maxenergy;
                         self.vars.me.health = self.vars.me.energy;
                         self.printf_sdl(
-                            NE_SCREEN,
+                            self.graphics.ne_screen,
                             X0,
                             Y0 + 20,
                             format_args!(
@@ -674,12 +723,17 @@ impl Data {
                     /* complete heal */
                     self.clear_graph_mem();
                     self.printf_sdl(
-                        NE_SCREEN,
+                        self.graphics.ne_screen,
                         X0,
                         Y0,
                         format_args!("Current energy: {}\n", self.vars.me.energy.clone()),
                     );
-                    self.printf_sdl(NE_SCREEN, -1, -1, format_args!("Enter your new energy: "));
+                    self.printf_sdl(
+                        self.graphics.ne_screen,
+                        -1,
+                        -1,
+                        format_args!("Enter your new energy: "),
+                    );
                     let input = self.get_string(40, 2);
                     let mut num = 0;
                     libc::sscanf(input, cstr!("%d").as_ptr() as *mut c_char, &mut num);
@@ -702,7 +756,12 @@ impl Data {
 
                 Some(b'm') => {
                     /* Show deck map in Concept view */
-                    self.printf_sdl(NE_SCREEN, -1, -1, format_args!("\nLevelnum: "));
+                    self.printf_sdl(
+                        self.graphics.ne_screen,
+                        -1,
+                        -1,
+                        format_args!("\nLevelnum: "),
+                    );
                     let input = self.get_string(40, 2);
                     let mut l_num = 0;
                     libc::sscanf(input, cstr!("%d").as_ptr() as *mut c_char, &mut l_num);
@@ -715,7 +774,12 @@ impl Data {
                     /* print waypoint info of current level */
                     for (i, waypoint) in cur_level.all_waypoints.iter_mut().enumerate() {
                         if i != 0 && i % 20 == 0 {
-                            self.printf_sdl(NE_SCREEN, -1, -1, format_args!(" ---- MORE -----\n"));
+                            self.printf_sdl(
+                                self.graphics.ne_screen,
+                                -1,
+                                -1,
+                                format_args!(" ---- MORE -----\n"),
+                            );
                             if self.getchar_raw() == b'q'.into() {
                                 break;
                             }
@@ -723,20 +787,20 @@ impl Data {
                         if i % 20 == 0 {
                             self.clear_graph_mem();
                             self.printf_sdl(
-                                NE_SCREEN,
+                                self.graphics.ne_screen,
                                 X0,
                                 Y0,
                                 format_args!("Nr.   X   Y      C1  C2  C3  C4\n"),
                             );
                             self.printf_sdl(
-                                NE_SCREEN,
+                                self.graphics.ne_screen,
                                 -1,
                                 -1,
                                 format_args!("------------------------------------\n"),
                             );
                         }
                         self.printf_sdl(
-                            NE_SCREEN,
+                            self.graphics.ne_screen,
                             -1,
                             -1,
                             format_args!(
@@ -751,7 +815,12 @@ impl Data {
                             ),
                         );
                     }
-                    self.printf_sdl(NE_SCREEN, -1, -1, format_args!(" --- END ---\n"));
+                    self.printf_sdl(
+                        self.graphics.ne_screen,
+                        -1,
+                        -1,
+                        format_args!(" --- END ---\n"),
+                    );
                     self.getchar_raw();
                 }
 
@@ -910,7 +979,12 @@ impl Data {
             let submenu = menu_entries[menu_pos].submenu;
 
             if need_update {
-                SDL_UpperBlit(self.menu.menu_background, null_mut(), NE_SCREEN, null_mut());
+                SDL_UpperBlit(
+                    self.menu.menu_background,
+                    null_mut(),
+                    self.graphics.ne_screen,
+                    null_mut(),
+                );
                 // print menu
                 menu_entries.iter().enumerate().for_each(|(i, entry)| {
                     let arg = entry
@@ -935,7 +1009,7 @@ impl Data {
                     .unwrap();
                     let position = usize::try_from(cursor.position()).unwrap();
                     self.put_string(
-                        NE_SCREEN,
+                        self.graphics.ne_screen,
                         menu_x,
                         menu_y + i32::try_from(i).unwrap() * self.menu.font_height,
                         &full_name[..position],
@@ -947,13 +1021,13 @@ impl Data {
                 );
 
                 #[cfg(not(target_os = "android"))]
-                SDL_Flip(NE_SCREEN);
+                SDL_Flip(self.graphics.ne_screen);
 
                 need_update = false;
             }
 
             #[cfg(target_os = "android")]
-            SDL_Flip(NE_SCREEN); // for responsive input on Android, we need to run this every cycle
+            SDL_Flip(self.graphics.ne_screen); // for responsive input on Android, we need to run this every cycle
 
             let action = self.get_menu_action(250);
 
@@ -1062,11 +1136,16 @@ impl Data {
         let col3 = col2 + (6.5 * f64::from(char_width(&*current_font, b'O'))) as i32;
         let lheight = font_height(&*self.global.font0_b_font) + 2;
 
-        SDL_UpperBlit(self.menu.menu_background, null_mut(), NE_SCREEN, null_mut());
+        SDL_UpperBlit(
+            self.menu.menu_background,
+            null_mut(),
+            self.graphics.ne_screen,
+            null_mut(),
+        );
 
         #[cfg(feature = "gcw0")]
         PrintStringFont(
-            NE_SCREEN,
+            self.graphics.ne_screen,
             Font0_BFont,
             col1,
             starty,
@@ -1076,14 +1155,14 @@ impl Data {
         #[cfg(not(feature = "gcw0"))]
         {
             print_string_font(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 self.global.font0_b_font,
                 col1,
                 starty,
                 format_args!("(RShldr to clear an entry)"),
             );
             print_string_font(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 self.global.font0_b_font,
                 col1,
                 starty,
@@ -1093,28 +1172,28 @@ impl Data {
 
         let mut posy = 1;
         print_string_font(
-            NE_SCREEN,
+            self.graphics.ne_screen,
             self.global.font0_b_font,
             startx,
             starty + (posy) * lheight,
             format_args!("Command"),
         );
         print_string_font(
-            NE_SCREEN,
+            self.graphics.ne_screen,
             self.global.font0_b_font,
             col1,
             starty + (posy) * lheight,
             format_args!("Key1"),
         );
         print_string_font(
-            NE_SCREEN,
+            self.graphics.ne_screen,
             self.global.font0_b_font,
             col2,
             starty + (posy) * lheight,
             format_args!("Key2"),
         );
         print_string_font(
-            NE_SCREEN,
+            self.graphics.ne_screen,
             self.global.font0_b_font,
             col3,
             starty + (posy) * lheight,
@@ -1136,14 +1215,14 @@ impl Data {
             };
 
             print_string_font(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 self.global.font0_b_font,
                 startx,
                 starty + (posy) * lheight,
                 format_args!("{}", CStr::from_ptr(cmd_string).to_str().unwrap()),
             );
             print_string_font(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 pos_font(1, 1 + i),
                 col1,
                 starty + (posy) * lheight,
@@ -1157,7 +1236,7 @@ impl Data {
                 ),
             );
             print_string_font(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 pos_font(2, 1 + i),
                 col2,
                 starty + (posy) * lheight,
@@ -1171,7 +1250,7 @@ impl Data {
                 ),
             );
             print_string_font(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 pos_font(3, 1 + i),
                 col3,
                 starty + (posy) * lheight,
@@ -1187,7 +1266,7 @@ impl Data {
             posy += 1;
         }
 
-        SDL_Flip(NE_SCREEN);
+        SDL_Flip(self.graphics.ne_screen);
     }
 
     pub unsafe fn key_config_menu(&mut self) {
@@ -1294,7 +1373,7 @@ impl Data {
         let em = char_width(&*self.global.menu_b_font, b'm');
 
         let screen = self.vars.screen_rect;
-        SDL_SetClipRect(NE_SCREEN, null_mut());
+        SDL_SetClipRect(self.graphics.ne_screen, null_mut());
         let image = self.find_file(
             CREDITS_PIC_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
@@ -1307,50 +1386,115 @@ impl Data {
         let oldfont = std::mem::replace(&mut self.b_font.current_font, self.global.font1_b_font);
 
         self.printf_sdl(
-            NE_SCREEN,
+            self.graphics.ne_screen,
             i32::from(self.get_user_center().x) - 2 * em,
             h,
             format_args!("CREDITS\n"),
         );
 
-        self.printf_sdl(NE_SCREEN, em, -1, format_args!("PROGRAMMING:"));
-        self.printf_sdl(NE_SCREEN, col2, -1, format_args!("Johannes Prix\n"));
-        self.printf_sdl(NE_SCREEN, -1, -1, format_args!("Reinhard Prix\n"));
-        self.printf_sdl(NE_SCREEN, -1, -1, format_args!("\n"));
+        self.printf_sdl(
+            self.graphics.ne_screen,
+            em,
+            -1,
+            format_args!("PROGRAMMING:"),
+        );
+        self.printf_sdl(
+            self.graphics.ne_screen,
+            col2,
+            -1,
+            format_args!("Johannes Prix\n"),
+        );
+        self.printf_sdl(
+            self.graphics.ne_screen,
+            -1,
+            -1,
+            format_args!("Reinhard Prix\n"),
+        );
+        self.printf_sdl(self.graphics.ne_screen, -1, -1, format_args!("\n"));
 
-        self.printf_sdl(NE_SCREEN, em, -1, format_args!("ARTWORK:"));
-        self.printf_sdl(NE_SCREEN, col2, -1, format_args!("Bastian Salmela\n"));
-        self.printf_sdl(NE_SCREEN, -1, -1, format_args!("\n"));
-        self.printf_sdl(NE_SCREEN, em, -1, format_args!("ADDITIONAL THEMES:\n"));
-        self.printf_sdl(NE_SCREEN, 2 * em, -1, format_args!("Lanzz-theme"));
-        self.printf_sdl(NE_SCREEN, col2, -1, format_args!("Lanzz\n"));
-        self.printf_sdl(NE_SCREEN, 2 * em, -1, format_args!("Para90-theme"));
-        self.printf_sdl(NE_SCREEN, col2, -1, format_args!("Andreas Wedemeyer\n"));
+        self.printf_sdl(self.graphics.ne_screen, em, -1, format_args!("ARTWORK:"));
+        self.printf_sdl(
+            self.graphics.ne_screen,
+            col2,
+            -1,
+            format_args!("Bastian Salmela\n"),
+        );
+        self.printf_sdl(self.graphics.ne_screen, -1, -1, format_args!("\n"));
+        self.printf_sdl(
+            self.graphics.ne_screen,
+            em,
+            -1,
+            format_args!("ADDITIONAL THEMES:\n"),
+        );
+        self.printf_sdl(
+            self.graphics.ne_screen,
+            2 * em,
+            -1,
+            format_args!("Lanzz-theme"),
+        );
+        self.printf_sdl(self.graphics.ne_screen, col2, -1, format_args!("Lanzz\n"));
+        self.printf_sdl(
+            self.graphics.ne_screen,
+            2 * em,
+            -1,
+            format_args!("Para90-theme"),
+        );
+        self.printf_sdl(
+            self.graphics.ne_screen,
+            col2,
+            -1,
+            format_args!("Andreas Wedemeyer\n"),
+        );
 
-        self.printf_sdl(NE_SCREEN, -1, -1, format_args!("\n"));
-        self.printf_sdl(NE_SCREEN, em, -1, format_args!("C64 LEGACY MODS:\n"));
+        self.printf_sdl(self.graphics.ne_screen, -1, -1, format_args!("\n"));
+        self.printf_sdl(
+            self.graphics.ne_screen,
+            em,
+            -1,
+            format_args!("C64 LEGACY MODS:\n"),
+        );
 
         self.printf_sdl(
-            NE_SCREEN,
+            self.graphics.ne_screen,
             2 * em,
             -1,
             format_args!("Green Beret, Sanxion, Uridium2"),
         );
-        self.printf_sdl(NE_SCREEN, col2, -1, format_args!("#dreamfish/trsi\n"));
+        self.printf_sdl(
+            self.graphics.ne_screen,
+            col2,
+            -1,
+            format_args!("#dreamfish/trsi\n"),
+        );
 
-        self.printf_sdl(NE_SCREEN, 2 * em, -1, format_args!("The last V8, Anarchy"));
-        self.printf_sdl(NE_SCREEN, col2, -1, format_args!("4-mat\n"));
+        self.printf_sdl(
+            self.graphics.ne_screen,
+            2 * em,
+            -1,
+            format_args!("The last V8, Anarchy"),
+        );
+        self.printf_sdl(self.graphics.ne_screen, col2, -1, format_args!("4-mat\n"));
 
-        self.printf_sdl(NE_SCREEN, 2 * em, -1, format_args!("Tron"));
-        self.printf_sdl(NE_SCREEN, col2, -1, format_args!("Kollaps\n"));
+        self.printf_sdl(self.graphics.ne_screen, 2 * em, -1, format_args!("Tron"));
+        self.printf_sdl(self.graphics.ne_screen, col2, -1, format_args!("Kollaps\n"));
 
-        self.printf_sdl(NE_SCREEN, 2 * em, -1, format_args!("Starpaws"));
-        self.printf_sdl(NE_SCREEN, col2, -1, format_args!("Nashua\n"));
+        self.printf_sdl(
+            self.graphics.ne_screen,
+            2 * em,
+            -1,
+            format_args!("Starpaws"),
+        );
+        self.printf_sdl(self.graphics.ne_screen, col2, -1, format_args!("Nashua\n"));
 
-        self.printf_sdl(NE_SCREEN, 2 * em, -1, format_args!("Commando"));
-        self.printf_sdl(NE_SCREEN, col2, -1, format_args!("Android"));
+        self.printf_sdl(
+            self.graphics.ne_screen,
+            2 * em,
+            -1,
+            format_args!("Commando"),
+        );
+        self.printf_sdl(self.graphics.ne_screen, col2, -1, format_args!("Android"));
 
-        SDL_Flip(NE_SCREEN);
+        SDL_Flip(self.graphics.ne_screen);
         self.wait_for_key_pressed();
         self.b_font.current_font = oldfont;
     }
@@ -1415,11 +1559,11 @@ impl Data {
             .unwrap();
             let position = usize::try_from(cursor.position()).unwrap();
             self.centered_put_string(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 3 * font_height(&*self.global.menu_b_font),
                 &output[..position],
             );
-            SDL_Flip(NE_SCREEN);
+            SDL_Flip(self.graphics.ne_screen);
             self.wait_for_key_pressed();
             self.initiate_menu(false);
         }
@@ -1442,7 +1586,7 @@ impl Data {
                 i32::from(self.vars.menu_rect.y) - 3 * self.menu.font_height,
                 &self.vars.full_user_rect,
             );
-            SDL_Flip(NE_SCREEN);
+            SDL_Flip(self.graphics.ne_screen);
             static ALREADY_FREED: AtomicBool = AtomicBool::new(false);
             match ALREADY_FREED.compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire) {
                 Ok(_) => dealloc_c_string(cur_level.levelname),
@@ -1614,7 +1758,7 @@ impl Data {
             self.global.game_config.full_user_rect = false.into();
             self.vars.user_rect = self.vars.classic_user_rect;
             // set theme
-            self.set_theme(CLASSIC_THEME_INDEX);
+            self.set_theme(self.graphics.classic_theme_index);
             self.initiate_menu(false);
         }
 
@@ -1647,14 +1791,15 @@ impl Data {
 
     pub unsafe fn handle_theme(&mut self, action: MenuAction) -> *const c_char {
         if action == MenuAction::INFO {
-            return ALL_THEMES.theme_name[usize::try_from(ALL_THEMES.cur_tnum).unwrap()]
+            return self.graphics.all_themes.theme_name
+                [usize::try_from(self.graphics.all_themes.cur_tnum).unwrap()]
                 as *const c_char;
         }
 
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
             self.move_lift_sound();
-            let mut tnum = ALL_THEMES.cur_tnum;
+            let mut tnum = self.graphics.all_themes.cur_tnum;
             if action == MenuAction::CLICK && action == MenuAction::RIGHT {
                 tnum += 1;
             } else {
@@ -1662,9 +1807,9 @@ impl Data {
             }
 
             if tnum < 0 {
-                tnum = ALL_THEMES.num_themes - 1;
+                tnum = self.graphics.all_themes.num_themes - 1;
             }
-            if tnum > ALL_THEMES.num_themes - 1 {
+            if tnum > self.graphics.all_themes.num_themes - 1 {
                 tnum = 0;
             }
 
@@ -1897,12 +2042,14 @@ impl Data {
     }
 
     pub unsafe fn set_theme(&mut self, theme_index: c_int) {
-        assert!(theme_index >= 0 && theme_index < ALL_THEMES.num_themes);
+        assert!(theme_index >= 0 && theme_index < self.graphics.all_themes.num_themes);
 
-        ALL_THEMES.cur_tnum = theme_index;
+        self.graphics.all_themes.cur_tnum = theme_index;
         libc::strcpy(
             self.global.game_config.theme_name.as_mut_ptr(),
-            ALL_THEMES.theme_name[usize::try_from(ALL_THEMES.cur_tnum).unwrap()] as *const c_char,
+            self.graphics.all_themes.theme_name
+                [usize::try_from(self.graphics.all_themes.cur_tnum).unwrap()]
+                as *const c_char,
         );
         self.init_pictures();
     }

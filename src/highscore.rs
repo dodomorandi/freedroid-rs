@@ -4,7 +4,6 @@ use crate::{
         self, Criticality, DisplayBannerFlags, Status, Themed, DATE_LEN, GRAPHICS_DIR_C,
         HS_BACKGROUND_FILE_C, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
     },
-    graphics::NE_SCREEN,
     Data, CONFIG_DIR, REAL_SCORE, SHOW_SCORE,
 };
 
@@ -203,7 +202,12 @@ impl Data {
             self.vars.portrait_rect.w,
             self.vars.portrait_rect.h,
         );
-        SDL_UpperBlit(self.graphics.pic999, null_mut(), NE_SCREEN, &mut dst);
+        SDL_UpperBlit(
+            self.graphics.pic999,
+            null_mut(),
+            self.graphics.ne_screen,
+            &mut dst,
+        );
         let h = font_height(&*self.global.para_b_font);
         self.display_text(
             cstr!("Great Score !").as_ptr(),
@@ -226,8 +230,8 @@ impl Data {
 
         // TODO More ARCADEINPUT
 
-        SDL_Flip(NE_SCREEN);
-        SDL_SetClipRect(NE_SCREEN, null_mut());
+        SDL_Flip(self.graphics.ne_screen);
+        SDL_SetClipRect(self.graphics.ne_screen, null_mut());
 
         let date = format!("{}", chrono::Local::today().format("%Y/%m/%d"));
 
@@ -246,7 +250,7 @@ impl Data {
             new_entry
         };
 
-        self.printf_sdl(NE_SCREEN, -1, -1, format_args!("\n"));
+        self.printf_sdl(self.graphics.ne_screen, -1, -1, format_args!("\n"));
 
         self.highscore.entries.as_mut().unwrap()[entry_pos..]
             .iter_mut()
@@ -314,7 +318,7 @@ impl Data {
         let y0 = i32::from(self.vars.full_user_rect.y) + height;
 
         self.centered_print_string(
-            NE_SCREEN,
+            self.graphics.ne_screen,
             y0,
             format_args!("Top {}  scores\n", self.highscore.num),
         );
@@ -323,14 +327,14 @@ impl Data {
         for (i, highscore) in highscore_entries.iter().enumerate() {
             let i = i32::try_from(i).unwrap();
             self.print_string(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 x0,
                 y0 + (i + 2) * height,
                 format_args!("{}", i + 1),
             );
             if highscore.score >= 0 {
                 self.print_string(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     x1,
                     y0 + (i + 2) * height,
                     format_args!(
@@ -340,7 +344,7 @@ impl Data {
                 );
             }
             self.print_string(
-                NE_SCREEN,
+                self.graphics.ne_screen,
                 x2,
                 y0 + (i + 2) * height,
                 format_args!(
@@ -350,7 +354,7 @@ impl Data {
             );
             if highscore.score >= 0 {
                 self.print_string(
-                    NE_SCREEN,
+                    self.graphics.ne_screen,
                     x3,
                     y0 + (i + 2) * height,
                     format_args!("{}", highscore.score),
@@ -358,7 +362,7 @@ impl Data {
             }
         }
         self.highscore.entries = Some(highscore_entries);
-        SDL_Flip(NE_SCREEN);
+        SDL_Flip(self.graphics.ne_screen);
 
         self.wait_for_key_pressed();
 

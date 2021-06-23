@@ -6,7 +6,8 @@ use crate::{
         SHOW_WAIT, SLOWMO_FACTOR, TITLE_PIC_FILE_C, WAIT_AFTER_KILLED,
     },
     enemy::shuffle_enemys,
-    graphics::{ALL_THEMES, NE_SCREEN, NUMBER_OF_BULLET_TYPES},
+    global::Global,
+    graphics::Graphics,
     input::SDL_Delay,
     misc::{
         count_string_occurences, dealloc_c_string, locate_string_in_data, my_random,
@@ -77,7 +78,7 @@ impl Data {
         if self.vars.bulletmap.is_null().not() {
             let bullet_map = std::slice::from_raw_parts_mut(
                 self.vars.bulletmap,
-                usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap(),
+                usize::try_from(self.graphics.number_of_bullet_types).unwrap(),
             );
             for bullet in bullet_map {
                 for surface in &bullet.surface_pointer {
@@ -86,8 +87,10 @@ impl Data {
             }
             dealloc(
                 self.vars.bulletmap as *mut u8,
-                Layout::array::<BulletSpec>(usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap())
-                    .unwrap(),
+                Layout::array::<BulletSpec>(
+                    usize::try_from(self.graphics.number_of_bullet_types).unwrap(),
+                )
+                .unwrap(),
             );
             self.vars.bulletmap = null_mut();
         }
@@ -134,7 +137,7 @@ impl Data {
 /// put some ideology message for our poor friends enslaved by M$-Win32 ;)
 #[cfg(target_os = "windows")]
 pub unsafe fn win32_disclaimer() {
-    SDL_SetClipRect(NE_SCREEN, null_mut());
+    SDL_SetClipRect(self.graphics.ne_screen, null_mut());
     display_image(find_file(
         TITLE_PIC_FILE_C.as_ptr() as *mut c_char,
         GRAPHICS_DIR_C.as_ptr() as *mut c_char,
@@ -159,7 +162,7 @@ pub unsafe fn win32_disclaimer() {
         rect.y.into(),
         &rect,
     );
-    SDL_Flip(NE_SCREEN);
+    SDL_Flip(self.graphics.ne_screen);
 
     wait_for_key_pressed();
 }
@@ -205,9 +208,9 @@ impl Data {
         }
 
         let mut rect = self.vars.full_user_rect;
-        SDL_SetClipRect(NE_SCREEN, null_mut());
+        SDL_SetClipRect(self.graphics.ne_screen, null_mut());
         self.make_grid_on_screen(Some(&rect));
-        SDL_Flip(NE_SCREEN);
+        SDL_Flip(self.graphics.ne_screen);
         rect.x += 10;
         rect.w -= 20; //leave some border
         self.b_font.current_font = self.global.para_b_font;
@@ -287,7 +290,7 @@ impl Data {
             Criticality::Critical as c_int,
         );
         self.display_image(image); // show title pic
-        SDL_Flip(NE_SCREEN);
+        SDL_Flip(self.graphics.ne_screen);
 
         self.load_fonts(); // we need this for progress-meter!
 
@@ -402,8 +405,9 @@ impl Data {
         let mut classic_theme_index: usize = 0; // default: override when we actually find 'classic' theme
 
         // just to make sure...
-        ALL_THEMES.num_themes = 0;
-        ALL_THEMES
+        self.graphics.all_themes.num_themes = 0;
+        self.graphics
+            .all_themes
             .theme_name
             .iter_mut()
             .filter(|name| name.is_null().not())
@@ -479,7 +483,9 @@ impl Data {
                             info!("The theme file is readable");
                             // last check: is this theme already in the list??
 
-                            let theme_exists = ALL_THEMES
+                            let theme_exists = self
+                                .graphics
+                                .all_themes
                                 .theme_name
                                 .iter()
                                 .copied()
@@ -495,10 +501,11 @@ impl Data {
                             } else {
                                 info!("Found new graphics-theme: {}", theme_name);
                                 if theme_name == "classic" {
-                                    classic_theme_index = ALL_THEMES.num_themes.try_into().unwrap();
+                                    classic_theme_index =
+                                        self.graphics.all_themes.num_themes.try_into().unwrap();
                                 }
-                                let new_theme = &mut ALL_THEMES.theme_name
-                                    [usize::try_from(ALL_THEMES.num_themes).unwrap()];
+                                let new_theme = &mut self.graphics.all_themes.theme_name
+                                    [usize::try_from(self.graphics.all_themes.num_themes).unwrap()];
                                 *new_theme = alloc_zeroed(
                                     Layout::array::<u8>(theme_name.len() + 1).unwrap(),
                                 ) as *mut u8;
@@ -509,7 +516,7 @@ impl Data {
                                 );
                                 *new_theme.add(theme_name.len()) = b'\0';
 
-                                ALL_THEMES.num_themes += 1;
+                                self.graphics.all_themes.num_themes += 1;
                             }
                         }
                         Err(err) => {
@@ -528,19 +535,21 @@ impl Data {
         add_theme_from_dir(Path::new(LOCAL_DATADIR));
 
         // now have a look at what we found:
-        if ALL_THEMES.num_themes == 0 {
+        if self.graphics.all_themes.num_themes == 0 {
             panic!("No valid graphic-themes found!! You need to install at least one to run Freedroid!!");
         }
 
-        let selected_theme_index = ALL_THEMES.theme_name
-            [..usize::try_from(ALL_THEMES.num_themes).unwrap()]
+        let Self {
+            graphics: Graphics { all_themes, .. },
+            global: Global { game_config, .. },
+            ..
+        } = self;
+        let selected_theme_index = all_themes.theme_name
+            [..usize::try_from(all_themes.num_themes).unwrap()]
             .iter()
             .copied()
             .position(|theme_name| {
-                libc::strcmp(
-                    theme_name as *const _,
-                    self.global.game_config.theme_name.as_mut_ptr(),
-                ) == 0
+                libc::strcmp(theme_name as *const _, game_config.theme_name.as_mut_ptr()) == 0
             });
 
         match selected_theme_index {
@@ -549,7 +558,7 @@ impl Data {
                     "Found selected theme {} from GameConfig.",
                     CStr::from_ptr(self.global.game_config.theme_name.as_ptr()).to_string_lossy(),
                 );
-                ALL_THEMES.cur_tnum = index.try_into().unwrap();
+                self.graphics.all_themes.cur_tnum = index.try_into().unwrap();
             }
             None => {
                 warn!(
@@ -558,9 +567,9 @@ impl Data {
                 );
                 libc::strcpy(
                     self.global.game_config.theme_name.as_mut_ptr(),
-                    ALL_THEMES.theme_name[classic_theme_index] as *const _,
+                    self.graphics.all_themes.theme_name[classic_theme_index] as *const _,
                 );
-                ALL_THEMES.cur_tnum = classic_theme_index.try_into().unwrap();
+                self.graphics.all_themes.cur_tnum = classic_theme_index.try_into().unwrap();
             }
         }
 
@@ -881,7 +890,7 @@ impl Data {
         );
         self.switch_background_music_to(buffer.as_mut_ptr());
 
-        SDL_SetClipRect(NE_SCREEN, null_mut());
+        SDL_SetClipRect(self.graphics.ne_screen, null_mut());
         read_value_from_string(
             mission_briefing_pointer,
             BRIEFING_TITLE_PICTURE_STRING.as_ptr() as *mut c_char,
@@ -1336,7 +1345,7 @@ impl Data {
         // How much?  That depends on the number of droids defined in freedroid.ruleset.
         // So we have to count those first.  ok.  lets do it.
 
-        NUMBER_OF_BULLET_TYPES = count_string_occurences(
+        self.graphics.number_of_bullet_types = count_string_occurences(
             data_pointer as *mut c_char,
             NEW_BULLET_TYPE_BEGIN_STRING.as_ptr() as *mut c_char,
         );
@@ -1350,17 +1359,19 @@ impl Data {
         //
         if self.vars.bulletmap.is_null() {
             self.vars.bulletmap = alloc_zeroed(
-                Layout::array::<BulletSpec>(usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap())
-                    .unwrap(),
+                Layout::array::<BulletSpec>(
+                    usize::try_from(self.graphics.number_of_bullet_types).unwrap(),
+                )
+                .unwrap(),
             ) as *mut BulletSpec;
             std::ptr::write_bytes(
                 self.vars.bulletmap,
                 0,
-                usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap(),
+                usize::try_from(self.graphics.number_of_bullet_types).unwrap(),
             );
             info!(
                 "We have counted {} different bullet types in the game data file.",
-                NUMBER_OF_BULLET_TYPES
+                self.graphics.number_of_bullet_types
             );
             info!("MEMORY HAS BEEN ALLOCATED. THE READING CAN BEGIN.");
         }
@@ -1447,7 +1458,7 @@ impl Data {
         // apply them to all the bullet types
         for bullet in std::slice::from_raw_parts_mut(
             self.vars.bulletmap,
-            usize::try_from(NUMBER_OF_BULLET_TYPES).unwrap(),
+            usize::try_from(self.graphics.number_of_bullet_types).unwrap(),
         ) {
             bullet.speed *= bullet_speed_calibrator;
             bullet.damage = (bullet.damage as f32 * bullet_damage_calibrator) as c_int;
@@ -1574,7 +1585,7 @@ impl Data {
         // TODO: avoid a temporary backup
         let mut user_rect = std::mem::replace(&mut self.vars.user_rect, rect!(0, 0, 0, 0));
         self.white_noise(
-            NE_SCREEN,
+            self.graphics.ne_screen,
             &mut user_rect,
             WAIT_AFTER_KILLED.try_into().unwrap(),
         );
@@ -1589,7 +1600,12 @@ impl Data {
             w: self.vars.portrait_rect.w,
             h: self.vars.portrait_rect.h,
         };
-        SDL_UpperBlit(self.graphics.pic999, null_mut(), NE_SCREEN, &mut dst);
+        SDL_UpperBlit(
+            self.graphics.pic999,
+            null_mut(),
+            self.graphics.ne_screen,
+            &mut dst,
+        );
         self.thou_art_defeated_sound();
 
         self.b_font.current_font = self.global.para_b_font;
@@ -1606,8 +1622,8 @@ impl Data {
             i32::from(dst.y) + i32::from(dst.h),
             &self.vars.user_rect,
         );
-        self.printf_sdl(NE_SCREEN, -1, -1, format_args!("\n"));
-        SDL_Flip(NE_SCREEN);
+        self.printf_sdl(self.graphics.ne_screen, -1, -1, format_args!("\n"));
+        SDL_Flip(self.graphics.ne_screen);
 
         now = SDL_GetTicks();
 

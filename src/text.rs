@@ -1,7 +1,6 @@
 use crate::{
     b_font::{char_width, font_height},
     defs::{Cmds, PointerStates, SHOW_WAIT, TEXT_STRETCH},
-    graphics::NE_SCREEN,
     input::SDL_Delay,
     misc::my_random,
     Data, ALL_ENEMYS,
@@ -115,7 +114,7 @@ impl Data {
             self.vars.screen_rect.w,
             height.try_into().unwrap(),
         );
-        SDL_UpperBlit(NE_SCREEN, &mut store_rect, store, null_mut());
+        SDL_UpperBlit(self.graphics.ne_screen, &mut store_rect, store, null_mut());
 
         #[cfg(feature = "arcade-input")]
         let blink_time = 200; // For adjusting fast <->slow blink; in ms
@@ -135,9 +134,14 @@ impl Data {
 
         while !finished {
             let mut tmp_rect = store_rect;
-            SDL_UpperBlit(store, null_mut(), NE_SCREEN, &mut tmp_rect);
-            self.put_string(NE_SCREEN, x0, y0, CStr::from_ptr(input.as_ptr()).to_bytes());
-            SDL_Flip(NE_SCREEN);
+            SDL_UpperBlit(store, null_mut(), self.graphics.ne_screen, &mut tmp_rect);
+            self.put_string(
+                self.graphics.ne_screen,
+                x0,
+                y0,
+                CStr::from_ptr(input.as_ptr()).to_bytes(),
+            );
+            SDL_Flip(self.graphics.ne_screen);
 
             #[cfg(feature = "arcade-input")]
             {
@@ -416,9 +420,9 @@ impl Data {
 
         let mut store_clip = Rect::new(0, 0, 0, 0);
         let mut temp_clipping_rect;
-        SDL_GetClipRect(NE_SCREEN, &mut store_clip); /* store previous clip-rect */
+        SDL_GetClipRect(self.graphics.ne_screen, &mut store_clip); /* store previous clip-rect */
         if !clip.is_null() {
-            SDL_SetClipRect(NE_SCREEN, clip);
+            SDL_SetClipRect(self.graphics.ne_screen, clip);
         } else {
             temp_clipping_rect = Rect::new(0, 0, self.vars.screen_rect.w, self.vars.screen_rect.h);
             clip = &mut temp_clipping_rect;
@@ -449,7 +453,7 @@ impl Data {
             }
         }
 
-        SDL_SetClipRect(NE_SCREEN, &store_clip); /* restore previous clip-rect */
+        SDL_SetClipRect(self.graphics.ne_screen, &store_clip); /* restore previous clip-rect */
 
         /*
          * ScrollText() wants to know if we still wrote something inside the
@@ -472,7 +476,12 @@ impl Data {
             panic!("Illegal char passed to DisplayChar(): {}", c);
         }
 
-        self.put_char(NE_SCREEN, self.text.my_cursor_x, self.text.my_cursor_y, c);
+        self.put_char(
+            self.graphics.ne_screen,
+            self.text.my_cursor_x,
+            self.text.my_cursor_y,
+            c,
+        );
 
         // After the char has been displayed, we must move the cursor to its
         // new position.  That depends of course on the char displayed.
@@ -624,18 +633,18 @@ impl Data {
         const MAX_SPEED: c_int = 150;
         let mut just_started = true;
 
-        let background = SDL_DisplayFormat(NE_SCREEN);
+        let background = SDL_DisplayFormat(self.graphics.ne_screen);
 
         self.wait_for_all_keys_released();
         let ret;
         loop {
             let mut prev_tick = SDL_GetTicks();
-            SDL_UpperBlit(background, null_mut(), NE_SCREEN, null_mut());
+            SDL_UpperBlit(background, null_mut(), self.graphics.ne_screen, null_mut());
             if self.display_text(text, rect.x.into(), insert_line as c_int, rect) == 0 {
                 ret = 0; /* Text has been scrolled outside Rect */
                 break;
             }
-            SDL_Flip(NE_SCREEN);
+            SDL_Flip(self.graphics.ne_screen);
 
             if self.global.game_config.hog_cpu != 0 {
                 SDL_Delay(1);
@@ -695,8 +704,8 @@ impl Data {
             }
         }
 
-        SDL_UpperBlit(background, null_mut(), NE_SCREEN, null_mut());
-        SDL_Flip(NE_SCREEN);
+        SDL_UpperBlit(background, null_mut(), self.graphics.ne_screen, null_mut());
+        SDL_Flip(self.graphics.ne_screen);
         SDL_FreeSurface(background);
 
         ret

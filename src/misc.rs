@@ -6,7 +6,7 @@ use crate::{
         GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE_C, PROGRESS_METER_FILE_C,
     },
     enemy::shuffle_enemys,
-    graphics::{scale_pic, NE_SCREEN},
+    graphics::scale_pic,
     input::{SDL_Delay, CMD_STRINGS},
     map::free_ship_memory,
     Data, Global, ALL_BLASTS, ALL_ENEMYS, CONFIG_DIR, CUR_LEVEL, CUR_SHIP, F_P_SOVER1, NUM_ENEMYS,
@@ -83,10 +83,10 @@ impl Data {
         SDL_UpperBlit(
             self.graphics.progress_filler_pic,
             &mut src,
-            NE_SCREEN,
+            self.graphics.ne_screen,
             &mut dst,
         );
-        SDL_UpdateRects(NE_SCREEN, 1, &mut dst);
+        SDL_UpdateRects(self.graphics.ne_screen, 1, &mut dst);
     }
 
     /// This function is the key to independence of the framerate for various game elements.
@@ -614,11 +614,11 @@ impl Data {
             );
         }
 
-        SDL_SetClipRect(NE_SCREEN, null_mut()); // this unsets the clipping rectangle
+        SDL_SetClipRect(self.graphics.ne_screen, null_mut()); // this unsets the clipping rectangle
         SDL_UpperBlit(
             self.graphics.progress_meter_pic,
             null_mut(),
-            NE_SCREEN,
+            self.graphics.ne_screen,
             &mut self.vars.progress_meter_rect,
         );
 
@@ -627,13 +627,13 @@ impl Data {
         dst.y += self.vars.progress_meter_rect.y;
 
         self.printf_sdl(
-            NE_SCREEN,
+            self.graphics.ne_screen,
             dst.x.into(),
             dst.y.into(),
             format_args!("{}", CStr::from_ptr(text).to_str().unwrap()),
         );
 
-        SDL_Flip(NE_SCREEN);
+        SDL_Flip(self.graphics.ne_screen);
     }
 
     /// This function read in a file with the specified name, allocated
