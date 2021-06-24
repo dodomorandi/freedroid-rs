@@ -9,8 +9,8 @@ use crate::{
     graphics::apply_filter,
     map::get_map_brick,
     structs::{Enemy, Finepoint, GrobPoint},
-    Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, DEATH_COUNT, FIRST_DIGIT_RECT,
-    NUMBER_OF_DROID_TYPES, SECOND_DIGIT_RECT, SHOW_ALL_DROIDS, SHOW_SCORE, THIRD_DIGIT_RECT,
+    Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, FIRST_DIGIT_RECT, NUMBER_OF_DROID_TYPES,
+    SECOND_DIGIT_RECT, SHOW_ALL_DROIDS, THIRD_DIGIT_RECT,
 };
 
 use log::{info, trace};
@@ -101,8 +101,8 @@ impl Data {
             if (mask & AssembleCombatWindowFlags::SHOW_FULL_MAP.bits() as i32) != 0 {
                 let upleft = GrobPoint { x: -5, y: -5 };
                 let downright = GrobPoint {
-                    x: (*CUR_LEVEL).xlen as i8 + 5,
-                    y: (*CUR_LEVEL).ylen as i8 + 5,
+                    x: (*self.main.cur_level).xlen as i8 + 5,
+                    y: (*self.main.cur_level).ylen as i8 + 5,
                 };
                 (upleft, downright)
             } else {
@@ -144,7 +144,7 @@ impl Data {
                     }
                 }
 
-                map_brick = get_map_brick(&*CUR_LEVEL, col.into(), line.into());
+                map_brick = get_map_brick(&*self.main.cur_level, col.into(), line.into());
                 let user_center = self.get_user_center();
                 target_rectangle.x = user_center.x
                     + ((-self.vars.me.pos.x + 1.0 * f32::from(col) - 0.5)
@@ -156,7 +156,8 @@ impl Data {
                     .round() as i16;
                 SDL_UpperBlit(
                     self.graphics.map_block_surface_pointer
-                        [usize::try_from((*CUR_LEVEL).color).unwrap()][usize::from(map_brick)],
+                        [usize::try_from((*self.main.cur_level).color).unwrap()]
+                        [usize::from(map_brick)],
                     null_mut(),
                     self.graphics.ne_screen,
                     &mut target_rectangle,
@@ -191,7 +192,7 @@ impl Data {
                     "GPS: X={:.0} Y={:.0} Lev={}",
                     self.vars.me.pos.x.round(),
                     self.vars.me.pos.y.round(),
-                    (*CUR_LEVEL).levelnum,
+                    (*self.main.cur_level).levelnum,
                 ),
             );
         }
@@ -243,7 +244,7 @@ impl Data {
                         + 2 * i32::from(self.vars.full_user_rect.w) / 3,
                     i32::from(self.vars.full_user_rect.y) + i32::from(self.vars.full_user_rect.h)
                         - font_height(&*self.global.font0_b_font),
-                    format_args!("Deathcount: {:.0}", DEATH_COUNT,),
+                    format_args!("Deathcount: {:.0}", self.main.death_count,),
                 );
             }
 
@@ -252,18 +253,19 @@ impl Data {
             // make sure Ashes are displayed _before_ droids, so that they are _under_ them!
             for enemy in &mut ALL_ENEMYS {
                 if (enemy.status == Status::Terminated as i32)
-                    && (enemy.levelnum == (*CUR_LEVEL).levelnum)
+                    && (enemy.levelnum == (*self.main.cur_level).levelnum)
                     && self.is_visible(&enemy.pos) != 0
                 {
                     self.put_ashes(enemy.pos.x, enemy.pos.y);
                 }
             }
 
+            let levelnum = (*self.main.cur_level).levelnum;
             ALL_ENEMYS
                 .iter()
                 .enumerate()
                 .filter(|(_, enemy)| {
-                    !((enemy.levelnum != (*CUR_LEVEL).levelnum)
+                    !((enemy.levelnum != levelnum)
                         || (enemy.status == Status::Out as i32)
                         || (enemy.status == Status::Terminated as i32))
                 })
@@ -344,7 +346,7 @@ impl Data {
 
         if (droid.status == Status::Terminated as i32)
             || (droid.status == Status::Out as i32)
-            || (droid.levelnum != (*CUR_LEVEL).levelnum)
+            || (droid.levelnum != (*self.main.cur_level).levelnum)
         {
             return;
         }
@@ -776,7 +778,7 @@ impl Data {
         /* Right-DEFAULT: Score */
         {
             dummy = [0u8; 80];
-            write!(dummy.as_mut(), "{}", SHOW_SCORE).unwrap();
+            write!(dummy.as_mut(), "{}", self.main.show_score).unwrap();
             right = dummy.as_mut_ptr() as *mut c_char;
         }
 

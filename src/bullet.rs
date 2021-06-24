@@ -4,8 +4,7 @@ use crate::{
         MAXBLASTS, MAXBULLETS,
     },
     structs::{Finepoint, Vect},
-    Data, Status, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, INVINCIBLE_MODE,
-    LAST_GOT_INTO_BLAST_SOUND, NUM_ENEMYS,
+    Data, Status, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, INVINCIBLE_MODE, NUM_ENEMYS,
 };
 
 use log::info;
@@ -28,7 +27,7 @@ impl Data {
     }
 
     pub unsafe fn check_bullet_collisions(&mut self, num: c_int) {
-        let level = (*CUR_LEVEL).levelnum;
+        let level = (*self.main.cur_level).levelnum;
         let cur_bullet = &mut ALL_BULLETS[usize::try_from(num).unwrap()];
 
         match BulletKind::try_from(cur_bullet.ty) {
@@ -251,7 +250,7 @@ impl Data {
     }
 
     pub unsafe fn check_blast_collisions(&mut self, num: c_int) {
-        let level = (*CUR_LEVEL).levelnum;
+        let level = (*self.main.cur_level).levelnum;
         let cur_blast = &mut ALL_BLASTS[usize::try_from(num).unwrap()];
 
         /* check Blast-Bullet Collisions and kill hit Bullets */
@@ -323,9 +322,9 @@ impl Data {
             }
             // In order to avoid a new sound EVERY frame we check for how long the previous blast
             // lies back in time.  LastBlastHit is a float, that counts SECONDS real-time !!
-            if LAST_GOT_INTO_BLAST_SOUND > 1.2 {
+            if self.main.last_got_into_blast_sound > 1.2 {
                 self.got_into_blast_sound();
-                LAST_GOT_INTO_BLAST_SOUND = 0.;
+                self.main.last_got_into_blast_sound = 0.;
             }
         }
     }

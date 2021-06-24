@@ -4,7 +4,7 @@ use crate::{
         self, Criticality, DisplayBannerFlags, Status, Themed, DATE_LEN, GRAPHICS_DIR_C,
         HS_BACKGROUND_FILE_C, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
     },
-    Data, CONFIG_DIR, REAL_SCORE, SHOW_SCORE,
+    Data, CONFIG_DIR,
 };
 
 use cstr::cstr;
@@ -166,9 +166,9 @@ impl Data {
     }
 
     pub unsafe fn update_highscores(&mut self) {
-        let score = REAL_SCORE;
-        REAL_SCORE = 0.;
-        SHOW_SCORE = 0;
+        let score = self.main.real_score;
+        self.main.real_score = 0.;
+        self.main.show_score = 0;
 
         if score <= 0. {
             return;

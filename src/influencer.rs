@@ -5,10 +5,8 @@ use crate::{
     },
     map::get_map_brick,
     misc::my_random,
-    ship::level_empty,
     structs::{Finepoint, Gps},
-    Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL, INVINCIBLE_MODE, LAST_REFRESH_SOUND,
-    NUM_ENEMYS, REAL_SCORE,
+    Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, INVINCIBLE_MODE, NUM_ENEMYS,
 };
 
 use cstr::cstr;
@@ -59,20 +57,20 @@ impl Data {
 
         if self.vars.me.energy < self.vars.me.health {
             self.vars.me.energy += REFRESH_ENERGY * self.frame_time() * 5.;
-            REAL_SCORE -= REFRESH_ENERGY * self.frame_time() * 10.;
+            self.main.real_score -= REFRESH_ENERGY * self.frame_time() * 10.;
 
-            if REAL_SCORE < 0. {
+            if self.main.real_score < 0. {
                 // don't go negative...
-                REAL_SCORE = 0.;
+                self.main.real_score = 0.;
             }
 
             if self.vars.me.energy > self.vars.me.health {
                 self.vars.me.energy = self.vars.me.health;
             }
 
-            if LAST_REFRESH_SOUND > 0.6 {
+            if self.main.last_refresh_sound > 0.6 {
                 self.refresh_sound();
-                LAST_REFRESH_SOUND = 0.;
+                self.main.last_refresh_sound = 0.;
             }
 
             // since robots like the refresh, the influencer might also say so...
@@ -97,7 +95,7 @@ impl Data {
             .enumerate()
         {
             /* ignore enemy that are not on this level or dead */
-            if enemy.levelnum != (*CUR_LEVEL).levelnum {
+            if enemy.levelnum != (*self.main.cur_level).levelnum {
                 continue;
             }
             if enemy.status == Status::Out as c_int || enemy.status == Status::Terminated as c_int {
@@ -162,8 +160,8 @@ impl Data {
             } else {
                 self.takeover(i.try_into().unwrap());
 
-                if level_empty() != 0 {
-                    (*CUR_LEVEL).empty = true.into();
+                if self.level_empty() != 0 {
+                    (*self.main.cur_level).empty = true.into();
                 }
             }
         }
@@ -310,10 +308,16 @@ impl Data {
 
                 // if its an open door, we also correct the east-west position, in the
                 // sense that we move thowards the middle
-                if get_map_brick(&*CUR_LEVEL, self.vars.me.pos.x, self.vars.me.pos.y - 0.5)
-                    == MapTile::HGanztuere as u8
-                    || get_map_brick(&*CUR_LEVEL, self.vars.me.pos.x, self.vars.me.pos.y + 0.5)
-                        == MapTile::HGanztuere as u8
+                if get_map_brick(
+                    &*self.main.cur_level,
+                    self.vars.me.pos.x,
+                    self.vars.me.pos.y - 0.5,
+                ) == MapTile::HGanztuere as u8
+                    || get_map_brick(
+                        &*self.main.cur_level,
+                        self.vars.me.pos.x,
+                        self.vars.me.pos.y + 0.5,
+                    ) == MapTile::HGanztuere as u8
                 {
                     self.vars.me.pos.x += f32::copysign(
                         PUSHSPEED * self.frame_time(),
@@ -332,10 +336,16 @@ impl Data {
 
                 // if its an open door, we also correct the north-south position, in the
                 // sense that we move thowards the middle
-                if (get_map_brick(&*CUR_LEVEL, self.vars.me.pos.x + 0.5, self.vars.me.pos.y)
-                    == MapTile::VGanztuere as u8)
-                    || (get_map_brick(&*CUR_LEVEL, self.vars.me.pos.x - 0.5, self.vars.me.pos.y)
-                        == MapTile::VGanztuere as u8)
+                if (get_map_brick(
+                    &*self.main.cur_level,
+                    self.vars.me.pos.x + 0.5,
+                    self.vars.me.pos.y,
+                ) == MapTile::VGanztuere as u8)
+                    || (get_map_brick(
+                        &*self.main.cur_level,
+                        self.vars.me.pos.x - 0.5,
+                        self.vars.me.pos.y,
+                    ) == MapTile::VGanztuere as u8)
                 {
                     self.vars.me.pos.y += f32::copysign(
                         PUSHSPEED * self.frame_time(),
@@ -437,7 +447,7 @@ impl Data {
         self.vars.me.position_history_ring_buffer[self.influencer.current_zero_ring_index] = Gps {
             x: self.vars.me.pos.x,
             y: self.vars.me.pos.y,
-            z: (*CUR_LEVEL).levelnum,
+            z: (*self.main.cur_level).levelnum,
         };
 
         self.permanent_lose_energy(); /* influ permanently loses energy */
@@ -720,7 +730,7 @@ impl Data {
         self.vars.me.position_history_ring_buffer.fill(Gps {
             x: self.vars.me.pos.x,
             y: self.vars.me.pos.y,
-            z: (*CUR_LEVEL).levelnum,
+            z: (*self.main.cur_level).levelnum,
         });
     }
 }

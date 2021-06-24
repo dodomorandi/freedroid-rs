@@ -15,9 +15,8 @@ use crate::{
     input::{SDL_Delay, CMD_STRINGS},
     map::COLOR_NAMES,
     misc::{armageddon, dealloc_c_string},
-    sound::set_bg_music_volume,
-    Data, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, INVINCIBLE_MODE, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
-    SHOW_ALL_DROIDS, SOUND_ON, STOP_INFLUENCER,
+    Data, ALL_ENEMYS, INVINCIBLE_MODE, NUMBER_OF_DROID_TYPES, NUM_ENEMYS, SHOW_ALL_DROIDS,
+    STOP_INFLUENCER,
 };
 
 use cstr::cstr;
@@ -330,7 +329,7 @@ impl Data {
         const X0: i32 = 50;
         const Y0: i32 = 20;
 
-        let cur_level = &mut *CUR_LEVEL;
+        let cur_level = &mut *self.main.cur_level;
         let droid_map = std::slice::from_raw_parts(self.vars.droidmap, Droid::NumDroids as usize);
         let mut resume = false;
         while !resume {
@@ -416,7 +415,10 @@ impl Data {
                 self.graphics.ne_screen,
                 -1,
                 -1,
-                format_args!(" s. Sound: {}\n", if SOUND_ON != 0 { "ON" } else { "OFF" }),
+                format_args!(
+                    " s. Sound: {}\n",
+                    if self.main.sound_on != 0 { "ON" } else { "OFF" }
+                ),
             );
             self.printf_sdl(
                 self.graphics.ne_screen,
@@ -751,7 +753,7 @@ impl Data {
 
                 Some(b's') => {
                     /* toggle sound on/off */
-                    SOUND_ON = !SOUND_ON;
+                    self.main.sound_on = !self.main.sound_on;
                 }
 
                 Some(b'm') => {
@@ -1574,7 +1576,7 @@ impl Data {
     pub unsafe fn handle_le_name(&mut self, action: MenuAction) -> *const c_char {
         use std::sync::atomic::Ordering;
 
-        let cur_level = &mut *CUR_LEVEL;
+        let cur_level = &mut *self.main.cur_level;
         if action == MenuAction::INFO {
             return cur_level.levelname;
         }
@@ -1618,7 +1620,7 @@ impl Data {
     }
 
     pub unsafe fn handle_le_level_number(&mut self, action: MenuAction) -> *const c_char {
-        let cur_level = &*CUR_LEVEL;
+        let cur_level = &*self.main.cur_level;
         if action == MenuAction::INFO {
             libc::sprintf(
                 self.menu.le_level_number_buf.as_mut_ptr(),
@@ -1629,7 +1631,13 @@ impl Data {
         }
 
         let mut curlevel = cur_level.levelnum;
-        self.menu_change_int(action, &mut curlevel, 1, 0, CUR_SHIP.num_levels - 1);
+        self.menu_change_int(
+            action,
+            &mut curlevel,
+            1,
+            0,
+            self.main.cur_ship.num_levels - 1,
+        );
         self.teleport(curlevel, 3, 3);
         self.switch_background_music_to(BYCOLOR.as_ptr());
         self.initiate_menu(false);
@@ -1638,7 +1646,7 @@ impl Data {
     }
 
     pub unsafe fn handle_le_color(&mut self, action: MenuAction) -> *const c_char {
-        let cur_level = &mut *CUR_LEVEL;
+        let cur_level = &mut *self.main.cur_level;
         if action == MenuAction::INFO {
             return COLOR_NAMES[usize::try_from(cur_level.color).unwrap()].as_ptr();
         }
@@ -1656,7 +1664,7 @@ impl Data {
     }
 
     pub unsafe fn handle_le_size_x(&mut self, action: MenuAction) -> *const c_char {
-        let cur_level = &mut *CUR_LEVEL;
+        let cur_level = &mut *self.main.cur_level;
         if action == MenuAction::INFO {
             libc::sprintf(
                 self.menu.le_size_x_buf.as_mut_ptr(),
@@ -1701,7 +1709,7 @@ impl Data {
     pub unsafe fn handle_le_size_y(&mut self, action: MenuAction) -> *const c_char {
         use std::cmp::Ordering;
 
-        let cur_level = &mut *CUR_LEVEL;
+        let cur_level = &mut *self.main.cur_level;
         if action == MenuAction::INFO {
             libc::sprintf(
                 self.menu.le_size_y_buf.as_mut_ptr(),
@@ -1912,7 +1920,7 @@ impl Data {
         self.menu_change_float(action, &mut f, 0.05, 0., 1.);
         self.global.game_config.current_bg_music_volume = f;
 
-        set_bg_music_volume(self.global.game_config.current_bg_music_volume);
+        self.set_bg_music_volume(self.global.game_config.current_bg_music_volume);
         null_mut()
     }
 

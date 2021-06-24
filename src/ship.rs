@@ -10,7 +10,7 @@ use crate::{
     map::get_map_brick,
     structs::Point,
     vars::{BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES, WEAPON_NAMES},
-    Data, ALERT_LEVEL, ALL_ENEMYS, CUR_LEVEL, CUR_SHIP, NUM_ENEMYS,
+    Data, ALL_ENEMYS, NUM_ENEMYS,
 };
 
 use log::{error, warn};
@@ -147,11 +147,11 @@ impl Data {
         const SIREN_WAIT: f32 = 2.5;
 
         use AlertNames::*;
-        match AlertNames::try_from(ALERT_LEVEL).ok() {
+        match AlertNames::try_from(self.main.alert_level).ok() {
             Some(Green) => {}
             Some(Yellow) | Some(Amber) | Some(Red) => {
                 if SDL_GetTicks() - self.ship.last_siren
-                    > (SIREN_WAIT * 1000.0 / (ALERT_LEVEL as f32)) as u32
+                    > (SIREN_WAIT * 1000.0 / (self.main.alert_level as f32)) as u32
                 {
                     // higher alert-> faster sirens!
                     self.play_sound(SoundType::Alert as c_int);
@@ -161,37 +161,37 @@ impl Data {
             Some(Last) | None => {
                 warn!(
                     "illegal AlertLevel = {} > {}.. something's gone wrong!!\n",
-                    ALERT_LEVEL,
+                    self.main.alert_level,
                     AlertNames::Red as c_int
                 );
             }
         }
 
         // so much to the sirens, now make sure the alert-tiles are updated correctly:
-        let posx = (*CUR_LEVEL).alerts[0].x;
-        let posy = (*CUR_LEVEL).alerts[0].y;
+        let posx = (*self.main.cur_level).alerts[0].x;
+        let posy = (*self.main.cur_level).alerts[0].y;
         if posx == -1 {
             // no alerts here...
             return;
         }
 
-        let cur_alert = AlertNames::try_from(ALERT_LEVEL).unwrap();
+        let cur_alert = AlertNames::try_from(self.main.alert_level).unwrap();
 
         // check if alert-tiles are up-to-date
-        if get_map_brick(&*CUR_LEVEL, posx.into(), posy.into()) == cur_alert as u8 {
+        if get_map_brick(&*self.main.cur_level, posx.into(), posy.into()) == cur_alert as u8 {
             // ok
             return;
         }
 
-        for alert in &mut (*CUR_LEVEL).alerts {
+        for alert in &mut (*self.main.cur_level).alerts {
             let posx = alert.x;
             let posy = alert.y;
             if posx == -1 {
                 break;
             }
 
-            *(*CUR_LEVEL).map[usize::try_from(posy).unwrap()].add(usize::try_from(posx).unwrap()) =
-                cur_alert as i8;
+            *(*self.main.cur_level).map[usize::try_from(posy).unwrap()]
+                .add(usize::try_from(posx).unwrap()) = cur_alert as i8;
         }
     }
 }
@@ -590,7 +590,7 @@ impl Data {
     pub unsafe fn show_deck_map(&mut self) {
         let tmp = self.vars.me.pos;
 
-        let cur_level = &*CUR_LEVEL;
+        let cur_level = &*self.main.cur_level;
         self.vars.me.pos.x = (cur_level.xlen / 2) as f32;
         self.vars.me.pos.y = (cur_level.ylen / 2) as f32;
 
@@ -753,7 +753,7 @@ impl Data {
                                     null_mut(),
                                     DisplayBannerFlags::FORCE_UPDATE.bits().into(),
                                 );
-                                self.show_lifts((*CUR_LEVEL).levelnum, -1);
+                                self.show_lifts((*self.main.cur_level).levelnum, -1);
                                 self.wait_for_key_pressed();
                                 self.paint_console_menu(pos.try_into().unwrap(), 0);
                             }
@@ -953,8 +953,8 @@ impl Data {
         );
 
         if level >= 0 {
-            for i in 0..CUR_SHIP.num_level_rects[usize::try_from(level).unwrap()] {
-                let mut src = CUR_SHIP.level_rects[usize::try_from(level).unwrap()]
+            for i in 0..self.main.cur_ship.num_level_rects[usize::try_from(level).unwrap()] {
+                let mut src = self.main.cur_ship.level_rects[usize::try_from(level).unwrap()]
                     [usize::try_from(i).unwrap()];
                 dst = src;
                 dst.x += self.vars.user_rect.x + xoffs; /* offset respective to User-Rectangle */
@@ -969,7 +969,7 @@ impl Data {
         }
 
         if liftrow >= 0 {
-            let mut src = CUR_SHIP.lift_row_rect[usize::try_from(liftrow).unwrap()];
+            let mut src = self.main.cur_ship.lift_row_rect[usize::try_from(liftrow).unwrap()];
             dst = src;
             dst.x += self.vars.user_rect.x + xoffs; /* offset respective to User-Rectangle */
             dst.y += self.vars.user_rect.y + yoffs;
@@ -1015,11 +1015,15 @@ impl Data {
             write!(
                 &mut menu_text[..],
                 "Area : {}\nDeck : {}    Alert: {}\0",
-                CStr::from_ptr(CUR_SHIP.area_name.as_ptr())
+                CStr::from_ptr(self.main.cur_ship.area_name.as_ptr())
                     .to_str()
                     .unwrap(),
-                CStr::from_ptr((*CUR_LEVEL).levelname).to_str().unwrap(),
-                AlertNames::try_from(ALERT_LEVEL).unwrap().to_str(),
+                CStr::from_ptr((*self.main.cur_level).levelname)
+                    .to_str()
+                    .unwrap(),
+                AlertNames::try_from(self.main.alert_level)
+                    .unwrap()
+                    .to_str(),
             )
             .unwrap();
             self.display_text(
@@ -1072,7 +1076,7 @@ impl Data {
 
         SDL_ShowCursor(SDL_DISABLE);
 
-        let mut cur_level = (*CUR_LEVEL).levelnum;
+        let mut cur_level = (*self.main.cur_level).levelnum;
 
         let cur_lift = self.get_current_lift();
         if cur_lift == -1 {
@@ -1084,10 +1088,10 @@ impl Data {
         self.enter_lift_sound();
         self.switch_background_music_to(null_mut()); // turn off Bg music
 
-        let mut up_lift = CUR_SHIP.all_lifts[cur_lift].up;
-        let mut down_lift = CUR_SHIP.all_lifts[cur_lift].down;
+        let mut up_lift = self.main.cur_ship.all_lifts[cur_lift].up;
+        let mut down_lift = self.main.cur_ship.all_lifts[cur_lift].down;
 
-        let liftrow = CUR_SHIP.all_lifts[cur_lift].lift_row;
+        let liftrow = self.main.cur_ship.all_lifts[cur_lift].lift_row;
 
         // clear the whole screen
         self.clear_graph_mem();
@@ -1113,13 +1117,15 @@ impl Data {
                     MenuAction::UP | MenuAction::UP_WHEEL => {
                         self.ship.enter_lift_last_move_tick = SDL_GetTicks();
                         if up_lift != -1 {
-                            if CUR_SHIP.all_lifts[usize::try_from(up_lift).unwrap()].x == 99 {
+                            if self.main.cur_ship.all_lifts[usize::try_from(up_lift).unwrap()].x
+                                == 99
+                            {
                                 error!("Lift out of order, so sorry ..");
                             } else {
                                 down_lift = cur_lift.try_into().unwrap();
                                 cur_lift = up_lift.try_into().unwrap();
-                                cur_level = CUR_SHIP.all_lifts[cur_lift].level;
-                                up_lift = CUR_SHIP.all_lifts[cur_lift].up;
+                                cur_level = self.main.cur_ship.all_lifts[cur_lift].level;
+                                up_lift = self.main.cur_ship.all_lifts[cur_lift].up;
                                 self.show_lifts(cur_level, liftrow);
                                 self.move_lift_sound();
                             }
@@ -1129,13 +1135,15 @@ impl Data {
                     MenuAction::DOWN | MenuAction::DOWN_WHEEL => {
                         self.ship.enter_lift_last_move_tick = SDL_GetTicks();
                         if down_lift != -1 {
-                            if CUR_SHIP.all_lifts[usize::try_from(down_lift).unwrap()].x == 99 {
+                            if self.main.cur_ship.all_lifts[usize::try_from(down_lift).unwrap()].x
+                                == 99
+                            {
                                 error!("Lift Out of order, so sorry ..");
                             } else {
                                 up_lift = cur_lift.try_into().unwrap();
                                 cur_lift = down_lift.try_into().unwrap();
-                                cur_level = CUR_SHIP.all_lifts[cur_lift].level;
-                                down_lift = CUR_SHIP.all_lifts[cur_lift].down;
+                                cur_level = self.main.cur_ship.all_lifts[cur_lift].level;
+                                down_lift = self.main.cur_ship.all_lifts[cur_lift].down;
                                 self.show_lifts(cur_level, liftrow);
                                 self.move_lift_sound();
                             }
@@ -1152,12 +1160,12 @@ impl Data {
         // is no need to reshuffle enemys or to reset influencers position.  Therefore, only
         // when a real level change has occured, we need to do real changes as below, where
         // we set the new level and set new position and initiate timers and all that...
-        if cur_level != (*CUR_LEVEL).levelnum {
+        if cur_level != (*self.main.cur_level).levelnum {
             let mut array_num = 0;
 
             let mut tmp;
             while {
-                tmp = CUR_SHIP.all_levels[array_num];
+                tmp = self.main.cur_ship.all_levels[array_num];
                 tmp.is_null().not()
             } {
                 if (*tmp).levelnum == cur_level {
@@ -1167,11 +1175,11 @@ impl Data {
                 }
             }
 
-            CUR_LEVEL = CUR_SHIP.all_levels[array_num];
+            self.main.cur_level = self.main.cur_ship.all_levels[array_num];
 
             // set the position of the influencer to the correct locatiohn
-            self.vars.me.pos.x = CUR_SHIP.all_lifts[cur_lift].x as f32;
-            self.vars.me.pos.y = CUR_SHIP.all_lifts[cur_lift].y as f32;
+            self.vars.me.pos.x = self.main.cur_ship.all_lifts[cur_lift].x as f32;
+            self.vars.me.pos.y = self.main.cur_ship.all_lifts[cur_lift].y as f32;
 
             for i in 0..c_int::try_from(MAXBLASTS).unwrap() {
                 delete_blast(i);
@@ -1181,7 +1189,7 @@ impl Data {
             }
         }
 
-        let cur_level = &*CUR_LEVEL;
+        let cur_level = &*self.main.cur_level;
         self.leave_lift_sound();
         self.switch_background_music_to(cur_level.background_song_name);
         self.clear_graph_mem();
@@ -1195,23 +1203,23 @@ impl Data {
         self.vars.me.text_visible_time = 0.;
         self.vars.me.text_to_be_displayed = cur_level.level_enter_comment;
     }
-}
 
-pub unsafe fn level_empty() -> c_int {
-    let cur_level = &*CUR_LEVEL;
-    if cur_level.empty != 0 {
-        return true.into();
+    pub unsafe fn level_empty(&self) -> c_int {
+        let cur_level = &*self.main.cur_level;
+        if cur_level.empty != 0 {
+            return true.into();
+        }
+
+        let levelnum = cur_level.levelnum;
+
+        ALL_ENEMYS[0..usize::try_from(NUM_ENEMYS).unwrap()]
+            .iter()
+            .any(|enemy| {
+                enemy.levelnum == levelnum
+                    && enemy.status != Status::Out as c_int
+                    && enemy.status != Status::Terminated as c_int
+            })
+            .not()
+            .into()
     }
-
-    let levelnum = cur_level.levelnum;
-
-    ALL_ENEMYS[0..usize::try_from(NUM_ENEMYS).unwrap()]
-        .iter()
-        .any(|enemy| {
-            enemy.levelnum == levelnum
-                && enemy.status != Status::Out as c_int
-                && enemy.status != Status::Terminated as c_int
-        })
-        .not()
-        .into()
 }

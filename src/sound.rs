@@ -1,6 +1,6 @@
 use crate::{
     defs::{BulletKind, Criticality, SoundType, Themed, BYCOLOR, NUM_COLORS, SOUND_DIR_C},
-    Data, CUR_LEVEL, SOUND_ON,
+    Data,
 };
 
 use cstr::cstr;
@@ -161,7 +161,7 @@ impl Data {
     }
 
     pub unsafe fn play_sound(&self, tune: c_int) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -204,7 +204,7 @@ impl Data {
     }
 
     pub unsafe fn takeover_set_capsule_sound(&self) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -212,7 +212,7 @@ impl Data {
     }
 
     pub unsafe fn takeover_game_won_sound(&self) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -220,7 +220,7 @@ impl Data {
     }
 
     pub unsafe fn takeover_game_deadlock_sound(&self) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -228,7 +228,7 @@ impl Data {
     }
 
     pub unsafe fn takeover_game_lost_sound(&self) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -236,7 +236,7 @@ impl Data {
     }
 
     pub unsafe fn collision_got_damaged_sound(&self) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -244,7 +244,7 @@ impl Data {
     }
 
     pub unsafe fn collision_damaged_enemy_sound(&self) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -252,7 +252,7 @@ impl Data {
     }
 
     pub unsafe fn bounce_sound(&self) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -260,7 +260,7 @@ impl Data {
     }
 
     pub unsafe fn druid_blast_sound(&self) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -268,7 +268,7 @@ impl Data {
     }
 
     pub unsafe fn got_hit_sound(&self) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -276,7 +276,7 @@ impl Data {
     }
 
     pub unsafe fn got_into_blast_sound(&self) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -284,7 +284,7 @@ impl Data {
     }
 
     pub unsafe fn refresh_sound(&self) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -292,7 +292,7 @@ impl Data {
     }
 
     pub unsafe fn move_lift_sound(&self) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -300,7 +300,7 @@ impl Data {
     }
 
     pub unsafe fn menu_item_selected_sound(&self) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -308,7 +308,7 @@ impl Data {
     }
 
     pub unsafe fn move_menu_position_sound(&self) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -316,7 +316,7 @@ impl Data {
     }
 
     pub unsafe fn thou_art_defeated_sound(&self) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -324,7 +324,7 @@ impl Data {
     }
 
     pub unsafe fn enter_lift_sound(&self) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -332,7 +332,7 @@ impl Data {
     }
 
     pub unsafe fn leave_lift_sound(&self) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -342,7 +342,7 @@ impl Data {
 
 impl Data {
     pub unsafe fn fire_bullet_sound(&self, bullet_type: c_int) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -368,7 +368,7 @@ impl Data {
     }
 
     pub unsafe fn switch_background_music_to(&mut self, filename_raw: *const c_char) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -384,17 +384,17 @@ impl Data {
         // if filename_raw==BYCOLOR then chose bg_music[color]
         // NOTE: if new level-color is the same as before, just resume paused music!
         if filename_raw.to_bytes() == BYCOLOR.to_bytes() {
-            if self.sound.paused && self.sound.prev_color == (*CUR_LEVEL).color {
+            if self.sound.paused && self.sound.prev_color == (*self.main.cur_level).color {
                 // current level-song was just paused
                 Mix_ResumeMusic();
                 self.sound.paused = false;
             } else {
                 Mix_PlayMusic(
-                    self.sound.music_songs[usize::try_from((*CUR_LEVEL).color).unwrap()],
+                    self.sound.music_songs[usize::try_from((*self.main.cur_level).color).unwrap()],
                     -1,
                 );
                 self.sound.paused = false;
-                self.sound.prev_color = (*CUR_LEVEL).color;
+                self.sound.prev_color = (*self.main.cur_level).color;
             }
         } else {
             // not using BYCOLOR mechanism: just play specified song
@@ -439,7 +439,7 @@ impl Data {
     }
 
     pub unsafe fn set_sound_f_x_volume(&self, new_volume: c_float) {
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -454,21 +454,19 @@ impl Data {
                 Mix_VolumeChunk(file, (new_volume * f32::from(MIX_MAX_VOLUME)) as c_int);
             });
     }
-}
 
-pub unsafe fn set_bg_music_volume(new_volume: c_float) {
-    if SOUND_ON == 0 {
-        return;
+    pub unsafe fn set_bg_music_volume(&self, new_volume: c_float) {
+        if self.main.sound_on == 0 {
+            return;
+        }
+
+        Mix_VolumeMusic((new_volume * f32::from(MIX_MAX_VOLUME)) as c_int);
     }
 
-    Mix_VolumeMusic((new_volume * f32::from(MIX_MAX_VOLUME)) as c_int);
-}
-
-impl Data {
     pub unsafe fn init_audio(&mut self) {
         info!("Initializing SDL Audio Systems");
 
-        if SOUND_ON == 0 {
+        if self.main.sound_on == 0 {
             return;
         }
 
@@ -479,7 +477,7 @@ impl Data {
                 "SDL Sound subsystem could not be initialized. \
              Continuing with sound disabled",
             );
-            SOUND_ON = false.into();
+            self.main.sound_on = false.into();
             return;
         } else {
             info!("SDL Audio initialisation successful.");
@@ -494,7 +492,7 @@ impl Data {
                 "SDL Mixer Error: {}. Continuing with sound disabled",
                 get_error(),
             );
-            SOUND_ON = false.into();
+            self.main.sound_on = false.into();
             return;
         } else {
             warn!("Successfully opened SDL audio channel.");
@@ -530,7 +528,7 @@ impl Data {
                     sample_filename.to_string_lossy()
                 );
                 warn!("Continuing with sound disabled. Error = {}", get_error());
-                SOUND_ON = false.into();
+                self.main.sound_on = false.into();
                 return;
             } else {
                 info!(
@@ -558,7 +556,7 @@ impl Data {
                     "SDL Mixer Error: {}. Continuing with sound disabled",
                     get_error()
                 );
-                SOUND_ON = false.into();
+                self.main.sound_on = false.into();
                 return;
             } else {
                 info!("Successfully loaded file {}.", music_file.to_string_lossy());

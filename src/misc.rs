@@ -5,11 +5,9 @@ use crate::{
         self, scale_rect, AssembleCombatWindowFlags, Cmds, Criticality, Status, Themed, FD_DATADIR,
         GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE_C, PROGRESS_METER_FILE_C,
     },
-    enemy::shuffle_enemys,
     graphics::scale_pic,
     input::{SDL_Delay, CMD_STRINGS},
-    map::free_ship_memory,
-    Data, Global, ALL_BLASTS, ALL_ENEMYS, CONFIG_DIR, CUR_LEVEL, CUR_SHIP, F_P_SOVER1, NUM_ENEMYS,
+    Data, Global, ALL_BLASTS, ALL_ENEMYS, CONFIG_DIR, F_P_SOVER1, NUM_ENEMYS,
 };
 
 use cstr::cstr;
@@ -127,7 +125,7 @@ impl Data {
         self.save_highscores();
 
         // ----- free memory
-        free_ship_memory();
+        self.free_ship_memory();
         self.free_droid_pics();
         self.free_graphics();
         self.free_sounds();
@@ -845,13 +843,13 @@ impl Data {
         let cur_level = level_num;
         let mut array_num = 0;
 
-        if cur_level != (*CUR_LEVEL).levelnum {
+        if cur_level != (*self.main.cur_level).levelnum {
             //--------------------
             // In case a real level change has happend,
             // we need to do a lot of work:
 
             loop {
-                let tmp = CUR_SHIP.all_levels[array_num];
+                let tmp = self.main.cur_ship.all_levels[array_num];
                 if tmp.is_null() {
                     break;
                 }
@@ -863,9 +861,9 @@ impl Data {
                 }
             }
 
-            CUR_LEVEL = CUR_SHIP.all_levels[array_num];
+            self.main.cur_level = self.main.cur_ship.all_levels[array_num];
 
-            shuffle_enemys();
+            self.shuffle_enemys();
 
             self.vars.me.pos.x = x as f32;
             self.vars.me.pos.y = y as f32;
@@ -921,21 +919,19 @@ pub unsafe fn count_string_occurences(
     counter
 }
 
-impl Data {
-    /// This function looks for a sting begin indicator and takes the string
-    /// from after there up to a sting end indicator and mallocs memory for
-    /// it, copys it there and returns it.
-    /// The original source string specified should in no way be modified.
-    pub unsafe fn read_and_malloc_string_from_data(
-        &mut self,
-        search_string: *mut c_char,
-        start_indication_string: *mut c_char,
-        end_indication_string: *mut c_char,
-    ) -> *mut c_char {
-        let search_pointer = libc::strstr(search_string, start_indication_string);
-        if search_pointer.is_null() {
-            panic!(
-                "\n\
+/// This function looks for a sting begin indicator and takes the string
+/// from after there up to a sting end indicator and mallocs memory for
+/// it, copys it there and returns it.
+/// The original source string specified should in no way be modified.
+pub unsafe fn read_and_malloc_string_from_data(
+    search_string: *mut c_char,
+    start_indication_string: *mut c_char,
+    end_indication_string: *mut c_char,
+) -> *mut c_char {
+    let search_pointer = libc::strstr(search_string, start_indication_string);
+    if search_pointer.is_null() {
+        panic!(
+            "\n\
              \n\
              ----------------------------------------------------------------------\n\
              Freedroid has encountered a problem:\n\
@@ -955,16 +951,16 @@ impl Data {
              not resolve.... Sorry, if that interrupts a major game of yours.....\n\
              ----------------------------------------------------------------------\n\
              \n",
-                CStr::from_ptr(start_indication_string).to_string_lossy()
-            );
-        } else {
-            // Now we move to the beginning
-            let search_pointer = search_pointer.add(libc::strlen(start_indication_string));
-            let end_of_string_pointer = libc::strstr(search_pointer, end_indication_string);
-            // Now we move to the end with the end pointer
-            if end_of_string_pointer.is_null() {
-                panic!(
-                    "\n\
+            CStr::from_ptr(start_indication_string).to_string_lossy()
+        );
+    } else {
+        // Now we move to the beginning
+        let search_pointer = search_pointer.add(libc::strlen(start_indication_string));
+        let end_of_string_pointer = libc::strstr(search_pointer, end_indication_string);
+        // Now we move to the end with the end pointer
+        if end_of_string_pointer.is_null() {
+            panic!(
+                "\n\
                  \n\
                  ----------------------------------------------------------------------\n\
                  Freedroid has encountered a problem:\n\
@@ -985,29 +981,28 @@ impl Data {
                  not resolve.... Sorry, if that interrupts a major game of yours.....\n\
                  ----------------------------------------------------------------------\n\
                  \n",
-                    CStr::from_ptr(end_indication_string).to_string_lossy(),
-                );
-            }
-
-            // Now we allocate memory and copy the string...
-            let string_length = end_of_string_pointer.offset_from(search_pointer);
-
-            let return_string = alloc_zeroed(
-                Layout::array::<i8>(usize::try_from(string_length).unwrap() + 1).unwrap(),
-            ) as *mut c_char;
-            libc::strncpy(
-                return_string,
-                search_pointer,
-                string_length.try_into().unwrap(),
+                CStr::from_ptr(end_indication_string).to_string_lossy(),
             );
-            *return_string.add(string_length.try_into().unwrap()) = 0;
-
-            info!(
-                "ReadAndMalocStringFromData): Successfully identified string: {}.",
-                CStr::from_ptr(return_string).to_string_lossy()
-            );
-            return_string
         }
+
+        // Now we allocate memory and copy the string...
+        let string_length = end_of_string_pointer.offset_from(search_pointer);
+
+        let return_string =
+            alloc_zeroed(Layout::array::<i8>(usize::try_from(string_length).unwrap() + 1).unwrap())
+                as *mut c_char;
+        libc::strncpy(
+            return_string,
+            search_pointer,
+            string_length.try_into().unwrap(),
+        );
+        *return_string.add(string_length.try_into().unwrap()) = 0;
+
+        info!(
+            "ReadAndMalocStringFromData): Successfully identified string: {}.",
+            CStr::from_ptr(return_string).to_string_lossy()
+        );
+        return_string
     }
 }
 

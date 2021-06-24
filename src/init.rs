@@ -5,19 +5,15 @@ use crate::{
         Status, Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAP_DIR_C, MAXBULLETS,
         SHOW_WAIT, SLOWMO_FACTOR, TITLE_PIC_FILE_C, WAIT_AFTER_KILLED,
     },
-    enemy::shuffle_enemys,
     global::Global,
     graphics::Graphics,
     input::SDL_Delay,
     misc::{
         count_string_occurences, dealloc_c_string, locate_string_in_data, my_random,
-        read_value_from_string,
+        read_and_malloc_string_from_data, read_value_from_string,
     },
     structs::{BulletSpec, DruidSpec},
-    Data, ALERT_BONUS_PER_SEC, ALERT_THRESHOLD, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, CUR_LEVEL,
-    CUR_SHIP, DEATH_COUNT, DEATH_COUNT_DRAIN_SPEED, DEBUG_LEVEL, LAST_GOT_INTO_BLAST_SOUND,
-    LAST_REFRESH_SOUND, NUMBER_OF_DROID_TYPES, NUM_ENEMYS, REAL_SCORE, SHOW_SCORE, SOUND_ON,
-    THIS_MESSAGE_TIME,
+    Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
 };
 
 #[cfg(target_os = "windows")]
@@ -178,7 +174,7 @@ impl Data {
         }
 
         // mission complete: all droids have been killed
-        REAL_SCORE += MISSION_COMPLETE_BONUS;
+        self.main.real_score += MISSION_COMPLETE_BONUS;
         self.thou_art_victorious();
         self.game_over = true;
     }
@@ -188,7 +184,7 @@ impl Data {
 
         SDL_ShowCursor(SDL_DISABLE);
 
-        SHOW_SCORE = REAL_SCORE as c_long;
+        self.main.show_score = self.main.real_score as c_long;
         self.vars.me.status = Status::Victory as c_int;
         self.display_banner(
             null_mut(),
@@ -366,9 +362,9 @@ impl Data {
         let opt = Opt::parse();
 
         if opt.nosound {
-            SOUND_ON = false.into();
+            self.main.sound_on = false.into();
         } else if opt.sound {
-            SOUND_ON = true.into();
+            self.main.sound_on = true.into();
         }
 
         if let Some(sensitivity) = opt.sensitivity {
@@ -379,8 +375,16 @@ impl Data {
             self.input.joy_sensitivity = sensitivity.into();
         }
 
-        if opt.debug > 0 {
-            DEBUG_LEVEL = opt.debug.into();
+        let log_level = match opt.debug {
+            0 => None,
+            1 => Some(log::LevelFilter::Error),
+            2 => Some(log::LevelFilter::Warn),
+            3 => Some(log::LevelFilter::Info),
+            4 => Some(log::LevelFilter::Debug),
+            _ => Some(log::LevelFilter::Trace),
+        };
+        if let Some(log_level) = log_level {
+            log::set_max_level(log_level);
         }
 
         if let Some(scale) = opt.scale {
@@ -610,11 +614,10 @@ impl Data {
         //At first we do the things that must be done for all
         //missions, regardless of mission file given
         self.activate_conservative_frame_computation();
-        LAST_GOT_INTO_BLAST_SOUND = 2.;
-        LAST_REFRESH_SOUND = 2.;
-        THIS_MESSAGE_TIME = 0;
+        self.main.last_got_into_blast_sound = 2.;
+        self.main.last_refresh_sound = 2.;
         self.global.level_doors_not_moved_time = 0.0;
-        DEATH_COUNT = 0.;
+        self.main.death_count = 0.;
         self.set_time_factor(1.0);
 
         /* Delete all bullets and blasts */
@@ -743,7 +746,7 @@ impl Data {
         if self.init.debriefing_text.is_null().not() {
             dealloc_c_string(self.init.debriefing_text);
         }
-        self.init.debriefing_text = self.read_and_malloc_string_from_data(
+        self.init.debriefing_text = read_and_malloc_string_from_data(
             main_mission_pointer.as_mut_ptr(),
             MISSION_ENDTITLE_BEGIN_STRING.as_ptr() as *mut c_char,
             MISSION_ENDTITLE_END_STRING.as_ptr() as *mut c_char,
@@ -790,7 +793,8 @@ impl Data {
             cstr!("%d").as_ptr() as *mut c_char,
             &mut starting_level,
         );
-        CUR_LEVEL = CUR_SHIP.all_levels[usize::try_from(starting_level).unwrap()];
+        self.main.cur_level =
+            self.main.cur_ship.all_levels[usize::try_from(starting_level).unwrap()];
         start_point_pointer = libc::strstr(start_point_pointer, cstr!("XPos=").as_ptr())
             .add(libc::strlen(cstr!("XPos=").as_ptr()));
         libc::sscanf(
@@ -813,7 +817,9 @@ impl Data {
         );
 
         /* Reactivate the light on alle Levels, that might have been dark */
-        for &level in &CUR_SHIP.all_levels[0..usize::try_from(CUR_SHIP.num_levels).unwrap()] {
+        for &level in &self.main.cur_ship.all_levels
+            [0..usize::try_from(self.main.cur_ship.num_levels).unwrap()]
+        {
             (*level).empty = false.into();
         }
 
@@ -843,14 +849,17 @@ impl Data {
         );
 
         // Switch_Background_Music_To (COMBAT_BACKGROUND_MUSIC_SOUND);
-        self.switch_background_music_to((*CUR_LEVEL).background_song_name);
+        self.switch_background_music_to((*self.main.cur_level).background_song_name);
 
-        for level in &CUR_SHIP.all_levels[..usize::try_from(CUR_SHIP.num_levels).unwrap()] {
-            CUR_LEVEL = *level;
-            shuffle_enemys();
+        for level in &self.main.cur_ship.all_levels
+            [..usize::try_from(self.main.cur_ship.num_levels).unwrap()]
+        {
+            self.main.cur_level = *level;
+            self.shuffle_enemys();
         }
 
-        CUR_LEVEL = CUR_SHIP.all_levels[usize::try_from(starting_level).unwrap()];
+        self.main.cur_level =
+            self.main.cur_ship.all_levels[usize::try_from(starting_level).unwrap()];
 
         // Now that the briefing and all that is done,
         // the influence structure can be initialized for
@@ -1286,7 +1295,7 @@ impl Data {
 
             // Now we read in the notes concerning this droid.  We consider as notes all the rest of the
             // line after the NOTES_BEGIN_STRING until the "\n" is found.
-            (*self.vars.droidmap.add(robot_index)).notes = self.read_and_malloc_string_from_data(
+            (*self.vars.droidmap.add(robot_index)).notes = read_and_malloc_string_from_data(
                 robot_pointer,
                 NOTES_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("\n").as_ptr() as *mut c_char,
@@ -1493,19 +1502,19 @@ impl Data {
             data,
             DEATHCOUNT_DRAIN_SPEED_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
-            &mut DEATH_COUNT_DRAIN_SPEED as *mut _ as *mut c_void,
+            &mut self.main.death_count_drain_speed as *mut _ as *mut c_void,
         );
         read_value_from_string(
             data,
             ALERT_THRESHOLD_STRING.as_ptr() as *mut c_char,
             cstr!("%d").as_ptr() as *mut c_char,
-            &mut ALERT_THRESHOLD as *mut _ as *mut c_void,
+            &mut self.main.alert_threshold as *mut _ as *mut c_void,
         );
         read_value_from_string(
             data,
             ALERT_BONUS_PER_SEC_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
-            &mut ALERT_BONUS_PER_SEC as *mut _ as *mut c_void,
+            &mut self.main.alert_bonus_per_sec as *mut _ as *mut c_void,
         );
 
         // Now we read in the speed calibration factor for all bullets

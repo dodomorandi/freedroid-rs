@@ -5,7 +5,7 @@ use crate::{
     graphics::Graphics,
     misc::my_random,
     structs::Point,
-    Data, ALL_ENEMYS, DEATH_COUNT, INVINCIBLE_MODE, PRE_TAKE_ENERGY, REAL_SCORE,
+    Data, ALL_ENEMYS, INVINCIBLE_MODE, PRE_TAKE_ENERGY,
 };
 
 use cstr::cstr;
@@ -1887,10 +1887,11 @@ impl Data {
 
                 self.vars.me.ty = ALL_ENEMYS[enemy_index].ty;
 
-                REAL_SCORE +=
+                self.main.real_score +=
                     droid_map[usize::try_from(self.takeover.opponent_type).unwrap()].score as f32;
 
-                DEATH_COUNT += (self.takeover.opponent_type * self.takeover.opponent_type) as f32; // quadratic "importance", max=529
+                self.main.death_count +=
+                    (self.takeover.opponent_type * self.takeover.opponent_type) as f32; // quadratic "importance", max=529
 
                 ALL_ENEMYS[enemy_index].status = Status::Out as c_int; // removed droid silently (no blast!)
 

@@ -41,8 +41,8 @@ use b_font::BFont;
 use bullet::BulletData;
 use defs::{
     scale_rect, AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Status, BYCOLOR,
-    DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_LEVEL_RECTS,
-    MAX_LIFTS, MAX_LIFT_ROWS, RESET, SHOW_WAIT, STANDARD_MISSION_C,
+    DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, RESET, SHOW_WAIT,
+    STANDARD_MISSION_C,
 };
 use global::Global;
 use graphics::Graphics;
@@ -55,7 +55,7 @@ use menu::Menu;
 use misc::Misc;
 use ship::ShipData;
 use sound::Sound;
-use structs::{Blast, Bullet, Enemy, Finepoint, Level, Lift, Ship};
+use structs::{Blast, Bullet, Enemy, Finepoint, Level, Ship};
 use takeover::Takeover;
 use text::Text;
 use vars::Vars;
@@ -73,45 +73,48 @@ use std::{
     ptr::null_mut,
 };
 
-const RECT_ZERO: Rect = Rect {
-    x: 0,
-    y: 0,
-    h: 0,
-    w: 0,
-};
+#[derive(Debug)]
+struct Main {
+    last_got_into_blast_sound: c_float,
+    last_refresh_sound: c_float,
+    // Toggle TRUE/FALSE for turning sounds on/off
+    sound_on: i32,
+    // the current level data
+    cur_level: *mut Level,
+    // the current ship-data
+    cur_ship: Ship,
+    show_score: i64,
+    real_score: f32,
+    // a cumulative/draining counter of kills->determines Alert!
+    death_count: f32,
+    // drain per second
+    death_count_drain_speed: f32,
+    alert_level: i32,
+    // threshold for FIRST Alert-color (yellow), the others are 2*, 3*..
+    alert_threshold: i32,
+    // bonus/sec for FIRST Alert-color, the others are 2*, 3*,...
+    alert_bonus_per_sec: f32,
+}
 
-static mut LAST_GOT_INTO_BLAST_SOUND: c_float = 2.;
-static mut LAST_REFRESH_SOUND: c_float = 2.;
-static mut CUR_LEVEL: *mut Level = null_mut(); /* the current level data */
-static mut CUR_SHIP: Ship = Ship {
-    num_levels: 0,
-    num_lifts: 0,
-    num_lift_rows: 0,
-    area_name: [0; 100],
-    all_levels: [null_mut(); MAX_LEVELS],
-    all_lifts: [Lift {
-        level: 0,
-        x: 0,
-        y: 0,
-        up: 0,
-        down: 0,
-        lift_row: 0,
-    }; MAX_LIFTS],
-    lift_row_rect: [RECT_ZERO; MAX_LIFT_ROWS], /* the lift-row rectangles */
-    level_rects: [[RECT_ZERO; MAX_LEVEL_RECTS]; MAX_LEVELS], /* level rectangles */
-    num_level_rects: [0; MAX_LEVELS],          /* how many rects has a level */
-}; /* the current ship-data */
+impl Default for Main {
+    fn default() -> Self {
+        Self {
+            last_got_into_blast_sound: 2.,
+            last_refresh_sound: 2.,
+            sound_on: 1,
+            cur_level: null_mut(),
+            cur_ship: Ship::default(),
+            show_score: 0,
+            real_score: 0.,
+            death_count: 0.,
+            death_count_drain_speed: 0.,
+            alert_level: 0,
+            alert_threshold: 0,
+            alert_bonus_per_sec: 0.,
+        }
+    }
+}
 
-static mut DEBUG_LEVEL: i32 = 0; /* 0=no debug 1=some debug messages 2=...etc */
-static mut SOUND_ON: i32 = 1; /* Toggle TRUE/FALSE for turning sounds on/off */
-static mut THIS_MESSAGE_TIME: i32 = 0;
-static mut SHOW_SCORE: i64 = 0;
-static mut REAL_SCORE: f32 = 0.;
-static mut DEATH_COUNT: f32 = 0.; // a cumulative/draining counter of kills->determines Alert!
-static mut DEATH_COUNT_DRAIN_SPEED: f32 = 0.; // drain per second
-static mut ALERT_LEVEL: i32 = 0;
-static mut ALERT_THRESHOLD: i32 = 0; // threshold for FIRST Alert-color (yellow), the others are 2*, 3*..
-static mut ALERT_BONUS_PER_SEC: f32 = 0.; // bonus/sec for FIRST Alert-color, the others are 2*, 3*,...
 static mut ALL_ENEMYS: [Enemy; MAX_ENEMYS_ON_SHIP] = [Enemy {
     ty: 0,
     levelnum: 0,
@@ -148,9 +151,9 @@ static mut ALL_BLASTS: [Blast; MAXBLASTS + 10] = [Blast {
     mine: false,
 }; MAXBLASTS + 10];
 
-static mut FIRST_DIGIT_RECT: Rect = RECT_ZERO;
-static mut SECOND_DIGIT_RECT: Rect = RECT_ZERO;
-static mut THIRD_DIGIT_RECT: Rect = RECT_ZERO;
+static mut FIRST_DIGIT_RECT: Rect = rect!();
+static mut SECOND_DIGIT_RECT: Rect = rect!();
+static mut THIRD_DIGIT_RECT: Rect = rect!();
 static mut F_P_SOVER1: f32 = 0.;
 
 #[derive(Debug)]
@@ -172,6 +175,7 @@ struct Data {
     vars: Vars,
     takeover: Takeover,
     graphics: Graphics,
+    main: Main,
 }
 
 impl Default for Data {
@@ -194,6 +198,7 @@ impl Default for Data {
             vars: Default::default(),
             takeover: Default::default(),
             graphics: Default::default(),
+            main: Default::default(),
         }
     }
 }
@@ -225,16 +230,17 @@ fn main() {
             let scale = data.global.game_config.scale;
             #[allow(clippy::float_cmp)]
             if scale != 1.0 {
-                CUR_SHIP.level_rects[0..usize::try_from(CUR_SHIP.num_levels).unwrap()]
+                data.main.cur_ship.level_rects
+                    [0..usize::try_from(data.main.cur_ship.num_levels).unwrap()]
                     .iter_mut()
-                    .zip(CUR_SHIP.num_level_rects.iter())
+                    .zip(data.main.cur_ship.num_level_rects.iter())
                     .flat_map(|(rects, &num_rects)| {
                         rects[0..usize::try_from(num_rects).unwrap()].iter_mut()
                     })
                     .for_each(|rect| scale_rect(rect, scale));
 
-                for rect in
-                    &mut CUR_SHIP.lift_row_rect[0..usize::try_from(CUR_SHIP.num_lift_rows).unwrap()]
+                for rect in &mut data.main.cur_ship.lift_row_rect
+                    [0..usize::try_from(data.main.cur_ship.num_lift_rows).unwrap()]
                 {
                     scale_rect(rect, scale);
                 }
@@ -318,14 +324,14 @@ fn main() {
                 data.check_influence_enemy_collision();
 
                 // control speed of time-flow: dark-levels=emptyLevelSpeedup, normal-levels=1.0
-                if (*CUR_LEVEL).empty == 0 {
+                if (*data.main.cur_level).empty == 0 {
                     data.set_time_factor(1.0);
-                } else if (*CUR_LEVEL).color == ColorNames::Dark as i32 {
+                } else if (*data.main.cur_level).color == ColorNames::Dark as i32 {
                     // if level is already dark
                     data.set_time_factor(data.global.game_config.empty_level_speedup);
-                } else if (*CUR_LEVEL).timer <= 0. {
+                } else if (*data.main.cur_level).timer <= 0. {
                     // time to switch off the lights ...
-                    (*CUR_LEVEL).color = ColorNames::Dark as i32;
+                    (*data.main.cur_level).color = ColorNames::Dark as i32;
                     data.switch_background_music_to(BYCOLOR.as_ptr()); // start new background music
                 }
 
@@ -357,14 +363,12 @@ impl Data {
     unsafe fn update_counters_for_this_frame(&mut self) {
         // Here are some things, that were previously done by some periodic */
         // interrupt function
-        THIS_MESSAGE_TIME += 1;
-
-        LAST_GOT_INTO_BLAST_SOUND += self.frame_time();
-        LAST_REFRESH_SOUND += self.frame_time();
+        self.main.last_got_into_blast_sound += self.frame_time();
+        self.main.last_refresh_sound += self.frame_time();
         self.vars.me.last_crysound_time += self.frame_time();
         self.vars.me.timer += self.frame_time();
 
-        let cur_level = &mut *CUR_LEVEL;
+        let cur_level = &mut *self.main.cur_level;
         if cur_level.timer >= 0.0 {
             cur_level.timer -= self.frame_time();
         }
@@ -388,27 +392,28 @@ impl Data {
         if cur_level.empty > 2 {
             cur_level.empty -= 1;
         }
-        if REAL_SCORE > SHOW_SCORE as f32 {
-            SHOW_SCORE += 1;
+        if self.main.real_score > self.main.show_score as f32 {
+            self.main.show_score += 1;
         }
-        if REAL_SCORE < SHOW_SCORE as f32 {
-            SHOW_SCORE -= 1;
+        if self.main.real_score < self.main.show_score as f32 {
+            self.main.show_score -= 1;
         }
 
         // drain Death-count, responsible for Alert-state
-        if DEATH_COUNT > 0. {
-            DEATH_COUNT -= DEATH_COUNT_DRAIN_SPEED * self.frame_time();
+        if self.main.death_count > 0. {
+            self.main.death_count -= self.main.death_count_drain_speed * self.frame_time();
         }
-        if DEATH_COUNT < 0. {
-            DEATH_COUNT = 0.;
+        if self.main.death_count < 0. {
+            self.main.death_count = 0.;
         }
         // and switch Alert-level according to DeathCount
-        ALERT_LEVEL = (DEATH_COUNT / ALERT_THRESHOLD as f32) as i32;
-        if ALERT_LEVEL > AlertNames::Red as i32 {
-            ALERT_LEVEL = AlertNames::Red as i32;
+        self.main.alert_level = (self.main.death_count / self.main.alert_threshold as f32) as i32;
+        if self.main.alert_level > AlertNames::Red as i32 {
+            self.main.alert_level = AlertNames::Red as i32;
         }
         // player gets a bonus/second in AlertLevel
-        REAL_SCORE += ALERT_LEVEL as f32 * ALERT_BONUS_PER_SEC * self.frame_time();
+        self.main.real_score +=
+            self.main.alert_level as f32 * self.main.alert_bonus_per_sec * self.frame_time();
 
         for enemy in &mut ALL_ENEMYS {
             if enemy.status == Status::Out as i32 {
