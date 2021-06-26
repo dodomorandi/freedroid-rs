@@ -9,8 +9,7 @@ use crate::{
     graphics::apply_filter,
     map::get_map_brick,
     structs::{Finepoint, GrobPoint},
-    Data, ALL_BLASTS, ALL_BULLETS, FIRST_DIGIT_RECT, NUMBER_OF_DROID_TYPES, SECOND_DIGIT_RECT,
-    SHOW_ALL_DROIDS, THIRD_DIGIT_RECT,
+    Data, ALL_BLASTS, ALL_BULLETS, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
 };
 
 use log::{info, trace};
@@ -251,7 +250,7 @@ impl Data {
             SDL_SetClipRect(self.graphics.ne_screen, &self.vars.user_rect);
 
             // make sure Ashes are displayed _before_ droids, so that they are _under_ them!
-            for enemy_index in 0..self.main.all_enemys.len() {
+            for enemy_index in 0..usize::try_from(self.main.num_enemys).unwrap() {
                 let enemy = &self.main.all_enemys[enemy_index];
                 if (enemy.status == Status::Terminated as i32)
                     && (enemy.levelnum == (*self.main.cur_level).levelnum)
@@ -262,7 +261,7 @@ impl Data {
             }
 
             let levelnum = (*self.main.cur_level).levelnum;
-            for enemy_index in 0..self.main.all_enemys.len() {
+            for enemy_index in 0..usize::try_from(self.main.num_enemys).unwrap() {
                 let enemy = &self.main.all_enemys[enemy_index];
                 if !((enemy.levelnum != levelnum)
                     || (enemy.status == Status::Out as i32)
@@ -353,14 +352,14 @@ impl Data {
         }
 
         // if the enemy is out of sight, we need not do anything more here
-        if SHOW_ALL_DROIDS == 0 && self.is_visible(&droid.pos) == 0 {
+        if self.main.show_all_droids == 0 && self.is_visible(&droid.pos) == 0 {
             trace!("ONSCREEN=FALSE --> usual end of function reached.");
             return;
         }
 
         // We check for incorrect droid types, which sometimes might occor, especially after
         // heavy editing of the crew initialisation functions ;)
-        if droid.ty >= NUMBER_OF_DROID_TYPES {
+        if droid.ty >= self.main.number_of_droid_types {
             panic!("nonexistant droid-type encountered: {}", droid.ty);
         }
 

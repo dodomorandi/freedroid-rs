@@ -7,7 +7,7 @@ use crate::{
     },
     graphics::scale_pic,
     input::{SDL_Delay, CMD_STRINGS},
-    Data, Global, ALL_BLASTS, CONFIG_DIR, F_P_SOVER1, NUM_ENEMYS,
+    Data, Global, ALL_BLASTS, F_P_SOVER1,
 };
 
 use cstr::cstr;
@@ -229,12 +229,16 @@ const EMPTY_LEVEL_SPEEDUP: &str = "EmptyLevelSpeedup";
 impl Data {
     pub unsafe fn save_game_config(&self) -> c_int {
         use std::io::Write;
-        if CONFIG_DIR[0] == b'\0' as c_char {
+        if self.main.config_dir[0] == b'\0' as c_char {
             return defs::ERR.into();
         }
 
-        let config_path =
-            Path::new(&CStr::from_ptr(CONFIG_DIR.as_ptr()).to_str().unwrap()).join("config");
+        let config_path = Path::new(
+            &CStr::from_ptr(self.main.config_dir.as_ptr())
+                .to_str()
+                .unwrap(),
+        )
+        .join("config");
         let mut config = match File::create(&config_path) {
             Ok(config) => config,
             Err(_) => {
@@ -892,7 +896,7 @@ impl Data {
         self.main
             .all_enemys
             .iter_mut()
-            .take(NUM_ENEMYS.try_into().unwrap())
+            .take(self.main.num_enemys.try_into().unwrap())
             .for_each(|enemy| {
                 enemy.energy = 0.;
                 enemy.status = Status::Out as c_int;

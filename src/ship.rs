@@ -10,7 +10,7 @@ use crate::{
     map::get_map_brick,
     structs::Point,
     vars::{BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES, WEAPON_NAMES},
-    Data, NUM_ENEMYS,
+    Data,
 };
 
 use log::{error, warn};
@@ -1212,7 +1212,7 @@ impl Data {
 
         let levelnum = cur_level.levelnum;
 
-        self.main.all_enemys[0..usize::try_from(NUM_ENEMYS).unwrap()]
+        self.main.all_enemys[0..usize::try_from(self.main.num_enemys).unwrap()]
             .iter()
             .any(|enemy| {
                 enemy.levelnum == levelnum

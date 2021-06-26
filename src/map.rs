@@ -9,7 +9,7 @@ use crate::{
         read_value_from_string,
     },
     structs::{Finepoint, GrobPoint, Level},
-    Data, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
+    Data,
 };
 
 use cstr::cstr;
@@ -600,7 +600,7 @@ freedroid-discussion@lists.sourceforge.net\n\
             } else {
                 /* alle Enemys checken */
                 let mut j = 0;
-                while j < usize::try_from(NUM_ENEMYS).unwrap() {
+                while j < usize::try_from(self.main.num_enemys).unwrap() {
                     /* ignore druids that are dead or on other levels */
                     if self.main.all_enemys[j].status == Status::Out as i32
                         || self.main.all_enemys[j].status == Status::Terminated as i32
@@ -635,7 +635,7 @@ freedroid-discussion@lists.sourceforge.net\n\
                 }
 
                 /* No druid near: close door if it isnt closed */
-                if j == usize::try_from(NUM_ENEMYS).unwrap()
+                if j == usize::try_from(self.main.num_enemys).unwrap()
                     && *pos != MapTile::VZutuere as i8
                     && *pos != MapTile::HZutuere as i8
                 {
@@ -875,7 +875,7 @@ impl Data {
             // Now that we have got a type indication string, we only need to translate it
             // into a number corresponding to that droid in the droid list
             let mut list_index = 0;
-            while list_index < NUMBER_OF_DROID_TYPES {
+            while list_index < self.main.number_of_droid_types {
                 if libc::strcmp(
                     (*self.vars.droidmap.add(usize::try_from(list_index).unwrap()))
                         .druidname
@@ -887,7 +887,7 @@ impl Data {
                 }
                 list_index += 1;
             }
-            if list_index >= NUMBER_OF_DROID_TYPES {
+            if list_index >= self.main.number_of_droid_types {
                 panic!(
                     "unknown droid type: {} found in data file for level {}",
                     CStr::from_ptr(type_indication_string.as_ptr()).to_string_lossy(),
@@ -1004,7 +1004,7 @@ impl Data {
         // Now that the correct crew types have been filled into the
         // right structure, it's time to set the energy of the corresponding
         // droids to "full" which means to the maximum of each type.
-        NUM_ENEMYS = 0;
+        self.main.num_enemys = 0;
         for enemy in &mut self.main.all_enemys {
             let ty = enemy.ty;
             if ty == -1 {
@@ -1013,7 +1013,7 @@ impl Data {
             }
             enemy.energy = (*self.vars.droidmap.add(usize::try_from(ty).unwrap())).maxenergy;
             enemy.status = Status::Mobile as c_int;
-            NUM_ENEMYS += 1;
+            self.main.num_enemys += 1;
         }
 
         defs::OK.into()

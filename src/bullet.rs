@@ -4,7 +4,7 @@ use crate::{
         MAXBLASTS, MAXBULLETS,
     },
     structs::{Finepoint, Vect},
-    Data, Status, ALL_BLASTS, ALL_BULLETS, INVINCIBLE_MODE, NUM_ENEMYS,
+    Data, Status, ALL_BLASTS, ALL_BULLETS,
 };
 
 use log::info;
@@ -57,7 +57,7 @@ impl Data {
                     return;
                 } // we only do the damage once and thats at frame nr. 1 of the flash
 
-                for enemy_index in 0..usize::try_from(NUM_ENEMYS).unwrap() {
+                for enemy_index in 0..usize::try_from(self.main.num_enemys).unwrap() {
                     let enemy = &self.main.all_enemys[enemy_index];
                     // !! dont't forget: Only droids on our level are harmed!! (bugfix)
                     if enemy.levelnum != level {
@@ -79,7 +79,7 @@ impl Data {
 
                 // droids with flash are always flash-immune!
                 // -> we don't get hurt by our own flashes!
-                if INVINCIBLE_MODE == 0
+                if self.main.invincible_mode == 0
                     && (*self
                         .vars
                         .droidmap
@@ -144,7 +144,7 @@ impl Data {
                         if (xdist * xdist + ydist * ydist) < self.get_druid_hit_dist_squared() {
                             self.got_hit_sound();
 
-                            if INVINCIBLE_MODE == 0 {
+                            if self.main.invincible_mode == 0 {
                                 self.vars.me.energy -=
                                     (*self.vars.bulletmap.add(cur_bullet.ty.into())).damage as f32;
                             }
@@ -156,7 +156,7 @@ impl Data {
 
                     // check for collision with enemys
                     for (enemy_index, enemy) in self.main.all_enemys
-                        [..usize::try_from(NUM_ENEMYS).unwrap()]
+                        [..usize::try_from(self.main.num_enemys).unwrap()]
                         .iter()
                         .enumerate()
                     {
@@ -283,7 +283,7 @@ impl Data {
         let Self {
             main, global, misc, ..
         } = self;
-        for enemy in &mut main.all_enemys[..usize::try_from(NUM_ENEMYS).unwrap()] {
+        for enemy in &mut main.all_enemys[..usize::try_from(main.num_enemys).unwrap()] {
             if enemy.status == Status::Out as c_int || enemy.levelnum != level {
                 continue;
             }
@@ -315,7 +315,7 @@ impl Data {
             && !cur_blast.mine
             && dist < self.global.blast_radius + self.global.droid_radius
         {
-            if INVINCIBLE_MODE == 0 {
+            if self.main.invincible_mode == 0 {
                 self.vars.me.energy -= self.global.blast_damage_per_second * self.frame_time();
 
                 // So the influencer got some damage from the hot blast

@@ -6,7 +6,7 @@ use crate::{
     map::get_map_brick,
     misc::my_random,
     structs::{Finepoint, Gps},
-    Data, ALL_BLASTS, ALL_BULLETS, INVINCIBLE_MODE, NUM_ENEMYS,
+    Data, ALL_BLASTS, ALL_BULLETS,
 };
 
 use cstr::cstr;
@@ -90,7 +90,7 @@ impl Data {
     }
 
     pub unsafe fn check_influence_enemy_collision(&mut self) {
-        for enemy_index in 0..usize::try_from(NUM_ENEMYS).unwrap() {
+        for enemy_index in 0..usize::try_from(self.main.num_enemys).unwrap() {
             let Self {
                 vars,
                 main,
@@ -194,7 +194,7 @@ impl Data {
         if damage < 0. {
             // we took damage
             self.collision_got_damaged_sound();
-            if INVINCIBLE_MODE == 0 {
+            if self.main.invincible_mode == 0 {
                 self.vars.me.energy += damage;
             }
         } else if damage == 0. {
@@ -588,7 +588,7 @@ impl Data {
 impl Data {
     pub unsafe fn permanent_lose_energy(&mut self) {
         // Of course if in invincible mode, no energy will ever be lost...
-        if INVINCIBLE_MODE != 0 {
+        if self.main.invincible_mode != 0 {
             return;
         }
 

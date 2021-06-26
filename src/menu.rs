@@ -15,7 +15,7 @@ use crate::{
     input::{SDL_Delay, CMD_STRINGS},
     map::COLOR_NAMES,
     misc::dealloc_c_string,
-    Data, INVINCIBLE_MODE, NUMBER_OF_DROID_TYPES, NUM_ENEMYS, SHOW_ALL_DROIDS, STOP_INFLUENCER,
+    Data,
 };
 
 use cstr::cstr;
@@ -386,7 +386,11 @@ impl Data {
                 -1,
                 format_args!(
                     " i. Invinciblemode: {}\n",
-                    if INVINCIBLE_MODE != 0 { "ON" } else { "OFF" },
+                    if self.main.invincible_mode != 0 {
+                        "ON"
+                    } else {
+                        "OFF"
+                    },
                 ),
             );
             self.printf_sdl(
@@ -401,7 +405,11 @@ impl Data {
                 -1,
                 format_args!(
                     " n. No hidden droids: {}\n",
-                    if SHOW_ALL_DROIDS != 0 { "ON" } else { "OFF" },
+                    if self.main.show_all_droids != 0 {
+                        "ON"
+                    } else {
+                        "OFF"
+                    },
                 ),
             );
             self.printf_sdl(
@@ -437,7 +445,11 @@ impl Data {
                 -1,
                 format_args!(
                     " f. Freeze on this positon: {}\n",
-                    if STOP_INFLUENCER != 0 { "ON" } else { "OFF" },
+                    if self.main.stop_influencer != 0 {
+                        "ON"
+                    } else {
+                        "OFF"
+                    },
                 ),
             );
             self.printf_sdl(
@@ -449,7 +461,7 @@ impl Data {
 
             match u8::try_from(self.getchar_raw()).ok() {
                 Some(b'f') => {
-                    STOP_INFLUENCER = !STOP_INFLUENCER;
+                    self.main.stop_influencer = !self.main.stop_influencer;
                 }
 
                 Some(b'z') => {
@@ -488,7 +500,7 @@ impl Data {
                 Some(b'l') => {
                     /* robot list of this deck */
                     let mut l = 0; /* line counter for enemy output */
-                    for i in 0..usize::try_from(NUM_ENEMYS).unwrap() {
+                    for i in 0..usize::try_from(self.main.num_enemys).unwrap() {
                         if self.main.all_enemys[i].levelnum == cur_level.levelnum {
                             if l != 0 && l % 20 == 0 {
                                 self.printf_sdl(
@@ -561,7 +573,7 @@ impl Data {
 
                 Some(b'g') => {
                     /* complete robot list of this ship */
-                    for i in 0..usize::try_from(NUM_ENEMYS).unwrap() {
+                    for i in 0..usize::try_from(self.main.num_enemys).unwrap() {
                         if self.main.all_enemys[i].ty == -1 {
                             continue;
                         }
@@ -678,14 +690,14 @@ impl Data {
                     );
                     let input = self.get_string(40, 2);
                     let mut i = 0;
-                    for _ in 0..u32::try_from(NUMBER_OF_DROID_TYPES).unwrap() {
+                    for _ in 0..u32::try_from(self.main.number_of_droid_types).unwrap() {
                         if libc::strcmp(droid_map[i].druidname.as_ptr(), input) != 0 {
                             break;
                         }
                         i += 1;
                     }
 
-                    if i == usize::try_from(NUMBER_OF_DROID_TYPES).unwrap() {
+                    if i == usize::try_from(self.main.number_of_droid_types).unwrap() {
                         self.printf_sdl(
                             self.graphics.ne_screen,
                             X0,
@@ -718,7 +730,7 @@ impl Data {
 
                 Some(b'i') => {
                     /* togge Invincible mode */
-                    INVINCIBLE_MODE = !INVINCIBLE_MODE;
+                    self.main.invincible_mode = !self.main.invincible_mode;
                 }
 
                 Some(b'e') => {
@@ -748,7 +760,7 @@ impl Data {
 
                 Some(b'n') => {
                     /* toggle display of all droids */
-                    SHOW_ALL_DROIDS = !SHOW_ALL_DROIDS;
+                    self.main.show_all_droids = !self.main.show_all_droids;
                 }
 
                 Some(b's') => {

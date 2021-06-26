@@ -95,6 +95,15 @@ struct Main {
     // bonus/sec for FIRST Alert-color, the others are 2*, 3*,...
     alert_bonus_per_sec: f32,
     all_enemys: [Enemy; MAX_ENEMYS_ON_SHIP],
+    config_dir: [i8; 255],
+    invincible_mode: i32,
+    /* display enemys regardless of IsVisible() */
+    show_all_droids: i32,
+    /* for bullet debugging: stop where u are */
+    stop_influencer: i32,
+    num_enemys: i32,
+    number_of_droid_types: i32,
+    pre_take_energy: i32,
 }
 
 impl Default for Main {
@@ -113,17 +122,17 @@ impl Default for Main {
             alert_threshold: 0,
             alert_bonus_per_sec: 0.,
             all_enemys: [Enemy::default(); MAX_ENEMYS_ON_SHIP],
+            config_dir: [0; 255],
+            invincible_mode: 0,
+            show_all_droids: 0,
+            stop_influencer: 0,
+            num_enemys: 0,
+            number_of_droid_types: 0,
+            pre_take_energy: 0,
         }
     }
 }
 
-static mut CONFIG_DIR: [i8; 255] = [0; 255];
-static mut INVINCIBLE_MODE: i32 = 0;
-static mut SHOW_ALL_DROIDS: i32 = 0; /* display enemys regardless of IsVisible() */
-static mut STOP_INFLUENCER: i32 = 0; /* for bullet debugging: stop where u are */
-static mut NUM_ENEMYS: i32 = 0;
-static mut NUMBER_OF_DROID_TYPES: i32 = 0;
-static mut PRE_TAKE_ENERGY: i32 = 0;
 static mut ALL_BULLETS: [Bullet; MAXBULLETS + 10] = [Bullet::default_const(); MAXBULLETS + 10];
 static mut ALL_BLASTS: [Blast; MAXBLASTS + 10] = [Blast {
     px: 0.,
@@ -401,7 +410,7 @@ impl Data {
         let Self {
             main, misc, global, ..
         } = self;
-        for enemy in &mut main.all_enemys {
+        for enemy in &mut main.all_enemys[..usize::try_from(main.num_enemys).unwrap()] {
             if enemy.status == Status::Out as i32 {
                 continue;
             }

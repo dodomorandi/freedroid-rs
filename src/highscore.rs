@@ -4,7 +4,7 @@ use crate::{
         self, Criticality, DisplayBannerFlags, Status, Themed, DATE_LEN, GRAPHICS_DIR_C,
         HS_BACKGROUND_FILE_C, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
     },
-    Data, CONFIG_DIR,
+    Data,
 };
 
 use cstr::cstr;
@@ -260,25 +260,23 @@ impl Data {
 
         self.b_font.current_font = prev_font;
     }
-}
 
-unsafe fn get_config_dir() -> Option<&'static Path> {
-    if CONFIG_DIR[0] == 0 {
-        None
-    } else {
-        let config_dir = CStr::from_ptr(CONFIG_DIR.as_ptr());
-        let config_dir = Path::new(config_dir.to_str().unwrap());
-        Some(config_dir)
+    unsafe fn get_config_dir(&self) -> Option<&'static Path> {
+        if self.main.config_dir[0] == 0 {
+            None
+        } else {
+            let config_dir = CStr::from_ptr(self.main.config_dir.as_ptr());
+            let config_dir = Path::new(config_dir.to_str().unwrap());
+            Some(config_dir)
+        }
     }
-}
 
-impl Data {
     pub unsafe fn init_highscores(&mut self) {
-        self.init_highscores_inner(get_config_dir());
+        self.init_highscores_inner(self.get_config_dir());
     }
 
     pub unsafe fn save_highscores(&mut self) -> c_int {
-        match self.save_highscores_inner(get_config_dir()) {
+        match self.save_highscores_inner(self.get_config_dir()) {
             Ok(()) => defs::OK.into(),
             Err(()) => defs::ERR.into(),
         }

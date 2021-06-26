@@ -6,7 +6,7 @@ use crate::{
     },
     misc::my_random,
     structs::Finepoint,
-    Data, ALL_BULLETS, NUM_ENEMYS,
+    Data, ALL_BULLETS,
 };
 
 use cstr::cstr;
@@ -43,7 +43,7 @@ impl Data {
             ..
         } = self;
 
-        for enemy in &mut main.all_enemys[..usize::try_from(NUM_ENEMYS).unwrap()] {
+        for enemy in &mut main.all_enemys[..usize::try_from(main.num_enemys).unwrap()] {
             /* ignore enemys that are dead or on other levels or dummys */
             if enemy.levelnum != (*main.cur_level).levelnum {
                 continue;
@@ -71,7 +71,7 @@ impl Data {
 
         self.animate_enemys(); // move the "phase" of the rotation of enemys
 
-        for enemy_index in 0..usize::try_from(NUM_ENEMYS).unwrap() {
+        for enemy_index in 0..usize::try_from(self.main.num_enemys).unwrap() {
             let enemy = &self.main.all_enemys[enemy_index];
             if enemy.status == Status::Out as i32
                 || enemy.status == Status::Terminated as i32
@@ -264,7 +264,7 @@ impl Data {
 
         let enemy_num: usize = enemy_num.try_into().unwrap();
         let (enemys_before, rest) =
-            main.all_enemys[..usize::try_from(NUM_ENEMYS).unwrap()].split_at_mut(enemy_num);
+            main.all_enemys[..usize::try_from(main.num_enemys).unwrap()].split_at_mut(enemy_num);
         let (cur_enemy, enemys_after) = rest.split_first_mut().unwrap();
         let check_x = cur_enemy.pos.x;
         let check_y = cur_enemy.pos.y;
@@ -363,7 +363,7 @@ impl Data {
         let num_wp = cur_level.num_waypoints;
         let mut nth_enemy = 0;
 
-        for enemy in &mut self.main.all_enemys[..usize::try_from(NUM_ENEMYS).unwrap()] {
+        for enemy in &mut self.main.all_enemys[..usize::try_from(self.main.num_enemys).unwrap()] {
             if enemy.status == Status::Out as c_int || enemy.levelnum != cur_level_num {
                 /* dont handle dead enemys or on other level */
                 continue;
@@ -463,7 +463,7 @@ impl Data {
             enemy.text_to_be_displayed = cstr!("").as_ptr() as *mut c_char;
         }
 
-        NUM_ENEMYS = 0;
+        self.main.num_enemys = 0;
     }
 
     pub unsafe fn permanent_heal_robots(&mut self) {
@@ -471,7 +471,7 @@ impl Data {
             vars, misc, global, ..
         } = self;
 
-        self.main.all_enemys[0..usize::try_from(NUM_ENEMYS).unwrap()]
+        self.main.all_enemys[0..usize::try_from(self.main.num_enemys).unwrap()]
             .iter_mut()
             .filter(|enemy| {
                 enemy.status != Status::Out as c_int

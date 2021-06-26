@@ -13,7 +13,7 @@ use crate::{
         read_and_malloc_string_from_data, read_value_from_string,
     },
     structs::{BulletSpec, DruidSpec},
-    Data, ALL_BLASTS, ALL_BULLETS, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
+    Data, ALL_BLASTS, ALL_BULLETS,
 };
 
 #[cfg(target_os = "windows")]
@@ -116,7 +116,7 @@ impl Data {
         }
         let droid_map = std::slice::from_raw_parts(
             self.vars.droidmap,
-            usize::try_from(NUMBER_OF_DROID_TYPES).unwrap(),
+            usize::try_from(self.main.number_of_droid_types).unwrap(),
         );
         for droid in droid_map {
             dealloc_c_string(droid.notes);
@@ -124,7 +124,8 @@ impl Data {
 
         dealloc(
             self.vars.droidmap as *mut u8,
-            Layout::array::<DruidSpec>(usize::try_from(NUMBER_OF_DROID_TYPES).unwrap()).unwrap(),
+            Layout::array::<DruidSpec>(usize::try_from(self.main.number_of_droid_types).unwrap())
+                .unwrap(),
         );
         self.vars.droidmap = null_mut();
     }
@@ -171,7 +172,7 @@ impl Data {
             .main
             .all_enemys
             .iter()
-            .take(NUM_ENEMYS.try_into().unwrap())
+            .take(self.main.num_enemys.try_into().unwrap())
         {
             if enemy.status != Status::Out as c_int && enemy.status != Status::Terminated as c_int {
                 return;
@@ -1138,7 +1139,7 @@ impl Data {
         // At first, we must allocate memory for the droid specifications.
         // How much?  That depends on the number of droids defined in freedroid.ruleset.
         // So we have to count those first.  ok.  lets do it.
-        NUMBER_OF_DROID_TYPES = count_string_occurences(
+        self.main.number_of_droid_types = count_string_occurences(
             data_pointer as *mut c_char,
             NEW_ROBOT_BEGIN_STRING.as_ptr() as *mut c_char,
         );
@@ -1146,11 +1147,12 @@ impl Data {
         // Now that we know how many robots are defined in freedroid.ruleset, we can allocate
         // a fitting amount of memory.
         self.vars.droidmap = alloc_zeroed(
-            Layout::array::<DruidSpec>(usize::try_from(NUMBER_OF_DROID_TYPES).unwrap()).unwrap(),
+            Layout::array::<DruidSpec>(usize::try_from(self.main.number_of_droid_types).unwrap())
+                .unwrap(),
         ) as *mut DruidSpec;
         info!(
             "We have counted {} different druid types in the game data file.",
-            NUMBER_OF_DROID_TYPES,
+            self.main.number_of_droid_types,
         );
         info!("MEMORY HAS BEEN ALLOCATED. THE READING CAN BEGIN.");
 
@@ -1314,7 +1316,7 @@ impl Data {
 
         for droid in std::slice::from_raw_parts_mut(
             self.vars.droidmap,
-            NUMBER_OF_DROID_TYPES.try_into().unwrap(),
+            self.main.number_of_droid_types.try_into().unwrap(),
         ) {
             droid.maxspeed *= maxspeed_calibrator;
             droid.accel *= acceleration_calibrator;

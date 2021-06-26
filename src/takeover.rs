@@ -5,7 +5,7 @@ use crate::{
     graphics::Graphics,
     misc::my_random,
     structs::Point,
-    Data, INVINCIBLE_MODE, PRE_TAKE_ENERGY,
+    Data,
 };
 
 use cstr::cstr;
@@ -1860,11 +1860,13 @@ impl Data {
 
             let message;
             /* Ausgang beurteilen und returnen */
-            if INVINCIBLE_MODE != 0 || self.takeover.leader_color == self.takeover.your_color {
+            if self.main.invincible_mode != 0
+                || self.takeover.leader_color == self.takeover.your_color
+            {
                 self.takeover_game_won_sound();
                 if self.vars.me.ty == Droid::Droid001 as c_int {
                     self.takeover.reject_energy = self.vars.me.energy as c_int;
-                    PRE_TAKE_ENERGY = self.vars.me.energy as c_int;
+                    self.main.pre_take_energy = self.vars.me.energy as c_int;
                 }
 
                 // We provide some security agains too high energy/health values gained
