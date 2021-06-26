@@ -6,7 +6,7 @@ use crate::{
     },
     misc::my_random,
     structs::Finepoint,
-    Data, ALL_BULLETS,
+    Data,
 };
 
 use cstr::cstr;
@@ -150,7 +150,7 @@ impl Data {
         // find a bullet entry, that isn't currently used...
         let mut j = 0;
         while j < MAXBULLETS {
-            if ALL_BULLETS[j].ty == Status::Out as u8 {
+            if self.main.all_bullets[j].ty == Status::Out as u8 {
                 break;
             }
 
@@ -162,7 +162,7 @@ impl Data {
             return;
         }
 
-        let cur_bullet = &mut ALL_BULLETS[j];
+        let cur_bullet = &mut self.main.all_bullets[j];
         // determine the direction of the shot, so that it will go into the direction of
         // the target
 

@@ -15,7 +15,7 @@ use crate::{
     structs::ThemeList,
     takeover::TO_BLOCK_FILE_C,
     vars::{ORIG_BLOCK_RECT, ORIG_DIGIT_RECT},
-    Data, ALL_BULLETS, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
+    Data, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
 };
 
 use array_init::array_init;
@@ -1618,7 +1618,8 @@ impl Data {
         self.update_progress(98);
 
         // make sure bullet-surfaces get re-generated!
-        ALL_BULLETS
+        self.main
+            .all_bullets
             .iter_mut()
             .take(MAXBULLETS)
             .for_each(|bullet| bullet.surfaces_were_generated = false.into());

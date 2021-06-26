@@ -13,7 +13,7 @@ use crate::{
         read_and_malloc_string_from_data, read_value_from_string,
     },
     structs::{BulletSpec, DruidSpec},
-    Data, ALL_BLASTS, ALL_BULLETS,
+    Data, ALL_BLASTS,
 };
 
 #[cfg(target_os = "windows")]
@@ -228,7 +228,7 @@ impl Data {
     pub unsafe fn init_freedroid(&mut self) {
         self.vars.bulletmap = null_mut(); // That will cause the memory to be allocated later
 
-        for bullet in &mut ALL_BULLETS {
+        for bullet in &mut self.main.all_bullets[..MAXBULLETS] {
             bullet.surfaces_were_generated = false.into();
         }
 

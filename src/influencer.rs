@@ -6,7 +6,7 @@ use crate::{
     map::get_map_brick,
     misc::my_random,
     structs::{Finepoint, Gps},
-    Data, ALL_BLASTS, ALL_BULLETS,
+    Data, ALL_BLASTS,
 };
 
 use cstr::cstr;
@@ -623,10 +623,11 @@ impl Data {
 
         self.fire_bullet_sound(guntype);
 
-        let cur_bullet = ALL_BULLETS[..MAXBULLETS]
-            .iter_mut()
-            .find(|bullet| bullet.ty == Status::Out as u8)
-            .unwrap_or(&mut ALL_BULLETS[0]);
+        let cur_bullet_index = self.main.all_bullets[..MAXBULLETS]
+            .iter()
+            .position(|bullet| bullet.ty == Status::Out as u8)
+            .unwrap_or(0);
+        let cur_bullet = &mut self.main.all_bullets[cur_bullet_index];
 
         cur_bullet.pos.x = self.vars.me.pos.x;
         cur_bullet.pos.y = self.vars.me.pos.y;
@@ -661,6 +662,7 @@ impl Data {
             speed.y = self.input.input_axis.y as f32 / max_val;
         }
 
+        let cur_bullet = &mut self.main.all_bullets[cur_bullet_index];
         let speed_norm = (speed.x * speed.x + speed.y * speed.y).sqrt();
         cur_bullet.speed.x = speed.x / speed_norm;
         cur_bullet.speed.y = speed.y / speed_norm;

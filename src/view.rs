@@ -9,7 +9,7 @@ use crate::{
     graphics::apply_filter,
     map::get_map_brick,
     structs::{Finepoint, GrobPoint},
-    Data, ALL_BLASTS, ALL_BULLETS, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
+    Data, ALL_BLASTS, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
 };
 
 use log::{info, trace};
@@ -275,12 +275,11 @@ impl Data {
                 self.put_influence(-1, -1);
             }
 
-            ALL_BULLETS
-                .iter()
-                .take(MAXBULLETS)
-                .enumerate()
-                .filter(|(_, bullet)| bullet.ty != Status::Out as u8)
-                .for_each(|(index, _)| self.put_bullet(index as i32));
+            for bullet_index in 0..MAXBULLETS {
+                if self.main.all_bullets[bullet_index].ty != Status::Out as u8 {
+                    self.put_bullet(bullet_index.try_into().unwrap())
+                }
+            }
 
             ALL_BLASTS
                 .iter()
@@ -611,8 +610,8 @@ impl Data {
     /// PutBullet: draws a Bullet into the combat window.  The only
     /// parameter given is the number of the bullet in the AllBullets
     /// array. Everything else is computed in here.
-    pub unsafe fn put_bullet(&self, bullet_number: c_int) {
-        let cur_bullet = &mut ALL_BULLETS[usize::try_from(bullet_number).unwrap()];
+    pub unsafe fn put_bullet(&mut self, bullet_number: c_int) {
+        let cur_bullet = &mut self.main.all_bullets[usize::try_from(bullet_number).unwrap()];
 
         trace!("PutBullet: real function call confirmed.");
 
@@ -677,6 +676,7 @@ impl Data {
         // This has to be taken into account when calculating the target position for the
         // blit of these surfaces!!!!
         let user_center = self.get_user_center();
+        let cur_bullet = &self.main.all_bullets[usize::try_from(bullet_number).unwrap()];
         let mut dst = Rect::new(
             (f32::from(user_center.x)
                 - (self.vars.me.pos.x - cur_bullet.pos.x) * f32::from(self.vars.block_rect.w)

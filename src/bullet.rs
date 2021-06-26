@@ -4,7 +4,7 @@ use crate::{
         MAXBLASTS, MAXBULLETS,
     },
     structs::{Finepoint, Vect},
-    Data, Status, ALL_BLASTS, ALL_BULLETS,
+    Data, Status, ALL_BLASTS,
 };
 
 use log::info;
@@ -28,7 +28,7 @@ impl Data {
 
     pub unsafe fn check_bullet_collisions(&mut self, num: c_int) {
         let level = (*self.main.cur_level).levelnum;
-        let cur_bullet = &mut ALL_BULLETS[usize::try_from(num).unwrap()];
+        let cur_bullet = &mut self.main.all_bullets[usize::try_from(num).unwrap()];
 
         match BulletKind::try_from(cur_bullet.ty) {
             // Never do any collision checking if the bullet is OUT already...
@@ -118,9 +118,11 @@ impl Data {
                 cur_bullet.pos.y = cur_bullet.prev_pos.y;
 
                 for _ in 0..(num_check_steps as i32) {
+                    let cur_bullet = &mut self.main.all_bullets[usize::try_from(num).unwrap()];
                     cur_bullet.pos.x += step.x;
                     cur_bullet.pos.y += step.y;
 
+                    let cur_bullet = &self.main.all_bullets[usize::try_from(num).unwrap()];
                     if self.is_passable(
                         cur_bullet.pos.x,
                         cur_bullet.pos.y,
@@ -183,6 +185,8 @@ impl Data {
                             self.delete_bullet(num);
                             self.got_hit_sound();
 
+                            let cur_bullet =
+                                &mut self.main.all_bullets[usize::try_from(num).unwrap()];
                             if !cur_bullet.mine {
                                 self.bullet.fbt_counter += 1;
                             }
@@ -193,10 +197,12 @@ impl Data {
                     }
 
                     // check for collisions with other bullets
-                    for (i, bullet) in ALL_BULLETS[..MAXBULLETS].iter().enumerate() {
-                        if Some(i) == usize::try_from(num).ok() {
+                    for bullet_index in 0..MAXBULLETS {
+                        // never check for collision with youself.. ;)
+                        if Some(bullet_index) == usize::try_from(num).ok() {
                             continue;
-                        } // never check for collision with youself.. ;)
+                        }
+                        let bullet = &self.main.all_bullets[bullet_index];
                         if bullet.ty == Status::Out as u8 {
                             continue;
                         } // never check for collisions with dead bullets..
@@ -204,6 +210,7 @@ impl Data {
                             continue;
                         } // never check for collisions with flashes bullets..
 
+                        let cur_bullet = &self.main.all_bullets[usize::try_from(num).unwrap()];
                         let xdist = bullet.pos.x - cur_bullet.pos.x;
                         let ydist = bullet.pos.y - cur_bullet.pos.y;
                         if xdist * xdist + ydist * ydist > BULLET_COLL_DIST2 {
@@ -221,7 +228,7 @@ impl Data {
                         );
 
                         self.delete_bullet(num);
-                        self.delete_bullet(i.try_into().unwrap());
+                        self.delete_bullet(bullet_index.try_into().unwrap());
                     }
                 }
             }
@@ -259,7 +266,8 @@ impl Data {
         let cur_blast = &mut ALL_BLASTS[usize::try_from(num).unwrap()];
 
         /* check Blast-Bullet Collisions and kill hit Bullets */
-        for (i, cur_bullet) in ALL_BULLETS[0..MAXBULLETS].iter().enumerate() {
+        for bullet_index in 0..MAXBULLETS {
+            let cur_bullet = &self.main.all_bullets[bullet_index];
             if cur_bullet.ty == Status::Out as u8 {
                 continue;
             }
@@ -275,7 +283,7 @@ impl Data {
                     cur_bullet.pos.y,
                     Explosion::Bulletblast as c_int,
                 );
-                self.delete_bullet(i.try_into().unwrap());
+                self.delete_bullet(bullet_index.try_into().unwrap());
             }
         }
 
@@ -373,8 +381,8 @@ impl Data {
 
     /// delete bullet of given number, set it type=OUT, put it at x/y=-1/-1
     /// and create a Bullet-blast if with_blast==TRUE
-    pub unsafe fn delete_bullet(&self, bullet_number: c_int) {
-        let cur_bullet = &mut ALL_BULLETS[usize::try_from(bullet_number).unwrap()];
+    pub unsafe fn delete_bullet(&mut self, bullet_number: c_int) {
+        let cur_bullet = &mut self.main.all_bullets[usize::try_from(bullet_number).unwrap()];
 
         if cur_bullet.ty == Status::Out as u8 {
             // ignore dead bullets
@@ -422,7 +430,10 @@ impl Data {
     ///
     /// NEW: this function also takes into accoung the current framerate.
     pub unsafe fn move_bullets(&mut self) {
-        for cur_bullet in &mut ALL_BULLETS[..MAXBULLETS] {
+        let Self {
+            main, misc, global, ..
+        } = self;
+        for cur_bullet in &mut main.all_bullets[..MAXBULLETS] {
             if cur_bullet.ty == Status::Out as u8 {
                 continue;
             }
@@ -430,11 +441,11 @@ impl Data {
             cur_bullet.prev_pos.x = cur_bullet.pos.x;
             cur_bullet.prev_pos.y = cur_bullet.pos.y;
 
-            cur_bullet.pos.x += cur_bullet.speed.x * self.frame_time();
-            cur_bullet.pos.y += cur_bullet.speed.y * self.frame_time();
+            cur_bullet.pos.x += cur_bullet.speed.x * misc.frame_time(global);
+            cur_bullet.pos.y += cur_bullet.speed.y * misc.frame_time(global);
 
             cur_bullet.time_in_frames += 1;
-            cur_bullet.time_in_seconds += self.frame_time();
+            cur_bullet.time_in_seconds += misc.frame_time(global);
         }
     }
 }

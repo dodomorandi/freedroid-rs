@@ -104,6 +104,7 @@ struct Main {
     num_enemys: i32,
     number_of_droid_types: i32,
     pre_take_energy: i32,
+    all_bullets: [Bullet; MAXBULLETS + 10],
 }
 
 impl Default for Main {
@@ -129,11 +130,11 @@ impl Default for Main {
             num_enemys: 0,
             number_of_droid_types: 0,
             pre_take_energy: 0,
+            all_bullets: [Bullet::default_const(); MAXBULLETS + 10],
         }
     }
 }
 
-static mut ALL_BULLETS: [Bullet; MAXBULLETS + 10] = [Bullet::default_const(); MAXBULLETS + 10];
 static mut ALL_BLASTS: [Blast; MAXBLASTS + 10] = [Blast {
     px: 0.,
     py: 0.,
