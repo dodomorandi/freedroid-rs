@@ -1,6 +1,5 @@
 use crate::{
     b_font::font_height,
-    bullet::delete_blast,
     defs::{
         AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction, SoundType, Status,
         DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET, TEXT_STRETCH, UPDATE,
@@ -1182,7 +1181,7 @@ impl Data {
             self.vars.me.pos.y = self.main.cur_ship.all_lifts[cur_lift].y as f32;
 
             for i in 0..c_int::try_from(MAXBLASTS).unwrap() {
-                delete_blast(i);
+                self.delete_blast(i);
             }
             for i in 0..c_int::try_from(MAXBULLETS).unwrap() {
                 self.delete_bullet(i);

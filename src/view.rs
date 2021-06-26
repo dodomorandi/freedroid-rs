@@ -9,7 +9,7 @@ use crate::{
     graphics::apply_filter,
     map::get_map_brick,
     structs::{Finepoint, GrobPoint},
-    Data, ALL_BLASTS, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
+    Data, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
 };
 
 use log::{info, trace};
@@ -281,7 +281,8 @@ impl Data {
                 }
             }
 
-            ALL_BLASTS
+            self.main
+                .all_blasts
                 .iter()
                 .take(MAXBLASTS)
                 .enumerate()
@@ -701,7 +702,7 @@ impl Data {
     pub unsafe fn put_blast(&self, blast_number: c_int) {
         trace!("PutBlast: real function call confirmed.");
 
-        let cur_blast = &mut ALL_BLASTS[usize::try_from(blast_number).unwrap()];
+        let cur_blast = &self.main.all_blasts[usize::try_from(blast_number).unwrap()];
 
         // If the blast is already long deat, we need not do anything else here
         if cur_blast.ty == Status::Out as i32 {

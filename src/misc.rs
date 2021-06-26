@@ -7,7 +7,7 @@ use crate::{
     },
     graphics::scale_pic,
     input::{SDL_Delay, CMD_STRINGS},
-    Data, Global, ALL_BLASTS, F_P_SOVER1,
+    Data, Global, F_P_SOVER1,
 };
 
 use cstr::cstr;
@@ -873,7 +873,8 @@ impl Data {
             self.vars.me.pos.y = y as f32;
 
             // turn off all blasts and bullets from the old level
-            ALL_BLASTS
+            self.main
+                .all_blasts
                 .iter_mut()
                 .take(MAXBLASTS)
                 .for_each(|blast| blast.ty = Status::Out as i32);

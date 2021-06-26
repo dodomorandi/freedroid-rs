@@ -105,6 +105,7 @@ struct Main {
     number_of_droid_types: i32,
     pre_take_energy: i32,
     all_bullets: [Bullet; MAXBULLETS + 10],
+    all_blasts: [Blast; MAXBLASTS + 10],
 }
 
 impl Default for Main {
@@ -131,18 +132,10 @@ impl Default for Main {
             number_of_droid_types: 0,
             pre_take_energy: 0,
             all_bullets: [Bullet::default_const(); MAXBULLETS + 10],
+            all_blasts: [Blast::default(); MAXBLASTS + 10],
         }
     }
 }
-
-static mut ALL_BLASTS: [Blast; MAXBLASTS + 10] = [Blast {
-    px: 0.,
-    py: 0.,
-    ty: 0,
-    phase: 0.,
-    message_was_done: 0,
-    mine: false,
-}; MAXBLASTS + 10];
 
 static mut FIRST_DIGIT_RECT: Rect = rect!();
 static mut SECOND_DIGIT_RECT: Rect = rect!();

@@ -6,7 +6,7 @@ use crate::{
     map::get_map_brick,
     misc::my_random,
     structs::{Finepoint, Gps},
-    Data, ALL_BLASTS,
+    Data,
 };
 
 use cstr::cstr;
@@ -214,7 +214,7 @@ impl Data {
             /* freien Blast finden */
             let mut counter = 0;
             loop {
-                let check = ALL_BLASTS[counter].ty != Status::Out as c_int;
+                let check = self.main.all_blasts[counter].ty != Status::Out as c_int;
                 counter += 1;
                 if check.not() {
                     break;
@@ -224,7 +224,7 @@ impl Data {
             if counter >= MAXBLASTS {
                 panic!("Went out of blasts in ExplodeInfluencer...");
             }
-            let blast = &mut ALL_BLASTS[counter];
+            let blast = &mut self.main.all_blasts[counter];
             blast.ty = Explosion::Druidblast as c_int;
             blast.px =
                 self.vars.me.pos.x - self.global.droid_radius / 2. + my_random(10) as f32 * 0.05;

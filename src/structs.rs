@@ -242,6 +242,19 @@ pub struct Blast {
     pub mine: bool,
 }
 
+impl Default for Blast {
+    fn default() -> Self {
+        Self {
+            px: 0.,
+            py: 0.,
+            ty: 0,
+            phase: 0.,
+            message_was_done: 0,
+            mine: false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Lift {
     pub level: i32, // The level, where this elevtor entrance is located

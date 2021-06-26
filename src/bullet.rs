@@ -4,7 +4,7 @@ use crate::{
         MAXBLASTS, MAXBULLETS,
     },
     structs::{Finepoint, Vect},
-    Data, Status, ALL_BLASTS,
+    Data, Status,
 };
 
 use log::info;
@@ -129,11 +129,9 @@ impl Data {
                         Direction::Center as c_int,
                     ) != Direction::Center as c_int
                     {
-                        self.start_blast(
-                            cur_bullet.pos.x,
-                            cur_bullet.pos.y,
-                            Explosion::Bulletblast as c_int,
-                        );
+                        let pos_x = cur_bullet.pos.x;
+                        let pos_y = cur_bullet.pos.y;
+                        self.start_blast(pos_x, pos_y, Explosion::Bulletblast as c_int);
                         self.delete_bullet(num);
                         return;
                     }
@@ -221,11 +219,9 @@ impl Data {
                         // both will be deleted and replaced by blasts..
                         info!("Bullet-Bullet-Collision detected...");
 
-                        self.start_blast(
-                            cur_bullet.pos.x,
-                            cur_bullet.pos.y,
-                            Explosion::Druidblast as c_int,
-                        );
+                        let pos_x = cur_bullet.pos.x;
+                        let pos_y = cur_bullet.pos.y;
+                        self.start_blast(pos_x, pos_y, Explosion::Druidblast as c_int);
 
                         self.delete_bullet(num);
                         self.delete_bullet(bullet_index.try_into().unwrap());
@@ -234,39 +230,44 @@ impl Data {
             }
         }
     }
-}
 
-pub unsafe fn delete_blast(num: c_int) {
-    ALL_BLASTS[usize::try_from(num).unwrap()].ty = Status::Out as c_int;
-}
+    pub fn delete_blast(&mut self, num: c_int) {
+        self.main.all_blasts[usize::try_from(num).unwrap()].ty = Status::Out as c_int;
+    }
 
-impl Data {
     pub unsafe fn explode_blasts(&mut self) {
-        ALL_BLASTS[..MAXBLASTS]
-            .iter_mut()
-            .enumerate()
-            .filter(|(_, blast)| blast.ty != Status::Out as c_int)
-            .for_each(|(i, cur_blast)| {
+        for blast_index in 0..MAXBLASTS {
+            let cur_blast = &self.main.all_blasts[blast_index];
+            if cur_blast.ty != Status::Out as c_int {
                 if cur_blast.ty == Explosion::Druidblast as c_int {
-                    self.check_blast_collisions(i.try_into().unwrap());
+                    self.check_blast_collisions(blast_index.try_into().unwrap());
                 }
 
-                let frame_time = self.frame_time();
-                let blast_spec = &self.vars.blastmap[usize::try_from(cur_blast.ty).unwrap()];
+                let Self {
+                    main,
+                    misc,
+                    global,
+                    vars,
+                    ..
+                } = self;
+
+                let frame_time = misc.frame_time(global);
+                let cur_blast = &mut main.all_blasts[blast_index];
+                let blast_spec = &vars.blastmap[usize::try_from(cur_blast.ty).unwrap()];
                 cur_blast.phase +=
                     frame_time * blast_spec.phases as f32 / blast_spec.total_animation_time;
                 if cur_blast.phase.floor() as c_int >= blast_spec.phases {
-                    delete_blast(i.try_into().unwrap());
+                    self.delete_blast(blast_index.try_into().unwrap());
                 }
-            });
+            }
+        }
     }
 
     pub unsafe fn check_blast_collisions(&mut self, num: c_int) {
         let level = (*self.main.cur_level).levelnum;
-        let cur_blast = &mut ALL_BLASTS[usize::try_from(num).unwrap()];
-
         /* check Blast-Bullet Collisions and kill hit Bullets */
         for bullet_index in 0..MAXBULLETS {
+            let cur_blast = &self.main.all_blasts[usize::try_from(num).unwrap()];
             let cur_bullet = &self.main.all_bullets[bullet_index];
             if cur_bullet.ty == Status::Out as u8 {
                 continue;
@@ -278,11 +279,9 @@ impl Data {
             };
             let dist = (vdist.x * vdist.x + vdist.y * vdist.y).sqrt();
             if dist < self.global.blast_radius {
-                self.start_blast(
-                    cur_bullet.pos.x,
-                    cur_bullet.pos.y,
-                    Explosion::Bulletblast as c_int,
-                );
+                let pos_x = cur_bullet.pos.x;
+                let pos_y = cur_bullet.pos.y;
+                self.start_blast(pos_x, pos_y, Explosion::Bulletblast as c_int);
                 self.delete_bullet(bullet_index.try_into().unwrap());
             }
         }
@@ -291,6 +290,7 @@ impl Data {
         let Self {
             main, global, misc, ..
         } = self;
+        let cur_blast = &main.all_blasts[usize::try_from(num).unwrap()];
         for enemy in &mut main.all_enemys[..usize::try_from(main.num_enemys).unwrap()] {
             if enemy.status == Status::Out as c_int || enemy.levelnum != level {
                 continue;
@@ -325,11 +325,13 @@ impl Data {
         {
             if self.main.invincible_mode == 0 {
                 self.vars.me.energy -= self.global.blast_damage_per_second * self.frame_time();
+                let cur_blast = &self.main.all_blasts[usize::try_from(num).unwrap()];
 
                 // So the influencer got some damage from the hot blast
                 // Now most likely, he then will also say so :)
                 if cur_blast.message_was_done == 0 {
                     self.add_influ_burnt_text();
+                    let cur_blast = &mut self.main.all_blasts[usize::try_from(num).unwrap()];
                     cur_blast.message_was_done = true.into();
                 }
             }
@@ -342,10 +344,10 @@ impl Data {
         }
     }
 
-    pub unsafe fn start_blast(&self, x: c_float, y: c_float, mut ty: c_int) {
+    pub unsafe fn start_blast(&mut self, x: c_float, y: c_float, mut ty: c_int) {
         let mut i = 0;
         while i < MAXBLASTS {
-            if ALL_BLASTS[i].ty == Status::Out as c_int {
+            if self.main.all_blasts[i].ty == Status::Out as c_int {
                 break;
             }
 
@@ -357,7 +359,7 @@ impl Data {
         }
 
         /* Get Pointer to it: more comfortable */
-        let new_blast = &mut ALL_BLASTS[i];
+        let new_blast = &mut self.main.all_blasts[i];
 
         if ty == Explosion::Rejectblast as c_int {
             new_blast.mine = true;

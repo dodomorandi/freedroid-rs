@@ -13,7 +13,7 @@ use crate::{
         read_and_malloc_string_from_data, read_value_from_string,
     },
     structs::{BulletSpec, DruidSpec},
-    Data, ALL_BLASTS,
+    Data,
 };
 
 #[cfg(target_os = "windows")]
@@ -632,7 +632,7 @@ impl Data {
         }
 
         info!("InitNewMission: All bullets have been deleted.");
-        for blast in &mut ALL_BLASTS {
+        for blast in &mut self.main.all_blasts {
             blast.phase = Status::Out as c_int as c_float;
             blast.ty = Status::Out as c_int;
         }
