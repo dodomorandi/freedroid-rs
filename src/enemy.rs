@@ -6,7 +6,7 @@ use crate::{
     },
     misc::my_random,
     structs::Finepoint,
-    Data, ALL_BULLETS, ALL_ENEMYS, NUM_ENEMYS,
+    Data, ALL_BULLETS, NUM_ENEMYS,
 };
 
 use cstr::cstr;
@@ -35,9 +35,17 @@ impl Data {
     }
 
     pub unsafe fn animate_enemys(&mut self) {
-        for enemy in &mut ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()] {
+        let Self {
+            main,
+            misc,
+            global,
+            vars,
+            ..
+        } = self;
+
+        for enemy in &mut main.all_enemys[..usize::try_from(NUM_ENEMYS).unwrap()] {
             /* ignore enemys that are dead or on other levels or dummys */
-            if enemy.levelnum != (*self.main.cur_level).levelnum {
+            if enemy.levelnum != (*main.cur_level).levelnum {
                 continue;
             }
             if enemy.status == Status::Out as i32 {
@@ -45,8 +53,8 @@ impl Data {
             }
 
             enemy.phase += (enemy.energy
-                / (*self.vars.droidmap.add(enemy.ty.try_into().unwrap())).maxenergy)
-                * self.frame_time()
+                / (*vars.droidmap.add(enemy.ty.try_into().unwrap())).maxenergy)
+                * misc.frame_time(global)
                 * ENEMYPHASES as f32
                 * 2.5;
 
@@ -63,10 +71,8 @@ impl Data {
 
         self.animate_enemys(); // move the "phase" of the rotation of enemys
 
-        for (i, enemy) in ALL_ENEMYS[0..usize::try_from(NUM_ENEMYS).unwrap()]
-            .iter_mut()
-            .enumerate()
-        {
+        for enemy_index in 0..usize::try_from(NUM_ENEMYS).unwrap() {
+            let enemy = &self.main.all_enemys[enemy_index];
             if enemy.status == Status::Out as i32
                 || enemy.status == Status::Terminated as i32
                 || enemy.levelnum != (*self.main.cur_level).levelnum
@@ -74,11 +80,12 @@ impl Data {
                 continue;
             }
 
-            self.move_this_enemy(i.try_into().unwrap());
+            let enemy_ty = enemy.ty;
+            self.move_this_enemy(enemy_index.try_into().unwrap());
 
             // If its a combat droid, then if might attack...
-            if (*self.vars.droidmap.add(usize::try_from(enemy.ty).unwrap())).aggression != 0 {
-                self.attack_influence(i.try_into().unwrap());
+            if (*self.vars.droidmap.add(usize::try_from(enemy_ty).unwrap())).aggression != 0 {
+                self.attack_influence(enemy_index.try_into().unwrap());
             }
         }
     }
@@ -86,8 +93,8 @@ impl Data {
     /// AttackInfluence(): This function sometimes fires a bullet from
     /// enemy number enemynum directly into the direction of the influencer,
     /// but of course only if the odds are good i.e. requirements are met.
-    pub unsafe fn attack_influence(&self, enemy_num: c_int) {
-        let this_robot = &mut ALL_ENEMYS[usize::try_from(enemy_num).unwrap()];
+    pub unsafe fn attack_influence(&mut self, enemy_num: c_int) {
+        let this_robot = &self.main.all_enemys[usize::try_from(enemy_num).unwrap()];
         // At first, we check for a lot of cases in which we do not
         // need to move anything for this reason or for that
         //
@@ -132,11 +139,13 @@ impl Data {
         if my_random(AGGRESSIONMAX)
             >= (*self.vars.droidmap.add(this_robot.ty.try_into().unwrap())).aggression
         {
-            this_robot.firewait += my_random(1000) as f32 * ROBOT_MAX_WAIT_BETWEEN_SHOTS / 1000.0;
+            self.main.all_enemys[usize::try_from(enemy_num).unwrap()].firewait +=
+                my_random(1000) as f32 * ROBOT_MAX_WAIT_BETWEEN_SHOTS / 1000.0;
             return;
         }
 
         self.fire_bullet_sound(guntype);
+        let this_robot = &mut self.main.all_enemys[usize::try_from(enemy_num).unwrap()];
 
         // find a bullet entry, that isn't currently used...
         let mut j = 0;
@@ -202,7 +211,7 @@ impl Data {
     }
 
     pub unsafe fn move_this_enemy(&mut self, enemy_num: c_int) {
-        let this_robot = &mut ALL_ENEMYS[usize::try_from(enemy_num).unwrap()];
+        let this_robot = &mut self.main.all_enemys[usize::try_from(enemy_num).unwrap()];
 
         // Now check if the robot is still alive
         // if the robot just got killed, initiate the
@@ -217,11 +226,9 @@ impl Data {
 
             self.main.death_count += (this_robot.ty * this_robot.ty) as f32; // quadratic "importance", max=529
 
-            self.start_blast(
-                this_robot.pos.x,
-                this_robot.pos.y,
-                Explosion::Druidblast as c_int,
-            );
+            let pos_x = this_robot.pos.x;
+            let pos_y = this_robot.pos.y;
+            self.start_blast(pos_x, pos_y, Explosion::Druidblast as c_int);
             if self.level_empty() != 0 {
                 self.main.real_score += DECKCOMPLETEBONUS;
 
@@ -235,7 +242,7 @@ impl Data {
 
         // robots that still have to wait also do not need to
         // be processed for movement
-        if this_robot.warten > 0. {
+        if self.main.all_enemys[usize::try_from(enemy_num).unwrap()].warten > 0. {
             return;
         }
 
@@ -249,11 +256,15 @@ impl Data {
     }
 
     pub unsafe fn check_enemy_enemy_collision(&mut self, enemy_num: c_int) -> c_int {
-        let curlev = (*self.main.cur_level).levelnum;
+        let Self {
+            main, misc, global, ..
+        } = self;
+
+        let curlev = (*main.cur_level).levelnum;
 
         let enemy_num: usize = enemy_num.try_into().unwrap();
         let (enemys_before, rest) =
-            ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()].split_at_mut(enemy_num);
+            main.all_enemys[..usize::try_from(NUM_ENEMYS).unwrap()].split_at_mut(enemy_num);
         let (cur_enemy, enemys_after) = rest.split_first_mut().unwrap();
         let check_x = cur_enemy.pos.x;
         let check_y = cur_enemy.pos.y;
@@ -274,7 +285,7 @@ impl Data {
             let dist = (xdist * xdist + ydist * ydist).sqrt();
 
             // Is there a Collision?
-            if dist <= (2. * self.global.droid_radius) {
+            if dist <= (2. * global.droid_radius) {
                 // am I waiting already?  If so, keep waiting...
                 if cur_enemy.warten != 0. {
                     cur_enemy.warten = my_random(2 * WAIT_COLLISION) as f32;
@@ -284,10 +295,10 @@ impl Data {
                 enemy.warten = my_random(2 * WAIT_COLLISION) as f32;
 
                 if xdist != 0. {
-                    enemy.pos.x -= xdist / xdist.abs() * self.frame_time();
+                    enemy.pos.x -= xdist / xdist.abs() * misc.frame_time(global);
                 }
                 if ydist != 0. {
-                    enemy.pos.y -= ydist / ydist.abs() * self.frame_time();
+                    enemy.pos.y -= ydist / ydist.abs() * misc.frame_time(global);
                 }
 
                 std::mem::swap(&mut cur_enemy.nextwaypoint, &mut cur_enemy.lastwaypoint);
@@ -296,10 +307,12 @@ impl Data {
                 let speed_y = cur_enemy.speed.y;
 
                 if speed_x != 0. {
-                    cur_enemy.pos.x -= self.frame_time() * COL_SPEED * (speed_x) / speed_x.abs();
+                    cur_enemy.pos.x -=
+                        misc.frame_time(global) * COL_SPEED * (speed_x) / speed_x.abs();
                 }
                 if speed_y != 0. {
-                    cur_enemy.pos.y -= self.frame_time() * COL_SPEED * (speed_y) / speed_y.abs();
+                    cur_enemy.pos.y -=
+                        misc.frame_time(global) * COL_SPEED * (speed_y) / speed_y.abs();
                 }
 
                 return true.into();
@@ -313,8 +326,8 @@ impl Data {
     /// droids.
     ///
     /// Map tiles are not taken into consideration, only droids.
-    pub unsafe fn select_next_waypoint_classical(&self, enemy_num: c_int) {
-        let this_robot = &mut ALL_ENEMYS[usize::try_from(enemy_num).unwrap()];
+    pub unsafe fn select_next_waypoint_classical(&mut self, enemy_num: c_int) {
+        let this_robot = &mut self.main.all_enemys[usize::try_from(enemy_num).unwrap()];
 
         // We do some definitions to save us some more typing later...
         let wp_list = (*self.main.cur_level).all_waypoints;
@@ -341,7 +354,7 @@ impl Data {
         }
     }
 
-    pub unsafe fn shuffle_enemys(&self) {
+    pub unsafe fn shuffle_enemys(&mut self) {
         let cur_level = &*self.main.cur_level;
         let cur_level_num = cur_level.levelnum;
         let mut used_wp: [bool; MAXWAYPOINTS] = [false; MAXWAYPOINTS];
@@ -350,7 +363,7 @@ impl Data {
         let num_wp = cur_level.num_waypoints;
         let mut nth_enemy = 0;
 
-        for enemy in &mut ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()] {
+        for enemy in &mut self.main.all_enemys[..usize::try_from(NUM_ENEMYS).unwrap()] {
             if enemy.status == Status::Out as c_int || enemy.levelnum != cur_level_num {
                 /* dont handle dead enemys or on other level */
                 continue;
@@ -391,16 +404,19 @@ impl Data {
     /// This function moves one robot thowards his next waypoint.  If already
     /// there, the function does nothing more.
     pub unsafe fn move_this_robot_thowards_his_waypoint(&mut self, enemy_num: c_int) {
-        let this_robot = &mut ALL_ENEMYS[usize::try_from(enemy_num).unwrap()];
+        let Self {
+            main,
+            misc,
+            global,
+            vars,
+            ..
+        } = self;
+        let this_robot = &mut main.all_enemys[usize::try_from(enemy_num).unwrap()];
 
         // We do some definitions to save us some more typing later...
-        let wp_list = (*self.main.cur_level).all_waypoints;
+        let wp_list = (*main.cur_level).all_waypoints;
         let nextwp: usize = this_robot.nextwaypoint.try_into().unwrap();
-        let maxspeed = (*self
-            .vars
-            .droidmap
-            .add(usize::try_from(this_robot.ty).unwrap()))
-        .maxspeed;
+        let maxspeed = (*vars.droidmap.add(usize::try_from(this_robot.ty).unwrap())).maxspeed;
 
         let nextwp_pos = Finepoint {
             x: wp_list[nextwp].x.into(),
@@ -413,7 +429,7 @@ impl Data {
             y: nextwp_pos.y - this_robot.pos.y,
         };
 
-        let steplen = self.frame_time() * maxspeed;
+        let steplen = misc.frame_time(global) * maxspeed;
         // As long a the distance from the current position of the enemy
         // to its next wp is large, movement is rather simple:
 
@@ -421,8 +437,8 @@ impl Data {
         if dist > steplen {
             this_robot.speed.x = (restweg.x / dist) * maxspeed;
             this_robot.speed.y = (restweg.y / dist) * maxspeed;
-            this_robot.pos.x += this_robot.speed.x * self.frame_time();
-            this_robot.pos.y += this_robot.speed.y * self.frame_time();
+            this_robot.pos.x += this_robot.speed.x * misc.frame_time(global);
+            this_robot.pos.y += this_robot.speed.y * misc.frame_time(global);
         } else {
             // If this enemy is just one step ahead of his target, we just put him there now
             this_robot.pos.x = nextwp_pos.x;
@@ -431,33 +447,31 @@ impl Data {
             this_robot.speed.y = 0.;
         }
     }
-}
 
-pub unsafe fn clear_enemys() {
-    for enemy in &mut ALL_ENEMYS[..MAX_ENEMYS_ON_SHIP] {
-        enemy.ty = -1;
-        enemy.levelnum = -1;
-        enemy.phase = 0.;
-        enemy.nextwaypoint = 0;
-        enemy.lastwaypoint = 0;
-        enemy.status = Status::Out as c_int;
-        enemy.warten = 0.;
-        enemy.firewait = 0.;
-        enemy.energy = -1.;
-        enemy.text_visible_time = 0.;
-        enemy.text_to_be_displayed = cstr!("").as_ptr() as *mut c_char;
+    pub unsafe fn clear_enemys(&mut self) {
+        for enemy in &mut self.main.all_enemys[..MAX_ENEMYS_ON_SHIP] {
+            enemy.ty = -1;
+            enemy.levelnum = -1;
+            enemy.phase = 0.;
+            enemy.nextwaypoint = 0;
+            enemy.lastwaypoint = 0;
+            enemy.status = Status::Out as c_int;
+            enemy.warten = 0.;
+            enemy.firewait = 0.;
+            enemy.energy = -1.;
+            enemy.text_visible_time = 0.;
+            enemy.text_to_be_displayed = cstr!("").as_ptr() as *mut c_char;
+        }
+
+        NUM_ENEMYS = 0;
     }
 
-    NUM_ENEMYS = 0;
-}
-
-impl Data {
     pub unsafe fn permanent_heal_robots(&mut self) {
         let Self {
             vars, misc, global, ..
         } = self;
 
-        ALL_ENEMYS[0..usize::try_from(NUM_ENEMYS).unwrap()]
+        self.main.all_enemys[0..usize::try_from(NUM_ENEMYS).unwrap()]
             .iter_mut()
             .filter(|enemy| {
                 enemy.status != Status::Out as c_int

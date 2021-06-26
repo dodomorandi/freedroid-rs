@@ -4,7 +4,7 @@ use crate::{
         MAXBLASTS, MAXBULLETS,
     },
     structs::{Finepoint, Vect},
-    Data, Status, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, INVINCIBLE_MODE, NUM_ENEMYS,
+    Data, Status, ALL_BLASTS, ALL_BULLETS, INVINCIBLE_MODE, NUM_ENEMYS,
 };
 
 use log::info;
@@ -57,10 +57,8 @@ impl Data {
                     return;
                 } // we only do the damage once and thats at frame nr. 1 of the flash
 
-                for (i, enemy) in ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()]
-                    .iter_mut()
-                    .enumerate()
-                {
+                for enemy_index in 0..usize::try_from(NUM_ENEMYS).unwrap() {
+                    let enemy = &self.main.all_enemys[enemy_index];
                     // !! dont't forget: Only droids on our level are harmed!! (bugfix)
                     if enemy.levelnum != level {
                         continue;
@@ -70,10 +68,12 @@ impl Data {
                         && (*self.vars.droidmap.add(usize::try_from(enemy.ty).unwrap())).flashimmune
                             == 0
                     {
+                        let enemy = &mut self.main.all_enemys[enemy_index];
                         enemy.energy -=
                             (*self.vars.bulletmap.add(BulletKind::Flash as usize)).damage as f32;
+
                         // Since the enemy just got hit, it might as well say so :)
-                        self.enemy_hit_by_bullet_text(i.try_into().unwrap());
+                        self.enemy_hit_by_bullet_text(enemy_index.try_into().unwrap());
                     }
                 }
 
@@ -155,7 +155,11 @@ impl Data {
                     }
 
                     // check for collision with enemys
-                    for enemy in ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()].iter_mut() {
+                    for (enemy_index, enemy) in self.main.all_enemys
+                        [..usize::try_from(NUM_ENEMYS).unwrap()]
+                        .iter()
+                        .enumerate()
+                    {
                         if enemy.status == Status::Out as c_int
                             || enemy.status == Status::Terminated as c_int
                             || enemy.levelnum != level
@@ -169,11 +173,12 @@ impl Data {
                         // FIXME
                         if (xdist * xdist + ydist * ydist) < self.get_druid_hit_dist_squared() {
                             // The enemy who was hit, loses some energy, depending on the bullet
-                            enemy.energy -= (*self
+                            self.main.all_enemys[enemy_index].energy -= (*self
                                 .vars
                                 .bulletmap
                                 .add(cur_bullet.ty.try_into().unwrap()))
-                            .damage as f32;
+                            .damage
+                                as f32;
 
                             self.delete_bullet(num);
                             self.got_hit_sound();
@@ -275,10 +280,10 @@ impl Data {
         }
 
         /* Check Blast-Enemy Collisions and smash energy of hit enemy */
-        for enemy in ALL_ENEMYS
-            .iter_mut()
-            .take(usize::try_from(NUM_ENEMYS).unwrap())
-        {
+        let Self {
+            main, global, misc, ..
+        } = self;
+        for enemy in &mut main.all_enemys[..usize::try_from(NUM_ENEMYS).unwrap()] {
             if enemy.status == Status::Out as c_int || enemy.levelnum != level {
                 continue;
             }
@@ -289,9 +294,9 @@ impl Data {
             };
             let dist = (vdist.x * vdist.x + vdist.y * vdist.y).sqrt();
 
-            if dist < self.global.blast_radius + self.global.droid_radius {
+            if dist < global.blast_radius + global.droid_radius {
                 /* drag energy of enemy */
-                enemy.energy -= self.global.blast_damage_per_second * self.frame_time();
+                enemy.energy -= global.blast_damage_per_second * misc.frame_time(global);
             }
 
             if enemy.energy < 0. {

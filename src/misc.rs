@@ -7,7 +7,7 @@ use crate::{
     },
     graphics::scale_pic,
     input::{SDL_Delay, CMD_STRINGS},
-    Data, Global, ALL_BLASTS, ALL_ENEMYS, CONFIG_DIR, F_P_SOVER1, NUM_ENEMYS,
+    Data, Global, ALL_BLASTS, CONFIG_DIR, F_P_SOVER1, NUM_ENEMYS,
 };
 
 use cstr::cstr;
@@ -885,18 +885,19 @@ impl Data {
 
         self.leave_lift_sound();
     }
-}
 
-/// This function is kills all enemy robots on the whole ship.
-/// It querys the user once for safety.
-pub unsafe fn armageddon() {
-    ALL_ENEMYS
-        .iter_mut()
-        .take(NUM_ENEMYS.try_into().unwrap())
-        .for_each(|enemy| {
-            enemy.energy = 0.;
-            enemy.status = Status::Out as c_int;
-        });
+    /// This function is kills all enemy robots on the whole ship.
+    /// It querys the user once for safety.
+    pub unsafe fn armageddon(&mut self) {
+        self.main
+            .all_enemys
+            .iter_mut()
+            .take(NUM_ENEMYS.try_into().unwrap())
+            .for_each(|enemy| {
+                enemy.energy = 0.;
+                enemy.status = Status::Out as c_int;
+            });
+    }
 }
 
 /// This function counts the number of occurences of a string in a given

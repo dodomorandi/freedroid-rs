@@ -14,9 +14,8 @@ use crate::{
     global::INFLUENCE_MODE_NAMES,
     input::{SDL_Delay, CMD_STRINGS},
     map::COLOR_NAMES,
-    misc::{armageddon, dealloc_c_string},
-    Data, ALL_ENEMYS, INVINCIBLE_MODE, NUMBER_OF_DROID_TYPES, NUM_ENEMYS, SHOW_ALL_DROIDS,
-    STOP_INFLUENCER,
+    misc::dealloc_c_string,
+    Data, INVINCIBLE_MODE, NUMBER_OF_DROID_TYPES, NUM_ENEMYS, SHOW_ALL_DROIDS, STOP_INFLUENCER,
 };
 
 use cstr::cstr;
@@ -483,14 +482,14 @@ impl Data {
                 Some(b'a') => {
                     /* armageddon */
                     resume = true;
-                    armageddon();
+                    self.armageddon();
                 }
 
                 Some(b'l') => {
                     /* robot list of this deck */
                     let mut l = 0; /* line counter for enemy output */
                     for i in 0..usize::try_from(NUM_ENEMYS).unwrap() {
-                        if ALL_ENEMYS[i].levelnum == cur_level.levelnum {
+                        if self.main.all_enemys[i].levelnum == cur_level.levelnum {
                             if l != 0 && l % 20 == 0 {
                                 self.printf_sdl(
                                     self.graphics.ne_screen,
@@ -519,9 +518,9 @@ impl Data {
                             }
 
                             l += 1;
-                            let status = if ALL_ENEMYS[i].status == Status::Out as i32 {
+                            let status = if self.main.all_enemys[i].status == Status::Out as i32 {
                                 "OUT"
-                            } else if ALL_ENEMYS[i].status == Status::Terminated as i32 {
+                            } else if self.main.all_enemys[i].status == Status::Terminated as i32 {
                                 "DEAD"
                             } else {
                                 "ACTIVE"
@@ -535,15 +534,16 @@ impl Data {
                                     "{}.   {}   {:.0}   {:.0}   {:.0}    {}.\n",
                                     i,
                                     CStr::from_ptr(
-                                        droid_map[usize::try_from(ALL_ENEMYS[i].ty).unwrap()]
-                                            .druidname
-                                            .as_ptr()
+                                        droid_map
+                                            [usize::try_from(self.main.all_enemys[i].ty).unwrap()]
+                                        .druidname
+                                        .as_ptr()
                                     )
                                     .to_str()
                                     .unwrap(),
-                                    ALL_ENEMYS[i].pos.x,
-                                    ALL_ENEMYS[i].pos.y,
-                                    ALL_ENEMYS[i].energy,
+                                    self.main.all_enemys[i].pos.x.clone(),
+                                    self.main.all_enemys[i].pos.y.clone(),
+                                    self.main.all_enemys[i].energy.clone(),
                                     status,
                                 ),
                             );
@@ -562,7 +562,7 @@ impl Data {
                 Some(b'g') => {
                     /* complete robot list of this ship */
                     for i in 0..usize::try_from(NUM_ENEMYS).unwrap() {
-                        if ALL_ENEMYS[i].ty == -1 {
+                        if self.main.all_enemys[i].ty == -1 {
                             continue;
                         }
 
@@ -600,17 +600,17 @@ impl Data {
                             format_args!(
                                 "{}  {}  {}  {:.0}  {}\n",
                                 i,
-                                ALL_ENEMYS[i].levelnum,
+                                self.main.all_enemys[i].levelnum.clone(),
                                 CStr::from_ptr(
-                                    droid_map[usize::try_from(ALL_ENEMYS[i].ty).unwrap()]
+                                    droid_map[usize::try_from(self.main.all_enemys[i].ty).unwrap()]
                                         .druidname
                                         .as_ptr()
                                 )
                                 .to_str()
                                 .unwrap(),
-                                ALL_ENEMYS[i].energy,
+                                self.main.all_enemys[i].energy.clone(),
                                 INFLUENCE_MODE_NAMES
-                                    [usize::try_from(ALL_ENEMYS[i].status).unwrap()]
+                                    [usize::try_from(self.main.all_enemys[i].status).unwrap()]
                                 .to_str()
                                 .unwrap(),
                             ),
@@ -628,7 +628,7 @@ impl Data {
 
                 Some(b'd') => {
                     /* destroy all robots on this level, haha */
-                    for enemy in &mut ALL_ENEMYS {
+                    for enemy in &mut self.main.all_enemys {
                         if enemy.levelnum == cur_level.levelnum {
                             enemy.energy = -100.;
                         }

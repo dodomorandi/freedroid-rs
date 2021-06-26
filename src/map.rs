@@ -3,14 +3,13 @@ use crate::{
         self, Criticality, Direction, MapTile, Status, Themed, DIRECTIONS, MAP_DIR_C, MAXWAYPOINTS,
         MAX_ALERTS_ON_LEVEL, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_REFRESHES_ON_LEVEL,
     },
-    enemy::clear_enemys,
     menu::SHIP_EXT,
     misc::{
         dealloc_c_string, locate_string_in_data, my_random, read_and_malloc_string_from_data,
         read_value_from_string,
     },
     structs::{Finepoint, GrobPoint, Level},
-    Data, ALL_ENEMYS, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
+    Data, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
 };
 
 use cstr::cstr;
@@ -603,17 +602,21 @@ freedroid-discussion@lists.sourceforge.net\n\
                 let mut j = 0;
                 while j < usize::try_from(NUM_ENEMYS).unwrap() {
                     /* ignore druids that are dead or on other levels */
-                    if ALL_ENEMYS[j].status == Status::Out as i32
-                        || ALL_ENEMYS[j].status == Status::Terminated as i32
-                        || ALL_ENEMYS[j].levelnum != cur_level.levelnum
+                    if self.main.all_enemys[j].status == Status::Out as i32
+                        || self.main.all_enemys[j].status == Status::Terminated as i32
+                        || self.main.all_enemys[j].levelnum != cur_level.levelnum
                     {
                         j += 1;
                         continue;
                     }
 
-                    let xdist = (ALL_ENEMYS[j].pos.x - f32::from(doorx)).trunc().abs();
+                    let xdist = (self.main.all_enemys[j].pos.x - f32::from(doorx))
+                        .trunc()
+                        .abs();
                     if xdist < self.vars.block_rect.w.into() {
-                        let ydist = (ALL_ENEMYS[j].pos.y - f32::from(doory)).trunc().abs();
+                        let ydist = (self.main.all_enemys[j].pos.y - f32::from(doory))
+                            .trunc()
+                            .abs();
                         if ydist < self.vars.block_rect.h.into() {
                             let dist2 = xdist * xdist + ydist * ydist;
                             if dist2 < DOOROPENDIST2 {
@@ -923,7 +926,7 @@ impl Data {
 
             let mut free_all_enemys_position = 0;
             while free_all_enemys_position < MAX_ENEMYS_ON_SHIP {
-                if ALL_ENEMYS[free_all_enemys_position].status == Status::Out as c_int {
+                if self.main.all_enemys[free_all_enemys_position].status == Status::Out as c_int {
                     break;
                 }
                 free_all_enemys_position += 1;
@@ -935,12 +938,13 @@ impl Data {
                 );
             }
 
-            ALL_ENEMYS[free_all_enemys_position].ty = list_of_types_allowed[usize::try_from(
-                my_random(c_int::try_from(different_random_types).unwrap() - 1),
-            )
-            .unwrap()];
-            ALL_ENEMYS[free_all_enemys_position].levelnum = our_level_number;
-            ALL_ENEMYS[free_all_enemys_position].status = Status::Mobile as c_int;
+            self.main.all_enemys[free_all_enemys_position].ty = list_of_types_allowed
+                [usize::try_from(my_random(
+                    c_int::try_from(different_random_types).unwrap() - 1,
+                ))
+                .unwrap()];
+            self.main.all_enemys[free_all_enemys_position].levelnum = our_level_number;
+            self.main.all_enemys[free_all_enemys_position].status = Status::Mobile as c_int;
         }
     }
 
@@ -952,7 +956,7 @@ impl Data {
             cstr!("** End of this levels droid data **");
 
         /* Clear Enemy - Array */
-        clear_enemys();
+        self.clear_enemys();
 
         //Now its time to start decoding the droids file.
         //For that, we must get it into memory first.
@@ -1001,7 +1005,7 @@ impl Data {
         // right structure, it's time to set the energy of the corresponding
         // droids to "full" which means to the maximum of each type.
         NUM_ENEMYS = 0;
-        for enemy in &mut ALL_ENEMYS {
+        for enemy in &mut self.main.all_enemys {
             let ty = enemy.ty;
             if ty == -1 {
                 // Do nothing to unused entries

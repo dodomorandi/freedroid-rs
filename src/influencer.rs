@@ -6,7 +6,7 @@ use crate::{
     map::get_map_brick,
     misc::my_random,
     structs::{Finepoint, Gps},
-    Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, INVINCIBLE_MODE, NUM_ENEMYS,
+    Data, ALL_BLASTS, ALL_BULLETS, INVINCIBLE_MODE, NUM_ENEMYS,
 };
 
 use cstr::cstr;
@@ -90,20 +90,26 @@ impl Data {
     }
 
     pub unsafe fn check_influence_enemy_collision(&mut self) {
-        for (i, enemy) in ALL_ENEMYS[..usize::try_from(NUM_ENEMYS).unwrap()]
-            .iter_mut()
-            .enumerate()
-        {
+        for enemy_index in 0..usize::try_from(NUM_ENEMYS).unwrap() {
+            let Self {
+                vars,
+                main,
+                misc,
+                global,
+                ..
+            } = self;
+            let enemy = &mut main.all_enemys[enemy_index];
+
             /* ignore enemy that are not on this level or dead */
-            if enemy.levelnum != (*self.main.cur_level).levelnum {
+            if enemy.levelnum != (*main.cur_level).levelnum {
                 continue;
             }
             if enemy.status == Status::Out as c_int || enemy.status == Status::Terminated as c_int {
                 continue;
             }
 
-            let xdist = self.vars.me.pos.x - enemy.pos.x;
-            let ydist = self.vars.me.pos.y - enemy.pos.y;
+            let xdist = vars.me.pos.x - enemy.pos.x;
+            let ydist = vars.me.pos.y - enemy.pos.y;
 
             if xdist.trunc().abs() > 1. {
                 continue;
@@ -113,52 +119,58 @@ impl Data {
             }
 
             let dist2 = ((xdist * xdist) + (ydist * ydist)).sqrt();
-            if dist2 > 2. * self.global.droid_radius {
+            if dist2 > 2. * global.droid_radius {
                 continue;
             }
 
-            if self.vars.me.status != Status::Transfermode as c_int {
-                self.vars.me.speed.x = -self.vars.me.speed.x;
-                self.vars.me.speed.y = -self.vars.me.speed.y;
+            if vars.me.status != Status::Transfermode as c_int {
+                vars.me.speed.x = -vars.me.speed.x;
+                vars.me.speed.y = -vars.me.speed.y;
 
-                if self.vars.me.speed.x != 0. {
-                    self.vars.me.speed.x +=
-                        COLLISION_PUSHSPEED * (self.vars.me.speed.x / self.vars.me.speed.x.abs());
+                if vars.me.speed.x != 0. {
+                    vars.me.speed.x +=
+                        COLLISION_PUSHSPEED * (vars.me.speed.x / vars.me.speed.x.abs());
                 } else if xdist != 0. {
-                    self.vars.me.speed.x = COLLISION_PUSHSPEED * (xdist / xdist.abs());
+                    vars.me.speed.x = COLLISION_PUSHSPEED * (xdist / xdist.abs());
                 }
-                if self.vars.me.speed.y != 0. {
-                    self.vars.me.speed.y +=
-                        COLLISION_PUSHSPEED * (self.vars.me.speed.y / self.vars.me.speed.y.abs());
+                if vars.me.speed.y != 0. {
+                    vars.me.speed.y +=
+                        COLLISION_PUSHSPEED * (vars.me.speed.y / vars.me.speed.y.abs());
                 } else if ydist != 0. {
-                    self.vars.me.speed.y = COLLISION_PUSHSPEED * (ydist / ydist.abs());
+                    vars.me.speed.y = COLLISION_PUSHSPEED * (ydist / ydist.abs());
                 }
 
                 // move the influencer a little bit out of the enemy AND the enemy a little bit out of the influ
-                let max_step_size = if self.frame_time() < MAXIMAL_STEP_SIZE {
-                    self.frame_time()
+                let max_step_size = if misc.frame_time(global) < MAXIMAL_STEP_SIZE {
+                    misc.frame_time(global)
                 } else {
                     MAXIMAL_STEP_SIZE
                 };
-                self.vars.me.pos.x += max_step_size.copysign(self.vars.me.pos.x - enemy.pos.x);
-                self.vars.me.pos.y += max_step_size.copysign(self.vars.me.pos.y - enemy.pos.y);
-                enemy.pos.x -= self.frame_time().copysign(self.vars.me.pos.x - enemy.pos.x);
-                enemy.pos.y -= self.frame_time().copysign(self.vars.me.pos.y - enemy.pos.y);
+                vars.me.pos.x += max_step_size.copysign(vars.me.pos.x - enemy.pos.x);
+                vars.me.pos.y += max_step_size.copysign(vars.me.pos.y - enemy.pos.y);
+                enemy.pos.x -= misc
+                    .frame_time(global)
+                    .copysign(vars.me.pos.x - enemy.pos.x);
+                enemy.pos.y -= misc
+                    .frame_time(global)
+                    .copysign(vars.me.pos.y - enemy.pos.y);
 
                 // there might be walls close too, so lets check again for collisions with them
                 self.check_influence_wall_collisions();
 
                 // shortly stop this enemy, then send him back to previous waypoint
+                let enemy = &mut self.main.all_enemys[enemy_index];
                 if enemy.warten == 0. {
                     enemy.warten = WAIT_COLLISION as f32;
                     std::mem::swap(&mut enemy.nextwaypoint, &mut enemy.lastwaypoint);
 
                     // Add some funny text!
-                    self.enemy_influ_collision_text(i.try_into().unwrap());
+                    self.enemy_influ_collision_text(enemy_index.try_into().unwrap());
                 }
-                self.influ_enemy_collision_lose_energy(i.try_into().unwrap()); /* someone loses energy ! */
+                /* someone loses energy ! */
+                self.influ_enemy_collision_lose_energy(enemy_index.try_into().unwrap());
             } else {
-                self.takeover(i.try_into().unwrap());
+                self.takeover(enemy_index.try_into().unwrap());
 
                 if self.level_empty() != 0 {
                     (*self.main.cur_level).empty = true.into();
@@ -168,7 +180,7 @@ impl Data {
     }
 
     pub unsafe fn influ_enemy_collision_lose_energy(&mut self, enemy_num: c_int) {
-        let enemy_type = ALL_ENEMYS[usize::try_from(enemy_num).unwrap()].ty;
+        let enemy_type = self.main.all_enemys[usize::try_from(enemy_num).unwrap()].ty;
 
         let damage = ((*self
             .vars
@@ -190,7 +202,7 @@ impl Data {
             self.bounce_sound();
         } else {
             // damage > 0: enemy got damaged
-            ALL_ENEMYS[usize::try_from(enemy_num).unwrap()].energy -= damage;
+            self.main.all_enemys[usize::try_from(enemy_num).unwrap()].energy -= damage;
             self.collision_damaged_enemy_sound();
         }
     }

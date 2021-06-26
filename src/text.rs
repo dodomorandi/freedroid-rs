@@ -3,7 +3,7 @@ use crate::{
     defs::{Cmds, PointerStates, SHOW_WAIT, TEXT_STRETCH},
     input::SDL_Delay,
     misc::my_random,
-    Data, ALL_ENEMYS,
+    Data,
 };
 
 #[cfg(feature = "arcade-input")]
@@ -523,8 +523,8 @@ impl Data {
         false
     }
 
-    pub unsafe fn enemy_hit_by_bullet_text(&self, enemy: c_int) {
-        let robot = &mut ALL_ENEMYS[usize::try_from(enemy).unwrap()];
+    pub unsafe fn enemy_hit_by_bullet_text(&mut self, enemy: c_int) {
+        let robot = &mut self.main.all_enemys[usize::try_from(enemy).unwrap()];
 
         if self.global.game_config.droid_talk == 0 {
             return;
@@ -557,8 +557,8 @@ impl Data {
         }
     }
 
-    pub unsafe fn enemy_influ_collision_text(&self, enemy: c_int) {
-        let robot = &mut ALL_ENEMYS[usize::try_from(enemy).unwrap()];
+    pub unsafe fn enemy_influ_collision_text(&mut self, enemy: c_int) {
+        let robot = &mut self.main.all_enemys[usize::try_from(enemy).unwrap()];
 
         if self.global.game_config.droid_talk == 0 {
             return;

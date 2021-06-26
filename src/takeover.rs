@@ -5,7 +5,7 @@ use crate::{
     graphics::Graphics,
     misc::my_random,
     structs::Point,
-    Data, ALL_ENEMYS, INVINCIBLE_MODE, PRE_TAKE_ENERGY,
+    Data, INVINCIBLE_MODE, PRE_TAKE_ENERGY,
 };
 
 use cstr::cstr;
@@ -1249,7 +1249,7 @@ impl Data {
             i32::from(yoffs) + self.takeover.droid_starts[your_color].y,
         );
 
-        if ALL_ENEMYS[usize::try_from(self.takeover.droid_num).unwrap()].status
+        if self.main.all_enemys[usize::try_from(self.takeover.droid_num).unwrap()].status
             != Status::Out as i32
         {
             self.put_enemy(
@@ -1789,10 +1789,10 @@ impl Data {
         }
 
         let enemy_index: usize = enemynum.try_into().unwrap();
-        self.show_droid_info(ALL_ENEMYS[enemy_index].ty, -2, 0);
+        self.show_droid_info(self.main.all_enemys[enemy_index].ty, -2, 0);
         self.show_droid_portrait(
             self.vars.cons_droid_rect,
-            ALL_ENEMYS[enemy_index].ty,
+            self.main.all_enemys[enemy_index].ty,
             DROID_ROTATION_TIME,
             UPDATE,
         );
@@ -1800,7 +1800,7 @@ impl Data {
         while !self.fire_pressed_r() {
             self.show_droid_portrait(
                 self.vars.cons_droid_rect,
-                ALL_ENEMYS[enemy_index].ty,
+                self.main.all_enemys[enemy_index].ty,
                 DROID_ROTATION_TIME,
                 0,
             );
@@ -1841,7 +1841,7 @@ impl Data {
             self.takeover.capsule_cur_row[usize::from(Color::Violet)] = 0;
 
             self.takeover.droid_num = enemynum;
-            self.takeover.opponent_type = ALL_ENEMYS[enemy_index].ty;
+            self.takeover.opponent_type = self.main.all_enemys[enemy_index].ty;
             self.takeover.num_capsules[Opponents::You as usize] =
                 3 + self.class_of_druid(self.vars.me.ty);
             self.takeover.num_capsules[Opponents::Enemy as usize] =
@@ -1881,11 +1881,11 @@ impl Data {
                 // We allow to gain the current energy/full health that was still in the
                 // other droid, since all previous damage must be due to fighting damage,
                 // and this is exactly the sort of damage can usually be cured in refreshes.
-                self.vars.me.energy += ALL_ENEMYS[enemy_index].energy;
+                self.vars.me.energy += self.main.all_enemys[enemy_index].energy;
                 self.vars.me.health +=
                     droid_map[usize::try_from(self.takeover.opponent_type).unwrap()].maxenergy;
 
-                self.vars.me.ty = ALL_ENEMYS[enemy_index].ty;
+                self.vars.me.ty = self.main.all_enemys[enemy_index].ty;
 
                 self.main.real_score +=
                     droid_map[usize::try_from(self.takeover.opponent_type).unwrap()].score as f32;
@@ -1893,7 +1893,7 @@ impl Data {
                 self.main.death_count +=
                     (self.takeover.opponent_type * self.takeover.opponent_type) as f32; // quadratic "importance", max=529
 
-                ALL_ENEMYS[enemy_index].status = Status::Out as c_int; // removed droid silently (no blast!)
+                self.main.all_enemys[enemy_index].status = Status::Out as c_int; // removed droid silently (no blast!)
 
                 if self.takeover.leader_color != self.takeover.your_color {
                     /* only won because of InvincibleMode */
@@ -1907,7 +1907,7 @@ impl Data {
             } else if self.takeover.leader_color == self.takeover.opponent_color {
                 /* self.takeover.leader_color == self.takeover.your_color */
                 // you lost, but enemy is killed too --> blast it!
-                ALL_ENEMYS[enemy_index].energy = -1.0; /* to be sure */
+                self.main.all_enemys[enemy_index].energy = -1.0; /* to be sure */
 
                 self.takeover_game_lost_sound();
                 if self.vars.me.ty != Droid::Droid001 as c_int {

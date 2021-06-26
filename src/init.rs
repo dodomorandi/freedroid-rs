@@ -13,7 +13,7 @@ use crate::{
         read_and_malloc_string_from_data, read_value_from_string,
     },
     structs::{BulletSpec, DruidSpec},
-    Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
+    Data, ALL_BLASTS, ALL_BULLETS, NUMBER_OF_DROID_TYPES, NUM_ENEMYS,
 };
 
 #[cfg(target_os = "windows")]
@@ -167,7 +167,12 @@ impl Data {
     /// This function checks, if the influencer has succeeded in his given
     /// mission.  If not it returns, if yes the Debriefing is started.
     pub(crate) unsafe fn check_if_mission_is_complete(&mut self) {
-        for enemy in ALL_ENEMYS.iter().take(NUM_ENEMYS.try_into().unwrap()) {
+        for enemy in self
+            .main
+            .all_enemys
+            .iter()
+            .take(NUM_ENEMYS.try_into().unwrap())
+        {
             if enemy.status != Status::Out as c_int && enemy.status != Status::Terminated as c_int {
                 return;
             }
@@ -631,7 +636,7 @@ impl Data {
             blast.ty = Status::Out as c_int;
         }
         info!("InitNewMission: All blasts have been deleted.");
-        for enemy in &mut ALL_ENEMYS {
+        for enemy in &mut self.main.all_enemys {
             enemy.ty = Status::Out as c_int;
             enemy.energy = -1.;
         }
@@ -851,10 +856,8 @@ impl Data {
         // Switch_Background_Music_To (COMBAT_BACKGROUND_MUSIC_SOUND);
         self.switch_background_music_to((*self.main.cur_level).background_song_name);
 
-        for level in &self.main.cur_ship.all_levels
-            [..usize::try_from(self.main.cur_ship.num_levels).unwrap()]
-        {
-            self.main.cur_level = *level;
+        for level_index in 0..usize::try_from(self.main.cur_ship.num_levels).unwrap() {
+            self.main.cur_level = self.main.cur_ship.all_levels[level_index];
             self.shuffle_enemys();
         }
 

@@ -8,9 +8,9 @@ use crate::{
     global::INFLUENCE_MODE_NAMES,
     graphics::apply_filter,
     map::get_map_brick,
-    structs::{Enemy, Finepoint, GrobPoint},
-    Data, ALL_BLASTS, ALL_BULLETS, ALL_ENEMYS, FIRST_DIGIT_RECT, NUMBER_OF_DROID_TYPES,
-    SECOND_DIGIT_RECT, SHOW_ALL_DROIDS, THIRD_DIGIT_RECT,
+    structs::{Finepoint, GrobPoint},
+    Data, ALL_BLASTS, ALL_BULLETS, FIRST_DIGIT_RECT, NUMBER_OF_DROID_TYPES, SECOND_DIGIT_RECT,
+    SHOW_ALL_DROIDS, THIRD_DIGIT_RECT,
 };
 
 use log::{info, trace};
@@ -251,7 +251,8 @@ impl Data {
             SDL_SetClipRect(self.graphics.ne_screen, &self.vars.user_rect);
 
             // make sure Ashes are displayed _before_ droids, so that they are _under_ them!
-            for enemy in &mut ALL_ENEMYS {
+            for enemy_index in 0..self.main.all_enemys.len() {
+                let enemy = &self.main.all_enemys[enemy_index];
                 if (enemy.status == Status::Terminated as i32)
                     && (enemy.levelnum == (*self.main.cur_level).levelnum)
                     && self.is_visible(&enemy.pos) != 0
@@ -261,15 +262,15 @@ impl Data {
             }
 
             let levelnum = (*self.main.cur_level).levelnum;
-            ALL_ENEMYS
-                .iter()
-                .enumerate()
-                .filter(|(_, enemy)| {
-                    !((enemy.levelnum != levelnum)
-                        || (enemy.status == Status::Out as i32)
-                        || (enemy.status == Status::Terminated as i32))
-                })
-                .for_each(|(index, _)| self.put_enemy(index as c_int, -1, -1));
+            for enemy_index in 0..self.main.all_enemys.len() {
+                let enemy = &self.main.all_enemys[enemy_index];
+                if !((enemy.levelnum != levelnum)
+                    || (enemy.status == Status::Out as i32)
+                    || (enemy.status == Status::Terminated as i32))
+                {
+                    self.put_enemy(enemy_index.try_into().unwrap(), -1, -1)
+                }
+            }
 
             if self.vars.me.energy > 0. {
                 self.put_influence(-1, -1);
@@ -339,7 +340,7 @@ impl Data {
     }
 
     pub unsafe fn put_enemy(&mut self, enemy_index: c_int, x: c_int, y: c_int) {
-        let droid: &mut Enemy = &mut ALL_ENEMYS[usize::try_from(enemy_index).unwrap()];
+        let droid = &self.main.all_enemys[usize::try_from(enemy_index).unwrap()];
         let ty = droid.ty;
         let phase = droid.phase;
         let name = &mut (*self.vars.droidmap.offset(ty.try_into().unwrap())).druidname;

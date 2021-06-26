@@ -55,7 +55,7 @@ use menu::Menu;
 use misc::Misc;
 use ship::ShipData;
 use sound::Sound;
-use structs::{Blast, Bullet, Enemy, Finepoint, Level, Ship};
+use structs::{Blast, Bullet, Enemy, Level, Ship};
 use takeover::Takeover;
 use text::Text;
 use vars::Vars;
@@ -94,6 +94,7 @@ struct Main {
     alert_threshold: i32,
     // bonus/sec for FIRST Alert-color, the others are 2*, 3*,...
     alert_bonus_per_sec: f32,
+    all_enemys: [Enemy; MAX_ENEMYS_ON_SHIP],
 }
 
 impl Default for Main {
@@ -111,28 +112,10 @@ impl Default for Main {
             alert_level: 0,
             alert_threshold: 0,
             alert_bonus_per_sec: 0.,
+            all_enemys: [Enemy::default(); MAX_ENEMYS_ON_SHIP],
         }
     }
 }
-
-static mut ALL_ENEMYS: [Enemy; MAX_ENEMYS_ON_SHIP] = [Enemy {
-    ty: 0,
-    levelnum: 0,
-    pos: Finepoint { x: 0., y: 0. },
-    speed: Finepoint { x: 0., y: 0. },
-    energy: 0.,
-    phase: 0.,
-    nextwaypoint: 0,
-    lastwaypoint: 0,
-    status: 0,
-    warten: 0.,
-    passable: 0,
-    firewait: 0.,
-    text_visible_time: 0.,
-    text_to_be_displayed: null_mut(),
-    number_of_periodic_special_statements: 0,
-    periodic_special_statements: null_mut(),
-}; MAX_ENEMYS_ON_SHIP];
 
 static mut CONFIG_DIR: [i8; 255] = [0; 255];
 static mut INVINCIBLE_MODE: i32 = 0;
@@ -415,26 +398,29 @@ impl Data {
         self.main.real_score +=
             self.main.alert_level as f32 * self.main.alert_bonus_per_sec * self.frame_time();
 
-        for enemy in &mut ALL_ENEMYS {
+        let Self {
+            main, misc, global, ..
+        } = self;
+        for enemy in &mut main.all_enemys {
             if enemy.status == Status::Out as i32 {
                 continue;
             }
 
             if enemy.warten > 0. {
-                enemy.warten -= self.frame_time();
+                enemy.warten -= misc.frame_time(global);
                 if enemy.warten < 0. {
                     enemy.warten = 0.;
                 }
             }
 
             if enemy.firewait > 0. {
-                enemy.firewait -= self.frame_time();
+                enemy.firewait -= misc.frame_time(global);
                 if enemy.firewait <= 0. {
                     enemy.firewait = 0.;
                 }
             }
 
-            enemy.text_visible_time += self.frame_time();
+            enemy.text_visible_time += misc.frame_time(global);
         }
     }
 }
