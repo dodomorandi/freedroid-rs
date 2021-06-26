@@ -9,7 +9,7 @@ use crate::{
     graphics::apply_filter,
     map::get_map_brick,
     structs::{Finepoint, GrobPoint},
-    Data, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
+    Data,
 };
 
 use log::{info, trace};
@@ -374,7 +374,7 @@ impl Data {
 
         //--------------------
         // Now the numbers should be blittet.
-        let mut dst = FIRST_DIGIT_RECT;
+        let mut dst = self.main.first_digit_rect;
         SDL_UpperBlit(
             self.graphics.enemy_digit_surface_pointer
                 [usize::try_from(name[0] - b'1' as i8 + 1).unwrap()],
@@ -383,7 +383,7 @@ impl Data {
             &mut dst,
         );
 
-        dst = SECOND_DIGIT_RECT;
+        dst = self.main.second_digit_rect;
         SDL_UpperBlit(
             self.graphics.enemy_digit_surface_pointer
                 [usize::try_from(name[1] - b'1' as i8 + 1).unwrap()],
@@ -392,7 +392,7 @@ impl Data {
             &mut dst,
         );
 
-        dst = THIRD_DIGIT_RECT;
+        dst = self.main.third_digit_rect;
         SDL_UpperBlit(
             self.graphics.enemy_digit_surface_pointer
                 [usize::try_from(name[2] - b'1' as i8 + 1).unwrap()],
@@ -476,7 +476,7 @@ impl Data {
         );
 
         // Now we draw the first digit of the influencers current number.
-        let mut dst = FIRST_DIGIT_RECT;
+        let mut dst = self.main.first_digit_rect;
         SDL_UpperBlit(
             self.graphics.influ_digit_surface_pointer[usize::try_from(
                 (*self
@@ -494,7 +494,7 @@ impl Data {
         );
 
         // Now we draw the second digit of the influencers current number.
-        dst = SECOND_DIGIT_RECT;
+        dst = self.main.second_digit_rect;
         SDL_UpperBlit(
             self.graphics.influ_digit_surface_pointer[usize::try_from(
                 (*self
@@ -512,7 +512,7 @@ impl Data {
         );
 
         // Now we draw the third digit of the influencers current number.
-        dst = THIRD_DIGIT_RECT;
+        dst = self.main.third_digit_rect;
         SDL_UpperBlit(
             self.graphics.influ_digit_surface_pointer[usize::try_from(
                 (*self

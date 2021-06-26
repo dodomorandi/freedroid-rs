@@ -7,7 +7,7 @@ use crate::{
     },
     graphics::scale_pic,
     input::{SDL_Delay, CMD_STRINGS},
-    Data, Global, F_P_SOVER1,
+    Data, Global,
 };
 
 use cstr::cstr;
@@ -104,9 +104,11 @@ impl Data {
     /// This counter is most conveniently set via the function
     /// Activate_Conservative_Frame_Computation, which can be conveniently called from eveywhere.
     pub unsafe fn frame_time(&mut self) -> c_float {
-        let Self { global, misc, .. } = self;
+        let Self {
+            global, misc, main, ..
+        } = self;
 
-        misc.frame_time(global)
+        misc.frame_time(global, main.f_p_sover1)
     }
 
     /// Update the factor affecting the current speed of 'time flow'
@@ -430,7 +432,7 @@ impl Data {
         } else {
             1
         }; // avoid division by zero
-        F_P_SOVER1 = (1000. / *one_frame_delay as f64) as f32;
+        self.main.f_p_sover1 = (1000. / *one_frame_delay as f64) as f32;
     }
 
     pub unsafe fn activate_conservative_frame_computation(&mut self) {
@@ -1173,13 +1175,13 @@ fn read_variable<'a>(data: &'a [u8], var_name: &str) -> Option<&'a [u8]> {
 }
 
 impl Misc {
-    pub unsafe fn frame_time(&mut self, global: &Global) -> c_float {
+    pub unsafe fn frame_time(&mut self, global: &Global, f_p_sover1: f32) -> c_float {
         if global.skip_a_few_frames != 0 {
             return self.previous_time;
         }
 
-        if F_P_SOVER1 > 0. {
-            self.previous_time = 1.0 / F_P_SOVER1;
+        if f_p_sover1 > 0. {
+            self.previous_time = 1.0 / f_p_sover1;
         }
 
         self.previous_time * self.current_time_factor

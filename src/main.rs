@@ -68,12 +68,12 @@ use sdl::{
 };
 use std::{
     convert::TryFrom,
+    fmt,
     ops::Not,
     os::raw::{c_char, c_float},
     ptr::null_mut,
 };
 
-#[derive(Debug)]
 struct Main {
     last_got_into_blast_sound: c_float,
     last_refresh_sound: c_float,
@@ -106,6 +106,10 @@ struct Main {
     pre_take_energy: i32,
     all_bullets: [Bullet; MAXBULLETS + 10],
     all_blasts: [Blast; MAXBLASTS + 10],
+    first_digit_rect: Rect,
+    second_digit_rect: Rect,
+    third_digit_rect: Rect,
+    f_p_sover1: f32,
 }
 
 impl Default for Main {
@@ -133,14 +137,69 @@ impl Default for Main {
             pre_take_energy: 0,
             all_bullets: [Bullet::default_const(); MAXBULLETS + 10],
             all_blasts: [Blast::default(); MAXBLASTS + 10],
+            first_digit_rect: rect!(),
+            second_digit_rect: rect!(),
+            third_digit_rect: rect!(),
+            f_p_sover1: 0.,
         }
     }
 }
 
-static mut FIRST_DIGIT_RECT: Rect = rect!();
-static mut SECOND_DIGIT_RECT: Rect = rect!();
-static mut THIRD_DIGIT_RECT: Rect = rect!();
-static mut F_P_SOVER1: f32 = 0.;
+impl fmt::Debug for Main {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        #[derive(Debug)]
+        struct Rect {
+            x: i16,
+            y: i16,
+            w: u16,
+            h: u16,
+        }
+
+        impl From<&::sdl::Rect> for Rect {
+            fn from(rect: &::sdl::Rect) -> Rect {
+                Rect {
+                    x: rect.x,
+                    y: rect.y,
+                    w: rect.w,
+                    h: rect.h,
+                }
+            }
+        }
+
+        let first_digit_rect = Rect::from(&self.first_digit_rect);
+        let second_digit_rect = Rect::from(&self.second_digit_rect);
+        let third_digit_rect = Rect::from(&self.third_digit_rect);
+
+        f.debug_struct("Main")
+            .field("last_got_into_blast_sound", &self.last_got_into_blast_sound)
+            .field("last_refresh_sound", &self.last_refresh_sound)
+            .field("sound_on", &self.sound_on)
+            .field("cur_level", &self.cur_level)
+            .field("cur_ship", &self.cur_ship)
+            .field("show_score", &self.show_score)
+            .field("real_score", &self.real_score)
+            .field("death_count", &self.death_count)
+            .field("death_count_drain_speed", &self.death_count_drain_speed)
+            .field("alert_level", &self.alert_level)
+            .field("alert_threshold", &self.alert_threshold)
+            .field("alert_bonus_per_sec", &self.alert_bonus_per_sec)
+            .field("all_enemys", &self.all_enemys)
+            .field("config_dir", &self.config_dir)
+            .field("invincible_mode", &self.invincible_mode)
+            .field("show_all_droids", &self.show_all_droids)
+            .field("stop_influencer", &self.stop_influencer)
+            .field("num_enemys", &self.num_enemys)
+            .field("number_of_droid_types", &self.number_of_droid_types)
+            .field("pre_take_energy", &self.pre_take_energy)
+            .field("all_bullets", &self.all_bullets)
+            .field("all_blasts", &self.all_blasts)
+            .field("first_digit_rect", &first_digit_rect)
+            .field("second_digit_rect", &second_digit_rect)
+            .field("third_digit_rect", &third_digit_rect)
+            .field("f_p_sover1", &self.f_p_sover1)
+            .finish()
+    }
+}
 
 #[derive(Debug)]
 struct Data {
@@ -410,20 +469,20 @@ impl Data {
             }
 
             if enemy.warten > 0. {
-                enemy.warten -= misc.frame_time(global);
+                enemy.warten -= misc.frame_time(global, main.f_p_sover1);
                 if enemy.warten < 0. {
                     enemy.warten = 0.;
                 }
             }
 
             if enemy.firewait > 0. {
-                enemy.firewait -= misc.frame_time(global);
+                enemy.firewait -= misc.frame_time(global, main.f_p_sover1);
                 if enemy.firewait <= 0. {
                     enemy.firewait = 0.;
                 }
             }
 
-            enemy.text_visible_time += misc.frame_time(global);
+            enemy.text_visible_time += misc.frame_time(global, main.f_p_sover1);
         }
     }
 }

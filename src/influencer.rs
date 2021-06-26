@@ -141,18 +141,19 @@ impl Data {
                 }
 
                 // move the influencer a little bit out of the enemy AND the enemy a little bit out of the influ
-                let max_step_size = if misc.frame_time(global) < MAXIMAL_STEP_SIZE {
-                    misc.frame_time(global)
+                let max_step_size = if misc.frame_time(global, main.f_p_sover1) < MAXIMAL_STEP_SIZE
+                {
+                    misc.frame_time(global, main.f_p_sover1)
                 } else {
                     MAXIMAL_STEP_SIZE
                 };
                 vars.me.pos.x += max_step_size.copysign(vars.me.pos.x - enemy.pos.x);
                 vars.me.pos.y += max_step_size.copysign(vars.me.pos.y - enemy.pos.y);
                 enemy.pos.x -= misc
-                    .frame_time(global)
+                    .frame_time(global, main.f_p_sover1)
                     .copysign(vars.me.pos.x - enemy.pos.x);
                 enemy.pos.y -= misc
-                    .frame_time(global)
+                    .frame_time(global, main.f_p_sover1)
                     .copysign(vars.me.pos.y - enemy.pos.y);
 
                 // there might be walls close too, so lets check again for collisions with them

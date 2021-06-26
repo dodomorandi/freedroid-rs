@@ -54,7 +54,7 @@ impl Data {
 
             enemy.phase += (enemy.energy
                 / (*vars.droidmap.add(enemy.ty.try_into().unwrap())).maxenergy)
-                * misc.frame_time(global)
+                * misc.frame_time(global, main.f_p_sover1)
                 * ENEMYPHASES as f32
                 * 2.5;
 
@@ -295,10 +295,10 @@ impl Data {
                 enemy.warten = my_random(2 * WAIT_COLLISION) as f32;
 
                 if xdist != 0. {
-                    enemy.pos.x -= xdist / xdist.abs() * misc.frame_time(global);
+                    enemy.pos.x -= xdist / xdist.abs() * misc.frame_time(global, main.f_p_sover1);
                 }
                 if ydist != 0. {
-                    enemy.pos.y -= ydist / ydist.abs() * misc.frame_time(global);
+                    enemy.pos.y -= ydist / ydist.abs() * misc.frame_time(global, main.f_p_sover1);
                 }
 
                 std::mem::swap(&mut cur_enemy.nextwaypoint, &mut cur_enemy.lastwaypoint);
@@ -308,11 +308,13 @@ impl Data {
 
                 if speed_x != 0. {
                     cur_enemy.pos.x -=
-                        misc.frame_time(global) * COL_SPEED * (speed_x) / speed_x.abs();
+                        misc.frame_time(global, main.f_p_sover1) * COL_SPEED * (speed_x)
+                            / speed_x.abs();
                 }
                 if speed_y != 0. {
                     cur_enemy.pos.y -=
-                        misc.frame_time(global) * COL_SPEED * (speed_y) / speed_y.abs();
+                        misc.frame_time(global, main.f_p_sover1) * COL_SPEED * (speed_y)
+                            / speed_y.abs();
                 }
 
                 return true.into();
@@ -429,7 +431,7 @@ impl Data {
             y: nextwp_pos.y - this_robot.pos.y,
         };
 
-        let steplen = misc.frame_time(global) * maxspeed;
+        let steplen = misc.frame_time(global, main.f_p_sover1) * maxspeed;
         // As long a the distance from the current position of the enemy
         // to its next wp is large, movement is rather simple:
 
@@ -437,8 +439,8 @@ impl Data {
         if dist > steplen {
             this_robot.speed.x = (restweg.x / dist) * maxspeed;
             this_robot.speed.y = (restweg.y / dist) * maxspeed;
-            this_robot.pos.x += this_robot.speed.x * misc.frame_time(global);
-            this_robot.pos.y += this_robot.speed.y * misc.frame_time(global);
+            this_robot.pos.x += this_robot.speed.x * misc.frame_time(global, main.f_p_sover1);
+            this_robot.pos.y += this_robot.speed.y * misc.frame_time(global, main.f_p_sover1);
         } else {
             // If this enemy is just one step ahead of his target, we just put him there now
             this_robot.pos.x = nextwp_pos.x;
@@ -468,10 +470,15 @@ impl Data {
 
     pub unsafe fn permanent_heal_robots(&mut self) {
         let Self {
-            vars, misc, global, ..
+            vars,
+            misc,
+            global,
+            main,
+            ..
         } = self;
 
-        self.main.all_enemys[0..usize::try_from(self.main.num_enemys).unwrap()]
+        let f_p_sover1 = main.f_p_sover1;
+        main.all_enemys[0..usize::try_from(main.num_enemys).unwrap()]
             .iter_mut()
             .filter(|enemy| {
                 enemy.status != Status::Out as c_int
@@ -482,7 +489,7 @@ impl Data {
             .for_each(|enemy| {
                 enemy.energy += (*vars.droidmap.add(usize::try_from(enemy.ty).unwrap()))
                     .lose_health
-                    * misc.frame_time(global);
+                    * misc.frame_time(global, f_p_sover1);
             });
     }
 }

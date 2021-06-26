@@ -15,7 +15,7 @@ use crate::{
     structs::ThemeList,
     takeover::TO_BLOCK_FILE_C,
     vars::{ORIG_BLOCK_RECT, ORIG_DIGIT_RECT},
-    Data, FIRST_DIGIT_RECT, SECOND_DIGIT_RECT, THIRD_DIGIT_RECT,
+    Data,
 };
 
 use array_init::array_init;
@@ -645,9 +645,9 @@ impl Data {
 
         // these are reset in a theme-change by the theme-config-file
         // therefore we need to rescale them each time again
-        scale_rect(&mut FIRST_DIGIT_RECT, scale);
-        scale_rect(&mut SECOND_DIGIT_RECT, scale);
-        scale_rect(&mut THIRD_DIGIT_RECT, scale);
+        scale_rect(&mut self.main.first_digit_rect, scale);
+        scale_rect(&mut self.main.second_digit_rect, scale);
+        scale_rect(&mut self.main.third_digit_rect, scale);
 
         // note: only rescale these rects the first time!!
         let mut init = false;
@@ -1863,39 +1863,39 @@ impl Data {
             data.as_ptr() as *mut c_char,
             DIGIT_ONE_POSITION_X_STRING.as_ptr() as *mut c_char,
             cstr!("%hd").as_ptr() as *mut c_char,
-            &mut FIRST_DIGIT_RECT.x as *mut c_short as *mut c_void,
+            &mut self.main.first_digit_rect.x as *mut c_short as *mut c_void,
         );
         read_value_from_string(
             data.as_ptr() as *mut c_char,
             DIGIT_ONE_POSITION_Y_STRING.as_ptr() as *mut c_char,
             cstr!("%hd").as_ptr() as *mut c_char,
-            &mut FIRST_DIGIT_RECT.y as *mut c_short as *mut c_void,
+            &mut self.main.first_digit_rect.y as *mut c_short as *mut c_void,
         );
 
         read_value_from_string(
             data.as_ptr() as *mut c_char,
             DIGIT_TWO_POSITION_X_STRING.as_ptr() as *mut c_char,
             cstr!("%hd").as_ptr() as *mut c_char,
-            &mut SECOND_DIGIT_RECT.x as *mut c_short as *mut c_void,
+            &mut self.main.second_digit_rect.x as *mut c_short as *mut c_void,
         );
         read_value_from_string(
             data.as_ptr() as *mut c_char,
             DIGIT_TWO_POSITION_Y_STRING.as_ptr() as *mut c_char,
             cstr!("%hd").as_ptr() as *mut c_char,
-            &mut SECOND_DIGIT_RECT.y as *mut c_short as *mut c_void,
+            &mut self.main.second_digit_rect.y as *mut c_short as *mut c_void,
         );
 
         read_value_from_string(
             data.as_ptr() as *mut c_char,
             DIGIT_THREE_POSITION_X_STRING.as_ptr() as *mut c_char,
             cstr!("%hd").as_ptr() as *mut c_char,
-            &mut THIRD_DIGIT_RECT.x as *mut i16 as *mut c_void,
+            &mut self.main.third_digit_rect.x as *mut i16 as *mut c_void,
         );
         read_value_from_string(
             data.as_ptr() as *mut c_char,
             DIGIT_THREE_POSITION_Y_STRING.as_ptr() as *mut c_char,
             cstr!("%hd").as_ptr() as *mut c_char,
-            &mut THIRD_DIGIT_RECT.y as *mut c_short as *mut c_void,
+            &mut self.main.third_digit_rect.y as *mut c_short as *mut c_void,
         );
     }
 

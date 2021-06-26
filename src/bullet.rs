@@ -251,7 +251,7 @@ impl Data {
                     ..
                 } = self;
 
-                let frame_time = misc.frame_time(global);
+                let frame_time = misc.frame_time(global, main.f_p_sover1);
                 let cur_blast = &mut main.all_blasts[blast_index];
                 let blast_spec = &vars.blastmap[usize::try_from(cur_blast.ty).unwrap()];
                 cur_blast.phase +=
@@ -304,7 +304,8 @@ impl Data {
 
             if dist < global.blast_radius + global.droid_radius {
                 /* drag energy of enemy */
-                enemy.energy -= global.blast_damage_per_second * misc.frame_time(global);
+                enemy.energy -=
+                    global.blast_damage_per_second * misc.frame_time(global, main.f_p_sover1);
             }
 
             if enemy.energy < 0. {
@@ -443,11 +444,11 @@ impl Data {
             cur_bullet.prev_pos.x = cur_bullet.pos.x;
             cur_bullet.prev_pos.y = cur_bullet.pos.y;
 
-            cur_bullet.pos.x += cur_bullet.speed.x * misc.frame_time(global);
-            cur_bullet.pos.y += cur_bullet.speed.y * misc.frame_time(global);
+            cur_bullet.pos.x += cur_bullet.speed.x * misc.frame_time(global, main.f_p_sover1);
+            cur_bullet.pos.y += cur_bullet.speed.y * misc.frame_time(global, main.f_p_sover1);
 
             cur_bullet.time_in_frames += 1;
-            cur_bullet.time_in_seconds += misc.frame_time(global);
+            cur_bullet.time_in_seconds += misc.frame_time(global, main.f_p_sover1);
         }
     }
 }
