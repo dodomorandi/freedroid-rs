@@ -10,7 +10,6 @@ use crate::{
         NUM_MAP_BLOCKS, PARA_FONT_FILE, PARA_FONT_FILE_C, SHIP_OFF_PIC_FILE_C, SHIP_ON_PIC_FILE_C,
         TAKEOVER_BG_PIC_FILE_C,
     },
-    input::SDL_Delay,
     misc::read_value_from_string,
     structs::ThemeList,
     takeover::TO_BLOCK_FILE_C,
@@ -21,31 +20,21 @@ use crate::{
 use array_init::array_init;
 use cstr::cstr;
 use log::{error, info, trace, warn};
-use sdl::{
-    mouse::ll::{SDL_CreateCursor, SDL_Cursor, SDL_FreeCursor},
-    sdl::{
-        get_error,
-        ll::{SDL_GetTicks, SDL_Init, SDL_InitSubSystem, SDL_Quit, SDL_INIT_TIMER, SDL_INIT_VIDEO},
-        Rect,
-    },
-    video::SurfaceFlag,
-    video::{
-        ll::{
-            SDL_ConvertSurface, SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha,
-            SDL_FillRect, SDL_Flip, SDL_FreeSurface, SDL_GetRGBA, SDL_GetVideoInfo,
-            SDL_LockSurface, SDL_MapRGB, SDL_MapRGBA, SDL_RWFromFile, SDL_RWops, SDL_Rect,
-            SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetClipRect, SDL_SetGamma, SDL_SetVideoMode,
-            SDL_Surface, SDL_UnlockSurface, SDL_UpdateRect, SDL_UpperBlit, SDL_VideoInfo,
-        },
-        VideoFlag, VideoInfoFlag,
-    },
-    wm::ll::{SDL_WM_SetCaption, SDL_WM_SetIcon},
+use sdl_sys::{
+    zoomSurface, IMG_Load, SDL_ConvertSurface, SDL_CreateCursor, SDL_CreateRGBSurface, SDL_Cursor,
+    SDL_Delay, SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_FillRect, SDL_Flip, SDL_FreeCursor,
+    SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetRGBA, SDL_GetTicks, SDL_GetVideoInfo,
+    SDL_Init, SDL_InitSubSystem, SDL_LockSurface, SDL_MapRGB, SDL_MapRGBA, SDL_Quit,
+    SDL_RWFromFile, SDL_RWFromMem, SDL_RWops, SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha,
+    SDL_SetClipRect, SDL_SetGamma, SDL_SetVideoMode, SDL_Surface, SDL_UnlockSurface,
+    SDL_UpdateRect, SDL_UpperBlit, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption,
+    SDL_WM_SetIcon, SDL_FULLSCREEN, SDL_INIT_TIMER, SDL_INIT_VIDEO, SDL_RLEACCEL, SDL_SRCALPHA,
 };
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
     convert::{TryFrom, TryInto},
     ffi::CStr,
-    os::raw::{c_char, c_double, c_float, c_int, c_short, c_void},
+    os::raw::{c_char, c_float, c_int, c_short, c_void},
     ptr::null_mut,
 };
 
@@ -143,23 +132,6 @@ impl Default for Graphics {
     }
 }
 
-#[link(name = "SDL_image")]
-extern "C" {
-    pub fn IMG_Load(file: *const c_char) -> *mut SDL_Surface;
-}
-
-extern "C" {
-    pub fn zoomSurface(
-        src: *mut SDL_Surface,
-        zoomx: c_double,
-        zoomy: c_double,
-        smooth: c_int,
-    ) -> *mut SDL_Surface;
-    pub fn SDL_GetClipRect(surface: *mut SDL_Surface, rect: *mut SDL_Rect);
-    pub fn SDL_VideoDriverName(namebuf: *mut c_char, maxlen: c_int) -> *mut c_char;
-    pub fn SDL_RWFromMem(mem: *mut c_void, size: c_int) -> *mut SDL_RWops;
-}
-
 impl Data {
     /// This function draws a "grid" on the screen, that means every
     /// "second" pixel is blacked out, thereby generation a fading
@@ -222,9 +194,9 @@ impl Data {
         let mut vid_flags = (*self.graphics.ne_screen).flags;
 
         if self.global.game_config.use_fullscreen != 0 {
-            vid_flags &= !(VideoFlag::Fullscreen as u32);
+            vid_flags &= !(SDL_FULLSCREEN as u32);
         } else {
-            vid_flags |= VideoFlag::Fullscreen as u32;
+            vid_flags |= SDL_FULLSCREEN as u32;
         }
 
         self.graphics.ne_screen = SDL_SetVideoMode(
@@ -238,7 +210,10 @@ impl Data {
                 "unable to toggle windowed/fullscreen {} x {} video mode.",
                 self.vars.screen_rect.w, self.vars.screen_rect.h,
             );
-            panic!("SDL-Error: {}", get_error());
+            panic!(
+                "SDL-Error: {}",
+                CStr::from_ptr(SDL_GetError()).to_string_lossy()
+            );
         }
 
         if (*self.graphics.ne_screen).flags != vid_flags {
@@ -491,10 +466,10 @@ impl Graphics {
         assert!(!pic.is_null());
         let pic = &mut **pic;
         let dim = if block.is_null() {
-            Rect::new(0, 0, pic.w.try_into().unwrap(), pic.h.try_into().unwrap())
+            rect!(0, 0, pic.w.try_into().unwrap(), pic.h.try_into().unwrap())
         } else {
             let block = &*block;
-            Rect::new(0, 0, block.w, block.h)
+            rect!(0, 0, block.w, block.h)
         };
 
         let usealpha = (*pic.format).Amask != 0;
@@ -510,7 +485,7 @@ impl Graphics {
         };
         SDL_FreeSurface(tmp);
 
-        let mut src = Rect::new(
+        let mut src = rect!(
             i16::try_from(col).unwrap() * i16::try_from(dim.w + 2).unwrap(),
             i16::try_from(line).unwrap() * i16::try_from(dim.h + 2).unwrap(),
             dim.w,
@@ -518,11 +493,7 @@ impl Graphics {
         );
         SDL_UpperBlit(pic, &mut src, ret, null_mut());
         if usealpha {
-            SDL_SetAlpha(
-                ret,
-                SurfaceFlag::SrcAlpha as u32 | SurfaceFlag::RLEAccel as u32,
-                255,
-            );
+            SDL_SetAlpha(ret, SDL_SRCALPHA as u32 | SDL_RLEACCEL as u32, 255);
         }
 
         ret
@@ -761,7 +732,7 @@ impl Data {
         self.printf_sdl(self.graphics.ne_screen, -1, -1, format_args!(" ok\n"));
     }
 
-    /// display "white noise" effect in Rect.
+    /// display "white noise" effect in SDL_Rect.
     /// algorith basically stolen from
     /// Greg Knauss's "xteevee" hack in xscreensavers.
     ///
@@ -769,7 +740,7 @@ impl Data {
     pub unsafe fn white_noise(
         &mut self,
         bitmap: *mut SDL_Surface,
-        rect: &mut Rect,
+        rect: &mut SDL_Rect,
         timeout: c_int,
     ) {
         use rand::{
@@ -822,7 +793,7 @@ impl Data {
         let now = SDL_GetTicks();
 
         self.wait_for_all_keys_released();
-        let mut clip_rect = Rect::new(0, 0, 0, 0);
+        let mut clip_rect = rect!();
         loop {
             // pick an old enough tile
             let mut next_tile;
@@ -967,16 +938,22 @@ impl Data {
         /* Initialize the SDL library */
         // if ( SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) == -1 )
 
-        if SDL_Init(SDL_INIT_VIDEO) == -1 {
-            panic!("Couldn't initialize SDL: {}", get_error());
+        if SDL_Init(SDL_INIT_VIDEO as u32) == -1 {
+            panic!(
+                "Couldn't initialize SDL: {}",
+                CStr::from_ptr(SDL_GetError()).to_string_lossy()
+            );
         } else {
             info!("SDL Video initialisation successful.");
         }
 
         // Now SDL_TIMER is initialized here:
 
-        if SDL_InitSubSystem(SDL_INIT_TIMER) == -1 {
-            panic!("Couldn't initialize SDL: {}", get_error());
+        if SDL_InitSubSystem(SDL_INIT_TIMER as u32) == -1 {
+            panic!(
+                "Couldn't initialize SDL: {}",
+                CStr::from_ptr(SDL_GetError()).to_string_lossy()
+            );
         } else {
             info!("SDL Timer initialisation successful.");
         }
@@ -997,7 +974,7 @@ impl Data {
 
         macro_rules! flag {
             ($flag:ident) => {
-                (vid_info_ref.flags & VideoInfoFlag::$flag as u32) != 0
+                (vid_info_ref.$flag()) != 0
             };
         }
         macro_rules! flag_yn {
@@ -1010,37 +987,37 @@ impl Data {
         info!("----------------------------------------------------------------------");
         info!(
             "Is it possible to create hardware surfaces: {}",
-            flag_yn!(HWAvailable)
+            flag_yn!(hw_available)
         );
         info!(
             "Is there a window manager available: {}",
-            flag_yn!(WMAvailable)
+            flag_yn!(wm_available)
         );
         info!(
             "Are hardware to hardware blits accelerated: {}",
-            flag_yn!(BlitHW)
+            flag_yn!(blit_hw)
         );
         info!(
             "Are hardware to hardware colorkey blits accelerated: {}",
-            flag_yn!(BlitHWColorkey)
+            flag_yn!(blit_hw_CC)
         );
         info!(
             "Are hardware to hardware alpha blits accelerated: {}",
-            flag_yn!(BlitHWAlpha)
+            flag_yn!(blit_hw_A)
         );
         info!(
             "Are software to hardware blits accelerated: {}",
-            flag_yn!(BlitSW)
+            flag_yn!(blit_sw)
         );
         info!(
             "Are software to hardware colorkey blits accelerated: {}",
-            flag_yn!(BlitSWColorkey)
+            flag_yn!(blit_sw_CC)
         );
         info!(
             "Are software to hardware alpha blits accelerated: {}",
-            flag_yn!(BlitSWAlpha)
+            flag_yn!(blit_sw_A)
         );
-        info!("Are color fills accelerated: {}", flag_yn!(BlitFill));
+        info!("Are color fills accelerated: {}", flag_yn!(blit_fill));
         info!(
             "Total amount of video memory in Kilobytes: {}",
             vid_info_ref.video_mem
@@ -1057,12 +1034,12 @@ impl Data {
         info!("----------------------------------------------------------------------");
 
         let vid_flags = if self.global.game_config.use_fullscreen != 0 {
-            VideoFlag::Fullscreen as u32
+            SDL_FULLSCREEN as u32
         } else {
             0
         };
 
-        if flag!(WMAvailable) {
+        if flag!(wm_available) {
             /* if there's a window-manager */
             SDL_WM_SetCaption(cstr!("Freedroid").as_ptr(), cstr!("").as_ptr());
             let fpath = self.find_file(
@@ -1098,7 +1075,7 @@ impl Data {
                 "Couldn't set {} x {} video mode. SDL: {}",
                 self.vars.screen_rect.w,
                 self.vars.screen_rect.h,
-                get_error(),
+                CStr::from_ptr(SDL_GetError()).to_string_lossy(),
             );
             std::process::exit(-1);
         }
@@ -1928,7 +1905,7 @@ impl Data {
                 SDL_FreeSurface(tmp); // free the old surface
             });
 
-        static ORIG_BLOCK: OnceCell<Rect> = OnceCell::new();
+        static ORIG_BLOCK: OnceCell<SDL_Rect> = OnceCell::new();
         let orig_block = ORIG_BLOCK.get_or_init(|| self.vars.block_rect);
 
         self.vars.block_rect = *orig_block;
@@ -1946,7 +1923,7 @@ impl Data {
             panic!(
                 "couldn't load image {}: {}",
                 CStr::from_ptr(datafile).to_string_lossy(),
-                get_error()
+                CStr::from_ptr(SDL_GetError()).to_string_lossy()
             );
         }
 

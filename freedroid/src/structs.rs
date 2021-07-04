@@ -1,7 +1,7 @@
 use crate::defs::*;
 
-use sdl::video::ll::{SDL_Rect, SDL_Surface};
-use std::{fmt, ptr::null_mut};
+use sdl_sys::{SDL_Rect, SDL_Surface};
+use std::ptr::null_mut;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Point {
@@ -295,7 +295,7 @@ pub struct Level {
     pub all_waypoints: [Waypoint; MAXWAYPOINTS],
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Ship {
     pub num_levels: i32,
     pub num_lifts: i32,
@@ -328,47 +328,6 @@ impl Default for Ship {
             level_rects: [[rect!(); MAX_LEVEL_RECTS]; MAX_LEVELS],
             num_level_rects: [0; MAX_LEVELS],
         }
-    }
-}
-
-impl fmt::Debug for Ship {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[derive(Debug)]
-        struct Rect {
-            x: i16,
-            y: i16,
-            w: u16,
-            h: u16,
-        }
-
-        impl From<&::sdl::Rect> for Rect {
-            fn from(rect: &::sdl::Rect) -> Rect {
-                Rect {
-                    x: rect.x,
-                    y: rect.y,
-                    w: rect.w,
-                    h: rect.h,
-                }
-            }
-        }
-
-        let lift_row_rect = self.lift_row_rect.each_ref().map(Rect::from);
-        let level_rects = self
-            .level_rects
-            .each_ref()
-            .map(|arr| arr.each_ref().map(Rect::from));
-
-        f.debug_struct("Ship")
-            .field("num_levels", &self.num_levels)
-            .field("num_lifts", &self.num_lifts)
-            .field("num_lift_rows", &self.num_lift_rows)
-            .field("area_name", &self.area_name)
-            .field("all_levels", &self.all_levels)
-            .field("all_lifts", &self.all_lifts)
-            .field("lift_row_rect", &lift_row_rect)
-            .field("level_rects", &level_rects)
-            .field("num_level_rects", &self.num_level_rects)
-            .finish()
     }
 }
 

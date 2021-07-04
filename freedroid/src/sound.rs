@@ -5,13 +5,11 @@ use crate::{
 
 use cstr::cstr;
 use log::{error, info, warn};
-use sdl::{
-    audio::ll::SDL_CloseAudio,
-    sdl::{
-        get_error,
-        ll::{SDL_InitSubSystem, SDL_INIT_AUDIO},
-    },
-    video::ll::{SDL_RWFromFile, SDL_RWops},
+use sdl_sys::{
+    Mix_AllocateChannels, Mix_Chunk, Mix_CloseAudio, Mix_FreeChunk, Mix_FreeMusic, Mix_LoadMUS,
+    Mix_LoadWAV_RW, Mix_Music, Mix_OpenAudio, Mix_PauseMusic, Mix_PlayChannelTimed, Mix_PlayMusic,
+    Mix_ResumeMusic, Mix_VolumeChunk, Mix_VolumeMusic, SDL_CloseAudio, SDL_GetError,
+    SDL_InitSubSystem, SDL_RWFromFile, SDL_INIT_AUDIO,
 };
 use std::{
     convert::TryFrom,
@@ -19,35 +17,6 @@ use std::{
     os::raw::{c_char, c_float, c_int},
     ptr::null_mut,
 };
-
-mod inner {
-    #[repr(C)]
-    pub struct MixMusic {
-        _private: [u8; 0],
-    }
-}
-use inner::MixMusic;
-
-extern "C" {
-    fn Mix_PlayChannelTimed(
-        channel: c_int,
-        chunk: *mut MixChunk,
-        loops: c_int,
-        ticks: c_int,
-    ) -> c_int;
-    fn Mix_FreeChunk(chunk: *mut MixChunk);
-    fn Mix_FreeMusic(music: *mut MixMusic);
-    fn Mix_PauseMusic();
-    fn Mix_ResumeMusic();
-    fn Mix_CloseAudio();
-    fn Mix_PlayMusic(music: *mut MixMusic, loops: c_int) -> c_int;
-    fn Mix_VolumeMusic(volume: c_int) -> c_int;
-    fn Mix_LoadMUS(file: *const c_char) -> *mut MixMusic;
-    fn Mix_VolumeChunk(chunk: *mut MixChunk, volume: c_int) -> c_int;
-    fn Mix_OpenAudio(frequency: c_int, format: u16, channels: c_int, chunksize: c_int) -> c_int;
-    fn Mix_AllocateChannels(num_chans: c_int) -> c_int;
-    fn Mix_LoadWAV_RW(src: *mut SDL_RWops, freesrc: c_int) -> *mut MixChunk;
-}
 
 const MIX_MAX_VOLUME: u8 = 128;
 const MIX_DEFAULT_FREQUENCY: i32 = 22050;
@@ -63,7 +32,7 @@ const AUDIO_S16MSB: u16 = 0x9010;
 const MIX_DEFAULT_FORMAT: u16 = AUDIO_S16MSB;
 
 #[inline]
-unsafe fn mix_load_wav(file: *mut c_char) -> *mut MixChunk {
+unsafe fn mix_load_wav(file: *mut c_char) -> *mut Mix_Chunk {
     Mix_LoadWAV_RW(SDL_RWFromFile(file, cstr!("rb").as_ptr() as *mut c_char), 1)
 }
 
@@ -117,21 +86,13 @@ const MUSIC_FILES: [&CStr; NUM_COLORS] = [
     cstr!("dreamfish-uridium2_loader.mod"), // DARK
 ];
 
-#[repr(C)]
-struct MixChunk {
-    allocated: c_int,
-    abuf: *mut u8,
-    alen: u32,
-    volume: u8,
-}
-
 #[derive(Debug)]
 pub struct Sound {
     prev_color: c_int,
     paused: bool,
-    loaded_wav_files: [*mut MixChunk; SoundType::All as usize],
-    music_songs: [*mut MixMusic; NUM_COLORS],
-    tmp_mod_file: *mut MixMusic,
+    loaded_wav_files: [*mut Mix_Chunk; SoundType::All as usize],
+    music_songs: [*mut Mix_Music; NUM_COLORS],
+    tmp_mod_file: *mut Mix_Music,
 }
 
 impl Default for Sound {
@@ -147,7 +108,7 @@ impl Default for Sound {
 }
 
 #[inline]
-unsafe fn mix_play_channel(channel: c_int, chunk: *mut MixChunk, loops: c_int) -> c_int {
+unsafe fn mix_play_channel(channel: c_int, chunk: *mut Mix_Chunk, loops: c_int) -> c_int {
     Mix_PlayChannelTimed(channel, chunk, loops, -1)
 }
 
@@ -172,7 +133,7 @@ impl Data {
                 "Could not play sound-sample: {} Error: {}.\
              This usually just means that too many samples where played at the same time",
                 SOUND_SAMPLE_FILENAMES[tune].to_string_lossy(),
-                sdl::get_error(),
+                CStr::from_ptr(SDL_GetError()).to_string_lossy(),
             );
         } else {
             info!(
@@ -418,7 +379,7 @@ impl Data {
             if self.sound.tmp_mod_file.is_null() {
                 error!(
                     "SDL Mixer Error: {}. Continuing with sound disabled",
-                    get_error(),
+                    CStr::from_ptr(SDL_GetError()).to_string_lossy(),
                 );
                 return;
             }
@@ -472,7 +433,7 @@ impl Data {
 
         // Now SDL_AUDIO is initialized here:
 
-        if SDL_InitSubSystem(SDL_INIT_AUDIO) == -1 {
+        if SDL_InitSubSystem(SDL_INIT_AUDIO as u32) == -1 {
             warn!(
                 "SDL Sound subsystem could not be initialized. \
              Continuing with sound disabled",
@@ -490,7 +451,7 @@ impl Data {
             error!("SDL audio channel could not be opened.");
             warn!(
                 "SDL Mixer Error: {}. Continuing with sound disabled",
-                get_error(),
+                CStr::from_ptr(SDL_GetError()).to_string_lossy(),
             );
             self.main.sound_on = false.into();
             return;
@@ -527,7 +488,10 @@ impl Data {
                     "Could not load Sound-sample: {}",
                     sample_filename.to_string_lossy()
                 );
-                warn!("Continuing with sound disabled. Error = {}", get_error());
+                warn!(
+                    "Continuing with sound disabled. Error = {}",
+                    CStr::from_ptr(SDL_GetError()).to_string_lossy()
+                );
                 self.main.sound_on = false.into();
                 return;
             } else {
@@ -554,7 +518,7 @@ impl Data {
                 error!("Error loading sound-file: {}", music_file.to_string_lossy());
                 warn!(
                     "SDL Mixer Error: {}. Continuing with sound disabled",
-                    get_error()
+                    CStr::from_ptr(SDL_GetError()).to_string_lossy()
                 );
                 self.main.sound_on = false.into();
                 return;

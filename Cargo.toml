@@ -1,28 +1,5 @@
-[package]
-name = "freedroid"
-version = "0.1.0"
-authors = ["Edoardo Morandi <morandidodo@gmail.com>"]
-edition = "2018"
-license = "GPL-2.0-or-later"
-
-[features]
-arcade-input = []
-gcw0 = []
-
-[dependencies]
-array-init = "1.0.0"
-bitflags = "1.2.1"
-bstr = "0.2.14"
-chrono = "0.4.19"
-clap = "3.0.0-beta.2"
-cstr = "0.2.5"
-env_logger = "0.8.1"
-libc = "0.2.80"
-libc-extra = "0.3.2"
-log = "0.4.11"
-once_cell = "1.5.2"
-rand = "0.7.3"
-sdl = "0.3.6"
-
-[target.'cfg(target_os = "android")'.dependencies]
-android_log-sys = "0.2.0"
+[workspace]
+members = [
+    "freedroid",
+    "sdl-sys",
+]

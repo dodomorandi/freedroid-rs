@@ -6,7 +6,7 @@ macro_rules! rect {
         rect!(0, 0, 0, 0)
     };
     ($x:expr, $y:expr, $w:expr, $h:expr $(,)?) => {
-        ::sdl::Rect {
+        ::sdl_sys::SDL_Rect {
             x: $x,
             y: $y,
             w: $w,
@@ -49,7 +49,7 @@ use graphics::Graphics;
 use highscore::Highscore;
 use influencer::Influencer;
 use init::Init;
-use input::{Input, SDL_Delay};
+use input::Input;
 use map::{ColorNames, Map};
 use menu::Menu;
 use misc::Misc;
@@ -60,11 +60,9 @@ use takeover::Takeover;
 use text::Text;
 use vars::Vars;
 
-use sdl::{
-    mouse::ll::{SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE},
-    sdl::ll::SDL_GetTicks,
-    video::ll::{SDL_Flip, SDL_Surface},
-    Rect,
+use sdl_sys::{
+    SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Rect, SDL_SetCursor, SDL_ShowCursor, SDL_Surface,
+    SDL_ASYNCBLIT, SDL_DISABLE, SDL_ENABLE, SDL_HWSURFACE, SDL_RLEACCEL,
 };
 use std::{
     convert::TryFrom,
@@ -106,9 +104,9 @@ struct Main {
     pre_take_energy: i32,
     all_bullets: [Bullet; MAXBULLETS + 10],
     all_blasts: [Blast; MAXBLASTS + 10],
-    first_digit_rect: Rect,
-    second_digit_rect: Rect,
-    third_digit_rect: Rect,
+    first_digit_rect: SDL_Rect,
+    second_digit_rect: SDL_Rect,
+    third_digit_rect: SDL_Rect,
     f_p_sover1: f32,
 }
 
@@ -155,8 +153,8 @@ impl fmt::Debug for Main {
             h: u16,
         }
 
-        impl From<&::sdl::Rect> for Rect {
-            fn from(rect: &::sdl::Rect) -> Rect {
+        impl From<&SDL_Rect> for Rect {
+            fn from(rect: &SDL_Rect) -> Rect {
                 Rect {
                     x: rect.x,
                     y: rect.y,
@@ -395,9 +393,9 @@ fn main() {
 
 #[inline]
 fn sdl_must_lock(surface: &SDL_Surface) -> bool {
-    use sdl::video::SurfaceFlag::*;
     surface.offset != 0
-        && (surface.flags & (HWSurface as u32 | AsyncBlit as u32 | RLEAccel as u32)) != 0
+        && (surface.flags & (SDL_HWSURFACE as u32 | SDL_ASYNCBLIT as u32 | SDL_RLEACCEL as u32))
+            != 0
 }
 
 impl Data {

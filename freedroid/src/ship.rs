@@ -5,7 +5,6 @@ use crate::{
         DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET, TEXT_STRETCH, UPDATE,
     },
     graphics::scale_pic,
-    input::SDL_Delay,
     map::get_map_brick,
     structs::Point,
     vars::{BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES, WEAPON_NAMES},
@@ -13,15 +12,11 @@ use crate::{
 };
 
 use log::{error, warn};
-use sdl::{
-    event::ll::{SDL_DISABLE, SDL_ENABLE},
-    ll::SDL_GetTicks,
-    mouse::ll::{SDL_SetCursor, SDL_ShowCursor, SDL_WarpMouse},
-    video::ll::{
-        SDL_Color, SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_Flip,
-        SDL_FreeSurface, SDL_RWops, SDL_SetClipRect, SDL_Surface, SDL_UpdateRects, SDL_UpperBlit,
-    },
-    Rect,
+use sdl_sys::{
+    IMG_Load_RW, IMG_isJPG, SDL_Color, SDL_CreateRGBSurface, SDL_Delay, SDL_DisplayFormat,
+    SDL_DisplayFormatAlpha, SDL_Flip, SDL_FreeSurface, SDL_GetTicks, SDL_RWops, SDL_Rect,
+    SDL_SetClipRect, SDL_SetCursor, SDL_ShowCursor, SDL_Surface, SDL_UpdateRects, SDL_UpperBlit,
+    SDL_WarpMouse, SDL_DISABLE, SDL_ENABLE,
 };
 use std::{
     convert::{TryFrom, TryInto},
@@ -39,16 +34,16 @@ pub struct ShipData {
     frame_num: c_int,
     last_droid_type: c_int,
     last_frame_time: u32,
-    src_rect: Rect,
+    src_rect: SDL_Rect,
     enter_console_last_move_tick: u32,
     great_droid_show_last_move_tick: u32,
     enter_lift_last_move_tick: u32,
     droid_background: *mut SDL_Surface,
     droid_pics: *mut SDL_Surface,
-    up_rect: Rect,
-    down_rect: Rect,
-    left_rect: Rect,
-    right_rect: Rect,
+    up_rect: SDL_Rect,
+    down_rect: SDL_Rect,
+    left_rect: SDL_Rect,
+    right_rect: SDL_Rect,
 }
 
 impl fmt::Debug for ShipData {
@@ -61,8 +56,8 @@ impl fmt::Debug for ShipData {
             h: u16,
         }
 
-        impl From<&::sdl::Rect> for Rect {
-            fn from(rect: &::sdl::Rect) -> Rect {
+        impl From<&SDL_Rect> for Rect {
+            fn from(rect: &SDL_Rect) -> Rect {
                 Rect {
                     x: rect.x,
                     y: rect.y,
@@ -122,11 +117,6 @@ impl Default for ShipData {
             right_rect: rect!(0, 0, 0, 0),
         }
     }
-}
-
-extern "C" {
-    pub fn IMG_Load_RW(src: *mut SDL_RWops, freesrc: c_int) -> *mut SDL_Surface;
-    pub fn IMG_isJPG(src: *mut SDL_RWops) -> c_int;
 }
 
 #[inline]
@@ -206,7 +196,7 @@ impl Data {
     /// if cycle_time == 0 : display static pic, using only first frame
     pub unsafe fn show_droid_portrait(
         &mut self,
-        mut dst: Rect,
+        mut dst: SDL_Rect,
         droid_type: c_int,
         cycle_time: c_float,
         flags: c_int,
@@ -350,19 +340,19 @@ impl Data {
             ((f64::from(font_height(&*self.b_font.current_font)) * TEXT_STRETCH) as f32) as i16;
         let lastline =
             self.vars.cons_header_rect.y + i16::try_from(self.vars.cons_header_rect.h).unwrap();
-        self.ship.up_rect = Rect {
+        self.ship.up_rect = SDL_Rect {
             x: self.vars.cons_header_rect.x,
             y: lastline - lineskip,
             w: 25,
             h: 13,
         };
-        self.ship.down_rect = Rect {
+        self.ship.down_rect = SDL_Rect {
             x: self.vars.cons_header_rect.x,
             y: (f32::from(lastline) - 0.5 * f32::from(lineskip)) as i16,
             w: 25,
             h: 13,
         };
-        self.ship.left_rect = Rect {
+        self.ship.left_rect = SDL_Rect {
             x: (f32::from(
                 self.vars.cons_header_rect.x + i16::try_from(self.vars.cons_header_rect.w).unwrap(),
             ) - 1.5 * f32::from(lineskip)) as i16,
@@ -370,7 +360,7 @@ impl Data {
             w: 13,
             h: 25,
         };
-        self.ship.right_rect = Rect {
+        self.ship.right_rect = SDL_Rect {
             x: (f32::from(
                 self.vars.cons_header_rect.x + i16::try_from(self.vars.cons_header_rect.w).unwrap(),
             ) - 1.0 * f32::from(lineskip)) as i16,
@@ -905,7 +895,7 @@ impl Data {
     }
 
     /// This function should check if the mouse cursor is in the given Rectangle
-    pub unsafe fn cursor_is_on_rect(&self, rect: &Rect) -> c_int {
+    pub unsafe fn cursor_is_on_rect(&self, rect: &SDL_Rect) -> c_int {
         let user_center = self.get_user_center();
         let cur_pos = Point {
             x: self.input.input_axis.x + (i32::from(user_center.x) - 16),
@@ -1045,7 +1035,7 @@ impl Data {
             );
         } // only if not UPDATE_ONLY was required
 
-        let mut src = Rect {
+        let mut src = SDL_Rect {
             x: i16::try_from(self.vars.cons_menu_rects[0].w).unwrap() * i16::try_from(pos).unwrap()
                 + (2. * pos as f32 * self.global.game_config.scale) as i16,
             y: 0,

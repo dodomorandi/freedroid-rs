@@ -7,7 +7,6 @@ use crate::{
     },
     global::Global,
     graphics::Graphics,
-    input::SDL_Delay,
     misc::{
         count_string_occurences, dealloc_c_string, locate_string_in_data, my_random,
         read_and_malloc_string_from_data, read_value_from_string,
@@ -22,12 +21,9 @@ use crate::input::wait_for_key_pressed;
 use clap::{crate_version, Clap};
 use cstr::cstr;
 use log::{error, info, warn};
-use sdl::{
-    event::ll::SDL_DISABLE,
-    ll::SDL_GetTicks,
-    mouse::ll::SDL_ShowCursor,
-    video::ll::{SDL_Flip, SDL_FreeSurface, SDL_SetClipRect, SDL_UpperBlit},
-    Rect,
+use sdl_sys::{
+    Mix_HaltMusic, SDL_Delay, SDL_Flip, SDL_FreeSurface, SDL_GetTicks, SDL_Rect, SDL_SetClipRect,
+    SDL_ShowCursor, SDL_UpperBlit, SDL_DISABLE,
 };
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
@@ -38,11 +34,6 @@ use std::{
     path::Path,
     ptr::null_mut,
 };
-
-#[link(name = "SDL_mixer")]
-extern "C" {
-    pub fn Mix_HaltMusic() -> c_int;
-}
 
 #[derive(Debug)]
 pub struct Init {
@@ -1608,7 +1599,7 @@ impl Data {
         self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
         self.make_grid_on_screen(Some(&self.vars.user_rect));
 
-        let mut dst = Rect {
+        let mut dst = SDL_Rect {
             x: self.get_user_center().x - i16::try_from(self.vars.portrait_rect.w / 2).unwrap(),
             y: self.get_user_center().y - i16::try_from(self.vars.portrait_rect.h / 2).unwrap(),
             w: self.vars.portrait_rect.w,

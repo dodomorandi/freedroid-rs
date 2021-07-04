@@ -13,30 +13,17 @@ use crate::{
 };
 
 use log::{info, trace};
-use sdl::{
-    sdl::Rect,
-    video::ll::{
-        SDL_Color, SDL_FillRect, SDL_MapRGB, SDL_SetClipRect, SDL_Surface, SDL_UpdateRect,
-        SDL_UpperBlit,
-    },
+use sdl_sys::{
+    rotozoomSurface, SDL_Color, SDL_FillRect, SDL_MapRGB, SDL_Rect, SDL_SetClipRect,
+    SDL_UpdateRect, SDL_UpperBlit,
 };
 use std::{
     cell::{Cell, RefCell},
     convert::{TryFrom, TryInto},
     ffi::CStr,
-    os::raw::{c_char, c_double, c_int},
+    os::raw::{c_char, c_int},
     ptr::null_mut,
 };
-
-#[link(name = "SDL_gfx")]
-extern "C" {
-    pub fn rotozoomSurface(
-        src: *mut SDL_Surface,
-        angle: c_double,
-        zoom: c_double,
-        smooth: c_int,
-    ) -> *mut SDL_Surface;
-}
 
 const BLINK_LEN: f32 = 1.0;
 
@@ -61,7 +48,7 @@ const FLASH_DARK: SDL_Color = SDL_Color {
 };
 
 impl Data {
-    pub unsafe fn fill_rect(&self, mut rect: Rect, color: SDL_Color) {
+    pub unsafe fn fill_rect(&self, mut rect: SDL_Rect, color: SDL_Color) {
         let pixcolor = SDL_MapRGB((*self.graphics.ne_screen).format, color.r, color.g, color.b);
 
         SDL_FillRect(self.graphics.ne_screen, &mut rect, pixcolor);
@@ -120,7 +107,7 @@ impl Data {
         let mut vect = Finepoint::default();
         let mut len = -1f32;
         let mut map_brick = 0;
-        let mut target_rectangle = Rect::new(0, 0, 0, 0);
+        let mut target_rectangle = rect!(0, 0, 0, 0);
         (upleft.y..downright.y)
             .flat_map(|line| (upleft.x..downright.x).map(move |col| (line, col)))
             .for_each(|(line, col)| {
@@ -166,7 +153,7 @@ impl Data {
         // if we don't use Fullscreen mode, we have to clear the text-background manually
         // for the info-line text:
 
-        let mut text_rect = Rect::new(
+        let mut text_rect = rect!(
             self.vars.full_user_rect.x,
             (i32::from(self.vars.full_user_rect.y) + i32::from(self.vars.full_user_rect.h)
                 - font_height(&*self.global.font0_b_font))
@@ -320,7 +307,7 @@ impl Data {
         }
 
         let user_center = self.get_user_center();
-        let mut dst = Rect::new(
+        let mut dst = rect!(
             (f32::from(user_center.x)
                 + (-self.vars.me.pos.x + x) * f32::from(self.vars.block_rect.w)
                 - f32::from(self.vars.block_rect.w / 2)) as i16,
@@ -455,7 +442,7 @@ impl Data {
     /// to the specified coordinates anywhere on the screen, useful e.g.
     /// for using the influencer as a cursor in the menus.
     pub unsafe fn put_influence(&mut self, x: c_int, y: c_int) {
-        let text_rect = Rect::new(
+        let text_rect = rect!(
             self.vars.user_rect.x
                 + (self.vars.user_rect.w / 2) as i16
                 + (self.vars.block_rect.w / 3) as i16,
@@ -678,7 +665,7 @@ impl Data {
         // blit of these surfaces!!!!
         let user_center = self.get_user_center();
         let cur_bullet = &self.main.all_bullets[usize::try_from(bullet_number).unwrap()];
-        let mut dst = Rect::new(
+        let mut dst = rect!(
             (f32::from(user_center.x)
                 - (self.vars.me.pos.x - cur_bullet.pos.x) * f32::from(self.vars.block_rect.w)
                 - ((*cur_bullet.surface_pointer[phase_of_bullet]).w / 2) as f32) as i16,
@@ -710,7 +697,7 @@ impl Data {
         }
 
         let user_center = self.get_user_center();
-        let mut dst = Rect::new(
+        let mut dst = rect!(
             (f32::from(user_center.x)
                 - (self.vars.me.pos.x - cur_blast.px) * f32::from(self.vars.block_rect.w)
                 - f32::from(self.vars.block_rect.w / 2)) as i16,
@@ -823,7 +810,7 @@ impl Data {
             });
         if screen_needs_update {
             // Redraw the whole background of the top status bar
-            let mut dst = Rect::new(0, 0, 0, 0);
+            let mut dst = rect!(0, 0, 0, 0);
             SDL_SetClipRect(self.graphics.ne_screen, null_mut()); // this unsets the clipping rectangle
             SDL_UpperBlit(
                 self.graphics.banner_pic,

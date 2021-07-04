@@ -1,7 +1,6 @@
 use crate::{
     b_font::{char_width, font_height},
     defs::{Cmds, PointerStates, SHOW_WAIT, TEXT_STRETCH},
-    input::SDL_Delay,
     misc::my_random,
     Data,
 };
@@ -15,21 +14,13 @@ use crate::{
 use cstr::cstr;
 use log::{error, info, trace};
 #[cfg(not(feature = "arcade-input"))]
-use sdl::keysym::SDLK_DELETE;
-use sdl::{
-    event::{
-        ll::{
-            SDLMod, SDL_Event, SDL_WaitEvent, SDL_JOYAXISMOTION, SDL_JOYBUTTONDOWN, SDL_KEYDOWN,
-            SDL_MOUSEBUTTONDOWN,
-        },
-        Mod, MouseState,
-    },
-    keysym::{SDLK_BACKSPACE, SDLK_RETURN},
-    sdl::{ll::SDL_GetTicks, Rect},
-    video::ll::{
-        SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_Flip, SDL_FreeSurface, SDL_Rect, SDL_Surface,
-        SDL_UpdateRect, SDL_UpperBlit,
-    },
+use sdl_sys::SDLKey_SDLK_DELETE;
+use sdl_sys::{
+    SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_RETURN, SDLMod, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_RSHIFT,
+    SDL_CreateRGBSurface, SDL_Delay, SDL_DisplayFormat, SDL_Event, SDL_EventType, SDL_Flip,
+    SDL_FreeSurface, SDL_GetClipRect, SDL_GetTicks, SDL_PushEvent, SDL_Rect, SDL_SetClipRect,
+    SDL_Surface, SDL_UpdateRect, SDL_UpperBlit, SDL_WaitEvent, SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE,
+    SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
 };
 use std::{
     convert::{TryFrom, TryInto},
@@ -39,12 +30,6 @@ use std::{
     os::raw::{c_char, c_int, c_uchar},
     ptr::null_mut,
 };
-
-extern "C" {
-    fn SDL_PushEvent(event: *mut SDL_Event) -> c_int;
-    fn SDL_GetClipRect(surface: *mut SDL_Surface, rect: *mut SDL_Rect);
-    fn SDL_SetClipRect(surface: *mut SDL_Surface, rect: *const SDL_Rect) -> bool;
-}
 
 #[cfg(feature = "arcade-input")]
 const ARCADE_INPUT_CHARS: [c_int; 70] = [
@@ -108,7 +93,7 @@ impl Data {
             0,
             0,
         );
-        let mut store_rect = Rect::new(
+        let mut store_rect = rect!(
             x0.try_into().unwrap(),
             y0.try_into().unwrap(),
             self.vars.screen_rect.w,
@@ -162,7 +147,7 @@ impl Data {
                         input[curpos] = empty_char; // Hmm., how to get character widht? If using '.', or any fill character, we'd need to know
                     }
 
-                    if KeyIsPressedR(SDLK_RETURN.try_into().unwrap()) {
+                    if KeyIsPressedR(SDLKey_SDLK_RETURN.try_into().unwrap()) {
                         // For GCW0, maybe we need a prompt to say [PRESS ENTER WHEN FINISHED], or any other key we may choose...
                         input[curpos] = 0; // The last char is currently shown but, not entered into the string...
                                            // 	  input[curpos] = key; // Not sure which one would be expected by most users; the last blinking char is input or not?
@@ -189,7 +174,7 @@ impl Data {
                         } else if (44..=69).contains(&inputchar) {
                             inputchar = 17 + (inputchar - 44);
                         }
-                    } else if KeyIsPressedR(SDLK_BACKSPACE.try_into().unwrap()) {
+                    } else if KeyIsPressedR(SDLKey_SDLK_BACKSPACE.try_into().unwrap()) {
                         // else if ... other functions to consider: SPACE
                         // Or any othe key we choose for the GCW0!
                         input[curpos] = empty_char;
@@ -204,17 +189,17 @@ impl Data {
             {
                 let key = self.getchar_raw();
 
-                if key == SDLK_RETURN.try_into().unwrap() {
+                if key == SDLKey_SDLK_RETURN.try_into().unwrap() {
                     input[curpos] = 0;
                     finished = true;
-                } else if key < SDLK_DELETE.try_into().unwrap()
+                } else if key < SDLKey_SDLK_DELETE.try_into().unwrap()
                     && ((key as u8).is_ascii_graphic() || (key as u8).is_ascii_whitespace())
                     && curpos < max_len
                 {
                     /* printable characters are entered in string */
                     input[curpos] = key.try_into().unwrap();
                     curpos += 1;
-                } else if key == SDLK_BACKSPACE.try_into().unwrap() {
+                } else if key == SDLKey_SDLK_BACKSPACE.try_into().unwrap() {
                     if curpos > 0 {
                         curpos -= 1
                     };
@@ -235,25 +220,24 @@ impl Data {
     ///
     /// Return the (SDLKey) of the next key-pressed event cast to
     pub unsafe fn getchar_raw(&mut self) -> c_int {
-        let mut event = SDL_Event {
-            data: Default::default(),
-        };
+        let mut event = SDL_Event::default();
         let mut return_key = 0;
 
         loop {
             SDL_WaitEvent(&mut event); /* wait for next event */
 
-            match u32::from(*event._type()) {
-                SDL_KEYDOWN => {
+            match SDL_EventType::from(event.type_) {
+                sdl_sys::SDL_EventType_SDL_KEYDOWN => {
                     /*
                      * here we use the fact that, I cite from SDL_keyboard.h:
                      * "The keyboard syms have been cleverly chosen to map to ASCII"
                      * ... I hope that this design feature is portable, and durable ;)
                      */
-                    let key = &*event.key();
+                    let key = event.key;
                     return_key = key.keysym.sym as c_int;
-                    const SHIFT: SDLMod = Mod::LShift as SDLMod | Mod::RShift as SDLMod;
-                    if key.keysym._mod & SHIFT != 0 {
+                    const SHIFT: SDLMod =
+                        SDLMod_KMOD_LSHIFT as SDLMod | SDLMod_KMOD_RSHIFT as SDLMod;
+                    if key.keysym.mod_ & SHIFT != 0 {
                         return_key = u8::try_from(key.keysym.sym as u32)
                             .unwrap()
                             .to_ascii_uppercase()
@@ -261,8 +245,8 @@ impl Data {
                     }
                 }
 
-                SDL_JOYBUTTONDOWN => {
-                    let jbutton = &*event.jbutton();
+                sdl_sys::SDL_EventType_SDL_JOYBUTTONDOWN => {
+                    let jbutton = event.jbutton;
                     if jbutton.button == 0 {
                         return_key = PointerStates::JoyButton1 as c_int;
                     } else if jbutton.button == 1 {
@@ -274,8 +258,8 @@ impl Data {
                     }
                 }
 
-                SDL_JOYAXISMOTION => {
-                    let jaxis = &*event.jaxis();
+                sdl_sys::SDL_EventType_SDL_JOYAXISMOTION => {
+                    let jaxis = event.jaxis;
                     let axis = jaxis.axis;
                     if axis == 0 || ((self.input.joy_num_axes >= 5) && (axis == 3))
                     /* x-axis */
@@ -298,17 +282,17 @@ impl Data {
                     }
                 }
 
-                SDL_MOUSEBUTTONDOWN => {
-                    let button = &*event.button();
-                    if button.button == MouseState::Left as u8 {
+                sdl_sys::SDL_EventType_SDL_MOUSEBUTTONDOWN => {
+                    let button = event.button;
+                    if button.button == SDL_BUTTON_LEFT as u8 {
                         return_key = PointerStates::MouseButton1 as c_int;
-                    } else if button.button == MouseState::Right as u8 {
+                    } else if button.button == SDL_BUTTON_RIGHT as u8 {
                         return_key = PointerStates::MouseButton2 as c_int;
-                    } else if button.button == MouseState::Middle as u8 {
+                    } else if button.button == SDL_BUTTON_MIDDLE as u8 {
                         return_key = PointerStates::MouseButton3 as c_int;
-                    } else if button.button == MouseState::WheelUp as u8 {
+                    } else if button.button == SDL_BUTTON_WHEELUP as u8 {
                         return_key = PointerStates::MouseWheelup as c_int;
-                    } else if button.button == MouseState::WheelDown as u8 {
+                    } else if button.button == SDL_BUTTON_WHEELDOWN as u8 {
                         return_key = PointerStates::MouseWheeldown as c_int;
                     }
                 }
@@ -418,13 +402,13 @@ impl Data {
             self.text.my_cursor_y = starty;
         }
 
-        let mut store_clip = Rect::new(0, 0, 0, 0);
+        let mut store_clip = rect!(0, 0, 0, 0);
         let mut temp_clipping_rect;
         SDL_GetClipRect(self.graphics.ne_screen, &mut store_clip); /* store previous clip-rect */
         if !clip.is_null() {
             SDL_SetClipRect(self.graphics.ne_screen, clip);
         } else {
-            temp_clipping_rect = Rect::new(0, 0, self.vars.screen_rect.w, self.vars.screen_rect.h);
+            temp_clipping_rect = rect!(0, 0, self.vars.screen_rect.w, self.vars.screen_rect.h);
             clip = &mut temp_clipping_rect;
         }
 
@@ -498,7 +482,7 @@ impl Data {
     ///
     ///  rp: added argument clip, which contains the text-window we're writing in
     ///  (formerly known as "TextBorder")
-    pub unsafe fn is_linebreak_needed(&self, textpos: &[u8], clip: &Rect) -> bool {
+    pub unsafe fn is_linebreak_needed(&self, textpos: &[u8], clip: &SDL_Rect) -> bool {
         // only relevant if we're at the beginning of a word
         let textpos = match textpos.split_first() {
             Some((&c, _)) if c != b' ' => return false,
@@ -641,7 +625,7 @@ impl Data {
             let mut prev_tick = SDL_GetTicks();
             SDL_UpperBlit(background, null_mut(), self.graphics.ne_screen, null_mut());
             if self.display_text(text, rect.x.into(), insert_line as c_int, rect) == 0 {
-                ret = 0; /* Text has been scrolled outside Rect */
+                ret = 0; /* Text has been scrolled outside SDL_Rect */
                 break;
             }
             SDL_Flip(self.graphics.ne_screen);

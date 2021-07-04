@@ -1,19 +1,13 @@
 use crate::{
-    graphics::{putpixel, scale_pic, IMG_Load},
+    graphics::{putpixel, scale_pic},
     sdl_must_lock, Data,
 };
 
 use core::fmt;
 use log::warn;
-use sdl::{
-    sdl::Rect,
-    video::{
-        ll::{
-            SDL_LockSurface, SDL_MapRGB, SDL_Rect, SDL_SetColorKey, SDL_Surface, SDL_UnlockSurface,
-            SDL_UpperBlit,
-        },
-        SurfaceFlag,
-    },
+use sdl_sys::{
+    IMG_Load, SDL_LockSurface, SDL_MapRGB, SDL_Rect, SDL_SetColorKey, SDL_Surface,
+    SDL_UnlockSurface, SDL_UpperBlit, SDL_SRCCOLORKEY,
 };
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
@@ -71,7 +65,7 @@ pub unsafe fn put_char_font(
     y: c_int,
     c: u8,
 ) -> c_int {
-    let mut dest = Rect::new(
+    let mut dest = rect!(
         x.try_into().unwrap(),
         y.try_into().unwrap(),
         char_width(font, b' ').try_into().unwrap(),
@@ -153,10 +147,7 @@ impl Data {
         }
 
         (*font).surface = surface;
-        (*font)
-            .chars
-            .iter_mut()
-            .for_each(|rect| *rect = Rect::new(0, 0, 0, 0));
+        (*font).chars.iter_mut().for_each(|rect| *rect = rect!());
         /* Init the font */
         init_font(&mut *font);
         /* Set the font as the current font */
@@ -207,7 +198,7 @@ pub unsafe fn init_font(font: &mut BFontInfo) {
 
     SDL_SetColorKey(
         surface,
-        SurfaceFlag::SrcColorKey as u32,
+        SDL_SRCCOLORKEY as u32,
         get_pixel(surface, 0, surface.h - 1),
     );
 }

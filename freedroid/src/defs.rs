@@ -5,12 +5,14 @@ use crate::{structs::Point, Data};
 use bitflags::bitflags;
 use cstr::cstr;
 #[cfg(feature = "gcw0")]
-use sdl::keysym::{SDLK_BACKSPACE, SDLK_LALT, SDLK_LCTRL, SDLK_LSHIFT, SDLK_RETURN, SDLK_TAB};
-use sdl::{
-    event::Mod,
-    keysym::{SDLK_ESCAPE, SDLK_RETURN, SDLK_SPACE},
-    sdl::Rect,
-    video::ll::{SDL_FreeSurface, SDL_Surface},
+use sdl::keysym::{
+    SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_LALT, SDLKey_SDLK_LCTRL, SDLKey_SDLK_LSHIFT,
+    SDLKey_SDLK_RETURN, SDLKey_SDLK_TAB,
+};
+use sdl_sys::{
+    SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LAST, SDLKey_SDLK_RETURN, SDLKey_SDLK_SPACE, SDLMod_KMOD_LALT,
+    SDLMod_KMOD_LCTRL, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_RALT, SDLMod_KMOD_RCTRL, SDLMod_KMOD_RSHIFT,
+    SDL_FreeSurface, SDL_Rect, SDL_Surface,
 };
 use std::{convert::TryFrom, ffi::CStr, fmt, os::raw::c_int};
 
@@ -26,9 +28,9 @@ pub const NUM_DECAL_PICS: usize = 2;
 
 impl Data {
     #[inline]
-    pub fn get_user_center(&self) -> Rect {
-        let Rect { x, y, w, h } = self.vars.user_rect;
-        Rect {
+    pub fn get_user_center(&self) -> SDL_Rect {
+        let SDL_Rect { x, y, w, h } = self.vars.user_rect;
+        SDL_Rect {
             x: x + (w / 2) as i16,
             y: y + (h / 2) as i16,
             w,
@@ -38,7 +40,7 @@ impl Data {
 }
 
 #[inline]
-pub fn scale_rect(rect: &mut Rect, scale: f32) {
+pub fn scale_rect(rect: &mut SDL_Rect, scale: f32) {
     rect.x = (f32::from(rect.x) * scale) as i16;
     rect.y = (f32::from(rect.y) * scale) as i16;
     rect.w = (f32::from(rect.w) * scale) as u16;
@@ -71,7 +73,7 @@ pub unsafe fn free_if_unused(surface: *mut SDL_Surface) {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[allow(dead_code)]
 pub enum PointerStates {
-    MouseUp = sdl::event::Key::Last as isize + 1,
+    MouseUp = SDLKey_SDLK_LAST as isize + 1,
     MouseRight,
     MouseDown,
     MouseLeft,
@@ -118,22 +120,22 @@ pub enum Cmds {
 impl Data {
     #[inline]
     pub unsafe fn return_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(SDLK_RETURN as i32)
+        self.key_is_pressed_r(SDLKey_SDLK_RETURN as i32)
     }
 
     #[inline]
     pub unsafe fn shift_pressed(&mut self) -> bool {
-        self.mod_is_pressed(Mod::LShift as u32 | Mod::RShift as u32)
+        self.mod_is_pressed(SDLMod_KMOD_LSHIFT as u32 | SDLMod_KMOD_RSHIFT as u32)
     }
 
     #[inline]
     pub unsafe fn alt_pressed(&mut self) -> bool {
-        self.mod_is_pressed(Mod::LAlt as u32 | Mod::RAlt as u32)
+        self.mod_is_pressed(SDLMod_KMOD_LALT as u32 | SDLMod_KMOD_RALT as u32)
     }
 
     #[inline]
     pub unsafe fn ctrl_pressed(&mut self) -> bool {
-        self.mod_is_pressed(Mod::LCtrl as u32 | Mod::RCtrl as u32)
+        self.mod_is_pressed(SDLMod_KMOD_LCTRL as u32 | SDLMod_KMOD_RCTRL as u32)
     }
 
     #[inline]
@@ -148,61 +150,61 @@ impl Data {
 
     #[inline]
     pub unsafe fn space_pressed(&mut self) -> bool {
-        self.key_is_pressed(SDLK_SPACE as c_int)
+        self.key_is_pressed(SDLKey_SDLK_SPACE as c_int)
     }
 
     #[inline]
     pub unsafe fn escape_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(SDLK_ESCAPE as c_int)
+        self.key_is_pressed_r(SDLKey_SDLK_ESCAPE as c_int)
     }
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
 pub unsafe fn gcw0_a_pressed() -> bool {
-    KeyIsPressed(SDLK_LCTRL as c_int)
+    KeyIsPressed(SDLKey_SDLK_LCTRL as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
 pub unsafe fn gcw0_b_pressed() -> bool {
-    KeyIsPressed(SDLK_LALT as c_int)
+    KeyIsPressed(SDLKey_SDLK_LALT as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
 pub unsafe fn gcw0_x_pressed() -> bool {
-    KeyIsPressed(SDLK_LSHIFT as c_int)
+    KeyIsPressed(SDLKey_SDLK_LSHIFT as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
 pub unsafe fn gcw0_y_pressed() -> bool {
-    KeyIsPressed(SDLK_SPACE as c_int)
+    KeyIsPressed(SDLKey_SDLK_SPACE as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
 pub unsafe fn gcw0_rs_pressed() -> bool {
-    KeyIsPressed(SDLK_BACKSPACE as c_int)
+    KeyIsPressed(SDLKey_SDLK_BACKSPACE as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
 pub unsafe fn gcw0_ls_pressed() -> bool {
-    KeyIsPressed(SDLK_TAB as c_int)
+    KeyIsPressed(SDLKey_SDLK_TAB as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
 pub unsafe fn gcw0_start_pressed() -> bool {
-    KeyIsPressed(SDLK_RETURN as c_int)
+    KeyIsPressed(SDLKey_SDLK_RETURN as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
 pub unsafe fn gcw0_select_pressed() -> bool {
-    KeyIsPressed(SDLK_ESCAPE as c_int)
+    KeyIsPressed(SDLKey_SDLK_ESCAPE as c_int)
 }
 
 #[cfg(feature = "gcw0")]
@@ -221,49 +223,49 @@ pub unsafe fn gcw0_any_button_pressed() -> bool {
 #[cfg(feature = "gcw0")]
 #[inline]
 pub unsafe fn gcw0_a_pressed_r() -> bool {
-    KeyIsPressedR(SDLK_LCTRL as c_int)
+    KeyIsPressedR(SDLKey_SDLK_LCTRL as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
 pub unsafe fn gcw0_b_pressed_r() -> bool {
-    KeyIsPressedR(SDLK_LALT as c_int)
+    KeyIsPressedR(SDLKey_SDLK_LALT as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
 pub unsafe fn gcw0_x_pressed_r() -> bool {
-    KeyIsPressedR(SDLK_LSHIFT as c_int)
+    KeyIsPressedR(SDLKey_SDLK_LSHIFT as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
 pub unsafe fn gcw0_y_pressed_r() -> bool {
-    KeyIsPressedR(SDLK_SPACE as c_int)
+    KeyIsPressedR(SDLKey_SDLK_SPACE as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
 pub unsafe fn gcw0_rs_pressed_r() -> bool {
-    KeyIsPressed(SDLK_BACKSPACE as c_int)
+    KeyIsPressed(SDLKey_SDLK_BACKSPACE as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
 pub unsafe fn gcw0_ls_pressed_r() -> bool {
-    KeyIsPressed(SDLK_TAB as c_int)
+    KeyIsPressed(SDLKey_SDLK_TAB as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
 pub unsafe fn gcw0_start_pressed_r() -> bool {
-    KeyIsPressed(SDLK_RETURN as c_int)
+    KeyIsPressed(SDLKey_SDLK_RETURN as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
 pub unsafe fn gcw0_select_pressed_r() -> bool {
-    KeyIsPressed(SDLK_ESCAPE as c_int)
+    KeyIsPressed(SDLKey_SDLK_ESCAPE as c_int)
 }
 
 #[cfg(feature = "gcw0")]

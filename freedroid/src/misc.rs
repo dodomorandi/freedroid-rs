@@ -6,19 +6,15 @@ use crate::{
         GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE_C, PROGRESS_METER_FILE_C,
     },
     graphics::scale_pic,
-    input::{SDL_Delay, CMD_STRINGS},
+    input::CMD_STRINGS,
     Data, Global,
 };
 
 use cstr::cstr;
 use defs::MAXBULLETS;
 use log::{error, info, warn};
-use sdl::{
-    sdl::{
-        ll::{SDL_GetTicks, SDL_Quit},
-        Rect,
-    },
-    video::ll::{SDL_Flip, SDL_SetClipRect, SDL_UpdateRects, SDL_UpperBlit},
+use sdl_sys::{
+    SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Quit, SDL_SetClipRect, SDL_UpdateRects, SDL_UpperBlit,
 };
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
@@ -61,7 +57,7 @@ impl Default for Misc {
 impl Data {
     pub unsafe fn update_progress(&self, percent: c_int) {
         let h = (f64::from(self.vars.progress_bar_rect.h) * f64::from(percent) / 100.) as u16;
-        let mut dst = Rect::new(
+        let mut dst = rect!(
             self.vars.progress_bar_rect.x + self.vars.progress_meter_rect.x,
             self.vars.progress_bar_rect.y
                 + self.vars.progress_meter_rect.y
@@ -71,7 +67,7 @@ impl Data {
             h,
         );
 
-        let mut src = Rect::new(
+        let mut src = rect!(
             0,
             self.vars.progress_bar_rect.h as i16 - dst.h as i16,
             dst.h,

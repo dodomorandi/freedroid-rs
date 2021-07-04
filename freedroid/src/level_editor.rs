@@ -4,7 +4,6 @@ use crate::{
         AssembleCombatWindowFlags, Cmds, MapTile, MAXWAYPOINTS, MAX_WP_CONNECTIONS, NUM_MAP_BLOCKS,
     },
     graphics::putpixel,
-    input::SDL_Delay,
     structs::{Level, Waypoint},
     view::BLACK,
     Data,
@@ -12,13 +11,10 @@ use crate::{
 
 use cstr::cstr;
 use log::{info, warn};
-use sdl::{
-    event::ll::SDLK_F1,
-    event::ll::{
-        SDLK_KP0, SDLK_KP1, SDLK_KP2, SDLK_KP3, SDLK_KP4, SDLK_KP5, SDLK_KP6, SDLK_KP7, SDLK_KP8,
-        SDLK_KP9, SDLK_KP_PLUS,
-    },
-    video::ll::{SDL_Flip, SDL_LockSurface, SDL_UnlockSurface},
+use sdl_sys::{
+    SDLKey_SDLK_F1, SDLKey_SDLK_KP0, SDLKey_SDLK_KP1, SDLKey_SDLK_KP2, SDLKey_SDLK_KP3,
+    SDLKey_SDLK_KP4, SDLKey_SDLK_KP5, SDLKey_SDLK_KP6, SDLKey_SDLK_KP7, SDLKey_SDLK_KP8,
+    SDLKey_SDLK_KP9, SDLKey_SDLK_KP_PLUS, SDL_Delay, SDL_Flip, SDL_LockSurface, SDL_UnlockSurface,
 };
 use std::{
     cmp::Ordering,
@@ -116,7 +112,7 @@ impl Data {
                 self.vars.me.pos.y += 1.;
             }
 
-            if self.key_is_pressed_r(SDLK_F1.try_into().unwrap()) {
+            if self.key_is_pressed_r(SDLKey_SDLK_F1.try_into().unwrap()) {
                 let mut k = 3;
                 self.make_grid_on_screen(None);
                 self.centered_put_string(
@@ -340,57 +336,57 @@ impl Data {
             if self.key_is_pressed_r(b'l'.into()) {
                 *map_tile = MapTile::Lift as i8;
             }
-            if self.key_is_pressed_r(SDLK_KP_PLUS as c_int) {
+            if self.key_is_pressed_r(SDLKey_SDLK_KP_PLUS as c_int) {
                 *map_tile = MapTile::VWall as i8;
             }
-            if self.key_is_pressed_r(SDLK_KP0 as c_int) {
+            if self.key_is_pressed_r(SDLKey_SDLK_KP0 as c_int) {
                 *map_tile = MapTile::HWall as i8;
             }
-            if self.key_is_pressed_r(SDLK_KP1 as c_int) {
+            if self.key_is_pressed_r(SDLKey_SDLK_KP1 as c_int) {
                 *map_tile = MapTile::EckLu as i8;
             }
-            if self.key_is_pressed_r(SDLK_KP2 as c_int) {
+            if self.key_is_pressed_r(SDLKey_SDLK_KP2 as c_int) {
                 if !self.shift_pressed() {
                     *map_tile = MapTile::Tu as i8;
                 } else {
                     *map_tile = MapTile::KonsoleU as i8;
                 }
             }
-            if self.key_is_pressed_r(SDLK_KP3 as c_int) {
+            if self.key_is_pressed_r(SDLKey_SDLK_KP3 as c_int) {
                 *map_tile = MapTile::EckRu as i8;
             }
-            if self.key_is_pressed_r(SDLK_KP4 as c_int) {
+            if self.key_is_pressed_r(SDLKey_SDLK_KP4 as c_int) {
                 if !self.shift_pressed() {
                     *map_tile = MapTile::Tl as i8;
                 } else {
                     *map_tile = MapTile::KonsoleL as i8;
                 }
             }
-            if self.key_is_pressed_r(SDLK_KP5 as c_int) {
+            if self.key_is_pressed_r(SDLKey_SDLK_KP5 as c_int) {
                 if !self.shift_pressed() {
                     *map_tile = MapTile::Kreuz as i8;
                 } else {
                     *map_tile = MapTile::Void as i8;
                 }
             }
-            if self.key_is_pressed_r(SDLK_KP6 as c_int) {
+            if self.key_is_pressed_r(SDLKey_SDLK_KP6 as c_int) {
                 if !self.shift_pressed() {
                     *map_tile = MapTile::Tr as i8;
                 } else {
                     *map_tile = MapTile::KonsoleR as i8;
                 }
             }
-            if self.key_is_pressed_r(SDLK_KP7 as c_int) {
+            if self.key_is_pressed_r(SDLKey_SDLK_KP7 as c_int) {
                 *map_tile = MapTile::EckLo as i8;
             }
-            if self.key_is_pressed_r(SDLK_KP8 as c_int) {
+            if self.key_is_pressed_r(SDLKey_SDLK_KP8 as c_int) {
                 if !self.shift_pressed() {
                     *map_tile = MapTile::To as i8;
                 } else {
                     *map_tile = MapTile::KonsoleO as i8;
                 }
             }
-            if self.key_is_pressed_r(SDLK_KP9 as c_int) {
+            if self.key_is_pressed_r(SDLKey_SDLK_KP9 as c_int) {
                 *map_tile = MapTile::EckRo as i8;
             }
             if self.key_is_pressed_r(b'm'.into()) {

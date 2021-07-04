@@ -12,20 +12,18 @@ use crate::{
         MAX_MAP_ROWS,
     },
     global::INFLUENCE_MODE_NAMES,
-    input::{SDL_Delay, CMD_STRINGS},
+    input::CMD_STRINGS,
     map::COLOR_NAMES,
     misc::dealloc_c_string,
     Data,
 };
 
 use cstr::cstr;
-use sdl::{
-    keysym::{SDLK_BACKSPACE, SDLK_DOWN, SDLK_ESCAPE, SDLK_LEFT, SDLK_RIGHT, SDLK_UP},
-    mouse::ll::{SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE},
-    sdl::ll::SDL_GetTicks,
-    video::ll::{
-        SDL_DisplayFormat, SDL_Flip, SDL_FreeSurface, SDL_SetClipRect, SDL_Surface, SDL_UpperBlit,
-    },
+use sdl_sys::{
+    SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT,
+    SDLKey_SDLK_RIGHT, SDLKey_SDLK_UP, SDL_Delay, SDL_DisplayFormat, SDL_Flip, SDL_FreeSurface,
+    SDL_GetTicks, SDL_SetClipRect, SDL_ShowCursor, SDL_Surface, SDL_UpperBlit, SDL_DISABLE,
+    SDL_ENABLE,
 };
 use std::{
     alloc::{alloc_zeroed, dealloc, realloc, Layout},
@@ -861,12 +859,12 @@ impl Data {
         let mut action = MenuAction::empty();
 
         // 'normal' menu action keys get released
-        if self.key_is_pressed_r(SDLK_BACKSPACE as c_int) {
+        if self.key_is_pressed_r(SDLKey_SDLK_BACKSPACE as c_int) {
             {
                 action = MenuAction::DELETE;
             }
         }
-        if self.cmd_is_active_r(Cmds::Back) || self.key_is_pressed_r(SDLK_ESCAPE as c_int) {
+        if self.cmd_is_active_r(Cmds::Back) || self.key_is_pressed_r(SDLKey_SDLK_ESCAPE as c_int) {
             {
                 action = MenuAction::BACK;
             }
@@ -880,44 +878,44 @@ impl Data {
 
         // we register if there have been key-press events in the "waiting period" between move-ticks
         if !self.menu.menu_action_directions.up
-            && (self.up_pressed() || self.key_is_pressed(SDLK_UP as c_int))
+            && (self.up_pressed() || self.key_is_pressed(SDLKey_SDLK_UP as c_int))
         {
             self.menu.menu_action_directions.up = true;
             self.menu.last_movekey_time = SDL_GetTicks();
             action |= MenuAction::UP;
         }
         if !self.menu.menu_action_directions.down
-            && (self.down_pressed() || self.key_is_pressed(SDLK_DOWN as c_int))
+            && (self.down_pressed() || self.key_is_pressed(SDLKey_SDLK_DOWN as c_int))
         {
             self.menu.menu_action_directions.down = true;
             self.menu.last_movekey_time = SDL_GetTicks();
             action |= MenuAction::DOWN;
         }
         if !self.menu.menu_action_directions.left
-            && (self.left_pressed() || self.key_is_pressed(SDLK_LEFT as c_int))
+            && (self.left_pressed() || self.key_is_pressed(SDLKey_SDLK_LEFT as c_int))
         {
             self.menu.menu_action_directions.left = true;
             self.menu.last_movekey_time = SDL_GetTicks();
             action |= MenuAction::LEFT;
         }
         if !self.menu.menu_action_directions.right
-            && (self.right_pressed() || self.key_is_pressed(SDLK_RIGHT as c_int))
+            && (self.right_pressed() || self.key_is_pressed(SDLKey_SDLK_RIGHT as c_int))
         {
             self.menu.menu_action_directions.right = true;
             self.menu.last_movekey_time = SDL_GetTicks();
             action |= MenuAction::RIGHT;
         }
 
-        if !(self.up_pressed() || self.key_is_pressed(SDLK_UP as c_int)) {
+        if !(self.up_pressed() || self.key_is_pressed(SDLKey_SDLK_UP as c_int)) {
             self.menu.menu_action_directions.up = false;
         }
-        if !(self.down_pressed() || self.key_is_pressed(SDLK_DOWN as c_int)) {
+        if !(self.down_pressed() || self.key_is_pressed(SDLKey_SDLK_DOWN as c_int)) {
             self.menu.menu_action_directions.down = false;
         }
-        if !(self.left_pressed() || self.key_is_pressed(SDLK_LEFT as c_int)) {
+        if !(self.left_pressed() || self.key_is_pressed(SDLKey_SDLK_LEFT as c_int)) {
             self.menu.menu_action_directions.left = false;
         }
-        if !(self.right_pressed() || self.key_is_pressed(SDLK_RIGHT as c_int)) {
+        if !(self.right_pressed() || self.key_is_pressed(SDLKey_SDLK_RIGHT as c_int)) {
             self.menu.menu_action_directions.right = false;
         }
 

@@ -8,7 +8,7 @@ use crate::{
 };
 
 use log::info;
-use sdl::video::ll::SDL_FreeSurface;
+use sdl_sys::SDL_FreeSurface;
 use std::{
     convert::{TryFrom, TryInto},
     os::raw::{c_float, c_int},

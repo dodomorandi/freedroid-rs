@@ -9,24 +9,14 @@ use crate::{
 };
 
 use cstr::cstr;
-use sdl::{
-    mouse::ll::{SDL_ShowCursor, SDL_DISABLE},
-    sdl::ll::SDL_GetTicks,
-    video::ll::{SDL_Color, SDL_Flip, SDL_SetClipRect, SDL_Surface, SDL_UpperBlit},
-    Rect,
-};
+use sdl_sys::{SDL_Color, SDL_DISABLE, SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Rect, SDL_SetClipRect, SDL_ShowCursor, SDL_Surface, SDL_UpperBlit};
 use std::{
     convert::{Infallible, TryFrom, TryInto},
     ffi::CStr,
-    fmt,
     ops::{Deref, DerefMut},
     os::raw::{c_char, c_int},
     ptr::null_mut,
 };
-
-extern "C" {
-    pub fn SDL_Delay(ms: u32);
-}
 
 #[derive(Debug)]
 struct Map<T>([map::Line<T>; COLORS]);
@@ -216,6 +206,7 @@ type Playground = Map<Block>;
 type ActivationMap = Map<Condition>;
 type CapsulesCountdown = Map<Option<u8>>;
 
+#[derive(Debug)]
 pub struct Takeover {
     capsule_cur_row: [c_int; COLORS],
     num_capsules: [c_int; COLORS],
@@ -228,25 +219,25 @@ pub struct Takeover {
     opponent_color: Color,
     droid_num: c_int,
     opponent_type: c_int,
-    pub to_game_blocks: [Rect; NUM_TO_BLOCKS],
-    pub to_ground_blocks: [Rect; NUM_GROUND_BLOCKS],
-    pub column_block: Rect,
-    pub leader_block: Rect,
+    pub to_game_blocks: [SDL_Rect; NUM_TO_BLOCKS],
+    pub to_ground_blocks: [SDL_Rect; NUM_GROUND_BLOCKS],
+    pub column_block: SDL_Rect,
+    pub leader_block: SDL_Rect,
     pub left_ground_start: Point,
     pub right_ground_start: Point,
     pub column_start: Point,
     pub leader_block_start: Point,
-    pub leader_led: Rect,
-    pub fill_block: Rect,
-    pub element_rect: Rect,
-    pub capsule_rect: Rect,
-    pub ground_rect: Rect,
-    pub column_rect: Rect,
+    pub leader_led: SDL_Rect,
+    pub fill_block: SDL_Rect,
+    pub element_rect: SDL_Rect,
+    pub capsule_rect: SDL_Rect,
+    pub ground_rect: SDL_Rect,
+    pub column_rect: SDL_Rect,
     // the global surface containing all game-blocks
     pub to_blocks: *mut SDL_Surface,
     // the rectangles containing the blocks
-    pub fill_blocks: [Rect; NUM_FILL_BLOCKS],
-    pub capsule_blocks: [Rect; NUM_CAPS_BLOCKS],
+    pub fill_blocks: [SDL_Rect; NUM_FILL_BLOCKS],
+    pub capsule_blocks: [SDL_Rect; NUM_CAPS_BLOCKS],
     pub left_capsule_starts: [Point; COLORS],
     pub cur_capsule_starts: [Point; COLORS],
     pub playground_starts: [Point; COLORS],
@@ -375,80 +366,6 @@ impl Default for Takeover {
             flicker_color: 0,
             reject_energy: 0,
         }
-    }
-}
-
-impl fmt::Debug for Takeover {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[derive(Debug)]
-        struct Rect {
-            x: i16,
-            y: i16,
-            w: u16,
-            h: u16,
-        }
-
-        impl From<&::sdl::Rect> for Rect {
-            fn from(rect: &::sdl::Rect) -> Rect {
-                Rect {
-                    x: rect.x,
-                    y: rect.y,
-                    w: rect.w,
-                    h: rect.h,
-                }
-            }
-        }
-
-        let to_game_blocks = self.to_game_blocks.each_ref().map(Rect::from);
-        let to_ground_blocks = self.to_ground_blocks.each_ref().map(Rect::from);
-        let column_block = Rect::from(&self.column_block);
-        let leader_block = Rect::from(&self.leader_block);
-        let leader_led = Rect::from(&self.leader_led);
-        let fill_block = Rect::from(&self.fill_block);
-        let element_rect = Rect::from(&self.element_rect);
-        let capsule_rect = Rect::from(&self.capsule_rect);
-        let ground_rect = Rect::from(&self.ground_rect);
-        let column_rect = Rect::from(&self.column_rect);
-        let fill_blocks = self.fill_blocks.each_ref().map(Rect::from);
-        let capsule_blocks = self.capsule_blocks.each_ref().map(Rect::from);
-
-        f.debug_struct("Takeover")
-            .field("capsule_cur_row", &self.capsule_cur_row)
-            .field("num_capsules", &self.num_capsules)
-            .field("playground", &self.playground)
-            .field("activation_map", &self.activation_map)
-            .field("capsules_countdown", &self.capsules_countdown)
-            .field("display_column", &self.display_column)
-            .field("leader_color", &self.leader_color)
-            .field("your_color", &self.your_color)
-            .field("opponent_color", &self.opponent_color)
-            .field("droid_num", &self.droid_num)
-            .field("opponent_type", &self.opponent_type)
-            .field("to_game_blocks", &to_game_blocks)
-            .field("to_ground_blocks", &to_ground_blocks)
-            .field("column_block", &column_block)
-            .field("leader_block", &leader_block)
-            .field("left_ground_start", &self.left_ground_start)
-            .field("right_ground_start", &self.right_ground_start)
-            .field("column_start", &self.column_start)
-            .field("leader_block_start", &self.leader_block_start)
-            .field("leader_led", &leader_led)
-            .field("fill_block", &fill_block)
-            .field("element_rect", &element_rect)
-            .field("capsule_rect", &capsule_rect)
-            .field("ground_rect", &ground_rect)
-            .field("column_rect", &column_rect)
-            .field("to_blocks", &self.to_blocks)
-            .field("fill_blocks", &fill_blocks)
-            .field("capsule_blocks", &capsule_blocks)
-            .field("left_capsule_starts", &self.left_capsule_starts)
-            .field("cur_capsule_starts", &self.cur_capsule_starts)
-            .field("playground_starts", &self.playground_starts)
-            .field("droid_starts", &self.droid_starts)
-            .field("direction", &self.direction)
-            .field("flicker_color", &self.flicker_color)
-            .field("reject_energy", &self.reject_energy)
-            .finish()
     }
 }
 
@@ -688,7 +605,7 @@ impl Data {
         fill_blocks
             .iter_mut()
             .zip((0..).step_by(usize::from(fill_block.w) + 2))
-            .for_each(|(rect, cur_x)| *rect = Rect::new(cur_x, 0, fill_block.w, fill_block.h));
+            .for_each(|(rect, cur_x)| *rect = rect!(cur_x, 0, fill_block.w, fill_block.h));
 
         /* Set the capsule Blocks */
         let start_x = i16::try_from(self.takeover.fill_blocks.len()).unwrap()
@@ -696,9 +613,7 @@ impl Data {
         capsule_blocks
             .iter_mut()
             .zip((start_x..).step_by(usize::try_from(capsule_rect.w).unwrap() + 2))
-            .for_each(|(rect, cur_x)| {
-                *rect = Rect::new(cur_x, 0, capsule_rect.w, capsule_rect.h - 2)
-            });
+            .for_each(|(rect, cur_x)| *rect = rect!(cur_x, 0, capsule_rect.w, capsule_rect.h - 2));
 
         /* get the game-blocks */
         let Self {
@@ -726,7 +641,7 @@ impl Data {
                     }),
             )
             .for_each(|(rect, (cur_x, cur_y))| {
-                *rect = Rect::new(
+                *rect = rect!(
                     cur_x,
                     cur_y.try_into().unwrap(),
                     element_rect.w,
@@ -741,7 +656,7 @@ impl Data {
             .iter_mut()
             .zip((0..).step_by(usize::try_from(ground_rect.w).unwrap() + 2))
             .for_each(|(rect, cur_x)| {
-                *rect = Rect::new(
+                *rect = rect!(
                     cur_x,
                     cur_y.try_into().unwrap(),
                     ground_rect.w,
@@ -749,13 +664,13 @@ impl Data {
                 )
             });
         cur_y += self.takeover.ground_rect.h + 2;
-        self.takeover.column_block = Rect::new(
+        self.takeover.column_block = rect!(
             0,
             cur_y.try_into().unwrap(),
             self.takeover.column_rect.w,
             self.takeover.column_rect.h,
         );
-        self.takeover.leader_block = Rect::new(
+        self.takeover.leader_block = rect!(
             i16::try_from(self.takeover.column_rect.w).unwrap() + 2,
             cur_y.try_into().unwrap(),
             self.takeover.leader_led.w * 2 - 4,
@@ -1259,7 +1174,7 @@ impl Data {
             );
         }
 
-        let mut dst = Rect::new(
+        let mut dst = rect!(
             xoffs + i16::try_from(self.takeover.left_ground_start.x).unwrap(),
             yoffs + i16::try_from(self.takeover.left_ground_start.y).unwrap(),
             self.vars.user_rect.w,
@@ -1293,7 +1208,7 @@ impl Data {
             &mut dst,
         );
 
-        dst = Rect::new(
+        dst = rect!(
             xoffs + i16::try_from(self.takeover.leader_block_start.x).unwrap(),
             yoffs + i16::try_from(self.takeover.leader_block_start.y).unwrap(),
             0,
@@ -1318,7 +1233,7 @@ impl Data {
         }
 
         /* rechte Saeule */
-        dst = Rect::new(
+        dst = rect!(
             xoffs + i16::try_from(self.takeover.right_ground_start.x).unwrap(),
             yoffs + i16::try_from(self.takeover.right_ground_start.y).unwrap(),
             0,
@@ -1352,7 +1267,7 @@ impl Data {
 
         /* Fill the Leader-LED with its color */
         let leader_color = usize::try_from(self.takeover.leader_color).unwrap();
-        dst = Rect::new(
+        dst = rect!(
             xoffs + self.takeover.leader_led.x,
             yoffs + self.takeover.leader_led.y,
             0,
@@ -1402,7 +1317,7 @@ impl Data {
             .copied()
             .enumerate()
             .for_each(|(line, display_column)| {
-                dst = Rect::new(
+                dst = rect!(
                     xoffs + i16::try_from(column_start.x).unwrap(),
                     yoffs
                         + i16::try_from(column_start.y).unwrap()
@@ -1446,7 +1361,7 @@ impl Data {
             })
             .for_each(
                 |(layer_index, line_index, playground_line, activation_line)| {
-                    dst = Rect::new(
+                    dst = rect!(
                         xoffs
                             + i16::try_from(playground_starts[Color::Yellow as usize].x).unwrap()
                             + layer_index * i16::try_from(element_rect.w).unwrap(),
@@ -1490,7 +1405,7 @@ impl Data {
             })
             .for_each(
                 |(layer_index, line_index, playground_line, activation_line)| {
-                    dst = Rect::new(
+                    dst = rect!(
                         xoffs
                             + i16::try_from(playground_starts[Color::Violet as usize].x).unwrap()
                             + (i16::try_from(NUM_LAYERS).unwrap() - layer_index - 2)
@@ -1518,7 +1433,7 @@ impl Data {
                     opponent_color
                 };
 
-                dst = Rect::new(
+                dst = rect!(
                     xoffs + i16::try_from(cur_capsule_starts[color].x).unwrap(),
                     yoffs
                         + i16::try_from(cur_capsule_starts[color].y).unwrap()
@@ -1532,7 +1447,7 @@ impl Data {
                 }
 
                 for capsule in 0..capsules.saturating_sub(1) {
-                    dst = Rect::new(
+                    dst = rect!(
                         xoffs + i16::try_from(left_capsule_starts[color].x).unwrap(),
                         yoffs
                             + i16::try_from(left_capsule_starts[color].y).unwrap()

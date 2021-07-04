@@ -9,41 +9,28 @@ use crate::{
 use cstr::cstr;
 use log::info;
 #[cfg(feature = "gcw0")]
-use sdl::event::ll::{SDLK_BACKSPACE, SDLK_LALT, SDLK_LCTRL, SDLK_TAB};
-#[cfg(not(feature = "gcw0"))]
-use sdl::event::ll::{SDLK_F12, SDLK_PAUSE, SDLK_RSHIFT};
-use sdl::{
-    event::{
-        ll::{
-            SDLMod, SDL_Event, SDL_PollEvent, SDLK_DOWN, SDLK_ESCAPE, SDLK_LEFT, SDLK_RETURN,
-            SDLK_RIGHT, SDLK_SPACE, SDLK_UP, SDL_ENABLE, SDL_JOYAXISMOTION, SDL_JOYBUTTONDOWN,
-            SDL_JOYBUTTONUP, SDL_KEYDOWN, SDL_KEYUP, SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONUP,
-            SDL_MOUSEMOTION, SDL_QUIT,
-        },
-        MouseState,
-    },
-    joy::{
-        get_joystick_name,
-        ll::{
-            SDL_Joystick, SDL_JoystickEventState, SDL_JoystickNumAxes, SDL_JoystickNumButtons,
-            SDL_JoystickOpen, SDL_NumJoysticks,
-        },
-    },
-    ll::{SDL_GetTicks, SDL_InitSubSystem, SDL_INIT_JOYSTICK},
+use sdl_sys::{SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_LALT, SDLKey_SDLK_LCTRL, SDLKey_SDLK_TAB};
+use sdl_sys::{
+    SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT, SDLKey_SDLK_RETURN, SDLKey_SDLK_RIGHT,
+    SDLKey_SDLK_SPACE, SDLKey_SDLK_UP, SDLMod, SDL_Delay, SDL_Event, SDL_GetError, SDL_GetTicks,
+    SDL_InitSubSystem, SDL_Joystick, SDL_JoystickEventState, SDL_JoystickName, SDL_JoystickNumAxes,
+    SDL_JoystickNumButtons, SDL_JoystickOpen, SDL_NumJoysticks, SDL_PollEvent, SDL_BUTTON_LEFT,
+    SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP, SDL_ENABLE,
+    SDL_INIT_JOYSTICK,
 };
+#[cfg(not(feature = "gcw0"))]
+use sdl_sys::{SDLKey_SDLK_F12, SDLKey_SDLK_PAUSE, SDLKey_SDLK_RSHIFT};
 use std::{
-    convert::{identity, TryFrom},
+    convert::TryFrom,
+    ffi::CStr,
     fmt,
-    os::raw::{c_char, c_int, c_uchar},
+    ops::Not,
+    os::raw::{c_char, c_int},
     ptr::{null, null_mut},
 };
 
 #[cfg(target_os = "android")]
-use sdl::video::ll::SDL_Flip;
-
-extern "C" {
-    pub fn SDL_Delay(ms: u32);
-}
+use sdl_sys::SDL_Flip;
 
 pub struct Input {
     pub show_cursor: bool,
@@ -67,16 +54,6 @@ pub struct Input {
 
 impl fmt::Debug for Input {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[derive(Debug)]
-        #[allow(non_camel_case_types)]
-        struct SDL_Event<'a> {
-            data: &'a [c_uchar; 24],
-        }
-
-        let event = SDL_Event {
-            data: &self.event.data,
-        };
-
         f.debug_struct("Input")
             .field("show_cursor", &self.show_cursor)
             .field("wheel_up_events", &self.wheel_up_events)
@@ -84,7 +61,7 @@ impl fmt::Debug for Input {
             .field("last_mouse_event", &self.last_mouse_event)
             .field("current_modifiers", &self.current_modifiers)
             .field("input_state", &self.input_state)
-            .field("event", &event)
+            .field("event", &"[SDL_Event]")
             .field("joy_sensitivity", &self.joy_sensitivity)
             .field("input_axis", &self.input_axis)
             .field("joy", &self.joy)
@@ -100,20 +77,40 @@ impl Default for Input {
     fn default() -> Self {
         #[cfg(feature = "gcw0")]
         let key_cmds = [
-            [SDLK_UP as c_int, PointerStates::JoyUp as c_int, 0], // CMD_UP
-            [SDLK_DOWN as c_int, PointerStates::JoyDown as c_int, 0], // CMD_DOWN
-            [SDLK_LEFT as c_int, PointerStates::JoyLeft as c_int, 0], // CMD_LEFT
-            [SDLK_RIGHT as c_int, PointerStates::JoyRight as c_int, 0], // CMD_RIGHT
-            [SDLK_SPACE as c_int, SDLK_LCTRL as c_int, 0],        // CMD_FIRE
-            [SDLK_LALT as c_int, PointerStates::JoyButton2 as c_int, 0], // CMD_ACTIVATE
-            [SDLK_BACKSPACE as c_int, SDLK_TAB as c_int, 0],      // CMD_TAKEOVER
-            [0, 0, 0],                                            // CMD_QUIT,
-            [SDLK_RETURN as c_int, 0, 0],                         // CMD_PAUSE,
-            [0, 0, 0],                                            // CMD_SCREENSHOT
-            [0, 0, 0],                                            // CMD_FULLSCREEN,
-            [SDLK_ESCAPE as c_int, PointerStates::JoyButton4 as c_int, 0], // CMD_MENU,
+            [SDLKey_SDLK_UP as c_int, PointerStates::JoyUp as c_int, 0], // CMD_UP
             [
-                SDLK_ESCAPE as c_int,
+                SDLKey_SDLK_DOWN as c_int,
+                PointerStates::JoyDown as c_int,
+                0,
+            ], // CMD_DOWN
+            [
+                SDLKey_SDLK_LEFT as c_int,
+                PointerStates::JoyLeft as c_int,
+                0,
+            ], // CMD_LEFT
+            [
+                SDLKey_SDLK_RIGHT as c_int,
+                PointerStates::JoyRight as c_int,
+                0,
+            ], // CMD_RIGHT
+            [SDLKey_SDLK_SPACE as c_int, SDLKey_SDLK_LCTRL as c_int, 0], // CMD_FIRE
+            [
+                SDLKey_SDLK_LALT as c_int,
+                PointerStates::JoyButton2 as c_int,
+                0,
+            ], // CMD_ACTIVATE
+            [SDLKey_SDLK_BACKSPACE as c_int, SDLKey_SDLK_TAB as c_int, 0], // CMD_TAKEOVER
+            [0, 0, 0],                                                   // CMD_QUIT,
+            [SDLKey_SDLK_RETURN as c_int, 0, 0],                         // CMD_PAUSE,
+            [0, 0, 0],                                                   // CMD_SCREENSHOT
+            [0, 0, 0],                                                   // CMD_FULLSCREEN,
+            [
+                SDLKey_SDLK_ESCAPE as c_int,
+                PointerStates::JoyButton4 as c_int,
+                0,
+            ], // CMD_MENU,
+            [
+                SDLKey_SDLK_ESCAPE as c_int,
                 PointerStates::JoyButton2 as c_int,
                 PointerStates::MouseButton2 as c_int,
             ], // CMD_BACK
@@ -122,43 +119,51 @@ impl Default for Input {
         #[cfg(not(feature = "gcw0"))]
         let key_cmds = [
             [
-                SDLK_UP as c_int,
+                SDLKey_SDLK_UP as c_int,
                 PointerStates::JoyUp as c_int,
                 b'w' as c_int,
             ], // CMD_UP
             [
-                SDLK_DOWN as c_int,
+                SDLKey_SDLK_DOWN as c_int,
                 PointerStates::JoyDown as c_int,
                 b's' as c_int,
             ], // CMD_DOWN
             [
-                SDLK_LEFT as c_int,
+                SDLKey_SDLK_LEFT as c_int,
                 PointerStates::JoyLeft as c_int,
                 b'a' as c_int,
             ], // CMD_LEFT
             [
-                SDLK_RIGHT as c_int,
+                SDLKey_SDLK_RIGHT as c_int,
                 PointerStates::JoyRight as c_int,
                 b'd' as c_int,
             ], // CMD_RIGHT
             [
-                SDLK_SPACE as c_int,
+                SDLKey_SDLK_SPACE as c_int,
                 PointerStates::JoyButton1 as c_int,
                 PointerStates::MouseButton1 as c_int,
             ], // CMD_FIRE
-            [SDLK_RETURN as c_int, SDLK_RSHIFT as c_int, b'e' as c_int], // CMD_ACTIVATE
             [
-                SDLK_SPACE as c_int,
+                SDLKey_SDLK_RETURN as c_int,
+                SDLKey_SDLK_RSHIFT as c_int,
+                b'e' as c_int,
+            ], // CMD_ACTIVATE
+            [
+                SDLKey_SDLK_SPACE as c_int,
                 PointerStates::JoyButton2 as c_int,
                 PointerStates::MouseButton2 as c_int,
             ], // CMD_TAKEOVER
-            [b'q' as c_int, 0, 0],                                       // CMD_QUIT,
-            [SDLK_PAUSE as c_int, b'p' as c_int, 0],                     // CMD_PAUSE,
-            [SDLK_F12 as c_int, 0, 0],                                   // CMD_SCREENSHOT
-            [b'f' as c_int, 0, 0],                                       // CMD_FULLSCREEN,
-            [SDLK_ESCAPE as c_int, PointerStates::JoyButton4 as c_int, 0], // CMD_MENU,
+            [b'q' as c_int, 0, 0],                          // CMD_QUIT,
+            [SDLKey_SDLK_PAUSE as c_int, b'p' as c_int, 0], // CMD_PAUSE,
+            [SDLKey_SDLK_F12 as c_int, 0, 0],               // CMD_SCREENSHOT
+            [b'f' as c_int, 0, 0],                          // CMD_FULLSCREEN,
             [
-                SDLK_ESCAPE as c_int,
+                SDLKey_SDLK_ESCAPE as c_int,
+                PointerStates::JoyButton4 as c_int,
+                0,
+            ], // CMD_MENU,
+            [
+                SDLKey_SDLK_ESCAPE as c_int,
                 PointerStates::JoyButton2 as c_int,
                 PointerStates::MouseButton2 as c_int,
             ], // CMD_BACK
@@ -171,7 +176,7 @@ impl Default for Input {
             last_mouse_event: 0,
             current_modifiers: 0,
             input_state: [0; PointerStates::Last as usize],
-            event: SDL_Event { data: [0; 24] },
+            event: SDL_Event::default(),
             joy_sensitivity: 0,
             input_axis: Point { x: 0, y: 0 },
             joy: null_mut(),
@@ -255,24 +260,24 @@ impl Data {
         }
 
         while SDL_PollEvent(&mut self.input.event) != 0 {
-            match (*self.input.event._type()).into() {
-                SDL_QUIT => {
+            match self.input.event.type_.into() {
+                sdl_sys::SDL_EventType_SDL_QUIT => {
                     info!("User requested termination, terminating.");
                     self.quit_successfully();
                 }
 
-                SDL_KEYDOWN => {
-                    let key = &*self.input.event.key();
-                    self.input.current_modifiers = key.keysym._mod;
+                sdl_sys::SDL_EventType_SDL_KEYDOWN => {
+                    let key = self.input.event.key;
+                    self.input.current_modifiers = key.keysym.mod_;
                     self.input.input_state[usize::try_from(key.keysym.sym).unwrap()] = PRESSED;
                     #[cfg(feature = "gcw0")]
                     if input_axis.x != 0 || input_axis.y != 0 {
                         axis_is_active = true.into(); // 4 GCW-0 ; breaks cursor keys after axis has been active...
                     }
                 }
-                SDL_KEYUP => {
-                    let key = &*self.input.event.key();
-                    self.input.current_modifiers = key.keysym._mod;
+                sdl_sys::SDL_EventType_SDL_KEYUP => {
+                    let key = self.input.event.key;
+                    self.input.current_modifiers = key.keysym.mod_;
                     self.input.input_state[usize::try_from(key.keysym.sym).unwrap()] = RELEASED;
                     #[cfg(feature = "gcw0")]
                     {
@@ -280,8 +285,8 @@ impl Data {
                     }
                 }
 
-                SDL_JOYAXISMOTION => {
-                    let jaxis = &*self.input.event.jaxis();
+                sdl_sys::SDL_EventType_SDL_JOYAXISMOTION => {
+                    let jaxis = self.input.event.jaxis;
                     let axis = jaxis.axis;
                     if axis == 0 || ((self.input.joy_num_axes >= 5) && (axis == 3))
                     /* x-axis */
@@ -321,8 +326,8 @@ impl Data {
                     }
                 }
 
-                SDL_JOYBUTTONDOWN => {
-                    let jbutton = &*self.input.event.jbutton();
+                sdl_sys::SDL_EventType_SDL_JOYBUTTONDOWN => {
+                    let jbutton = self.input.event.jbutton;
                     // first button
                     if jbutton.button == 0 {
                         self.input.input_state[PointerStates::JoyButton1 as usize] = PRESSED;
@@ -343,8 +348,8 @@ impl Data {
                     self.input.axis_is_active = true.into();
                 }
 
-                SDL_JOYBUTTONUP => {
-                    let jbutton = &*self.input.event.jbutton();
+                sdl_sys::SDL_EventType_SDL_JOYBUTTONUP => {
+                    let jbutton = self.input.event.jbutton;
                     // first button
                     if jbutton.button == 0 {
                         self.input.input_state[PointerStates::JoyButton1 as usize] = false.into();
@@ -365,8 +370,8 @@ impl Data {
                     self.input.axis_is_active = false.into();
                 }
 
-                SDL_MOUSEMOTION => {
-                    let button = &*self.input.event.button();
+                sdl_sys::SDL_EventType_SDL_MOUSEMOTION => {
+                    let button = self.input.event.button;
                     let user_center = self.get_user_center();
                     self.input.input_axis.x = i32::from(button.x) - i32::from(user_center.x) + 16;
                     self.input.input_axis.y = i32::from(button.y) - i32::from(user_center.y) + 16;
@@ -375,46 +380,46 @@ impl Data {
                 }
 
                 /* Mouse control */
-                SDL_MOUSEBUTTONDOWN => {
-                    let button = &*self.input.event.button();
-                    if button.button == MouseState::Left as u8 {
+                sdl_sys::SDL_EventType_SDL_MOUSEBUTTONDOWN => {
+                    let button = self.input.event.button;
+                    if button.button == SDL_BUTTON_LEFT as u8 {
                         self.input.input_state[PointerStates::MouseButton1 as usize] = PRESSED;
                         self.input.axis_is_active = true.into();
                     }
 
-                    if button.button == MouseState::Right as u8 {
+                    if button.button == SDL_BUTTON_RIGHT as u8 {
                         self.input.input_state[PointerStates::MouseButton2 as usize] = PRESSED;
                     }
 
-                    if button.button == MouseState::Middle as u8 {
+                    if button.button == SDL_BUTTON_MIDDLE as u8 {
                         self.input.input_state[PointerStates::MouseButton3 as usize] = PRESSED;
                     }
 
                     // wheel events are immediately released, so we rather
                     // count the number of not yet read-out events
-                    if button.button == MouseState::WheelUp as u8 {
+                    if button.button == SDL_BUTTON_WHEELUP as u8 {
                         self.input.wheel_up_events += 1;
                     }
 
-                    if button.button == MouseState::WheelDown as u8 {
+                    if button.button == SDL_BUTTON_WHEELDOWN as u8 {
                         self.input.wheel_down_events += 1;
                     }
 
                     self.input.last_mouse_event = SDL_GetTicks();
                 }
 
-                SDL_MOUSEBUTTONUP => {
-                    let button = &*self.input.event.button();
-                    if button.button == MouseState::Left as u8 {
+                sdl_sys::SDL_EventType_SDL_MOUSEBUTTONUP => {
+                    let button = self.input.event.button;
+                    if button.button == SDL_BUTTON_LEFT as u8 {
                         self.input.input_state[PointerStates::MouseButton1 as usize] = false.into();
                         self.input.axis_is_active = false.into();
                     }
 
-                    if button.button == MouseState::Right as u8 {
+                    if button.button == SDL_BUTTON_RIGHT as u8 {
                         self.input.input_state[PointerStates::MouseButton2 as usize] = false.into();
                     }
 
-                    if button.button == MouseState::Middle as u8 {
+                    if button.button == SDL_BUTTON_MIDDLE as u8 {
                         self.input.input_state[PointerStates::MouseButton3 as usize] = false.into();
                     }
                 }
@@ -559,8 +564,11 @@ impl Data {
     }
 
     pub unsafe fn init_joy(&mut self) {
-        if SDL_InitSubSystem(SDL_INIT_JOYSTICK) == -1 {
-            panic!("Couldn't initialize SDL-Joystick: {}", sdl::get_error(),);
+        if SDL_InitSubSystem(SDL_INIT_JOYSTICK as u32) == -1 {
+            panic!(
+                "Couldn't initialize SDL-Joystick: {}",
+                CStr::from_ptr(SDL_GetError()).to_string_lossy()
+            );
         } else {
             info!("SDL Joystick initialisation successful.");
         }
@@ -573,9 +581,14 @@ impl Data {
         }
 
         if !self.input.joy.is_null() {
+            let joystick_name_ptr = SDL_JoystickName(0);
+            let joystick_name = joystick_name_ptr
+                .is_null()
+                .not()
+                .then(|| CStr::from_ptr(joystick_name_ptr).to_string_lossy());
             info!(
                 "Identifier: {}",
-                get_joystick_name(0).unwrap_or_else(identity)
+                joystick_name.as_deref().unwrap_or("[NO JOYSTICK NAME]")
             );
 
             self.input.joy_num_axes = SDL_JoystickNumAxes(self.input.joy);
@@ -593,179 +606,179 @@ impl Data {
     }
 
     pub fn init_keystr(&mut self) {
-        use sdl::keysym::*;
+        use sdl_sys::*;
 
         self.input.keystr[0] = cstr!("NONE").as_ptr(); // Empty bind will otherwise crash on some platforms - also, we choose "NONE" as a placeholder...
         #[cfg(feature = "gcw0")]
         {
             // The GCW0 may change to joystick input altogether in the future - which will make these ifdefs unnecessary, I hope...
-            self.input.keystr[SDLK_BACKSPACE as usize] = cstr!("RSldr").as_ptr();
-            self.input.keystr[SDLK_TAB as usize] = cstr!("LSldr").as_ptr();
-            self.input.keystr[SDLK_RETURN as usize] = cstr!("Start").as_ptr();
-            self.input.keystr[SDLK_SPACE as usize] = cstr!("Y").as_ptr();
-            self.input.keystr[SDLK_ESCAPE as usize] = cstr!("Select").as_ptr();
+            self.input.keystr[SDLKey_SDLK_BACKSPACE as usize] = cstr!("RSldr").as_ptr();
+            self.input.keystr[SDLKey_SDLK_TAB as usize] = cstr!("LSldr").as_ptr();
+            self.input.keystr[SDLKey_SDLK_RETURN as usize] = cstr!("Start").as_ptr();
+            self.input.keystr[SDLKey_SDLK_SPACE as usize] = cstr!("Y").as_ptr();
+            self.input.keystr[SDLKey_SDLK_ESCAPE as usize] = cstr!("Select").as_ptr();
         }
 
         #[cfg(not(feature = "gcw0"))]
         {
-            self.input.keystr[SDLK_BACKSPACE as usize] = cstr!("BS").as_ptr();
-            self.input.keystr[SDLK_TAB as usize] = cstr!("Tab").as_ptr();
-            self.input.keystr[SDLK_RETURN as usize] = cstr!("Return").as_ptr();
-            self.input.keystr[SDLK_SPACE as usize] = cstr!("Space").as_ptr();
-            self.input.keystr[SDLK_ESCAPE as usize] = cstr!("Esc").as_ptr();
+            self.input.keystr[SDLKey_SDLK_BACKSPACE as usize] = cstr!("BS").as_ptr();
+            self.input.keystr[SDLKey_SDLK_TAB as usize] = cstr!("Tab").as_ptr();
+            self.input.keystr[SDLKey_SDLK_RETURN as usize] = cstr!("Return").as_ptr();
+            self.input.keystr[SDLKey_SDLK_SPACE as usize] = cstr!("Space").as_ptr();
+            self.input.keystr[SDLKey_SDLK_ESCAPE as usize] = cstr!("Esc").as_ptr();
         }
 
-        self.input.keystr[SDLK_CLEAR as usize] = cstr!("Clear").as_ptr();
-        self.input.keystr[SDLK_PAUSE as usize] = cstr!("Pause").as_ptr();
-        self.input.keystr[SDLK_EXCLAIM as usize] = cstr!("!").as_ptr();
-        self.input.keystr[SDLK_QUOTEDBL as usize] = cstr!("\"").as_ptr();
-        self.input.keystr[SDLK_HASH as usize] = cstr!("#").as_ptr();
-        self.input.keystr[SDLK_DOLLAR as usize] = cstr!("$").as_ptr();
-        self.input.keystr[SDLK_AMPERSAND as usize] = cstr!("&").as_ptr();
-        self.input.keystr[SDLK_QUOTE as usize] = cstr!("'").as_ptr();
-        self.input.keystr[SDLK_LEFTPAREN as usize] = cstr!("(").as_ptr();
-        self.input.keystr[SDLK_RIGHTPAREN as usize] = cstr!(")").as_ptr();
-        self.input.keystr[SDLK_ASTERISK as usize] = cstr!("*").as_ptr();
-        self.input.keystr[SDLK_PLUS as usize] = cstr!("+").as_ptr();
-        self.input.keystr[SDLK_COMMA as usize] = cstr!(",").as_ptr();
-        self.input.keystr[SDLK_MINUS as usize] = cstr!("-").as_ptr();
-        self.input.keystr[SDLK_PERIOD as usize] = cstr!(".").as_ptr();
-        self.input.keystr[SDLK_SLASH as usize] = cstr!("/").as_ptr();
-        self.input.keystr[SDLK_0 as usize] = cstr!("0").as_ptr();
-        self.input.keystr[SDLK_1 as usize] = cstr!("1").as_ptr();
-        self.input.keystr[SDLK_2 as usize] = cstr!("2").as_ptr();
-        self.input.keystr[SDLK_3 as usize] = cstr!("3").as_ptr();
-        self.input.keystr[SDLK_4 as usize] = cstr!("4").as_ptr();
-        self.input.keystr[SDLK_5 as usize] = cstr!("5").as_ptr();
-        self.input.keystr[SDLK_6 as usize] = cstr!("6").as_ptr();
-        self.input.keystr[SDLK_7 as usize] = cstr!("7").as_ptr();
-        self.input.keystr[SDLK_8 as usize] = cstr!("8").as_ptr();
-        self.input.keystr[SDLK_9 as usize] = cstr!("9").as_ptr();
-        self.input.keystr[SDLK_COLON as usize] = cstr!(":").as_ptr();
-        self.input.keystr[SDLK_SEMICOLON as usize] = cstr!(";").as_ptr();
-        self.input.keystr[SDLK_LESS as usize] = cstr!("<").as_ptr();
-        self.input.keystr[SDLK_EQUALS as usize] = cstr!("=").as_ptr();
-        self.input.keystr[SDLK_GREATER as usize] = cstr!(">").as_ptr();
-        self.input.keystr[SDLK_QUESTION as usize] = cstr!("?").as_ptr();
-        self.input.keystr[SDLK_AT as usize] = cstr!("@").as_ptr();
-        self.input.keystr[SDLK_LEFTBRACKET as usize] = cstr!("[").as_ptr();
-        self.input.keystr[SDLK_BACKSLASH as usize] = cstr!("\\").as_ptr();
-        self.input.keystr[SDLK_RIGHTBRACKET as usize] = cstr!(" as usize]").as_ptr();
-        self.input.keystr[SDLK_CARET as usize] = cstr!("^").as_ptr();
-        self.input.keystr[SDLK_UNDERSCORE as usize] = cstr!("_").as_ptr();
-        self.input.keystr[SDLK_BACKQUOTE as usize] = cstr!("`").as_ptr();
-        self.input.keystr[SDLK_a as usize] = cstr!("a").as_ptr();
-        self.input.keystr[SDLK_b as usize] = cstr!("b").as_ptr();
-        self.input.keystr[SDLK_c as usize] = cstr!("c").as_ptr();
-        self.input.keystr[SDLK_d as usize] = cstr!("d").as_ptr();
-        self.input.keystr[SDLK_e as usize] = cstr!("e").as_ptr();
-        self.input.keystr[SDLK_f as usize] = cstr!("f").as_ptr();
-        self.input.keystr[SDLK_g as usize] = cstr!("g").as_ptr();
-        self.input.keystr[SDLK_h as usize] = cstr!("h").as_ptr();
-        self.input.keystr[SDLK_i as usize] = cstr!("i").as_ptr();
-        self.input.keystr[SDLK_j as usize] = cstr!("j").as_ptr();
-        self.input.keystr[SDLK_k as usize] = cstr!("k").as_ptr();
-        self.input.keystr[SDLK_l as usize] = cstr!("l").as_ptr();
-        self.input.keystr[SDLK_m as usize] = cstr!("m").as_ptr();
-        self.input.keystr[SDLK_n as usize] = cstr!("n").as_ptr();
-        self.input.keystr[SDLK_o as usize] = cstr!("o").as_ptr();
-        self.input.keystr[SDLK_p as usize] = cstr!("p").as_ptr();
-        self.input.keystr[SDLK_q as usize] = cstr!("q").as_ptr();
-        self.input.keystr[SDLK_r as usize] = cstr!("r").as_ptr();
-        self.input.keystr[SDLK_s as usize] = cstr!("s").as_ptr();
-        self.input.keystr[SDLK_t as usize] = cstr!("t").as_ptr();
-        self.input.keystr[SDLK_u as usize] = cstr!("u").as_ptr();
-        self.input.keystr[SDLK_v as usize] = cstr!("v").as_ptr();
-        self.input.keystr[SDLK_w as usize] = cstr!("w").as_ptr();
-        self.input.keystr[SDLK_x as usize] = cstr!("x").as_ptr();
-        self.input.keystr[SDLK_y as usize] = cstr!("y").as_ptr();
-        self.input.keystr[SDLK_z as usize] = cstr!("z").as_ptr();
-        self.input.keystr[SDLK_DELETE as usize] = cstr!("Del").as_ptr();
+        self.input.keystr[SDLKey_SDLK_CLEAR as usize] = cstr!("Clear").as_ptr();
+        self.input.keystr[SDLKey_SDLK_PAUSE as usize] = cstr!("Pause").as_ptr();
+        self.input.keystr[SDLKey_SDLK_EXCLAIM as usize] = cstr!("!").as_ptr();
+        self.input.keystr[SDLKey_SDLK_QUOTEDBL as usize] = cstr!("\"").as_ptr();
+        self.input.keystr[SDLKey_SDLK_HASH as usize] = cstr!("#").as_ptr();
+        self.input.keystr[SDLKey_SDLK_DOLLAR as usize] = cstr!("$").as_ptr();
+        self.input.keystr[SDLKey_SDLK_AMPERSAND as usize] = cstr!("&").as_ptr();
+        self.input.keystr[SDLKey_SDLK_QUOTE as usize] = cstr!("'").as_ptr();
+        self.input.keystr[SDLKey_SDLK_LEFTPAREN as usize] = cstr!("(").as_ptr();
+        self.input.keystr[SDLKey_SDLK_RIGHTPAREN as usize] = cstr!(")").as_ptr();
+        self.input.keystr[SDLKey_SDLK_ASTERISK as usize] = cstr!("*").as_ptr();
+        self.input.keystr[SDLKey_SDLK_PLUS as usize] = cstr!("+").as_ptr();
+        self.input.keystr[SDLKey_SDLK_COMMA as usize] = cstr!(",").as_ptr();
+        self.input.keystr[SDLKey_SDLK_MINUS as usize] = cstr!("-").as_ptr();
+        self.input.keystr[SDLKey_SDLK_PERIOD as usize] = cstr!(".").as_ptr();
+        self.input.keystr[SDLKey_SDLK_SLASH as usize] = cstr!("/").as_ptr();
+        self.input.keystr[SDLKey_SDLK_0 as usize] = cstr!("0").as_ptr();
+        self.input.keystr[SDLKey_SDLK_1 as usize] = cstr!("1").as_ptr();
+        self.input.keystr[SDLKey_SDLK_2 as usize] = cstr!("2").as_ptr();
+        self.input.keystr[SDLKey_SDLK_3 as usize] = cstr!("3").as_ptr();
+        self.input.keystr[SDLKey_SDLK_4 as usize] = cstr!("4").as_ptr();
+        self.input.keystr[SDLKey_SDLK_5 as usize] = cstr!("5").as_ptr();
+        self.input.keystr[SDLKey_SDLK_6 as usize] = cstr!("6").as_ptr();
+        self.input.keystr[SDLKey_SDLK_7 as usize] = cstr!("7").as_ptr();
+        self.input.keystr[SDLKey_SDLK_8 as usize] = cstr!("8").as_ptr();
+        self.input.keystr[SDLKey_SDLK_9 as usize] = cstr!("9").as_ptr();
+        self.input.keystr[SDLKey_SDLK_COLON as usize] = cstr!(":").as_ptr();
+        self.input.keystr[SDLKey_SDLK_SEMICOLON as usize] = cstr!(";").as_ptr();
+        self.input.keystr[SDLKey_SDLK_LESS as usize] = cstr!("<").as_ptr();
+        self.input.keystr[SDLKey_SDLK_EQUALS as usize] = cstr!("=").as_ptr();
+        self.input.keystr[SDLKey_SDLK_GREATER as usize] = cstr!(">").as_ptr();
+        self.input.keystr[SDLKey_SDLK_QUESTION as usize] = cstr!("?").as_ptr();
+        self.input.keystr[SDLKey_SDLK_AT as usize] = cstr!("@").as_ptr();
+        self.input.keystr[SDLKey_SDLK_LEFTBRACKET as usize] = cstr!("[").as_ptr();
+        self.input.keystr[SDLKey_SDLK_BACKSLASH as usize] = cstr!("\\").as_ptr();
+        self.input.keystr[SDLKey_SDLK_RIGHTBRACKET as usize] = cstr!(" as usize]").as_ptr();
+        self.input.keystr[SDLKey_SDLK_CARET as usize] = cstr!("^").as_ptr();
+        self.input.keystr[SDLKey_SDLK_UNDERSCORE as usize] = cstr!("_").as_ptr();
+        self.input.keystr[SDLKey_SDLK_BACKQUOTE as usize] = cstr!("`").as_ptr();
+        self.input.keystr[SDLKey_SDLK_a as usize] = cstr!("a").as_ptr();
+        self.input.keystr[SDLKey_SDLK_b as usize] = cstr!("b").as_ptr();
+        self.input.keystr[SDLKey_SDLK_c as usize] = cstr!("c").as_ptr();
+        self.input.keystr[SDLKey_SDLK_d as usize] = cstr!("d").as_ptr();
+        self.input.keystr[SDLKey_SDLK_e as usize] = cstr!("e").as_ptr();
+        self.input.keystr[SDLKey_SDLK_f as usize] = cstr!("f").as_ptr();
+        self.input.keystr[SDLKey_SDLK_g as usize] = cstr!("g").as_ptr();
+        self.input.keystr[SDLKey_SDLK_h as usize] = cstr!("h").as_ptr();
+        self.input.keystr[SDLKey_SDLK_i as usize] = cstr!("i").as_ptr();
+        self.input.keystr[SDLKey_SDLK_j as usize] = cstr!("j").as_ptr();
+        self.input.keystr[SDLKey_SDLK_k as usize] = cstr!("k").as_ptr();
+        self.input.keystr[SDLKey_SDLK_l as usize] = cstr!("l").as_ptr();
+        self.input.keystr[SDLKey_SDLK_m as usize] = cstr!("m").as_ptr();
+        self.input.keystr[SDLKey_SDLK_n as usize] = cstr!("n").as_ptr();
+        self.input.keystr[SDLKey_SDLK_o as usize] = cstr!("o").as_ptr();
+        self.input.keystr[SDLKey_SDLK_p as usize] = cstr!("p").as_ptr();
+        self.input.keystr[SDLKey_SDLK_q as usize] = cstr!("q").as_ptr();
+        self.input.keystr[SDLKey_SDLK_r as usize] = cstr!("r").as_ptr();
+        self.input.keystr[SDLKey_SDLK_s as usize] = cstr!("s").as_ptr();
+        self.input.keystr[SDLKey_SDLK_t as usize] = cstr!("t").as_ptr();
+        self.input.keystr[SDLKey_SDLK_u as usize] = cstr!("u").as_ptr();
+        self.input.keystr[SDLKey_SDLK_v as usize] = cstr!("v").as_ptr();
+        self.input.keystr[SDLKey_SDLK_w as usize] = cstr!("w").as_ptr();
+        self.input.keystr[SDLKey_SDLK_x as usize] = cstr!("x").as_ptr();
+        self.input.keystr[SDLKey_SDLK_y as usize] = cstr!("y").as_ptr();
+        self.input.keystr[SDLKey_SDLK_z as usize] = cstr!("z").as_ptr();
+        self.input.keystr[SDLKey_SDLK_DELETE as usize] = cstr!("Del").as_ptr();
 
         /* Numeric keypad */
-        self.input.keystr[SDLK_KP0 as usize] = cstr!("Num[0 as usize]").as_ptr();
-        self.input.keystr[SDLK_KP1 as usize] = cstr!("Num[1 as usize]").as_ptr();
-        self.input.keystr[SDLK_KP2 as usize] = cstr!("Num[2 as usize]").as_ptr();
-        self.input.keystr[SDLK_KP3 as usize] = cstr!("Num[3 as usize]").as_ptr();
-        self.input.keystr[SDLK_KP4 as usize] = cstr!("Num[4 as usize]").as_ptr();
-        self.input.keystr[SDLK_KP5 as usize] = cstr!("Num[5 as usize]").as_ptr();
-        self.input.keystr[SDLK_KP6 as usize] = cstr!("Num[6 as usize]").as_ptr();
-        self.input.keystr[SDLK_KP7 as usize] = cstr!("Num[7 as usize]").as_ptr();
-        self.input.keystr[SDLK_KP8 as usize] = cstr!("Num[8 as usize]").as_ptr();
-        self.input.keystr[SDLK_KP9 as usize] = cstr!("Num[9 as usize]").as_ptr();
-        self.input.keystr[SDLK_KP_PERIOD as usize] = cstr!("Num[. as usize]").as_ptr();
-        self.input.keystr[SDLK_KP_DIVIDE as usize] = cstr!("Num[/ as usize]").as_ptr();
-        self.input.keystr[SDLK_KP_MULTIPLY as usize] = cstr!("Num[* as usize]").as_ptr();
-        self.input.keystr[SDLK_KP_MINUS as usize] = cstr!("Num[- as usize]").as_ptr();
-        self.input.keystr[SDLK_KP_PLUS as usize] = cstr!("Num[+ as usize]").as_ptr();
-        self.input.keystr[SDLK_KP_ENTER as usize] = cstr!("Num[Enter as usize]").as_ptr();
-        self.input.keystr[SDLK_KP_EQUALS as usize] = cstr!("Num[= as usize]").as_ptr();
+        self.input.keystr[SDLKey_SDLK_KP0 as usize] = cstr!("Num[0 as usize]").as_ptr();
+        self.input.keystr[SDLKey_SDLK_KP1 as usize] = cstr!("Num[1 as usize]").as_ptr();
+        self.input.keystr[SDLKey_SDLK_KP2 as usize] = cstr!("Num[2 as usize]").as_ptr();
+        self.input.keystr[SDLKey_SDLK_KP3 as usize] = cstr!("Num[3 as usize]").as_ptr();
+        self.input.keystr[SDLKey_SDLK_KP4 as usize] = cstr!("Num[4 as usize]").as_ptr();
+        self.input.keystr[SDLKey_SDLK_KP5 as usize] = cstr!("Num[5 as usize]").as_ptr();
+        self.input.keystr[SDLKey_SDLK_KP6 as usize] = cstr!("Num[6 as usize]").as_ptr();
+        self.input.keystr[SDLKey_SDLK_KP7 as usize] = cstr!("Num[7 as usize]").as_ptr();
+        self.input.keystr[SDLKey_SDLK_KP8 as usize] = cstr!("Num[8 as usize]").as_ptr();
+        self.input.keystr[SDLKey_SDLK_KP9 as usize] = cstr!("Num[9 as usize]").as_ptr();
+        self.input.keystr[SDLKey_SDLK_KP_PERIOD as usize] = cstr!("Num[. as usize]").as_ptr();
+        self.input.keystr[SDLKey_SDLK_KP_DIVIDE as usize] = cstr!("Num[/ as usize]").as_ptr();
+        self.input.keystr[SDLKey_SDLK_KP_MULTIPLY as usize] = cstr!("Num[* as usize]").as_ptr();
+        self.input.keystr[SDLKey_SDLK_KP_MINUS as usize] = cstr!("Num[- as usize]").as_ptr();
+        self.input.keystr[SDLKey_SDLK_KP_PLUS as usize] = cstr!("Num[+ as usize]").as_ptr();
+        self.input.keystr[SDLKey_SDLK_KP_ENTER as usize] = cstr!("Num[Enter as usize]").as_ptr();
+        self.input.keystr[SDLKey_SDLK_KP_EQUALS as usize] = cstr!("Num[= as usize]").as_ptr();
 
         /* Arrows + Home/End pad */
-        self.input.keystr[SDLK_UP as usize] = cstr!("Up").as_ptr();
-        self.input.keystr[SDLK_DOWN as usize] = cstr!("Down").as_ptr();
-        self.input.keystr[SDLK_RIGHT as usize] = cstr!("Right").as_ptr();
-        self.input.keystr[SDLK_LEFT as usize] = cstr!("Left").as_ptr();
-        self.input.keystr[SDLK_INSERT as usize] = cstr!("Insert").as_ptr();
-        self.input.keystr[SDLK_HOME as usize] = cstr!("Home").as_ptr();
-        self.input.keystr[SDLK_END as usize] = cstr!("End").as_ptr();
-        self.input.keystr[SDLK_PAGEUP as usize] = cstr!("PageUp").as_ptr();
-        self.input.keystr[SDLK_PAGEDOWN as usize] = cstr!("PageDown").as_ptr();
+        self.input.keystr[SDLKey_SDLK_UP as usize] = cstr!("Up").as_ptr();
+        self.input.keystr[SDLKey_SDLK_DOWN as usize] = cstr!("Down").as_ptr();
+        self.input.keystr[SDLKey_SDLK_RIGHT as usize] = cstr!("Right").as_ptr();
+        self.input.keystr[SDLKey_SDLK_LEFT as usize] = cstr!("Left").as_ptr();
+        self.input.keystr[SDLKey_SDLK_INSERT as usize] = cstr!("Insert").as_ptr();
+        self.input.keystr[SDLKey_SDLK_HOME as usize] = cstr!("Home").as_ptr();
+        self.input.keystr[SDLKey_SDLK_END as usize] = cstr!("End").as_ptr();
+        self.input.keystr[SDLKey_SDLK_PAGEUP as usize] = cstr!("PageUp").as_ptr();
+        self.input.keystr[SDLKey_SDLK_PAGEDOWN as usize] = cstr!("PageDown").as_ptr();
 
         /* Function keys */
-        self.input.keystr[SDLK_F1 as usize] = cstr!("F1").as_ptr();
-        self.input.keystr[SDLK_F2 as usize] = cstr!("F2").as_ptr();
-        self.input.keystr[SDLK_F3 as usize] = cstr!("F3").as_ptr();
-        self.input.keystr[SDLK_F4 as usize] = cstr!("F4").as_ptr();
-        self.input.keystr[SDLK_F5 as usize] = cstr!("F5").as_ptr();
-        self.input.keystr[SDLK_F6 as usize] = cstr!("F6").as_ptr();
-        self.input.keystr[SDLK_F7 as usize] = cstr!("F7").as_ptr();
-        self.input.keystr[SDLK_F8 as usize] = cstr!("F8").as_ptr();
-        self.input.keystr[SDLK_F9 as usize] = cstr!("F9").as_ptr();
-        self.input.keystr[SDLK_F10 as usize] = cstr!("F10").as_ptr();
-        self.input.keystr[SDLK_F11 as usize] = cstr!("F11").as_ptr();
-        self.input.keystr[SDLK_F12 as usize] = cstr!("F12").as_ptr();
-        self.input.keystr[SDLK_F13 as usize] = cstr!("F13").as_ptr();
-        self.input.keystr[SDLK_F14 as usize] = cstr!("F14").as_ptr();
-        self.input.keystr[SDLK_F15 as usize] = cstr!("F15").as_ptr();
+        self.input.keystr[SDLKey_SDLK_F1 as usize] = cstr!("F1").as_ptr();
+        self.input.keystr[SDLKey_SDLK_F2 as usize] = cstr!("F2").as_ptr();
+        self.input.keystr[SDLKey_SDLK_F3 as usize] = cstr!("F3").as_ptr();
+        self.input.keystr[SDLKey_SDLK_F4 as usize] = cstr!("F4").as_ptr();
+        self.input.keystr[SDLKey_SDLK_F5 as usize] = cstr!("F5").as_ptr();
+        self.input.keystr[SDLKey_SDLK_F6 as usize] = cstr!("F6").as_ptr();
+        self.input.keystr[SDLKey_SDLK_F7 as usize] = cstr!("F7").as_ptr();
+        self.input.keystr[SDLKey_SDLK_F8 as usize] = cstr!("F8").as_ptr();
+        self.input.keystr[SDLKey_SDLK_F9 as usize] = cstr!("F9").as_ptr();
+        self.input.keystr[SDLKey_SDLK_F10 as usize] = cstr!("F10").as_ptr();
+        self.input.keystr[SDLKey_SDLK_F11 as usize] = cstr!("F11").as_ptr();
+        self.input.keystr[SDLKey_SDLK_F12 as usize] = cstr!("F12").as_ptr();
+        self.input.keystr[SDLKey_SDLK_F13 as usize] = cstr!("F13").as_ptr();
+        self.input.keystr[SDLKey_SDLK_F14 as usize] = cstr!("F14").as_ptr();
+        self.input.keystr[SDLKey_SDLK_F15 as usize] = cstr!("F15").as_ptr();
 
         /* Key state modifier keys */
-        self.input.keystr[SDLK_NUMLOCK as usize] = cstr!("NumLock").as_ptr();
-        self.input.keystr[SDLK_CAPSLOCK as usize] = cstr!("CapsLock").as_ptr();
-        self.input.keystr[SDLK_SCROLLOCK as usize] = cstr!("ScrlLock").as_ptr();
+        self.input.keystr[SDLKey_SDLK_NUMLOCK as usize] = cstr!("NumLock").as_ptr();
+        self.input.keystr[SDLKey_SDLK_CAPSLOCK as usize] = cstr!("CapsLock").as_ptr();
+        self.input.keystr[SDLKey_SDLK_SCROLLOCK as usize] = cstr!("ScrlLock").as_ptr();
         #[cfg(feature = "gcw0")]
         {
-            keystr[SDLK_LSHIFT as usize] = cstr!("X").as_ptr();
-            keystr[SDLK_LCTRL as usize] = cstr!("A").as_ptr();
-            keystr[SDLK_LALT as usize] = cstr!("B").as_ptr();
+            keystr[SDLKey_SDLK_LSHIFT as usize] = cstr!("X").as_ptr();
+            keystr[SDLKey_SDLK_LCTRL as usize] = cstr!("A").as_ptr();
+            keystr[SDLKey_SDLK_LALT as usize] = cstr!("B").as_ptr();
         }
 
         #[cfg(not(feature = "gcw0"))]
         {
-            self.input.keystr[SDLK_LSHIFT as usize] = cstr!("LShift").as_ptr();
-            self.input.keystr[SDLK_LCTRL as usize] = cstr!("LCtrl").as_ptr();
-            self.input.keystr[SDLK_LALT as usize] = cstr!("LAlt").as_ptr();
+            self.input.keystr[SDLKey_SDLK_LSHIFT as usize] = cstr!("LShift").as_ptr();
+            self.input.keystr[SDLKey_SDLK_LCTRL as usize] = cstr!("LCtrl").as_ptr();
+            self.input.keystr[SDLKey_SDLK_LALT as usize] = cstr!("LAlt").as_ptr();
         }
 
-        self.input.keystr[SDLK_RSHIFT as usize] = cstr!("RShift").as_ptr();
-        self.input.keystr[SDLK_RCTRL as usize] = cstr!("RCtrl").as_ptr();
-        self.input.keystr[SDLK_RALT as usize] = cstr!("RAlt").as_ptr();
-        self.input.keystr[SDLK_RMETA as usize] = cstr!("RMeta").as_ptr();
-        self.input.keystr[SDLK_LMETA as usize] = cstr!("LMeta").as_ptr();
-        self.input.keystr[SDLK_LSUPER as usize] = cstr!("LSuper").as_ptr();
-        self.input.keystr[SDLK_RSUPER as usize] = cstr!("RSuper").as_ptr();
-        self.input.keystr[SDLK_MODE as usize] = cstr!("Mode").as_ptr();
-        self.input.keystr[SDLK_COMPOSE as usize] = cstr!("Compose").as_ptr();
+        self.input.keystr[SDLKey_SDLK_RSHIFT as usize] = cstr!("RShift").as_ptr();
+        self.input.keystr[SDLKey_SDLK_RCTRL as usize] = cstr!("RCtrl").as_ptr();
+        self.input.keystr[SDLKey_SDLK_RALT as usize] = cstr!("RAlt").as_ptr();
+        self.input.keystr[SDLKey_SDLK_RMETA as usize] = cstr!("RMeta").as_ptr();
+        self.input.keystr[SDLKey_SDLK_LMETA as usize] = cstr!("LMeta").as_ptr();
+        self.input.keystr[SDLKey_SDLK_LSUPER as usize] = cstr!("LSuper").as_ptr();
+        self.input.keystr[SDLKey_SDLK_RSUPER as usize] = cstr!("RSuper").as_ptr();
+        self.input.keystr[SDLKey_SDLK_MODE as usize] = cstr!("Mode").as_ptr();
+        self.input.keystr[SDLKey_SDLK_COMPOSE as usize] = cstr!("Compose").as_ptr();
 
         /* Miscellaneous function keys */
-        self.input.keystr[SDLK_HELP as usize] = cstr!("Help").as_ptr();
-        self.input.keystr[SDLK_PRINT as usize] = cstr!("Print").as_ptr();
-        self.input.keystr[SDLK_SYSREQ as usize] = cstr!("SysReq").as_ptr();
-        self.input.keystr[SDLK_BREAK as usize] = cstr!("Break").as_ptr();
-        self.input.keystr[SDLK_MENU as usize] = cstr!("Menu").as_ptr();
-        self.input.keystr[SDLK_POWER as usize] = cstr!("Power").as_ptr();
-        self.input.keystr[SDLK_EURO as usize] = cstr!("Euro").as_ptr();
-        self.input.keystr[SDLK_UNDO as usize] = cstr!("Undo").as_ptr();
+        self.input.keystr[SDLKey_SDLK_HELP as usize] = cstr!("Help").as_ptr();
+        self.input.keystr[SDLKey_SDLK_PRINT as usize] = cstr!("Print").as_ptr();
+        self.input.keystr[SDLKey_SDLK_SYSREQ as usize] = cstr!("SysReq").as_ptr();
+        self.input.keystr[SDLKey_SDLK_BREAK as usize] = cstr!("Break").as_ptr();
+        self.input.keystr[SDLKey_SDLK_MENU as usize] = cstr!("Menu").as_ptr();
+        self.input.keystr[SDLKey_SDLK_POWER as usize] = cstr!("Power").as_ptr();
+        self.input.keystr[SDLKey_SDLK_EURO as usize] = cstr!("Euro").as_ptr();
+        self.input.keystr[SDLKey_SDLK_UNDO as usize] = cstr!("Undo").as_ptr();
 
         /* Mouse und Joy buttons */
         self.input.keystr[PointerStates::MouseButton1 as usize] = cstr!("Mouse1").as_ptr();

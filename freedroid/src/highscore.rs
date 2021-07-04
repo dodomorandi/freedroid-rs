@@ -9,7 +9,7 @@ use crate::{
 
 use cstr::cstr;
 use log::{info, warn};
-use sdl::video::ll::{SDL_Flip, SDL_Rect, SDL_SetClipRect, SDL_UpperBlit};
+use sdl_sys::{SDL_Flip, SDL_SetClipRect, SDL_UpperBlit};
 use std::{
     convert::TryFrom,
     ffi::CStr,
@@ -196,7 +196,7 @@ impl Data {
 
         self.assemble_combat_picture(0);
         self.make_grid_on_screen(Some(&self.vars.user_rect));
-        let mut dst = SDL_Rect::new(
+        let mut dst = rect!(
             user_center_x - (self.vars.portrait_rect.w / 2) as i16,
             user_center_y - (self.vars.portrait_rect.h / 2) as i16,
             self.vars.portrait_rect.w,
