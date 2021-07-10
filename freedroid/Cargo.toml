@@ -22,6 +22,7 @@ libc-extra = "0.3.2"
 log = "0.4.11"
 once_cell = "1.5.2"
 rand = "0.7.3"
+sdl = { path = "../sdl" }
 sdl-sys = { path = "../sdl-sys" }
 
 [target.'cfg(target_os = "android")'.dependencies]

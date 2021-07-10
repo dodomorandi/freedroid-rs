@@ -61,8 +61,8 @@ use text::Text;
 use vars::Vars;
 
 use sdl_sys::{
-    SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Rect, SDL_SetCursor, SDL_ShowCursor, SDL_Surface,
-    SDL_ASYNCBLIT, SDL_DISABLE, SDL_ENABLE, SDL_HWSURFACE, SDL_RLEACCEL,
+    SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Rect, SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE,
+    SDL_ENABLE,
 };
 use std::{
     convert::TryFrom,
@@ -389,13 +389,6 @@ fn main() {
             }
         }
     }
-}
-
-#[inline]
-fn sdl_must_lock(surface: &SDL_Surface) -> bool {
-    surface.offset != 0
-        && (surface.flags & (SDL_HWSURFACE as u32 | SDL_ASYNCBLIT as u32 | SDL_RLEACCEL as u32))
-            != 0
 }
 
 impl Data {

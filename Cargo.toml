@@ -2,4 +2,5 @@
 members = [
     "freedroid",
     "sdl-sys",
+    "sdl",
 ]

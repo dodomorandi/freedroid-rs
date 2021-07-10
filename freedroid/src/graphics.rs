@@ -20,6 +20,7 @@ use crate::{
 use array_init::array_init;
 use cstr::cstr;
 use log::{error, info, trace, warn};
+use sdl::Surface;
 use sdl_sys::{
     zoomSurface, IMG_Load, SDL_ConvertSurface, SDL_CreateCursor, SDL_CreateRGBSurface, SDL_Cursor,
     SDL_Delay, SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_FillRect, SDL_Flip, SDL_FreeCursor,
@@ -35,7 +36,7 @@ use std::{
     convert::{TryFrom, TryInto},
     ffi::CStr,
     os::raw::{c_char, c_float, c_int, c_short, c_void},
-    ptr::null_mut,
+    ptr::{null_mut, NonNull},
 };
 
 #[derive(Debug)]
@@ -339,7 +340,7 @@ impl Data {
         .iter()
         .filter(|font| !font.is_null())
         .for_each(|&font| {
-            SDL_FreeSurface((*font).surface);
+            (*font).surface = None;
             dealloc(font as *mut u8, Layout::new::<BFontInfo>());
         });
 
@@ -849,22 +850,6 @@ impl Data {
         }
     }
 
-    pub unsafe fn duplicate_font(&mut self, in_font: &BFontInfo) -> *mut BFontInfo {
-        let out_font = alloc_zeroed(Layout::new::<BFontInfo>()) as *mut BFontInfo;
-
-        std::ptr::copy_nonoverlapping(in_font, out_font, 1);
-        (*out_font).surface = SDL_ConvertSurface(
-            in_font.surface,
-            (*in_font.surface).format,
-            (*in_font.surface).flags,
-        );
-        if (*out_font).surface.is_null() {
-            panic!("Duplicate_Font: failed to copy SDL_Surface using SDL_ConvertSurface()");
-        }
-
-        out_font
-    }
-
     pub unsafe fn load_fonts(&mut self) -> c_int {
         let mut fpath = self.find_file(
             PARA_FONT_FILE_C.as_ptr(),
@@ -910,8 +895,8 @@ impl Data {
             panic!("font file named {} was not found.", FONT2_FILE);
         }
 
-        self.global.menu_b_font = self.duplicate_font(&*self.global.para_b_font);
-        self.global.highscore_b_font = self.duplicate_font(&*self.global.para_b_font);
+        self.global.menu_b_font = duplicate_font(&mut *self.global.para_b_font);
+        self.global.highscore_b_font = duplicate_font(&mut *self.global.para_b_font);
 
         self.graphics.fonts_loaded = true.into();
 
@@ -2039,4 +2024,24 @@ impl Data {
             i += 1.;
         }
     }
+}
+
+unsafe fn duplicate_font(in_font: &mut BFontInfo) -> *mut BFontInfo {
+    let out_font = alloc_zeroed(Layout::new::<BFontInfo>()) as *mut BFontInfo;
+
+    std::ptr::copy_nonoverlapping(in_font, out_font, 1);
+    let in_font_surface = in_font.surface.as_mut().unwrap();
+    (*out_font).surface = Some(
+        NonNull::new(SDL_ConvertSurface(
+            in_font_surface.as_mut_ptr(),
+            // SAFETY: this is never modified inside SDL_ConvertSurface.
+            // For reference: [https://github.com/libsdl-org/SDL-1.2/blob/27d991f356a2712feba0d7749f11807849665491/src/video/SDL_surface.c#L834-L941](SDL_surface.c:834-941].
+            in_font_surface.raw().format() as *mut _,
+            in_font_surface.raw().flags(),
+        ))
+        .map(|surface| Surface::from_ptr(surface))
+        .expect("Duplicate_Font: failed to copy SDL_Surface using SDL_ConvertSurface()"),
+    );
+
+    out_font
 }

@@ -1,19 +1,16 @@
 use crate::{
     graphics::{putpixel, scale_pic},
-    sdl_must_lock, Data,
+    Data,
 };
 
 use core::fmt;
-use log::warn;
-use sdl_sys::{
-    IMG_Load, SDL_LockSurface, SDL_MapRGB, SDL_Rect, SDL_SetColorKey, SDL_Surface,
-    SDL_UnlockSurface, SDL_UpperBlit, SDL_SRCCOLORKEY,
-};
+use sdl::Surface;
+use sdl_sys::{IMG_Load, SDL_Rect, SDL_SetColorKey, SDL_Surface, SDL_UpperBlit, SDL_SRCCOLORKEY};
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
-    convert::{TryFrom, TryInto},
+    convert::TryInto,
     os::raw::{c_char, c_float, c_int},
-    ptr::null_mut,
+    ptr::{null_mut, NonNull},
 };
 
 #[derive(Debug)]
@@ -29,13 +26,12 @@ impl Default for BFont {
     }
 }
 
-#[derive(Clone)]
 pub struct BFontInfo {
     /// font height
     pub h: c_int,
 
     /// font surface
-    pub surface: *mut SDL_Surface,
+    pub surface: Option<sdl::Surface>,
 
     /// characters width
     pub chars: [SDL_Rect; 256],
@@ -74,7 +70,7 @@ pub unsafe fn put_char_font(
 
     if c != b' ' {
         SDL_UpperBlit(
-            font.surface,
+            font.surface.as_mut().unwrap().as_mut_ptr(),
             &mut font.chars[usize::from(c)],
             surface,
             &mut dest,
@@ -146,7 +142,7 @@ impl Data {
             return null_mut();
         }
 
-        (*font).surface = surface;
+        (*font).surface = Some(Surface::from_ptr(NonNull::new_unchecked(surface)));
         (*font).chars.iter_mut().for_each(|rect| *rect = rect!());
         /* Init the font */
         init_font(&mut *font);
@@ -159,27 +155,26 @@ impl Data {
 
 pub unsafe fn init_font(font: &mut BFontInfo) {
     let mut i: usize = b'!'.into();
-    assert!(!font.surface.is_null());
-    let sentry = get_pixel(&mut *font.surface, 0, 0);
 
-    if font.surface.is_null() {
-        panic!("BFont: The font has not been loaded!");
-    }
+    let mut surface = font.surface.as_mut().unwrap().lock().unwrap();
+    let surface_width = surface.width();
+    let surface_height = surface.height();
+    let pixels = surface.pixels();
 
-    let surface = &mut *font.surface;
-    if sdl_must_lock(surface) {
-        SDL_LockSurface(surface);
-    }
+    let sentry = pixels.get(0, 0).unwrap().get();
+
     let mut x = 0;
-    while x < (surface.w - 1) {
-        if get_pixel(surface, x, 0) != sentry {
+    while x < (surface_width - 1) {
+        if pixels.get(x, 0).unwrap().get() != sentry {
             font.chars[i].x = x.try_into().unwrap();
             font.chars[i].y = 1;
-            font.chars[i].h = surface.h.try_into().unwrap();
-            while get_pixel(surface, x, 0) != sentry && x < (surface.w) {
+            font.chars[i].h = surface_height;
+            while pixels.get(x, 0).unwrap().get() != sentry && x < surface_width {
                 x += 1;
             }
-            font.chars[i].w = (x - i32::from(font.chars[i].x)).try_into().unwrap();
+            font.chars[i].w = (i32::from(x) - i32::from(font.chars[i].x))
+                .try_into()
+                .unwrap();
             i += 1;
         } else {
             x += 1;
@@ -187,64 +182,16 @@ pub unsafe fn init_font(font: &mut BFontInfo) {
     }
     font.chars[b' ' as usize].x = 0;
     font.chars[b' ' as usize].y = 0;
-    font.chars[b' ' as usize].h = surface.h.try_into().unwrap();
+    font.chars[b' ' as usize].h = surface_height;
     font.chars[b' ' as usize].w = font.chars[b'!' as usize].w;
 
-    if sdl_must_lock(surface) {
-        SDL_UnlockSurface(surface);
-    }
+    let last_row_pixel = pixels.get(0, surface_height - 1).unwrap().get();
+    drop(surface);
+    let surface = font.surface.as_mut().unwrap();
 
-    font.h = surface.h;
+    font.h = surface.height().into();
 
-    SDL_SetColorKey(
-        surface,
-        SDL_SRCCOLORKEY as u32,
-        get_pixel(surface, 0, surface.h - 1),
-    );
-}
-
-pub unsafe fn get_pixel(surface: &mut SDL_Surface, x: i32, y: i32) -> u32 {
-    if x < 0 {
-        warn!("x too small in GetPixel!");
-    }
-    if x >= surface.w {
-        warn!("x too big in GetPixel!");
-    }
-
-    let bpp = (*surface.format).BytesPerPixel;
-
-    // Get the pixel
-    match bpp {
-        1 => (*(surface.pixels.offset(
-            isize::try_from(y).unwrap() * isize::try_from(surface.pitch).unwrap()
-                + isize::try_from(x).unwrap(),
-        ) as *const u8))
-            .into(),
-        2 => (*((surface.pixels as *const u16).offset(
-            isize::try_from(y).unwrap() * isize::try_from(surface.pitch).unwrap() / 2
-                + isize::try_from(x).unwrap(),
-        )))
-        .into(),
-        3 => {
-            // Format/endian independent
-            let bits = surface.pixels.offset(
-                isize::try_from(y).unwrap() * isize::try_from(surface.pitch).unwrap()
-                    + isize::try_from(x).unwrap() * isize::try_from(bpp).unwrap(),
-            ) as *mut u8;
-            let format = &*surface.format;
-            let red = *((bits).offset(isize::from(format.Rshift) / 8));
-            let green = *((bits).offset(isize::from(format.Gshift) / 8));
-            let blue = *((bits).offset(isize::from(format.Bshift) / 8));
-            SDL_MapRGB(surface.format, red, green, blue)
-        }
-        4 => {
-            *((surface.pixels as *const u32).offset(
-                isize::try_from(y).unwrap() * isize::try_from(surface.pitch).unwrap() / 4
-                    + isize::try_from(x).unwrap(),
-            ))
-        }
-        _ => u32::MAX,
-    }
+    SDL_SetColorKey(surface.as_mut_ptr(), SDL_SRCCOLORKEY as u32, last_row_pixel);
 }
 
 impl Data {
