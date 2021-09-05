@@ -933,7 +933,7 @@ impl Data {
             }
 
             next_subsection_start_pointer = next_subsection_start_pointer
-                .add(libc::strlen(NEXT_BRIEFING_SUBSECTION_START_STRING.as_ptr()));
+                .add(NEXT_BRIEFING_SUBSECTION_START_STRING.to_bytes().len());
             let termination_pointer = libc::strstr(
                 next_subsection_start_pointer,
                 END_OF_BRIEFING_SUBSECTION_STRING.as_ptr(),
@@ -1150,10 +1150,12 @@ impl Data {
         //Now we start to read the values for each robot:
         //Of which parts is it composed, which stats does it have?
         let mut robot_index = 0;
-        while {
+        loop {
             robot_pointer = libc::strstr(robot_pointer, NEW_ROBOT_BEGIN_STRING.as_ptr());
-            robot_pointer.is_null().not()
-        } {
+            if robot_pointer.is_null() {
+                break;
+            }
+
             info!("Found another Robot specification entry!  Lets add that to the others!");
             robot_pointer = robot_pointer.add(1); // to avoid doubly taking this entry
 
@@ -1386,10 +1388,12 @@ impl Data {
         //
         let mut bullet_pointer = data_pointer as *mut c_char;
         let mut bullet_index = 0;
-        while {
+        loop {
             bullet_pointer = libc::strstr(bullet_pointer, NEW_BULLET_TYPE_BEGIN_STRING.as_ptr());
-            bullet_pointer.is_null().not()
-        } {
+            if bullet_pointer.is_null() {
+                break;
+            }
+
             info!("Found another Bullet specification entry!  Lets add that to the others!");
             bullet_pointer = bullet_pointer.add(1); // to avoid doubly taking this entry
 

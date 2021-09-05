@@ -1152,11 +1152,12 @@ impl Data {
         if cur_level != (*self.main.cur_level).levelnum {
             let mut array_num = 0;
 
-            let mut tmp;
-            while {
-                tmp = self.main.cur_ship.all_levels[array_num];
-                tmp.is_null().not()
-            } {
+            loop {
+                let tmp = self.main.cur_ship.all_levels[array_num];
+                if tmp.is_null() {
+                    break;
+                }
+
                 if (*tmp).levelnum == cur_level {
                     break;
                 } else {

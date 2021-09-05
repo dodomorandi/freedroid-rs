@@ -1064,13 +1064,15 @@ impl Data {
             data.as_mut_ptr(),
             START_OF_LIFT_RECTANGLE_DATA_STRING.as_ptr() as *mut c_char,
         );
-        while {
+        loop {
             entry_pointer = libc::strstr(
                 entry_pointer,
                 cstr!("Elevator Number=").as_ptr() as *mut c_char,
             );
-            entry_pointer.is_null().not()
-        } {
+            if entry_pointer.is_null() {
+                break;
+            }
+
             read_int_from_string!(entry_pointer, "Elevator Number=", elevator_index);
             entry_pointer = entry_pointer.add(1);
 
@@ -1097,10 +1099,12 @@ impl Data {
         self.main.cur_ship.num_level_rects.fill(0); // this initializes zeros for the number
         entry_pointer = data.as_mut_ptr();
 
-        while {
+        loop {
             entry_pointer = libc::strstr(entry_pointer, cstr!("DeckNr=").as_ptr() as *mut c_char);
-            entry_pointer.is_null().not()
-        } {
+            if entry_pointer.is_null() {
+                break;
+            }
+
             read_int_from_string!(entry_pointer, "DeckNr=", deck_index);
             read_int_from_string!(entry_pointer, "RectNumber=", rect_index);
             entry_pointer = entry_pointer.add(1); // to prevent doubly taking this entry
@@ -1130,10 +1134,12 @@ impl Data {
 
         let mut label: c_int = 0;
         entry_pointer = data.as_mut_ptr();
-        while {
+        loop {
             entry_pointer = libc::strstr(entry_pointer, cstr!("Label=").as_ptr() as *mut c_char);
-            entry_pointer.is_null().not()
-        } {
+            if entry_pointer.is_null() {
+                break;
+            }
+
             read_int_from_string_into!(entry_pointer, "Label=", label);
             let cur_lift = &mut self.main.cur_ship.all_lifts[usize::try_from(label).unwrap()];
             entry_pointer = entry_pointer.add(1); // to avoid doubly taking this entry
@@ -1433,7 +1439,7 @@ pub unsafe fn level_to_struct(data: *mut c_char) -> *mut Level {
         loadlevel.all_waypoints[i].y = y.try_into().unwrap();
 
         let mut pos = libc::strstr(this_line, CONNECTION_STRING_C.as_ptr());
-        pos = pos.add(libc::strlen(CONNECTION_STRING_C.as_ptr())); // skip connection-string
+        pos = pos.add(CONNECTION_STRING_C.to_bytes().len()); // skip connection-string
         pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace
 
         let mut k = 0;
@@ -1500,11 +1506,13 @@ impl Data {
         let mut endpt = ship_data.as_mut_ptr();
         level_start[level_anz] = ship_data.as_mut_ptr();
 
-        while {
+        loop {
             endpt = libc::strstr(endpt, LEVEL_END_STRING_C.as_ptr());
-            endpt.is_null().not()
-        } {
-            endpt = endpt.add(libc::strlen(LEVEL_END_STRING_C.as_ptr()));
+            if endpt.is_null() {
+                break;
+            }
+
+            endpt = endpt.add(LEVEL_END_STRING_C.to_bytes().len());
             level_anz += 1;
             level_start[level_anz] = endpt.add(1);
         }
