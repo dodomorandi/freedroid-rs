@@ -26,19 +26,6 @@ pub const FREE_ONLY: usize = 0x08;
 pub const DROID_ROTATION_TIME: f32 = 3.0;
 pub const NUM_DECAL_PICS: usize = 2;
 
-impl Data {
-    #[inline]
-    pub fn get_user_center(&self) -> SDL_Rect {
-        let SDL_Rect { x, y, w, h } = self.vars.user_rect;
-        SDL_Rect {
-            x: x + (w / 2) as i16,
-            y: y + (h / 2) as i16,
-            w,
-            h,
-        }
-    }
-}
-
 #[inline]
 pub fn scale_rect(rect: &mut SDL_Rect, scale: f32) {
     rect.x = (f32::from(rect.x) * scale) as i16;

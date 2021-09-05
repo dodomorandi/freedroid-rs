@@ -22,8 +22,8 @@ use clap::{crate_version, Clap};
 use cstr::cstr;
 use log::{error, info, warn};
 use sdl_sys::{
-    Mix_HaltMusic, SDL_Delay, SDL_Flip, SDL_FreeSurface, SDL_GetTicks, SDL_Rect, SDL_SetClipRect,
-    SDL_ShowCursor, SDL_UpperBlit, SDL_DISABLE,
+    Mix_HaltMusic, SDL_Delay, SDL_Flip, SDL_FreeSurface, SDL_GetTicks, SDL_Rect, SDL_ShowCursor,
+    SDL_UpperBlit, SDL_DISABLE,
 };
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
@@ -125,7 +125,7 @@ impl Data {
 /// put some ideology message for our poor friends enslaved by M$-Win32 ;)
 #[cfg(target_os = "windows")]
 pub unsafe fn win32_disclaimer() {
-    SDL_SetClipRect(self.graphics.ne_screen, null_mut());
+    self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
     display_image(find_file(
         TITLE_PIC_FILE_C.as_ptr() as *mut c_char,
         GRAPHICS_DIR_C.as_ptr() as *mut c_char,
@@ -201,9 +201,9 @@ impl Data {
         }
 
         let mut rect = self.vars.full_user_rect;
-        SDL_SetClipRect(self.graphics.ne_screen, null_mut());
+        self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
         self.make_grid_on_screen(Some(&rect));
-        SDL_Flip(self.graphics.ne_screen);
+        SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
         rect.x += 10;
         rect.w -= 20; //leave some border
         self.b_font.current_font = self.global.para_b_font;
@@ -283,7 +283,7 @@ impl Data {
             Criticality::Critical as c_int,
         );
         self.display_image(image); // show title pic
-        SDL_Flip(self.graphics.ne_screen);
+        SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
 
         self.load_fonts(); // we need this for progress-meter!
 
@@ -894,7 +894,7 @@ impl Data {
         );
         self.switch_background_music_to(buffer.as_mut_ptr());
 
-        SDL_SetClipRect(self.graphics.ne_screen, null_mut());
+        self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
         read_value_from_string(
             mission_briefing_pointer,
             BRIEFING_TITLE_PICTURE_STRING.as_ptr() as *mut c_char,
@@ -908,7 +908,7 @@ impl Data {
             Criticality::Critical as c_int,
         );
         self.display_image(image);
-        self.make_grid_on_screen(Some(&self.vars.screen_rect));
+        self.make_grid_on_screen(Some(&self.vars.screen_rect.clone()));
         self.vars.me.status = Status::Briefing as c_int;
 
         self.b_font.current_font = self.global.para_b_font;
@@ -1593,26 +1593,30 @@ impl Data {
 
         // TODO: avoid a temporary backup
         let mut user_rect = std::mem::replace(&mut self.vars.user_rect, rect!(0, 0, 0, 0));
+        let mut ne_screen = self.graphics.ne_screen.take().unwrap();
         self.white_noise(
-            self.graphics.ne_screen,
+            &mut ne_screen,
             &mut user_rect,
             WAIT_AFTER_KILLED.try_into().unwrap(),
         );
         self.vars.user_rect = user_rect;
+        self.graphics.ne_screen = Some(ne_screen);
 
         self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
-        self.make_grid_on_screen(Some(&self.vars.user_rect));
+        self.make_grid_on_screen(Some(&self.vars.user_rect.clone()));
 
         let mut dst = SDL_Rect {
-            x: self.get_user_center().x - i16::try_from(self.vars.portrait_rect.w / 2).unwrap(),
-            y: self.get_user_center().y - i16::try_from(self.vars.portrait_rect.h / 2).unwrap(),
+            x: self.vars.get_user_center().x
+                - i16::try_from(self.vars.portrait_rect.w / 2).unwrap(),
+            y: self.vars.get_user_center().y
+                - i16::try_from(self.vars.portrait_rect.h / 2).unwrap(),
             w: self.vars.portrait_rect.w,
             h: self.vars.portrait_rect.h,
         };
         SDL_UpperBlit(
             self.graphics.pic999,
             null_mut(),
-            self.graphics.ne_screen,
+            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
             &mut dst,
         );
         self.thou_art_defeated_sound();
@@ -1631,8 +1635,10 @@ impl Data {
             i32::from(dst.y) + i32::from(dst.h),
             &self.vars.user_rect,
         );
-        self.printf_sdl(self.graphics.ne_screen, -1, -1, format_args!("\n"));
-        SDL_Flip(self.graphics.ne_screen);
+        let mut ne_screen = self.graphics.ne_screen.take().unwrap();
+        self.printf_sdl(&mut ne_screen, -1, -1, format_args!("\n"));
+        SDL_Flip(ne_screen.as_mut_ptr());
+        self.graphics.ne_screen = Some(ne_screen);
 
         now = SDL_GetTicks();
 

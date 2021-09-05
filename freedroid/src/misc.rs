@@ -5,7 +5,7 @@ use crate::{
         self, scale_rect, AssembleCombatWindowFlags, Cmds, Criticality, Status, Themed, FD_DATADIR,
         GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE_C, PROGRESS_METER_FILE_C,
     },
-    graphics::scale_pic,
+    graphics::{scale_pic, Graphics},
     input::CMD_STRINGS,
     Data, Global,
 };
@@ -13,9 +13,7 @@ use crate::{
 use cstr::cstr;
 use defs::MAXBULLETS;
 use log::{error, info, warn};
-use sdl_sys::{
-    SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Quit, SDL_SetClipRect, SDL_UpdateRects, SDL_UpperBlit,
-};
+use sdl_sys::{SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Quit, SDL_UpdateRects, SDL_UpperBlit};
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
     borrow::Cow,
@@ -55,7 +53,7 @@ impl Default for Misc {
 }
 
 impl Data {
-    pub unsafe fn update_progress(&self, percent: c_int) {
+    pub unsafe fn update_progress(&mut self, percent: c_int) {
         let h = (f64::from(self.vars.progress_bar_rect.h) * f64::from(percent) / 100.) as u16;
         let mut dst = rect!(
             self.vars.progress_bar_rect.x + self.vars.progress_meter_rect.x,
@@ -74,13 +72,22 @@ impl Data {
             0,
         );
 
+        let &mut Data {
+            graphics:
+                Graphics {
+                    progress_filler_pic,
+                    ref mut ne_screen,
+                    ..
+                },
+            ..
+        } = self;
         SDL_UpperBlit(
-            self.graphics.progress_filler_pic,
+            progress_filler_pic,
             &mut src,
-            self.graphics.ne_screen,
+            ne_screen.as_mut().unwrap().as_mut_ptr(),
             &mut dst,
         );
-        SDL_UpdateRects(self.graphics.ne_screen, 1, &mut dst);
+        SDL_UpdateRects(ne_screen.as_mut().unwrap().as_mut_ptr(), 1, &mut dst);
     }
 
     /// This function is the key to independence of the framerate for various game elements.
@@ -124,7 +131,6 @@ impl Data {
 
         // ----- free memory
         self.free_ship_memory();
-        self.free_droid_pics();
         self.free_graphics();
         self.free_sounds();
         self.free_menu_data();
@@ -614,11 +620,11 @@ impl Data {
             );
         }
 
-        SDL_SetClipRect(self.graphics.ne_screen, null_mut()); // this unsets the clipping rectangle
+        self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
         SDL_UpperBlit(
             self.graphics.progress_meter_pic,
             null_mut(),
-            self.graphics.ne_screen,
+            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
             &mut self.vars.progress_meter_rect,
         );
 
@@ -626,14 +632,16 @@ impl Data {
         dst.x += self.vars.progress_meter_rect.x;
         dst.y += self.vars.progress_meter_rect.y;
 
+        let mut ne_screen = self.graphics.ne_screen.take().unwrap();
         self.printf_sdl(
-            self.graphics.ne_screen,
+            &mut ne_screen,
             dst.x.into(),
             dst.y.into(),
             format_args!("{}", CStr::from_ptr(text).to_str().unwrap()),
         );
 
-        SDL_Flip(self.graphics.ne_screen);
+        SDL_Flip(ne_screen.as_mut_ptr());
+        self.graphics.ne_screen = Some(ne_screen);
     }
 
     /// This function read in a file with the specified name, allocated

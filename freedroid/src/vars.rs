@@ -163,3 +163,16 @@ pub const WEAPON_NAMES: [&CStr; 7] = [
     cstr!("laser rifle"),  // laser-rifle
     cstr!("error"),
 ];
+
+impl Vars {
+    #[inline]
+    pub fn get_user_center(&self) -> SDL_Rect {
+        let SDL_Rect { x, y, w, h } = self.user_rect;
+        SDL_Rect {
+            x: x + (w / 2) as i16,
+            y: y + (h / 2) as i16,
+            w,
+            h,
+        }
+    }
+}

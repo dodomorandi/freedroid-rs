@@ -9,7 +9,7 @@ use crate::{
 
 use cstr::cstr;
 use log::{info, warn};
-use sdl_sys::{SDL_Flip, SDL_SetClipRect, SDL_UpperBlit};
+use sdl_sys::{SDL_Flip, SDL_UpperBlit};
 use std::{
     convert::TryFrom,
     ffi::CStr,
@@ -195,7 +195,7 @@ impl Data {
         let user_center_y: i16 = self.vars.user_rect.y + (self.vars.user_rect.h / 2) as i16;
 
         self.assemble_combat_picture(0);
-        self.make_grid_on_screen(Some(&self.vars.user_rect));
+        self.make_grid_on_screen(Some(&self.vars.user_rect.clone()));
         let mut dst = rect!(
             user_center_x - (self.vars.portrait_rect.w / 2) as i16,
             user_center_y - (self.vars.portrait_rect.h / 2) as i16,
@@ -205,7 +205,7 @@ impl Data {
         SDL_UpperBlit(
             self.graphics.pic999,
             null_mut(),
-            self.graphics.ne_screen,
+            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
             &mut dst,
         );
         let h = font_height(&*self.global.para_b_font);
@@ -230,8 +230,9 @@ impl Data {
 
         // TODO More ARCADEINPUT
 
-        SDL_Flip(self.graphics.ne_screen);
-        SDL_SetClipRect(self.graphics.ne_screen, null_mut());
+        let ne_screen = self.graphics.ne_screen.as_mut().unwrap();
+        SDL_Flip(ne_screen.as_mut_ptr());
+        ne_screen.clear_clip_rect();
 
         let date = format!("{}", chrono::Local::today().format("%Y/%m/%d"));
 
@@ -250,7 +251,9 @@ impl Data {
             new_entry
         };
 
-        self.printf_sdl(self.graphics.ne_screen, -1, -1, format_args!("\n"));
+        let mut ne_screen = self.graphics.ne_screen.take().unwrap();
+        self.printf_sdl(&mut ne_screen, -1, -1, format_args!("\n"));
+        self.graphics.ne_screen = Some(ne_screen);
 
         self.highscore.entries.as_mut().unwrap()[entry_pos..]
             .iter_mut()
@@ -294,7 +297,7 @@ impl Data {
         if fpath.is_null().not() {
             self.display_image(fpath);
         }
-        self.make_grid_on_screen(Some(&self.vars.screen_rect));
+        self.make_grid_on_screen(Some(&self.vars.screen_rect.clone()));
         self.display_banner(
             null_mut(),
             null_mut(),
@@ -315,8 +318,9 @@ impl Data {
 
         let y0 = i32::from(self.vars.full_user_rect.y) + height;
 
+        let mut ne_screen = self.graphics.ne_screen.take().unwrap();
         self.centered_print_string(
-            self.graphics.ne_screen,
+            &mut ne_screen,
             y0,
             format_args!("Top {}  scores\n", self.highscore.num),
         );
@@ -325,14 +329,14 @@ impl Data {
         for (i, highscore) in highscore_entries.iter().enumerate() {
             let i = i32::try_from(i).unwrap();
             self.print_string(
-                self.graphics.ne_screen,
+                &mut ne_screen,
                 x0,
                 y0 + (i + 2) * height,
                 format_args!("{}", i + 1),
             );
             if highscore.score >= 0 {
                 self.print_string(
-                    self.graphics.ne_screen,
+                    &mut ne_screen,
                     x1,
                     y0 + (i + 2) * height,
                     format_args!(
@@ -342,7 +346,7 @@ impl Data {
                 );
             }
             self.print_string(
-                self.graphics.ne_screen,
+                &mut ne_screen,
                 x2,
                 y0 + (i + 2) * height,
                 format_args!(
@@ -352,7 +356,7 @@ impl Data {
             );
             if highscore.score >= 0 {
                 self.print_string(
-                    self.graphics.ne_screen,
+                    &mut ne_screen,
                     x3,
                     y0 + (i + 2) * height,
                     format_args!("{}", highscore.score),
@@ -360,7 +364,8 @@ impl Data {
             }
         }
         self.highscore.entries = Some(highscore_entries);
-        SDL_Flip(self.graphics.ne_screen);
+        SDL_Flip(ne_screen.as_mut_ptr());
+        self.graphics.ne_screen = Some(ne_screen);
 
         self.wait_for_key_pressed();
 

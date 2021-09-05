@@ -1,13 +1,22 @@
 mod lock;
 
-use std::{convert::TryInto, ffi::c_void, os::raw::c_int, ptr::NonNull};
-
-use sdl_sys::{
-    SDL_FreeSurface, SDL_PixelFormat, SDL_Rect, SDL_Surface, SDL_ASYNCBLIT, SDL_HWSURFACE,
-    SDL_RLEACCEL,
+use std::{
+    convert::TryInto,
+    ffi::c_void,
+    os::raw::c_int,
+    ptr::{self, null_mut, NonNull},
 };
 
-use crate::pixel::{PixelFormatRef, Pixels};
+use sdl_sys::{
+    SDL_FreeSurface, SDL_PixelFormat, SDL_Rect, SDL_SetClipRect, SDL_Surface, SDL_UpperBlit,
+    SDL_bool_SDL_TRUE, SDL_ASYNCBLIT, SDL_HWSURFACE, SDL_RLEACCEL,
+};
+
+use crate::{
+    get_error,
+    pixel::{PixelFormatRef, Pixels},
+    Rect, RectMut, RectRef,
+};
 
 pub use self::lock::{ResultMaybeLockedSurface, SurfaceLockError, SurfaceLockGuard};
 
@@ -68,12 +77,74 @@ impl<const FREEABLE: bool> GenericSurface<FREEABLE> {
             .expect("invalid SDL surface width for architecture")
     }
 
+    pub fn flags(&self) -> u32 {
+        self.raw().flags()
+    }
+
     pub fn as_ptr(&self) -> *const SDL_Surface {
         self.0.as_ptr()
     }
 
     pub fn as_mut_ptr(&mut self) -> *mut SDL_Surface {
         self.0.as_ptr()
+    }
+
+    pub fn blit<'from, 'to, FromRect, ToRect, const TO_FREEABLE: bool>(
+        &mut self,
+        from: Option<FromRect>,
+        to_surface: &mut GenericSurface<TO_FREEABLE>,
+        to: Option<ToRect>,
+    ) where
+        FromRect: Into<RectRef<'from>>,
+        ToRect: Into<RectMut<'to>>,
+    {
+        // Possible errors coming from SDL_UpperBlit:
+        // - src or dest null pointers -- cannot happen
+        // - src or dest surfaces locked -- cannot happen
+        // These are the main errors expected from SDL_UpperBlit. SDL_LowerBlit seems to possibly
+        // return an error, but I am not really sure. Surely it is possible to trigger an out of
+        // memory error, but in that case it is ok to panic.
+
+        // # SAFETY
+        // srcrect is not modified internally
+        let result = unsafe {
+            SDL_UpperBlit(
+                self.0.as_mut(),
+                from.map(|rect| rect.into().as_ptr() as *mut _)
+                    .unwrap_or(null_mut()),
+                to_surface.0.as_mut(),
+                to.map(|rect| rect.into().as_mut_ptr())
+                    .unwrap_or(null_mut()),
+            )
+        };
+
+        debug_assert!(result <= 0);
+        if result < 0 {
+            panic!(
+                "SDL_UpperBlit returned an unexpected error: {}",
+                unsafe { get_error() }.to_string_lossy(),
+            );
+        }
+    }
+
+    pub fn clear_clip_rect(&mut self) -> bool {
+        self.set_clip_rect_inner(None::<&Rect>)
+    }
+
+    pub fn set_clip_rect<'a, R>(&mut self, rect: R) -> bool
+    where
+        R: Into<RectRef<'a>>,
+    {
+        self.set_clip_rect_inner(Some(rect))
+    }
+
+    fn set_clip_rect_inner<'a, R>(&mut self, rect: Option<R>) -> bool
+    where
+        R: Into<RectRef<'a>>,
+    {
+        let rect = rect.map(|rect| rect.into().as_ptr()).unwrap_or(ptr::null());
+        let result = unsafe { SDL_SetClipRect(self.0.as_ptr(), rect) };
+        result == SDL_bool_SDL_TRUE
     }
 }
 

@@ -13,14 +13,15 @@ use crate::{
 
 use cstr::cstr;
 use log::{error, info, trace};
+use sdl::RectRef;
 #[cfg(not(feature = "arcade-input"))]
 use sdl_sys::SDLKey_SDLK_DELETE;
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_RETURN, SDLMod, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_RSHIFT,
     SDL_CreateRGBSurface, SDL_Delay, SDL_DisplayFormat, SDL_Event, SDL_EventType, SDL_Flip,
-    SDL_FreeSurface, SDL_GetClipRect, SDL_GetTicks, SDL_PushEvent, SDL_Rect, SDL_SetClipRect,
-    SDL_Surface, SDL_UpdateRect, SDL_UpperBlit, SDL_WaitEvent, SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE,
-    SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
+    SDL_FreeSurface, SDL_GetClipRect, SDL_GetTicks, SDL_PushEvent, SDL_Rect, SDL_UpdateRect,
+    SDL_UpperBlit, SDL_WaitEvent, SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT,
+    SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
 };
 use std::{
     convert::{TryFrom, TryInto},
@@ -99,7 +100,12 @@ impl Data {
             self.vars.screen_rect.w,
             height.try_into().unwrap(),
         );
-        SDL_UpperBlit(self.graphics.ne_screen, &mut store_rect, store, null_mut());
+        SDL_UpperBlit(
+            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
+            &mut store_rect,
+            store,
+            null_mut(),
+        );
 
         #[cfg(feature = "arcade-input")]
         let blink_time = 200; // For adjusting fast <->slow blink; in ms
@@ -119,14 +125,16 @@ impl Data {
 
         while !finished {
             let mut tmp_rect = store_rect;
-            SDL_UpperBlit(store, null_mut(), self.graphics.ne_screen, &mut tmp_rect);
+            let mut ne_screen = self.graphics.ne_screen.take().unwrap();
+            SDL_UpperBlit(store, null_mut(), ne_screen.as_mut_ptr(), &mut tmp_rect);
             self.put_string(
-                self.graphics.ne_screen,
+                &mut ne_screen,
                 x0,
                 y0,
                 CStr::from_ptr(input.as_ptr()).to_bytes(),
             );
-            SDL_Flip(self.graphics.ne_screen);
+            SDL_Flip(ne_screen.as_mut_ptr());
+            self.graphics.ne_screen = Some(ne_screen);
 
             #[cfg(feature = "arcade-input")]
             {
@@ -320,9 +328,9 @@ impl Data {
     /// Added functionality to PrintString() is:
     ///  o) passing -1 as coord uses previous x and next-line y for printing
     ///  o) Screen is updated immediatly after print, using SDL_flip()
-    pub unsafe fn printf_sdl(
+    pub unsafe fn printf_sdl<const F: bool>(
         &mut self,
-        screen: *mut SDL_Surface,
+        screen: &mut sdl::GenericSurface<F>,
         mut x: c_int,
         mut y: c_int,
         format_args: fmt::Arguments,
@@ -354,7 +362,7 @@ impl Data {
         let h = font_height(&*self.b_font.current_font) + 2;
 
         SDL_UpdateRect(
-            screen,
+            screen.as_mut_ptr(),
             x,
             y,
             textlen.try_into().unwrap(),
@@ -404,9 +412,16 @@ impl Data {
 
         let mut store_clip = rect!(0, 0, 0, 0);
         let mut temp_clipping_rect;
-        SDL_GetClipRect(self.graphics.ne_screen, &mut store_clip); /* store previous clip-rect */
+        SDL_GetClipRect(
+            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
+            &mut store_clip,
+        ); /* store previous clip-rect */
         if !clip.is_null() {
-            SDL_SetClipRect(self.graphics.ne_screen, clip);
+            self.graphics
+                .ne_screen
+                .as_mut()
+                .unwrap()
+                .set_clip_rect(RectRef::from(&*clip));
         } else {
             temp_clipping_rect = rect!(0, 0, self.vars.screen_rect.w, self.vars.screen_rect.h);
             clip = &mut temp_clipping_rect;
@@ -437,7 +452,11 @@ impl Data {
             }
         }
 
-        SDL_SetClipRect(self.graphics.ne_screen, &store_clip); /* restore previous clip-rect */
+        self.graphics
+            .ne_screen
+            .as_mut()
+            .unwrap()
+            .set_clip_rect(&store_clip); /* restore previous clip-rect */
 
         /*
          * ScrollText() wants to know if we still wrote something inside the
@@ -460,12 +479,14 @@ impl Data {
             panic!("Illegal char passed to DisplayChar(): {}", c);
         }
 
+        let mut ne_screen = self.graphics.ne_screen.take().unwrap();
         self.put_char(
-            self.graphics.ne_screen,
+            &mut ne_screen,
             self.text.my_cursor_x,
             self.text.my_cursor_y,
             c,
         );
+        self.graphics.ne_screen = Some(ne_screen);
 
         // After the char has been displayed, we must move the cursor to its
         // new position.  That depends of course on the char displayed.
@@ -617,18 +638,23 @@ impl Data {
         const MAX_SPEED: c_int = 150;
         let mut just_started = true;
 
-        let background = SDL_DisplayFormat(self.graphics.ne_screen);
+        let background = SDL_DisplayFormat(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
 
         self.wait_for_all_keys_released();
         let ret;
         loop {
             let mut prev_tick = SDL_GetTicks();
-            SDL_UpperBlit(background, null_mut(), self.graphics.ne_screen, null_mut());
+            SDL_UpperBlit(
+                background,
+                null_mut(),
+                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
+                null_mut(),
+            );
             if self.display_text(text, rect.x.into(), insert_line as c_int, rect) == 0 {
                 ret = 0; /* Text has been scrolled outside SDL_Rect */
                 break;
             }
-            SDL_Flip(self.graphics.ne_screen);
+            SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
 
             if self.global.game_config.hog_cpu != 0 {
                 SDL_Delay(1);
@@ -688,8 +714,13 @@ impl Data {
             }
         }
 
-        SDL_UpperBlit(background, null_mut(), self.graphics.ne_screen, null_mut());
-        SDL_Flip(self.graphics.ne_screen);
+        SDL_UpperBlit(
+            background,
+            null_mut(),
+            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
+            null_mut(),
+        );
+        SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
         SDL_FreeSurface(background);
 
         ret

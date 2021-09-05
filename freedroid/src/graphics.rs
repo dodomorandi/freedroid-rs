@@ -20,21 +20,22 @@ use crate::{
 use array_init::array_init;
 use cstr::cstr;
 use log::{error, info, trace, warn};
+use sdl::{FrameBuffer, Surface};
 use sdl_sys::{
     zoomSurface, IMG_Load, SDL_CreateCursor, SDL_CreateRGBSurface, SDL_Cursor, SDL_Delay,
     SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_FillRect, SDL_Flip, SDL_FreeCursor,
     SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetRGBA, SDL_GetTicks, SDL_GetVideoInfo,
     SDL_Init, SDL_InitSubSystem, SDL_LockSurface, SDL_MapRGB, SDL_MapRGBA, SDL_Quit,
-    SDL_RWFromFile, SDL_RWFromMem, SDL_RWops, SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha,
-    SDL_SetClipRect, SDL_SetGamma, SDL_SetVideoMode, SDL_Surface, SDL_UnlockSurface,
-    SDL_UpdateRect, SDL_UpperBlit, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption,
-    SDL_WM_SetIcon, SDL_FULLSCREEN, SDL_INIT_TIMER, SDL_INIT_VIDEO, SDL_RLEACCEL, SDL_SRCALPHA,
+    SDL_RWFromFile, SDL_RWFromMem, SDL_RWops, SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma,
+    SDL_SetVideoMode, SDL_Surface, SDL_UnlockSurface, SDL_UpdateRect, SDL_UpperBlit,
+    SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_FULLSCREEN,
+    SDL_INIT_TIMER, SDL_INIT_VIDEO, SDL_RLEACCEL, SDL_SRCALPHA,
 };
 use std::{
     convert::{TryFrom, TryInto},
     ffi::CStr,
     os::raw::{c_char, c_float, c_int, c_short, c_void},
-    ptr::null_mut,
+    ptr::{null_mut, NonNull},
 };
 
 #[derive(Debug)]
@@ -70,7 +71,7 @@ pub struct Graphics {
     pub progress_meter_pic: *mut SDL_Surface,
     pub progress_filler_pic: *mut SDL_Surface,
     /* the graphics display */
-    pub ne_screen: *mut SDL_Surface,
+    pub ne_screen: Option<sdl::FrameBuffer>,
     pub enemy_surface_pointer: [*mut SDL_Surface; ENEMYPHASES as usize],
     pub influencer_surface_pointer: [*mut SDL_Surface; ENEMYPHASES as usize],
     pub influ_digit_surface_pointer: [*mut SDL_Surface; DIGITNUMBER],
@@ -111,7 +112,7 @@ impl Default for Graphics {
             ship_on_pic: null_mut(),
             progress_meter_pic: null_mut(),
             progress_filler_pic: null_mut(),
-            ne_screen: null_mut(),
+            ne_screen: None,
             enemy_surface_pointer: [null_mut(); ENEMYPHASES as usize],
             influencer_surface_pointer: [null_mut(); ENEMYPHASES as usize],
             influ_digit_surface_pointer: [null_mut(); DIGITNUMBER],
@@ -136,19 +137,20 @@ impl Data {
     /// "second" pixel is blacked out, thereby generation a fading
     /// effect.  This function was created to fade the background of the
     /// Escape menu and its submenus.
-    pub unsafe fn make_grid_on_screen(&self, grid_rectangle: Option<&SDL_Rect>) {
+    pub unsafe fn make_grid_on_screen(&mut self, grid_rectangle: Option<&SDL_Rect>) {
         let grid_rectangle = grid_rectangle.unwrap_or(&self.vars.user_rect);
 
         trace!("MakeGridOnScreen(...): real function call confirmed.");
-        SDL_LockSurface(self.graphics.ne_screen);
+        let ne_screen = self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr();
+        SDL_LockSurface(ne_screen);
         let rect_x = i32::from(grid_rectangle.x);
         let rect_y = i32::from(grid_rectangle.y);
         (rect_y..(rect_y + i32::from(grid_rectangle.y)))
             .flat_map(|y| (rect_x..(rect_x + i32::from(grid_rectangle.w))).map(move |x| (x, y)))
             .filter(|(x, y)| (x + y) % 2 == 0)
-            .for_each(|(x, y)| putpixel(self.graphics.ne_screen, x, y, 0));
+            .for_each(|(x, y)| putpixel(ne_screen, x, y, 0));
 
-        SDL_UnlockSurface(self.graphics.ne_screen);
+        SDL_UnlockSurface(ne_screen);
         trace!("MakeGridOnScreen(...): end of function reached.");
     }
 }
@@ -190,7 +192,8 @@ pub unsafe fn apply_filter(
 
 impl Data {
     pub unsafe fn toggle_fullscreen(&mut self) {
-        let mut vid_flags = (*self.graphics.ne_screen).flags;
+        let ne_screen = self.graphics.ne_screen.as_mut().unwrap();
+        let mut vid_flags = ne_screen.flags();
 
         if self.global.game_config.use_fullscreen != 0 {
             vid_flags &= !(SDL_FULLSCREEN as u32);
@@ -198,24 +201,29 @@ impl Data {
             vid_flags |= SDL_FULLSCREEN as u32;
         }
 
-        self.graphics.ne_screen = SDL_SetVideoMode(
+        let new_ne_screen = SDL_SetVideoMode(
             self.vars.screen_rect.w.into(),
             self.vars.screen_rect.h.into(),
             0,
             vid_flags,
         );
-        if self.graphics.ne_screen.is_null() {
-            error!(
-                "unable to toggle windowed/fullscreen {} x {} video mode.",
-                self.vars.screen_rect.w, self.vars.screen_rect.h,
-            );
-            panic!(
-                "SDL-Error: {}",
-                CStr::from_ptr(SDL_GetError()).to_string_lossy()
-            );
-        }
+        let new_ne_screen = match NonNull::new(new_ne_screen) {
+            Some(ptr) => ptr,
+            None => {
+                error!(
+                    "unable to toggle windowed/fullscreen {} x {} video mode.",
+                    self.vars.screen_rect.w, self.vars.screen_rect.h,
+                );
+                panic!(
+                    "SDL-Error: {}",
+                    CStr::from_ptr(SDL_GetError()).to_string_lossy()
+                );
+            }
+        };
 
-        if (*self.graphics.ne_screen).flags != vid_flags {
+        *ne_screen = sdl::FrameBuffer::from_ptr(new_ne_screen);
+
+        if ne_screen.flags() != vid_flags {
             warn!("Failed to toggle windowed/fullscreen mode!");
         } else {
             self.global.game_config.use_fullscreen = !self.global.game_config.use_fullscreen;
@@ -236,7 +244,7 @@ impl Data {
         let screenshot_filename =
             format!("Screenshot_{}.bmp\0", self.graphics.number_of_screenshot);
         SDL_SaveBMP_RW(
-            self.graphics.ne_screen,
+            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
             SDL_RWFromFile(
                 screenshot_filename.as_ptr() as *const c_char,
                 cstr!("wb").as_ptr(),
@@ -252,7 +260,7 @@ impl Data {
                 .into(),
         );
         self.make_grid_on_screen(None);
-        SDL_Flip(self.graphics.ne_screen);
+        SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
         self.play_sound(SoundType::Screenshot as i32);
 
         while self.cmd_is_active(Cmds::Screenshot) {
@@ -291,8 +299,6 @@ impl Data {
             .portrait_raw_mem
             .iter_mut()
             .for_each(|mem| drop(mem.take()));
-
-        SDL_FreeSurface(self.graphics.ne_screen);
 
         free_surface_array(&self.graphics.enemy_surface_pointer);
         free_surface_array(&self.graphics.influencer_surface_pointer);
@@ -597,6 +603,19 @@ pub unsafe fn scale_pic(pic: &mut *mut SDL_Surface, scale: c_float) {
     SDL_FreeSurface(tmp);
 }
 
+pub fn scale_pic_surface(pic: &mut Surface, scale: c_float) {
+    if (scale - 1.0).abs() <= f32::EPSILON {
+        return;
+    }
+    let scale = scale.into();
+
+    let new_pic = NonNull::new(unsafe { zoomSurface(pic.as_mut_ptr(), scale, scale, 0) });
+    match new_pic {
+        Some(new_pic) => *pic = unsafe { Surface::from_ptr(new_pic) },
+        None => panic!("zoomSurface() failed for scale = {}.", scale),
+    }
+}
+
 impl Data {
     pub unsafe fn scale_graphics(&mut self, scale: c_float) {
         static INIT: std::sync::Once = std::sync::Once::new();
@@ -728,7 +747,9 @@ impl Data {
             }
         }
 
-        self.printf_sdl(self.graphics.ne_screen, -1, -1, format_args!(" ok\n"));
+        let mut ne_screen = self.graphics.ne_screen.take().unwrap();
+        self.printf_sdl(&mut ne_screen, -1, -1, format_args!(" ok\n"));
+        self.graphics.ne_screen = Some(ne_screen);
     }
 
     /// display "white noise" effect in SDL_Rect.
@@ -738,7 +759,7 @@ impl Data {
     /// timeout is in ms
     pub unsafe fn white_noise(
         &mut self,
-        bitmap: *mut SDL_Surface,
+        frame_buffer: &mut FrameBuffer,
         rect: &mut SDL_Rect,
         timeout: c_int,
     ) {
@@ -753,7 +774,7 @@ impl Data {
 
         let grey: [u32; NOISE_COLORS] = array_init(|index| {
             let color = (((index as f64 + 1.0) / (NOISE_COLORS as f64)) * 255.0) as u8;
-            SDL_MapRGB((*self.graphics.ne_screen).format, color, color, color)
+            SDL_MapRGB(frame_buffer.format().as_ptr(), color, color, color)
         });
 
         // produce the tiles
@@ -769,7 +790,7 @@ impl Data {
         );
         let tmp2 = SDL_DisplayFormat(tmp);
         SDL_FreeSurface(tmp);
-        SDL_UpperBlit(bitmap, rect, tmp2, null_mut());
+        SDL_UpperBlit(frame_buffer.as_mut_ptr(), rect, tmp2, null_mut());
 
         let mut rng = rand::thread_rng();
         let noise_tiles: [*mut SDL_Surface; NOISE_TILES] = array_init(|_| {
@@ -813,17 +834,17 @@ impl Data {
             *used_tiles.last_mut().unwrap() = next_tile;
 
             // make sure we can blit the full rect without clipping! (would change *rect!)
-            SDL_GetClipRect(self.graphics.ne_screen, &mut clip_rect);
-            SDL_SetClipRect(self.graphics.ne_screen, null_mut());
+            SDL_GetClipRect(frame_buffer.as_mut_ptr(), &mut clip_rect);
+            frame_buffer.clear_clip_rect();
             // set it
             SDL_UpperBlit(
                 noise_tiles[usize::try_from(next_tile).unwrap()],
                 null_mut(),
-                self.graphics.ne_screen,
+                frame_buffer.as_mut_ptr(),
                 rect,
             );
             SDL_UpdateRect(
-                self.graphics.ne_screen,
+                frame_buffer.as_mut_ptr(),
                 rect.x.into(),
                 rect.y.into(),
                 rect.w.into(),
@@ -841,7 +862,7 @@ impl Data {
         }
 
         //restore previous clip-rectange
-        SDL_SetClipRect(self.graphics.ne_screen, &clip_rect);
+        frame_buffer.set_clip_rect(&clip_rect);
 
         for &tile in &noise_tiles {
             SDL_FreeSurface(tile);
@@ -907,11 +928,12 @@ impl Data {
         // DisplayBanner function of the matter...
         self.graphics.banner_is_destroyed = true.into();
 
-        SDL_SetClipRect(self.graphics.ne_screen, null_mut());
+        let ne_screen = self.graphics.ne_screen.as_mut().unwrap();
+        ne_screen.clear_clip_rect();
 
         // Now we fill the screen with black color...
-        SDL_FillRect(self.graphics.ne_screen, null_mut(), 0);
-        SDL_Flip(self.graphics.ne_screen);
+        SDL_FillRect(ne_screen.as_mut_ptr(), null_mut(), 0);
+        SDL_Flip(ne_screen.as_mut_ptr());
     }
 
     /// Initialise the Video display and graphics engine
@@ -1047,21 +1069,25 @@ impl Data {
             }
         }
 
-        self.graphics.ne_screen = SDL_SetVideoMode(
+        let ne_screen = SDL_SetVideoMode(
             self.vars.screen_rect.w.into(),
             self.vars.screen_rect.h.into(),
             0,
             vid_flags,
         );
-        if self.graphics.ne_screen.is_null() {
-            error!(
-                "Couldn't set {} x {} video mode. SDL: {}",
-                self.vars.screen_rect.w,
-                self.vars.screen_rect.h,
-                CStr::from_ptr(SDL_GetError()).to_string_lossy(),
-            );
-            std::process::exit(-1);
-        }
+        let ne_screen = match NonNull::new(ne_screen) {
+            Some(ne_screen) => ne_screen,
+            None => {
+                error!(
+                    "Couldn't set {} x {} video mode. SDL: {}",
+                    self.vars.screen_rect.w,
+                    self.vars.screen_rect.h,
+                    CStr::from_ptr(SDL_GetError()).to_string_lossy(),
+                );
+                std::process::exit(-1);
+            }
+        };
+        self.graphics.ne_screen = Some(sdl::FrameBuffer::from_ptr(ne_screen));
 
         self.graphics.vid_info = SDL_GetVideoInfo(); /* info about current video mode */
 
@@ -1914,13 +1940,18 @@ impl Data {
             scale_pic(&mut image, self.global.game_config.scale);
         }
 
-        SDL_UpperBlit(image, null_mut(), self.graphics.ne_screen, null_mut());
+        SDL_UpperBlit(
+            image,
+            null_mut(),
+            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
+            null_mut(),
+        );
 
         SDL_FreeSurface(image);
     }
 
     pub unsafe fn draw_line_between_tiles(
-        &self,
+        &mut self,
         mut x1: c_float,
         mut y1: c_float,
         mut x2: c_float,
@@ -1945,7 +1976,7 @@ impl Data {
             while i < max {
                 let pixx = f32::from(self.vars.user_rect.x) + f32::from(self.vars.user_rect.w / 2)
                     - f32::from(self.vars.block_rect.w) * (self.vars.me.pos.x - x1);
-                let user_center = self.get_user_center();
+                let user_center = self.vars.get_user_center();
                 let pixy = f32::from(user_center.y)
                     - f32::from(self.vars.block_rect.h) * (self.vars.me.pos.y - y1)
                     + i;
@@ -1959,14 +1990,15 @@ impl Data {
                     i += 1.;
                     continue;
                 }
+                let ne_screen = self.graphics.ne_screen.as_mut().unwrap();
                 putpixel(
-                    self.graphics.ne_screen,
+                    ne_screen.as_mut_ptr(),
                     pixx as c_int,
                     pixy as c_int,
                     color.try_into().unwrap(),
                 );
                 putpixel(
-                    self.graphics.ne_screen,
+                    ne_screen.as_mut_ptr(),
                     pixx as c_int - 1,
                     pixy as c_int,
                     color.try_into().unwrap(),
@@ -1995,7 +2027,7 @@ impl Data {
             let pixx = f32::from(self.vars.user_rect.x) + f32::from(self.vars.user_rect.w / 2)
                 - f32::from(self.vars.block_rect.w) * (self.vars.me.pos.x - x1)
                 + i;
-            let user_center = self.get_user_center();
+            let user_center = self.vars.get_user_center();
             let pixy = f32::from(user_center.y)
                 - f32::from(self.vars.block_rect.h) * (self.vars.me.pos.y - y1)
                 + i * slope;
@@ -2007,14 +2039,15 @@ impl Data {
                 i += 1.;
                 continue;
             }
+            let ne_screen = self.graphics.ne_screen.as_mut().unwrap();
             putpixel(
-                self.graphics.ne_screen,
+                ne_screen.as_mut_ptr(),
                 pixx as c_int,
                 pixy as c_int,
                 color.try_into().unwrap(),
             );
             putpixel(
-                self.graphics.ne_screen,
+                ne_screen.as_mut_ptr(),
                 pixx as c_int,
                 pixy as c_int - 1,
                 color.try_into().unwrap(),

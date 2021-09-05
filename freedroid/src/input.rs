@@ -372,7 +372,7 @@ impl Data {
 
                 sdl_sys::SDL_EventType_SDL_MOUSEMOTION => {
                     let button = self.input.event.button;
-                    let user_center = self.get_user_center();
+                    let user_center = self.vars.get_user_center();
                     self.input.input_axis.x = i32::from(button.x) - i32::from(user_center.x) + 16;
                     self.input.input_axis.y = i32::from(button.y) - i32::from(user_center.y) + 16;
 

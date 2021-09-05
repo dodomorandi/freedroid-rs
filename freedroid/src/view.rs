@@ -6,16 +6,16 @@ use crate::{
         TRANSFER_SOUND_INTERVAL,
     },
     global::INFLUENCE_MODE_NAMES,
-    graphics::apply_filter,
+    graphics::{apply_filter, Graphics},
     map::get_map_brick,
-    structs::{Finepoint, GrobPoint},
-    Data,
+    structs::{Blast, Finepoint, GrobPoint},
+    vars::Vars,
+    Data, Main,
 };
 
 use log::{info, trace};
 use sdl_sys::{
-    rotozoomSurface, SDL_Color, SDL_FillRect, SDL_MapRGB, SDL_Rect, SDL_SetClipRect,
-    SDL_UpdateRect, SDL_UpperBlit,
+    rotozoomSurface, SDL_Color, SDL_FillRect, SDL_MapRGB, SDL_Rect, SDL_UpdateRect, SDL_UpperBlit,
 };
 use std::{
     cell::{Cell, RefCell},
@@ -48,10 +48,19 @@ const FLASH_DARK: SDL_Color = SDL_Color {
 };
 
 impl Data {
-    pub unsafe fn fill_rect(&self, mut rect: SDL_Rect, color: SDL_Color) {
-        let pixcolor = SDL_MapRGB((*self.graphics.ne_screen).format, color.r, color.g, color.b);
+    pub unsafe fn fill_rect(&mut self, mut rect: SDL_Rect, color: SDL_Color) {
+        let pixcolor = SDL_MapRGB(
+            self.graphics.ne_screen.as_ref().unwrap().format().as_ptr(),
+            color.r,
+            color.g,
+            color.b,
+        );
 
-        SDL_FillRect(self.graphics.ne_screen, &mut rect, pixcolor);
+        SDL_FillRect(
+            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
+            &mut rect,
+            pixcolor,
+        );
     }
 
     /// This function assembles the contents of the combat window
@@ -77,8 +86,11 @@ impl Data {
 
         trace!("\nvoid Assemble_Combat_Picture(...): Real function call confirmed.");
 
-        SDL_SetClipRect(self.graphics.ne_screen, &self.vars.user_rect);
-
+        self.graphics
+            .ne_screen
+            .as_mut()
+            .unwrap()
+            .set_clip_rect(&self.vars.user_rect);
         if self.global.game_config.all_map_visible == 0 {
             self.fill_rect(self.vars.user_rect, BLACK);
         }
@@ -131,7 +143,7 @@ impl Data {
                 }
 
                 map_brick = get_map_brick(&*self.main.cur_level, col.into(), line.into());
-                let user_center = self.get_user_center();
+                let user_center = self.vars.get_user_center();
                 target_rectangle.x = user_center.x
                     + ((-self.vars.me.pos.x + 1.0 * f32::from(col) - 0.5)
                         * f32::from(self.vars.block_rect.w))
@@ -145,7 +157,7 @@ impl Data {
                         [usize::try_from((*self.main.cur_level).color).unwrap()]
                         [usize::from(map_brick)],
                     null_mut(),
-                    self.graphics.ne_screen,
+                    self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                     &mut target_rectangle,
                 );
             });
@@ -162,14 +174,22 @@ impl Data {
             self.vars.full_user_rect.w,
             font_height(&*self.global.font0_b_font).try_into().unwrap(),
         );
-        SDL_SetClipRect(self.graphics.ne_screen, &text_rect);
+        self.graphics
+            .ne_screen
+            .as_mut()
+            .unwrap()
+            .set_clip_rect(&text_rect);
         if self.global.game_config.full_user_rect == 0 {
-            SDL_FillRect(self.graphics.ne_screen, &mut text_rect, 0);
+            SDL_FillRect(
+                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
+                &mut text_rect,
+                0,
+            );
         }
 
         if self.global.game_config.draw_position != 0 {
             print_string_font(
-                self.graphics.ne_screen,
+                self.graphics.ne_screen.as_mut().unwrap(),
                 self.global.font0_b_font,
                 (self.vars.full_user_rect.x + (self.vars.full_user_rect.w / 6) as i16).into(),
                 i32::from(self.vars.full_user_rect.y) + i32::from(self.vars.full_user_rect.h)
@@ -201,7 +221,7 @@ impl Data {
 
                 FPS_DISPLAYED.with(|fps_displayed| {
                     print_string_font(
-                        self.graphics.ne_screen,
+                        self.graphics.ne_screen.as_mut().unwrap(),
                         self.global.font0_b_font,
                         self.vars.full_user_rect.x.into(),
                         self.vars.full_user_rect.y as i32 + self.vars.full_user_rect.h as i32
@@ -213,7 +233,7 @@ impl Data {
 
             if self.global.game_config.draw_energy != 0 {
                 print_string_font(
-                    self.graphics.ne_screen,
+                    self.graphics.ne_screen.as_mut().unwrap(),
                     self.global.font0_b_font,
                     i32::from(self.vars.full_user_rect.x)
                         + i32::from(self.vars.full_user_rect.w) / 2,
@@ -224,7 +244,7 @@ impl Data {
             }
             if self.global.game_config.draw_death_count != 0 {
                 print_string_font(
-                    self.graphics.ne_screen,
+                    self.graphics.ne_screen.as_mut().unwrap(),
                     self.global.font0_b_font,
                     i32::from(self.vars.full_user_rect.x)
                         + 2 * i32::from(self.vars.full_user_rect.w) / 3,
@@ -234,7 +254,11 @@ impl Data {
                 );
             }
 
-            SDL_SetClipRect(self.graphics.ne_screen, &self.vars.user_rect);
+            self.graphics
+                .ne_screen
+                .as_mut()
+                .unwrap()
+                .set_clip_rect(&self.vars.user_rect);
 
             // make sure Ashes are displayed _before_ droids, so that they are _under_ them!
             for enemy_index in 0..usize::try_from(self.main.num_enemys).unwrap() {
@@ -243,7 +267,9 @@ impl Data {
                     && (enemy.levelnum == (*self.main.cur_level).levelnum)
                     && self.is_visible(&enemy.pos) != 0
                 {
-                    self.put_ashes(enemy.pos.x, enemy.pos.y);
+                    let x = enemy.pos.x;
+                    let y = enemy.pos.y;
+                    self.put_ashes(x, y);
                 }
             }
 
@@ -268,13 +294,17 @@ impl Data {
                 }
             }
 
-            self.main
-                .all_blasts
+            let &mut Data {
+                main: Main { ref all_blasts, .. },
+                ref vars,
+                ref mut graphics,
+                ..
+            } = self;
+            all_blasts
                 .iter()
                 .take(MAXBLASTS)
-                .enumerate()
-                .filter(|(_, blast)| blast.ty != Status::Out as i32)
-                .for_each(|(index, _)| self.put_blast(index as i32));
+                .filter(|blast| blast.ty != Status::Out as i32)
+                .for_each(|blast| put_blast(blast, vars, graphics));
         }
 
         // At this point we are done with the drawing procedure
@@ -282,14 +312,14 @@ impl Data {
 
         if mask & AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits() as i32 != 0 {
             SDL_UpdateRect(
-                self.graphics.ne_screen,
+                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                 self.vars.user_rect.x.into(),
                 self.vars.user_rect.y.into(),
                 self.vars.user_rect.w.into(),
                 self.vars.user_rect.h.into(),
             );
             SDL_UpdateRect(
-                self.graphics.ne_screen,
+                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                 text_rect.x.into(),
                 text_rect.y.into(),
                 text_rect.w.into(),
@@ -297,16 +327,16 @@ impl Data {
             );
         }
 
-        SDL_SetClipRect(self.graphics.ne_screen, null_mut());
+        self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
     }
 
     /// put some ashes at (x,y)
-    pub unsafe fn put_ashes(&self, x: f32, y: f32) {
+    pub unsafe fn put_ashes(&mut self, x: f32, y: f32) {
         if self.global.game_config.show_decals == 0 {
             return;
         }
 
-        let user_center = self.get_user_center();
+        let user_center = self.vars.get_user_center();
         let mut dst = rect!(
             (f32::from(user_center.x)
                 + (-self.vars.me.pos.x + x) * f32::from(self.vars.block_rect.w)
@@ -320,7 +350,7 @@ impl Data {
         SDL_UpperBlit(
             self.graphics.decal_pics[0],
             null_mut(),
-            self.graphics.ne_screen,
+            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
             &mut dst,
         );
     }
@@ -390,7 +420,7 @@ impl Data {
 
         // now blit the whole construction to screen:
         if x == -1 {
-            let user_center = self.get_user_center();
+            let user_center = self.vars.get_user_center();
             dst.x = (f32::from(user_center.x)
                 + (droid.pos.x - self.vars.me.pos.x) * f32::from(self.vars.block_rect.w)
                 - f32::from(self.vars.block_rect.w / 2)) as i16;
@@ -404,7 +434,7 @@ impl Data {
         SDL_UpperBlit(
             self.graphics.build_block,
             null_mut(),
-            self.graphics.ne_screen,
+            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
             &mut dst,
         );
 
@@ -419,7 +449,7 @@ impl Data {
             && self.global.game_config.droid_talk != 0
         {
             put_string_font(
-                self.graphics.ne_screen,
+                self.graphics.ne_screen.as_mut().unwrap(),
                 self.global.font0_b_font,
                 (f32::from(self.vars.user_rect.x)
                     + f32::from(self.vars.user_rect.w / 2)
@@ -557,7 +587,7 @@ impl Data {
         }
 
         if x == -1 {
-            let user_center = self.get_user_center();
+            let user_center = self.vars.get_user_center();
             dst.x = user_center.x - (self.vars.block_rect.w / 2) as i16;
             dst.y = user_center.y - (self.vars.block_rect.h / 2) as i16;
         } else {
@@ -568,7 +598,7 @@ impl Data {
         SDL_UpperBlit(
             self.graphics.build_block,
             null_mut(),
-            self.graphics.ne_screen,
+            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
             &mut dst,
         );
 
@@ -663,7 +693,7 @@ impl Data {
         // rectangle containing the full rotated Block_Rect.h x Block_Rect.w rectangle!!!
         // This has to be taken into account when calculating the target position for the
         // blit of these surfaces!!!!
-        let user_center = self.get_user_center();
+        let user_center = self.vars.get_user_center();
         let cur_bullet = &self.main.all_bullets[usize::try_from(bullet_number).unwrap()];
         let mut dst = rect!(
             (f32::from(user_center.x)
@@ -679,42 +709,11 @@ impl Data {
         SDL_UpperBlit(
             cur_bullet.surface_pointer[phase_of_bullet],
             null_mut(),
-            self.graphics.ne_screen,
+            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
             &mut dst,
         );
 
         trace!("PutBullet: end of function reached.");
-    }
-
-    pub unsafe fn put_blast(&self, blast_number: c_int) {
-        trace!("PutBlast: real function call confirmed.");
-
-        let cur_blast = &self.main.all_blasts[usize::try_from(blast_number).unwrap()];
-
-        // If the blast is already long deat, we need not do anything else here
-        if cur_blast.ty == Status::Out as i32 {
-            return;
-        }
-
-        let user_center = self.get_user_center();
-        let mut dst = rect!(
-            (f32::from(user_center.x)
-                - (self.vars.me.pos.x - cur_blast.px) * f32::from(self.vars.block_rect.w)
-                - f32::from(self.vars.block_rect.w / 2)) as i16,
-            (f32::from(user_center.y)
-                - (self.vars.me.pos.y - cur_blast.py) * f32::from(self.vars.block_rect.h)
-                - f32::from(self.vars.block_rect.h / 2)) as i16,
-            0,
-            0,
-        );
-        SDL_UpperBlit(
-            self.vars.blastmap[usize::try_from(cur_blast.ty).unwrap()].surface_pointer
-                [(cur_blast.phase).floor() as usize],
-            null_mut(),
-            self.graphics.ne_screen,
-            &mut dst,
-        );
-        trace!("PutBlast: end of function reached.");
     }
 
     /// This function updates the top status bar.
@@ -811,11 +810,11 @@ impl Data {
         if screen_needs_update {
             // Redraw the whole background of the top status bar
             let mut dst = rect!(0, 0, 0, 0);
-            SDL_SetClipRect(self.graphics.ne_screen, null_mut()); // this unsets the clipping rectangle
+            self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
             SDL_UpperBlit(
                 self.graphics.banner_pic,
                 null_mut(),
-                self.graphics.ne_screen,
+                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                 &mut dst,
             );
 
@@ -834,7 +833,7 @@ impl Data {
                 dst.y = self.vars.left_info_rect.y
                     - i16::try_from(font_height(&*self.global.para_b_font)).unwrap();
                 print_string_font(
-                    self.graphics.ne_screen,
+                    self.graphics.ne_screen.as_mut().unwrap(),
                     self.global.para_b_font,
                     dst.x.into(),
                     dst.y.into(),
@@ -856,7 +855,7 @@ impl Data {
                 dst.y = self.vars.right_info_rect.y
                     - i16::try_from(font_height(&*self.global.para_b_font)).unwrap();
                 print_string_font(
-                    self.graphics.ne_screen,
+                    self.graphics.ne_screen.as_mut().unwrap(),
                     self.global.para_b_font,
                     dst.x.into(),
                     dst.y.into(),
@@ -879,7 +878,7 @@ impl Data {
             // finally update the whole top status box
             if (flags & i32::from(DisplayBannerFlags::NO_SDL_UPDATE.bits())) == 0 {
                 SDL_UpdateRect(
-                    self.graphics.ne_screen,
+                    self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                     0,
                     0,
                     self.vars.banner_rect.w.into(),
@@ -890,4 +889,33 @@ impl Data {
             self.graphics.banner_is_destroyed = false.into();
         }
     }
+}
+
+pub unsafe fn put_blast(blast: &Blast, vars: &Vars, graphics: &mut Graphics) {
+    trace!("PutBlast: real function call confirmed.");
+
+    // If the blast is already long deat, we need not do anything else here
+    if blast.ty == Status::Out as i32 {
+        return;
+    }
+
+    let user_center = vars.get_user_center();
+    let mut dst = rect!(
+        (f32::from(user_center.x)
+            - (vars.me.pos.x - blast.px) * f32::from(vars.block_rect.w)
+            - f32::from(vars.block_rect.w / 2)) as i16,
+        (f32::from(user_center.y)
+            - (vars.me.pos.y - blast.py) * f32::from(vars.block_rect.h)
+            - f32::from(vars.block_rect.h / 2)) as i16,
+        0,
+        0,
+    );
+    SDL_UpperBlit(
+        vars.blastmap[usize::try_from(blast.ty).unwrap()].surface_pointer
+            [(blast.phase).floor() as usize],
+        null_mut(),
+        graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
+        &mut dst,
+    );
+    trace!("PutBlast: end of function reached.");
 }

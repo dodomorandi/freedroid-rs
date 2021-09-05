@@ -5,7 +5,7 @@ use crate::{
 
 use core::fmt;
 use sdl::Surface;
-use sdl_sys::{IMG_Load, SDL_Rect, SDL_SetColorKey, SDL_Surface, SDL_UpperBlit, SDL_SRCCOLORKEY};
+use sdl_sys::{IMG_Load, SDL_Rect, SDL_SetColorKey, SDL_Surface, SDL_SRCCOLORKEY};
 use std::{
     convert::TryInto,
     os::raw::{c_char, c_float, c_int},
@@ -40,21 +40,21 @@ pub fn font_height(font: &BFontInfo) -> c_int {
     font.h
 }
 
-pub unsafe fn put_string_font(
-    surface: *mut SDL_Surface,
+pub unsafe fn put_string_font<const F: bool>(
+    surface: &mut sdl::GenericSurface<F>,
     font: *mut BFontInfo,
     mut x: c_int,
     y: c_int,
     text: &[u8],
 ) {
     for &c in text {
-        x += put_char_font(&mut *surface, &mut *font, x, y, c);
+        x += put_char_font(surface, &mut *font, x, y, c);
     }
 }
 
 /// Put a single char on the surface with the specified font
-pub unsafe fn put_char_font(
-    surface: &mut SDL_Surface,
+unsafe fn put_char_font<const F: bool>(
+    surface: &mut sdl::GenericSurface<F>,
     font: &mut BFontInfo,
     x: c_int,
     y: c_int,
@@ -68,11 +68,10 @@ pub unsafe fn put_char_font(
     );
 
     if c != b' ' {
-        SDL_UpperBlit(
-            font.surface.as_mut().unwrap().as_mut_ptr(),
-            &mut font.chars[usize::from(c)],
+        font.surface.as_mut().unwrap().blit(
+            Some(&font.chars[usize::from(c)]),
             surface,
-            &mut dest,
+            Some(&mut dest),
         );
     }
     dest.w.into()
@@ -84,24 +83,30 @@ pub fn char_width(font: &BFontInfo, c: u8) -> c_int {
 }
 
 impl Data {
-    pub unsafe fn put_string(&self, surface: *mut SDL_Surface, x: c_int, y: c_int, text: &[u8]) {
+    pub unsafe fn put_string<const F: bool>(
+        &self,
+        surface: &mut sdl::GenericSurface<F>,
+        x: c_int,
+        y: c_int,
+        text: &[u8],
+    ) {
         put_string_font(surface, self.b_font.current_font, x, y, text);
     }
 
     /// Puts a single char on the surface
-    pub unsafe fn put_char(
+    pub unsafe fn put_char<const F: bool>(
         &mut self,
-        surface: *mut SDL_Surface,
+        surface: &mut sdl::GenericSurface<F>,
         x: c_int,
         y: c_int,
         c: u8,
     ) -> c_int {
-        put_char_font(&mut *surface, &mut *self.b_font.current_font, x, y, c)
+        put_char_font(surface, &mut *self.b_font.current_font, x, y, c)
     }
 }
 
-pub unsafe fn print_string_font(
-    surface: *mut SDL_Surface,
+pub unsafe fn print_string_font<const F: bool>(
+    surface: &mut sdl::GenericSurface<F>,
     font: *mut BFontInfo,
     x: c_int,
     y: c_int,
@@ -192,9 +197,9 @@ pub unsafe fn init_font(font: &mut BFontInfo) {
 }
 
 impl Data {
-    pub unsafe fn centered_print_string(
+    pub unsafe fn centered_print_string<const F: bool>(
         &self,
-        surface: *mut SDL_Surface,
+        surface: &mut sdl::GenericSurface<F>,
         y: c_int,
         format_args: fmt::Arguments,
     ) {
@@ -207,9 +212,9 @@ impl Data {
         self.centered_put_string(surface, y, &temp[..written]);
     }
 
-    pub unsafe fn print_string(
+    pub unsafe fn print_string<const F: bool>(
         &mut self,
-        surface: *mut SDL_Surface,
+        surface: &mut sdl::GenericSurface<F>,
         x: c_int,
         y: c_int,
         format_args: fmt::Arguments,
@@ -224,8 +229,8 @@ impl Data {
     }
 }
 
-pub unsafe fn centered_put_string_font(
-    surface: *mut SDL_Surface,
+pub unsafe fn centered_put_string_font<const F: bool>(
+    surface: &mut sdl::GenericSurface<F>,
     font: *mut BFontInfo,
     y: c_int,
     text: &[u8],
@@ -233,14 +238,19 @@ pub unsafe fn centered_put_string_font(
     put_string_font(
         surface,
         font,
-        (*surface).w / 2 - text_width_font(&*font, text) / 2,
+        c_int::from(surface.width() / 2) - text_width_font(&*font, text) / 2,
         y,
         text,
     );
 }
 
 impl Data {
-    pub unsafe fn centered_put_string(&self, surface: *mut SDL_Surface, y: c_int, text: &[u8]) {
+    pub unsafe fn centered_put_string<const F: bool>(
+        &self,
+        surface: &mut sdl::GenericSurface<F>,
+        y: c_int,
+        text: &[u8],
+    ) {
         centered_put_string_font(surface, self.b_font.current_font, y, text);
     }
 

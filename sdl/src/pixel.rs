@@ -20,6 +20,10 @@ impl PixelFormatRef<'_> {
         }
     }
 
+    pub fn as_ptr(&self) -> *const SDL_PixelFormat {
+        self.inner.as_ptr()
+    }
+
     pub fn bytes_per_pixel(&self) -> BytesPerPixel {
         use BytesPerPixel::*;
 
