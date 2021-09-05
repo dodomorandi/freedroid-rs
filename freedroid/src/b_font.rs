@@ -7,7 +7,6 @@ use core::fmt;
 use sdl::Surface;
 use sdl_sys::{IMG_Load, SDL_Rect, SDL_SetColorKey, SDL_Surface, SDL_UpperBlit, SDL_SRCCOLORKEY};
 use std::{
-    alloc::{alloc_zeroed, dealloc, Layout},
     convert::TryInto,
     os::raw::{c_char, c_float, c_int},
     ptr::{null_mut, NonNull},
@@ -128,24 +127,22 @@ impl Data {
             return null_mut();
         }
 
-        let font_layout = Layout::new::<BFontInfo>();
-        let font = alloc_zeroed(font_layout) as *mut BFontInfo;
-        if font.is_null() {
-            return null_mut();
-        }
-
         let mut surface = IMG_Load(filename);
         scale_pic(&mut surface, scale);
 
         if surface.is_null() {
-            dealloc(font as *mut u8, font_layout);
             return null_mut();
         }
 
-        (*font).surface = Some(Surface::from_ptr(NonNull::new_unchecked(surface)));
-        (*font).chars.iter_mut().for_each(|rect| *rect = rect!());
+        let mut font = Box::new(BFontInfo {
+            h: 0,
+            surface: Some(Surface::from_ptr(NonNull::new_unchecked(surface))),
+            chars: [rect!(); 256],
+        });
         /* Init the font */
-        init_font(&mut *font);
+        init_font(&mut font);
+
+        let font = Box::into_raw(font);
         /* Set the font as the current font */
         self.b_font.current_font = font;
 
@@ -169,7 +166,7 @@ pub unsafe fn init_font(font: &mut BFontInfo) {
             font.chars[i].x = x.try_into().unwrap();
             font.chars[i].y = 1;
             font.chars[i].h = surface_height;
-            while pixels.get(x, 0).unwrap().get() != sentry && x < surface_width {
+            while x < surface_width && pixels.get(x, 0).unwrap().get() != sentry {
                 x += 1;
             }
             font.chars[i].w = (i32::from(x) - i32::from(font.chars[i].x))

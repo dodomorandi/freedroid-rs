@@ -1,4 +1,3 @@
-#![feature(array_map)]
 #![feature(array_methods)]
 
 macro_rules! rect {

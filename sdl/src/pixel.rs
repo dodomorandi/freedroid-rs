@@ -153,5 +153,5 @@ fn pixel_offset(x: u16, y: u16, width: u16) -> usize {
     let y: usize = y.into();
     let width: usize = width.into();
 
-    x * width + y
+    y * width + x
 }
