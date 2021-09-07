@@ -72,17 +72,17 @@ impl Data {
             0,
         );
 
-        let &mut Data {
+        let Data {
             graphics:
                 Graphics {
                     progress_filler_pic,
-                    ref mut ne_screen,
+                    ne_screen,
                     ..
                 },
             ..
         } = self;
         SDL_UpperBlit(
-            progress_filler_pic,
+            progress_filler_pic.as_mut().unwrap().as_mut_ptr(),
             &mut src,
             ne_screen.as_mut().unwrap().as_mut_ptr(),
             &mut dst,
@@ -581,7 +581,7 @@ impl Data {
             text = cstr!("Progress...").as_ptr() as *mut c_char;
         }
 
-        if self.graphics.progress_meter_pic.is_null() {
+        if self.graphics.progress_meter_pic.is_none() {
             let mut fpath = self.find_file(
                 PROGRESS_METER_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
@@ -590,7 +590,7 @@ impl Data {
             );
             self.graphics.progress_meter_pic = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
             scale_pic(
-                &mut self.graphics.progress_meter_pic,
+                self.graphics.progress_meter_pic.as_mut().unwrap(),
                 self.global.game_config.scale,
             );
             fpath = self.find_file(
@@ -602,7 +602,7 @@ impl Data {
             self.graphics.progress_filler_pic =
                 self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
             scale_pic(
-                &mut self.graphics.progress_filler_pic,
+                self.graphics.progress_filler_pic.as_mut().unwrap(),
                 self.global.game_config.scale,
             );
 
@@ -622,7 +622,11 @@ impl Data {
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
         SDL_UpperBlit(
-            self.graphics.progress_meter_pic,
+            self.graphics
+                .progress_meter_pic
+                .as_mut()
+                .unwrap()
+                .as_mut_ptr(),
             null_mut(),
             self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
             &mut self.vars.progress_meter_rect,

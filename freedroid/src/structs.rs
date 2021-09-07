@@ -1,6 +1,7 @@
 use crate::defs::*;
 
-use sdl_sys::{SDL_Rect, SDL_Surface};
+use sdl::Surface;
+use sdl_sys::SDL_Rect;
 use std::ptr::null_mut;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -163,7 +164,7 @@ impl Default for Enemy {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug)]
 pub struct BulletSpec {
     pub recharging_time: f32, // time until the next shot can be made, measures in seconds
     pub speed: f32,           /* speed of the bullet */
@@ -171,11 +172,11 @@ pub struct BulletSpec {
     pub phases: i32,          /* how many phases in motion to show */
     pub phase_changes_per_second: f32, // how many different phases to display every second
     pub blast: i32,           /* which blast does this bullet create */
-    pub surface_pointer: [*mut SDL_Surface; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
-                                                                     // the bullet images of this bullet
+    pub surfaces: [Option<Surface>; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
+                              // the bullet images of this bullet
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug)]
 pub struct Bullet {
     pub pos: Finepoint,
     pub prev_pos: Finepoint, // use this for improved collision checks (for low FPS machines)
@@ -188,7 +189,7 @@ pub struct Bullet {
     pub owner: i32,
     pub angle: f32,
     pub surfaces_were_generated: i32,
-    pub surface_pointer: [*mut SDL_Surface; MAX_PHASES_IN_A_BULLET],
+    pub surfaces: [Option<Surface>; MAX_PHASES_IN_A_BULLET],
 }
 
 impl Bullet {
@@ -205,19 +206,21 @@ impl Bullet {
             owner: 0,
             angle: 0.,
             surfaces_were_generated: 0,
-            surface_pointer: [null_mut(); MAX_PHASES_IN_A_BULLET],
+            surfaces: [
+                None, None, None, None, None, None, None, None, None, None, None, None,
+            ],
         }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug)]
 pub struct BlastSpec {
     pub phases: i32,
     pub picpointer: *mut u8,
     pub block: *mut SDL_Rect, /* the coordinates of the blocks in ne_blocks */
     pub total_animation_time: f32,
-    pub surface_pointer: [*mut SDL_Surface; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
-                                                                     // the blast images of this blast type
+    pub surfaces: [Option<Surface>; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
+                                                             // the blast images of this blast type
 }
 
 impl BlastSpec {
@@ -227,7 +230,9 @@ impl BlastSpec {
             picpointer: null_mut(),
             block: null_mut(),
             total_animation_time: 0.,
-            surface_pointer: [null_mut(); MAX_PHASES_IN_A_BULLET],
+            surfaces: [
+                None, None, None, None, None, None, None, None, None, None, None, None,
+            ],
         }
     }
 }

@@ -8,11 +8,9 @@ use crate::{
 };
 
 use log::info;
-use sdl_sys::SDL_FreeSurface;
 use std::{
     convert::{TryFrom, TryInto},
     os::raw::{c_float, c_int},
-    ptr::null_mut,
 };
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -409,8 +407,7 @@ impl Data {
             info!("DeleteBullet: freeing this bullets attached surfaces...");
             let bullet_spec = &*self.vars.bulletmap.add(cur_bullet.ty.into());
             for phase in 0..usize::try_from(bullet_spec.phases).unwrap() {
-                SDL_FreeSurface(cur_bullet.surface_pointer[phase]);
-                cur_bullet.surface_pointer[phase] = null_mut();
+                cur_bullet.surfaces[phase] = None;
             }
             cur_bullet.surfaces_were_generated = false.into();
         }

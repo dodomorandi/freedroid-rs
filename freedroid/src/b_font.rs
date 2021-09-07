@@ -132,16 +132,12 @@ impl Data {
             return null_mut();
         }
 
-        let mut surface = IMG_Load(filename);
+        let mut surface = Surface::from_ptr(NonNull::new(IMG_Load(filename)).unwrap());
         scale_pic(&mut surface, scale);
-
-        if surface.is_null() {
-            return null_mut();
-        }
 
         let mut font = Box::new(BFontInfo {
             h: 0,
-            surface: Some(Surface::from_ptr(NonNull::new_unchecked(surface))),
+            surface: Some(surface),
             chars: [rect!(); 256],
         });
         /* Init the font */

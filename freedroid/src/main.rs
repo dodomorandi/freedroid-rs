@@ -36,6 +36,7 @@ mod text;
 mod vars;
 mod view;
 
+use array_init::array_init;
 use b_font::BFont;
 use bullet::BulletData;
 use defs::{
@@ -132,7 +133,7 @@ impl Default for Main {
             num_enemys: 0,
             number_of_droid_types: 0,
             pre_take_energy: 0,
-            all_bullets: [Bullet::default_const(); MAXBULLETS + 10],
+            all_bullets: array_init(|_| Bullet::default_const()),
             all_blasts: [Blast::default(); MAXBLASTS + 10],
             first_digit_rect: rect!(),
             second_digit_rect: rect!(),

@@ -22,8 +22,8 @@ use clap::{crate_version, Clap};
 use cstr::cstr;
 use log::{error, info, warn};
 use sdl_sys::{
-    Mix_HaltMusic, SDL_Delay, SDL_Flip, SDL_FreeSurface, SDL_GetTicks, SDL_Rect, SDL_ShowCursor,
-    SDL_UpperBlit, SDL_DISABLE,
+    Mix_HaltMusic, SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Rect, SDL_ShowCursor, SDL_UpperBlit,
+    SDL_DISABLE,
 };
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
@@ -68,8 +68,8 @@ impl Data {
                 usize::try_from(self.graphics.number_of_bullet_types).unwrap(),
             );
             for bullet in bullet_map {
-                for surface in &bullet.surface_pointer {
-                    SDL_FreeSurface(*surface);
+                for surface in &mut bullet.surfaces {
+                    *surface = None;
                 }
             }
             dealloc(
@@ -84,9 +84,8 @@ impl Data {
 
         // free blast map
         for blast_type in &mut self.vars.blastmap {
-            for surface in &mut blast_type.surface_pointer {
-                SDL_FreeSurface(*surface);
-                *surface = null_mut();
+            for surface in &mut blast_type.surfaces {
+                *surface = None;
             }
         }
 
@@ -1614,7 +1613,7 @@ impl Data {
             h: self.vars.portrait_rect.h,
         };
         SDL_UpperBlit(
-            self.graphics.pic999,
+            self.graphics.pic999.as_mut().unwrap().as_mut_ptr(),
             null_mut(),
             self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
             &mut dst,

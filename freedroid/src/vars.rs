@@ -3,6 +3,7 @@ use crate::{
     structs::{BlastSpec, BulletSpec, DruidSpec, Finepoint, Gps, Influence},
 };
 
+use array_init::array_init;
 use cstr::cstr;
 use sdl_sys::SDL_Rect;
 use std::{ffi::CStr, os::raw::c_int, ptr::null_mut};
@@ -91,7 +92,7 @@ impl Default for Vars {
             },
             droidmap: null_mut(),
             bulletmap: null_mut(),
-            blastmap: [BlastSpec::default_const(); ALLBLASTTYPES],
+            blastmap: array_init(|_| BlastSpec::default_const()),
         }
     }
 }

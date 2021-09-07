@@ -1,8 +1,8 @@
 use crate::{
     b_font::put_pixel,
     defs::{
-        self, free_if_unused, scale_point, scale_rect, Cmds, Criticality, DisplayBannerFlags,
-        Droid, SoundType, Themed, BANNER_BLOCK_FILE_C, BLAST_BLOCK_FILE_C, BULLET_BLOCK_FILE_C,
+        self, scale_point, scale_rect, Cmds, Criticality, DisplayBannerFlags, Droid, SoundType,
+        Themed, BANNER_BLOCK_FILE_C, BLAST_BLOCK_FILE_C, BULLET_BLOCK_FILE_C,
         CONSOLE_BG_PIC1_FILE_C, CONSOLE_BG_PIC2_FILE_C, CONSOLE_PIC_FILE_C, DIGITNUMBER,
         DIGIT_BLOCK_FILE_C, DROID_BLOCK_FILE_C, ENEMYPHASES, FONT0_FILE, FONT0_FILE_C, FONT1_FILE,
         FONT1_FILE_C, FONT2_FILE, FONT2_FILE_C, FREE_ONLY, GRAPHICS_DIR_C, ICON_FILE, ICON_FILE_C,
@@ -32,10 +32,13 @@ use sdl_sys::{
     SDL_INIT_TIMER, SDL_INIT_VIDEO, SDL_RLEACCEL, SDL_SRCALPHA,
 };
 use std::{
+    cell::RefCell,
     convert::{TryFrom, TryInto},
     ffi::CStr,
+    ops::Not,
     os::raw::{c_char, c_float, c_int, c_short, c_void},
     ptr::{null_mut, NonNull},
+    rc::Rc,
 };
 
 #[derive(Debug)]
@@ -45,44 +48,44 @@ pub struct Graphics {
     portrait_raw_mem: [Option<Box<[u8]>>; Droid::NumDroids as usize],
     fonts_loaded: c_int,
     // A pointer to the surfaces containing the map-pics, which may be rescaled with respect to
-    pub map_block_surface_pointer: [[*mut SDL_Surface; NUM_MAP_BLOCKS]; NUM_COLORS],
+    pub map_block_surface_pointer: [[Option<Rc<RefCell<Surface>>>; NUM_MAP_BLOCKS]; NUM_COLORS],
     // A pointer to the surfaces containing the original map-pics as read from disk
-    orig_map_block_surface_pointer: [[*mut SDL_Surface; NUM_MAP_BLOCKS]; NUM_COLORS],
+    orig_map_block_surface_pointer: [[Option<Rc<RefCell<Surface>>>; NUM_MAP_BLOCKS]; NUM_COLORS],
     // a block for temporary pic-construction
-    pub build_block: *mut SDL_Surface,
+    pub build_block: Option<Surface>,
     pub banner_is_destroyed: i32,
     /* the banner pic */
-    pub banner_pic: *mut SDL_Surface,
-    pub pic999: *mut SDL_Surface,
+    pub banner_pic: Option<Surface>,
+    pub pic999: Option<Surface>,
     pub packed_portraits: [*mut SDL_RWops; Droid::NumDroids as usize],
-    pub decal_pics: [*mut SDL_Surface; NUM_DECAL_PICS],
-    pub takeover_bg_pic: *mut SDL_Surface,
-    pub console_pic: *mut SDL_Surface,
-    pub console_bg_pic1: *mut SDL_Surface,
-    pub console_bg_pic2: *mut SDL_Surface,
-    pub arrow_up: *mut SDL_Surface,
-    pub arrow_down: *mut SDL_Surface,
-    pub arrow_right: *mut SDL_Surface,
-    pub arrow_left: *mut SDL_Surface,
+    pub decal_pics: [Option<Surface>; NUM_DECAL_PICS],
+    pub takeover_bg_pic: Option<Surface>,
+    pub console_pic: Option<Surface>,
+    pub console_bg_pic1: Option<Surface>,
+    pub console_bg_pic2: Option<Surface>,
+    pub arrow_up: Option<Surface>,
+    pub arrow_down: Option<Surface>,
+    pub arrow_right: Option<Surface>,
+    pub arrow_left: Option<Surface>,
     // Side-view of ship: lights off
-    pub ship_off_pic: *mut SDL_Surface,
+    pub ship_off_pic: Option<Surface>,
     // Side-view of ship: lights on
-    pub ship_on_pic: *mut SDL_Surface,
-    pub progress_meter_pic: *mut SDL_Surface,
-    pub progress_filler_pic: *mut SDL_Surface,
+    pub ship_on_pic: Option<Surface>,
+    pub progress_meter_pic: Option<Surface>,
+    pub progress_filler_pic: Option<Surface>,
     /* the graphics display */
     pub ne_screen: Option<sdl::FrameBuffer>,
-    pub enemy_surface_pointer: [*mut SDL_Surface; ENEMYPHASES as usize],
-    pub influencer_surface_pointer: [*mut SDL_Surface; ENEMYPHASES as usize],
-    pub influ_digit_surface_pointer: [*mut SDL_Surface; DIGITNUMBER],
-    pub enemy_digit_surface_pointer: [*mut SDL_Surface; DIGITNUMBER],
+    pub enemy_surface_pointer: [Option<Surface>; ENEMYPHASES as usize],
+    pub influencer_surface_pointer: [Option<Surface>; ENEMYPHASES as usize],
+    pub influ_digit_surface_pointer: [Option<Surface>; DIGITNUMBER],
+    pub enemy_digit_surface_pointer: [Option<Surface>; DIGITNUMBER],
     pub crosshair_cursor: *mut SDL_Cursor,
     pub arrow_cursor: *mut SDL_Cursor,
     pub number_of_bullet_types: i32,
     pub all_themes: ThemeList,
     pub classic_theme_index: i32,
     number_of_screenshot: u32,
-    pic: *mut SDL_Surface,
+    pic: Option<Surface>,
 }
 
 impl Default for Graphics {
@@ -92,31 +95,31 @@ impl Default for Graphics {
             vid_bpp: 0,
             portrait_raw_mem: array_init(|_| None),
             fonts_loaded: 0,
-            map_block_surface_pointer: [[null_mut(); NUM_MAP_BLOCKS]; NUM_COLORS],
-            orig_map_block_surface_pointer: [[null_mut(); NUM_MAP_BLOCKS]; NUM_COLORS],
-            build_block: null_mut(),
+            map_block_surface_pointer: array_init(|_| array_init(|_| None)),
+            orig_map_block_surface_pointer: array_init(|_| array_init(|_| None)),
+            build_block: None,
             banner_is_destroyed: 0,
-            banner_pic: null_mut(),
-            pic999: null_mut(),
+            banner_pic: None,
+            pic999: None,
             packed_portraits: [null_mut(); Droid::NumDroids as usize],
-            decal_pics: [null_mut(); NUM_DECAL_PICS],
-            takeover_bg_pic: null_mut(),
-            console_pic: null_mut(),
-            console_bg_pic1: null_mut(),
-            console_bg_pic2: null_mut(),
-            arrow_up: null_mut(),
-            arrow_down: null_mut(),
-            arrow_right: null_mut(),
-            arrow_left: null_mut(),
-            ship_off_pic: null_mut(),
-            ship_on_pic: null_mut(),
-            progress_meter_pic: null_mut(),
-            progress_filler_pic: null_mut(),
+            decal_pics: array_init(|_| None),
+            takeover_bg_pic: None,
+            console_pic: None,
+            console_bg_pic1: None,
+            console_bg_pic2: None,
+            arrow_up: None,
+            arrow_down: None,
+            arrow_right: None,
+            arrow_left: None,
+            ship_off_pic: None,
+            ship_on_pic: None,
+            progress_meter_pic: None,
+            progress_filler_pic: None,
             ne_screen: None,
-            enemy_surface_pointer: [null_mut(); ENEMYPHASES as usize],
-            influencer_surface_pointer: [null_mut(); ENEMYPHASES as usize],
-            influ_digit_surface_pointer: [null_mut(); DIGITNUMBER],
-            enemy_digit_surface_pointer: [null_mut(); DIGITNUMBER],
+            enemy_surface_pointer: array_init(|_| None),
+            influencer_surface_pointer: array_init(|_| None),
+            influ_digit_surface_pointer: array_init(|_| None),
+            enemy_digit_surface_pointer: array_init(|_| None),
             crosshair_cursor: null_mut(),
             arrow_cursor: null_mut(),
             number_of_bullet_types: 0,
@@ -127,7 +130,7 @@ impl Default for Graphics {
             },
             classic_theme_index: 0,
             number_of_screenshot: 0,
-            pic: null_mut(),
+            pic: None,
         }
     }
 }
@@ -275,13 +278,6 @@ impl Data {
     }
 }
 
-#[inline]
-unsafe fn free_surface_array(surfaces: &[*mut SDL_Surface]) {
-    surfaces
-        .iter()
-        .for_each(|&surface| SDL_FreeSurface(surface));
-}
-
 impl Data {
     pub unsafe fn free_graphics(&mut self) {
         // free RWops structures
@@ -300,37 +296,37 @@ impl Data {
             .iter_mut()
             .for_each(|mem| drop(mem.take()));
 
-        free_surface_array(&self.graphics.enemy_surface_pointer);
-        free_surface_array(&self.graphics.influencer_surface_pointer);
-        free_surface_array(&self.graphics.influ_digit_surface_pointer);
-        free_surface_array(&self.graphics.enemy_digit_surface_pointer);
-        free_surface_array(&self.graphics.decal_pics);
+        self.graphics.enemy_surface_pointer = array_init(|_| None);
+        self.graphics.influencer_surface_pointer = array_init(|_| None);
+        self.graphics.influ_digit_surface_pointer = array_init(|_| None);
+        self.graphics.enemy_digit_surface_pointer = array_init(|_| None);
+        self.graphics.decal_pics = array_init(|_| None);
 
         self.graphics
             .orig_map_block_surface_pointer
-            .iter()
-            .flat_map(|arr| arr.iter())
-            .for_each(|&surface| SDL_FreeSurface(surface));
+            .iter_mut()
+            .flat_map(|arr| arr.iter_mut())
+            .for_each(|surface| *surface = None);
 
-        SDL_FreeSurface(self.graphics.build_block);
-        SDL_FreeSurface(self.graphics.banner_pic);
-        SDL_FreeSurface(self.graphics.pic999);
+        self.graphics.build_block = None;
+        self.graphics.banner_pic = None;
+        self.graphics.pic999 = None;
         // SDL_RWops *packed_portraits[NUM_DROIDS];
-        SDL_FreeSurface(self.graphics.takeover_bg_pic);
-        SDL_FreeSurface(self.graphics.console_pic);
-        SDL_FreeSurface(self.graphics.console_bg_pic1);
-        SDL_FreeSurface(self.graphics.console_bg_pic2);
+        self.graphics.takeover_bg_pic = None;
+        self.graphics.console_pic = None;
+        self.graphics.console_bg_pic1 = None;
+        self.graphics.console_bg_pic2 = None;
 
-        SDL_FreeSurface(self.graphics.arrow_up);
-        SDL_FreeSurface(self.graphics.arrow_down);
-        SDL_FreeSurface(self.graphics.arrow_right);
-        SDL_FreeSurface(self.graphics.arrow_left);
+        self.graphics.arrow_up = None;
+        self.graphics.arrow_down = None;
+        self.graphics.arrow_right = None;
+        self.graphics.arrow_left = None;
 
-        SDL_FreeSurface(self.graphics.ship_off_pic);
-        SDL_FreeSurface(self.graphics.ship_on_pic);
-        SDL_FreeSurface(self.graphics.progress_meter_pic);
-        SDL_FreeSurface(self.graphics.progress_filler_pic);
-        SDL_FreeSurface(self.takeover.to_blocks);
+        self.graphics.ship_off_pic = None;
+        self.graphics.ship_on_pic = None;
+        self.graphics.progress_meter_pic = None;
+        self.graphics.progress_filler_pic = None;
+        self.takeover.to_blocks = None;
 
         // free fonts
         let fonts = [
@@ -431,62 +427,58 @@ impl Graphics {
         col: c_int,
         block: *const SDL_Rect,
         flags: c_int,
-    ) -> *mut SDL_Surface {
+    ) -> Option<Surface> {
         Self::load_block_vid_bpp_pic(self.vid_bpp, &mut self.pic, fpath, line, col, block, flags)
     }
 
     pub unsafe fn load_block_vid_bpp_pic(
         vid_bpp: i32,
-        pic: &mut *mut SDL_Surface,
+        pic: &mut Option<Surface>,
         fpath: *mut c_char,
         line: c_int,
         col: c_int,
         block: *const SDL_Rect,
         flags: c_int,
-    ) -> *mut SDL_Surface {
-        if fpath.is_null() && pic.is_null() {
+    ) -> Option<Surface> {
+        if fpath.is_null() && pic.is_none() {
             /* we need some info.. */
-            return null_mut();
+            return None;
         }
 
-        if !pic.is_null() && flags == FREE_ONLY as c_int {
-            SDL_FreeSurface(*pic);
-            return null_mut();
+        if pic.is_some() && flags == FREE_ONLY as c_int {
+            *pic = None;
+            return None;
         }
 
         if !fpath.is_null() {
             // initialize: read & malloc new pic, dont' return a copy!!
-
-            if !pic.is_null() {
-                // previous pic?
-                SDL_FreeSurface(*pic);
-            }
-            *pic = IMG_Load(fpath);
+            *pic = Some(Surface::from_ptr(NonNull::new(IMG_Load(fpath)).unwrap()));
         }
 
         if (flags & INIT_ONLY as c_int) != 0 {
-            return null_mut(); // that's it guys, only initialzing...
+            return None; // that's it guys, only initialzing...
         }
 
-        assert!(!pic.is_null());
-        let pic = &mut **pic;
+        let pic = pic.as_mut().unwrap();
         let dim = if block.is_null() {
-            rect!(0, 0, pic.w.try_into().unwrap(), pic.h.try_into().unwrap())
+            rect!(0, 0, pic.width(), pic.height())
         } else {
             let block = &*block;
             rect!(0, 0, block.w, block.h)
         };
 
-        let usealpha = (*pic.format).Amask != 0;
+        let raw_format = pic.raw().format();
+        assert!(raw_format.is_null().not());
+        let usealpha = (*raw_format).Amask != 0;
 
         if usealpha {
-            SDL_SetAlpha(pic, 0, 0); /* clear per-surf alpha for internal blit */
+            SDL_SetAlpha(pic.as_mut_ptr(), 0, 0); /* clear per-surf alpha for internal blit */
         }
         let tmp = SDL_CreateRGBSurface(0, dim.w.into(), dim.h.into(), vid_bpp, 0, 0, 0, 0);
-        let ret = if usealpha {
-            SDL_DisplayFormatAlpha(tmp)
+        let mut ret = if usealpha {
+            Surface::from_ptr(NonNull::new(SDL_DisplayFormatAlpha(tmp)).unwrap())
         } else {
-            SDL_DisplayFormat(tmp)
+            Surface::from_ptr(NonNull::new(SDL_DisplayFormat(tmp)).unwrap())
         };
         SDL_FreeSurface(tmp);
 
@@ -496,12 +488,16 @@ impl Graphics {
             dim.w,
             dim.h,
         );
-        SDL_UpperBlit(pic, &mut src, ret, null_mut());
+        SDL_UpperBlit(pic.as_mut_ptr(), &mut src, ret.as_mut_ptr(), null_mut());
         if usealpha {
-            SDL_SetAlpha(ret, SDL_SRCALPHA as u32 | SDL_RLEACCEL as u32, 255);
+            SDL_SetAlpha(
+                ret.as_mut_ptr(),
+                SDL_SRCALPHA as u32 | SDL_RLEACCEL as u32,
+                255,
+            );
         }
 
-        ret
+        Some(ret)
     }
 }
 
@@ -589,18 +585,20 @@ impl Data {
     }
 }
 
-pub unsafe fn scale_pic(pic: &mut *mut SDL_Surface, scale: c_float) {
+pub fn scale_pic(pic: &mut Surface, scale: c_float) {
     if (scale - 1.0).abs() <= f32::EPSILON {
         return;
     }
     let scale = scale.into();
 
-    let tmp = *pic;
-    *pic = zoomSurface(tmp, scale, scale, 0);
-    if pic.is_null() {
-        panic!("zoomSurface() failed for scale = {}.", scale);
+    // # Safety
+    // [`zoomSurface`] creates a new SDL_Surface or returns null, therefore no aliasing can occur.
+    unsafe {
+        *pic = Surface::from_ptr(
+            NonNull::new(zoomSurface(pic.as_mut_ptr(), scale, scale, 0))
+                .unwrap_or_else(|| panic!("zoomSurface() failed for scale = {}.", scale)),
+        );
     }
-    SDL_FreeSurface(tmp);
 }
 
 pub fn scale_pic_surface(pic: &mut Surface, scale: c_float) {
@@ -622,12 +620,20 @@ impl Data {
 
         /* For some reason we need to SetAlpha every time on OS X */
         /* Digits are only used in _internal_ blits ==> clear per-surf alpha */
-        for &surface in &self.graphics.influ_digit_surface_pointer {
-            SDL_SetAlpha(surface, 0, 0);
-        }
-        for &surface in &self.graphics.enemy_digit_surface_pointer {
-            SDL_SetAlpha(surface, 0, 0);
-        }
+        self.graphics
+            .influ_digit_surface_pointer
+            .iter_mut()
+            .flatten()
+            .for_each(|surface| {
+                SDL_SetAlpha(surface.as_mut_ptr(), 0, 0);
+            });
+        self.graphics
+            .enemy_digit_surface_pointer
+            .iter_mut()
+            .flatten()
+            .for_each(|surface| {
+                SDL_SetAlpha(surface.as_mut_ptr(), 0, 0);
+            });
         if (scale - 1.).abs() <= f32::EPSILON {
             return;
         }
@@ -657,19 +663,22 @@ impl Data {
                     .flat_map(|surfaces| surfaces.iter_mut()),
             )
             .for_each(|(orig_surface, map_surface)| {
-                scale_pic(orig_surface, scale);
-                *map_surface = *orig_surface;
+                let orig_surface = orig_surface.as_mut().unwrap();
+                scale_pic(&mut *orig_surface.borrow_mut(), scale);
+                *map_surface = Some(Rc::clone(orig_surface));
             });
 
         //---------- rescale Droid-model  blocks
         /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
         for surface in &mut self.graphics.influencer_surface_pointer {
+            let surface = surface.as_mut().unwrap();
             scale_pic(surface, scale);
-            SDL_SetAlpha(*surface, 0, 0);
+            SDL_SetAlpha(surface.as_mut_ptr(), 0, 0);
         }
         for surface in &mut self.graphics.enemy_surface_pointer {
+            let surface = surface.as_mut().unwrap();
             scale_pic(surface, scale);
-            SDL_SetAlpha(*surface, 0, 0);
+            SDL_SetAlpha(surface.as_mut_ptr(), 0, 0);
         }
 
         //---------- rescale Bullet blocks
@@ -679,36 +688,37 @@ impl Data {
         );
         bulletmap
             .iter_mut()
-            .flat_map(|bullet| bullet.surface_pointer.iter_mut())
-            .for_each(|surface| scale_pic(surface, scale));
+            .flat_map(|bullet| bullet.surfaces.iter_mut())
+            .for_each(|surface| scale_pic(surface.as_mut().unwrap(), scale));
 
         //---------- rescale Blast blocks
         self.vars
             .blastmap
             .iter_mut()
-            .flat_map(|blast| blast.surface_pointer.iter_mut())
-            .for_each(|surface| scale_pic(surface, scale));
+            .flat_map(|blast| blast.surfaces.iter_mut())
+            .for_each(|surface| scale_pic(surface.as_mut().unwrap(), scale));
 
         //---------- rescale Digit blocks
         for surface in &mut self.graphics.influ_digit_surface_pointer {
+            let surface = surface.as_mut().unwrap();
             scale_pic(surface, scale);
-            SDL_SetAlpha(*surface, 0, 0);
+            SDL_SetAlpha(surface.as_mut_ptr(), 0, 0);
         }
         for surface in &mut self.graphics.enemy_digit_surface_pointer {
+            let surface = surface.as_mut().unwrap();
             scale_pic(surface, scale);
-            SDL_SetAlpha(*surface, 0, 0);
+            SDL_SetAlpha(surface.as_mut_ptr(), 0, 0);
         }
 
         //---------- rescale Takeover pics
-        scale_pic(&mut self.takeover.to_blocks, scale);
+        scale_pic(self.takeover.to_blocks.as_mut().unwrap(), scale);
 
-        scale_pic(&mut self.graphics.ship_on_pic, scale);
-        scale_pic(&mut self.graphics.ship_off_pic, scale);
+        scale_pic(self.graphics.ship_on_pic.as_mut().unwrap(), scale);
+        scale_pic(self.graphics.ship_off_pic.as_mut().unwrap(), scale);
 
         // the following are not theme-specific and are therefore only loaded once!
         if init {
             //  create a new tmp block-build storage
-            free_if_unused(self.graphics.build_block);
             let tmp = SDL_CreateRGBSurface(
                 0,
                 self.vars.block_rect.w.into(),
@@ -719,31 +729,33 @@ impl Data {
                 0,
                 0,
             );
-            self.graphics.build_block = SDL_DisplayFormatAlpha(tmp);
+            self.graphics.build_block = Some(Surface::from_ptr(
+                NonNull::new(SDL_DisplayFormatAlpha(tmp)).unwrap(),
+            ));
             SDL_FreeSurface(tmp);
 
             // takeover pics
-            scale_pic(&mut self.graphics.takeover_bg_pic, scale);
+            scale_pic(self.graphics.takeover_bg_pic.as_mut().unwrap(), scale);
 
             //---------- Console pictures
-            scale_pic(&mut self.graphics.console_pic, scale);
-            scale_pic(&mut self.graphics.console_bg_pic1, scale);
-            scale_pic(&mut self.graphics.console_bg_pic2, scale);
-            scale_pic(&mut self.graphics.arrow_up, scale);
-            scale_pic(&mut self.graphics.arrow_down, scale);
-            scale_pic(&mut self.graphics.arrow_right, scale);
-            scale_pic(&mut self.graphics.arrow_left, scale);
+            scale_pic(self.graphics.console_pic.as_mut().unwrap(), scale);
+            scale_pic(self.graphics.console_bg_pic1.as_mut().unwrap(), scale);
+            scale_pic(self.graphics.console_bg_pic2.as_mut().unwrap(), scale);
+            scale_pic(self.graphics.arrow_up.as_mut().unwrap(), scale);
+            scale_pic(self.graphics.arrow_down.as_mut().unwrap(), scale);
+            scale_pic(self.graphics.arrow_right.as_mut().unwrap(), scale);
+            scale_pic(self.graphics.arrow_left.as_mut().unwrap(), scale);
             //---------- Banner
-            scale_pic(&mut self.graphics.banner_pic, scale);
+            scale_pic(self.graphics.banner_pic.as_mut().unwrap(), scale);
 
-            scale_pic(&mut self.graphics.pic999, scale);
+            scale_pic(self.graphics.pic999.as_mut().unwrap(), scale);
 
             // get the Ashes pics
-            if !self.graphics.decal_pics[0].is_null() {
-                scale_pic(&mut self.graphics.decal_pics[0], scale);
+            if let Some(pic) = self.graphics.decal_pics[0].as_mut() {
+                scale_pic(pic, scale);
             }
-            if !self.graphics.decal_pics[1].is_null() {
-                scale_pic(&mut self.graphics.decal_pics[1], scale);
+            if let Some(pic) = self.graphics.decal_pics[1].as_mut() {
+                scale_pic(pic, scale);
             }
         }
 
@@ -1207,7 +1219,6 @@ impl Data {
                     .zip(color_map.iter_mut())
             })
             .for_each(|((color_index, block_index, orig_surface), surface)| {
-                free_if_unused(*orig_surface);
                 *orig_surface = Graphics::load_block_vid_bpp_pic(
                     *vid_bpp,
                     pic,
@@ -1216,8 +1227,9 @@ impl Data {
                     block_index.try_into().unwrap(),
                     &ORIG_BLOCK_RECT,
                     0,
-                );
-                *surface = *orig_surface;
+                )
+                .map(|surface| Rc::new(RefCell::new(surface)));
+                *surface = orig_surface.as_ref().map(Rc::clone);
             });
 
         self.update_progress(20);
@@ -1245,7 +1257,6 @@ impl Data {
 
         influencer_surface_pointer.iter_mut().enumerate().for_each(
             |(index, influencer_surface)| {
-                free_if_unused(*influencer_surface);
                 *influencer_surface = Graphics::load_block_vid_bpp_pic(
                     *vid_bpp,
                     pic,
@@ -1257,7 +1268,7 @@ impl Data {
                 );
 
                 /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
-                SDL_SetAlpha(*influencer_surface, 0, 0);
+                SDL_SetAlpha(influencer_surface.as_mut().unwrap().as_mut_ptr(), 0, 0);
             },
         );
 
@@ -1265,7 +1276,6 @@ impl Data {
             .iter_mut()
             .enumerate()
             .for_each(|(index, enemy_surface)| {
-                free_if_unused(*enemy_surface);
                 *enemy_surface = Graphics::load_block_vid_bpp_pic(
                     *vid_bpp,
                     pic,
@@ -1277,7 +1287,7 @@ impl Data {
                 );
 
                 /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
-                SDL_SetAlpha(*enemy_surface, 0, 0);
+                SDL_SetAlpha(enemy_surface.as_mut().unwrap().as_mut_ptr(), 0, 0);
             });
 
         self.update_progress(30);
@@ -1298,13 +1308,12 @@ impl Data {
         .enumerate()
         .flat_map(|(bullet_type_index, bullet)| {
             bullet
-                .surface_pointer
+                .surfaces
                 .iter_mut()
                 .enumerate()
                 .map(move |(phase_index, surface)| (bullet_type_index, phase_index, surface))
         })
         .for_each(|(bullet_type_index, phase_index, surface)| {
-            free_if_unused(*surface);
             *surface = self.graphics.load_block(
                 null_mut(),
                 bullet_type_index.try_into().unwrap(),
@@ -1332,13 +1341,12 @@ impl Data {
             .enumerate()
             .flat_map(|(blast_type_index, blast)| {
                 blast
-                    .surface_pointer
+                    .surfaces
                     .iter_mut()
                     .enumerate()
                     .map(move |(surface_index, surface)| (blast_type_index, surface_index, surface))
             })
             .for_each(|(blast_type_index, surface_index, surface)| {
-                free_if_unused(*surface);
                 *surface = graphics.load_block(
                     null_mut(),
                     blast_type_index.try_into().unwrap(),
@@ -1374,7 +1382,6 @@ impl Data {
             .iter_mut()
             .enumerate()
             .for_each(|(index, surface)| {
-                free_if_unused(*surface);
                 *surface = Graphics::load_block_vid_bpp_pic(
                     *vid_bpp,
                     pic,
@@ -1389,7 +1396,6 @@ impl Data {
             .iter_mut()
             .enumerate()
             .for_each(|(index, surface)| {
-                free_if_unused(*surface);
                 *surface = Graphics::load_block_vid_bpp_pic(
                     *vid_bpp,
                     pic,
@@ -1404,7 +1410,6 @@ impl Data {
         self.update_progress(50);
 
         //---------- get Takeover pics
-        free_if_unused(self.takeover.to_blocks); /* this happens when we do theme-switching */
         let fpath = self.find_file(
             TO_BLOCK_FILE_C.as_ptr() as *mut c_char,
             GRAPHICS_DIR_C.as_ptr() as *mut c_char,
@@ -1415,19 +1420,23 @@ impl Data {
 
         self.update_progress(60);
 
-        free_if_unused(self.graphics.ship_on_pic);
-        self.graphics.ship_on_pic = IMG_Load(self.find_file(
-            SHIP_ON_PIC_FILE_C.as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-            Themed::UseTheme as c_int,
-            Criticality::Critical as c_int,
+        self.graphics.ship_on_pic = Some(Surface::from_ptr(
+            NonNull::new(IMG_Load(self.find_file(
+                SHIP_ON_PIC_FILE_C.as_ptr() as *mut c_char,
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::UseTheme as c_int,
+                Criticality::Critical as c_int,
+            )))
+            .unwrap(),
         ));
-        free_if_unused(self.graphics.ship_off_pic);
-        self.graphics.ship_off_pic = IMG_Load(self.find_file(
-            SHIP_OFF_PIC_FILE_C.as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-            Themed::UseTheme as c_int,
-            Criticality::Critical as c_int,
+        self.graphics.ship_off_pic = Some(Surface::from_ptr(
+            NonNull::new(IMG_Load(self.find_file(
+                SHIP_OFF_PIC_FILE_C.as_ptr() as *mut c_char,
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::UseTheme as c_int,
+                Criticality::Critical as c_int,
+            )))
+            .unwrap(),
         ));
 
         // the following are not theme-specific and are therefore only loaded once!
@@ -1443,7 +1452,9 @@ impl Data {
                 0,
                 0,
             );
-            self.graphics.build_block = SDL_DisplayFormatAlpha(tmp);
+            self.graphics.build_block = Some(Surface::from_ptr(
+                NonNull::new(SDL_DisplayFormatAlpha(tmp)).unwrap(),
+            ));
             SDL_FreeSurface(tmp);
 
             // takeover background pics
@@ -1484,29 +1495,41 @@ impl Data {
 
             self.update_progress(80);
 
-            self.graphics.arrow_up = IMG_Load(self.find_file(
-                cstr!("arrow_up.png").as_ptr() as *mut c_char,
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
+            self.graphics.arrow_up = Some(Surface::from_ptr(
+                NonNull::new(IMG_Load(self.find_file(
+                    cstr!("arrow_up.png").as_ptr() as *mut c_char,
+                    GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                    Themed::NoTheme as c_int,
+                    Criticality::Critical as c_int,
+                )))
+                .unwrap(),
             ));
-            self.graphics.arrow_down = IMG_Load(self.find_file(
-                cstr!("arrow_down.png").as_ptr() as *mut c_char,
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
+            self.graphics.arrow_down = Some(Surface::from_ptr(
+                NonNull::new(IMG_Load(self.find_file(
+                    cstr!("arrow_down.png").as_ptr() as *mut c_char,
+                    GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                    Themed::NoTheme as c_int,
+                    Criticality::Critical as c_int,
+                )))
+                .unwrap(),
             ));
-            self.graphics.arrow_right = IMG_Load(self.find_file(
-                cstr!("arrow_right.png").as_ptr() as *mut c_char,
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
+            self.graphics.arrow_right = Some(Surface::from_ptr(
+                NonNull::new(IMG_Load(self.find_file(
+                    cstr!("arrow_right.png").as_ptr() as *mut c_char,
+                    GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                    Themed::NoTheme as c_int,
+                    Criticality::Critical as c_int,
+                )))
+                .unwrap(),
             ));
-            self.graphics.arrow_left = IMG_Load(self.find_file(
-                cstr!("arrow_left.png").as_ptr() as *mut c_char,
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
+            self.graphics.arrow_left = Some(Surface::from_ptr(
+                NonNull::new(IMG_Load(self.find_file(
+                    cstr!("arrow_left.png").as_ptr() as *mut c_char,
+                    GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                    Themed::NoTheme as c_int,
+                    Criticality::Critical as c_int,
+                )))
+                .unwrap(),
             ));
             //---------- get Banner
             let fpath = self.find_file(
@@ -1897,20 +1920,20 @@ impl Data {
         self.graphics
             .map_block_surface_pointer
             .iter_mut()
-            .zip(self.graphics.orig_map_block_surface_pointer.iter())
-            .flat_map(|(map_block, orig_map_block)| map_block.iter_mut().zip(orig_map_block.iter()))
-            .for_each(|(surface, &orig_surface)| {
-                // if there's already a rescaled version, free it
-                if *surface != orig_surface {
-                    SDL_FreeSurface(*surface);
-                }
-                // then zoom..
-                let tmp = zoomSurface(orig_surface, scale.into(), scale.into(), 0);
+            .zip(self.graphics.orig_map_block_surface_pointer.iter_mut())
+            .flat_map(|(map_block, orig_map_block)| {
+                map_block.iter_mut().zip(orig_map_block.iter_mut())
+            })
+            .for_each(|(surface, orig_surface)| {
+                let mut orig_surface = orig_surface.as_mut().unwrap().borrow_mut();
+                let tmp = zoomSurface(orig_surface.as_mut_ptr(), scale.into(), scale.into(), 0);
                 if tmp.is_null() {
                     panic!("zoomSurface() failed for scale = {}.", scale);
                 }
                 // and optimize
-                *surface = SDL_DisplayFormat(tmp);
+                *surface = Some(Rc::new(RefCell::new(Surface::from_ptr(
+                    NonNull::new(SDL_DisplayFormat(tmp)).unwrap(),
+                ))));
                 SDL_FreeSurface(tmp); // free the old surface
             });
 
@@ -1927,27 +1950,24 @@ impl Data {
     /// display the title image and perhaps also for displaying the ship
     /// and that.
     pub unsafe fn display_image(&mut self, datafile: *mut c_char) {
-        let mut image = IMG_Load(datafile);
-        if image.is_null() {
+        let mut image = Surface::from_ptr(NonNull::new(IMG_Load(datafile)).unwrap_or_else(|| {
             panic!(
                 "couldn't load image {}: {}",
                 CStr::from_ptr(datafile).to_string_lossy(),
                 CStr::from_ptr(SDL_GetError()).to_string_lossy()
-            );
-        }
+            )
+        }));
 
         if (self.global.game_config.scale - 1.).abs() > c_float::EPSILON {
             scale_pic(&mut image, self.global.game_config.scale);
         }
 
         SDL_UpperBlit(
-            image,
+            image.as_mut_ptr(),
             null_mut(),
             self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
             null_mut(),
         );
-
-        SDL_FreeSurface(image);
     }
 
     pub unsafe fn draw_line_between_tiles(

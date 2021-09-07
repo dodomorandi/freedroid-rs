@@ -203,7 +203,7 @@ impl Data {
             self.vars.portrait_rect.h,
         );
         SDL_UpperBlit(
-            self.graphics.pic999,
+            self.graphics.pic999.as_mut().unwrap().as_mut_ptr(),
             null_mut(),
             self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
             &mut dst,

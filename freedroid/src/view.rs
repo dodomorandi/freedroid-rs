@@ -14,6 +14,7 @@ use crate::{
 };
 
 use log::{info, trace};
+use sdl::Surface;
 use sdl_sys::{
     rotozoomSurface, SDL_Color, SDL_FillRect, SDL_MapRGB, SDL_Rect, SDL_UpdateRect, SDL_UpperBlit,
 };
@@ -22,7 +23,7 @@ use std::{
     convert::{TryFrom, TryInto},
     ffi::CStr,
     os::raw::{c_char, c_int},
-    ptr::null_mut,
+    ptr::{null_mut, NonNull},
 };
 
 const BLINK_LEN: f32 = 1.0;
@@ -152,10 +153,15 @@ impl Data {
                     + ((-self.vars.me.pos.y + 1.0 * f32::from(line) - 0.5)
                         * f32::from(self.vars.block_rect.h))
                     .round() as i16;
+
+                let mut surface = self.graphics.map_block_surface_pointer
+                    [usize::try_from((*self.main.cur_level).color).unwrap()]
+                    [usize::from(map_brick)]
+                .as_mut()
+                .unwrap()
+                .borrow_mut();
                 SDL_UpperBlit(
-                    self.graphics.map_block_surface_pointer
-                        [usize::try_from((*self.main.cur_level).color).unwrap()]
-                        [usize::from(map_brick)],
+                    surface.as_mut_ptr(),
                     null_mut(),
                     self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                     &mut target_rectangle,
@@ -296,7 +302,7 @@ impl Data {
 
             let &mut Data {
                 main: Main { ref all_blasts, .. },
-                ref vars,
+                ref mut vars,
                 ref mut graphics,
                 ..
             } = self;
@@ -348,7 +354,7 @@ impl Data {
             0,
         );
         SDL_UpperBlit(
-            self.graphics.decal_pics[0],
+            self.graphics.decal_pics[0].as_mut().unwrap().as_mut_ptr(),
             null_mut(),
             self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
             &mut dst,
@@ -383,9 +389,12 @@ impl Data {
         //--------------------
         // First blit just the enemy hat and shoes.
         SDL_UpperBlit(
-            self.graphics.enemy_surface_pointer[phase as usize],
+            self.graphics.enemy_surface_pointer[phase as usize]
+                .as_mut()
+                .unwrap()
+                .as_mut_ptr(),
             null_mut(),
-            self.graphics.build_block,
+            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
             null_mut(),
         );
 
@@ -394,27 +403,36 @@ impl Data {
         let mut dst = self.main.first_digit_rect;
         SDL_UpperBlit(
             self.graphics.enemy_digit_surface_pointer
-                [usize::try_from(name[0] - b'1' as i8 + 1).unwrap()],
+                [usize::try_from(name[0] - b'1' as i8 + 1).unwrap()]
+            .as_mut()
+            .unwrap()
+            .as_mut_ptr(),
             null_mut(),
-            self.graphics.build_block,
+            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
             &mut dst,
         );
 
         dst = self.main.second_digit_rect;
         SDL_UpperBlit(
             self.graphics.enemy_digit_surface_pointer
-                [usize::try_from(name[1] - b'1' as i8 + 1).unwrap()],
+                [usize::try_from(name[1] - b'1' as i8 + 1).unwrap()]
+            .as_mut()
+            .unwrap()
+            .as_mut_ptr(),
             null_mut(),
-            self.graphics.build_block,
+            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
             &mut dst,
         );
 
         dst = self.main.third_digit_rect;
         SDL_UpperBlit(
             self.graphics.enemy_digit_surface_pointer
-                [usize::try_from(name[2] - b'1' as i8 + 1).unwrap()],
+                [usize::try_from(name[2] - b'1' as i8 + 1).unwrap()]
+            .as_mut()
+            .unwrap()
+            .as_mut_ptr(),
             null_mut(),
-            self.graphics.build_block,
+            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
             &mut dst,
         );
 
@@ -432,7 +450,7 @@ impl Data {
             dst.y = y.try_into().unwrap();
         }
         SDL_UpperBlit(
-            self.graphics.build_block,
+            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
             null_mut(),
             self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
             &mut dst,
@@ -486,9 +504,12 @@ impl Data {
 
         // Now we draw the hat and shoes of the influencer
         SDL_UpperBlit(
-            self.graphics.influencer_surface_pointer[(self.vars.me.phase).floor() as usize],
+            self.graphics.influencer_surface_pointer[(self.vars.me.phase).floor() as usize]
+                .as_mut()
+                .unwrap()
+                .as_mut_ptr(),
             null_mut(),
-            self.graphics.build_block,
+            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
             null_mut(),
         );
 
@@ -504,9 +525,12 @@ impl Data {
                     - b'1' as i8
                     + 1,
             )
-            .unwrap()],
+            .unwrap()]
+            .as_mut()
+            .unwrap()
+            .as_mut_ptr(),
             null_mut(),
-            self.graphics.build_block,
+            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
             &mut dst,
         );
 
@@ -522,9 +546,12 @@ impl Data {
                     - b'1' as i8
                     + 1,
             )
-            .unwrap()],
+            .unwrap()]
+            .as_mut()
+            .unwrap()
+            .as_mut_ptr(),
             null_mut(),
-            self.graphics.build_block,
+            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
             &mut dst,
         );
 
@@ -540,9 +567,12 @@ impl Data {
                     - b'1' as i8
                     + 1,
             )
-            .unwrap()],
+            .unwrap()]
+            .as_mut()
+            .unwrap()
+            .as_mut_ptr(),
             null_mut(),
-            self.graphics.build_block,
+            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
             &mut dst,
         );
 
@@ -563,7 +593,12 @@ impl Data {
                 0.40 + (2.0 * rest / BLINK_LEN - 1.0) * 0.60 // increase back to white
             };
 
-            apply_filter(&mut *self.graphics.build_block, filt, filt, filt);
+            apply_filter(
+                &mut *self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
+                filt,
+                filt,
+                filt,
+            );
 
             // ... and also maybe start a new cry-sound
 
@@ -578,7 +613,12 @@ impl Data {
         // but of course only in some periodic intervall...
 
         if self.vars.me.status == Status::Transfermode as i32 && x == -1 {
-            apply_filter(&mut *self.graphics.build_block, 1.0, 0.0, 0.0);
+            apply_filter(
+                &mut *self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
+                1.0,
+                0.0,
+                0.0,
+            );
 
             if self.vars.me.last_transfer_sound_time > TRANSFER_SOUND_INTERVAL {
                 self.vars.me.last_transfer_sound_time = 0.;
@@ -596,7 +636,7 @@ impl Data {
         }
 
         SDL_UpperBlit(
-            self.graphics.build_block,
+            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
             null_mut(),
             self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
             &mut dst,
@@ -655,7 +695,7 @@ impl Data {
             return;
         }
 
-        let bullet = &*self
+        let bullet = &mut *self
             .vars
             .bulletmap
             .offset(cur_bullet.ty.try_into().unwrap());
@@ -674,12 +714,15 @@ impl Data {
         //if ( cur_bullet.time_in_frames == 1 )
         if cur_bullet.surfaces_were_generated == 0 {
             for i in 0..usize::try_from(bullet.phases).unwrap() {
-                cur_bullet.surface_pointer[i] = rotozoomSurface(
-                    bullet.surface_pointer[i],
-                    cur_bullet.angle.into(),
-                    1.0,
-                    false.into(),
-                );
+                cur_bullet.surfaces[i] = Some(Surface::from_ptr(
+                    NonNull::new(rotozoomSurface(
+                        bullet.surfaces[i].as_mut().unwrap().as_mut_ptr(),
+                        cur_bullet.angle.into(),
+                        1.0,
+                        false.into(),
+                    ))
+                    .unwrap(),
+                ));
             }
             info!(
                 "This was the first time for this bullet, so images were generated... angle={}",
@@ -694,20 +737,31 @@ impl Data {
         // This has to be taken into account when calculating the target position for the
         // blit of these surfaces!!!!
         let user_center = self.vars.get_user_center();
-        let cur_bullet = &self.main.all_bullets[usize::try_from(bullet_number).unwrap()];
+        let cur_bullet = &mut self.main.all_bullets[usize::try_from(bullet_number).unwrap()];
         let mut dst = rect!(
             (f32::from(user_center.x)
                 - (self.vars.me.pos.x - cur_bullet.pos.x) * f32::from(self.vars.block_rect.w)
-                - ((*cur_bullet.surface_pointer[phase_of_bullet]).w / 2) as f32) as i16,
+                - (cur_bullet.surfaces[phase_of_bullet]
+                    .as_ref()
+                    .unwrap()
+                    .width()
+                    / 2) as f32) as i16,
             (f32::from(user_center.y)
                 - (self.vars.me.pos.y - cur_bullet.pos.y) * f32::from(self.vars.block_rect.w)
-                - ((*cur_bullet.surface_pointer[phase_of_bullet]).h / 2) as f32) as i16,
+                - (cur_bullet.surfaces[phase_of_bullet]
+                    .as_ref()
+                    .unwrap()
+                    .height()
+                    / 2) as f32) as i16,
             0,
             0,
         );
 
         SDL_UpperBlit(
-            cur_bullet.surface_pointer[phase_of_bullet],
+            cur_bullet.surfaces[phase_of_bullet]
+                .as_mut()
+                .unwrap()
+                .as_mut_ptr(),
             null_mut(),
             self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
             &mut dst,
@@ -812,7 +866,7 @@ impl Data {
             let mut dst = rect!(0, 0, 0, 0);
             self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
             SDL_UpperBlit(
-                self.graphics.banner_pic,
+                self.graphics.banner_pic.as_mut().unwrap().as_mut_ptr(),
                 null_mut(),
                 self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                 &mut dst,
@@ -891,7 +945,7 @@ impl Data {
     }
 }
 
-pub unsafe fn put_blast(blast: &Blast, vars: &Vars, graphics: &mut Graphics) {
+pub unsafe fn put_blast(blast: &Blast, vars: &mut Vars, graphics: &mut Graphics) {
     trace!("PutBlast: real function call confirmed.");
 
     // If the blast is already long deat, we need not do anything else here
@@ -911,8 +965,10 @@ pub unsafe fn put_blast(blast: &Blast, vars: &Vars, graphics: &mut Graphics) {
         0,
     );
     SDL_UpperBlit(
-        vars.blastmap[usize::try_from(blast.ty).unwrap()].surface_pointer
-            [(blast.phase).floor() as usize],
+        vars.blastmap[usize::try_from(blast.ty).unwrap()].surfaces[(blast.phase).floor() as usize]
+            .as_mut()
+            .unwrap()
+            .as_mut_ptr(),
         null_mut(),
         graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
         &mut dst,

@@ -494,7 +494,7 @@ Paradroid to eliminate all rogue robots.\0",
                 .unwrap()
                 .set_clip_rect(&self.vars.cons_text_rect);
             SDL_UpperBlit(
-                self.graphics.console_bg_pic2,
+                self.graphics.console_bg_pic2.as_mut().unwrap().as_mut_ptr(),
                 null_mut(),
                 self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                 null_mut(),
@@ -505,7 +505,7 @@ Paradroid to eliminate all rogue robots.\0",
                 .unwrap()
                 .set_clip_rect(&self.vars.cons_header_rect);
             SDL_UpperBlit(
-                self.graphics.console_bg_pic2,
+                self.graphics.console_bg_pic2.as_mut().unwrap().as_mut_ptr(),
                 null_mut(),
                 self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                 null_mut(),
@@ -514,7 +514,7 @@ Paradroid to eliminate all rogue robots.\0",
         } else {
             // otherwise we just redraw the whole screen
             SDL_UpperBlit(
-                self.graphics.console_bg_pic2,
+                self.graphics.console_bg_pic2.as_mut().unwrap().as_mut_ptr(),
                 null_mut(),
                 self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                 null_mut(),
@@ -545,7 +545,7 @@ Paradroid to eliminate all rogue robots.\0",
         if show_arrows {
             if self.vars.me.ty > droid_type {
                 SDL_UpperBlit(
-                    self.graphics.arrow_up,
+                    self.graphics.arrow_up.as_mut().unwrap().as_mut_ptr(),
                     null_mut(),
                     self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                     &mut self.ship.up_rect,
@@ -554,7 +554,7 @@ Paradroid to eliminate all rogue robots.\0",
 
             if droid_type > 0 {
                 SDL_UpperBlit(
-                    self.graphics.arrow_down,
+                    self.graphics.arrow_down.as_mut().unwrap().as_mut_ptr(),
                     null_mut(),
                     self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                     &mut self.ship.down_rect,
@@ -563,7 +563,7 @@ Paradroid to eliminate all rogue robots.\0",
 
             if page > 0 {
                 SDL_UpperBlit(
-                    self.graphics.arrow_left,
+                    self.graphics.arrow_left.as_mut().unwrap().as_mut_ptr(),
                     null_mut(),
                     self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                     &mut self.ship.left_rect,
@@ -572,7 +572,7 @@ Paradroid to eliminate all rogue robots.\0",
 
             if page < 2 {
                 SDL_UpperBlit(
-                    self.graphics.arrow_right,
+                    self.graphics.arrow_right.as_mut().unwrap().as_mut_ptr(),
                     null_mut(),
                     self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                     &mut self.ship.right_rect,
@@ -966,7 +966,7 @@ impl Data {
         dst.x += xoffs;
         dst.y += yoffs;
         SDL_UpperBlit(
-            self.graphics.ship_off_pic,
+            self.graphics.ship_off_pic.as_mut().unwrap().as_mut_ptr(),
             null_mut(),
             self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
             &mut dst,
@@ -980,7 +980,7 @@ impl Data {
                 dst.x += self.vars.user_rect.x + xoffs; /* offset respective to User-Rectangle */
                 dst.y += self.vars.user_rect.y + yoffs;
                 SDL_UpperBlit(
-                    self.graphics.ship_on_pic,
+                    self.graphics.ship_on_pic.as_mut().unwrap().as_mut_ptr(),
                     &mut src,
                     self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                     &mut dst,
@@ -994,7 +994,7 @@ impl Data {
             dst.x += self.vars.user_rect.x + xoffs; /* offset respective to User-Rectangle */
             dst.y += self.vars.user_rect.y + yoffs;
             SDL_UpperBlit(
-                self.graphics.ship_on_pic,
+                self.graphics.ship_on_pic.as_mut().unwrap().as_mut_ptr(),
                 &mut src,
                 self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                 &mut dst,
@@ -1020,7 +1020,7 @@ impl Data {
             self.clear_graph_mem();
             self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
             SDL_UpperBlit(
-                self.graphics.console_bg_pic1,
+                self.graphics.console_bg_pic1.as_mut().unwrap().as_mut_ptr(),
                 null_mut(),
                 self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                 null_mut(),
@@ -1074,7 +1074,7 @@ impl Data {
             h: 4 * self.vars.cons_menu_rect.h,
         };
         SDL_UpperBlit(
-            self.graphics.console_pic,
+            self.graphics.console_pic.as_mut().unwrap().as_mut_ptr(),
             &mut src,
             self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
             &mut self.vars.cons_menu_rect,

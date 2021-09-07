@@ -12,7 +12,7 @@ use sdl::keysym::{
 use sdl_sys::{
     SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LAST, SDLKey_SDLK_RETURN, SDLKey_SDLK_SPACE, SDLMod_KMOD_LALT,
     SDLMod_KMOD_LCTRL, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_RALT, SDLMod_KMOD_RCTRL, SDLMod_KMOD_RSHIFT,
-    SDL_FreeSurface, SDL_Rect, SDL_Surface,
+    SDL_Rect,
 };
 use std::{convert::TryFrom, ffi::CStr, fmt, os::raw::c_int};
 
@@ -46,13 +46,6 @@ pub fn scale_point(point: &mut Point, scale: f32) {
 
 // #define Copy_Rect(src, dst) do {\
 // (dst).x = (src).x; (dst).y = (src).y; (dst).w = (src).w; (dst).h = (src).h; } while(0)
-
-#[inline]
-pub unsafe fn free_if_unused(surface: *mut SDL_Surface) {
-    if !surface.is_null() {
-        SDL_FreeSurface(surface);
-    }
-}
 
 // ----------------------------------------
 // some input-related defines and macros
