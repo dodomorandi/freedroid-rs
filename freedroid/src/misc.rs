@@ -1035,6 +1035,8 @@ impl Data {
     /// this should be the first of all load/save functions called
     /// as here we read the $HOME-dir and create the config-subdir if neccessary
     pub unsafe fn load_game_config(&mut self) -> c_int {
+        use std::io::Write;
+
         // ----------------------------------------------------------------------
         // Game-config maker-strings for config-file:
 
@@ -1072,6 +1074,15 @@ impl Data {
         };
 
         let config_dir = homedir.join(".freedroidClassic");
+        write!(
+            std::slice::from_raw_parts_mut(
+                self.main.config_dir.as_mut_ptr() as *mut u8,
+                self.main.config_dir.len()
+            ),
+            "{}\0",
+            config_dir.display()
+        )
+        .unwrap();
 
         if !config_dir.exists() {
             warn!(
