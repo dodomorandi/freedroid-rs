@@ -320,6 +320,8 @@ fn main() {
             );
             SDL_Flip(data.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
 
+            data.game_over = false;
+
             SDL_SetCursor(data.graphics.crosshair_cursor); // default cursor is a crosshair
             SDL_ShowCursor(SDL_ENABLE);
 
