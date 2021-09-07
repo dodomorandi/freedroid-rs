@@ -20,10 +20,11 @@ use crate::{
 };
 
 use cstr::cstr;
+use sdl::Surface;
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT,
-    SDLKey_SDLK_RIGHT, SDLKey_SDLK_UP, SDL_Delay, SDL_DisplayFormat, SDL_Flip, SDL_FreeSurface,
-    SDL_GetTicks, SDL_ShowCursor, SDL_Surface, SDL_UpperBlit, SDL_DISABLE, SDL_ENABLE,
+    SDLKey_SDLK_RIGHT, SDLKey_SDLK_UP, SDL_Delay, SDL_DisplayFormat, SDL_Flip, SDL_GetTicks,
+    SDL_ShowCursor, SDL_UpperBlit, SDL_DISABLE, SDL_ENABLE,
 };
 use std::{
     alloc::{alloc_zeroed, dealloc, realloc, Layout},
@@ -32,14 +33,14 @@ use std::{
     io::Cursor,
     ops::{AddAssign, Not, SubAssign},
     os::raw::{c_char, c_float, c_int},
-    ptr::null_mut,
+    ptr::{null_mut, NonNull},
     sync::atomic::AtomicBool,
 };
 
 #[derive(Debug)]
 pub struct Menu {
     font_height: i32,
-    menu_background: *mut SDL_Surface,
+    menu_background: Option<Surface>,
     quit_menu: bool,
     pub quit_level_editor: bool,
     last_movekey_time: u32,
@@ -67,7 +68,7 @@ impl Default for Menu {
     fn default() -> Self {
         Self {
             font_height: 0,
-            menu_background: null_mut(),
+            menu_background: None,
             quit_menu: false,
             quit_level_editor: false,
             last_movekey_time: 0,
@@ -277,8 +278,8 @@ impl Data {
         self.show_menu(MAIN_MENU.as_ptr());
     }
 
-    pub unsafe fn free_menu_data(&self) {
-        SDL_FreeSurface(self.menu.menu_background);
+    pub fn free_menu_data(&mut self) {
+        self.menu.menu_background = None
     }
 
     pub unsafe fn initiate_menu(&mut self, with_droids: bool) {
@@ -306,11 +307,13 @@ impl Data {
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
         self.make_grid_on_screen(None);
 
-        if !self.menu.menu_background.is_null() {
-            SDL_FreeSurface(self.menu.menu_background);
-        }
-        self.menu.menu_background =
-            SDL_DisplayFormat(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr()); // keep a global copy of background
+        // keep a global copy of background
+        self.menu.menu_background = Some(Surface::from_ptr(
+            NonNull::new(SDL_DisplayFormat(
+                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
+            ))
+            .unwrap(),
+        ));
 
         SDL_ShowCursor(SDL_DISABLE); // deactivate mouse-cursor in menus
         self.b_font.current_font = self.global.menu_b_font;
@@ -947,7 +950,7 @@ impl Data {
 
             if need_update {
                 SDL_UpperBlit(
-                    self.menu.menu_background,
+                    self.menu.menu_background.as_mut().unwrap().as_mut_ptr(),
                     null_mut(),
                     self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                     null_mut(),
@@ -1106,7 +1109,7 @@ impl Data {
         let lheight = font_height(&*self.global.font0_b_font) + 2;
 
         SDL_UpperBlit(
-            self.menu.menu_background,
+            self.menu.menu_background.as_mut().unwrap().as_mut_ptr(),
             null_mut(),
             self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
             null_mut(),
