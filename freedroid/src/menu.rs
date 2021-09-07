@@ -331,10 +331,10 @@ impl Data {
 
         let cur_level = &mut *self.main.cur_level;
         let droid_map = std::slice::from_raw_parts(self.vars.droidmap, Droid::NumDroids as usize);
-        let mut ne_screen = self.graphics.ne_screen.take().unwrap();
         let mut resume = false;
         while !resume {
             self.clear_graph_mem();
+            let mut ne_screen = self.graphics.ne_screen.take().unwrap();
             self.printf_sdl(
                 &mut ne_screen,
                 X0,
@@ -796,8 +796,8 @@ impl Data {
 
                 _ => {}
             }
+            self.graphics.ne_screen = Some(ne_screen);
         }
-        self.graphics.ne_screen = Some(ne_screen);
 
         self.clear_graph_mem();
 
