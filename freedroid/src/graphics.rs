@@ -1,5 +1,4 @@
 use crate::{
-    b_font::put_pixel,
     defs::{
         self, scale_point, scale_rect, Cmds, Criticality, DisplayBannerFlags, Droid, SoundType,
         Themed, BANNER_BLOCK_FILE_C, BLAST_BLOCK_FILE_C, BULLET_BLOCK_FILE_C,
@@ -24,12 +23,11 @@ use sdl::{FrameBuffer, Surface};
 use sdl_sys::{
     zoomSurface, IMG_Load, SDL_CreateCursor, SDL_CreateRGBSurface, SDL_Cursor, SDL_Delay,
     SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_FillRect, SDL_Flip, SDL_FreeCursor,
-    SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetRGBA, SDL_GetTicks, SDL_GetVideoInfo,
-    SDL_Init, SDL_InitSubSystem, SDL_LockSurface, SDL_MapRGB, SDL_MapRGBA, SDL_Quit,
-    SDL_RWFromFile, SDL_RWFromMem, SDL_RWops, SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma,
-    SDL_SetVideoMode, SDL_Surface, SDL_UnlockSurface, SDL_UpdateRect, SDL_UpperBlit,
-    SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_FULLSCREEN,
-    SDL_INIT_TIMER, SDL_INIT_VIDEO, SDL_RLEACCEL, SDL_SRCALPHA,
+    SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetTicks, SDL_GetVideoInfo, SDL_Init,
+    SDL_InitSubSystem, SDL_MapRGB, SDL_MapRGBA, SDL_Quit, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops,
+    SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma, SDL_SetVideoMode, SDL_UpdateRect,
+    SDL_UpperBlit, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon,
+    SDL_FULLSCREEN, SDL_INIT_TIMER, SDL_INIT_VIDEO, SDL_RLEACCEL, SDL_SRCALPHA,
 };
 use std::{
     cell::RefCell,
@@ -140,40 +138,34 @@ impl Data {
     /// "second" pixel is blacked out, thereby generation a fading
     /// effect.  This function was created to fade the background of the
     /// Escape menu and its submenus.
-    pub unsafe fn make_grid_on_screen(&mut self, grid_rectangle: Option<&SDL_Rect>) {
+    pub fn make_grid_on_screen(&mut self, grid_rectangle: Option<&SDL_Rect>) {
         let grid_rectangle = grid_rectangle.unwrap_or(&self.vars.user_rect);
 
         trace!("MakeGridOnScreen(...): real function call confirmed.");
-        let ne_screen = self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr();
-        SDL_LockSurface(ne_screen);
-        let rect_x = i32::from(grid_rectangle.x);
-        let rect_y = i32::from(grid_rectangle.y);
-        (rect_y..(rect_y + i32::from(grid_rectangle.y)))
-            .flat_map(|y| (rect_x..(rect_x + i32::from(grid_rectangle.w))).map(move |x| (x, y)))
+        let ne_screen = self.graphics.ne_screen.as_mut().unwrap();
+        let rect_x = u16::try_from(grid_rectangle.x).unwrap();
+        let rect_y = u16::try_from(grid_rectangle.y).unwrap();
+        let mut ne_screen = ne_screen.lock().unwrap();
+        (rect_y..(rect_y + grid_rectangle.h))
+            .flat_map(|y| (rect_x..(rect_x + grid_rectangle.w)).map(move |x| (x, y)))
             .filter(|(x, y)| (x + y) % 2 == 0)
-            .for_each(|(x, y)| putpixel(ne_screen, x, y, 0));
-
-        SDL_UnlockSurface(ne_screen);
+            .for_each(|(x, y)| ne_screen.pixels().set(x, y, 0).unwrap());
         trace!("MakeGridOnScreen(...): end of function reached.");
     }
 }
 
 pub unsafe fn apply_filter(
-    surface: &mut SDL_Surface,
+    surface: &mut Surface,
     fred: c_float,
     fgreen: c_float,
     fblue: c_float,
 ) -> c_int {
-    let w = surface.w;
-    (0..surface.h)
+    let w = surface.width();
+    (0..surface.height())
         .flat_map(move |y| (0..w).map(move |x| (x, y)))
         .for_each(|(x, y)| {
-            let mut red = 0;
-            let mut green = 0;
-            let mut blue = 0;
-            let mut alpha = 0;
-
-            get_rgba(surface, x, y, &mut red, &mut green, &mut blue, &mut alpha);
+            let [mut red, mut green, mut blue, alpha] =
+                surface.lock().unwrap().pixels().get(x, y).unwrap().rgba();
             if alpha == 0 {
                 return;
             }
@@ -182,12 +174,9 @@ pub unsafe fn apply_filter(
             green = (green as c_float * fgreen) as u8;
             blue = (blue as c_float * fblue) as u8;
 
-            putpixel(
-                surface,
-                x,
-                y,
-                SDL_MapRGBA(surface.format, red, green, blue, alpha),
-            );
+            let pixel_value = SDL_MapRGBA(surface.raw().format(), red, green, blue, alpha);
+            let mut surface = surface.lock().unwrap();
+            surface.pixels().set(x, y, pixel_value).unwrap();
         });
 
     defs::OK.into()
@@ -352,61 +341,6 @@ impl Data {
         SDL_FreeCursor(self.graphics.crosshair_cursor);
         SDL_FreeCursor(self.graphics.arrow_cursor);
     }
-}
-
-/// Set the pixel at (x, y) to the given value
-/// NOTE: The surface must be locked before calling this!
-pub unsafe fn putpixel(surface: *const SDL_Surface, x: c_int, y: c_int, pixel: u32) {
-    if surface.is_null() || x < 0 || y < 0 {
-        return;
-    }
-
-    let surface = &*surface;
-    if (x >= surface.w) || (y < 0) || (y >= surface.h) {
-        return;
-    }
-
-    let bpp = (*surface.format).BytesPerPixel.into();
-    let data = (surface.pixels as *mut u8).offset((y * i32::from(surface.pitch)) as isize);
-
-    match bpp {
-        1 => *data.offset(x as isize) = pixel as u8,
-        2 => *(data as *mut u16).offset(x as isize) = pixel as u16,
-        3 => {
-            let offset = isize::try_from(x).unwrap() * 3;
-            let p = std::slice::from_raw_parts_mut(data.offset(offset), 3);
-            if cfg!(target_endian = "big") {
-                p[0] = ((pixel >> 16) & 0xff) as u8;
-                p[1] = ((pixel >> 8) & 0xff) as u8;
-                p[2] = (pixel & 0xff) as u8;
-            } else {
-                p[0] = (pixel & 0xff) as u8;
-                p[1] = ((pixel >> 8) & 0xff) as u8;
-                p[2] = ((pixel >> 16) & 0xff) as u8;
-            }
-        }
-        4 => *(data as *mut u32).offset(x as isize) = pixel,
-        _ => unreachable!(),
-    }
-}
-
-/// This function gives the green component of a pixel, using a value of
-/// 255 for the most green pixel and 0 for the least green pixel.
-pub unsafe fn get_rgba(
-    surface: &SDL_Surface,
-    x: c_int,
-    y: c_int,
-    red: &mut u8,
-    green: &mut u8,
-    blue: &mut u8,
-    alpha: &mut u8,
-) {
-    let fmt = surface.format;
-    let pixel = *((surface.pixels as *const u32)
-        .add(usize::try_from(x).unwrap())
-        .add(usize::try_from(y).unwrap() * usize::try_from(surface.w).unwrap()));
-
-    SDL_GetRGBA(pixel, fmt, red, green, blue, alpha);
 }
 
 impl Graphics {
@@ -805,15 +739,19 @@ impl Data {
         SDL_UpperBlit(frame_buffer.as_mut_ptr(), rect, tmp2, null_mut());
 
         let mut rng = rand::thread_rng();
-        let noise_tiles: [*mut SDL_Surface; NOISE_TILES] = array_init(|_| {
-            let tile = SDL_DisplayFormat(tmp2);
-            (0..rect.x)
+        let mut noise_tiles: [Surface; NOISE_TILES] = array_init(|_| {
+            let mut tile = Surface::from_ptr(NonNull::new(SDL_DisplayFormat(tmp2)).unwrap());
+            let mut lock = tile.lock().unwrap();
+            (0..u16::try_from(rect.x).unwrap())
                 .flat_map(|x| (0..rect.h).map(move |y| (x, y)))
                 .for_each(|(x, y)| {
                     if rng.gen_range(0, 100) > signal_strengh {
-                        put_pixel(&*tile, x.into(), y.into(), *grey.choose(&mut rng).unwrap());
+                        lock.pixels()
+                            .set(x, y, *grey.choose(&mut rng).unwrap())
+                            .unwrap();
                     }
                 });
+            drop(lock);
             tile
         });
         SDL_FreeSurface(tmp2);
@@ -850,7 +788,7 @@ impl Data {
             frame_buffer.clear_clip_rect();
             // set it
             SDL_UpperBlit(
-                noise_tiles[usize::try_from(next_tile).unwrap()],
+                noise_tiles[usize::try_from(next_tile).unwrap()].as_mut_ptr(),
                 null_mut(),
                 frame_buffer.as_mut_ptr(),
                 rect,
@@ -875,10 +813,6 @@ impl Data {
 
         //restore previous clip-rectange
         frame_buffer.set_clip_rect(&clip_rect);
-
-        for &tile in &noise_tiles {
-            SDL_FreeSurface(tile);
-        }
     }
 
     pub unsafe fn load_fonts(&mut self) -> c_int {
@@ -2011,18 +1945,15 @@ impl Data {
                     continue;
                 }
                 let ne_screen = self.graphics.ne_screen.as_mut().unwrap();
-                putpixel(
-                    ne_screen.as_mut_ptr(),
-                    pixx as c_int,
-                    pixy as c_int,
-                    color.try_into().unwrap(),
-                );
-                putpixel(
-                    ne_screen.as_mut_ptr(),
-                    pixx as c_int - 1,
-                    pixy as c_int,
-                    color.try_into().unwrap(),
-                );
+                let mut ne_screen = ne_screen.lock().unwrap();
+                ne_screen
+                    .pixels()
+                    .set(pixx as u16, pixy as u16, color.try_into().unwrap())
+                    .unwrap();
+                ne_screen
+                    .pixels()
+                    .set(pixx as u16 - 1, pixy as u16, color.try_into().unwrap())
+                    .unwrap();
 
                 i += 1.;
             }
@@ -2060,18 +1991,15 @@ impl Data {
                 continue;
             }
             let ne_screen = self.graphics.ne_screen.as_mut().unwrap();
-            putpixel(
-                ne_screen.as_mut_ptr(),
-                pixx as c_int,
-                pixy as c_int,
-                color.try_into().unwrap(),
-            );
-            putpixel(
-                ne_screen.as_mut_ptr(),
-                pixx as c_int,
-                pixy as c_int - 1,
-                color.try_into().unwrap(),
-            );
+            let mut ne_screen = ne_screen.lock().unwrap();
+            ne_screen
+                .pixels()
+                .set(pixx as u16, pixy as u16, color.try_into().unwrap())
+                .unwrap();
+            ne_screen
+                .pixels()
+                .set(pixx as u16, pixy as u16 - 1, color.try_into().unwrap())
+                .unwrap();
             i += 1.;
         }
     }

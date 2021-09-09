@@ -1,11 +1,8 @@
-use crate::{
-    graphics::{putpixel, scale_pic},
-    Data,
-};
+use crate::{graphics::scale_pic, Data};
 
 use core::fmt;
 use sdl::Surface;
-use sdl_sys::{IMG_Load, SDL_Rect, SDL_SetColorKey, SDL_Surface, SDL_SRCCOLORKEY};
+use sdl_sys::{IMG_Load, SDL_Rect, SDL_SetColorKey, SDL_SRCCOLORKEY};
 use std::{
     convert::TryInto,
     os::raw::{c_char, c_float, c_int},
@@ -119,10 +116,6 @@ pub unsafe fn print_string_font<const F: bool>(
     cursor.write_fmt(format_args).unwrap();
     let written = cursor.position().try_into().unwrap();
     put_string_font(surface, font, x, y, &temp[..written]);
-}
-
-pub unsafe fn put_pixel(surface: &SDL_Surface, x: c_int, y: c_int, pixel: u32) {
-    putpixel(surface, x, y, pixel)
 }
 
 impl Data {

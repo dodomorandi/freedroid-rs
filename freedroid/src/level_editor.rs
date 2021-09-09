@@ -3,7 +3,6 @@ use crate::{
     defs::{
         AssembleCombatWindowFlags, Cmds, MapTile, MAXWAYPOINTS, MAX_WP_CONNECTIONS, NUM_MAP_BLOCKS,
     },
-    graphics::putpixel,
     structs::{Level, Waypoint},
     view::BLACK,
     Data,
@@ -14,7 +13,7 @@ use log::{info, warn};
 use sdl_sys::{
     SDLKey_SDLK_F1, SDLKey_SDLK_KP0, SDLKey_SDLK_KP1, SDLKey_SDLK_KP2, SDLKey_SDLK_KP3,
     SDLKey_SDLK_KP4, SDLKey_SDLK_KP5, SDLKey_SDLK_KP6, SDLKey_SDLK_KP7, SDLKey_SDLK_KP8,
-    SDLKey_SDLK_KP9, SDLKey_SDLK_KP_PLUS, SDL_Delay, SDL_Flip, SDL_LockSurface, SDL_UnlockSurface,
+    SDLKey_SDLK_KP9, SDLKey_SDLK_KP_PLUS, SDL_Delay, SDL_Flip,
 };
 use std::{
     cmp::Ordering,
@@ -493,8 +492,6 @@ impl Data {
         let block_x = self.vars.me.pos.x.round();
         let block_y = self.vars.me.pos.y.round();
 
-        SDL_LockSurface(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
-
         for wp in 0..usize::try_from((*self.main.cur_level).num_waypoints).unwrap() {
             let this_wp = &mut (*self.main.cur_level).all_waypoints[wp];
             // Draw the cross in the middle of the middle of the tile
@@ -517,12 +514,13 @@ impl Data {
                 {
                     continue;
                 }
-                putpixel(
-                    self.graphics.ne_screen.as_ref().unwrap().as_ptr(),
-                    x,
-                    y,
-                    HIGHLIGHTCOLOR,
-                );
+
+                // FIXME: avoid this inside the loop
+                let mut ne_screen = self.graphics.ne_screen.as_mut().unwrap().lock().unwrap();
+                ne_screen
+                    .pixels()
+                    .set(x.try_into().unwrap(), y.try_into().unwrap(), HIGHLIGHTCOLOR)
+                    .unwrap();
 
                 x = i + i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w / 2)
                     - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
@@ -538,12 +536,10 @@ impl Data {
                 {
                     continue;
                 }
-                putpixel(
-                    self.graphics.ne_screen.as_ref().unwrap().as_ptr(),
-                    x,
-                    y,
-                    HIGHLIGHTCOLOR,
-                );
+                ne_screen
+                    .pixels()
+                    .set(x.try_into().unwrap(), y.try_into().unwrap(), HIGHLIGHTCOLOR)
+                    .unwrap();
 
                 // This draws a line at the lower border of the current block
                 x = i + i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w / 2)
@@ -560,12 +556,10 @@ impl Data {
                 {
                     continue;
                 }
-                putpixel(
-                    self.graphics.ne_screen.as_ref().unwrap().as_ptr(),
-                    x,
-                    y,
-                    HIGHLIGHTCOLOR,
-                );
+                ne_screen
+                    .pixels()
+                    .set(x.try_into().unwrap(), y.try_into().unwrap(), HIGHLIGHTCOLOR)
+                    .unwrap();
 
                 x = i + i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w / 2)
                     - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
@@ -581,12 +575,10 @@ impl Data {
                 {
                     continue;
                 }
-                putpixel(
-                    self.graphics.ne_screen.as_ref().unwrap().as_ptr(),
-                    x,
-                    y,
-                    HIGHLIGHTCOLOR,
-                );
+                ne_screen
+                    .pixels()
+                    .set(x.try_into().unwrap(), y.try_into().unwrap(), HIGHLIGHTCOLOR)
+                    .unwrap();
             }
 
             // Draw the connections to other waypoints, BUT ONLY FOR THE WAYPOINT CURRENTLY TARGETED
@@ -607,8 +599,6 @@ impl Data {
                 }
             }
         }
-
-        SDL_UnlockSurface(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
     }
 
     /// This function is used by the Level Editor integrated into
@@ -616,114 +606,185 @@ impl Data {
     /// edited or would be edited, if the user pressed something.  I.e.
     /// it provides a "cursor" for the Level Editor.
     unsafe fn highlight_current_block(&mut self) {
-        SDL_LockSurface(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+        let mut ne_screen = self.graphics.ne_screen.as_mut().unwrap().lock().unwrap();
+        let mut pixels = ne_screen.pixels();
 
         let user_center = self.vars.get_user_center();
         for i in 0..i32::from(self.vars.block_rect.w) {
             // This draws a (double) line at the upper border of the current block
-            putpixel(
-                self.graphics.ne_screen.as_ref().unwrap().as_ptr(),
-                i + i32::from(self.vars.user_rect.x)
-                    + i32::from(self.vars.user_rect.w / 2)
-                    + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
-                        * f32::from(self.vars.block_rect.w)) as i32,
-                i32::from(user_center.y)
-                    + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
-                        * f32::from(self.vars.block_rect.h)) as i32,
-                HIGHLIGHTCOLOR,
-            );
-            putpixel(
-                self.graphics.ne_screen.as_ref().unwrap().as_ptr(),
-                i + i32::from(self.vars.user_rect.x)
-                    + i32::from(self.vars.user_rect.w / 2)
-                    + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
-                        * f32::from(self.vars.block_rect.w)) as i32,
-                i32::from(user_center.y)
-                    + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
-                        * f32::from(self.vars.block_rect.h)) as i32
-                    + 1,
-                HIGHLIGHTCOLOR,
-            );
+            pixels
+                .set(
+                    u16::try_from(
+                        i + i32::from(self.vars.user_rect.x)
+                            + i32::from(self.vars.user_rect.w / 2)
+                            + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
+                                * f32::from(self.vars.block_rect.w))
+                                as i32,
+                    )
+                    .unwrap(),
+                    u16::try_from(
+                        i32::from(user_center.y)
+                            + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
+                                * f32::from(self.vars.block_rect.h))
+                                as i32,
+                    )
+                    .unwrap(),
+                    HIGHLIGHTCOLOR,
+                )
+                .unwrap();
+            pixels
+                .set(
+                    u16::try_from(
+                        i + i32::from(self.vars.user_rect.x)
+                            + i32::from(self.vars.user_rect.w / 2)
+                            + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
+                                * f32::from(self.vars.block_rect.w))
+                                as i32,
+                    )
+                    .unwrap(),
+                    u16::try_from(
+                        i32::from(user_center.y)
+                            + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
+                                * f32::from(self.vars.block_rect.h))
+                                as i32
+                            + 1,
+                    )
+                    .unwrap(),
+                    HIGHLIGHTCOLOR,
+                )
+                .unwrap();
 
             // This draws a line at the lower border of the current block
-            putpixel(
-                self.graphics.ne_screen.as_ref().unwrap().as_ptr(),
-                i + i32::from(self.vars.user_rect.x)
-                    + i32::from(self.vars.user_rect.w / 2)
-                    + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
-                        * f32::from(self.vars.block_rect.w)) as i32,
-                i32::from(user_center.y)
-                    + (((self.vars.me.pos.y).round() - self.vars.me.pos.y + 0.5)
-                        * f32::from(self.vars.block_rect.h)) as i32
-                    - 1,
-                HIGHLIGHTCOLOR,
-            );
-            putpixel(
-                self.graphics.ne_screen.as_ref().unwrap().as_ptr(),
-                i + i32::from(self.vars.user_rect.x)
-                    + i32::from(self.vars.user_rect.w / 2)
-                    + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
-                        * f32::from(self.vars.block_rect.w)) as i32,
-                i32::from(user_center.y)
-                    + (((self.vars.me.pos.y).round() - self.vars.me.pos.y + 0.5)
-                        * f32::from(self.vars.block_rect.h)) as i32
-                    - 2,
-                HIGHLIGHTCOLOR,
-            );
+            pixels
+                .set(
+                    u16::try_from(
+                        i + i32::from(self.vars.user_rect.x)
+                            + i32::from(self.vars.user_rect.w / 2)
+                            + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
+                                * f32::from(self.vars.block_rect.w))
+                                as i32,
+                    )
+                    .unwrap(),
+                    u16::try_from(
+                        i32::from(user_center.y)
+                            + (((self.vars.me.pos.y).round() - self.vars.me.pos.y + 0.5)
+                                * f32::from(self.vars.block_rect.h))
+                                as i32
+                            - 1,
+                    )
+                    .unwrap(),
+                    HIGHLIGHTCOLOR,
+                )
+                .unwrap();
+            pixels
+                .set(
+                    u16::try_from(
+                        i + i32::from(self.vars.user_rect.x)
+                            + i32::from(self.vars.user_rect.w / 2)
+                            + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
+                                * f32::from(self.vars.block_rect.w))
+                                as i32,
+                    )
+                    .unwrap(),
+                    u16::try_from(
+                        i32::from(user_center.y)
+                            + (((self.vars.me.pos.y).round() - self.vars.me.pos.y + 0.5)
+                                * f32::from(self.vars.block_rect.h))
+                                as i32
+                            - 2,
+                    )
+                    .unwrap(),
+                    HIGHLIGHTCOLOR,
+                )
+                .unwrap();
 
             // This draws a line at the left border of the current block
-            putpixel(
-                self.graphics.ne_screen.as_ref().unwrap().as_ptr(),
-                i32::from(self.vars.user_rect.x)
-                    + i32::from(self.vars.user_rect.w / 2)
-                    + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
-                        * f32::from(self.vars.block_rect.w)) as i32,
-                i32::from(user_center.y)
-                    + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
-                        * f32::from(self.vars.block_rect.h)) as i32
-                    + i,
-                HIGHLIGHTCOLOR,
-            );
-            putpixel(
-                self.graphics.ne_screen.as_ref().unwrap().as_ptr(),
-                1 + i32::from(self.vars.user_rect.x)
-                    + i32::from(self.vars.user_rect.w / 2)
-                    + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
-                        * f32::from(self.vars.block_rect.w)) as i32,
-                i32::from(user_center.y)
-                    + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
-                        * f32::from(self.vars.block_rect.h)) as i32
-                    + i,
-                HIGHLIGHTCOLOR,
-            );
+            pixels
+                .set(
+                    u16::try_from(
+                        i32::from(self.vars.user_rect.x)
+                            + i32::from(self.vars.user_rect.w / 2)
+                            + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
+                                * f32::from(self.vars.block_rect.w))
+                                as i32,
+                    )
+                    .unwrap(),
+                    u16::try_from(
+                        i32::from(user_center.y)
+                            + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
+                                * f32::from(self.vars.block_rect.h))
+                                as i32
+                            + i,
+                    )
+                    .unwrap(),
+                    HIGHLIGHTCOLOR,
+                )
+                .unwrap();
+            pixels
+                .set(
+                    u16::try_from(
+                        1 + i32::from(self.vars.user_rect.x)
+                            + i32::from(self.vars.user_rect.w / 2)
+                            + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
+                                * f32::from(self.vars.block_rect.w))
+                                as i32,
+                    )
+                    .unwrap(),
+                    u16::try_from(
+                        i32::from(user_center.y)
+                            + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
+                                * f32::from(self.vars.block_rect.h))
+                                as i32
+                            + i,
+                    )
+                    .unwrap(),
+                    HIGHLIGHTCOLOR,
+                )
+                .unwrap();
 
             // This draws a line at the right border of the current block
-            putpixel(
-                self.graphics.ne_screen.as_ref().unwrap().as_ptr(),
-                -1 + i32::from(self.vars.user_rect.x)
-                    + i32::from(self.vars.user_rect.w / 2)
-                    + (((self.vars.me.pos.x).round() - self.vars.me.pos.x + 0.5)
-                        * f32::from(self.vars.block_rect.w)) as i32,
-                i32::from(user_center.y)
-                    + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
-                        * f32::from(self.vars.block_rect.h)) as i32
-                    + i,
-                HIGHLIGHTCOLOR,
-            );
-            putpixel(
-                self.graphics.ne_screen.as_ref().unwrap().as_ptr(),
-                -2 + i32::from(self.vars.user_rect.x)
-                    + i32::from(self.vars.user_rect.w / 2)
-                    + (((self.vars.me.pos.x).round() - self.vars.me.pos.x + 0.5)
-                        * f32::from(self.vars.block_rect.w)) as i32,
-                i32::from(user_center.y)
-                    + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
-                        * f32::from(self.vars.block_rect.h)) as i32
-                    + i,
-                HIGHLIGHTCOLOR,
-            );
+            pixels
+                .set(
+                    u16::try_from(
+                        -1 + i32::from(self.vars.user_rect.x)
+                            + i32::from(self.vars.user_rect.w / 2)
+                            + (((self.vars.me.pos.x).round() - self.vars.me.pos.x + 0.5)
+                                * f32::from(self.vars.block_rect.w))
+                                as i32,
+                    )
+                    .unwrap(),
+                    u16::try_from(
+                        i32::from(user_center.y)
+                            + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
+                                * f32::from(self.vars.block_rect.h))
+                                as i32
+                            + i,
+                    )
+                    .unwrap(),
+                    HIGHLIGHTCOLOR,
+                )
+                .unwrap();
+            pixels
+                .set(
+                    u16::try_from(
+                        -2 + i32::from(self.vars.user_rect.x)
+                            + i32::from(self.vars.user_rect.w / 2)
+                            + (((self.vars.me.pos.x).round() - self.vars.me.pos.x + 0.5)
+                                * f32::from(self.vars.block_rect.w))
+                                as i32,
+                    )
+                    .unwrap(),
+                    u16::try_from(
+                        i32::from(user_center.y)
+                            + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
+                                * f32::from(self.vars.block_rect.h))
+                                as i32
+                            + i,
+                    )
+                    .unwrap(),
+                    HIGHLIGHTCOLOR,
+                )
+                .unwrap();
         }
-
-        SDL_UnlockSurface(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
     }
 }

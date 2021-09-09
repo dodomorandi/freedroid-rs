@@ -594,7 +594,7 @@ impl Data {
             };
 
             apply_filter(
-                &mut *self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
+                self.graphics.build_block.as_mut().unwrap(),
                 filt,
                 filt,
                 filt,
@@ -613,12 +613,7 @@ impl Data {
         // but of course only in some periodic intervall...
 
         if self.vars.me.status == Status::Transfermode as i32 && x == -1 {
-            apply_filter(
-                &mut *self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
-                1.0,
-                0.0,
-                0.0,
-            );
+            apply_filter(self.graphics.build_block.as_mut().unwrap(), 1.0, 0.0, 0.0);
 
             if self.vars.me.last_transfer_sound_time > TRANSFER_SOUND_INTERVAL {
                 self.vars.me.last_transfer_sound_time = 0.;
