@@ -4,12 +4,13 @@ use crate::{
         self, Criticality, DisplayBannerFlags, Status, Themed, DATE_LEN, GRAPHICS_DIR_C,
         HS_BACKGROUND_FILE_C, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
     },
+    graphics::Graphics,
     Data,
 };
 
 use cstr::cstr;
 use log::{info, warn};
-use sdl_sys::{SDL_Flip, SDL_UpperBlit};
+use sdl_sys::SDL_Flip;
 use std::{
     convert::TryFrom,
     ffi::CStr,
@@ -202,12 +203,18 @@ impl Data {
             self.vars.portrait_rect.w,
             self.vars.portrait_rect.h,
         );
-        SDL_UpperBlit(
-            self.graphics.pic999.as_mut().unwrap().as_mut_ptr(),
-            null_mut(),
-            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            &mut dst,
-        );
+
+        let Data {
+            graphics: Graphics {
+                pic999, ne_screen, ..
+            },
+            ..
+        } = self;
+        pic999
+            .as_mut()
+            .unwrap()
+            .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
+
         let h = font_height(&*self.global.para_b_font);
         self.display_text(
             cstr!("Great Score !").as_ptr(),

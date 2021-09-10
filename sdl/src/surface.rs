@@ -89,7 +89,43 @@ impl<const FREEABLE: bool> GenericSurface<FREEABLE> {
         self.0.as_ptr()
     }
 
-    pub fn blit<'from, 'to, FromRect, ToRect, const TO_FREEABLE: bool>(
+    pub fn blit<const TO_FREEABLE: bool>(&mut self, to_surface: &mut GenericSurface<TO_FREEABLE>) {
+        self.blit_inner(None::<&Rect>, to_surface, None::<&mut Rect>)
+    }
+
+    pub fn blit_to<'to, ToRect, const TO_FREEABLE: bool>(
+        &mut self,
+        to_surface: &mut GenericSurface<TO_FREEABLE>,
+        to: ToRect,
+    ) where
+        ToRect: Into<RectMut<'to>>,
+    {
+        self.blit_inner(None::<&Rect>, to_surface, Some(to))
+    }
+
+    pub fn blit_from<'from, FromRect, const TO_FREEABLE: bool>(
+        &mut self,
+        from: FromRect,
+        to_surface: &mut GenericSurface<TO_FREEABLE>,
+    ) where
+        FromRect: Into<RectRef<'from>>,
+    {
+        self.blit_inner(Some(from), to_surface, None::<&mut Rect>)
+    }
+
+    pub fn blit_from_to<'from, 'to, FromRect, ToRect, const TO_FREEABLE: bool>(
+        &mut self,
+        from: FromRect,
+        to_surface: &mut GenericSurface<TO_FREEABLE>,
+        to: ToRect,
+    ) where
+        FromRect: Into<RectRef<'from>>,
+        ToRect: Into<RectMut<'to>>,
+    {
+        self.blit_inner(Some(from), to_surface, Some(to))
+    }
+
+    fn blit_inner<'from, 'to, FromRect, ToRect, const TO_FREEABLE: bool>(
         &mut self,
         from: Option<FromRect>,
         to_surface: &mut GenericSurface<TO_FREEABLE>,

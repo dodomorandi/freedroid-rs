@@ -24,7 +24,7 @@ use sdl::Surface;
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT,
     SDLKey_SDLK_RIGHT, SDLKey_SDLK_UP, SDL_Delay, SDL_DisplayFormat, SDL_Flip, SDL_GetTicks,
-    SDL_ShowCursor, SDL_UpperBlit, SDL_DISABLE, SDL_ENABLE,
+    SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE,
 };
 use std::{
     alloc::{alloc_zeroed, dealloc, realloc, Layout},
@@ -949,12 +949,12 @@ impl Data {
             let submenu = menu_entries[menu_pos].submenu;
 
             if need_update {
-                SDL_UpperBlit(
-                    self.menu.menu_background.as_mut().unwrap().as_mut_ptr(),
-                    null_mut(),
-                    self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                    null_mut(),
-                );
+                let Data { menu, graphics, .. } = self;
+
+                menu.menu_background
+                    .as_mut()
+                    .unwrap()
+                    .blit(graphics.ne_screen.as_mut().unwrap());
                 // print menu
                 menu_entries.iter().enumerate().for_each(|(i, entry)| {
                     let arg = entry
@@ -1108,12 +1108,11 @@ impl Data {
         let col3 = col2 + (6.5 * f64::from(char_width(&*current_font, b'O'))) as i32;
         let lheight = font_height(&*self.global.font0_b_font) + 2;
 
-        SDL_UpperBlit(
-            self.menu.menu_background.as_mut().unwrap().as_mut_ptr(),
-            null_mut(),
-            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            null_mut(),
-        );
+        let Data { menu, graphics, .. } = self;
+        menu.menu_background
+            .as_mut()
+            .unwrap()
+            .blit(graphics.ne_screen.as_mut().unwrap());
 
         #[cfg(feature = "gcw0")]
         PrintStringFont(

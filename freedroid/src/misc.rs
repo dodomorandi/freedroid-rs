@@ -13,7 +13,7 @@ use crate::{
 use cstr::cstr;
 use defs::MAXBULLETS;
 use log::{error, info, warn};
-use sdl_sys::{SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Quit, SDL_UpdateRects, SDL_UpperBlit};
+use sdl_sys::{SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Quit, SDL_UpdateRects};
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
     borrow::Cow,
@@ -65,7 +65,7 @@ impl Data {
             h,
         );
 
-        let mut src = rect!(
+        let src = rect!(
             0,
             self.vars.progress_bar_rect.h as i16 - dst.h as i16,
             dst.h,
@@ -81,10 +81,9 @@ impl Data {
                 },
             ..
         } = self;
-        SDL_UpperBlit(
-            progress_filler_pic.as_mut().unwrap().as_mut_ptr(),
-            &mut src,
-            ne_screen.as_mut().unwrap().as_mut_ptr(),
+        progress_filler_pic.as_mut().unwrap().blit_from_to(
+            &src,
+            ne_screen.as_mut().unwrap(),
             &mut dst,
         );
         SDL_UpdateRects(ne_screen.as_mut().unwrap().as_mut_ptr(), 1, &mut dst);
@@ -621,14 +620,17 @@ impl Data {
         }
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
-        SDL_UpperBlit(
-            self.graphics
-                .progress_meter_pic
-                .as_mut()
-                .unwrap()
-                .as_mut_ptr(),
-            null_mut(),
-            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
+        let Data {
+            graphics:
+                Graphics {
+                    progress_meter_pic,
+                    ne_screen,
+                    ..
+                },
+            ..
+        } = self;
+        progress_meter_pic.as_mut().unwrap().blit_to(
+            ne_screen.as_mut().unwrap(),
             &mut self.vars.progress_meter_rect,
         );
 

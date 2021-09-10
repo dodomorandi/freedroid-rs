@@ -22,8 +22,7 @@ use clap::{crate_version, Clap};
 use cstr::cstr;
 use log::{error, info, warn};
 use sdl_sys::{
-    Mix_HaltMusic, SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Rect, SDL_ShowCursor, SDL_UpperBlit,
-    SDL_DISABLE,
+    Mix_HaltMusic, SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Rect, SDL_ShowCursor, SDL_DISABLE,
 };
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
@@ -1612,12 +1611,13 @@ impl Data {
             w: self.vars.portrait_rect.w,
             h: self.vars.portrait_rect.h,
         };
-        SDL_UpperBlit(
-            self.graphics.pic999.as_mut().unwrap().as_mut_ptr(),
-            null_mut(),
-            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            &mut dst,
-        );
+        let Graphics {
+            pic999, ne_screen, ..
+        } = &mut self.graphics;
+        pic999
+            .as_mut()
+            .unwrap()
+            .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
         self.thou_art_defeated_sound();
 
         self.b_font.current_font = self.global.para_b_font;

@@ -4,7 +4,7 @@ use crate::{
         AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction, SoundType, Status,
         DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET, TEXT_STRETCH, UPDATE,
     },
-    graphics::scale_pic_surface,
+    graphics::{scale_pic_surface, Graphics},
     map::get_map_brick,
     structs::Point,
     vars::{BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES, WEAPON_NAMES},
@@ -12,12 +12,11 @@ use crate::{
 };
 
 use log::{error, warn};
-use sdl::{Rect, Surface};
+use sdl::Surface;
 use sdl_sys::{
     IMG_Load_RW, IMG_isJPG, SDL_Color, SDL_CreateRGBSurface, SDL_Delay, SDL_DisplayFormat,
     SDL_DisplayFormatAlpha, SDL_Flip, SDL_FreeSurface, SDL_GetTicks, SDL_RWops, SDL_Rect,
-    SDL_SetCursor, SDL_ShowCursor, SDL_UpdateRects, SDL_UpperBlit, SDL_WarpMouse, SDL_DISABLE,
-    SDL_ENABLE,
+    SDL_SetCursor, SDL_ShowCursor, SDL_UpdateRects, SDL_WarpMouse, SDL_DISABLE, SDL_ENABLE,
 };
 use std::{
     convert::{TryFrom, TryInto},
@@ -223,22 +222,21 @@ impl Data {
             let mut droid_background =
                 Surface::from_ptr(NonNull::new(SDL_DisplayFormat(tmp)).unwrap());
             SDL_FreeSurface(tmp);
-            graphics.ne_screen.as_mut().unwrap().blit(
-                Some(&dst),
-                &mut droid_background,
-                None::<&mut Rect>,
-            );
+            graphics
+                .ne_screen
+                .as_mut()
+                .unwrap()
+                .blit_from(&dst, &mut droid_background);
             *src_rect = vars.portrait_rect;
             droid_background
         });
 
         if flags & RESET != 0 {
-            SDL_UpperBlit(
-                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                &mut dst,
-                droid_background.as_mut_ptr(),
-                null_mut(),
-            );
+            self.graphics
+                .ne_screen
+                .as_mut()
+                .unwrap()
+                .blit_from(&dst, droid_background);
             self.ship.frame_num = 0;
             self.ship.last_frame_time = SDL_GetTicks();
         }
@@ -309,16 +307,24 @@ impl Data {
             self.ship.src_rect.x = i16::try_from(self.ship.frame_num).unwrap()
                 * i16::try_from(self.ship.src_rect.w).unwrap();
 
-            SDL_UpperBlit(
-                self.ship.droid_background.as_mut().unwrap().as_mut_ptr(),
-                null_mut(),
-                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                &mut dst,
-            );
-            SDL_UpperBlit(
-                self.ship.droid_pics.as_mut().unwrap().as_mut_ptr(),
-                &mut self.ship.src_rect,
-                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
+            let Data {
+                ship:
+                    ShipData {
+                        droid_background,
+                        droid_pics,
+                        src_rect,
+                        ..
+                    },
+                graphics: Graphics { ne_screen, .. },
+                ..
+            } = self;
+            droid_background
+                .as_mut()
+                .unwrap()
+                .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
+            droid_pics.as_mut().unwrap().blit_from_to(
+                &*src_rect,
+                ne_screen.as_mut().unwrap(),
                 &mut dst,
             );
 
@@ -485,40 +491,43 @@ Paradroid to eliminate all rogue robots.\0",
             }
         }
 
+        let Data {
+            graphics:
+                Graphics {
+                    console_bg_pic2,
+                    ne_screen,
+                    ..
+                },
+            vars,
+            ..
+        } = self;
+
         // if UPDATE_ONLY then the background has not been cleared, so we have do it
         // it for each menu-rect:
         if flags & i32::from(UPDATE_ONLY) != 0 {
-            self.graphics
-                .ne_screen
+            ne_screen
                 .as_mut()
                 .unwrap()
-                .set_clip_rect(&self.vars.cons_text_rect);
-            SDL_UpperBlit(
-                self.graphics.console_bg_pic2.as_mut().unwrap().as_mut_ptr(),
-                null_mut(),
-                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                null_mut(),
-            );
-            self.graphics
-                .ne_screen
+                .set_clip_rect(&vars.cons_text_rect);
+            console_bg_pic2
                 .as_mut()
                 .unwrap()
-                .set_clip_rect(&self.vars.cons_header_rect);
-            SDL_UpperBlit(
-                self.graphics.console_bg_pic2.as_mut().unwrap().as_mut_ptr(),
-                null_mut(),
-                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                null_mut(),
-            );
-            self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
+                .blit(ne_screen.as_mut().unwrap());
+            ne_screen
+                .as_mut()
+                .unwrap()
+                .set_clip_rect(&vars.cons_header_rect);
+            console_bg_pic2
+                .as_mut()
+                .unwrap()
+                .blit(ne_screen.as_mut().unwrap());
+            ne_screen.as_mut().unwrap().clear_clip_rect();
         } else {
             // otherwise we just redraw the whole screen
-            SDL_UpperBlit(
-                self.graphics.console_bg_pic2.as_mut().unwrap().as_mut_ptr(),
-                null_mut(),
-                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                null_mut(),
-            );
+            console_bg_pic2
+                .as_mut()
+                .unwrap()
+                .blit(ne_screen.as_mut().unwrap());
             self.display_banner(
                 null_mut(),
                 null_mut(),
@@ -543,40 +552,47 @@ Paradroid to eliminate all rogue robots.\0",
         );
 
         if show_arrows {
-            if self.vars.me.ty > droid_type {
-                SDL_UpperBlit(
-                    self.graphics.arrow_up.as_mut().unwrap().as_mut_ptr(),
-                    null_mut(),
-                    self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                    &mut self.ship.up_rect,
-                );
+            let Data {
+                graphics:
+                    Graphics {
+                        arrow_up,
+                        arrow_down,
+                        arrow_left,
+                        arrow_right,
+                        ne_screen,
+                        ..
+                    },
+                ship,
+                vars,
+                ..
+            } = self;
+
+            if vars.me.ty > droid_type {
+                arrow_up
+                    .as_mut()
+                    .unwrap()
+                    .blit_to(ne_screen.as_mut().unwrap(), &mut ship.up_rect);
             }
 
             if droid_type > 0 {
-                SDL_UpperBlit(
-                    self.graphics.arrow_down.as_mut().unwrap().as_mut_ptr(),
-                    null_mut(),
-                    self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                    &mut self.ship.down_rect,
-                );
+                arrow_down
+                    .as_mut()
+                    .unwrap()
+                    .blit_to(ne_screen.as_mut().unwrap(), &mut ship.down_rect);
             }
 
             if page > 0 {
-                SDL_UpperBlit(
-                    self.graphics.arrow_left.as_mut().unwrap().as_mut_ptr(),
-                    null_mut(),
-                    self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                    &mut self.ship.left_rect,
-                );
+                arrow_left
+                    .as_mut()
+                    .unwrap()
+                    .blit_to(ne_screen.as_mut().unwrap(), &mut ship.left_rect);
             }
 
             if page < 2 {
-                SDL_UpperBlit(
-                    self.graphics.arrow_right.as_mut().unwrap().as_mut_ptr(),
-                    null_mut(),
-                    self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                    &mut self.ship.right_rect,
-                );
+                arrow_right
+                    .as_mut()
+                    .unwrap()
+                    .blit_to(ne_screen.as_mut().unwrap(), &mut ship.right_rect);
             }
         }
 
@@ -965,40 +981,42 @@ impl Data {
         dst = self.vars.user_rect;
         dst.x += xoffs;
         dst.y += yoffs;
-        SDL_UpperBlit(
-            self.graphics.ship_off_pic.as_mut().unwrap().as_mut_ptr(),
-            null_mut(),
-            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            &mut dst,
-        );
+
+        let Graphics {
+            ship_off_pic,
+            ship_on_pic,
+            ne_screen,
+            ..
+        } = &mut self.graphics;
+        ship_off_pic
+            .as_mut()
+            .unwrap()
+            .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
 
         if level >= 0 {
             for i in 0..self.main.cur_ship.num_level_rects[usize::try_from(level).unwrap()] {
-                let mut src = self.main.cur_ship.level_rects[usize::try_from(level).unwrap()]
+                let src = self.main.cur_ship.level_rects[usize::try_from(level).unwrap()]
                     [usize::try_from(i).unwrap()];
                 dst = src;
                 dst.x += self.vars.user_rect.x + xoffs; /* offset respective to User-Rectangle */
                 dst.y += self.vars.user_rect.y + yoffs;
-                SDL_UpperBlit(
-                    self.graphics.ship_on_pic.as_mut().unwrap().as_mut_ptr(),
-                    &mut src,
-                    self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
+                ship_on_pic.as_mut().unwrap().blit_from_to(
+                    &src,
+                    ne_screen.as_mut().unwrap(),
                     &mut dst,
                 );
             }
         }
 
         if liftrow >= 0 {
-            let mut src = self.main.cur_ship.lift_row_rect[usize::try_from(liftrow).unwrap()];
+            let src = self.main.cur_ship.lift_row_rect[usize::try_from(liftrow).unwrap()];
             dst = src;
             dst.x += self.vars.user_rect.x + xoffs; /* offset respective to User-Rectangle */
             dst.y += self.vars.user_rect.y + yoffs;
-            SDL_UpperBlit(
-                self.graphics.ship_on_pic.as_mut().unwrap().as_mut_ptr(),
-                &mut src,
-                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                &mut dst,
-            );
+            ship_on_pic
+                .as_mut()
+                .unwrap()
+                .blit_from_to(&src, ne_screen.as_mut().unwrap(), &mut dst);
         }
 
         SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
@@ -1018,13 +1036,21 @@ impl Data {
 
         if (flag & i32::from(UPDATE_ONLY)) == 0 {
             self.clear_graph_mem();
-            self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
-            SDL_UpperBlit(
-                self.graphics.console_bg_pic1.as_mut().unwrap().as_mut_ptr(),
-                null_mut(),
-                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                null_mut(),
-            );
+
+            let Data {
+                graphics:
+                    Graphics {
+                        ne_screen,
+                        console_bg_pic1,
+                        ..
+                    },
+                ..
+            } = self;
+            ne_screen.as_mut().unwrap().clear_clip_rect();
+            console_bg_pic1
+                .as_mut()
+                .unwrap()
+                .blit(ne_screen.as_mut().unwrap());
 
             self.display_banner(
                 null_mut(),
@@ -1066,18 +1092,27 @@ impl Data {
             );
         } // only if not UPDATE_ONLY was required
 
-        let mut src = SDL_Rect {
+        let src = SDL_Rect {
             x: i16::try_from(self.vars.cons_menu_rects[0].w).unwrap() * i16::try_from(pos).unwrap()
                 + (2. * pos as f32 * self.global.game_config.scale) as i16,
             y: 0,
             w: self.vars.cons_menu_rect.w,
             h: 4 * self.vars.cons_menu_rect.h,
         };
-        SDL_UpperBlit(
-            self.graphics.console_pic.as_mut().unwrap().as_mut_ptr(),
-            &mut src,
-            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            &mut self.vars.cons_menu_rect,
+        let Data {
+            graphics:
+                Graphics {
+                    console_pic,
+                    ne_screen,
+                    ..
+                },
+            vars,
+            ..
+        } = self;
+        console_pic.as_mut().unwrap().blit_from_to(
+            &src,
+            ne_screen.as_mut().unwrap(),
+            &mut vars.cons_menu_rect,
         );
     }
 

@@ -26,8 +26,8 @@ use sdl_sys::{
     SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetTicks, SDL_GetVideoInfo, SDL_Init,
     SDL_InitSubSystem, SDL_MapRGB, SDL_MapRGBA, SDL_Quit, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops,
     SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma, SDL_SetVideoMode, SDL_UpdateRect,
-    SDL_UpperBlit, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon,
-    SDL_FULLSCREEN, SDL_INIT_TIMER, SDL_INIT_VIDEO, SDL_RLEACCEL, SDL_SRCALPHA,
+    SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_FULLSCREEN,
+    SDL_INIT_TIMER, SDL_INIT_VIDEO, SDL_RLEACCEL, SDL_SRCALPHA,
 };
 use std::{
     cell::RefCell,
@@ -416,13 +416,13 @@ impl Graphics {
         };
         SDL_FreeSurface(tmp);
 
-        let mut src = rect!(
+        let src = rect!(
             i16::try_from(col).unwrap() * i16::try_from(dim.w + 2).unwrap(),
             i16::try_from(line).unwrap() * i16::try_from(dim.h + 2).unwrap(),
             dim.w,
             dim.h,
         );
-        SDL_UpperBlit(pic.as_mut_ptr(), &mut src, ret.as_mut_ptr(), null_mut());
+        pic.blit_from(&src, &mut ret);
         if usealpha {
             SDL_SetAlpha(
                 ret.as_mut_ptr(),
@@ -734,13 +734,14 @@ impl Data {
             0,
             0,
         );
-        let tmp2 = SDL_DisplayFormat(tmp);
+        let mut tmp2 = Surface::from_ptr(NonNull::new(SDL_DisplayFormat(tmp)).unwrap());
         SDL_FreeSurface(tmp);
-        SDL_UpperBlit(frame_buffer.as_mut_ptr(), rect, tmp2, null_mut());
+        frame_buffer.blit_from(&*rect, &mut tmp2);
 
         let mut rng = rand::thread_rng();
         let mut noise_tiles: [Surface; NOISE_TILES] = array_init(|_| {
-            let mut tile = Surface::from_ptr(NonNull::new(SDL_DisplayFormat(tmp2)).unwrap());
+            let mut tile =
+                Surface::from_ptr(NonNull::new(SDL_DisplayFormat(tmp2.as_mut_ptr())).unwrap());
             let mut lock = tile.lock().unwrap();
             (0..u16::try_from(rect.x).unwrap())
                 .flat_map(|x| (0..rect.h).map(move |y| (x, y)))
@@ -754,7 +755,7 @@ impl Data {
             drop(lock);
             tile
         });
-        SDL_FreeSurface(tmp2);
+        drop(tmp2);
 
         let mut used_tiles: [c_char; NOISE_TILES / 2 + 1] = [-1; NOISE_TILES / 2 + 1];
         // let's go
@@ -787,12 +788,7 @@ impl Data {
             SDL_GetClipRect(frame_buffer.as_mut_ptr(), &mut clip_rect);
             frame_buffer.clear_clip_rect();
             // set it
-            SDL_UpperBlit(
-                noise_tiles[usize::try_from(next_tile).unwrap()].as_mut_ptr(),
-                null_mut(),
-                frame_buffer.as_mut_ptr(),
-                rect,
-            );
+            noise_tiles[usize::try_from(next_tile).unwrap()].blit_to(frame_buffer, &mut *rect);
             SDL_UpdateRect(
                 frame_buffer.as_mut_ptr(),
                 rect.x.into(),
@@ -1896,12 +1892,7 @@ impl Data {
             scale_pic(&mut image, self.global.game_config.scale);
         }
 
-        SDL_UpperBlit(
-            image.as_mut_ptr(),
-            null_mut(),
-            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            null_mut(),
-        );
+        image.blit(self.graphics.ne_screen.as_mut().unwrap());
     }
 
     pub unsafe fn draw_line_between_tiles(

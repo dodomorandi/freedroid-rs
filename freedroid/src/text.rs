@@ -13,15 +13,14 @@ use crate::{
 
 use cstr::cstr;
 use log::{error, info, trace};
-use sdl::RectRef;
+use sdl::{RectRef, Surface};
 #[cfg(not(feature = "arcade-input"))]
 use sdl_sys::SDLKey_SDLK_DELETE;
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_RETURN, SDLMod, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_RSHIFT,
     SDL_CreateRGBSurface, SDL_Delay, SDL_DisplayFormat, SDL_Event, SDL_EventType, SDL_Flip,
-    SDL_FreeSurface, SDL_GetClipRect, SDL_GetTicks, SDL_PushEvent, SDL_Rect, SDL_UpdateRect,
-    SDL_UpperBlit, SDL_WaitEvent, SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT,
-    SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
+    SDL_GetClipRect, SDL_GetTicks, SDL_PushEvent, SDL_Rect, SDL_UpdateRect, SDL_WaitEvent,
+    SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
 };
 use std::{
     convert::{TryFrom, TryInto},
@@ -29,7 +28,7 @@ use std::{
     fmt,
     io::Cursor,
     os::raw::{c_char, c_int, c_uchar},
-    ptr::null_mut,
+    ptr::{null_mut, NonNull},
 };
 
 #[cfg(feature = "arcade-input")]
@@ -84,28 +83,30 @@ impl Data {
         let y0 = self.text.my_cursor_y;
         let height = font_height(&*self.b_font.current_font);
 
-        let store = SDL_CreateRGBSurface(
-            0,
-            self.vars.screen_rect.w.into(),
-            height,
-            self.graphics.vid_bpp,
-            0,
-            0,
-            0,
-            0,
+        let mut store = Surface::from_ptr(
+            NonNull::new(SDL_CreateRGBSurface(
+                0,
+                self.vars.screen_rect.w.into(),
+                height,
+                self.graphics.vid_bpp,
+                0,
+                0,
+                0,
+                0,
+            ))
+            .unwrap(),
         );
-        let mut store_rect = rect!(
+        let store_rect = rect!(
             x0.try_into().unwrap(),
             y0.try_into().unwrap(),
             self.vars.screen_rect.w,
             height.try_into().unwrap(),
         );
-        SDL_UpperBlit(
-            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            &mut store_rect,
-            store,
-            null_mut(),
-        );
+        self.graphics
+            .ne_screen
+            .as_mut()
+            .unwrap()
+            .blit_from(&store_rect, &mut store);
 
         #[cfg(feature = "arcade-input")]
         let blink_time = 200; // For adjusting fast <->slow blink; in ms
@@ -126,7 +127,7 @@ impl Data {
         while !finished {
             let mut tmp_rect = store_rect;
             let mut ne_screen = self.graphics.ne_screen.take().unwrap();
-            SDL_UpperBlit(store, null_mut(), ne_screen.as_mut_ptr(), &mut tmp_rect);
+            store.blit_to(&mut ne_screen, &mut tmp_rect);
             self.put_string(
                 &mut ne_screen,
                 x0,
@@ -638,18 +639,18 @@ impl Data {
         const MAX_SPEED: c_int = 150;
         let mut just_started = true;
 
-        let background = SDL_DisplayFormat(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+        let mut background = Surface::from_ptr(
+            NonNull::new(SDL_DisplayFormat(
+                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
+            ))
+            .unwrap(),
+        );
 
         self.wait_for_all_keys_released();
         let ret;
         loop {
             let mut prev_tick = SDL_GetTicks();
-            SDL_UpperBlit(
-                background,
-                null_mut(),
-                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                null_mut(),
-            );
+            background.blit(self.graphics.ne_screen.as_mut().unwrap());
             if self.display_text(text, rect.x.into(), insert_line as c_int, rect) == 0 {
                 ret = 0; /* Text has been scrolled outside SDL_Rect */
                 break;
@@ -714,14 +715,8 @@ impl Data {
             }
         }
 
-        SDL_UpperBlit(
-            background,
-            null_mut(),
-            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            null_mut(),
-        );
+        background.blit(self.graphics.ne_screen.as_mut().unwrap());
         SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
-        SDL_FreeSurface(background);
 
         ret
     }

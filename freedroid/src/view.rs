@@ -15,15 +15,13 @@ use crate::{
 
 use log::{info, trace};
 use sdl::Surface;
-use sdl_sys::{
-    rotozoomSurface, SDL_Color, SDL_FillRect, SDL_MapRGB, SDL_Rect, SDL_UpdateRect, SDL_UpperBlit,
-};
+use sdl_sys::{rotozoomSurface, SDL_Color, SDL_FillRect, SDL_MapRGB, SDL_Rect, SDL_UpdateRect};
 use std::{
     cell::{Cell, RefCell},
     convert::{TryFrom, TryInto},
     ffi::CStr,
     os::raw::{c_char, c_int},
-    ptr::{null_mut, NonNull},
+    ptr::NonNull,
 };
 
 const BLINK_LEN: f32 = 1.0;
@@ -160,10 +158,8 @@ impl Data {
                 .as_mut()
                 .unwrap()
                 .borrow_mut();
-                SDL_UpperBlit(
-                    surface.as_mut_ptr(),
-                    null_mut(),
-                    self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
+                surface.blit_to(
+                    self.graphics.ne_screen.as_mut().unwrap(),
                     &mut target_rectangle,
                 );
             });
@@ -353,12 +349,16 @@ impl Data {
             0,
             0,
         );
-        SDL_UpperBlit(
-            self.graphics.decal_pics[0].as_mut().unwrap().as_mut_ptr(),
-            null_mut(),
-            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            &mut dst,
-        );
+
+        let Graphics {
+            decal_pics,
+            ne_screen,
+            ..
+        } = &mut self.graphics;
+        decal_pics[0]
+            .as_mut()
+            .unwrap()
+            .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
     }
 
     pub unsafe fn put_enemy(&mut self, enemy_index: c_int, x: c_int, y: c_int) {
@@ -388,53 +388,42 @@ impl Data {
 
         //--------------------
         // First blit just the enemy hat and shoes.
-        SDL_UpperBlit(
-            self.graphics.enemy_surface_pointer[phase as usize]
-                .as_mut()
-                .unwrap()
-                .as_mut_ptr(),
-            null_mut(),
-            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
-            null_mut(),
-        );
+        let Graphics {
+            enemy_surface_pointer,
+            build_block,
+            ..
+        } = &mut self.graphics;
+        enemy_surface_pointer[phase as usize]
+            .as_mut()
+            .unwrap()
+            .blit(build_block.as_mut().unwrap());
 
         //--------------------
         // Now the numbers should be blittet.
         let mut dst = self.main.first_digit_rect;
-        SDL_UpperBlit(
-            self.graphics.enemy_digit_surface_pointer
-                [usize::try_from(name[0] - b'1' as i8 + 1).unwrap()]
+
+        let Graphics {
+            enemy_digit_surface_pointer,
+            build_block,
+            ne_screen,
+            ..
+        } = &mut self.graphics;
+        enemy_digit_surface_pointer[usize::try_from(name[0] - b'1' as i8 + 1).unwrap()]
             .as_mut()
             .unwrap()
-            .as_mut_ptr(),
-            null_mut(),
-            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
-            &mut dst,
-        );
+            .blit_to(build_block.as_mut().unwrap(), &mut dst);
 
         dst = self.main.second_digit_rect;
-        SDL_UpperBlit(
-            self.graphics.enemy_digit_surface_pointer
-                [usize::try_from(name[1] - b'1' as i8 + 1).unwrap()]
+        enemy_digit_surface_pointer[usize::try_from(name[1] - b'1' as i8 + 1).unwrap()]
             .as_mut()
             .unwrap()
-            .as_mut_ptr(),
-            null_mut(),
-            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
-            &mut dst,
-        );
+            .blit_to(build_block.as_mut().unwrap(), &mut dst);
 
         dst = self.main.third_digit_rect;
-        SDL_UpperBlit(
-            self.graphics.enemy_digit_surface_pointer
-                [usize::try_from(name[2] - b'1' as i8 + 1).unwrap()]
+        enemy_digit_surface_pointer[usize::try_from(name[2] - b'1' as i8 + 1).unwrap()]
             .as_mut()
             .unwrap()
-            .as_mut_ptr(),
-            null_mut(),
-            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
-            &mut dst,
-        );
+            .blit_to(build_block.as_mut().unwrap(), &mut dst);
 
         // now blit the whole construction to screen:
         if x == -1 {
@@ -449,12 +438,11 @@ impl Data {
             dst.x = x.try_into().unwrap();
             dst.y = y.try_into().unwrap();
         }
-        SDL_UpperBlit(
-            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
-            null_mut(),
-            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            &mut dst,
-        );
+
+        build_block
+            .as_mut()
+            .unwrap()
+            .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
 
         //--------------------
         // At this point we can assume, that the enemys has been blittet to the
@@ -503,78 +491,52 @@ impl Data {
         trace!("PutInfluence real function call confirmed.");
 
         // Now we draw the hat and shoes of the influencer
-        SDL_UpperBlit(
-            self.graphics.influencer_surface_pointer[(self.vars.me.phase).floor() as usize]
-                .as_mut()
-                .unwrap()
-                .as_mut_ptr(),
-            null_mut(),
-            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
-            null_mut(),
-        );
+        let Data {
+            graphics:
+                Graphics {
+                    influencer_surface_pointer,
+                    influ_digit_surface_pointer,
+                    build_block,
+                    ..
+                },
+            vars,
+            ..
+        } = self;
+        influencer_surface_pointer[(vars.me.phase).floor() as usize]
+            .as_mut()
+            .unwrap()
+            .blit(build_block.as_mut().unwrap());
 
         // Now we draw the first digit of the influencers current number.
         let mut dst = self.main.first_digit_rect;
-        SDL_UpperBlit(
-            self.graphics.influ_digit_surface_pointer[usize::try_from(
-                (*self
-                    .vars
-                    .droidmap
-                    .offset(self.vars.me.ty.try_into().unwrap()))
-                .druidname[0]
-                    - b'1' as i8
-                    + 1,
-            )
-            .unwrap()]
-            .as_mut()
-            .unwrap()
-            .as_mut_ptr(),
-            null_mut(),
-            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
-            &mut dst,
-        );
+        influ_digit_surface_pointer[usize::try_from(
+            (*vars.droidmap.offset(vars.me.ty.try_into().unwrap())).druidname[0] - b'1' as i8 + 1,
+        )
+        .unwrap()]
+        .as_mut()
+        .unwrap()
+        .blit_to(build_block.as_mut().unwrap(), &mut dst);
 
         // Now we draw the second digit of the influencers current number.
         dst = self.main.second_digit_rect;
-        SDL_UpperBlit(
-            self.graphics.influ_digit_surface_pointer[usize::try_from(
-                (*self
-                    .vars
-                    .droidmap
-                    .offset(self.vars.me.ty.try_into().unwrap()))
-                .druidname[1]
-                    - b'1' as i8
-                    + 1,
-            )
-            .unwrap()]
-            .as_mut()
-            .unwrap()
-            .as_mut_ptr(),
-            null_mut(),
-            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
-            &mut dst,
-        );
+        influ_digit_surface_pointer[usize::try_from(
+            (*vars.droidmap.offset(vars.me.ty.try_into().unwrap())).druidname[1] - b'1' as i8 + 1,
+        )
+        .unwrap()]
+        .as_mut()
+        .unwrap()
+        .blit_to(build_block.as_mut().unwrap(), &mut dst);
 
         // Now we draw the third digit of the influencers current number.
         dst = self.main.third_digit_rect;
-        SDL_UpperBlit(
-            self.graphics.influ_digit_surface_pointer[usize::try_from(
-                (*self
-                    .vars
-                    .droidmap
-                    .offset(self.vars.me.ty.try_into().unwrap()))
-                .druidname[2]
-                    - b'1' as i8
-                    + 1,
-            )
-            .unwrap()]
-            .as_mut()
-            .unwrap()
-            .as_mut_ptr(),
-            null_mut(),
-            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
-            &mut dst,
-        );
+
+        influ_digit_surface_pointer[usize::try_from(
+            (*vars.droidmap.offset(vars.me.ty.try_into().unwrap())).druidname[2] - b'1' as i8 + 1,
+        )
+        .unwrap()]
+        .as_mut()
+        .unwrap()
+        .blit_to(build_block.as_mut().unwrap(), &mut dst);
 
         if self.vars.me.energy * 100.
             / (*self
@@ -630,12 +592,15 @@ impl Data {
             dst.y = y.try_into().unwrap();
         }
 
-        SDL_UpperBlit(
-            self.graphics.build_block.as_mut().unwrap().as_mut_ptr(),
-            null_mut(),
-            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            &mut dst,
-        );
+        let Graphics {
+            build_block,
+            ne_screen,
+            ..
+        } = &mut self.graphics;
+        build_block
+            .as_mut()
+            .unwrap()
+            .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
 
         //--------------------
         // Maybe the influencer has something to say :)
@@ -752,15 +717,10 @@ impl Data {
             0,
         );
 
-        SDL_UpperBlit(
-            cur_bullet.surfaces[phase_of_bullet]
-                .as_mut()
-                .unwrap()
-                .as_mut_ptr(),
-            null_mut(),
-            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            &mut dst,
-        );
+        cur_bullet.surfaces[phase_of_bullet]
+            .as_mut()
+            .unwrap()
+            .blit_to(self.graphics.ne_screen.as_mut().unwrap(), &mut dst);
 
         trace!("PutBullet: end of function reached.");
     }
@@ -858,14 +818,17 @@ impl Data {
             });
         if screen_needs_update {
             // Redraw the whole background of the top status bar
+            let Graphics {
+                ne_screen,
+                banner_pic,
+                ..
+            } = &mut self.graphics;
+            ne_screen.as_mut().unwrap().clear_clip_rect();
             let mut dst = rect!(0, 0, 0, 0);
-            self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
-            SDL_UpperBlit(
-                self.graphics.banner_pic.as_mut().unwrap().as_mut_ptr(),
-                null_mut(),
-                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                &mut dst,
-            );
+            banner_pic
+                .as_mut()
+                .unwrap()
+                .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
 
             // Now the text should be ready and its
             // time to display it...
@@ -959,14 +922,10 @@ pub unsafe fn put_blast(blast: &Blast, vars: &mut Vars, graphics: &mut Graphics)
         0,
         0,
     );
-    SDL_UpperBlit(
-        vars.blastmap[usize::try_from(blast.ty).unwrap()].surfaces[(blast.phase).floor() as usize]
-            .as_mut()
-            .unwrap()
-            .as_mut_ptr(),
-        null_mut(),
-        graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-        &mut dst,
-    );
+
+    vars.blastmap[usize::try_from(blast.ty).unwrap()].surfaces[(blast.phase).floor() as usize]
+        .as_mut()
+        .unwrap()
+        .blit_to(graphics.ne_screen.as_mut().unwrap(), &mut dst);
     trace!("PutBlast: end of function reached.");
 }

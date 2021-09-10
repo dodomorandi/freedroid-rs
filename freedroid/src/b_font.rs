@@ -65,10 +65,10 @@ unsafe fn put_char_font<const F: bool>(
     );
 
     if c != b' ' {
-        font.surface.as_mut().unwrap().blit(
-            Some(&font.chars[usize::from(c)]),
+        font.surface.as_mut().unwrap().blit_from_to(
+            &font.chars[usize::from(c)],
             surface,
-            Some(&mut dest),
+            &mut dest,
         );
     }
     dest.w.into()
