@@ -13,7 +13,7 @@ use log::{info, warn};
 use sdl_sys::{
     SDLKey_SDLK_F1, SDLKey_SDLK_KP0, SDLKey_SDLK_KP1, SDLKey_SDLK_KP2, SDLKey_SDLK_KP3,
     SDLKey_SDLK_KP4, SDLKey_SDLK_KP5, SDLKey_SDLK_KP6, SDLKey_SDLK_KP7, SDLKey_SDLK_KP8,
-    SDLKey_SDLK_KP9, SDLKey_SDLK_KP_PLUS, SDL_Delay, SDL_Flip,
+    SDLKey_SDLK_KP9, SDLKey_SDLK_KP_PLUS, SDL_Delay,
 };
 use std::{
     cmp::Ordering,
@@ -152,7 +152,7 @@ impl Data<'_> {
                 format_args!("Press F1 for keymap"),
             );
 
-            SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+            assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
             // If the user of the Level editor pressed some cursor keys, move the
             // highlited filed (that is Me.pos) accordingly. This is done here:
@@ -258,7 +258,7 @@ impl Data<'_> {
                     b"C...start/end waypoint CONNECTION",
                 );
 
-                SDL_Flip(ne_screen.as_mut_ptr());
+                assert!(ne_screen.flip());
                 self.graphics.ne_screen = Some(ne_screen);
                 while !self.fire_pressed_r() && !self.escape_pressed_r() && !self.return_pressed_r()
                 {
@@ -280,7 +280,7 @@ impl Data<'_> {
                     6 * font_height(&*self.global.menu_b_font),
                     b"Please enter new value: ",
                 );
-                SDL_Flip(ne_screen.as_mut_ptr());
+                assert!(ne_screen.flip());
                 self.graphics.ne_screen = Some(ne_screen);
                 let numeric_input_string = self.get_string(10, 2);
                 let mut special_map_value: c_int = 0;

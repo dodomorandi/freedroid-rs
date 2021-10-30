@@ -24,9 +24,6 @@ use std::{
     ptr::null,
 };
 
-#[cfg(target_os = "android")]
-use sdl_sys::SDL_Flip;
-
 pub struct Input {
     pub show_cursor: bool,
     wheel_up_events: c_int,
@@ -225,9 +222,7 @@ impl Data<'_> {
 
     pub unsafe fn any_key_just_pressed(&mut self) -> c_int {
         #[cfg(target_os = "android")]
-        unsafe {
-            SDL_Flip(NE_SCREEN)
-        };
+        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
         self.update_input();
 
@@ -488,7 +483,7 @@ impl Data<'_> {
 
     pub unsafe fn any_key_is_pressed_r(&mut self) -> bool {
         #[cfg(target_os = "android")]
-        SDL_Flip(NE_SCREEN); // make sure we keep updating screen to read out Android inputs
+        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
         #[cfg(not(target_os = "android"))]
         self.update_input();

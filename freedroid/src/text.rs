@@ -18,9 +18,9 @@ use sdl::{RectRef, Surface};
 use sdl_sys::SDLKey_SDLK_DELETE;
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_RETURN, SDLMod, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_RSHIFT,
-    SDL_CreateRGBSurface, SDL_Delay, SDL_DisplayFormat, SDL_Event, SDL_EventType, SDL_Flip,
-    SDL_GetClipRect, SDL_GetTicks, SDL_PushEvent, SDL_Rect, SDL_UpdateRect, SDL_WaitEvent,
-    SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
+    SDL_CreateRGBSurface, SDL_Delay, SDL_DisplayFormat, SDL_Event, SDL_EventType, SDL_GetClipRect,
+    SDL_GetTicks, SDL_PushEvent, SDL_Rect, SDL_UpdateRect, SDL_WaitEvent, SDL_BUTTON_LEFT,
+    SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
 };
 use std::{
     ffi::CStr,
@@ -133,7 +133,7 @@ impl Data<'_> {
                 y0,
                 CStr::from_ptr(input.as_ptr()).to_bytes(),
             );
-            SDL_Flip(ne_screen.as_mut_ptr());
+            assert!(ne_screen.flip());
             self.graphics.ne_screen = Some(ne_screen);
 
             #[cfg(feature = "arcade-input")]
@@ -656,7 +656,7 @@ impl Data<'_> {
                 ret = 0; /* Text has been scrolled outside SDL_Rect */
                 break;
             }
-            SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+            assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
             if self.global.game_config.hog_cpu != 0 {
                 SDL_Delay(1);
@@ -717,7 +717,7 @@ impl Data<'_> {
         }
 
         background.blit(self.graphics.ne_screen.as_mut().unwrap());
-        SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
         ret
     }

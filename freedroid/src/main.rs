@@ -63,7 +63,7 @@ use text::Text;
 use vars::Vars;
 
 use sdl_sys::{
-    SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Rect, SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE,
+    SDL_Delay, SDL_GetTicks, SDL_Rect, SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE,
     SDL_ENABLE,
 };
 use std::{
@@ -279,7 +279,7 @@ fn main() {
                     .bits()
                     .into(),
             );
-            SDL_Flip(data.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+            assert!(data.graphics.ne_screen.as_mut().unwrap().flip());
 
             data.game_over = false;
 

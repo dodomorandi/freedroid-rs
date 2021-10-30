@@ -10,7 +10,6 @@ use crate::{
 
 use cstr::cstr;
 use log::{info, warn};
-use sdl_sys::SDL_Flip;
 use std::{
     ffi::CStr,
     fmt,
@@ -237,7 +236,7 @@ impl Data<'_> {
         // TODO More ARCADEINPUT
 
         let ne_screen = self.graphics.ne_screen.as_mut().unwrap();
-        SDL_Flip(ne_screen.as_mut_ptr());
+        assert!(ne_screen.flip());
         ne_screen.clear_clip_rect();
 
         let date = format!("{}", chrono::Local::today().format("%Y/%m/%d"));
@@ -370,7 +369,7 @@ impl Data<'_> {
             }
         }
         self.highscore.entries = Some(highscore_entries);
-        SDL_Flip(ne_screen.as_mut_ptr());
+        assert!(ne_screen.flip());
         self.graphics.ne_screen = Some(ne_screen);
 
         self.wait_for_key_pressed();

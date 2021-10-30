@@ -10,9 +10,7 @@ use crate::{
 
 use cstr::cstr;
 use sdl::Surface;
-use sdl_sys::{
-    SDL_Color, SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Rect, SDL_ShowCursor, SDL_DISABLE,
-};
+use sdl_sys::{SDL_Color, SDL_Delay, SDL_GetTicks, SDL_Rect, SDL_ShowCursor, SDL_DISABLE};
 use std::{
     convert::Infallible,
     ffi::CStr,
@@ -1594,7 +1592,7 @@ impl Data<'_> {
                 self.show_playground();
             } // if do_update_move
 
-            SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+            assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
             SDL_Delay(1);
         } /* while !FinishTakeover */
 
@@ -1626,7 +1624,7 @@ impl Data<'_> {
             self.process_display_column();
             self.show_playground();
             SDL_Delay(1);
-            SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+            assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
         } /* while (countdown) */
 
         self.wait_for_all_keys_released();
@@ -1678,7 +1676,7 @@ impl Data<'_> {
                 color_chosen = true;
             }
 
-            SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+            assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
             SDL_Delay(1); // don't hog CPU
         }
     }
@@ -1798,7 +1796,7 @@ impl Data<'_> {
             self.invent_playground();
 
             self.show_playground();
-            SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+            assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
             self.choose_color();
             self.wait_for_all_keys_released();
@@ -1878,13 +1876,13 @@ impl Data<'_> {
 
             self.display_banner(message.as_ptr(), null_mut(), 0);
             self.show_playground();
-            SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+            assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
             self.wait_for_all_keys_released();
             let now = SDL_GetTicks();
             while !self.fire_pressed_r() && SDL_GetTicks() - now < SHOW_WAIT {
                 #[cfg(target_os = "android")]
-                SDL_Flip(self.graphics.ne_screen);
+                assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
                 SDL_Delay(1);
             }

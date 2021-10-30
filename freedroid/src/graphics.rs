@@ -22,7 +22,7 @@ use log::{error, info, trace, warn};
 use sdl::{FrameBuffer, Surface, VideoModeFlags};
 use sdl_sys::{
     zoomSurface, IMG_Load, SDL_CreateCursor, SDL_CreateRGBSurface, SDL_Cursor, SDL_Delay,
-    SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_FillRect, SDL_Flip, SDL_FreeCursor,
+    SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_FillRect, SDL_FreeCursor,
     SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetTicks, SDL_GetVideoInfo, SDL_MapRGB,
     SDL_MapRGBA, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops, SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha,
     SDL_SetGamma, SDL_UpdateRect, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption,
@@ -492,7 +492,7 @@ impl Data<'_> {
                 .into(),
         );
         self.make_grid_on_screen(None);
-        SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
         self.play_sound(SoundType::Screenshot as i32);
 
         while self.cmd_is_active(Cmds::Screenshot) {
@@ -996,7 +996,7 @@ impl Data<'_> {
 
         // Now we fill the screen with black color...
         SDL_FillRect(ne_screen.as_mut_ptr(), null_mut(), 0);
-        SDL_Flip(ne_screen.as_mut_ptr());
+        assert!(ne_screen.flip());
     }
 
     /// Initialise the Video display and graphics engine

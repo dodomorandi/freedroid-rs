@@ -22,7 +22,7 @@ use crate::input::wait_for_key_pressed;
 use clap::{crate_version, Parser};
 use cstr::cstr;
 use log::{error, info, warn};
-use sdl_sys::{SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Rect, SDL_ShowCursor, SDL_DISABLE};
+use sdl_sys::{SDL_Delay, SDL_GetTicks, SDL_Rect, SDL_ShowCursor, SDL_DISABLE};
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
     ffi::CStr,
@@ -84,7 +84,7 @@ pub unsafe fn win32_disclaimer() {
         rect.y.into(),
         &rect,
     );
-    SDL_Flip(self.graphics.ne_screen);
+    assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
     wait_for_key_pressed();
 }
@@ -225,7 +225,7 @@ impl Data<'_> {
         let mut rect = self.vars.full_user_rect;
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
         self.make_grid_on_screen(Some(&rect));
-        SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
         rect.x += 10;
         rect.w -= 20; //leave some border
         self.b_font.current_font = self.global.para_b_font;
@@ -305,7 +305,7 @@ impl Data<'_> {
             Criticality::Critical as c_int,
         );
         self.display_image(image); // show title pic
-        SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
         self.load_fonts(); // we need this for progress-meter!
 
@@ -1648,7 +1648,7 @@ impl Data<'_> {
         );
         let mut ne_screen = self.graphics.ne_screen.take().unwrap();
         self.printf_sdl(&mut ne_screen, -1, -1, format_args!("\n"));
-        SDL_Flip(ne_screen.as_mut_ptr());
+        assert!(ne_screen.flip());
         self.graphics.ne_screen = Some(ne_screen);
 
         now = SDL_GetTicks();

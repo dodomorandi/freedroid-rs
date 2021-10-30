@@ -15,8 +15,8 @@ use log::{error, warn};
 use sdl::Surface;
 use sdl_sys::{
     IMG_Load_RW, IMG_isJPG, SDL_Color, SDL_CreateRGBSurface, SDL_Delay, SDL_DisplayFormat,
-    SDL_DisplayFormatAlpha, SDL_Flip, SDL_FreeSurface, SDL_GetTicks, SDL_RWops, SDL_Rect,
-    SDL_SetCursor, SDL_ShowCursor, SDL_UpdateRects, SDL_WarpMouse, SDL_DISABLE, SDL_ENABLE,
+    SDL_DisplayFormatAlpha, SDL_FreeSurface, SDL_GetTicks, SDL_RWops, SDL_Rect, SDL_SetCursor,
+    SDL_ShowCursor, SDL_UpdateRects, SDL_WarpMouse, SDL_DISABLE, SDL_ENABLE,
 };
 use std::{
     ffi::CStr,
@@ -552,7 +552,7 @@ Paradroid to eliminate all rogue robots.\0",
                 &mut self.vars.cons_text_rect,
             );
         } else {
-            SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+            assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
         }
     }
 
@@ -577,7 +577,7 @@ Paradroid to eliminate all rogue robots.\0",
                 .into(),
         );
 
-        SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
         self.vars.me.pos = tmp;
 
@@ -743,13 +743,13 @@ Paradroid to eliminate all rogue robots.\0",
             if need_update {
                 self.paint_console_menu(pos.try_into().unwrap(), UPDATE_ONLY.into());
                 if cfg!(not(target_os = "android")) {
-                    SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+                    assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
                 }
 
                 need_update = false;
             }
             if cfg!(target_os = "android") {
-                SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+                assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
                 // for responsive input on Android, we need to run this every cycle
             }
 
@@ -961,7 +961,7 @@ Paradroid to eliminate all rogue robots.\0",
                 .blit_from_to(&src, ne_screen.as_mut().unwrap(), &mut dst);
         }
 
-        SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
     }
 
     /// diese Funktion zeigt die m"oglichen Auswahlpunkte des Menus

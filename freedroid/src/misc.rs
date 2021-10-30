@@ -13,7 +13,7 @@ use crate::{
 use cstr::cstr;
 use defs::MAXBULLETS;
 use log::{error, info, warn};
-use sdl_sys::{SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Quit, SDL_UpdateRects};
+use sdl_sys::{SDL_Delay, SDL_GetTicks, SDL_Quit, SDL_UpdateRects};
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
     borrow::Cow,
@@ -830,7 +830,7 @@ impl Data<'_> {
             format_args!("{}", CStr::from_ptr(text).to_str().unwrap()),
         );
 
-        SDL_Flip(ne_screen.as_mut_ptr());
+        assert!(ne_screen.flip());
         self.graphics.ne_screen = Some(ne_screen);
     }
 

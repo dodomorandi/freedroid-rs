@@ -7,8 +7,8 @@ use std::{
 };
 
 use sdl_sys::{
-    SDL_FreeSurface, SDL_PixelFormat, SDL_Rect, SDL_SetClipRect, SDL_Surface, SDL_UpperBlit,
-    SDL_bool_SDL_TRUE, SDL_ASYNCBLIT, SDL_HWSURFACE, SDL_RLEACCEL,
+    SDL_Flip, SDL_FreeSurface, SDL_PixelFormat, SDL_Rect, SDL_SetClipRect, SDL_Surface,
+    SDL_UpperBlit, SDL_bool_SDL_TRUE, SDL_ASYNCBLIT, SDL_HWSURFACE, SDL_RLEACCEL,
 };
 
 use crate::{
@@ -185,6 +185,13 @@ impl<const FREEABLE: bool> GenericSurface<FREEABLE> {
         let rect = rect.map(|rect| rect.into().as_ptr()).unwrap_or(ptr::null());
         let result = unsafe { SDL_SetClipRect(self.0.as_ptr(), rect) };
         result == SDL_bool_SDL_TRUE
+    }
+}
+
+impl GenericSurface<false> {
+    #[must_use]
+    pub fn flip(&mut self) -> bool {
+        unsafe { SDL_Flip(self.0.as_ptr()) == 0 }
     }
 }
 

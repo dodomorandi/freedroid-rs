@@ -23,7 +23,7 @@ use cstr::cstr;
 use sdl::Surface;
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT,
-    SDLKey_SDLK_RIGHT, SDLKey_SDLK_UP, SDL_Delay, SDL_DisplayFormat, SDL_Flip, SDL_GetTicks,
+    SDLKey_SDLK_RIGHT, SDLKey_SDLK_UP, SDL_Delay, SDL_DisplayFormat, SDL_GetTicks,
     SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE,
 };
 use std::{
@@ -238,7 +238,7 @@ impl<'sdl> Data<'sdl> {
             + (i32::from(self.vars.user_rect.h) - self.menu.font_height) / 2;
         let mut ne_screen = self.graphics.ne_screen.take().unwrap();
         self.put_string(&mut ne_screen, text_x, text_y, QUIT_STRING);
-        SDL_Flip(ne_screen.as_mut_ptr());
+        assert!(ne_screen.flip());
         self.graphics.ne_screen = Some(ne_screen);
 
         #[cfg(feature = "gcw0")]
@@ -992,13 +992,13 @@ impl<'sdl> Data<'sdl> {
                 );
 
                 #[cfg(not(target_os = "android"))]
-                SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+                assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
                 need_update = false;
             }
 
             #[cfg(target_os = "android")]
-            SDL_Flip(self.graphics.ne_screen); // for responsive input on Android, we need to run this every cycle
+            assert!(self.graphics.ne_screen.as_mut().unwrap().flip()); // for responsive input on Android, we need to run this every cycle
 
             let action = self.get_menu_action(250);
 
@@ -1250,7 +1250,7 @@ impl<'sdl> Data<'sdl> {
             posy += 1;
         }
 
-        SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
     }
 
     pub unsafe fn key_config_menu(&mut self) {
@@ -1424,7 +1424,7 @@ impl<'sdl> Data<'sdl> {
         self.printf_sdl(&mut ne_screen, 2 * em, -1, format_args!("Commando"));
         self.printf_sdl(&mut ne_screen, col2, -1, format_args!("Android"));
 
-        SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
         self.graphics.ne_screen = Some(ne_screen);
         self.wait_for_key_pressed();
         self.b_font.current_font = oldfont;
@@ -1495,7 +1495,7 @@ impl<'sdl> Data<'sdl> {
                 3 * font_height(&*self.global.menu_b_font),
                 &output[..position],
             );
-            SDL_Flip(ne_screen.as_mut_ptr());
+            assert!(ne_screen.flip());
             self.graphics.ne_screen = Some(ne_screen);
             self.wait_for_key_pressed();
             self.initiate_menu(false);
@@ -1519,7 +1519,7 @@ impl<'sdl> Data<'sdl> {
                 i32::from(self.vars.menu_rect.y) - 3 * self.menu.font_height,
                 &self.vars.full_user_rect,
             );
-            SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+            assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
             static ALREADY_FREED: AtomicBool = AtomicBool::new(false);
             match ALREADY_FREED.compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire) {
                 Ok(_) => dealloc_c_string(cur_level.levelname),
