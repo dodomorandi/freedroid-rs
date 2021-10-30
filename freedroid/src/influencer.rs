@@ -222,9 +222,10 @@ impl Data<'_> {
                 }
             }
             counter -= 1;
-            if counter >= MAXBLASTS {
-                panic!("Went out of blasts in ExplodeInfluencer...");
-            }
+            assert!(
+                !(counter >= MAXBLASTS),
+                "Went out of blasts in ExplodeInfluencer..."
+            );
             let blast = &mut self.main.all_blasts[counter];
             blast.ty = Explosion::Druidblast as c_int;
             blast.px =

@@ -476,9 +476,11 @@ impl Data<'_> {
     /// to do this.  MyCursorX is  updated to new position.
     pub unsafe fn display_char(&mut self, c: c_uchar) {
         // don't accept non-printable characters
-        if !(c.is_ascii_graphic() || c.is_ascii_whitespace()) {
-            panic!("Illegal char passed to DisplayChar(): {}", c);
-        }
+        assert!(
+            (c.is_ascii_graphic() || c.is_ascii_whitespace()),
+            "Illegal char passed to DisplayChar(): {}",
+            c
+        );
 
         let mut ne_screen = self.graphics.ne_screen.take().unwrap();
         self.put_char(

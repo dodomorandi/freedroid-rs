@@ -1622,12 +1622,12 @@ impl<'sdl> Data<'sdl> {
                 Layout::array::<i8>(usize::try_from(oldxlen).unwrap()).unwrap(),
                 newmem,
             ) as *mut i8;
-            if cur_level.map[row].is_null() {
-                panic!(
-                    "Failed to re-allocate to {} bytes in map row {}",
-                    newmem, row,
-                );
-            }
+            assert!(
+                !cur_level.map[row].is_null(),
+                "Failed to re-allocate to {} bytes in map row {}",
+                newmem,
+                row
+            );
             if cur_level.xlen > oldxlen {
                 // fill new map area with VOID
                 *cur_level.map[row].add(usize::try_from(cur_level.xlen - 1).unwrap()) =

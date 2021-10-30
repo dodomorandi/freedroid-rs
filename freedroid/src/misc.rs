@@ -60,9 +60,12 @@ pub unsafe fn my_random(upper_bound: c_int) -> c_int {
         * (f64::from(libc::rand()) / (f64::from(libc::RAND_MAX) + 1.0));
     let dice_val = tmp as c_int;
 
-    if dice_val < 0 || dice_val > upper_bound {
-        panic!("dice_val = {} not in [0, {}]", dice_val, upper_bound);
-    }
+    assert!(
+        !(dice_val < 0 || dice_val > upper_bound),
+        "dice_val = {} not in [0, {}]",
+        dice_val,
+        upper_bound
+    );
 
     dice_val
 }
@@ -220,9 +223,9 @@ pub unsafe fn read_and_malloc_string_from_data(
         let search_pointer = search_pointer.add(libc::strlen(start_indication_string));
         let end_of_string_pointer = libc::strstr(search_pointer, end_indication_string);
         // Now we move to the end with the end pointer
-        if end_of_string_pointer.is_null() {
-            panic!(
-                "\n\
+        assert!(
+            !end_of_string_pointer.is_null(),
+            "\n\
                  \n\
                  ----------------------------------------------------------------------\n\
                  Freedroid has encountered a problem:\n\
@@ -243,9 +246,8 @@ pub unsafe fn read_and_malloc_string_from_data(
                  not resolve.... Sorry, if that interrupts a major game of yours.....\n\
                  ----------------------------------------------------------------------\n\
                  \n",
-                CStr::from_ptr(end_indication_string).to_string_lossy(),
-            );
-        }
+            CStr::from_ptr(end_indication_string).to_string_lossy()
+        );
 
         // Now we allocate memory and copy the string...
         let string_length = end_of_string_pointer.offset_from(search_pointer);

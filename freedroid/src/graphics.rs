@@ -933,9 +933,11 @@ impl Data<'_> {
             Criticality::Critical as c_int,
         );
         self.global.para_b_font = self.load_font(fpath, self.global.game_config.scale);
-        if self.global.para_b_font.is_null() {
-            panic!("font file named {} was not found.", PARA_FONT_FILE);
-        }
+        assert!(
+            !self.global.para_b_font.is_null(),
+            "font file named {} was not found.",
+            PARA_FONT_FILE
+        );
 
         fpath = self.find_file(
             FONT0_FILE_C.as_ptr(),
@@ -944,9 +946,11 @@ impl Data<'_> {
             Criticality::Critical as c_int,
         );
         self.global.font0_b_font = self.load_font(fpath, self.global.game_config.scale);
-        if self.global.font0_b_font.is_null() {
-            panic!("font file named {} was not found.\n", FONT0_FILE);
-        }
+        assert!(
+            !self.global.font0_b_font.is_null(),
+            "font file named {} was not found.\n",
+            FONT0_FILE
+        );
 
         fpath = self.find_file(
             FONT1_FILE_C.as_ptr(),
@@ -955,9 +959,11 @@ impl Data<'_> {
             Criticality::Critical as c_int,
         );
         self.global.font1_b_font = self.load_font(fpath, self.global.game_config.scale);
-        if self.global.font1_b_font.is_null() {
-            panic!("font file named {} was not found.", FONT1_FILE);
-        }
+        assert!(
+            !self.global.font1_b_font.is_null(),
+            "font file named {} was not found.",
+            FONT1_FILE
+        );
 
         fpath = self.find_file(
             FONT2_FILE_C.as_ptr(),
@@ -966,9 +972,11 @@ impl Data<'_> {
             Criticality::Critical as c_int,
         );
         self.global.font2_b_font = self.load_font(fpath, self.global.game_config.scale);
-        if self.global.font2_b_font.is_null() {
-            panic!("font file named {} was not found.", FONT2_FILE);
-        }
+        assert!(
+            !self.global.font2_b_font.is_null(),
+            "font file named {} was not found.",
+            FONT2_FILE
+        );
 
         self.global.menu_b_font = self.global.para_b_font;
         self.global.highscore_b_font = self.global.para_b_font;
@@ -1134,9 +1142,10 @@ impl Data<'_> {
         use std::{fs::File, io::Read, path::Path};
 
         // sanity check
-        if fpath.is_null() {
-            panic!("load_raw_pic() called with NULL argument!");
-        }
+        assert!(
+            !fpath.is_null(),
+            "load_raw_pic() called with NULL argument!"
+        );
 
         let fpath = match CStr::from_ptr(fpath).to_str() {
             Ok(fpath) => fpath,
@@ -1161,9 +1170,11 @@ impl Data<'_> {
 
         let len = metadata.len().try_into().unwrap();
         let mut buf = vec![0; len].into_boxed_slice();
-        if file.read_exact(&mut *buf).is_err() {
-            panic!("cannot reading file {}. Giving up...", fpath.display());
-        }
+        assert!(
+            !file.read_exact(&mut *buf).is_err(),
+            "cannot reading file {}. Giving up...",
+            fpath.display()
+        );
         drop(file);
 
         let ops = SDL_RWFromMem(buf.as_mut_ptr() as *mut c_void, len.try_into().unwrap());
@@ -1704,9 +1715,9 @@ impl Data<'_> {
                 cstr!("%d").as_ptr() as *mut c_char,
                 &mut bullet_index as *mut c_int as *mut c_void,
             );
-            if bullet_index >= self.graphics.number_of_bullet_types {
-                panic!(
-                    "----------------------------------------------------------------------\n\
+            assert!(
+                !(bullet_index >= self.graphics.number_of_bullet_types),
+                "----------------------------------------------------------------------\n\
                  Freedroid has encountered a problem:\n\
                  In function 'char* LoadThemeConfigurationFile ( ... ):\n\
                  \n\
@@ -1725,8 +1736,7 @@ impl Data<'_> {
                  Freedroid will terminate now to draw attention to the data problem it could\n\
                  not resolve.... Sorry, if that interrupts a major game of yours.....\n\
                  ----------------------------------------------------------------------\n"
-                );
-            }
+            );
             read_value_from_string(
                 read.as_ptr() as *mut c_char,
                 cstr!("we will use number of phases=").as_ptr() as *mut c_char,
@@ -1815,9 +1825,11 @@ impl Data<'_> {
             .for_each(|(surface, orig_surface)| {
                 let mut orig_surface = orig_surface.as_mut().unwrap().borrow_mut();
                 let tmp = zoomSurface(orig_surface.as_mut_ptr(), scale.into(), scale.into(), 0);
-                if tmp.is_null() {
-                    panic!("zoomSurface() failed for scale = {}.", scale);
-                }
+                assert!(
+                    !tmp.is_null(),
+                    "zoomSurface() failed for scale = {}.",
+                    scale
+                );
                 // and optimize
                 *surface = Some(Rc::new(RefCell::new(Surface::from_ptr(
                     NonNull::new(SDL_DisplayFormat(tmp)).unwrap(),

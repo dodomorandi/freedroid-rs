@@ -176,9 +176,9 @@ pub unsafe fn get_doors(level: &mut Level) -> c_int {
                 level.doors[curdoor].y = line;
                 curdoor += 1;
 
-                if curdoor > MAX_DOORS_ON_LEVEL {
-                    panic!(
-                        "\n\
+                assert!(
+                    !(curdoor > MAX_DOORS_ON_LEVEL),
+                    "\n\
 \n\
 ----------------------------------------------------------------------\n\
 Freedroid has encountered a problem:\n\
@@ -199,9 +199,9 @@ But for now Freedroid will terminate to draw attention to this small map problem
 Sorry...\n\
 ----------------------------------------------------------------------\n\
 \n",
-                        level.levelnum, MAX_DOORS_ON_LEVEL
-                    );
-                }
+                    level.levelnum,
+                    MAX_DOORS_ON_LEVEL
+                );
             }
         }
     }
@@ -228,9 +228,9 @@ pub unsafe fn get_refreshes(level: &mut Level) -> c_int {
                 level.refreshes[curref].y = row.try_into().unwrap();
                 curref += 1;
 
-                if curref > MAX_REFRESHES_ON_LEVEL {
-                    panic!(
-                        "\n\
+                assert!(
+                    !(curref > MAX_REFRESHES_ON_LEVEL),
+                    "\n\
                         \n\
 ----------------------------------------------------------------------\n\
 Freedroid has encountered a problem:\n\
@@ -251,9 +251,9 @@ But for now Freedroid will terminate to draw attention to this small map problem
 Sorry...\n\
 ----------------------------------------------------------------------\n\
 \n",
-                        level.levelnum, MAX_REFRESHES_ON_LEVEL
-                    );
-                }
+                    level.levelnum,
+                    MAX_REFRESHES_ON_LEVEL
+                );
             }
         }
     }
@@ -307,9 +307,10 @@ pub unsafe fn level_to_struct(data: *mut c_char) -> *mut Level {
 
     /* Read Header Data: levelnum and x/ylen */
     let data_pointer = libc::strstr(data, cstr!("Levelnumber:").as_ptr() as *mut c_char);
-    if data_pointer.is_null() {
-        panic!("No Levelnumber entry found! Terminating! ");
-    }
+    assert!(
+        !data_pointer.is_null(),
+        "No Levelnumber entry found! Terminating! "
+    );
     libc::sscanf(
         data_pointer,
         cstr!(
@@ -840,9 +841,10 @@ freedroid-discussion@lists.sourceforge.net\n\
                     }
                 };
 
-                if level_iter.next().is_some() {
-                    panic!("Identical Levelnumber Error in SaveShip.");
-                }
+                assert!(
+                    !level_iter.next().is_some(),
+                    "Identical Levelnumber Error in SaveShip."
+                );
 
                 //--------------------
                 // Now comes the real saving part FOR ONE LEVEL.  First THE LEVEL is packed into a string and
@@ -993,9 +995,10 @@ freedroid-discussion@lists.sourceforge.net\n\
 
         /* allocate some memory */
         let level_mem = alloc_zeroed(Layout::array::<u8>(mem_amount).unwrap());
-        if level_mem.is_null() {
-            panic!("could not allocate memory, terminating.");
-        }
+        assert!(
+            !level_mem.is_null(),
+            "could not allocate memory, terminating."
+        );
         let mut level_cursor =
             std::io::Cursor::new(std::slice::from_raw_parts_mut(level_mem, mem_amount));
 
@@ -1236,11 +1239,10 @@ freedroid-discussion@lists.sourceforge.net\n\
                 free_all_enemys_position += 1;
             }
 
-            if free_all_enemys_position == MAX_ENEMYS_ON_SHIP {
-                panic!(
-                    "No more free position to fill random droids into in GetCrew...Terminating...."
-                );
-            }
+            assert!(
+                !(free_all_enemys_position == MAX_ENEMYS_ON_SHIP),
+                "No more free position to fill random droids into in GetCrew...Terminating...."
+            );
 
             self.main.all_enemys[free_all_enemys_position].ty = list_of_types_allowed
                 [usize::try_from(my_random(
@@ -1293,9 +1295,10 @@ freedroid-discussion@lists.sourceforge.net\n\
                 droid_section_pointer,
                 DROIDS_LEVEL_DESCRIPTION_END_STRING.as_ptr() as *mut c_char,
             );
-            if end_of_this_droid_section_pointer.is_null() {
-                panic!("GetCrew: Unterminated droid section encountered!! Terminating.");
-            }
+            assert!(
+                !end_of_this_droid_section_pointer.is_null(),
+                "GetCrew: Unterminated droid section encountered!! Terminating."
+            );
             self.get_this_levels_droids(droid_section_pointer);
             droid_section_pointer = end_of_this_droid_section_pointer.add(2); // Move past the inserted String terminator
 
@@ -1432,9 +1435,10 @@ freedroid-discussion@lists.sourceforge.net\n\
             data.as_ptr(),
             START_OF_LIFT_DATA_STRING.as_ptr() as *mut c_char,
         );
-        if entry_pointer.is_null() {
-            panic!("START OF LIFT DATA STRING NOT FOUND!  Terminating...");
-        }
+        assert!(
+            !entry_pointer.is_null(),
+            "START OF LIFT DATA STRING NOT FOUND!  Terminating..."
+        );
 
         let mut label: c_int = 0;
         entry_pointer = data.as_mut_ptr();

@@ -382,9 +382,11 @@ impl Data<'_> {
 
         // We check for incorrect droid types, which sometimes might occor, especially after
         // heavy editing of the crew initialisation functions ;)
-        if droid.ty >= self.main.number_of_droid_types {
-            panic!("nonexistant droid-type encountered: {}", droid.ty);
-        }
+        assert!(
+            !(droid.ty >= self.main.number_of_droid_types),
+            "nonexistant droid-type encountered: {}",
+            droid.ty
+        );
 
         //--------------------
         // First blit just the enemy hat and shoes.
@@ -781,20 +783,18 @@ impl Data<'_> {
         // Now fill in the text
         let left = CStr::from_ptr(left);
         let left_len = left.to_bytes().len();
-        if left_len > LEFT_TEXT_LEN {
-            panic!(
-                "String {} too long for Left Infoline!!",
-                left.to_string_lossy()
-            );
-        }
+        assert!(
+            !(left_len > LEFT_TEXT_LEN),
+            "String {} too long for Left Infoline!!",
+            left.to_string_lossy()
+        );
         let right = CStr::from_ptr(right);
         let right_len = right.to_bytes().len();
-        if right_len > RIGHT_TEXT_LEN {
-            panic!(
-                "String {} too long for Right Infoline!!",
-                right.to_string_lossy()
-            );
-        }
+        assert!(
+            !(right_len > RIGHT_TEXT_LEN),
+            "String {} too long for Right Infoline!!",
+            right.to_string_lossy()
+        );
 
         /* Now prepare the left/right text-boxes */
         let mut left_box = [b' '; LEFT_TEXT_LEN + 10];

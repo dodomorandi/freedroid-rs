@@ -347,9 +347,10 @@ impl Data<'_> {
         self.init_highscores();
 
         /* Now fill the pictures correctly to the structs */
-        if self.init_pictures() == 0 {
-            panic!("Error in InitPictures reported back...");
-        }
+        assert!(
+            !(self.init_pictures() == 0),
+            "Error in InitPictures reported back..."
+        );
 
         self.update_progress(100); // finished init
     }
@@ -366,9 +367,10 @@ impl Data<'_> {
         }
 
         if let Some(sensitivity) = opt.sensitivity {
-            if sensitivity > 32 {
-                panic!("\nJoystick sensitivity must lie in the range [0;32]");
-            }
+            assert!(
+                !(sensitivity > 32),
+                "\nJoystick sensitivity must lie in the range [0;32]"
+            );
 
             self.input.joy_sensitivity = sensitivity.into();
         }
@@ -386,9 +388,11 @@ impl Data<'_> {
         }
 
         if let Some(scale) = opt.scale {
-            if scale <= 0. {
-                panic!("illegal scale entered, needs to be >0: {}", scale);
-            }
+            assert!(
+                scale > 0.,
+                "illegal scale entered, needs to be >0: {}",
+                scale
+            );
             self.global.game_config.scale = scale;
             info!("Graphics scale set to {}", scale);
         }
@@ -537,9 +541,10 @@ impl Data<'_> {
         add_theme_from_dir(Path::new(LOCAL_DATADIR));
 
         // now have a look at what we found:
-        if self.graphics.all_themes.num_themes == 0 {
-            panic!("No valid graphic-themes found!! You need to install at least one to run Freedroid!!");
-        }
+        assert!(
+            !(self.graphics.all_themes.num_themes == 0),
+            "No valid graphic-themes found!! You need to install at least one to run Freedroid!!"
+        );
 
         let Self {
             graphics: Graphics { all_themes, .. },
@@ -683,9 +688,10 @@ impl Data<'_> {
             buffer.as_mut_ptr() as *mut c_void,
         );
 
-        if self.load_ship(buffer.as_mut_ptr()) == defs::ERR.into() {
-            panic!("Error in LoadShip");
-        }
+        assert!(
+            !(self.load_ship(buffer.as_mut_ptr()) == defs::ERR.into()),
+            "Error in LoadShip"
+        );
         //--------------------
         // Now its time to get the elevator file name from the mission file and
         // read the elevator file into the right memory structures
@@ -697,9 +703,10 @@ impl Data<'_> {
             buffer.as_mut_ptr() as *mut c_void,
         );
 
-        if self.get_lift_connections(buffer.as_mut_ptr()) == defs::ERR.into() {
-            panic!("Error in GetLiftConnections");
-        }
+        assert!(
+            !(self.get_lift_connections(buffer.as_mut_ptr()) == defs::ERR.into()),
+            "Error in GetLiftConnections"
+        );
         //--------------------
         // We also load the comment for the influencer to say at the beginning of the mission
         //
@@ -726,9 +733,10 @@ impl Data<'_> {
         /* initialize enemys according to crew file */
         // WARNING!! THIS REQUIRES THE freedroid.ruleset FILE TO BE READ ALREADY, BECAUSE
         // ROBOT SPECIFICATIONS ARE ALREADY REQUIRED HERE!!!!!
-        if self.get_crew(buffer.as_mut_ptr()) == defs::ERR.into() {
-            panic!("InitNewGame(): Initialization of enemys failed.",);
-        }
+        assert!(
+            !(self.get_crew(buffer.as_mut_ptr()) == defs::ERR.into()),
+            "InitNewGame(): Initialization of enemys failed."
+        );
 
         //--------------------
         // Now its time to get the debriefing text from the mission file so that it
@@ -760,9 +768,10 @@ impl Data<'_> {
             MISSION_START_POINT_STRING.as_ptr() as *mut c_char,
         );
 
-        if number_of_start_points == 0 {
-            panic!("NOT EVEN ONE SINGLE STARTING POINT ENTRY FOUND!  TERMINATING!",);
-        }
+        assert!(
+            !(number_of_start_points == 0),
+            "NOT EVEN ONE SINGLE STARTING POINT ENTRY FOUND!  TERMINATING!"
+        );
         info!(
             "Found {} different starting points for the mission in the mission file.",
             number_of_start_points,
@@ -939,9 +948,10 @@ impl Data<'_> {
                 next_subsection_start_pointer,
                 END_OF_BRIEFING_SUBSECTION_STRING.as_ptr(),
             );
-            if termination_pointer.is_null() {
-                panic!("Title: Unterminated Subsection in Mission briefing....Terminating...");
-            }
+            assert!(
+                !termination_pointer.is_null(),
+                "Title: Unterminated Subsection in Mission briefing....Terminating..."
+            );
             let this_text_length = termination_pointer.offset_from(next_subsection_start_pointer);
             if prepared_briefing_text.is_null().not() {
                 let len = CStr::from_ptr(prepared_briefing_text).to_bytes().len() + 10;
