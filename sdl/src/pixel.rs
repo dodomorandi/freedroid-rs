@@ -1,4 +1,4 @@
-use std::{convert::TryInto, fmt, marker::PhantomData, ops::Not, ptr::NonNull};
+use std::{fmt, marker::PhantomData, ops::Not, ptr::NonNull};
 
 use sdl_sys::{SDL_MapRGB, SDL_PixelFormat};
 

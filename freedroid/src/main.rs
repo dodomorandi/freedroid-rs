@@ -67,7 +67,6 @@ use sdl_sys::{
     SDL_ENABLE,
 };
 use std::{
-    convert::TryFrom,
     ops::Not,
     os::raw::{c_char, c_float},
     ptr::null_mut,

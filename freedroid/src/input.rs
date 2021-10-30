@@ -19,7 +19,6 @@ use sdl_sys::{
 #[cfg(not(feature = "gcw0"))]
 use sdl_sys::{SDLKey_SDLK_F12, SDLKey_SDLK_PAUSE, SDLKey_SDLK_RSHIFT};
 use std::{
-    convert::TryFrom,
     fmt,
     os::raw::{c_char, c_int},
     ptr::null,

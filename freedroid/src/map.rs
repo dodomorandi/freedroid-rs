@@ -17,7 +17,6 @@ use defs::{MAX_DOORS_ON_LEVEL, MAX_WP_CONNECTIONS};
 use log::{error, info, trace, warn};
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
-    convert::{TryFrom, TryInto},
     ffi::CStr,
     ops::Not,
     os::raw::{c_char, c_float, c_int, c_uchar, c_void},

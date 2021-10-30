@@ -1,6 +1,4 @@
-use std::{
-    cell::RefCell, convert::TryInto, ffi::CStr, ops::Not, os::raw::c_int, ptr::NonNull, rc::Rc,
-};
+use std::{cell::RefCell, ffi::CStr, ops::Not, os::raw::c_int, ptr::NonNull, rc::Rc};
 
 use sdl_sys::{
     SDL_Joystick, SDL_JoystickClose, SDL_JoystickEventState, SDL_JoystickName, SDL_JoystickNumAxes,

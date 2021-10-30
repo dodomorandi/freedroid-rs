@@ -14,7 +14,7 @@ use sdl_sys::{
     SDLMod_KMOD_LCTRL, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_RALT, SDLMod_KMOD_RCTRL, SDLMod_KMOD_RSHIFT,
     SDL_Rect,
 };
-use std::{convert::TryFrom, ffi::CStr, fmt, os::raw::c_int};
+use std::{ffi::CStr, fmt, os::raw::c_int};
 
 pub const MAX_THEMES: usize = 100;
 

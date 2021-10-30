@@ -28,7 +28,6 @@ use sdl_sys::{
 };
 use std::{
     alloc::{alloc_zeroed, dealloc, realloc, Layout},
-    convert::{TryFrom, TryInto},
     ffi::CStr,
     io::Cursor,
     ops::{AddAssign, Not, SubAssign},

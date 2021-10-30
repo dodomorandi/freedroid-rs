@@ -1,4 +1,4 @@
-use std::{convert::TryInto, ffi::CStr, marker::PhantomData, os::raw::c_int, ptr::NonNull};
+use std::{ffi::CStr, marker::PhantomData, os::raw::c_int, ptr::NonNull};
 
 use sdl_sys::{
     Mix_AllocateChannels, Mix_Chunk, Mix_CloseAudio, Mix_FreeChunk, Mix_FreeMusic, Mix_HaltMusic,

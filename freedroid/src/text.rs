@@ -23,7 +23,6 @@ use sdl_sys::{
     SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
 };
 use std::{
-    convert::{TryFrom, TryInto},
     ffi::CStr,
     fmt,
     io::Cursor,

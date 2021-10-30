@@ -18,7 +18,6 @@ use sdl::Surface;
 use sdl_sys::{rotozoomSurface, SDL_Color, SDL_FillRect, SDL_MapRGB, SDL_Rect, SDL_UpdateRect};
 use std::{
     cell::{Cell, RefCell},
-    convert::{TryFrom, TryInto},
     ffi::CStr,
     os::raw::{c_char, c_int},
     ptr::NonNull,

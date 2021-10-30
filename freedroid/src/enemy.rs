@@ -12,7 +12,6 @@ use crate::{
 use cstr::cstr;
 use log::warn;
 use std::{
-    convert::{TryFrom, TryInto},
     ops::Not,
     os::raw::{c_char, c_int},
 };

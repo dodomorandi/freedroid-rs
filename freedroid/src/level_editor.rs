@@ -17,7 +17,6 @@ use sdl_sys::{
 };
 use std::{
     cmp::Ordering,
-    convert::{TryFrom, TryInto},
     ops::Not,
     os::raw::{c_char, c_int},
     ptr::null_mut,

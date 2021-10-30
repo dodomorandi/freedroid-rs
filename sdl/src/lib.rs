@@ -9,7 +9,6 @@ mod surface;
 mod video;
 
 use std::{
-    convert::TryFrom,
     ffi::{CStr, CString},
     marker::PhantomData,
 };

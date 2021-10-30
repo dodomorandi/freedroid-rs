@@ -19,7 +19,6 @@ use sdl_sys::{
     SDL_SetCursor, SDL_ShowCursor, SDL_UpdateRects, SDL_WarpMouse, SDL_DISABLE, SDL_ENABLE,
 };
 use std::{
-    convert::{TryFrom, TryInto},
     ffi::CStr,
     ops::Not,
     os::raw::{c_char, c_float, c_int},

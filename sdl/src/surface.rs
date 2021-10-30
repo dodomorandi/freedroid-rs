@@ -1,7 +1,6 @@
 mod lock;
 
 use std::{
-    convert::TryInto,
     ffi::c_void,
     os::raw::c_int,
     ptr::{self, null_mut, NonNull},

@@ -8,10 +8,7 @@ use crate::{
 };
 
 use log::info;
-use std::{
-    convert::{TryFrom, TryInto},
-    os::raw::{c_float, c_int},
-};
+use std::os::raw::{c_float, c_int};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct BulletData {

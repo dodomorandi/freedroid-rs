@@ -14,7 +14,7 @@ use sdl_sys::{
     SDL_Color, SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Rect, SDL_ShowCursor, SDL_DISABLE,
 };
 use std::{
-    convert::{Infallible, TryFrom, TryInto},
+    convert::Infallible,
     ffi::CStr,
     ops::{Deref, DerefMut},
     os::raw::{c_char, c_int},

@@ -25,7 +25,6 @@ use log::{error, info, warn};
 use sdl_sys::{SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Rect, SDL_ShowCursor, SDL_DISABLE};
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
-    convert::{TryFrom, TryInto},
     ffi::CStr,
     ops::Not,
     os::raw::{c_char, c_float, c_int, c_long, c_uint, c_void},

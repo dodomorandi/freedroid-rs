@@ -12,7 +12,6 @@ use cstr::cstr;
 use log::{info, warn};
 use sdl_sys::SDL_Flip;
 use std::{
-    convert::TryFrom,
     ffi::CStr,
     fmt,
     fs::File,

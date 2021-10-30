@@ -30,7 +30,6 @@ use sdl_sys::{
 };
 use std::{
     cell::RefCell,
-    convert::{TryFrom, TryInto},
     ffi::CStr,
     ops::Not,
     os::raw::{c_char, c_float, c_int, c_short, c_void},

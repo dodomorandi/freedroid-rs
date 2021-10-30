@@ -4,7 +4,6 @@ use core::fmt;
 use sdl::Surface;
 use sdl_sys::{IMG_Load, SDL_Rect, SDL_SetColorKey, SDL_SRCCOLORKEY};
 use std::{
-    convert::TryInto,
     os::raw::{c_char, c_float, c_int},
     ptr::{null_mut, NonNull},
 };

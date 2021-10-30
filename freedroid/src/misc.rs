@@ -17,7 +17,6 @@ use sdl_sys::{SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Quit, SDL_UpdateRects};
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
     borrow::Cow,
-    convert::{TryFrom, TryInto},
     env,
     ffi::CStr,
     fs::{self, File},

@@ -14,7 +14,6 @@ use sdl::{
     Mixer,
 };
 use std::{
-    convert::TryFrom,
     ffi::CStr,
     os::raw::{c_char, c_float, c_int},
 };

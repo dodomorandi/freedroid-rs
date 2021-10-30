@@ -13,7 +13,6 @@ use cstr::cstr;
 use defs::{Cmds, BLINKENERGY, MAX_INFLU_POSITION_HISTORY, WAIT_TRANSFERMODE};
 use log::{info, warn};
 use std::{
-    convert::{TryFrom, TryInto},
     ops::Not,
     os::raw::{c_char, c_float, c_int},
 };
