@@ -19,15 +19,14 @@ use crate::{
 use array_init::array_init;
 use cstr::cstr;
 use log::{error, info, trace, warn};
-use sdl::{FrameBuffer, Surface};
+use sdl::{FrameBuffer, Surface, VideoModeFlags};
 use sdl_sys::{
     zoomSurface, IMG_Load, SDL_CreateCursor, SDL_CreateRGBSurface, SDL_Cursor, SDL_Delay,
     SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_FillRect, SDL_Flip, SDL_FreeCursor,
-    SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetTicks, SDL_GetVideoInfo, SDL_Init,
-    SDL_InitSubSystem, SDL_MapRGB, SDL_MapRGBA, SDL_Quit, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops,
-    SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma, SDL_SetVideoMode, SDL_UpdateRect,
-    SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_FULLSCREEN,
-    SDL_INIT_TIMER, SDL_INIT_VIDEO, SDL_RLEACCEL, SDL_SRCALPHA,
+    SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetTicks, SDL_GetVideoInfo, SDL_MapRGB,
+    SDL_MapRGBA, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops, SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha,
+    SDL_SetGamma, SDL_UpdateRect, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption,
+    SDL_WM_SetIcon, SDL_RLEACCEL, SDL_SRCALPHA,
 };
 use std::{
     cell::RefCell,
@@ -133,27 +132,6 @@ impl Default for Graphics {
     }
 }
 
-impl Data {
-    /// This function draws a "grid" on the screen, that means every
-    /// "second" pixel is blacked out, thereby generation a fading
-    /// effect.  This function was created to fade the background of the
-    /// Escape menu and its submenus.
-    pub fn make_grid_on_screen(&mut self, grid_rectangle: Option<&SDL_Rect>) {
-        let grid_rectangle = grid_rectangle.unwrap_or(&self.vars.user_rect);
-
-        trace!("MakeGridOnScreen(...): real function call confirmed.");
-        let ne_screen = self.graphics.ne_screen.as_mut().unwrap();
-        let rect_x = u16::try_from(grid_rectangle.x).unwrap();
-        let rect_y = u16::try_from(grid_rectangle.y).unwrap();
-        let mut ne_screen = ne_screen.lock().unwrap();
-        (rect_y..(rect_y + grid_rectangle.h))
-            .flat_map(|y| (rect_x..(rect_x + grid_rectangle.w)).map(move |x| (x, y)))
-            .filter(|(x, y)| (x + y) % 2 == 0)
-            .for_each(|(x, y)| ne_screen.pixels().set(x, y, 0).unwrap());
-        trace!("MakeGridOnScreen(...): end of function reached.");
-    }
-}
-
 pub unsafe fn apply_filter(
     surface: &mut Surface,
     fred: c_float,
@@ -180,167 +158,6 @@ pub unsafe fn apply_filter(
         });
 
     defs::OK.into()
-}
-
-impl Data {
-    pub unsafe fn toggle_fullscreen(&mut self) {
-        let ne_screen = self.graphics.ne_screen.as_mut().unwrap();
-        let mut vid_flags = ne_screen.flags();
-
-        if self.global.game_config.use_fullscreen != 0 {
-            vid_flags &= !(SDL_FULLSCREEN as u32);
-        } else {
-            vid_flags |= SDL_FULLSCREEN as u32;
-        }
-
-        let new_ne_screen = SDL_SetVideoMode(
-            self.vars.screen_rect.w.into(),
-            self.vars.screen_rect.h.into(),
-            0,
-            vid_flags,
-        );
-        let new_ne_screen = match NonNull::new(new_ne_screen) {
-            Some(ptr) => ptr,
-            None => {
-                error!(
-                    "unable to toggle windowed/fullscreen {} x {} video mode.",
-                    self.vars.screen_rect.w, self.vars.screen_rect.h,
-                );
-                panic!(
-                    "SDL-Error: {}",
-                    CStr::from_ptr(SDL_GetError()).to_string_lossy()
-                );
-            }
-        };
-
-        *ne_screen = sdl::FrameBuffer::from_ptr(new_ne_screen);
-
-        if ne_screen.flags() != vid_flags {
-            warn!("Failed to toggle windowed/fullscreen mode!");
-        } else {
-            self.global.game_config.use_fullscreen = !self.global.game_config.use_fullscreen;
-        }
-    }
-
-    /// This function saves a screenshot to disk.
-    ///
-    /// The screenshots are names "Screenshot_XX.bmp" where XX is a
-    /// running number.
-    ///
-    /// NOTE:  This function does NOT check for existing screenshots,
-    ///        but will silently overwrite them.  No problem in most
-    ///        cases I think.
-    pub unsafe fn take_screenshot(&mut self) {
-        self.activate_conservative_frame_computation();
-
-        let screenshot_filename =
-            format!("Screenshot_{}.bmp\0", self.graphics.number_of_screenshot);
-        SDL_SaveBMP_RW(
-            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            SDL_RWFromFile(
-                screenshot_filename.as_ptr() as *const c_char,
-                cstr!("wb").as_ptr(),
-            ),
-            1,
-        );
-        self.graphics.number_of_screenshot = self.graphics.number_of_screenshot.wrapping_add(1);
-        self.display_banner(
-            cstr!("Screenshot").as_ptr(),
-            null_mut(),
-            (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
-                .bits()
-                .into(),
-        );
-        self.make_grid_on_screen(None);
-        SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
-        self.play_sound(SoundType::Screenshot as i32);
-
-        while self.cmd_is_active(Cmds::Screenshot) {
-            SDL_Delay(1);
-        }
-
-        self.display_banner(
-            null_mut(),
-            null_mut(),
-            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-        );
-    }
-}
-
-impl Data {
-    pub unsafe fn free_graphics(&mut self) {
-        // free RWops structures
-        self.graphics
-            .packed_portraits
-            .iter()
-            .filter(|packed_portrait| !packed_portrait.is_null())
-            .for_each(|&packed_portrait| {
-                let close: unsafe fn(context: *mut SDL_RWops) -> c_int =
-                    std::mem::transmute((*packed_portrait).close);
-                close(packed_portrait);
-            });
-
-        self.graphics
-            .portrait_raw_mem
-            .iter_mut()
-            .for_each(|mem| drop(mem.take()));
-
-        self.graphics.enemy_surface_pointer = array_init(|_| None);
-        self.graphics.influencer_surface_pointer = array_init(|_| None);
-        self.graphics.influ_digit_surface_pointer = array_init(|_| None);
-        self.graphics.enemy_digit_surface_pointer = array_init(|_| None);
-        self.graphics.decal_pics = array_init(|_| None);
-
-        self.graphics
-            .orig_map_block_surface_pointer
-            .iter_mut()
-            .flat_map(|arr| arr.iter_mut())
-            .for_each(|surface| *surface = None);
-
-        self.graphics.build_block = None;
-        self.graphics.banner_pic = None;
-        self.graphics.pic999 = None;
-        // SDL_RWops *packed_portraits[NUM_DROIDS];
-        self.graphics.takeover_bg_pic = None;
-        self.graphics.console_pic = None;
-        self.graphics.console_bg_pic1 = None;
-        self.graphics.console_bg_pic2 = None;
-
-        self.graphics.arrow_up = None;
-        self.graphics.arrow_down = None;
-        self.graphics.arrow_right = None;
-        self.graphics.arrow_left = None;
-
-        self.graphics.ship_off_pic = None;
-        self.graphics.ship_on_pic = None;
-        self.graphics.progress_meter_pic = None;
-        self.graphics.progress_filler_pic = None;
-        self.takeover.to_blocks = None;
-
-        // free fonts
-        let fonts = [
-            self.global.menu_b_font,
-            self.global.para_b_font,
-            self.global.highscore_b_font,
-            self.global.font0_b_font,
-            self.global.font1_b_font,
-            self.global.font2_b_font,
-        ];
-        for (index, font) in fonts.iter().copied().enumerate() {
-            if font.is_null() || fonts[..index].contains(&font) {
-                continue;
-            }
-            drop(Box::from_raw(font));
-        }
-
-        // free Load_Block()-internal buffer
-        self.graphics
-            .load_block(null_mut(), 0, 0, null_mut(), FREE_ONLY as i32);
-
-        // free cursors
-        SDL_FreeCursor(self.graphics.crosshair_cursor);
-        SDL_FreeCursor(self.graphics.arrow_cursor);
-    }
 }
 
 impl Graphics {
@@ -435,7 +252,335 @@ impl Graphics {
     }
 }
 
-impl Data {
+pub fn scale_pic(pic: &mut Surface, scale: c_float) {
+    if (scale - 1.0).abs() <= f32::EPSILON {
+        return;
+    }
+    let scale = scale.into();
+
+    // # Safety
+    // [`zoomSurface`] creates a new SDL_Surface or returns null, therefore no aliasing can occur.
+    unsafe {
+        *pic = Surface::from_ptr(
+            NonNull::new(zoomSurface(pic.as_mut_ptr(), scale, scale, 0))
+                .unwrap_or_else(|| panic!("zoomSurface() failed for scale = {}.", scale)),
+        );
+    }
+}
+
+pub fn scale_pic_surface(pic: &mut Surface, scale: c_float) {
+    if (scale - 1.0).abs() <= f32::EPSILON {
+        return;
+    }
+    let scale = scale.into();
+
+    let new_pic = NonNull::new(unsafe { zoomSurface(pic.as_mut_ptr(), scale, scale, 0) });
+    match new_pic {
+        Some(new_pic) => *pic = unsafe { Surface::from_ptr(new_pic) },
+        None => panic!("zoomSurface() failed for scale = {}.", scale),
+    }
+}
+
+const CROSSHAIR_XPM: [&[u8]; 37] = [
+    /* width height num_colors chars_per_pixel */
+    &*b"    32    32        3            1",
+    /* colors */
+    b"X c #000000",
+    b". c #ffffff",
+    b"  c None",
+    /* pixels */
+    b"                                ",
+    b"                                ",
+    b"               XXXX             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               XXXX             ",
+    b"                                ",
+    b"   XXXXXXXXXXX      XXXXXXXXXX  ",
+    b"   X.........X      X........X  ",
+    b"   X.........X      X........X  ",
+    b"   XXXXXXXXXXX      XXXXXXXXXX  ",
+    b"                                ",
+    b"               XXXX             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               X..X             ",
+    b"               XXXX             ",
+    b"                                ",
+    b"                                ",
+    b"0,0",
+];
+
+const ARROW_XPM: [&[u8]; 37] = [
+    /* width height num_colors chars_per_pixel */
+    &*b"    32    32        3            1",
+    /* colors */
+    b"X c #000000",
+    b". c #ffffff",
+    b"  c None",
+    /* pixels */
+    b"X                               ",
+    b"XX                              ",
+    b"X.X                             ",
+    b"X..X                            ",
+    b"X...X                           ",
+    b"X....X                          ",
+    b"X.....X                         ",
+    b"X......X                        ",
+    b"X.......X                       ",
+    b"X........X                      ",
+    b"X.....XXXXX                     ",
+    b"X..X..X                         ",
+    b"X.X X..X                        ",
+    b"XX  X..X                        ",
+    b"X    X..X                       ",
+    b"     X..X                       ",
+    b"      X..X                      ",
+    b"      X..X                      ",
+    b"       XX                       ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"                                ",
+    b"0,0",
+];
+
+/// This function was taken directly from the example in the SDL docu.
+/// Even there they say they have stolen if from the mailing list.
+/// Anyway it should create a new mouse cursor from an XPM.
+/// The XPM is defined above and not read in from disk or something.
+fn init_system_cursor(image: &[&[u8]]) -> *mut SDL_Cursor {
+    let mut data = [0u8; 4 * 32];
+    let mut mask = [0u8; 4 * 32];
+
+    let mut i: isize = -1;
+    for row in 0..32 {
+        for col in 0..32 {
+            if col % 8 != 0 {
+                data[i as usize] <<= 1;
+                mask[i as usize] <<= 1;
+            } else {
+                i += 1;
+                data[i as usize] = 0;
+                mask[i as usize] = 0;
+            }
+
+            match image[4 + row][col] {
+                b'X' => {
+                    data[i as usize] |= 0x01;
+                    mask[i as usize] |= 0x01;
+                }
+                b'.' => {
+                    mask[i as usize] |= 0x01;
+                }
+                b' ' => {}
+                _ => panic!("invalid XPM charater"),
+            }
+        }
+    }
+
+    let last_line = std::str::from_utf8(image[4 + 32]).unwrap();
+    let mut hots = last_line.splitn(2, ',').map(|x| x.parse().unwrap());
+    let hot_x = hots.next().unwrap();
+    let hot_y = hots.next().unwrap();
+    unsafe { SDL_CreateCursor(data.as_mut_ptr(), mask.as_mut_ptr(), 32, 32, hot_x, hot_y) }
+}
+
+impl Data<'_> {
+    /// This function draws a "grid" on the screen, that means every
+    /// "second" pixel is blacked out, thereby generation a fading
+    /// effect.  This function was created to fade the background of the
+    /// Escape menu and its submenus.
+    pub fn make_grid_on_screen(&mut self, grid_rectangle: Option<&SDL_Rect>) {
+        let grid_rectangle = grid_rectangle.unwrap_or(&self.vars.user_rect);
+
+        trace!("MakeGridOnScreen(...): real function call confirmed.");
+        let ne_screen = self.graphics.ne_screen.as_mut().unwrap();
+        let rect_x = u16::try_from(grid_rectangle.x).unwrap();
+        let rect_y = u16::try_from(grid_rectangle.y).unwrap();
+        let mut ne_screen = ne_screen.lock().unwrap();
+        (rect_y..(rect_y + grid_rectangle.h))
+            .flat_map(|y| (rect_x..(rect_x + grid_rectangle.w)).map(move |x| (x, y)))
+            .filter(|(x, y)| (x + y) % 2 == 0)
+            .for_each(|(x, y)| ne_screen.pixels().set(x, y, 0).unwrap());
+        trace!("MakeGridOnScreen(...): end of function reached.");
+    }
+
+    pub unsafe fn toggle_fullscreen(&mut self) {
+        let ne_screen = self.graphics.ne_screen.as_mut().unwrap();
+        let mut vid_flags = VideoModeFlags::from_bits(ne_screen.flags()).unwrap();
+
+        vid_flags.set(
+            VideoModeFlags::FULLSCREEN,
+            self.global.game_config.use_fullscreen == 0,
+        );
+
+        *ne_screen = match sdl::Video::set_video_mode(
+            self.vars.screen_rect.w.into(),
+            self.vars.screen_rect.h.into(),
+            None,
+            vid_flags,
+        ) {
+            Some(ne_screen) => ne_screen,
+            None => {
+                error!(
+                    "unable to toggle windowed/fullscreen {} x {} video mode.",
+                    self.vars.screen_rect.w, self.vars.screen_rect.h,
+                );
+                panic!(
+                    "SDL-Error: {}",
+                    CStr::from_ptr(SDL_GetError()).to_string_lossy()
+                );
+            }
+        };
+
+        if ne_screen.flags() != vid_flags.bits() {
+            warn!("Failed to toggle windowed/fullscreen mode!");
+        } else {
+            self.global.game_config.use_fullscreen = !self.global.game_config.use_fullscreen;
+        }
+    }
+
+    /// This function saves a screenshot to disk.
+    ///
+    /// The screenshots are names "Screenshot_XX.bmp" where XX is a
+    /// running number.
+    ///
+    /// NOTE:  This function does NOT check for existing screenshots,
+    ///        but will silently overwrite them.  No problem in most
+    ///        cases I think.
+    pub unsafe fn take_screenshot(&mut self) {
+        self.activate_conservative_frame_computation();
+
+        let screenshot_filename =
+            format!("Screenshot_{}.bmp\0", self.graphics.number_of_screenshot);
+        SDL_SaveBMP_RW(
+            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
+            SDL_RWFromFile(
+                screenshot_filename.as_ptr() as *const c_char,
+                cstr!("wb").as_ptr(),
+            ),
+            1,
+        );
+        self.graphics.number_of_screenshot = self.graphics.number_of_screenshot.wrapping_add(1);
+        self.display_banner(
+            cstr!("Screenshot").as_ptr(),
+            null_mut(),
+            (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
+                .bits()
+                .into(),
+        );
+        self.make_grid_on_screen(None);
+        SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
+        self.play_sound(SoundType::Screenshot as i32);
+
+        while self.cmd_is_active(Cmds::Screenshot) {
+            SDL_Delay(1);
+        }
+
+        self.display_banner(
+            null_mut(),
+            null_mut(),
+            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+        );
+    }
+
+    pub unsafe fn free_graphics(&mut self) {
+        // free RWops structures
+        self.graphics
+            .packed_portraits
+            .iter()
+            .filter(|packed_portrait| !packed_portrait.is_null())
+            .for_each(|&packed_portrait| {
+                let close: unsafe fn(context: *mut SDL_RWops) -> c_int =
+                    std::mem::transmute((*packed_portrait).close);
+                close(packed_portrait);
+            });
+
+        self.graphics
+            .portrait_raw_mem
+            .iter_mut()
+            .for_each(|mem| drop(mem.take()));
+
+        self.graphics.enemy_surface_pointer = array_init(|_| None);
+        self.graphics.influencer_surface_pointer = array_init(|_| None);
+        self.graphics.influ_digit_surface_pointer = array_init(|_| None);
+        self.graphics.enemy_digit_surface_pointer = array_init(|_| None);
+        self.graphics.decal_pics = array_init(|_| None);
+
+        self.graphics
+            .orig_map_block_surface_pointer
+            .iter_mut()
+            .flat_map(|arr| arr.iter_mut())
+            .for_each(|surface| *surface = None);
+
+        self.graphics.build_block = None;
+        self.graphics.banner_pic = None;
+        self.graphics.pic999 = None;
+        // SDL_RWops *packed_portraits[NUM_DROIDS];
+        self.graphics.takeover_bg_pic = None;
+        self.graphics.console_pic = None;
+        self.graphics.console_bg_pic1 = None;
+        self.graphics.console_bg_pic2 = None;
+
+        self.graphics.arrow_up = None;
+        self.graphics.arrow_down = None;
+        self.graphics.arrow_right = None;
+        self.graphics.arrow_left = None;
+
+        self.graphics.ship_off_pic = None;
+        self.graphics.ship_on_pic = None;
+        self.graphics.progress_meter_pic = None;
+        self.graphics.progress_filler_pic = None;
+        self.takeover.to_blocks = None;
+
+        // free fonts
+        let fonts = [
+            self.global.menu_b_font,
+            self.global.para_b_font,
+            self.global.highscore_b_font,
+            self.global.font0_b_font,
+            self.global.font1_b_font,
+            self.global.font2_b_font,
+        ];
+        for (index, font) in fonts.iter().copied().enumerate() {
+            if font.is_null() || fonts[..index].contains(&font) {
+                continue;
+            }
+            drop(Box::from_raw(font));
+        }
+
+        // free Load_Block()-internal buffer
+        self.graphics
+            .load_block(null_mut(), 0, 0, null_mut(), FREE_ONLY as i32);
+
+        // free cursors
+        SDL_FreeCursor(self.graphics.crosshair_cursor);
+        SDL_FreeCursor(self.graphics.arrow_cursor);
+    }
+
     /// scale all "static" rectangles, which are theme-independent
     pub unsafe fn scale_stat_rects(&mut self, scale: c_float) {
         macro_rules! scale {
@@ -517,38 +662,7 @@ impl Data {
         scale!(self.takeover.ground_rect);
         scale!(self.takeover.column_rect);
     }
-}
 
-pub fn scale_pic(pic: &mut Surface, scale: c_float) {
-    if (scale - 1.0).abs() <= f32::EPSILON {
-        return;
-    }
-    let scale = scale.into();
-
-    // # Safety
-    // [`zoomSurface`] creates a new SDL_Surface or returns null, therefore no aliasing can occur.
-    unsafe {
-        *pic = Surface::from_ptr(
-            NonNull::new(zoomSurface(pic.as_mut_ptr(), scale, scale, 0))
-                .unwrap_or_else(|| panic!("zoomSurface() failed for scale = {}.", scale)),
-        );
-    }
-}
-
-pub fn scale_pic_surface(pic: &mut Surface, scale: c_float) {
-    if (scale - 1.0).abs() <= f32::EPSILON {
-        return;
-    }
-    let scale = scale.into();
-
-    let new_pic = NonNull::new(unsafe { zoomSurface(pic.as_mut_ptr(), scale, scale, 0) });
-    match new_pic {
-        Some(new_pic) => *pic = unsafe { Surface::from_ptr(new_pic) },
-        None => panic!("zoomSurface() failed for scale = {}.", scale),
-    }
-}
-
-impl Data {
     pub unsafe fn scale_graphics(&mut self, scale: c_float) {
         static INIT: std::sync::Once = std::sync::Once::new();
 
@@ -882,32 +996,6 @@ impl Data {
     pub unsafe fn init_video(&mut self) {
         const YN: [&str; 2] = ["no", "yes"];
 
-        /* Initialize the SDL library */
-        // if ( SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) == -1 )
-
-        if SDL_Init(SDL_INIT_VIDEO as u32) == -1 {
-            panic!(
-                "Couldn't initialize SDL: {}",
-                CStr::from_ptr(SDL_GetError()).to_string_lossy()
-            );
-        } else {
-            info!("SDL Video initialisation successful.");
-        }
-
-        // Now SDL_TIMER is initialized here:
-
-        if SDL_InitSubSystem(SDL_INIT_TIMER as u32) == -1 {
-            panic!(
-                "Couldn't initialize SDL: {}",
-                CStr::from_ptr(SDL_GetError()).to_string_lossy()
-            );
-        } else {
-            info!("SDL Timer initialisation successful.");
-        }
-
-        /* clean up on exit */
-        libc::atexit(std::mem::transmute(SDL_Quit as unsafe extern "C" fn()));
-
         self.graphics.vid_info = SDL_GetVideoInfo(); /* just curious */
         let mut vid_driver: [c_char; 81] = [0; 81];
         SDL_VideoDriverName(vid_driver.as_mut_ptr(), 80);
@@ -981,9 +1069,9 @@ impl Data {
         info!("----------------------------------------------------------------------");
 
         let vid_flags = if self.global.game_config.use_fullscreen != 0 {
-            SDL_FULLSCREEN as u32
+            VideoModeFlags::FULLSCREEN
         } else {
-            0
+            VideoModeFlags::empty()
         };
 
         if flag!(wm_available) {
@@ -1011,13 +1099,12 @@ impl Data {
             }
         }
 
-        let ne_screen = SDL_SetVideoMode(
+        let ne_screen = match sdl::Video::set_video_mode(
             self.vars.screen_rect.w.into(),
             self.vars.screen_rect.h.into(),
-            0,
+            None,
             vid_flags,
-        );
-        let ne_screen = match NonNull::new(ne_screen) {
+        ) {
             Some(ne_screen) => ne_screen,
             None => {
                 error!(
@@ -1029,7 +1116,7 @@ impl Data {
                 std::process::exit(-1);
             }
         };
-        self.graphics.ne_screen = Some(sdl::FrameBuffer::from_ptr(ne_screen));
+        self.graphics.ne_screen = Some(ne_screen);
 
         self.graphics.vid_info = SDL_GetVideoInfo(); /* info about current video mode */
 
@@ -1567,136 +1654,7 @@ impl Data {
 
         true.into()
     }
-}
 
-const CROSSHAIR_XPM: [&[u8]; 37] = [
-    /* width height num_colors chars_per_pixel */
-    &*b"    32    32        3            1",
-    /* colors */
-    b"X c #000000",
-    b". c #ffffff",
-    b"  c None",
-    /* pixels */
-    b"                                ",
-    b"                                ",
-    b"               XXXX             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               XXXX             ",
-    b"                                ",
-    b"   XXXXXXXXXXX      XXXXXXXXXX  ",
-    b"   X.........X      X........X  ",
-    b"   X.........X      X........X  ",
-    b"   XXXXXXXXXXX      XXXXXXXXXX  ",
-    b"                                ",
-    b"               XXXX             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               XXXX             ",
-    b"                                ",
-    b"                                ",
-    b"0,0",
-];
-
-const ARROW_XPM: [&[u8]; 37] = [
-    /* width height num_colors chars_per_pixel */
-    &*b"    32    32        3            1",
-    /* colors */
-    b"X c #000000",
-    b". c #ffffff",
-    b"  c None",
-    /* pixels */
-    b"X                               ",
-    b"XX                              ",
-    b"X.X                             ",
-    b"X..X                            ",
-    b"X...X                           ",
-    b"X....X                          ",
-    b"X.....X                         ",
-    b"X......X                        ",
-    b"X.......X                       ",
-    b"X........X                      ",
-    b"X.....XXXXX                     ",
-    b"X..X..X                         ",
-    b"X.X X..X                        ",
-    b"XX  X..X                        ",
-    b"X    X..X                       ",
-    b"     X..X                       ",
-    b"      X..X                      ",
-    b"      X..X                      ",
-    b"       XX                       ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"0,0",
-];
-
-/// This function was taken directly from the example in the SDL docu.
-/// Even there they say they have stolen if from the mailing list.
-/// Anyway it should create a new mouse cursor from an XPM.
-/// The XPM is defined above and not read in from disk or something.
-fn init_system_cursor(image: &[&[u8]]) -> *mut SDL_Cursor {
-    let mut data = [0u8; 4 * 32];
-    let mut mask = [0u8; 4 * 32];
-
-    let mut i: isize = -1;
-    for row in 0..32 {
-        for col in 0..32 {
-            if col % 8 != 0 {
-                data[i as usize] <<= 1;
-                mask[i as usize] <<= 1;
-            } else {
-                i += 1;
-                data[i as usize] = 0;
-                mask[i as usize] = 0;
-            }
-
-            match image[4 + row][col] {
-                b'X' => {
-                    data[i as usize] |= 0x01;
-                    mask[i as usize] |= 0x01;
-                }
-                b'.' => {
-                    mask[i as usize] |= 0x01;
-                }
-                b' ' => {}
-                _ => panic!("invalid XPM charater"),
-            }
-        }
-    }
-
-    let last_line = std::str::from_utf8(image[4 + 32]).unwrap();
-    let mut hots = last_line.splitn(2, ',').map(|x| x.parse().unwrap());
-    let hot_x = hots.next().unwrap();
-    let hot_y = hots.next().unwrap();
-    unsafe { SDL_CreateCursor(data.as_mut_ptr(), mask.as_mut_ptr(), 32, 32, hot_x, hot_y) }
-}
-
-impl Data {
     pub unsafe fn load_theme_configuration_file(&mut self) {
         use bstr::ByteSlice;
 

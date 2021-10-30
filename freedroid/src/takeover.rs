@@ -590,8 +590,110 @@ impl From<Block> for usize {
     }
 }
 
+impl Takeover {
+    unsafe fn process_playground(&mut self) {
+        let Self {
+            activation_map,
+            playground,
+            ..
+        } = self;
+
+        activation_map.iter_mut().zip(playground.iter()).for_each(
+            |(activation_line, playground_line)| {
+                playground_line
+                    .iter()
+                    .enumerate()
+                    .skip(1)
+                    .for_each(|(layer, playground_layer)| {
+                        let (activation_layer_last, activation_layer) =
+                            activation_line.split_at_mut(layer);
+                        let activation_layer_last = activation_layer_last.last().unwrap();
+                        let activation_layer = &mut activation_layer[0];
+
+                        playground_layer
+                            .iter()
+                            .enumerate()
+                            .for_each(|(row, playground_block)| {
+                                process_playground_row(
+                                    row,
+                                    playground_block,
+                                    &**activation_layer_last,
+                                    &mut **activation_layer,
+                                )
+                            });
+                    });
+
+                let [.., proximal_activation_layer, distal_activation_layer] =
+                    activation_line.layers_mut();
+                distal_activation_layer
+                    .iter_mut()
+                    .enumerate()
+                    .for_each(|(row, activation)| {
+                        let test_element = playground_line.proximal_connection()[row];
+                        if proximal_activation_layer[row].is_active() && test_element.is_connector()
+                        {
+                            *activation = Condition::Active1;
+                        } else {
+                            *activation = Condition::Inactive;
+                        }
+                    });
+            },
+        );
+    }
+}
+
+#[inline]
+fn process_playground_row(
+    row: usize,
+    playground: &Block,
+    activation_layer_last: &[Condition],
+    activation_layer: &mut [Condition],
+) {
+    let activation_last_layer = activation_layer_last[row];
+    let (activation_last, activation_layer) = activation_layer.split_at_mut(row);
+    let activation_last = activation_last.last().copied();
+    let (activation, activation_layer) = activation_layer.split_first_mut().unwrap();
+    let activation_next = activation_layer.first().copied();
+
+    use Block::*;
+    let turn_active = match playground {
+        ColorSwapper | BranchMiddle | GateAbove | GateBelow | Cable => {
+            activation_last_layer.is_active()
+        }
+
+        Repeater => activation_last_layer.is_active() || activation.is_active(),
+
+        BranchAbove => activation_next
+            .map(|condition| condition.is_active())
+            .unwrap_or(false),
+
+        BranchBelow => activation_last
+            .map(|condition| condition.is_active())
+            .unwrap_or(false),
+
+        GateMiddle => {
+            activation_last
+                .map(|condition| condition.is_active())
+                .unwrap_or(false)
+                && activation_next
+                    .map(|condition| condition.is_active())
+                    .unwrap_or(false)
+        }
+
+        CableEnd | Empty => false,
+    };
+
+    if turn_active {
+        if activation.is_inactive() {
+            *activation = Condition::Active1;
+        }
+    } else {
+        *activation = Condition::Inactive;
+    }
+}
+
 /// Define all the SDL_Rects for the takeover-game
-impl Data {
+impl Data<'_> {
     pub unsafe fn set_takeover_rects(&mut self) -> c_int {
         let Self {
             takeover:
@@ -876,111 +978,7 @@ impl Data {
     unsafe fn process_playground(&mut self) {
         self.takeover.process_playground();
     }
-}
 
-impl Takeover {
-    unsafe fn process_playground(&mut self) {
-        let Self {
-            activation_map,
-            playground,
-            ..
-        } = self;
-
-        activation_map.iter_mut().zip(playground.iter()).for_each(
-            |(activation_line, playground_line)| {
-                playground_line
-                    .iter()
-                    .enumerate()
-                    .skip(1)
-                    .for_each(|(layer, playground_layer)| {
-                        let (activation_layer_last, activation_layer) =
-                            activation_line.split_at_mut(layer);
-                        let activation_layer_last = activation_layer_last.last().unwrap();
-                        let activation_layer = &mut activation_layer[0];
-
-                        playground_layer
-                            .iter()
-                            .enumerate()
-                            .for_each(|(row, playground_block)| {
-                                process_playground_row(
-                                    row,
-                                    playground_block,
-                                    &**activation_layer_last,
-                                    &mut **activation_layer,
-                                )
-                            });
-                    });
-
-                let [.., proximal_activation_layer, distal_activation_layer] =
-                    activation_line.layers_mut();
-                distal_activation_layer
-                    .iter_mut()
-                    .enumerate()
-                    .for_each(|(row, activation)| {
-                        let test_element = playground_line.proximal_connection()[row];
-                        if proximal_activation_layer[row].is_active() && test_element.is_connector()
-                        {
-                            *activation = Condition::Active1;
-                        } else {
-                            *activation = Condition::Inactive;
-                        }
-                    });
-            },
-        );
-    }
-}
-
-#[inline]
-fn process_playground_row(
-    row: usize,
-    playground: &Block,
-    activation_layer_last: &[Condition],
-    activation_layer: &mut [Condition],
-) {
-    let activation_last_layer = activation_layer_last[row];
-    let (activation_last, activation_layer) = activation_layer.split_at_mut(row);
-    let activation_last = activation_last.last().copied();
-    let (activation, activation_layer) = activation_layer.split_first_mut().unwrap();
-    let activation_next = activation_layer.first().copied();
-
-    use Block::*;
-    let turn_active = match playground {
-        ColorSwapper | BranchMiddle | GateAbove | GateBelow | Cable => {
-            activation_last_layer.is_active()
-        }
-
-        Repeater => activation_last_layer.is_active() || activation.is_active(),
-
-        BranchAbove => activation_next
-            .map(|condition| condition.is_active())
-            .unwrap_or(false),
-
-        BranchBelow => activation_last
-            .map(|condition| condition.is_active())
-            .unwrap_or(false),
-
-        GateMiddle => {
-            activation_last
-                .map(|condition| condition.is_active())
-                .unwrap_or(false)
-                && activation_next
-                    .map(|condition| condition.is_active())
-                    .unwrap_or(false)
-        }
-
-        CableEnd | Empty => false,
-    };
-
-    if turn_active {
-        if activation.is_inactive() {
-            *activation = Condition::Active1;
-        }
-    } else {
-        *activation = Condition::Inactive;
-    }
-}
-
-impl Data {
     /// generate a random Playground
     unsafe fn invent_playground(&mut self) {
         use std::ops::Not;

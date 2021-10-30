@@ -8,25 +8,21 @@ use crate::{
 
 use cstr::cstr;
 use log::info;
+use sdl::Joystick;
 #[cfg(feature = "gcw0")]
 use sdl_sys::{SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_LALT, SDLKey_SDLK_LCTRL, SDLKey_SDLK_TAB};
 use sdl_sys::{
     SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT, SDLKey_SDLK_RETURN, SDLKey_SDLK_RIGHT,
-    SDLKey_SDLK_SPACE, SDLKey_SDLK_UP, SDLMod, SDL_Delay, SDL_Event, SDL_GetError, SDL_GetTicks,
-    SDL_InitSubSystem, SDL_Joystick, SDL_JoystickEventState, SDL_JoystickName, SDL_JoystickNumAxes,
-    SDL_JoystickNumButtons, SDL_JoystickOpen, SDL_NumJoysticks, SDL_PollEvent, SDL_BUTTON_LEFT,
-    SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP, SDL_ENABLE,
-    SDL_INIT_JOYSTICK,
+    SDLKey_SDLK_SPACE, SDLKey_SDLK_UP, SDLMod, SDL_Delay, SDL_Event, SDL_GetTicks, SDL_PollEvent,
+    SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
 };
 #[cfg(not(feature = "gcw0"))]
 use sdl_sys::{SDLKey_SDLK_F12, SDLKey_SDLK_PAUSE, SDLKey_SDLK_RSHIFT};
 use std::{
     convert::TryFrom,
-    ffi::CStr,
     fmt,
-    ops::Not,
     os::raw::{c_char, c_int},
-    ptr::{null, null_mut},
+    ptr::null,
 };
 
 #[cfg(target_os = "android")]
@@ -40,12 +36,12 @@ pub struct Input {
     current_modifiers: SDLMod,
     input_state: [c_int; PointerStates::Last as usize],
     event: SDL_Event,
+    pub joy: Option<Joystick>,
     pub joy_sensitivity: c_int,
     // joystick (and mouse) axis values
     pub input_axis: Point,
-    joy: *mut SDL_Joystick,
     // number of joystick axes
-    pub joy_num_axes: i32,
+    pub joy_num_axes: u16,
     // is firing to use axis-values or not
     pub axis_is_active: i32,
     pub key_cmds: [[c_int; 3]; Cmds::Last as usize],
@@ -64,7 +60,6 @@ impl fmt::Debug for Input {
             .field("event", &"[SDL_Event]")
             .field("joy_sensitivity", &self.joy_sensitivity)
             .field("input_axis", &self.input_axis)
-            .field("joy", &self.joy)
             .field("joy_num_axes", &self.joy_num_axes)
             .field("axis_is_active", &self.axis_is_active)
             .field("key_cmds", &self.key_cmds)
@@ -177,9 +172,9 @@ impl Default for Input {
             current_modifiers: 0,
             input_state: [0; PointerStates::Last as usize],
             event: SDL_Event::default(),
+            joy: None,
             joy_sensitivity: 0,
             input_axis: Point { x: 0, y: 0 },
-            joy: null_mut(),
             joy_num_axes: 0,
             axis_is_active: 0,
             key_cmds,
@@ -206,7 +201,19 @@ pub const CMD_STRINGS: [*const c_char; Cmds::Last as usize] = [
 
 pub const CURSOR_KEEP_VISIBLE: u32 = 3000; // ticks to keep mouse-cursor visible without mouse-input
 
-impl Data {
+const FRESH_BIT: c_int = 0x01 << 8;
+const PRESSED: c_int = true as c_int | FRESH_BIT;
+const RELEASED: c_int = false as c_int | FRESH_BIT;
+
+const fn is_just_pressed(key_flags: c_int) -> bool {
+    key_flags & PRESSED == PRESSED
+}
+
+fn clear_fresh(key_flags: &mut c_int) {
+    *key_flags &= !FRESH_BIT;
+}
+
+impl Data<'_> {
     /// Check if any keys have been 'freshly' pressed. If yes, return key-code, otherwise 0.
     pub unsafe fn wait_for_key_pressed(&mut self) -> c_int {
         loop {
@@ -236,21 +243,7 @@ impl Data {
             None => 0,
         }
     }
-}
 
-const FRESH_BIT: c_int = 0x01 << 8;
-const PRESSED: c_int = true as c_int | FRESH_BIT;
-const RELEASED: c_int = false as c_int | FRESH_BIT;
-
-const fn is_just_pressed(key_flags: c_int) -> bool {
-    key_flags & PRESSED == PRESSED
-}
-
-fn clear_fresh(key_flags: &mut c_int) {
-    *key_flags &= !FRESH_BIT;
-}
-
-impl Data {
     pub unsafe fn update_input(&mut self) -> c_int {
         // switch mouse-cursor visibility as a function of time of last activity
         if SDL_GetTicks() - self.input.last_mouse_event > CURSOR_KEEP_VISIBLE {
@@ -520,9 +513,7 @@ impl Data {
         self.update_input();
         (self.input.current_modifiers & sdl_mod) != 0
     }
-}
 
-impl Data {
     pub unsafe fn no_direction_pressed(&mut self) -> bool {
         !((self.input.axis_is_active != 0
             && (self.input.input_axis.x != 0 || self.input.input_axis.y != 0))
@@ -564,44 +555,32 @@ impl Data {
     }
 
     pub unsafe fn init_joy(&mut self) {
-        if SDL_InitSubSystem(SDL_INIT_JOYSTICK as u32) == -1 {
+        let joystick = self.sdl.init_joystick().unwrap_or_else(|| {
             panic!(
                 "Couldn't initialize SDL-Joystick: {}",
-                CStr::from_ptr(SDL_GetError()).to_string_lossy()
-            );
-        } else {
-            info!("SDL Joystick initialisation successful.");
-        }
+                self.sdl.get_error().to_string_lossy()
+            )
+        });
+        info!("SDL Joystick initialisation successful.");
 
-        let num_joy = SDL_NumJoysticks();
+        let num_joy = joystick.num_joysticks().unwrap_or(0);
         info!("{} Joysticks found!\n", num_joy);
 
-        if num_joy > 0 {
-            self.input.joy = SDL_JoystickOpen(0);
-        }
-
-        if !self.input.joy.is_null() {
-            let joystick_name_ptr = SDL_JoystickName(0);
-            let joystick_name = joystick_name_ptr
-                .is_null()
-                .not()
-                .then(|| CStr::from_ptr(joystick_name_ptr).to_string_lossy());
+        if let Some(joy) = (num_joy > 0).then(|| joystick.open(0)).flatten() {
+            let joystick_name = joy
+                .name()
+                .map(|joystick_name| joystick_name.to_string_lossy());
             info!(
                 "Identifier: {}",
                 joystick_name.as_deref().unwrap_or("[NO JOYSTICK NAME]")
             );
 
-            self.input.joy_num_axes = SDL_JoystickNumAxes(self.input.joy);
+            self.input.joy_num_axes = joy.axes();
             info!("Number of Axes: {}", self.input.joy_num_axes);
-            info!(
-                "Number of Buttons: {}",
-                SDL_JoystickNumButtons(self.input.joy)
-            );
+            info!("Number of Buttons: {}", joy.buttons());
 
             /* aktivate Joystick event handling */
-            SDL_JoystickEventState(SDL_ENABLE);
-        } else {
-            self.input.joy = null_mut(); /* signals that no yoystick is present */
+            joystick.enable_event_polling();
         }
     }
 

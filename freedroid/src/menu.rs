@@ -130,94 +130,94 @@ macro_rules! menu_entry {
     };
 }
 
-#[cfg(target_os = "android")]
-const LEGACY_MENU: [MenuEntry; 9] = [
-    menu_entry! { "Back" },
-    menu_entry! { "Set Strictly Classic", Data::handle_strictly_classic},
-    menu_entry! { "Combat Window: ", Data::handle_window_type},
-    menu_entry! { "Graphics Theme: ", Data::handle_theme},
-    menu_entry! { "Droid Talk: ", Data::handle_droid_talk},
-    menu_entry! { "Show Decals: ", Data::handle_show_decals},
-    menu_entry! { "All Map Visible: ", Data::handle_all_map_visible},
-    menu_entry! { "Empty Level Speedup: ", Data::handle_empty_level_speedup},
-    menu_entry! {},
-];
-
-#[cfg(not(target_os = "android"))]
-const LEGACY_MENU: [MenuEntry; 11] = [
-    menu_entry! { "Back"},
-    menu_entry! { "Set Strictly Classic", Data::handle_strictly_classic},
-    menu_entry! { "Combat Window: ", Data::handle_window_type},
-    menu_entry! { "Graphics Theme: ", Data::handle_theme},
-    menu_entry! { "Droid Talk: ", Data::handle_droid_talk},
-    menu_entry! { "Show Decals: ", Data::handle_show_decals},
-    menu_entry! { "All Map Visible: ", Data::handle_all_map_visible},
-    menu_entry! { "Transfer = Activate: ", Data::handle_transfer_is_activate},
-    menu_entry! { "Hold Fire to Transfer: ", Data::handle_fire_is_transfer},
-    menu_entry! { "Empty Level Speedup: ", Data::handle_empty_level_speedup},
-    menu_entry! {},
-];
-
-const GRAPHICS_SOUND_MENU: [MenuEntry; 5] = [
-    menu_entry! { "Back"},
-    menu_entry! { "Music Volume: ", Data::handle_music_volume},
-    menu_entry! { "Sound Volume: ", Data::handle_sound_volume},
-    menu_entry! { "Fullscreen Mode: ", Data::handle_fullscreen},
-    menu_entry! {},
-];
-
-const HUD_MENU: [MenuEntry; 5] = [
-    menu_entry! { "Back"},
-    menu_entry! { "Show Position: ", Data::handle_show_position},
-    menu_entry! { "Show Framerate: ", Data::handle_show_framerate},
-    menu_entry! { "Show Energy: ", Data::handle_show_energy},
-    menu_entry! {},
-];
-
-const LEVEL_EDITOR_MENU: [MenuEntry; 8] = [
-    menu_entry! { "Exit Level Editor", 	Data::handle_le_exit},
-    menu_entry! { "Current Level: ", Data::handle_le_level_number},
-    menu_entry! { "Level Color: ", Data::handle_le_color},
-    menu_entry! { "Levelsize X: ", Data::handle_le_size_x},
-    menu_entry! { "Levelsize Y: ", Data::handle_le_size_y},
-    menu_entry! { "Level Name: ", Data::handle_le_name},
-    menu_entry! { "Save ship: ", Data::handle_le_save_ship},
-    menu_entry! {},
-];
-
-#[cfg(target_os = "android")]
-const MAIN_MENU: [MenuEntry; 8] = [
-    menu_entry! { "Back to Game"},
-    menu_entry! { "Graphics & Sound", None, GRAPHICS_SOUND_MENU },
-    menu_entry! { "Legacy Options", None, LEGACY_MENU },
-    menu_entry! { "HUD Settings", None, HUD_MENU },
-    menu_entry! { "Highscores", Data::handle_highscores},
-    menu_entry! { "Credits", Data::handle_credits},
-    menu_entry! { "Quit Game", Data::handle_quit_game},
-    menu_entry! {},
-];
-
-#[cfg(not(target_os = "android"))]
-const MAIN_MENU: [MenuEntry; 10] = [
-    menu_entry! { "Back to Game"},
-    menu_entry! { "Graphics & Sound", None, GRAPHICS_SOUND_MENU },
-    menu_entry! { "Legacy Options", None, LEGACY_MENU },
-    menu_entry! { "HUD Settings", None, HUD_MENU },
-    menu_entry! { "Level Editor", Data::handle_open_level_editor},
-    menu_entry! { "Highscores", Data::handle_highscores},
-    menu_entry! { "Credits", Data::handle_credits},
-    menu_entry! { "Configure Keys", Data::handle_configure_keys},
-    menu_entry! { "Quit Game", Data::handle_quit_game},
-    menu_entry! {},
-];
-
-pub struct MenuEntry {
+pub struct MenuEntry<'sdl> {
     name: *const c_char,
-    handler: Option<unsafe fn(&mut Data, MenuAction) -> *const c_char>,
-    submenu: *const MenuEntry,
+    handler: Option<unsafe fn(&mut Data<'sdl>, MenuAction) -> *const c_char>,
+    submenu: *const MenuEntry<'sdl>,
 }
 
-impl Data {
+impl<'sdl> Data<'sdl> {
+    #[cfg(target_os = "android")]
+    const LEGACY_MENU: [MenuEntry<'sdl>; 9] = [
+        menu_entry! { "Back" },
+        menu_entry! { "Set Strictly Classic", Data::handle_strictly_classic},
+        menu_entry! { "Combat Window: ", Data::handle_window_type},
+        menu_entry! { "Graphics Theme: ", Data::handle_theme},
+        menu_entry! { "Droid Talk: ", Data::handle_droid_talk},
+        menu_entry! { "Show Decals: ", Data::handle_show_decals},
+        menu_entry! { "All Map Visible: ", Data::handle_all_map_visible},
+        menu_entry! { "Empty Level Speedup: ", Data::handle_empty_level_speedup},
+        menu_entry! {},
+    ];
+
+    #[cfg(not(target_os = "android"))]
+    const LEGACY_MENU: [MenuEntry<'sdl>; 11] = [
+        menu_entry! { "Back"},
+        menu_entry! { "Set Strictly Classic", Data::handle_strictly_classic},
+        menu_entry! { "Combat Window: ", Data::handle_window_type},
+        menu_entry! { "Graphics Theme: ", Data::handle_theme},
+        menu_entry! { "Droid Talk: ", Data::handle_droid_talk},
+        menu_entry! { "Show Decals: ", Data::handle_show_decals},
+        menu_entry! { "All Map Visible: ", Data::handle_all_map_visible},
+        menu_entry! { "Transfer = Activate: ", Data::handle_transfer_is_activate},
+        menu_entry! { "Hold Fire to Transfer: ", Data::handle_fire_is_transfer},
+        menu_entry! { "Empty Level Speedup: ", Data::handle_empty_level_speedup},
+        menu_entry! {},
+    ];
+
+    const GRAPHICS_SOUND_MENU: [MenuEntry<'sdl>; 5] = [
+        menu_entry! { "Back"},
+        menu_entry! { "Music Volume: ", Data::handle_music_volume},
+        menu_entry! { "Sound Volume: ", Data::handle_sound_volume},
+        menu_entry! { "Fullscreen Mode: ", Data::handle_fullscreen},
+        menu_entry! {},
+    ];
+
+    const HUD_MENU: [MenuEntry<'sdl>; 5] = [
+        menu_entry! { "Back"},
+        menu_entry! { "Show Position: ", Data::handle_show_position},
+        menu_entry! { "Show Framerate: ", Data::handle_show_framerate},
+        menu_entry! { "Show Energy: ", Data::handle_show_energy},
+        menu_entry! {},
+    ];
+
+    const LEVEL_EDITOR_MENU: [MenuEntry<'sdl>; 8] = [
+        menu_entry! { "Exit Level Editor", 	Data::handle_le_exit},
+        menu_entry! { "Current Level: ", Data::handle_le_level_number},
+        menu_entry! { "Level Color: ", Data::handle_le_color},
+        menu_entry! { "Levelsize X: ", Data::handle_le_size_x},
+        menu_entry! { "Levelsize Y: ", Data::handle_le_size_y},
+        menu_entry! { "Level Name: ", Data::handle_le_name},
+        menu_entry! { "Save ship: ", Data::handle_le_save_ship},
+        menu_entry! {},
+    ];
+
+    #[cfg(target_os = "android")]
+    const MAIN_MENU: [MenuEntry<'sdl>; 8] = [
+        menu_entry! { "Back to Game"},
+        menu_entry! { "Graphics & Sound", None, Self::GRAPHICS_SOUND_MENU },
+        menu_entry! { "Legacy Options", None, Self::LEGACY_MENU },
+        menu_entry! { "HUD Settings", None, Self::HUD_MENU },
+        menu_entry! { "Highscores", Data::handle_highscores},
+        menu_entry! { "Credits", Data::handle_credits},
+        menu_entry! { "Quit Game", Data::handle_quit_game},
+        menu_entry! {},
+    ];
+
+    #[cfg(not(target_os = "android"))]
+    const MAIN_MENU: [MenuEntry<'sdl>; 10] = [
+        menu_entry! { "Back to Game"},
+        menu_entry! { "Graphics & Sound", None, Self::GRAPHICS_SOUND_MENU },
+        menu_entry! { "Legacy Options", None, Self::LEGACY_MENU },
+        menu_entry! { "HUD Settings", None, Self::HUD_MENU },
+        menu_entry! { "Level Editor", Data::handle_open_level_editor},
+        menu_entry! { "Highscores", Data::handle_highscores},
+        menu_entry! { "Credits", Data::handle_credits},
+        menu_entry! { "Configure Keys", Data::handle_configure_keys},
+        menu_entry! { "Quit Game", Data::handle_quit_game},
+        menu_entry! {},
+    ];
+
     pub unsafe fn handle_quit_game(&mut self, action: MenuAction) -> *const c_char {
         if action != MenuAction::CLICK {
             return null_mut();
@@ -275,7 +275,7 @@ impl Data {
 
     /// simple wrapper to ShowMenu() to provide the external entry point into the main menu
     pub unsafe fn show_main_menu(&mut self) {
-        self.show_menu(MAIN_MENU.as_ptr());
+        self.show_menu(Self::MAIN_MENU.as_ptr());
     }
 
     pub fn free_menu_data(&mut self) {
@@ -904,7 +904,7 @@ impl Data {
     }
 
     /// Generic menu handler
-    pub unsafe fn show_menu(&mut self, menu_entries: *const MenuEntry) {
+    pub unsafe fn show_menu(&mut self, menu_entries: *const MenuEntry<'sdl>) {
         use std::io::Write;
 
         self.initiate_menu(false);
@@ -1434,7 +1434,7 @@ impl Data {
     /// simple wrapper to ShowMenu() to provide the external entry point into the Level Editor menu
     pub unsafe fn show_level_editor_menu(&mut self) {
         self.menu.quit_level_editor = false;
-        self.show_menu(LEVEL_EDITOR_MENU.as_ptr());
+        self.show_menu(Self::LEVEL_EDITOR_MENU.as_ptr());
     }
 
     pub unsafe fn handle_configure_keys(&mut self, action: MenuAction) -> *const c_char {
@@ -1869,7 +1869,16 @@ impl Data {
         let mut f = self.global.game_config.current_sound_fx_volume;
         self.menu_change_float(action, &mut f, 0.05, 0., 1.);
         self.global.game_config.current_sound_fx_volume = f;
-        self.set_sound_f_x_volume(self.global.game_config.current_sound_fx_volume);
+        let Self {
+            sound,
+            sdl,
+            global,
+            main,
+            ..
+        } = &*self;
+        let sound = sound.as_ref().unwrap();
+        let mixer = sdl.mixer.get().unwrap();
+        sound.set_sound_f_x_volume(main, mixer, global.game_config.current_sound_fx_volume);
         null_mut()
     }
 

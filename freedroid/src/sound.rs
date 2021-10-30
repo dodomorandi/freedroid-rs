@@ -1,39 +1,33 @@
 use crate::{
     defs::{BulletKind, Criticality, SoundType, Themed, BYCOLOR, NUM_COLORS, SOUND_DIR_C},
-    Data,
+    global::Global,
+    misc::Misc,
+    Data, Main, Sdl,
 };
 
+use array_init::array_init;
 use cstr::cstr;
 use log::{error, info, warn};
-use sdl_sys::{
-    Mix_AllocateChannels, Mix_Chunk, Mix_CloseAudio, Mix_FreeChunk, Mix_FreeMusic, Mix_LoadMUS,
-    Mix_LoadWAV_RW, Mix_Music, Mix_OpenAudio, Mix_PauseMusic, Mix_PlayChannelTimed, Mix_PlayMusic,
-    Mix_ResumeMusic, Mix_VolumeChunk, Mix_VolumeMusic, SDL_CloseAudio, SDL_GetError,
-    SDL_InitSubSystem, SDL_RWFromFile, SDL_INIT_AUDIO,
+use sdl::{
+    mixer::{Chunk, Music, OpenAudio},
+    rwops::RwOps,
+    Mixer,
 };
+use sdl_sys::{SDL_CloseAudio, SDL_GetError};
 use std::{
     convert::TryFrom,
     ffi::CStr,
     os::raw::{c_char, c_float, c_int},
-    ptr::null_mut,
 };
 
 const MIX_MAX_VOLUME: u8 = 128;
-const MIX_DEFAULT_FREQUENCY: i32 = 22050;
-
-#[cfg(target_endian = "little")]
-const AUDIO_S16LSB: u16 = 0x8010;
-#[cfg(target_endian = "little")]
-const MIX_DEFAULT_FORMAT: u16 = AUDIO_S16LSB;
-
-#[cfg(not(target_endian = "little"))]
-const AUDIO_S16MSB: u16 = 0x9010;
-#[cfg(not(target_endian = "little"))]
-const MIX_DEFAULT_FORMAT: u16 = AUDIO_S16MSB;
 
 #[inline]
-unsafe fn mix_load_wav(file: *mut c_char) -> *mut Mix_Chunk {
-    Mix_LoadWAV_RW(SDL_RWFromFile(file, cstr!("rb").as_ptr() as *mut c_char), 1)
+fn mix_load_wav<'a>(mixer: &'a Mixer, file: &CStr) -> Option<Chunk<'a>> {
+    use sdl::rwops::Mode;
+
+    let file = RwOps::from_c_str_path(file, Mode::Read)?;
+    mixer.load_wav_from_rwops(file)
 }
 
 const SOUND_SAMPLE_FILENAMES: [&CStr; SoundType::All as usize] = [
@@ -87,32 +81,16 @@ const MUSIC_FILES: [&CStr; NUM_COLORS] = [
 ];
 
 #[derive(Debug)]
-pub struct Sound {
+pub struct Sound<'a> {
     prev_color: c_int,
     paused: bool,
-    loaded_wav_files: [*mut Mix_Chunk; SoundType::All as usize],
-    music_songs: [*mut Mix_Music; NUM_COLORS],
-    tmp_mod_file: *mut Mix_Music,
+    loaded_wav_files: [Option<Chunk<'a>>; SoundType::All as usize],
+    _opened_audio: OpenAudio<'a>,
+    music_songs: [Option<Music<'a>>; NUM_COLORS],
+    tmp_mod_file: Option<Music<'a>>,
 }
 
-impl Default for Sound {
-    fn default() -> Self {
-        Self {
-            prev_color: -1,
-            paused: false,
-            loaded_wav_files: [null_mut(); SoundType::All as usize],
-            music_songs: [null_mut(); NUM_COLORS],
-            tmp_mod_file: null_mut(),
-        }
-    }
-}
-
-#[inline]
-unsafe fn mix_play_channel(channel: c_int, chunk: *mut Mix_Chunk, loops: c_int) -> c_int {
-    Mix_PlayChannelTimed(channel, chunk, loops, -1)
-}
-
-impl Data {
+impl Data<'_> {
     pub unsafe fn cry_sound(&self) {
         self.play_sound(SoundType::Cry as i32);
     }
@@ -126,12 +104,19 @@ impl Data {
             return;
         }
 
+        let mixer = self.sdl.mixer.get().unwrap();
+        let sound = self.sound.as_ref().unwrap();
         let tune = usize::try_from(tune).unwrap();
-        let newest_sound_channel = mix_play_channel(-1, self.sound.loaded_wav_files[tune], 0);
-        if newest_sound_channel == -1 {
+        let newest_sound_channel = mixer.play_channel_timed(
+            None,
+            sound.loaded_wav_files[tune].as_ref().unwrap(),
+            Some(0),
+            None,
+        );
+        if newest_sound_channel.is_none() {
             warn!(
                 "Could not play sound-sample: {} Error: {}.\
-             This usually just means that too many samples where played at the same time",
+This usually just means that too many samples where played at the same time",
                 SOUND_SAMPLE_FILENAMES[tune].to_string_lossy(),
                 CStr::from_ptr(SDL_GetError()).to_string_lossy(),
             );
@@ -140,27 +125,20 @@ impl Data {
                 "Successfully playing file {}.",
                 SOUND_SAMPLE_FILENAMES[tune].to_string_lossy()
             );
-        }
+        };
     }
 
-    pub unsafe fn free_sounds(&self) {
-        self.sound
+    pub unsafe fn free_sounds(&mut self) {
+        let sound = self.sound.as_mut().unwrap();
+
+        sound
             .loaded_wav_files
-            .iter()
-            .filter(|file| !file.is_null())
-            .for_each(|&file| Mix_FreeChunk(file));
+            .iter_mut()
+            .for_each(|file| *file = None);
+        sound.music_songs.iter_mut().for_each(|music| *music = None);
+        sound.tmp_mod_file = None;
 
-        self.sound
-            .music_songs
-            .iter()
-            .filter(|song| !song.is_null())
-            .for_each(|&song| Mix_FreeMusic(song));
-
-        if !self.sound.tmp_mod_file.is_null() {
-            Mix_FreeMusic(self.sound.tmp_mod_file);
-        }
-
-        Mix_CloseAudio();
+        // FIXME: Why is this needed?
         SDL_CloseAudio();
     }
 
@@ -301,7 +279,7 @@ impl Data {
     }
 }
 
-impl Data {
+impl<'sdl> Data<'sdl> {
     pub unsafe fn fire_bullet_sound(&self, bullet_type: c_int) {
         if self.main.sound_on == 0 {
             return;
@@ -333,9 +311,15 @@ impl Data {
             return;
         }
 
+        let Self {
+            sdl, sound, main, ..
+        } = self;
+
+        let mixer = sdl.mixer.get().unwrap();
+        let sound = sound.as_mut().unwrap();
         if filename_raw.is_null() {
-            Mix_PauseMusic(); // pause currently played background music
-            self.sound.paused = true;
+            mixer.pause_music();
+            sound.paused = true;
             return;
         }
 
@@ -345,23 +329,22 @@ impl Data {
         // if filename_raw==BYCOLOR then chose bg_music[color]
         // NOTE: if new level-color is the same as before, just resume paused music!
         if filename_raw.to_bytes() == BYCOLOR.to_bytes() {
-            if self.sound.paused && self.sound.prev_color == (*self.main.cur_level).color {
+            if sound.paused && sound.prev_color == (*main.cur_level).color {
                 // current level-song was just paused
-                Mix_ResumeMusic();
-                self.sound.paused = false;
+                mixer.resume_music();
+                sound.paused = false;
             } else {
-                Mix_PlayMusic(
-                    self.sound.music_songs[usize::try_from((*self.main.cur_level).color).unwrap()],
-                    -1,
+                mixer.play_music(
+                    sound.music_songs[usize::try_from((*main.cur_level).color).unwrap()]
+                        .as_ref()
+                        .unwrap(),
+                    None,
                 );
-                self.sound.paused = false;
-                self.sound.prev_color = (*self.main.cur_level).color;
+                sound.paused = false;
+                sound.prev_color = (*main.cur_level).color;
             }
         } else {
             // not using BYCOLOR mechanism: just play specified song
-            if !self.sound.tmp_mod_file.is_null() {
-                Mix_FreeMusic(self.sound.tmp_mod_file);
-            }
             let fpath = self.find_file(
                 filename_raw.as_ptr() as *const c_char,
                 SOUND_DIR_C.as_ptr() as *mut c_char,
@@ -375,20 +358,32 @@ impl Data {
                 );
                 return;
             }
-            self.sound.tmp_mod_file = Mix_LoadMUS(fpath);
-            if self.sound.tmp_mod_file.is_null() {
-                error!(
-                    "SDL Mixer Error: {}. Continuing with sound disabled",
-                    CStr::from_ptr(SDL_GetError()).to_string_lossy(),
-                );
-                return;
-            }
-            Mix_PlayMusic(self.sound.tmp_mod_file, -1);
+
+            let &mut Self {
+                sdl, ref mut sound, ..
+            } = self;
+
+            let mixer = sdl.mixer.get().unwrap();
+            let sound = sound.as_mut().unwrap();
+
+            sound.tmp_mod_file = mixer.load_music_from_c_str_path(CStr::from_ptr(fpath));
+            match sound.tmp_mod_file.as_ref() {
+                Some(music) => {
+                    mixer.play_music(music, None);
+                }
+                None => {
+                    error!(
+                        "SDL Mixer Error: {}. Continuing with sound disabled",
+                        CStr::from_ptr(SDL_GetError()).to_string_lossy(),
+                    );
+                    return;
+                }
+            };
         }
 
-        Mix_VolumeMusic(
-            (self.global.game_config.current_bg_music_volume * f32::from(MIX_MAX_VOLUME)) as c_int,
-        );
+        self.sdl.mixer.get().unwrap().replace_music_volume(Some(
+            (self.global.game_config.current_bg_music_volume * f32::from(MIX_MAX_VOLUME)) as u32,
+        ));
     }
 
     pub unsafe fn countdown_sound(&self) {
@@ -399,67 +394,63 @@ impl Data {
         self.play_sound(SoundType::Endcountdown as i32);
     }
 
-    pub unsafe fn set_sound_f_x_volume(&self, new_volume: c_float) {
-        if self.main.sound_on == 0 {
-            return;
-        }
-
-        // Set the volume IN the loaded files, if SDL is used...
-        // This is done here for the Files 1,2,3 and 4, since these
-        // are background music files.
-        self.sound
-            .loaded_wav_files
-            .iter()
-            .skip(1)
-            .for_each(|&file| {
-                Mix_VolumeChunk(file, (new_volume * f32::from(MIX_MAX_VOLUME)) as c_int);
-            });
-    }
-
     pub unsafe fn set_bg_music_volume(&self, new_volume: c_float) {
         if self.main.sound_on == 0 {
             return;
         }
 
-        Mix_VolumeMusic((new_volume * f32::from(MIX_MAX_VOLUME)) as c_int);
+        let mixer = self.sdl.mixer.get().unwrap();
+        let new_volume =
+            (new_volume >= 0.).then(|| (new_volume * f32::from(MIX_MAX_VOLUME)) as u32);
+        mixer.replace_music_volume(new_volume);
     }
+}
 
-    pub unsafe fn init_audio(&mut self) {
+impl<'a> Sound<'a> {
+    pub(crate) unsafe fn new(
+        main: &mut Main,
+        sdl: &'a Sdl,
+        global: &Global,
+        misc: &mut Misc,
+    ) -> Option<Self> {
         info!("Initializing SDL Audio Systems");
 
-        if self.main.sound_on == 0 {
-            return;
+        if main.sound_on == 0 {
+            return None;
         }
 
         // Now SDL_AUDIO is initialized here:
 
-        if SDL_InitSubSystem(SDL_INIT_AUDIO as u32) == -1 {
-            warn!(
-                "SDL Sound subsystem could not be initialized. \
-             Continuing with sound disabled",
-            );
-            self.main.sound_on = false.into();
-            return;
-        } else {
-            info!("SDL Audio initialisation successful.");
-        }
+        let mixer = match sdl.init_audio() {
+            Some(audio) => audio,
+            None => {
+                warn!(
+                    "SDL Sound subsystem could not be initialized. \
+Continuing with sound disabled",
+                );
+                main.sound_on = false.into();
+                return None;
+            }
+        };
+        info!("SDL Audio initialisation successful.");
 
         // Now that we have initialized the audio SubSystem, we must open
         // an audio channel.  This will be done here (see code from Mixer-Tutorial):
+        let opened_audio = match mixer.open_audio().channels(2).open(100) {
+            Some(open_audio) => open_audio,
+            None => {
+                error!("SDL audio channel could not be opened.");
+                warn!(
+                    "SDL Mixer Error: {}. Continuing with sound disabled",
+                    sdl.get_error().to_string_lossy(),
+                );
+                main.sound_on = false.into();
+                return None;
+            }
+        };
+        info!("Successfully opened SDL audio channel.");
 
-        if Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, 2, 100) != 0 {
-            error!("SDL audio channel could not be opened.");
-            warn!(
-                "SDL Mixer Error: {}. Continuing with sound disabled",
-                CStr::from_ptr(SDL_GetError()).to_string_lossy(),
-            );
-            self.main.sound_on = false.into();
-            return;
-        } else {
-            warn!("Successfully opened SDL audio channel.");
-        }
-
-        if Mix_AllocateChannels(20) != 20 {
+        if mixer.allocate_channels(20) != Some(20) {
             warn!("WARNING: could not get all 20 mixer-channels I asked for...");
         }
 
@@ -467,23 +458,26 @@ impl Data {
         // WAV files into memory, something we NEVER did while using the yiff,
         // because the yiff did all the loading, analyzing and playing...
 
-        self.sound.loaded_wav_files[0] = null_mut();
+        let mut loaded_wav_files: [_; SoundType::All as usize] = array_init(|_| None);
+
         let iter = SOUND_SAMPLE_FILENAMES.iter().copied().enumerate().skip(1);
         for (sound_file_index, sample_filename) in iter {
-            let fpath = self.find_file(
+            let fpath = Data::find_file_static(
+                global,
+                misc,
                 sample_filename.as_ptr(),
                 SOUND_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::WarnOnly as c_int,
             );
 
-            let loaded_wav_file = &mut self.sound.loaded_wav_files[sound_file_index];
+            let loaded_wav_file = &mut loaded_wav_files[sound_file_index];
 
             if !fpath.is_null() {
-                *loaded_wav_file = mix_load_wav(fpath);
+                *loaded_wav_file = mix_load_wav(mixer, CStr::from_ptr(fpath));
             }
 
-            if loaded_wav_file.is_null() {
+            if loaded_wav_file.is_none() {
                 error!(
                     "Could not load Sound-sample: {}",
                     sample_filename.to_string_lossy()
@@ -492,8 +486,8 @@ impl Data {
                     "Continuing with sound disabled. Error = {}",
                     CStr::from_ptr(SDL_GetError()).to_string_lossy()
                 );
-                self.main.sound_on = false.into();
-                return;
+                main.sound_on = false.into();
+                return None;
             } else {
                 info!(
                     "Successfully loaded file {}.",
@@ -502,36 +496,67 @@ impl Data {
             }
         }
 
+        let mut music_songs: [_; NUM_COLORS] = array_init(|_| None);
         let iter = MUSIC_FILES.iter().copied().enumerate();
         for (music_file_index, music_file) in iter {
-            let fpath = self.find_file(
+            let fpath = Data::find_file_static(
+                global,
+                misc,
                 music_file.as_ptr(),
                 SOUND_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::WarnOnly as c_int,
             );
-            let music_song = &mut self.sound.music_songs[music_file_index];
+            let music_song = &mut music_songs[music_file_index];
             if !fpath.is_null() {
-                *music_song = Mix_LoadMUS(fpath);
+                *music_song = mixer.load_music_from_c_str_path(CStr::from_ptr(fpath));
             }
-            if music_song.is_null() {
+            if music_song.is_none() {
                 error!("Error loading sound-file: {}", music_file.to_string_lossy());
                 warn!(
                     "SDL Mixer Error: {}. Continuing with sound disabled",
                     CStr::from_ptr(SDL_GetError()).to_string_lossy()
                 );
-                self.main.sound_on = false.into();
-                return;
+                main.sound_on = false.into();
+                return None;
             } else {
                 info!("Successfully loaded file {}.", music_file.to_string_lossy());
             }
         }
+
+        let sound = Self {
+            prev_color: -1,
+            paused: false,
+            loaded_wav_files,
+            _opened_audio: opened_audio,
+            music_songs,
+            tmp_mod_file: None,
+        };
 
         //--------------------
         // Now that the music files have been loaded successfully, it's time to set
         // the music and sound volumes accoridingly, i.e. as specifies by the users
         // configuration.
         //
-        self.set_sound_f_x_volume(self.global.game_config.current_sound_fx_volume);
+        let mixer = sdl.mixer.get().unwrap();
+        sound.set_sound_f_x_volume(main, mixer, global.game_config.current_sound_fx_volume);
+
+        Some(sound)
+    }
+
+    pub(crate) fn set_sound_f_x_volume(&self, main: &Main, mixer: &Mixer, new_volume: c_float) {
+        if main.sound_on == 0 {
+            return;
+        }
+
+        // Set the volume IN the loaded files, if SDL is used...
+        // This is done here for the Files 1,2,3 and 4, since these
+        // are background music files.
+        self.loaded_wav_files.iter().skip(1).for_each(|file| {
+            mixer.replace_chunk_volume(
+                file.as_ref().unwrap(),
+                Some((new_volume * f32::from(MIX_MAX_VOLUME)) as u32),
+            );
+        });
     }
 }

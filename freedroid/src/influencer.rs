@@ -41,7 +41,7 @@ const REFRESH_ENERGY: f32 = 3.;
 const COLLISION_PUSHSPEED: f32 = 2.0;
 const MAXIMAL_STEP_SIZE: f32 = 7.0 / 20.;
 
-impl Data {
+impl Data<'_> {
     /// Refresh fields can be used to regain energy
     /// lost due to bullets or collisions, but not energy lost due to permanent
     /// loss of health in PermanentLoseEnergy.
@@ -414,9 +414,7 @@ impl Data {
             }
         }
     }
-}
 
-impl Data {
     pub unsafe fn animate_influence(&mut self) {
         if self.vars.me.ty != Droid::Droid001 as c_int {
             self.vars.me.phase += (self.vars.me.energy
@@ -584,9 +582,7 @@ impl Data {
 
         self.animate_influence(); // move the "phase" of influencers rotation
     }
-}
 
-impl Data {
     pub unsafe fn permanent_lose_energy(&mut self) {
         // Of course if in invincible mode, no energy will ever be lost...
         if self.main.invincible_mode != 0 {

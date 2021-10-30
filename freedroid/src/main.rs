@@ -50,9 +50,11 @@ use highscore::Highscore;
 use influencer::Influencer;
 use init::Init;
 use input::Input;
+use log::info;
 use map::{ColorNames, Map};
 use menu::Menu;
 use misc::Misc;
+use once_cell::unsync::OnceCell;
 use ship::ShipData;
 use sound::Sound;
 use structs::{Blast, Bullet, Enemy, Level, Ship};
@@ -66,7 +68,6 @@ use sdl_sys::{
 };
 use std::{
     convert::TryFrom,
-    fmt,
     ops::Not,
     os::raw::{c_char, c_float},
     ptr::null_mut,
@@ -143,65 +144,11 @@ impl Default for Main {
     }
 }
 
-impl fmt::Debug for Main {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        #[derive(Debug)]
-        struct Rect {
-            x: i16,
-            y: i16,
-            w: u16,
-            h: u16,
-        }
+type Sdl = sdl::Sdl<sdl::Video, sdl::Timer, OnceCell<sdl::JoystickSystem>, OnceCell<sdl::Mixer>>;
 
-        impl From<&SDL_Rect> for Rect {
-            fn from(rect: &SDL_Rect) -> Rect {
-                Rect {
-                    x: rect.x,
-                    y: rect.y,
-                    w: rect.w,
-                    h: rect.h,
-                }
-            }
-        }
-
-        let first_digit_rect = Rect::from(&self.first_digit_rect);
-        let second_digit_rect = Rect::from(&self.second_digit_rect);
-        let third_digit_rect = Rect::from(&self.third_digit_rect);
-
-        f.debug_struct("Main")
-            .field("last_got_into_blast_sound", &self.last_got_into_blast_sound)
-            .field("last_refresh_sound", &self.last_refresh_sound)
-            .field("sound_on", &self.sound_on)
-            .field("cur_level", &self.cur_level)
-            .field("cur_ship", &self.cur_ship)
-            .field("show_score", &self.show_score)
-            .field("real_score", &self.real_score)
-            .field("death_count", &self.death_count)
-            .field("death_count_drain_speed", &self.death_count_drain_speed)
-            .field("alert_level", &self.alert_level)
-            .field("alert_threshold", &self.alert_threshold)
-            .field("alert_bonus_per_sec", &self.alert_bonus_per_sec)
-            .field("all_enemys", &self.all_enemys)
-            .field("config_dir", &self.config_dir)
-            .field("invincible_mode", &self.invincible_mode)
-            .field("show_all_droids", &self.show_all_droids)
-            .field("stop_influencer", &self.stop_influencer)
-            .field("num_enemys", &self.num_enemys)
-            .field("number_of_droid_types", &self.number_of_droid_types)
-            .field("pre_take_energy", &self.pre_take_energy)
-            .field("all_bullets", &self.all_bullets)
-            .field("all_blasts", &self.all_blasts)
-            .field("first_digit_rect", &first_digit_rect)
-            .field("second_digit_rect", &second_digit_rect)
-            .field("third_digit_rect", &third_digit_rect)
-            .field("f_p_sover1", &self.f_p_sover1)
-            .finish()
-    }
-}
-
-#[derive(Debug)]
-struct Data {
+struct Data<'sdl> {
     game_over: bool,
+    sdl: &'sdl Sdl,
     map: Map,
     b_font: BFont,
     highscore: Highscore,
@@ -209,7 +156,7 @@ struct Data {
     influencer: Influencer,
     init: Init,
     text: Text,
-    sound: Sound,
+    sound: Option<Sound<'sdl>>,
     misc: Misc,
     ship: ShipData,
     input: Input,
@@ -221,10 +168,11 @@ struct Data {
     main: Main,
 }
 
-impl Default for Data {
-    fn default() -> Self {
+impl<'sdl> Data<'sdl> {
+    fn new(sdl: &'sdl Sdl) -> Self {
         Self {
             game_over: false,
+            sdl,
             map: Default::default(),
             b_font: Default::default(),
             highscore: Default::default(),
@@ -246,10 +194,21 @@ impl Default for Data {
     }
 }
 
+fn init_sdl() -> Sdl {
+    let sdl = sdl::init().video().timer().build().unwrap_or_else(|| {
+        sdl::get_error(|err| {
+            panic!("Couldn't initialize SDL: {}", err.to_string_lossy());
+        })
+    });
+    info!("SDL initialisation successful.");
+    sdl
+}
+
 fn main() {
     env_logger::init();
 
-    let mut data = Data::default();
+    let sdl = init_sdl();
+    let mut data = Data::new(&sdl);
 
     unsafe {
         data.input.joy_sensitivity = 1;
@@ -393,7 +352,7 @@ fn main() {
     }
 }
 
-impl Data {
+impl Data<'_> {
     /// This function updates counters and is called ONCE every frame.
     /// The counters include timers, but framerate-independence of game speed
     /// is preserved because everything is weighted with the Frame_Time()

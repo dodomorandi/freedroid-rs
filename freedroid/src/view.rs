@@ -46,7 +46,7 @@ const FLASH_DARK: SDL_Color = SDL_Color {
     unused: 0,
 };
 
-impl Data {
+impl Data<'_> {
     pub unsafe fn fill_rect(&mut self, mut rect: SDL_Rect, color: SDL_Color) {
         let pixcolor = SDL_MapRGB(
             self.graphics.ne_screen.as_ref().unwrap().format().as_ptr(),

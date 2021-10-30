@@ -26,7 +26,74 @@ use std::{
 const HIGHLIGHTCOLOR: u32 = 255;
 const HIGHLIGHTCOLOR2: i32 = 100;
 
-impl Data {
+/// create a new empty waypoint on position x/y
+fn create_waypoint(level: &mut Level, block_x: c_int, block_y: c_int) {
+    if level.num_waypoints == c_int::try_from(MAXWAYPOINTS).unwrap() {
+        warn!(
+            "Maximal number of waypoints ({}) reached on this level. Cannot insert any more.",
+            MAXWAYPOINTS,
+        );
+        return;
+    }
+
+    let num = usize::try_from(level.num_waypoints).unwrap();
+    level.num_waypoints += 1;
+
+    level.all_waypoints[num].x = block_x.try_into().unwrap();
+    level.all_waypoints[num].y = block_y.try_into().unwrap();
+    level.all_waypoints[num].num_connections = 0;
+}
+
+/// delete given waypoint num (and all its connections) on level Lev
+fn delete_waypoint(level: &mut Level, num: c_int) {
+    let wp_list = &mut level.all_waypoints;
+    let wpmax = level.num_waypoints - 1;
+
+    // is this the last one? then just delete
+    if num == wpmax {
+        wp_list[usize::try_from(num).unwrap()].num_connections = 0;
+    } else {
+        // otherwise shift down all higher waypoints
+        let num: usize = num.try_into().unwrap();
+        wp_list.copy_within((num + 1)..=usize::try_from(wpmax).unwrap(), num);
+    }
+
+    // now there's one less:
+    level.num_waypoints -= 1;
+
+    // now adjust the remaining wp-list to the changes:
+    for waypoint in &mut wp_list[..usize::try_from(level.num_waypoints).unwrap()] {
+        let Waypoint {
+            connections,
+            num_connections,
+            ..
+        } = waypoint;
+
+        let mut connection_index = 0;
+        while connection_index < usize::try_from(*num_connections).unwrap() {
+            let connection = &mut connections[connection_index];
+            // eliminate all references to this waypoint
+            match (*connection).cmp(&num) {
+                Ordering::Equal => {
+                    // move all connections after this one down
+                    connections.copy_within(
+                        (connection_index + 1)..usize::try_from(*num_connections).unwrap(),
+                        connection_index,
+                    );
+                    *num_connections -= 1;
+                }
+                Ordering::Greater => {
+                    // adjust all connections to the shifted waypoint-numbers
+                    *connection -= 1;
+                    connection_index += 1;
+                }
+                Ordering::Less => connection_index += 1,
+            }
+        }
+    }
+}
+
+impl Data<'_> {
     /// This function is provides the Level Editor integrated into
     /// freedroid.  Actually this function is a submenu of the big
     /// Escape Menu.  In here you can edit the level and upon pressing
@@ -416,76 +483,7 @@ impl Data {
 
         self.clear_graph_mem();
     }
-}
 
-/// create a new empty waypoint on position x/y
-fn create_waypoint(level: &mut Level, block_x: c_int, block_y: c_int) {
-    if level.num_waypoints == c_int::try_from(MAXWAYPOINTS).unwrap() {
-        warn!(
-            "Maximal number of waypoints ({}) reached on this level. Cannot insert any more.",
-            MAXWAYPOINTS,
-        );
-        return;
-    }
-
-    let num = usize::try_from(level.num_waypoints).unwrap();
-    level.num_waypoints += 1;
-
-    level.all_waypoints[num].x = block_x.try_into().unwrap();
-    level.all_waypoints[num].y = block_y.try_into().unwrap();
-    level.all_waypoints[num].num_connections = 0;
-}
-
-/// delete given waypoint num (and all its connections) on level Lev
-fn delete_waypoint(level: &mut Level, num: c_int) {
-    let wp_list = &mut level.all_waypoints;
-    let wpmax = level.num_waypoints - 1;
-
-    // is this the last one? then just delete
-    if num == wpmax {
-        wp_list[usize::try_from(num).unwrap()].num_connections = 0;
-    } else {
-        // otherwise shift down all higher waypoints
-        let num: usize = num.try_into().unwrap();
-        wp_list.copy_within((num + 1)..=usize::try_from(wpmax).unwrap(), num);
-    }
-
-    // now there's one less:
-    level.num_waypoints -= 1;
-
-    // now adjust the remaining wp-list to the changes:
-    for waypoint in &mut wp_list[..usize::try_from(level.num_waypoints).unwrap()] {
-        let Waypoint {
-            connections,
-            num_connections,
-            ..
-        } = waypoint;
-
-        let mut connection_index = 0;
-        while connection_index < usize::try_from(*num_connections).unwrap() {
-            let connection = &mut connections[connection_index];
-            // eliminate all references to this waypoint
-            match (*connection).cmp(&num) {
-                Ordering::Equal => {
-                    // move all connections after this one down
-                    connections.copy_within(
-                        (connection_index + 1)..usize::try_from(*num_connections).unwrap(),
-                        connection_index,
-                    );
-                    *num_connections -= 1;
-                }
-                Ordering::Greater => {
-                    // adjust all connections to the shifted waypoint-numbers
-                    *connection -= 1;
-                    connection_index += 1;
-                }
-                Ordering::Less => connection_index += 1,
-            }
-        }
-    }
-}
-
-impl Data {
     /// This function is used by the Level Editor integrated into
     /// freedroid.  It marks all waypoints with a cross.
     unsafe fn show_waypoints(&mut self) {

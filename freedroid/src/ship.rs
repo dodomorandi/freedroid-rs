@@ -21,7 +21,6 @@ use sdl_sys::{
 use std::{
     convert::{TryFrom, TryInto},
     ffi::CStr,
-    fmt,
     ops::Not,
     os::raw::{c_char, c_float, c_int},
     ptr::{null_mut, NonNull},
@@ -44,58 +43,6 @@ pub struct ShipData {
     down_rect: SDL_Rect,
     left_rect: SDL_Rect,
     right_rect: SDL_Rect,
-}
-
-impl fmt::Debug for ShipData {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        #[derive(Debug)]
-        struct Rect {
-            x: i16,
-            y: i16,
-            w: u16,
-            h: u16,
-        }
-
-        impl From<&SDL_Rect> for Rect {
-            fn from(rect: &SDL_Rect) -> Rect {
-                Rect {
-                    x: rect.x,
-                    y: rect.y,
-                    w: rect.w,
-                    h: rect.h,
-                }
-            }
-        }
-
-        let src_rect = Rect::from(&self.src_rect);
-        let up_rect = Rect::from(&self.up_rect);
-        let down_rect = Rect::from(&self.down_rect);
-        let left_rect = Rect::from(&self.left_rect);
-        let right_rect = Rect::from(&self.right_rect);
-
-        f.debug_struct("ShipData")
-            .field("last_siren", &self.last_siren)
-            .field("frame_num", &self.frame_num)
-            .field("last_droid_type", &self.last_droid_type)
-            .field("last_frame_time", &self.last_frame_time)
-            .field("src_rect", &src_rect)
-            .field(
-                "enter_console_last_move_tick",
-                &self.enter_console_last_move_tick,
-            )
-            .field(
-                "great_droid_show_last_move_tick",
-                &self.great_droid_show_last_move_tick,
-            )
-            .field("enter_lift_last_move_tick", &self.enter_lift_last_move_tick)
-            .field("droid_background", &self.droid_background)
-            .field("droid_pics", &self.droid_pics)
-            .field("up_rect", &up_rect)
-            .field("down_rect", &down_rect)
-            .field("left_rect", &left_rect)
-            .field("right_rect", &right_rect)
-            .finish()
-    }
 }
 
 impl Default for ShipData {
@@ -125,7 +72,7 @@ pub unsafe fn sdl_rw_seek(ctx: *mut SDL_RWops, offset: c_int, whence: c_int) -> 
     seek(ctx, offset, whence)
 }
 
-impl Data {
+impl Data<'_> {
     /// do all alert-related agitations: alert-sirens and alert-lights
     pub unsafe fn alert_level_warning(&mut self) {
         const SIREN_WAIT: f32 = 2.5;
@@ -178,9 +125,7 @@ impl Data {
                 .add(usize::try_from(posx).unwrap()) = cur_alert as i8;
         }
     }
-}
 
-impl Data {
     /// Show a an animated droid-pic: automatically counts frames and frametimes
     /// stored internally, so you just have to keep calling this function to get
     /// an animation. The target-rect dst is only updated when a new frame is set
@@ -611,9 +556,7 @@ Paradroid to eliminate all rogue robots.\0",
             SDL_Flip(self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr());
         }
     }
-}
 
-impl Data {
     /// Displays the concept view of deck
     ///
     /// Note: we no longer wait here for a key-press, but return

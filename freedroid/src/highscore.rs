@@ -102,7 +102,7 @@ impl HighscoreEntry {
     }
 }
 
-impl Data {
+impl Data<'_> {
     /// Set up a new highscore list: load from disk if found
     unsafe fn init_highscores_inner(&mut self, config_dir: Option<&Path>) {
         let file = config_dir.and_then(|config_dir| {

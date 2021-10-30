@@ -62,7 +62,7 @@ impl Default for Text {
     }
 }
 
-impl Data {
+impl Data<'_> {
     /// Reads a string of "MaxLen" from User-input, and echos it
     /// either to stdout or using graphics-text, depending on the
     /// parameter "echo":

@@ -70,7 +70,390 @@ pub struct Map {
     inner_wait_counter: f32,
 }
 
-impl Data {
+pub unsafe fn get_map_brick(deck: &Level, x: c_float, y: c_float) -> c_uchar {
+    let xx = x.round() as c_int;
+    let yy = y.round() as c_int;
+
+    if yy >= deck.ylen || yy < 0 || xx >= deck.xlen || xx < 0 {
+        MapTile::Void as c_uchar
+    } else {
+        *deck.map[usize::try_from(yy).unwrap()].offset(isize::try_from(xx).unwrap()) as c_uchar
+    }
+}
+
+pub unsafe fn free_level_memory(level: *mut Level) {
+    if level.is_null() {
+        return;
+    }
+
+    let level = &mut *level;
+    drop(Vec::from_raw_parts(level.levelname as *mut u8, 20, 20));
+    dealloc_c_string(level.background_song_name);
+    dealloc_c_string(level.level_enter_comment);
+
+    let xlen = level.xlen;
+    level
+        .map
+        .iter_mut()
+        .take(level.ylen as usize)
+        .for_each(|&mut map| {
+            dealloc(
+                map as *mut u8,
+                Layout::array::<i8>(usize::try_from(xlen).unwrap()).unwrap(),
+            )
+        });
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[allow(dead_code)]
+pub enum ColorNames {
+    Red,
+    Yellow,
+    Green,
+    Gray,
+    Blue,
+    Greenblue,
+    Dark,
+}
+
+unsafe fn reset_level_map(level: &mut Level) {
+    // Now in the game and in the level editor, it might have happend that some open
+    // doors occur.  The make life easier for the saving routine, these doors should
+    // be closed first.
+
+    use MapTile::*;
+    level.map[0..usize::try_from(level.ylen).unwrap()]
+        .iter()
+        .copied()
+        .flat_map(|row| {
+            std::slice::from_raw_parts_mut(row as *mut u8, usize::try_from(level.xlen).unwrap())
+        })
+        .for_each(|tile| match MapTile::try_from(*tile).unwrap() {
+            VZutuere | VHalbtuere1 | VHalbtuere2 | VHalbtuere3 | VGanztuere => {
+                *tile = VZutuere as u8
+            }
+            HZutuere | HHalbtuere1 | HHalbtuere2 | HHalbtuere3 | HGanztuere => {
+                *tile = HZutuere as u8
+            }
+            Refresh1 | Refresh2 | Refresh3 | Refresh4 => *tile = Refresh1 as u8,
+            AlertGreen | AlertYellow | AlertAmber | AlertRed => *tile = AlertGreen as u8,
+            _ => {}
+        });
+}
+
+/// initialize doors, refreshes and lifts for the given level-data
+pub unsafe fn interpret_map(level: &mut Level) -> c_int {
+    /* Get Doors Array */
+    get_doors(level);
+
+    // Get Refreshes
+    get_refreshes(level);
+
+    // Get Alerts
+    get_alerts(level);
+
+    defs::OK.into()
+}
+
+/// initializes the Doors array of the given level structure
+/// Of course the level data must be in the structure already!!
+/// Returns the number of doors found or ERR
+pub unsafe fn get_doors(level: &mut Level) -> c_int {
+    let mut curdoor = 0;
+
+    let xlen = level.xlen;
+    let ylen = level.ylen;
+
+    /* init Doors- Array to 0 */
+    level.doors.fill(GrobPoint { x: -1, y: -1 });
+
+    /* now find the doors */
+    for line in 0..i8::try_from(ylen).unwrap() {
+        for col in 0..i8::try_from(xlen).unwrap() {
+            let brick = *level.map[usize::try_from(line).unwrap()].add(col.try_into().unwrap());
+            if brick == MapTile::VZutuere as i8 || brick == MapTile::HZutuere as i8 {
+                level.doors[curdoor].x = col;
+                level.doors[curdoor].y = line;
+                curdoor += 1;
+
+                if curdoor > MAX_DOORS_ON_LEVEL {
+                    panic!(
+                        "\n\
+\n\
+----------------------------------------------------------------------\n\
+Freedroid has encountered a problem:\n\
+The number of doors found in level {} seems to be greater than the number\n\
+of doors currently allowed in a freedroid map.\n\
+\n\
+The constant for the maximum number of doors currently is set to {} in the\n\
+freedroid defs.h file.  You can enlarge the constant there, then start make\n\
+and make install again, and the map will be loaded without complaint.\n\
+\n\
+The constant in defs.h is names 'MAX_DOORS_ON_LEVEL'.  If you received this \n\
+message, please also tell the developers of the freedroid project, that they\n\
+should enlarge the constant in all future versions as well.\n\
+\n\
+Thanks a lot.\n\
+\n\
+But for now Freedroid will terminate to draw attention to this small map problem.\n\
+Sorry...\n\
+----------------------------------------------------------------------\n\
+\n",
+                        level.levelnum, MAX_DOORS_ON_LEVEL
+                    );
+                }
+            }
+        }
+    }
+
+    curdoor.try_into().unwrap()
+}
+
+/// This function initialized the array of Refreshes for animation
+/// within the level
+/// Returns the number of refreshes found or ERR
+pub unsafe fn get_refreshes(level: &mut Level) -> c_int {
+    let xlen = level.xlen;
+    let ylen = level.ylen;
+
+    /* init refreshes array to -1 */
+    level.refreshes.fill(GrobPoint { x: -1, y: -1 });
+
+    let mut curref = 0;
+    /* now find all the refreshes */
+    for row in 0..u8::try_from(ylen).unwrap() {
+        for col in 0..u8::try_from(xlen).unwrap() {
+            if *level.map[usize::from(row)].add(col.into()) == MapTile::Refresh1 as i8 {
+                level.refreshes[curref].x = col.try_into().unwrap();
+                level.refreshes[curref].y = row.try_into().unwrap();
+                curref += 1;
+
+                if curref > MAX_REFRESHES_ON_LEVEL {
+                    panic!(
+                        "\n\
+                        \n\
+----------------------------------------------------------------------\n\
+Freedroid has encountered a problem:\n\
+The number of refreshes found in level {} seems to be greater than the number\n\
+of refreshes currently allowed in a freedroid map.\n\
+\n\
+The constant for the maximum number of refreshes currently is set to {} in the\n\
+freedroid defs.h file.  You can enlarge the constant there, then start make\n\
+and make install again, and the map will be loaded without complaint.\n\
+\n\
+The constant in defs.h is names 'MAX_REFRESHES_ON_LEVEL'.  If you received this \n\
+message, please also tell the developers of the freedroid project, that they\n\
+should enlarge the constant in all future versions as well.\n\
+\n\
+Thanks a lot.\n\
+\n\
+But for now Freedroid will terminate to draw attention to this small map problem.\n\
+Sorry...\n\
+----------------------------------------------------------------------\n\
+\n",
+                        level.levelnum, MAX_REFRESHES_ON_LEVEL
+                    );
+                }
+            }
+        }
+    }
+
+    curref.try_into().unwrap()
+}
+
+/// Find all alerts on this level and initialize their position-array
+pub unsafe fn get_alerts(level: &mut Level) {
+    let xlen = level.xlen;
+    let ylen = level.ylen;
+
+    // init alert array to -1
+    level.alerts.fill(GrobPoint { x: -1, y: -1 });
+
+    // now find all the alerts
+    let mut curref = 0;
+    for row in 0..u8::try_from(ylen).unwrap() {
+        for col in 0..u8::try_from(xlen).unwrap() {
+            if *level.map[usize::from(row)].add(col.into()) == MapTile::AlertGreen as i8 {
+                level.alerts[curref].x = col.try_into().unwrap();
+                level.alerts[curref].y = row.try_into().unwrap();
+                curref += 1;
+
+                if curref > MAX_ALERTS_ON_LEVEL {
+                    warn!(
+                        "more alert-tiles found on level {} than allowed ({})!!",
+                        level.levelnum, MAX_ALERTS_ON_LEVEL
+                    );
+                    warn!("remaining Alerts will be inactive...");
+                    break;
+                }
+            }
+        }
+    }
+}
+
+/// This function is for LOADING map data!
+/// This function extracts the data from *data and writes them
+/// into a Level-struct:
+///
+/// Doors and Waypoints Arrays are initialized too
+pub unsafe fn level_to_struct(data: *mut c_char) -> *mut Level {
+    /* Get the memory for one level */
+    let loadlevel_ptr = alloc_zeroed(Layout::new::<Level>()) as *mut Level;
+    let loadlevel = &mut *loadlevel_ptr;
+
+    loadlevel.empty = false.into();
+
+    info!("Starting to process information for another level:");
+
+    /* Read Header Data: levelnum and x/ylen */
+    let data_pointer = libc::strstr(data, cstr!("Levelnumber:").as_ptr() as *mut c_char);
+    if data_pointer.is_null() {
+        panic!("No Levelnumber entry found! Terminating! ");
+    }
+    libc::sscanf(
+        data_pointer,
+        cstr!(
+            "Levelnumber: %u \n xlen of this level: %u \n ylen of this level: %u \n color of this \
+             level: %u"
+        )
+        .as_ptr(),
+        &mut (loadlevel.levelnum) as *mut _ as *mut c_void,
+        &mut (loadlevel.xlen) as *mut _ as *mut c_void,
+        &mut (loadlevel.ylen) as *mut _ as *mut c_void,
+        &mut (loadlevel.color) as *mut _ as *mut c_void,
+    );
+
+    info!("Levelnumber : {} ", loadlevel.levelnum);
+    info!("xlen of this level: {} ", loadlevel.xlen);
+    info!("ylen of this level: {} ", loadlevel.ylen);
+    info!("color of this level: {} ", loadlevel.ylen);
+
+    loadlevel.levelname = read_and_malloc_string_from_data(
+        data,
+        LEVEL_NAME_STRING_C.as_ptr() as *mut c_char,
+        cstr!("\n").as_ptr() as *mut c_char,
+    );
+    loadlevel.background_song_name = read_and_malloc_string_from_data(
+        data,
+        BACKGROUND_SONG_NAME_STRING_C.as_ptr() as *mut c_char,
+        cstr!("\n").as_ptr() as *mut c_char,
+    );
+    loadlevel.level_enter_comment = read_and_malloc_string_from_data(
+        data,
+        LEVEL_ENTER_COMMENT_STRING_C.as_ptr() as *mut c_char,
+        cstr!("\n").as_ptr() as *mut c_char,
+    );
+
+    // find the map data
+    let map_begin = libc::strstr(data, MAP_BEGIN_STRING_C.as_ptr());
+    if map_begin.is_null() {
+        return null_mut();
+    }
+
+    /* set position to Waypoint-Data */
+    let wp_begin = libc::strstr(data, WP_BEGIN_STRING_C.as_ptr());
+    if wp_begin.is_null() {
+        return null_mut();
+    }
+
+    // find end of level-data
+    let level_end = libc::strstr(data, LEVEL_END_STRING_C.as_ptr());
+    if level_end.is_null() {
+        return null_mut();
+    }
+
+    /* now scan the map */
+    let mut next_line = map_begin;
+    libc::strtok(next_line, cstr!("\n").as_ptr());
+
+    /* read MapData */
+    for i in 0..usize::try_from(loadlevel.ylen).unwrap() {
+        let this_line = libc::strtok(null_mut(), cstr!("\n").as_ptr());
+        if this_line.is_null() {
+            return null_mut();
+        }
+        loadlevel.map[i] =
+            alloc_zeroed(Layout::array::<i8>(loadlevel.xlen.try_into().unwrap()).unwrap())
+                as *mut c_char;
+        let mut pos = this_line;
+        pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace
+
+        for k in 0..usize::try_from(loadlevel.xlen).unwrap() {
+            if *pos == 0 {
+                return null_mut();
+            }
+            let mut tmp: c_int = 0;
+            let res = libc::sscanf(pos, cstr!("%d").as_ptr(), &mut tmp as *mut _ as *mut c_void);
+            *(loadlevel.map[i].add(k)) = tmp as c_char;
+            if res == 0 || res == libc::EOF {
+                return null_mut();
+            }
+            pos = pos.add(libc::strcspn(pos, WHITE_SPACE.as_ptr())); // skip last token
+            pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace of next one
+        }
+    }
+
+    /* Get Waypoints */
+    next_line = wp_begin;
+    libc::strtok(next_line, cstr!("\n").as_ptr());
+
+    for i in 0..MAXWAYPOINTS {
+        let this_line = libc::strtok(null_mut(), cstr!("\n").as_ptr());
+        if this_line.is_null() {
+            return null_mut();
+        }
+        if this_line == level_end {
+            loadlevel.num_waypoints = i.try_into().unwrap();
+            break;
+        }
+
+        let mut nr: c_int = 0;
+        let mut x: c_int = 0;
+        let mut y: c_int = 0;
+        libc::sscanf(
+            this_line,
+            cstr!("Nr.=%d \t x=%d \t y=%d").as_ptr(),
+            &mut nr as *mut _ as *mut c_void,
+            &mut x as *mut _ as *mut c_void,
+            &mut y as *mut _ as *mut c_void,
+        );
+
+        loadlevel.all_waypoints[i].x = x.try_into().unwrap();
+        loadlevel.all_waypoints[i].y = y.try_into().unwrap();
+
+        let mut pos = libc::strstr(this_line, CONNECTION_STRING_C.as_ptr());
+        pos = pos.add(CONNECTION_STRING_C.to_bytes().len()); // skip connection-string
+        pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace
+
+        let mut k = 0;
+        while k < MAX_WP_CONNECTIONS {
+            if *pos == 0 {
+                break;
+            }
+            let mut connection: c_int = 0;
+            let res = libc::sscanf(
+                pos,
+                cstr!("%d").as_ptr(),
+                &mut connection as *mut _ as *mut c_void,
+            );
+            if connection == -1 || res == 0 || res == libc::EOF {
+                break;
+            }
+            loadlevel.all_waypoints[i].connections[k] = connection;
+
+            pos = pos.add(libc::strcspn(pos, WHITE_SPACE.as_ptr())); // skip last token
+            pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace for next one
+
+            k += 1;
+        }
+
+        loadlevel.all_waypoints[i].num_connections = k.try_into().unwrap();
+    }
+
+    loadlevel_ptr
+}
+
+impl Data<'_> {
     /// Determines wether object on x/y is visible to the 001 or not
     pub unsafe fn is_visible(&self, objpos: &Finepoint) -> c_int {
         let influ_x = self.vars.me.pos.x;
@@ -106,20 +489,7 @@ impl Data {
 
         true.into()
     }
-}
 
-pub unsafe fn get_map_brick(deck: &Level, x: c_float, y: c_float) -> c_uchar {
-    let xx = x.round() as c_int;
-    let yy = y.round() as c_int;
-
-    if yy >= deck.ylen || yy < 0 || xx >= deck.xlen || xx < 0 {
-        MapTile::Void as c_uchar
-    } else {
-        *deck.map[usize::try_from(yy).unwrap()].offset(isize::try_from(xx).unwrap()) as c_uchar
-    }
-}
-
-impl Data {
     pub unsafe fn free_ship_memory(&mut self) {
         self.main
             .cur_ship
@@ -132,32 +502,7 @@ impl Data {
                 dealloc(level as *mut u8, Layout::new::<Level>());
             });
     }
-}
 
-pub unsafe fn free_level_memory(level: *mut Level) {
-    if level.is_null() {
-        return;
-    }
-
-    let level = &mut *level;
-    drop(Vec::from_raw_parts(level.levelname as *mut u8, 20, 20));
-    dealloc_c_string(level.background_song_name);
-    dealloc_c_string(level.level_enter_comment);
-
-    let xlen = level.xlen;
-    level
-        .map
-        .iter_mut()
-        .take(level.ylen as usize)
-        .for_each(|&mut map| {
-            dealloc(
-                map as *mut u8,
-                Layout::array::<i8>(usize::try_from(xlen).unwrap()).unwrap(),
-            )
-        });
-}
-
-impl Data {
     pub unsafe fn animate_refresh(&mut self) {
         self.map.inner_wait_counter += self.frame_time() * 10.;
 
@@ -417,21 +762,7 @@ impl Data {
             _ => -1,
         }
     }
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[allow(dead_code)]
-pub enum ColorNames {
-    Red,
-    Yellow,
-    Green,
-    Gray,
-    Blue,
-    Greenblue,
-    Dark,
-}
-
-impl Data {
     /// Saves ship-data to disk
     pub unsafe fn save_ship(&mut self, shipname: *const c_char) -> c_int {
         use std::{fs::File, io::Write, path::PathBuf};
@@ -737,34 +1068,7 @@ freedroid-discussion@lists.sourceforge.net\n\
 
         level_mem as *mut c_char
     }
-}
 
-unsafe fn reset_level_map(level: &mut Level) {
-    // Now in the game and in the level editor, it might have happend that some open
-    // doors occur.  The make life easier for the saving routine, these doors should
-    // be closed first.
-
-    use MapTile::*;
-    level.map[0..usize::try_from(level.ylen).unwrap()]
-        .iter()
-        .copied()
-        .flat_map(|row| {
-            std::slice::from_raw_parts_mut(row as *mut u8, usize::try_from(level.xlen).unwrap())
-        })
-        .for_each(|tile| match MapTile::try_from(*tile).unwrap() {
-            VZutuere | VHalbtuere1 | VHalbtuere2 | VHalbtuere3 | VGanztuere => {
-                *tile = VZutuere as u8
-            }
-            HZutuere | HHalbtuere1 | HHalbtuere2 | HHalbtuere3 | HGanztuere => {
-                *tile = HZutuere as u8
-            }
-            Refresh1 | Refresh2 | Refresh3 | Refresh4 => *tile = Refresh1 as u8,
-            AlertGreen | AlertYellow | AlertAmber | AlertRed => *tile = AlertGreen as u8,
-            _ => {}
-        });
-}
-
-impl Data {
     pub unsafe fn druid_passable(&self, x: c_float, y: c_float) -> c_int {
         let testpos: [Finepoint; DIRECTIONS] = [
             Finepoint {
@@ -1156,321 +1460,7 @@ impl Data {
 
         defs::OK.into()
     }
-}
 
-/// initialize doors, refreshes and lifts for the given level-data
-pub unsafe fn interpret_map(level: &mut Level) -> c_int {
-    /* Get Doors Array */
-    get_doors(level);
-
-    // Get Refreshes
-    get_refreshes(level);
-
-    // Get Alerts
-    get_alerts(level);
-
-    defs::OK.into()
-}
-
-/// initializes the Doors array of the given level structure
-/// Of course the level data must be in the structure already!!
-/// Returns the number of doors found or ERR
-pub unsafe fn get_doors(level: &mut Level) -> c_int {
-    let mut curdoor = 0;
-
-    let xlen = level.xlen;
-    let ylen = level.ylen;
-
-    /* init Doors- Array to 0 */
-    level.doors.fill(GrobPoint { x: -1, y: -1 });
-
-    /* now find the doors */
-    for line in 0..i8::try_from(ylen).unwrap() {
-        for col in 0..i8::try_from(xlen).unwrap() {
-            let brick = *level.map[usize::try_from(line).unwrap()].add(col.try_into().unwrap());
-            if brick == MapTile::VZutuere as i8 || brick == MapTile::HZutuere as i8 {
-                level.doors[curdoor].x = col;
-                level.doors[curdoor].y = line;
-                curdoor += 1;
-
-                if curdoor > MAX_DOORS_ON_LEVEL {
-                    panic!(
-                        "\n\
-\n\
-----------------------------------------------------------------------\n\
-Freedroid has encountered a problem:\n\
-The number of doors found in level {} seems to be greater than the number\n\
-of doors currently allowed in a freedroid map.\n\
-\n\
-The constant for the maximum number of doors currently is set to {} in the\n\
-freedroid defs.h file.  You can enlarge the constant there, then start make\n\
-and make install again, and the map will be loaded without complaint.\n\
-\n\
-The constant in defs.h is names 'MAX_DOORS_ON_LEVEL'.  If you received this \n\
-message, please also tell the developers of the freedroid project, that they\n\
-should enlarge the constant in all future versions as well.\n\
-\n\
-Thanks a lot.\n\
-\n\
-But for now Freedroid will terminate to draw attention to this small map problem.\n\
-Sorry...\n\
-----------------------------------------------------------------------\n\
-\n",
-                        level.levelnum, MAX_DOORS_ON_LEVEL
-                    );
-                }
-            }
-        }
-    }
-
-    curdoor.try_into().unwrap()
-}
-
-/// This function initialized the array of Refreshes for animation
-/// within the level
-/// Returns the number of refreshes found or ERR
-pub unsafe fn get_refreshes(level: &mut Level) -> c_int {
-    let xlen = level.xlen;
-    let ylen = level.ylen;
-
-    /* init refreshes array to -1 */
-    level.refreshes.fill(GrobPoint { x: -1, y: -1 });
-
-    let mut curref = 0;
-    /* now find all the refreshes */
-    for row in 0..u8::try_from(ylen).unwrap() {
-        for col in 0..u8::try_from(xlen).unwrap() {
-            if *level.map[usize::from(row)].add(col.into()) == MapTile::Refresh1 as i8 {
-                level.refreshes[curref].x = col.try_into().unwrap();
-                level.refreshes[curref].y = row.try_into().unwrap();
-                curref += 1;
-
-                if curref > MAX_REFRESHES_ON_LEVEL {
-                    panic!(
-                        "\n\
-                        \n\
-----------------------------------------------------------------------\n\
-Freedroid has encountered a problem:\n\
-The number of refreshes found in level {} seems to be greater than the number\n\
-of refreshes currently allowed in a freedroid map.\n\
-\n\
-The constant for the maximum number of refreshes currently is set to {} in the\n\
-freedroid defs.h file.  You can enlarge the constant there, then start make\n\
-and make install again, and the map will be loaded without complaint.\n\
-\n\
-The constant in defs.h is names 'MAX_REFRESHES_ON_LEVEL'.  If you received this \n\
-message, please also tell the developers of the freedroid project, that they\n\
-should enlarge the constant in all future versions as well.\n\
-\n\
-Thanks a lot.\n\
-\n\
-But for now Freedroid will terminate to draw attention to this small map problem.\n\
-Sorry...\n\
-----------------------------------------------------------------------\n\
-\n",
-                        level.levelnum, MAX_REFRESHES_ON_LEVEL
-                    );
-                }
-            }
-        }
-    }
-
-    curref.try_into().unwrap()
-}
-
-/// Find all alerts on this level and initialize their position-array
-pub unsafe fn get_alerts(level: &mut Level) {
-    let xlen = level.xlen;
-    let ylen = level.ylen;
-
-    // init alert array to -1
-    level.alerts.fill(GrobPoint { x: -1, y: -1 });
-
-    // now find all the alerts
-    let mut curref = 0;
-    for row in 0..u8::try_from(ylen).unwrap() {
-        for col in 0..u8::try_from(xlen).unwrap() {
-            if *level.map[usize::from(row)].add(col.into()) == MapTile::AlertGreen as i8 {
-                level.alerts[curref].x = col.try_into().unwrap();
-                level.alerts[curref].y = row.try_into().unwrap();
-                curref += 1;
-
-                if curref > MAX_ALERTS_ON_LEVEL {
-                    warn!(
-                        "more alert-tiles found on level {} than allowed ({})!!",
-                        level.levelnum, MAX_ALERTS_ON_LEVEL
-                    );
-                    warn!("remaining Alerts will be inactive...");
-                    break;
-                }
-            }
-        }
-    }
-}
-
-/// This function is for LOADING map data!
-/// This function extracts the data from *data and writes them
-/// into a Level-struct:
-///
-/// Doors and Waypoints Arrays are initialized too
-pub unsafe fn level_to_struct(data: *mut c_char) -> *mut Level {
-    /* Get the memory for one level */
-    let loadlevel_ptr = alloc_zeroed(Layout::new::<Level>()) as *mut Level;
-    let loadlevel = &mut *loadlevel_ptr;
-
-    loadlevel.empty = false.into();
-
-    info!("Starting to process information for another level:");
-
-    /* Read Header Data: levelnum and x/ylen */
-    let data_pointer = libc::strstr(data, cstr!("Levelnumber:").as_ptr() as *mut c_char);
-    if data_pointer.is_null() {
-        panic!("No Levelnumber entry found! Terminating! ");
-    }
-    libc::sscanf(
-        data_pointer,
-        cstr!(
-            "Levelnumber: %u \n xlen of this level: %u \n ylen of this level: %u \n color of this \
-             level: %u"
-        )
-        .as_ptr(),
-        &mut (loadlevel.levelnum) as *mut _ as *mut c_void,
-        &mut (loadlevel.xlen) as *mut _ as *mut c_void,
-        &mut (loadlevel.ylen) as *mut _ as *mut c_void,
-        &mut (loadlevel.color) as *mut _ as *mut c_void,
-    );
-
-    info!("Levelnumber : {} ", loadlevel.levelnum);
-    info!("xlen of this level: {} ", loadlevel.xlen);
-    info!("ylen of this level: {} ", loadlevel.ylen);
-    info!("color of this level: {} ", loadlevel.ylen);
-
-    loadlevel.levelname = read_and_malloc_string_from_data(
-        data,
-        LEVEL_NAME_STRING_C.as_ptr() as *mut c_char,
-        cstr!("\n").as_ptr() as *mut c_char,
-    );
-    loadlevel.background_song_name = read_and_malloc_string_from_data(
-        data,
-        BACKGROUND_SONG_NAME_STRING_C.as_ptr() as *mut c_char,
-        cstr!("\n").as_ptr() as *mut c_char,
-    );
-    loadlevel.level_enter_comment = read_and_malloc_string_from_data(
-        data,
-        LEVEL_ENTER_COMMENT_STRING_C.as_ptr() as *mut c_char,
-        cstr!("\n").as_ptr() as *mut c_char,
-    );
-
-    // find the map data
-    let map_begin = libc::strstr(data, MAP_BEGIN_STRING_C.as_ptr());
-    if map_begin.is_null() {
-        return null_mut();
-    }
-
-    /* set position to Waypoint-Data */
-    let wp_begin = libc::strstr(data, WP_BEGIN_STRING_C.as_ptr());
-    if wp_begin.is_null() {
-        return null_mut();
-    }
-
-    // find end of level-data
-    let level_end = libc::strstr(data, LEVEL_END_STRING_C.as_ptr());
-    if level_end.is_null() {
-        return null_mut();
-    }
-
-    /* now scan the map */
-    let mut next_line = map_begin;
-    libc::strtok(next_line, cstr!("\n").as_ptr());
-
-    /* read MapData */
-    for i in 0..usize::try_from(loadlevel.ylen).unwrap() {
-        let this_line = libc::strtok(null_mut(), cstr!("\n").as_ptr());
-        if this_line.is_null() {
-            return null_mut();
-        }
-        loadlevel.map[i] =
-            alloc_zeroed(Layout::array::<i8>(loadlevel.xlen.try_into().unwrap()).unwrap())
-                as *mut c_char;
-        let mut pos = this_line;
-        pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace
-
-        for k in 0..usize::try_from(loadlevel.xlen).unwrap() {
-            if *pos == 0 {
-                return null_mut();
-            }
-            let mut tmp: c_int = 0;
-            let res = libc::sscanf(pos, cstr!("%d").as_ptr(), &mut tmp as *mut _ as *mut c_void);
-            *(loadlevel.map[i].add(k)) = tmp as c_char;
-            if res == 0 || res == libc::EOF {
-                return null_mut();
-            }
-            pos = pos.add(libc::strcspn(pos, WHITE_SPACE.as_ptr())); // skip last token
-            pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace of next one
-        }
-    }
-
-    /* Get Waypoints */
-    next_line = wp_begin;
-    libc::strtok(next_line, cstr!("\n").as_ptr());
-
-    for i in 0..MAXWAYPOINTS {
-        let this_line = libc::strtok(null_mut(), cstr!("\n").as_ptr());
-        if this_line.is_null() {
-            return null_mut();
-        }
-        if this_line == level_end {
-            loadlevel.num_waypoints = i.try_into().unwrap();
-            break;
-        }
-
-        let mut nr: c_int = 0;
-        let mut x: c_int = 0;
-        let mut y: c_int = 0;
-        libc::sscanf(
-            this_line,
-            cstr!("Nr.=%d \t x=%d \t y=%d").as_ptr(),
-            &mut nr as *mut _ as *mut c_void,
-            &mut x as *mut _ as *mut c_void,
-            &mut y as *mut _ as *mut c_void,
-        );
-
-        loadlevel.all_waypoints[i].x = x.try_into().unwrap();
-        loadlevel.all_waypoints[i].y = y.try_into().unwrap();
-
-        let mut pos = libc::strstr(this_line, CONNECTION_STRING_C.as_ptr());
-        pos = pos.add(CONNECTION_STRING_C.to_bytes().len()); // skip connection-string
-        pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace
-
-        let mut k = 0;
-        while k < MAX_WP_CONNECTIONS {
-            if *pos == 0 {
-                break;
-            }
-            let mut connection: c_int = 0;
-            let res = libc::sscanf(
-                pos,
-                cstr!("%d").as_ptr(),
-                &mut connection as *mut _ as *mut c_void,
-            );
-            if connection == -1 || res == 0 || res == libc::EOF {
-                break;
-            }
-            loadlevel.all_waypoints[i].connections[k] = connection;
-
-            pos = pos.add(libc::strcspn(pos, WHITE_SPACE.as_ptr())); // skip last token
-            pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace for next one
-
-            k += 1;
-        }
-
-        loadlevel.all_waypoints[i].num_connections = k.try_into().unwrap();
-    }
-
-    loadlevel_ptr
-}
-
-impl Data {
     pub unsafe fn load_ship(&mut self, filename: *mut c_char) -> c_int {
         let mut level_start: [*mut c_char; MAX_LEVELS] = [null_mut(); MAX_LEVELS];
         self.free_ship_memory(); // clear vestiges of previous ship data, if any

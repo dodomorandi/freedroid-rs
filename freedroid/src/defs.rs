@@ -97,48 +97,6 @@ pub enum Cmds {
 
 //--------------------------------------------------
 
-impl Data {
-    #[inline]
-    pub unsafe fn return_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(SDLKey_SDLK_RETURN as i32)
-    }
-
-    #[inline]
-    pub unsafe fn shift_pressed(&mut self) -> bool {
-        self.mod_is_pressed(SDLMod_KMOD_LSHIFT as u32 | SDLMod_KMOD_RSHIFT as u32)
-    }
-
-    #[inline]
-    pub unsafe fn alt_pressed(&mut self) -> bool {
-        self.mod_is_pressed(SDLMod_KMOD_LALT as u32 | SDLMod_KMOD_RALT as u32)
-    }
-
-    #[inline]
-    pub unsafe fn ctrl_pressed(&mut self) -> bool {
-        self.mod_is_pressed(SDLMod_KMOD_LCTRL as u32 | SDLMod_KMOD_RCTRL as u32)
-    }
-
-    #[inline]
-    pub unsafe fn mouse_left_pressed(&mut self) -> bool {
-        self.key_is_pressed(PointerStates::MouseButton1 as c_int)
-    }
-
-    #[inline]
-    pub unsafe fn mouse_left_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(PointerStates::MouseButton1 as c_int)
-    }
-
-    #[inline]
-    pub unsafe fn space_pressed(&mut self) -> bool {
-        self.key_is_pressed(SDLKey_SDLK_SPACE as c_int)
-    }
-
-    #[inline]
-    pub unsafe fn escape_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(SDLKey_SDLK_ESCAPE as c_int)
-    }
-}
-
 #[cfg(feature = "gcw0")]
 #[inline]
 pub unsafe fn gcw0_a_pressed() -> bool {
@@ -261,7 +219,47 @@ pub unsafe fn gcw0_any_button_pressed_r() -> bool {
         || gcw0_select_pressed_r()
 }
 
-impl Data {
+impl Data<'_> {
+    #[inline]
+    pub unsafe fn return_pressed_r(&mut self) -> bool {
+        self.key_is_pressed_r(SDLKey_SDLK_RETURN as i32)
+    }
+
+    #[inline]
+    pub unsafe fn shift_pressed(&mut self) -> bool {
+        self.mod_is_pressed(SDLMod_KMOD_LSHIFT as u32 | SDLMod_KMOD_RSHIFT as u32)
+    }
+
+    #[inline]
+    pub unsafe fn alt_pressed(&mut self) -> bool {
+        self.mod_is_pressed(SDLMod_KMOD_LALT as u32 | SDLMod_KMOD_RALT as u32)
+    }
+
+    #[inline]
+    pub unsafe fn ctrl_pressed(&mut self) -> bool {
+        self.mod_is_pressed(SDLMod_KMOD_LCTRL as u32 | SDLMod_KMOD_RCTRL as u32)
+    }
+
+    #[inline]
+    pub unsafe fn mouse_left_pressed(&mut self) -> bool {
+        self.key_is_pressed(PointerStates::MouseButton1 as c_int)
+    }
+
+    #[inline]
+    pub unsafe fn mouse_left_pressed_r(&mut self) -> bool {
+        self.key_is_pressed_r(PointerStates::MouseButton1 as c_int)
+    }
+
+    #[inline]
+    pub unsafe fn space_pressed(&mut self) -> bool {
+        self.key_is_pressed(SDLKey_SDLK_SPACE as c_int)
+    }
+
+    #[inline]
+    pub unsafe fn escape_pressed_r(&mut self) -> bool {
+        self.key_is_pressed_r(SDLKey_SDLK_ESCAPE as c_int)
+    }
+
     #[inline]
     pub unsafe fn up_pressed(&mut self) -> bool {
         self.cmd_is_active(Cmds::Up)

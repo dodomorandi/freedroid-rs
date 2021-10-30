@@ -11,6 +11,7 @@ use crate::{
         count_string_occurences, dealloc_c_string, locate_string_in_data, my_random,
         read_and_malloc_string_from_data, read_value_from_string,
     },
+    sound::Sound,
     structs::{BulletSpec, DruidSpec},
     Data,
 };
@@ -58,7 +59,68 @@ You may redistribute copies of Freedroid under the terms of the\n\
 GNU General Public License.\n\
 For more information about these matters, see the file named COPYING.";
 
-impl Data {
+/// put some ideology message for our poor friends enslaved by M$-Win32 ;)
+#[cfg(target_os = "windows")]
+pub unsafe fn win32_disclaimer() {
+    self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
+    display_image(find_file(
+        TITLE_PIC_FILE_C.as_ptr() as *mut c_char,
+        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        Themed::NoTheme as c_int,
+        Criticality::Critical as c_int,
+    )); // show title pic
+    make_grid_on_screen(Some(&Screen_Rect));
+
+    set_current_font(self.global.para_b_font);
+
+    let mut rect = Full_User_Rect;
+    rect.x += 10;
+    rect.w -= 10; //leave some border
+    DisplayText(
+        cstr!(
+        "Windows disclaimer:\n\nThis program is 100% Free (as in Freedom), licenced under the GPL.\
+         \nIt is developed on a free operating system (GNU/Linux) using exclusively free tools. \
+         For more information about Free Software see the GPL licence (in the file COPYING)\n\
+         or visit http://www.gnu.org.\n\n\n Press fire to play.")
+        .as_ptr(),
+        rect.x.into(),
+        rect.y.into(),
+        &rect,
+    );
+    SDL_Flip(self.graphics.ne_screen);
+
+    wait_for_key_pressed();
+}
+
+#[derive(Clap)]
+#[clap(version = crate_version!(), long_version = COPYRIGHT)]
+struct Opt {
+    #[clap(short, long)]
+    _version: bool,
+
+    #[clap(short, long, conflicts_with = "nosound")]
+    sound: bool,
+
+    #[clap(short = 'q', long, conflicts_with = "sound")]
+    nosound: bool,
+
+    #[clap(short, long, parse(from_occurrences))]
+    debug: u8,
+
+    #[clap(short, long, conflicts_with = "fullscreen")]
+    window: bool,
+
+    #[clap(short, long, conflicts_with = "window")]
+    fullscreen: bool,
+
+    #[clap(short = 'j', long)]
+    sensitivity: Option<u8>,
+
+    #[clap(short = 'r', long)]
+    scale: Option<f32>,
+}
+
+impl Data<'_> {
     pub unsafe fn free_game_mem(&mut self) {
         // free bullet map
         if self.vars.bulletmap.is_null().not() {
@@ -118,42 +180,7 @@ impl Data {
         );
         self.vars.droidmap = null_mut();
     }
-}
 
-/// put some ideology message for our poor friends enslaved by M$-Win32 ;)
-#[cfg(target_os = "windows")]
-pub unsafe fn win32_disclaimer() {
-    self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
-    display_image(find_file(
-        TITLE_PIC_FILE_C.as_ptr() as *mut c_char,
-        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-        Themed::NoTheme as c_int,
-        Criticality::Critical as c_int,
-    )); // show title pic
-    make_grid_on_screen(Some(&Screen_Rect));
-
-    set_current_font(self.global.para_b_font);
-
-    let mut rect = Full_User_Rect;
-    rect.x += 10;
-    rect.w -= 10; //leave some border
-    DisplayText(
-        cstr!(
-        "Windows disclaimer:\n\nThis program is 100% Free (as in Freedom), licenced under the GPL.\
-         \nIt is developed on a free operating system (GNU/Linux) using exclusively free tools. \
-         For more information about Free Software see the GPL licence (in the file COPYING)\n\
-         or visit http://www.gnu.org.\n\n\n Press fire to play.")
-        .as_ptr(),
-        rect.x.into(),
-        rect.y.into(),
-        &rect,
-    );
-    SDL_Flip(self.graphics.ne_screen);
-
-    wait_for_key_pressed();
-}
-
-impl Data {
     /// This function checks, if the influencer has succeeded in his given
     /// mission.  If not it returns, if yes the Debriefing is started.
     pub(crate) unsafe fn check_if_mission_is_complete(&mut self) {
@@ -291,7 +318,15 @@ impl Data {
 
         self.update_progress(5);
 
-        self.init_audio();
+        let &mut Self {
+            ref mut sound,
+            ref mut misc,
+            ref global,
+            ref mut main,
+            sdl,
+            ..
+        } = self;
+        *sound = Sound::new(main, sdl, global, misc);
 
         self.init_joy();
 
@@ -320,37 +355,7 @@ impl Data {
 
         self.update_progress(100); // finished init
     }
-}
 
-#[derive(Clap)]
-#[clap(version = crate_version!(), long_version = COPYRIGHT)]
-struct Opt {
-    #[clap(short, long)]
-    _version: bool,
-
-    #[clap(short, long, conflicts_with = "nosound")]
-    sound: bool,
-
-    #[clap(short = 'q', long, conflicts_with = "sound")]
-    nosound: bool,
-
-    #[clap(short, long, parse(from_occurrences))]
-    debug: u8,
-
-    #[clap(short, long, conflicts_with = "fullscreen")]
-    window: bool,
-
-    #[clap(short, long, conflicts_with = "window")]
-    fullscreen: bool,
-
-    #[clap(short = 'j', long)]
-    sensitivity: Option<u8>,
-
-    #[clap(short = 'r', long)]
-    scale: Option<f32>,
-}
-
-impl Data {
     /// parse command line arguments and set global switches
     /// exit on error, so we don't need to return success status
     unsafe fn parse_command_line(&mut self) {

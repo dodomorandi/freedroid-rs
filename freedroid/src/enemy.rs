@@ -23,7 +23,7 @@ const FIREDIST2: f32 = 8.;
 
 const COL_SPEED: f32 = 3.;
 
-impl Data {
+impl Data<'_> {
     pub unsafe fn class_of_druid(&self, druid_type: c_int) -> c_int {
         /* first digit is class */
         let class_char =

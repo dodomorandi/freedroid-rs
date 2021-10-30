@@ -52,7 +52,230 @@ impl Default for Misc {
     }
 }
 
-impl Data {
+/// This function is used to generate a random integer in the range
+/// from [0 to upper_bound] (inclusive), distributed uniformly.
+pub unsafe fn my_random(upper_bound: c_int) -> c_int {
+    // random float in [0,upper_bound+1)
+    let tmp = (f64::from(upper_bound) + 1.0)
+        * (f64::from(libc::rand()) / (f64::from(libc::RAND_MAX) + 1.0));
+    let dice_val = tmp as c_int;
+
+    if dice_val < 0 || dice_val > upper_bound {
+        panic!("dice_val = {} not in [0, {}]", dice_val, upper_bound);
+    }
+
+    dice_val
+}
+
+const VERSION_STRING: &str = "Freedroid Version";
+const DRAW_FRAMERATE: &str = "Draw_Framerate";
+const DRAW_ENERGY: &str = "Draw_Energy";
+const DRAW_POSITION: &str = "Draw_Position";
+const DRAW_DEATHCOUNT: &str = "Draw_DeathCount";
+const DROID_TALK: &str = "Droid_Talk";
+const WANTED_TEXT_VISIBLE_TIME: &str = "WantedTextVisibleTime";
+const CURRENT_BG_MUSIC_VOLUME: &str = "Current_BG_Music_Volume";
+const CURRENT_SOUND_FX_VOLUME: &str = "Current_Sound_FX_Volume";
+const CURRENT_GAMMA_CORRECTION: &str = "Current_Gamma_Correction";
+const THEME_NAME: &str = "Theme_Name";
+const FULL_USER_RECT: &str = "FullUserRect";
+const USE_FULLSCREEN: &str = "UseFullscreen";
+const TAKEOVER_ACTIVATES: &str = "TakeoverActivates";
+const FIRE_HOLD_TAKEOVER: &str = "FireHoldTakeover";
+const SHOW_DECALS: &str = "ShowDecals";
+const ALL_MAP_VISIBLE: &str = "AllMapVisible";
+const VID_SCALE_FACTOR: &str = "Vid_ScaleFactor";
+const HOG_CPU: &str = "Hog_Cpu";
+const EMPTY_LEVEL_SPEEDUP: &str = "EmptyLevelSpeedup";
+
+/// find label in data and read stuff after label into dst using the FormatString
+///
+/// NOTE!!: be sure dst is large enough for data read by FormatString, or
+/// sscanf will crash!!
+pub unsafe fn read_value_from_string(
+    data: *mut c_char,
+    label: *mut c_char,
+    format_string: *mut c_char,
+    dst: *mut c_void,
+) {
+    // Now we locate the label in data and position pointer right after the label
+    // ..will Terminate itself if not found...
+    let pos = locate_string_in_data(data, label).add(CStr::from_ptr(label).to_bytes().len());
+
+    if libc::sscanf(pos, format_string, dst) == libc::EOF {
+        panic!(
+            "ReadValueFromString(): could not read value {} of label {} with format {}",
+            CStr::from_ptr(pos).to_string_lossy(),
+            CStr::from_ptr(format_string).to_string_lossy(),
+            CStr::from_ptr(label).to_string_lossy(),
+        );
+    } else {
+        info!("ReadValueFromString: value read in successfully.");
+    }
+}
+
+/// This function tries to locate a string in some given data string.
+/// The data string is assumed to be null terminated.  Otherwise SEGFAULTS
+/// might happen.
+///
+/// The return value is a pointer to the first instance where the substring
+/// we are searching is found in the main text.
+pub unsafe fn locate_string_in_data(
+    search_begin_pointer: *mut c_char,
+    search_text_pointer: *mut c_char,
+) -> *mut c_char {
+    let temp = libc::strstr(search_begin_pointer, search_text_pointer);
+    let search_text = CStr::from_ptr(search_text_pointer).to_string_lossy();
+
+    if temp.is_null() {
+        panic!(
+            "\n\
+             \n\
+             ----------------------------------------------------------------------\n\
+             Freedroid has encountered a problem:\n\
+             In function 'char* LocateStringInData ( char* SearchBeginPointer, char* \
+             SearchTextPointer ):\n\
+             A string that was supposed to be in some data, most likely from an external\n\
+             data file could not be found, which indicates a corrupted data file or \n\
+             a serious bug in the reading functions.\n\
+             \n\
+             The string that couldn't be located was: {}\n\
+             \n\
+             Please check that your external text files are properly set up.\n\
+             \n\
+             Please also don't forget, that you might have to run 'make install'\n\
+             again after you've made modifications to the data files in the source tree.\n\
+             \n\
+             Freedroid will terminate now to draw attention to the data problem it could\n\
+             not resolve.... Sorry, if that interrupts a major game of yours.....\n\
+             ----------------------------------------------------------------------\n\
+             \n",
+            search_text
+        );
+    } else {
+        info!(
+            "LocateStringInDate: String {} successfully located within data. ",
+            search_text
+        );
+    }
+    temp
+}
+
+/// This function counts the number of occurences of a string in a given
+/// other string.
+pub unsafe fn count_string_occurences(
+    search_string: *mut c_char,
+    target_string: *mut c_char,
+) -> c_int {
+    let mut counter = 0;
+    let mut count_pointer = search_string;
+
+    loop {
+        count_pointer = libc::strstr(count_pointer, target_string);
+        if count_pointer.is_null() {
+            break;
+        }
+        count_pointer = count_pointer.add(libc::strlen(target_string));
+        counter += 1;
+    }
+    counter
+}
+
+/// This function looks for a sting begin indicator and takes the string
+/// from after there up to a sting end indicator and mallocs memory for
+/// it, copys it there and returns it.
+/// The original source string specified should in no way be modified.
+pub unsafe fn read_and_malloc_string_from_data(
+    search_string: *mut c_char,
+    start_indication_string: *mut c_char,
+    end_indication_string: *mut c_char,
+) -> *mut c_char {
+    let search_pointer = libc::strstr(search_string, start_indication_string);
+    if search_pointer.is_null() {
+        panic!(
+            "\n\
+             \n\
+             ----------------------------------------------------------------------\n\
+             Freedroid has encountered a problem:\n\
+             In function 'char* ReadAndMalocStringFromData ( ... ):\n\
+             A starter string that was supposed to be in some data, most likely from an external\n\
+             data file could not be found, which indicates a corrupted data file or \n\
+             a serious bug in the reading functions.\n\
+             \n\
+             The string that couldn't be located was: {}\n\
+             \n\
+             Please check that your external text files are properly set up.\n\
+             \n\
+             Please also don't forget, that you might have to run 'make install'\n\
+             again after you've made modifications to the data files in the source tree.\n\
+             \n\
+             Freedroid will terminate now to draw attention to the data problem it could\n\
+             not resolve.... Sorry, if that interrupts a major game of yours.....\n\
+             ----------------------------------------------------------------------\n\
+             \n",
+            CStr::from_ptr(start_indication_string).to_string_lossy()
+        );
+    } else {
+        // Now we move to the beginning
+        let search_pointer = search_pointer.add(libc::strlen(start_indication_string));
+        let end_of_string_pointer = libc::strstr(search_pointer, end_indication_string);
+        // Now we move to the end with the end pointer
+        if end_of_string_pointer.is_null() {
+            panic!(
+                "\n\
+                 \n\
+                 ----------------------------------------------------------------------\n\
+                 Freedroid has encountered a problem:\n\
+                 In function 'char* ReadAndMalocStringFromData ( ... ):\n\
+                 A terminating string that was supposed to be in some data, most likely from an \
+                 external\n\
+                 data file could not be found, which indicates a corrupted data file or \n\
+                 a serious bug in the reading functions.\n\
+                 \n\
+                 The string that couldn't be located was: {}\n\
+                 \n\
+                 Please check that your external text files are properly set up.\n\
+                 \n\
+                 Please also don't forget, that you might have to run 'make install'\n\
+                 again after you've made modifications to the data files in the source tree.\n\
+                 \n\
+                 Freedroid will terminate now to draw attention to the data problem it could\n\
+                 not resolve.... Sorry, if that interrupts a major game of yours.....\n\
+                 ----------------------------------------------------------------------\n\
+                 \n",
+                CStr::from_ptr(end_indication_string).to_string_lossy(),
+            );
+        }
+
+        // Now we allocate memory and copy the string...
+        let string_length = end_of_string_pointer.offset_from(search_pointer);
+
+        let return_string =
+            alloc_zeroed(Layout::array::<i8>(usize::try_from(string_length).unwrap() + 1).unwrap())
+                as *mut c_char;
+        libc::strncpy(
+            return_string,
+            search_pointer,
+            string_length.try_into().unwrap(),
+        );
+        *return_string.add(string_length.try_into().unwrap()) = 0;
+
+        info!(
+            "ReadAndMalocStringFromData): Successfully identified string: {}.",
+            CStr::from_ptr(return_string).to_string_lossy()
+        );
+        return_string
+    }
+}
+
+pub unsafe fn dealloc_c_string(string_ptr: *mut i8) {
+    dealloc(
+        string_ptr as *mut u8,
+        Layout::array::<i8>(CStr::from_ptr(string_ptr).to_bytes_with_nul().len()).unwrap(),
+    );
+}
+
+impl Data<'_> {
     pub unsafe fn update_progress(&mut self, percent: c_int) {
         let h = (f64::from(self.vars.progress_bar_rect.h) * f64::from(percent) / 100.) as u16;
         let mut dst = rect!(
@@ -140,24 +363,7 @@ impl Data {
         SDL_Quit();
         process::exit(defs::ERR.into());
     }
-}
 
-/// This function is used to generate a random integer in the range
-/// from [0 to upper_bound] (inclusive), distributed uniformly.
-pub unsafe fn my_random(upper_bound: c_int) -> c_int {
-    // random float in [0,upper_bound+1)
-    let tmp = (f64::from(upper_bound) + 1.0)
-        * (f64::from(libc::rand()) / (f64::from(libc::RAND_MAX) + 1.0));
-    let dice_val = tmp as c_int;
-
-    if dice_val < 0 || dice_val > upper_bound {
-        panic!("dice_val = {} not in [0, {}]", dice_val, upper_bound);
-    }
-
-    dice_val
-}
-
-impl Data {
     /// realise Pause-Mode: the game process is halted,
     /// while the graphics and animations are not.  This mode
     /// can further be toggled from PAUSE to CHEESE, which is
@@ -206,30 +412,7 @@ impl Data {
             }
         }
     }
-}
 
-const VERSION_STRING: &str = "Freedroid Version";
-const DRAW_FRAMERATE: &str = "Draw_Framerate";
-const DRAW_ENERGY: &str = "Draw_Energy";
-const DRAW_POSITION: &str = "Draw_Position";
-const DRAW_DEATHCOUNT: &str = "Draw_DeathCount";
-const DROID_TALK: &str = "Droid_Talk";
-const WANTED_TEXT_VISIBLE_TIME: &str = "WantedTextVisibleTime";
-const CURRENT_BG_MUSIC_VOLUME: &str = "Current_BG_Music_Volume";
-const CURRENT_SOUND_FX_VOLUME: &str = "Current_Sound_FX_Volume";
-const CURRENT_GAMMA_CORRECTION: &str = "Current_Gamma_Correction";
-const THEME_NAME: &str = "Theme_Name";
-const FULL_USER_RECT: &str = "FullUserRect";
-const USE_FULLSCREEN: &str = "UseFullscreen";
-const TAKEOVER_ACTIVATES: &str = "TakeoverActivates";
-const FIRE_HOLD_TAKEOVER: &str = "FireHoldTakeover";
-const SHOW_DECALS: &str = "ShowDecals";
-const ALL_MAP_VISIBLE: &str = "AllMapVisible";
-const VID_SCALE_FACTOR: &str = "Vid_ScaleFactor";
-const HOG_CPU: &str = "Hog_Cpu";
-const EMPTY_LEVEL_SPEEDUP: &str = "EmptyLevelSpeedup";
-
-impl Data {
     pub unsafe fn save_game_config(&self) -> c_int {
         use std::io::Write;
         if self.main.config_dir[0] == b'\0' as c_char {
@@ -777,82 +960,7 @@ impl Data {
 
         all_data
     }
-}
 
-/// find label in data and read stuff after label into dst using the FormatString
-///
-/// NOTE!!: be sure dst is large enough for data read by FormatString, or
-/// sscanf will crash!!
-pub unsafe fn read_value_from_string(
-    data: *mut c_char,
-    label: *mut c_char,
-    format_string: *mut c_char,
-    dst: *mut c_void,
-) {
-    // Now we locate the label in data and position pointer right after the label
-    // ..will Terminate itself if not found...
-    let pos = locate_string_in_data(data, label).add(CStr::from_ptr(label).to_bytes().len());
-
-    if libc::sscanf(pos, format_string, dst) == libc::EOF {
-        panic!(
-            "ReadValueFromString(): could not read value {} of label {} with format {}",
-            CStr::from_ptr(pos).to_string_lossy(),
-            CStr::from_ptr(format_string).to_string_lossy(),
-            CStr::from_ptr(label).to_string_lossy(),
-        );
-    } else {
-        info!("ReadValueFromString: value read in successfully.");
-    }
-}
-
-/// This function tries to locate a string in some given data string.
-/// The data string is assumed to be null terminated.  Otherwise SEGFAULTS
-/// might happen.
-///
-/// The return value is a pointer to the first instance where the substring
-/// we are searching is found in the main text.
-pub unsafe fn locate_string_in_data(
-    search_begin_pointer: *mut c_char,
-    search_text_pointer: *mut c_char,
-) -> *mut c_char {
-    let temp = libc::strstr(search_begin_pointer, search_text_pointer);
-    let search_text = CStr::from_ptr(search_text_pointer).to_string_lossy();
-
-    if temp.is_null() {
-        panic!(
-            "\n\
-             \n\
-             ----------------------------------------------------------------------\n\
-             Freedroid has encountered a problem:\n\
-             In function 'char* LocateStringInData ( char* SearchBeginPointer, char* \
-             SearchTextPointer ):\n\
-             A string that was supposed to be in some data, most likely from an external\n\
-             data file could not be found, which indicates a corrupted data file or \n\
-             a serious bug in the reading functions.\n\
-             \n\
-             The string that couldn't be located was: {}\n\
-             \n\
-             Please check that your external text files are properly set up.\n\
-             \n\
-             Please also don't forget, that you might have to run 'make install'\n\
-             again after you've made modifications to the data files in the source tree.\n\
-             \n\
-             Freedroid will terminate now to draw attention to the data problem it could\n\
-             not resolve.... Sorry, if that interrupts a major game of yours.....\n\
-             ----------------------------------------------------------------------\n\
-             \n",
-            search_text
-        );
-    } else {
-        info!(
-            "LocateStringInDate: String {} successfully located within data. ",
-            search_text
-        );
-    }
-    temp
-}
-
-impl Data {
     /// This function teleports the influencer to a new position on the
     /// ship.  THIS CAN BE A POSITION ON A DIFFERENT LEVEL.
     pub unsafe fn teleport(&mut self, level_num: c_int, x: c_int, y: c_int) {
@@ -915,123 +1023,7 @@ impl Data {
                 enemy.status = Status::Out as c_int;
             });
     }
-}
 
-/// This function counts the number of occurences of a string in a given
-/// other string.
-pub unsafe fn count_string_occurences(
-    search_string: *mut c_char,
-    target_string: *mut c_char,
-) -> c_int {
-    let mut counter = 0;
-    let mut count_pointer = search_string;
-
-    loop {
-        count_pointer = libc::strstr(count_pointer, target_string);
-        if count_pointer.is_null() {
-            break;
-        }
-        count_pointer = count_pointer.add(libc::strlen(target_string));
-        counter += 1;
-    }
-    counter
-}
-
-/// This function looks for a sting begin indicator and takes the string
-/// from after there up to a sting end indicator and mallocs memory for
-/// it, copys it there and returns it.
-/// The original source string specified should in no way be modified.
-pub unsafe fn read_and_malloc_string_from_data(
-    search_string: *mut c_char,
-    start_indication_string: *mut c_char,
-    end_indication_string: *mut c_char,
-) -> *mut c_char {
-    let search_pointer = libc::strstr(search_string, start_indication_string);
-    if search_pointer.is_null() {
-        panic!(
-            "\n\
-             \n\
-             ----------------------------------------------------------------------\n\
-             Freedroid has encountered a problem:\n\
-             In function 'char* ReadAndMalocStringFromData ( ... ):\n\
-             A starter string that was supposed to be in some data, most likely from an external\n\
-             data file could not be found, which indicates a corrupted data file or \n\
-             a serious bug in the reading functions.\n\
-             \n\
-             The string that couldn't be located was: {}\n\
-             \n\
-             Please check that your external text files are properly set up.\n\
-             \n\
-             Please also don't forget, that you might have to run 'make install'\n\
-             again after you've made modifications to the data files in the source tree.\n\
-             \n\
-             Freedroid will terminate now to draw attention to the data problem it could\n\
-             not resolve.... Sorry, if that interrupts a major game of yours.....\n\
-             ----------------------------------------------------------------------\n\
-             \n",
-            CStr::from_ptr(start_indication_string).to_string_lossy()
-        );
-    } else {
-        // Now we move to the beginning
-        let search_pointer = search_pointer.add(libc::strlen(start_indication_string));
-        let end_of_string_pointer = libc::strstr(search_pointer, end_indication_string);
-        // Now we move to the end with the end pointer
-        if end_of_string_pointer.is_null() {
-            panic!(
-                "\n\
-                 \n\
-                 ----------------------------------------------------------------------\n\
-                 Freedroid has encountered a problem:\n\
-                 In function 'char* ReadAndMalocStringFromData ( ... ):\n\
-                 A terminating string that was supposed to be in some data, most likely from an \
-                 external\n\
-                 data file could not be found, which indicates a corrupted data file or \n\
-                 a serious bug in the reading functions.\n\
-                 \n\
-                 The string that couldn't be located was: {}\n\
-                 \n\
-                 Please check that your external text files are properly set up.\n\
-                 \n\
-                 Please also don't forget, that you might have to run 'make install'\n\
-                 again after you've made modifications to the data files in the source tree.\n\
-                 \n\
-                 Freedroid will terminate now to draw attention to the data problem it could\n\
-                 not resolve.... Sorry, if that interrupts a major game of yours.....\n\
-                 ----------------------------------------------------------------------\n\
-                 \n",
-                CStr::from_ptr(end_indication_string).to_string_lossy(),
-            );
-        }
-
-        // Now we allocate memory and copy the string...
-        let string_length = end_of_string_pointer.offset_from(search_pointer);
-
-        let return_string =
-            alloc_zeroed(Layout::array::<i8>(usize::try_from(string_length).unwrap() + 1).unwrap())
-                as *mut c_char;
-        libc::strncpy(
-            return_string,
-            search_pointer,
-            string_length.try_into().unwrap(),
-        );
-        *return_string.add(string_length.try_into().unwrap()) = 0;
-
-        info!(
-            "ReadAndMalocStringFromData): Successfully identified string: {}.",
-            CStr::from_ptr(return_string).to_string_lossy()
-        );
-        return_string
-    }
-}
-
-pub unsafe fn dealloc_c_string(string_ptr: *mut i8) {
-    dealloc(
-        string_ptr as *mut u8,
-        Layout::array::<i8>(CStr::from_ptr(string_ptr).to_bytes_with_nul().len()).unwrap(),
-    );
-}
-
-impl Data {
     /// LoadGameConfig(): load saved options from config-file
     ///
     /// this should be the first of all load/save functions called

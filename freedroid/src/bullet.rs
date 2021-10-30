@@ -18,7 +18,7 @@ pub struct BulletData {
     fbt_counter: u32,
 }
 
-impl Data {
+impl Data<'_> {
     #[inline]
     fn get_druid_hit_dist_squared(&self) -> f32 {
         (0.3 + 4. / 64.) * (self.global.droid_radius + 4. / 64.)

@@ -79,29 +79,6 @@ pub fn char_width(font: &BFontInfo, c: u8) -> c_int {
     font.chars[usize::from(c)].w.into()
 }
 
-impl Data {
-    pub unsafe fn put_string<const F: bool>(
-        &self,
-        surface: &mut sdl::GenericSurface<F>,
-        x: c_int,
-        y: c_int,
-        text: &[u8],
-    ) {
-        put_string_font(surface, self.b_font.current_font, x, y, text);
-    }
-
-    /// Puts a single char on the surface
-    pub unsafe fn put_char<const F: bool>(
-        &mut self,
-        surface: &mut sdl::GenericSurface<F>,
-        x: c_int,
-        y: c_int,
-        c: u8,
-    ) -> c_int {
-        put_char_font(surface, &mut *self.b_font.current_font, x, y, c)
-    }
-}
-
 pub unsafe fn print_string_font<const F: bool>(
     surface: &mut sdl::GenericSurface<F>,
     font: *mut BFontInfo,
@@ -116,32 +93,6 @@ pub unsafe fn print_string_font<const F: bool>(
     cursor.write_fmt(format_args).unwrap();
     let written = cursor.position().try_into().unwrap();
     put_string_font(surface, font, x, y, &temp[..written]);
-}
-
-impl Data {
-    /// Load the font and stores it in the BFont_Info structure
-    pub unsafe fn load_font(&mut self, filename: *mut c_char, scale: c_float) -> *mut BFontInfo {
-        if filename.is_null() {
-            return null_mut();
-        }
-
-        let mut surface = Surface::from_ptr(NonNull::new(IMG_Load(filename)).unwrap());
-        scale_pic(&mut surface, scale);
-
-        let mut font = Box::new(BFontInfo {
-            h: 0,
-            surface: Some(surface),
-            chars: [rect!(); 256],
-        });
-        /* Init the font */
-        init_font(&mut font);
-
-        let font = Box::into_raw(font);
-        /* Set the font as the current font */
-        self.b_font.current_font = font;
-
-        font
-    }
 }
 
 pub unsafe fn init_font(font: &mut BFontInfo) {
@@ -185,7 +136,67 @@ pub unsafe fn init_font(font: &mut BFontInfo) {
     SDL_SetColorKey(surface.as_mut_ptr(), SDL_SRCCOLORKEY as u32, last_row_pixel);
 }
 
-impl Data {
+pub unsafe fn centered_put_string_font<const F: bool>(
+    surface: &mut sdl::GenericSurface<F>,
+    font: *mut BFontInfo,
+    y: c_int,
+    text: &[u8],
+) {
+    put_string_font(
+        surface,
+        font,
+        c_int::from(surface.width() / 2) - text_width_font(&*font, text) / 2,
+        y,
+        text,
+    );
+}
+
+impl Data<'_> {
+    pub unsafe fn put_string<const F: bool>(
+        &self,
+        surface: &mut sdl::GenericSurface<F>,
+        x: c_int,
+        y: c_int,
+        text: &[u8],
+    ) {
+        put_string_font(surface, self.b_font.current_font, x, y, text);
+    }
+
+    /// Puts a single char on the surface
+    pub unsafe fn put_char<const F: bool>(
+        &mut self,
+        surface: &mut sdl::GenericSurface<F>,
+        x: c_int,
+        y: c_int,
+        c: u8,
+    ) -> c_int {
+        put_char_font(surface, &mut *self.b_font.current_font, x, y, c)
+    }
+
+    /// Load the font and stores it in the BFont_Info structure
+    pub unsafe fn load_font(&mut self, filename: *mut c_char, scale: c_float) -> *mut BFontInfo {
+        if filename.is_null() {
+            return null_mut();
+        }
+
+        let mut surface = Surface::from_ptr(NonNull::new(IMG_Load(filename)).unwrap());
+        scale_pic(&mut surface, scale);
+
+        let mut font = Box::new(BFontInfo {
+            h: 0,
+            surface: Some(surface),
+            chars: [rect!(); 256],
+        });
+        /* Init the font */
+        init_font(&mut font);
+
+        let font = Box::into_raw(font);
+        /* Set the font as the current font */
+        self.b_font.current_font = font;
+
+        font
+    }
+
     pub unsafe fn centered_print_string<const F: bool>(
         &self,
         surface: &mut sdl::GenericSurface<F>,
@@ -216,24 +227,7 @@ impl Data {
         let written = cursor.position().try_into().unwrap();
         put_string_font(surface, self.b_font.current_font, x, y, &temp[..written]);
     }
-}
 
-pub unsafe fn centered_put_string_font<const F: bool>(
-    surface: &mut sdl::GenericSurface<F>,
-    font: *mut BFontInfo,
-    y: c_int,
-    text: &[u8],
-) {
-    put_string_font(
-        surface,
-        font,
-        c_int::from(surface.width() / 2) - text_width_font(&*font, text) / 2,
-        y,
-        text,
-    );
-}
-
-impl Data {
     pub unsafe fn centered_put_string<const F: bool>(
         &self,
         surface: &mut sdl::GenericSurface<F>,
