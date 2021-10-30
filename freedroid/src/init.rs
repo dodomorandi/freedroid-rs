@@ -19,7 +19,7 @@ use crate::{
 #[cfg(target_os = "windows")]
 use crate::input::wait_for_key_pressed;
 
-use clap::{crate_version, Clap};
+use clap::{crate_version, Parser};
 use cstr::cstr;
 use log::{error, info, warn};
 use sdl_sys::{SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Rect, SDL_ShowCursor, SDL_DISABLE};
@@ -90,7 +90,7 @@ pub unsafe fn win32_disclaimer() {
     wait_for_key_pressed();
 }
 
-#[derive(Clap)]
+#[derive(Parser)]
 #[clap(version = crate_version!(), long_version = COPYRIGHT)]
 struct Opt {
     #[clap(short, long)]

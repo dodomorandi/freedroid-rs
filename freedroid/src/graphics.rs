@@ -860,7 +860,7 @@ impl Data<'_> {
             (0..u16::try_from(rect.x).unwrap())
                 .flat_map(|x| (0..rect.h).map(move |y| (x, y)))
                 .for_each(|(x, y)| {
-                    if rng.gen_range(0, 100) > signal_strengh {
+                    if rng.gen_range(0..100) > signal_strengh {
                         lock.pixels()
                             .set(x, y, *grey.choose(&mut rng).unwrap())
                             .unwrap();
