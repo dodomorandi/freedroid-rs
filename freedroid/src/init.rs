@@ -22,9 +22,7 @@ use crate::input::wait_for_key_pressed;
 use clap::{crate_version, Clap};
 use cstr::cstr;
 use log::{error, info, warn};
-use sdl_sys::{
-    Mix_HaltMusic, SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Rect, SDL_ShowCursor, SDL_DISABLE,
-};
+use sdl_sys::{SDL_Delay, SDL_Flip, SDL_GetTicks, SDL_Rect, SDL_ShowCursor, SDL_DISABLE};
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
     convert::{TryFrom, TryInto},
@@ -1589,7 +1587,7 @@ impl Data<'_> {
         }
         self.set_time_factor(1.0);
 
-        Mix_HaltMusic();
+        self.sdl.mixer.get().unwrap().halt_music();
 
         // important!!: don't forget to stop fps calculation here (bugfix: enemy piles after gameOver)
         self.activate_conservative_frame_computation();

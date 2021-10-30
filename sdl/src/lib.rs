@@ -279,7 +279,11 @@ where
 }
 
 /// Get the last SDL error.
-pub fn get_error<F, T>(f: F) -> T
+///
+/// # Safety
+/// No other calls to SDL function can be made until the function returns.
+/// The function is not thread-safe.
+pub unsafe fn get_error<F, T>(f: F) -> T
 where
     F: for<'a> FnOnce(&'a CStr) -> T,
 {

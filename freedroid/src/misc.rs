@@ -354,7 +354,7 @@ impl Data<'_> {
         // ----- free memory
         self.free_ship_memory();
         self.free_graphics();
-        self.free_sounds();
+        self.sound = None;
         self.free_menu_data();
         self.free_game_mem();
 

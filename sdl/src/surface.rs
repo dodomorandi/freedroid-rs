@@ -156,12 +156,15 @@ impl<const FREEABLE: bool> GenericSurface<FREEABLE> {
 
         debug_assert!(result <= 0);
         if result < 0 {
-            get_error(|err| {
-                panic!(
-                    "SDL_UpperBlit returned an unexpected error: {}",
-                    err.to_string_lossy(),
-                );
-            });
+            // Safety: no other SDL function will be used -- we are panicking.
+            unsafe {
+                get_error(|err| {
+                    panic!(
+                        "SDL_UpperBlit returned an unexpected error: {}",
+                        err.to_string_lossy(),
+                    );
+                });
+            }
         }
     }
 

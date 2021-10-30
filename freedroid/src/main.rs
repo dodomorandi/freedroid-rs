@@ -196,9 +196,12 @@ impl<'sdl> Data<'sdl> {
 
 fn init_sdl() -> Sdl {
     let sdl = sdl::init().video().timer().build().unwrap_or_else(|| {
-        sdl::get_error(|err| {
-            panic!("Couldn't initialize SDL: {}", err.to_string_lossy());
-        })
+        // Safety: no other SDL function will be used -- we are panicking.
+        unsafe {
+            sdl::get_error(|err| {
+                panic!("Couldn't initialize SDL: {}", err.to_string_lossy());
+            })
+        }
     });
     info!("SDL initialisation successful.");
     sdl

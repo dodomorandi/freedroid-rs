@@ -1,10 +1,10 @@
 use std::{convert::TryInto, ffi::CStr, marker::PhantomData, os::raw::c_int, ptr::NonNull};
 
 use sdl_sys::{
-    Mix_AllocateChannels, Mix_Chunk, Mix_CloseAudio, Mix_FreeChunk, Mix_FreeMusic, Mix_LoadMUS,
-    Mix_LoadWAV_RW, Mix_Music, Mix_OpenAudio, Mix_PauseMusic, Mix_PlayChannelTimed, Mix_PlayMusic,
-    Mix_ResumeMusic, Mix_VolumeChunk, Mix_VolumeMusic, MIX_DEFAULT_CHANNELS, MIX_DEFAULT_FORMAT,
-    MIX_DEFAULT_FREQUENCY,
+    Mix_AllocateChannels, Mix_Chunk, Mix_CloseAudio, Mix_FreeChunk, Mix_FreeMusic, Mix_HaltMusic,
+    Mix_LoadMUS, Mix_LoadWAV_RW, Mix_Music, Mix_OpenAudio, Mix_PauseMusic, Mix_PlayChannelTimed,
+    Mix_PlayMusic, Mix_ResumeMusic, Mix_VolumeChunk, Mix_VolumeMusic, MIX_DEFAULT_CHANNELS,
+    MIX_DEFAULT_FORMAT, MIX_DEFAULT_FREQUENCY,
 };
 
 use crate::rwops::RwOps;
@@ -92,6 +92,14 @@ impl Mixer {
         let channel = unsafe { Mix_PlayChannelTimed(channel, chunk.inner.as_ptr(), loops, ticks) };
 
         channel.try_into().ok()
+    }
+
+    pub fn halt_music(&self) {
+        // TODO: Checks whether the abstraction related to callbacks set by `Mix_HookMusicFinished` is safe.
+        unsafe {
+            // Always returns zero.
+            Mix_HaltMusic();
+        }
     }
 }
 

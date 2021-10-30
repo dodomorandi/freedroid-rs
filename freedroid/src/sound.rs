@@ -13,7 +13,6 @@ use sdl::{
     rwops::RwOps,
     Mixer,
 };
-use sdl_sys::{SDL_CloseAudio, SDL_GetError};
 use std::{
     convert::TryFrom,
     ffi::CStr,
@@ -114,32 +113,20 @@ impl Data<'_> {
             None,
         );
         if newest_sound_channel.is_none() {
-            warn!(
-                "Could not play sound-sample: {} Error: {}.\
+            sdl::get_error(|err| {
+                warn!(
+                    "Could not play sound-sample: {} Error: {}.\
 This usually just means that too many samples where played at the same time",
-                SOUND_SAMPLE_FILENAMES[tune].to_string_lossy(),
-                CStr::from_ptr(SDL_GetError()).to_string_lossy(),
-            );
+                    SOUND_SAMPLE_FILENAMES[tune].to_string_lossy(),
+                    err.to_string_lossy(),
+                );
+            });
         } else {
             info!(
                 "Successfully playing file {}.",
                 SOUND_SAMPLE_FILENAMES[tune].to_string_lossy()
             );
         };
-    }
-
-    pub unsafe fn free_sounds(&mut self) {
-        let sound = self.sound.as_mut().unwrap();
-
-        sound
-            .loaded_wav_files
-            .iter_mut()
-            .for_each(|file| *file = None);
-        sound.music_songs.iter_mut().for_each(|music| *music = None);
-        sound.tmp_mod_file = None;
-
-        // FIXME: Why is this needed?
-        SDL_CloseAudio();
     }
 
     pub unsafe fn takeover_set_capsule_sound(&self) {
@@ -374,7 +361,7 @@ impl<'sdl> Data<'sdl> {
                 None => {
                     error!(
                         "SDL Mixer Error: {}. Continuing with sound disabled",
-                        CStr::from_ptr(SDL_GetError()).to_string_lossy(),
+                        sdl.get_error().to_string_lossy(),
                     );
                     return;
                 }
@@ -484,7 +471,7 @@ Continuing with sound disabled",
                 );
                 warn!(
                     "Continuing with sound disabled. Error = {}",
-                    CStr::from_ptr(SDL_GetError()).to_string_lossy()
+                    sdl.get_error().to_string_lossy()
                 );
                 main.sound_on = false.into();
                 return None;
@@ -515,7 +502,7 @@ Continuing with sound disabled",
                 error!("Error loading sound-file: {}", music_file.to_string_lossy());
                 warn!(
                     "SDL Mixer Error: {}. Continuing with sound disabled",
-                    CStr::from_ptr(SDL_GetError()).to_string_lossy()
+                    sdl.get_error().to_string_lossy()
                 );
                 main.sound_on = false.into();
                 return None;
