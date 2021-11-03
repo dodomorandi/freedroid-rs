@@ -11,6 +11,7 @@ mod video;
 use std::{
     ffi::{CStr, CString},
     marker::PhantomData,
+    sync::atomic::{AtomicBool, Ordering},
 };
 
 pub use joystick::{Joystick, JoystickSystem};
@@ -56,6 +57,8 @@ where
         unsafe {
             SDL_Quit();
         }
+
+        INITIALIZED.store(false, Ordering::Release);
     }
 }
 
@@ -183,6 +186,8 @@ pub struct Builder<V, T, J, M> {
     mixer: M,
 }
 
+static INITIALIZED: AtomicBool = AtomicBool::new(false);
+
 pub fn init() -> Builder<OnceCell<Video>, OnceCell<Timer>, OnceCell<JoystickSystem>, OnceCell<Mixer>>
 {
     Builder {
@@ -258,6 +263,10 @@ where
     M: Quittable,
 {
     pub fn build(self) -> Option<Sdl<V, T, J, M>> {
+        INITIALIZED
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Relaxed)
+            .ok()?;
+
         let Self {
             value,
             video,
@@ -290,4 +299,34 @@ where
     // [SDL_GetError] always return a valid C string, even without errors.
     let err = unsafe { CStr::from_ptr(SDL_GetError()) };
     f(err)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Mutex;
+
+    use once_cell::sync::Lazy;
+
+    use super::*;
+
+    static SDL_MUTEX: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
+
+    #[test]
+    fn one_instance_allowed() {
+        let _sdl_lock = SDL_MUTEX.lock().unwrap();
+
+        let _sdl = init().build().unwrap();
+        if init().build().is_some() {
+            panic!("only one SDL instance is allowed");
+        };
+    }
+
+    #[test]
+    fn can_reinitialize() {
+        let _sdl_lock = SDL_MUTEX.lock().unwrap();
+
+        let sdl = init().build().unwrap();
+        drop(sdl);
+        let _sdl = init().build().unwrap();
+    }
 }
