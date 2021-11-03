@@ -24,13 +24,13 @@ pub const INFLUENCE_MODE_NAMES: [&CStr; 17] = [
 ];
 
 #[derive(Debug)]
-pub struct Global {
-    pub menu_b_font: *mut BFontInfo,
-    pub para_b_font: *mut BFontInfo,
-    pub highscore_b_font: *mut BFontInfo,
-    pub font0_b_font: *mut BFontInfo,
-    pub font1_b_font: *mut BFontInfo,
-    pub font2_b_font: *mut BFontInfo,
+pub struct Global<'sdl> {
+    pub menu_b_font: *mut BFontInfo<'sdl>,
+    pub para_b_font: *mut BFontInfo<'sdl>,
+    pub highscore_b_font: *mut BFontInfo<'sdl>,
+    pub font0_b_font: *mut BFontInfo<'sdl>,
+    pub font1_b_font: *mut BFontInfo<'sdl>,
+    pub font2_b_font: *mut BFontInfo<'sdl>,
     pub skip_a_few_frames: i32,
     pub level_doors_not_moved_time: f32,
     pub droid_radius: f32,
@@ -42,7 +42,7 @@ pub struct Global {
     pub game_config: Config,
 }
 
-impl Default for Global {
+impl Default for Global<'_> {
     fn default() -> Self {
         Self {
             menu_b_font: null_mut(),

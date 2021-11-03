@@ -1,8 +1,5 @@
 #[cfg(feature = "gcw0")]
-use crate::{
-    defs::{gcw0_a_pressed, gcw0_any_button_pressed, gcw0_any_button_pressed_r},
-    input::SDL_Delay,
-};
+use crate::defs::{gcw0_a_pressed, gcw0_any_button_pressed, gcw0_any_button_pressed_r};
 
 use crate::{
     b_font::{char_width, font_height, print_string_font},
@@ -23,8 +20,8 @@ use cstr::cstr;
 use sdl::Surface;
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT,
-    SDLKey_SDLK_RIGHT, SDLKey_SDLK_UP, SDL_Delay, SDL_DisplayFormat, SDL_GetTicks,
-    SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE,
+    SDLKey_SDLK_RIGHT, SDLKey_SDLK_UP, SDL_DisplayFormat, SDL_GetTicks, SDL_ShowCursor,
+    SDL_DISABLE, SDL_ENABLE,
 };
 use std::{
     alloc::{alloc_zeroed, dealloc, realloc, Layout},
@@ -37,9 +34,9 @@ use std::{
 };
 
 #[derive(Debug)]
-pub struct Menu {
+pub struct Menu<'sdl> {
     font_height: i32,
-    menu_background: Option<Surface>,
+    menu_background: Option<Surface<'sdl>>,
     quit_menu: bool,
     pub quit_level_editor: bool,
     last_movekey_time: u32,
@@ -63,7 +60,7 @@ struct MenuActionDirections {
     right: bool,
 }
 
-impl Default for Menu {
+impl Default for Menu<'_> {
     fn default() -> Self {
         Self {
             font_height: 0,
@@ -244,13 +241,13 @@ impl<'sdl> Data<'sdl> {
         #[cfg(feature = "gcw0")]
         {
             while !gcw0_any_button_pressed() {
-                SDL_Delay(1);
+                self.sdl.delay_ms(1);
             }
 
             if gcw0_a_pressed() {
                 while !gcw0_any_button_pressed_r() {
                     // In case FirePressed && !Gcw0APressed() -> would cause a loop otherwise in the menu...
-                    SDL_Delay(1);
+                    self.sdl.delay_ms(1);
                 }
                 Terminate(defs::OK.into());
             }
@@ -1079,7 +1076,7 @@ impl<'sdl> Data<'sdl> {
                 finished = true;
             }
 
-            SDL_Delay(1); // don't hog CPU
+            self.sdl.delay_ms(1); // don't hog CPU
         }
 
         self.clear_graph_mem();
@@ -1092,7 +1089,7 @@ impl<'sdl> Data<'sdl> {
         while self.any_key_is_pressed_r()
         // wait for all key/controller-release
         {
-            SDL_Delay(1);
+            self.sdl.delay_ms(1);
         }
     }
 
@@ -1346,7 +1343,7 @@ impl<'sdl> Data<'sdl> {
                 _ => {}
             }
 
-            SDL_Delay(1);
+            self.sdl.delay_ms(1);
         }
     }
 

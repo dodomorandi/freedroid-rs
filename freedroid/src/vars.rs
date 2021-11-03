@@ -9,7 +9,7 @@ use sdl_sys::SDL_Rect;
 use std::{ffi::CStr, os::raw::c_int, ptr::null_mut};
 
 #[derive(Debug)]
-pub struct Vars {
+pub struct Vars<'sdl> {
     pub block_rect: SDL_Rect,
     pub screen_rect: SDL_Rect,
     pub user_rect: SDL_Rect,
@@ -39,11 +39,11 @@ pub struct Vars {
     pub me: Influence,
 
     pub droidmap: *mut DruidSpec,
-    pub bulletmap: *mut BulletSpec,
-    pub blastmap: [BlastSpec; ALLBLASTTYPES],
+    pub bulletmap: *mut BulletSpec<'sdl>,
+    pub blastmap: [BlastSpec<'sdl>; ALLBLASTTYPES],
 }
 
-impl Default for Vars {
+impl Default for Vars<'_> {
     fn default() -> Self {
         Self {
             block_rect: rect! {0, 0, 64, 64},
@@ -165,7 +165,7 @@ pub const WEAPON_NAMES: [&CStr; 7] = [
     cstr!("error"),
 ];
 
-impl Vars {
+impl Vars<'_> {
     #[inline]
     pub fn get_user_center(&self) -> SDL_Rect {
         let SDL_Rect { x, y, w, h } = self.user_rect;

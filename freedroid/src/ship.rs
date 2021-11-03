@@ -14,7 +14,7 @@ use crate::{
 use log::{error, warn};
 use sdl::Surface;
 use sdl_sys::{
-    IMG_Load_RW, IMG_isJPG, SDL_Color, SDL_CreateRGBSurface, SDL_Delay, SDL_DisplayFormat,
+    IMG_Load_RW, IMG_isJPG, SDL_Color, SDL_CreateRGBSurface, SDL_DisplayFormat,
     SDL_DisplayFormatAlpha, SDL_FreeSurface, SDL_GetTicks, SDL_RWops, SDL_Rect, SDL_SetCursor,
     SDL_ShowCursor, SDL_UpdateRects, SDL_WarpMouse, SDL_DISABLE, SDL_ENABLE,
 };
@@ -27,7 +27,7 @@ use std::{
 
 const UPDATE_ONLY: u8 = 0x01;
 
-pub struct ShipData {
+pub struct ShipData<'sdl> {
     last_siren: u32,
     frame_num: c_int,
     last_droid_type: c_int,
@@ -36,15 +36,15 @@ pub struct ShipData {
     enter_console_last_move_tick: u32,
     great_droid_show_last_move_tick: u32,
     enter_lift_last_move_tick: u32,
-    droid_background: Option<Surface>,
-    droid_pics: Option<Surface>,
+    droid_background: Option<Surface<'sdl>>,
+    droid_pics: Option<Surface<'sdl>>,
     up_rect: SDL_Rect,
     down_rect: SDL_Rect,
     left_rect: SDL_Rect,
     right_rect: SDL_Rect,
 }
 
-impl Default for ShipData {
+impl Default for ShipData<'_> {
     fn default() -> Self {
         Self {
             last_siren: 0,
@@ -753,7 +753,7 @@ Paradroid to eliminate all rogue robots.\0",
                 // for responsive input on Android, we need to run this every cycle
             }
 
-            SDL_Delay(1); // don't hog CPU
+            self.sdl.delay_ms(1); // don't hog CPU
         }
 
         self.vars.user_rect = tmp_rect;
@@ -875,7 +875,7 @@ Paradroid to eliminate all rogue robots.\0",
                 _ => {}
             }
 
-            SDL_Delay(1); // don't hog CPU
+            self.sdl.delay_ms(1); // don't hog CPU
         }
     }
 
@@ -1149,7 +1149,7 @@ Paradroid to eliminate all rogue robots.\0",
                     _ => {}
                 }
             }
-            SDL_Delay(1); // don't hog CPU
+            self.sdl.delay_ms(1); // don't hog CPU
         }
 
         // It might happen, that the influencer enters the elevator, but then decides to

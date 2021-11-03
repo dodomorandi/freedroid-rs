@@ -10,7 +10,7 @@ use crate::{
 
 use cstr::cstr;
 use sdl::Surface;
-use sdl_sys::{SDL_Color, SDL_Delay, SDL_GetTicks, SDL_Rect, SDL_ShowCursor, SDL_DISABLE};
+use sdl_sys::{SDL_Color, SDL_GetTicks, SDL_Rect, SDL_ShowCursor, SDL_DISABLE};
 use std::{
     convert::Infallible,
     ffi::CStr,
@@ -208,7 +208,7 @@ type ActivationMap = Map<Condition>;
 type CapsulesCountdown = Map<Option<u8>>;
 
 #[derive(Debug)]
-pub struct Takeover {
+pub struct Takeover<'sdl> {
     capsule_cur_row: [c_int; COLORS],
     num_capsules: [c_int; COLORS],
     playground: Playground,
@@ -235,7 +235,7 @@ pub struct Takeover {
     pub ground_rect: SDL_Rect,
     pub column_rect: SDL_Rect,
     // the global surface containing all game-blocks
-    pub to_blocks: Option<Surface>,
+    pub to_blocks: Option<Surface<'sdl>>,
     // the rectangles containing the blocks
     pub fill_blocks: [SDL_Rect; NUM_FILL_BLOCKS],
     pub capsule_blocks: [SDL_Rect; NUM_CAPS_BLOCKS],
@@ -249,7 +249,7 @@ pub struct Takeover {
     reject_energy: c_int,
 }
 
-impl Default for Takeover {
+impl Default for Takeover<'_> {
     fn default() -> Self {
         Self {
             capsule_cur_row: [0, 0],
@@ -588,7 +588,7 @@ impl From<Block> for usize {
     }
 }
 
-impl Takeover {
+impl Takeover<'_> {
     unsafe fn process_playground(&mut self) {
         let Self {
             activation_map,
@@ -1593,7 +1593,7 @@ impl Data<'_> {
             } // if do_update_move
 
             assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
-            SDL_Delay(1);
+            self.sdl.delay_ms(1);
         } /* while !FinishTakeover */
 
         /* Schluss- Countdown */
@@ -1608,7 +1608,7 @@ impl Data<'_> {
             }
 
             if !fast_forward {
-                SDL_Delay(COUNT_TICK_LEN);
+                self.sdl.delay_ms(COUNT_TICK_LEN);
             }
             if self.any_key_just_pressed() != 0 {
                 fast_forward = true;
@@ -1623,7 +1623,7 @@ impl Data<'_> {
             self.process_playground(); /* this has to be done several times to be sure */
             self.process_display_column();
             self.show_playground();
-            SDL_Delay(1);
+            self.sdl.delay_ms(1);
             assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
         } /* while (countdown) */
 
@@ -1677,7 +1677,7 @@ impl Data<'_> {
             }
 
             assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
-            SDL_Delay(1); // don't hog CPU
+            self.sdl.delay_ms(1); // don't hog CPU
         }
     }
 
@@ -1728,7 +1728,7 @@ impl Data<'_> {
                 DROID_ROTATION_TIME,
                 0,
             );
-            SDL_Delay(1);
+            self.sdl.delay_ms(1);
         }
 
         let enemy_index: usize = enemynum.try_into().unwrap();
@@ -1747,7 +1747,7 @@ impl Data<'_> {
                 DROID_ROTATION_TIME,
                 0,
             );
-            SDL_Delay(1);
+            self.sdl.delay_ms(1);
         }
 
         let Graphics {
@@ -1884,7 +1884,7 @@ impl Data<'_> {
                 #[cfg(target_os = "android")]
                 assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
-                SDL_Delay(1);
+                self.sdl.delay_ms(1);
             }
         }
 

@@ -60,14 +60,14 @@ impl From<BytesPerPixel> for u8 {
 }
 
 #[derive(Debug)]
-pub struct Pixels<'a, 'b, const FREEABLE: bool> {
-    surface: &'a mut UsableSurface<'b, FREEABLE>,
+pub struct Pixels<'a, 'b, 'sdl, const FREEABLE: bool> {
+    surface: &'a mut UsableSurface<'b, 'sdl, FREEABLE>,
     width: u16,
     height: u16,
 }
 
-impl<'a, 'b: 'a, const FREEABLE: bool> Pixels<'a, 'b, FREEABLE> {
-    pub fn new(surface: &'a mut UsableSurface<'b, FREEABLE>) -> Self {
+impl<'a, 'b: 'a, 'sdl, const FREEABLE: bool> Pixels<'a, 'b, 'sdl, FREEABLE> {
+    pub fn new(surface: &'a mut UsableSurface<'b, 'sdl, FREEABLE>) -> Self {
         let raw_surface = surface.raw();
         let width: u16 = raw_surface
             .width()
@@ -88,7 +88,7 @@ impl<'a, 'b: 'a, const FREEABLE: bool> Pixels<'a, 'b, FREEABLE> {
         }
     }
 
-    pub fn get(&self, x: u16, y: u16) -> Option<PixelRef<'_, 'a, 'b, FREEABLE>> {
+    pub fn get(&self, x: u16, y: u16) -> Option<PixelRef<'_, 'a, 'b, 'sdl, FREEABLE>> {
         if x >= self.width || y >= self.height {
             return None;
         }
@@ -97,7 +97,7 @@ impl<'a, 'b: 'a, const FREEABLE: bool> Pixels<'a, 'b, FREEABLE> {
         Some(PixelRef { pixels: self, pos })
     }
 
-    pub fn get_mut(&mut self, x: u16, y: u16) -> Option<PixelMut<'_, 'a, 'b, FREEABLE>> {
+    pub fn get_mut(&mut self, x: u16, y: u16) -> Option<PixelMut<'_, 'a, 'b, 'sdl, FREEABLE>> {
         if x >= self.width || y >= self.height {
             return None;
         }
@@ -114,7 +114,7 @@ impl<'a, 'b: 'a, const FREEABLE: bool> Pixels<'a, 'b, FREEABLE> {
 
 macro_rules! impl_pixel_raw_slice {
     (@inner $name:ident, $ty:ident, $from_raw_parts:ident) => {
-        impl<'a, 'b: 'a, const FREEABLE: bool> Pixels<'a, 'b, FREEABLE> {
+        impl<'a, 'b: 'a, 'sdl, const FREEABLE: bool> Pixels<'a, 'b, 'sdl, FREEABLE> {
             fn $name(&self) -> $ty {
                 use $ty::*;
 
@@ -169,20 +169,20 @@ enum PixelsSliceMutPerBpp<'a> {
 }
 
 #[derive(Debug, Clone)]
-pub struct PixelRef<'a, 'b, 'c, const FREEABLE: bool> {
-    pixels: &'a Pixels<'b, 'c, FREEABLE>,
+pub struct PixelRef<'a, 'b, 'c, 'sdl, const FREEABLE: bool> {
+    pixels: &'a Pixels<'b, 'c, 'sdl, FREEABLE>,
     pos: usize,
 }
 
 #[derive(Debug)]
-pub struct PixelMut<'a, 'b, 'c, const FREEABLE: bool> {
-    pixels: &'a mut Pixels<'b, 'c, FREEABLE>,
+pub struct PixelMut<'a, 'b, 'c, 'sdl, const FREEABLE: bool> {
+    pixels: &'a mut Pixels<'b, 'c, 'sdl, FREEABLE>,
     pos: usize,
 }
 
 macro_rules! impl_pixel_ref {
     ($ty:ident) => {
-        impl<const FREEABLE: bool> $ty<'_, '_, '_, FREEABLE> {
+        impl<const FREEABLE: bool> $ty<'_, '_, '_, '_, FREEABLE> {
             pub fn get(&self) -> u32 {
                 raw_get_pixel(self.pixels.raw_slice(), self.pos, || {
                     self.pixels.surface.raw().format()
@@ -213,7 +213,7 @@ macro_rules! impl_pixel_ref {
 impl_pixel_ref!(PixelRef);
 impl_pixel_ref!(PixelMut);
 
-impl<const FREEABLE: bool> PixelMut<'_, '_, '_, FREEABLE> {
+impl<const FREEABLE: bool> PixelMut<'_, '_, '_, '_, FREEABLE> {
     pub fn set(&mut self, value: u32) {
         raw_set_pixel(self.pixels.raw_slice_mut(), self.pos, value);
     }

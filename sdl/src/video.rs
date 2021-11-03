@@ -13,6 +13,7 @@ pub struct Video;
 
 impl Video {
     pub fn set_video_mode(
+        &self,
         width: c_int,
         height: c_int,
         bits_per_pixel: Option<NonZeroU8>,

@@ -62,17 +62,14 @@ use takeover::Takeover;
 use text::Text;
 use vars::Vars;
 
-use sdl_sys::{
-    SDL_Delay, SDL_GetTicks, SDL_Rect, SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE,
-    SDL_ENABLE,
-};
+use sdl_sys::{SDL_GetTicks, SDL_Rect, SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE};
 use std::{
     ops::Not,
     os::raw::{c_char, c_float},
     ptr::null_mut,
 };
 
-struct Main {
+struct Main<'sdl> {
     last_got_into_blast_sound: c_float,
     last_refresh_sound: c_float,
     // Toggle TRUE/FALSE for turning sounds on/off
@@ -102,7 +99,7 @@ struct Main {
     num_enemys: i32,
     number_of_droid_types: i32,
     pre_take_energy: i32,
-    all_bullets: [Bullet; MAXBULLETS + 10],
+    all_bullets: [Bullet<'sdl>; MAXBULLETS + 10],
     all_blasts: [Blast; MAXBLASTS + 10],
     first_digit_rect: SDL_Rect,
     second_digit_rect: SDL_Rect,
@@ -110,7 +107,7 @@ struct Main {
     f_p_sover1: f32,
 }
 
-impl Default for Main {
+impl Default for Main<'_> {
     fn default() -> Self {
         Self {
             last_got_into_blast_sound: 2.,
@@ -149,7 +146,7 @@ struct Data<'sdl> {
     game_over: bool,
     sdl: &'sdl Sdl,
     map: Map,
-    b_font: BFont,
+    b_font: BFont<'sdl>,
     highscore: Highscore,
     bullet: BulletData,
     influencer: Influencer,
@@ -157,14 +154,14 @@ struct Data<'sdl> {
     text: Text,
     sound: Option<Sound<'sdl>>,
     misc: Misc,
-    ship: ShipData,
+    ship: ShipData<'sdl>,
     input: Input,
-    menu: Menu,
-    global: Global,
-    vars: Vars,
-    takeover: Takeover,
-    graphics: Graphics,
-    main: Main,
+    menu: Menu<'sdl>,
+    global: Global<'sdl>,
+    vars: Vars<'sdl>,
+    takeover: Takeover<'sdl>,
+    graphics: Graphics<'sdl>,
+    main: Main<'sdl>,
 }
 
 impl<'sdl> Data<'sdl> {
@@ -268,7 +265,7 @@ fn main() {
                     DROID_ROTATION_TIME,
                     0,
                 );
-                SDL_Delay(1);
+                sdl.delay_ms(1);
             }
 
             data.clear_graph_mem();
@@ -345,7 +342,7 @@ fn main() {
 
                 if data.global.game_config.hog_cpu == 0 {
                     // don't use up 100% CPU unless requested
-                    SDL_Delay(1);
+                    sdl.delay_ms(1);
                 }
 
                 data.compute_fps_for_this_frame();

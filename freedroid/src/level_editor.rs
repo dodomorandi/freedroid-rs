@@ -13,7 +13,7 @@ use log::{info, warn};
 use sdl_sys::{
     SDLKey_SDLK_F1, SDLKey_SDLK_KP0, SDLKey_SDLK_KP1, SDLKey_SDLK_KP2, SDLKey_SDLK_KP3,
     SDLKey_SDLK_KP4, SDLKey_SDLK_KP5, SDLKey_SDLK_KP6, SDLKey_SDLK_KP7, SDLKey_SDLK_KP8,
-    SDLKey_SDLK_KP9, SDLKey_SDLK_KP_PLUS, SDL_Delay,
+    SDLKey_SDLK_KP9, SDLKey_SDLK_KP_PLUS,
 };
 use std::{
     cmp::Ordering,
@@ -262,7 +262,7 @@ impl Data<'_> {
                 self.graphics.ne_screen = Some(ne_screen);
                 while !self.fire_pressed_r() && !self.escape_pressed_r() && !self.return_pressed_r()
                 {
-                    SDL_Delay(1);
+                    self.sdl.delay_ms(1);
                 }
             }
 

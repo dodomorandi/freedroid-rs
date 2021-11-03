@@ -165,19 +165,19 @@ impl Default for Enemy {
 }
 
 #[derive(Debug)]
-pub struct BulletSpec {
+pub struct BulletSpec<'sdl> {
     pub recharging_time: f32, // time until the next shot can be made, measures in seconds
     pub speed: f32,           /* speed of the bullet */
     pub damage: i32,          /* damage done by this bullettype */
     pub phases: i32,          /* how many phases in motion to show */
     pub phase_changes_per_second: f32, // how many different phases to display every second
     pub blast: i32,           /* which blast does this bullet create */
-    pub surfaces: [Option<Surface>; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
-                              // the bullet images of this bullet
+    pub surfaces: [Option<Surface<'sdl>>; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
+                                                                   // the bullet images of this bullet
 }
 
 #[derive(Debug)]
-pub struct Bullet {
+pub struct Bullet<'sdl> {
     pub pos: Finepoint,
     pub prev_pos: Finepoint, // use this for improved collision checks (for low FPS machines)
     pub speed: Finepoint,
@@ -189,10 +189,10 @@ pub struct Bullet {
     pub owner: i32,
     pub angle: f32,
     pub surfaces_were_generated: i32,
-    pub surfaces: [Option<Surface>; MAX_PHASES_IN_A_BULLET],
+    pub surfaces: [Option<Surface<'sdl>>; MAX_PHASES_IN_A_BULLET],
 }
 
-impl Bullet {
+impl Bullet<'_> {
     pub const fn default_const() -> Self {
         Bullet {
             pos: Finepoint::default_const(),
@@ -214,16 +214,16 @@ impl Bullet {
 }
 
 #[derive(Debug)]
-pub struct BlastSpec {
+pub struct BlastSpec<'sdl> {
     pub phases: i32,
     pub picpointer: *mut u8,
     pub block: *mut SDL_Rect, /* the coordinates of the blocks in ne_blocks */
     pub total_animation_time: f32,
-    pub surfaces: [Option<Surface>; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
-                                                             // the blast images of this blast type
+    pub surfaces: [Option<Surface<'sdl>>; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
+                                                                   // the blast images of this blast type
 }
 
-impl BlastSpec {
+impl BlastSpec<'_> {
     pub const fn default_const() -> Self {
         Self {
             phases: 0,

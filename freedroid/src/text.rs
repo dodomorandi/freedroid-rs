@@ -18,7 +18,7 @@ use sdl::{RectRef, Surface};
 use sdl_sys::SDLKey_SDLK_DELETE;
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_RETURN, SDLMod, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_RSHIFT,
-    SDL_CreateRGBSurface, SDL_Delay, SDL_DisplayFormat, SDL_Event, SDL_EventType, SDL_GetClipRect,
+    SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_Event, SDL_EventType, SDL_GetClipRect,
     SDL_GetTicks, SDL_PushEvent, SDL_Rect, SDL_UpdateRect, SDL_WaitEvent, SDL_BUTTON_LEFT,
     SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
 };
@@ -659,7 +659,7 @@ impl Data<'_> {
             assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
             if self.global.game_config.hog_cpu != 0 {
-                SDL_Delay(1);
+                self.sdl.delay_ms(1);
             }
 
             if just_started {
@@ -669,7 +669,7 @@ impl Data<'_> {
                 loop {
                     key = self.any_key_just_pressed();
                     if key == 0 && (SDL_GetTicks() - now < SHOW_WAIT as u32) {
-                        SDL_Delay(1); // wait before starting auto-scroll
+                        self.sdl.delay_ms(1); // wait before starting auto-scroll
                     } else {
                         break;
                     }

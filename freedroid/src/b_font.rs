@@ -9,11 +9,11 @@ use std::{
 };
 
 #[derive(Debug)]
-pub struct BFont {
-    pub current_font: *mut BFontInfo,
+pub struct BFont<'sdl> {
+    pub current_font: *mut BFontInfo<'sdl>,
 }
 
-impl Default for BFont {
+impl Default for BFont<'_> {
     fn default() -> Self {
         Self {
             current_font: null_mut(),
@@ -21,12 +21,12 @@ impl Default for BFont {
     }
 }
 
-pub struct BFontInfo {
+pub struct BFontInfo<'sdl> {
     /// font height
     pub h: c_int,
 
     /// font surface
-    pub surface: Option<sdl::Surface>,
+    pub surface: Option<sdl::Surface<'sdl>>,
 
     /// characters width
     pub chars: [SDL_Rect; 256],
@@ -150,7 +150,7 @@ pub unsafe fn centered_put_string_font<const F: bool>(
     );
 }
 
-impl Data<'_> {
+impl<'sdl> Data<'sdl> {
     pub unsafe fn put_string<const F: bool>(
         &self,
         surface: &mut sdl::GenericSurface<F>,
@@ -173,7 +173,11 @@ impl Data<'_> {
     }
 
     /// Load the font and stores it in the BFont_Info structure
-    pub unsafe fn load_font(&mut self, filename: *mut c_char, scale: c_float) -> *mut BFontInfo {
+    pub unsafe fn load_font(
+        &mut self,
+        filename: *mut c_char,
+        scale: c_float,
+    ) -> *mut BFontInfo<'sdl> {
         if filename.is_null() {
             return null_mut();
         }

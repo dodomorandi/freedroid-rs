@@ -13,7 +13,7 @@ use sdl::Joystick;
 use sdl_sys::{SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_LALT, SDLKey_SDLK_LCTRL, SDLKey_SDLK_TAB};
 use sdl_sys::{
     SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT, SDLKey_SDLK_RETURN, SDLKey_SDLK_RIGHT,
-    SDLKey_SDLK_SPACE, SDLKey_SDLK_UP, SDLMod, SDL_Delay, SDL_Event, SDL_GetTicks, SDL_PollEvent,
+    SDLKey_SDLK_SPACE, SDLKey_SDLK_UP, SDLMod, SDL_Event, SDL_GetTicks, SDL_PollEvent,
     SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
 };
 #[cfg(not(feature = "gcw0"))]
@@ -214,7 +214,7 @@ impl Data<'_> {
     pub unsafe fn wait_for_key_pressed(&mut self) -> c_int {
         loop {
             match self.any_key_just_pressed() {
-                0 => SDL_Delay(1),
+                0 => self.sdl.delay_ms(1),
                 key => break key,
             }
         }
@@ -476,7 +476,7 @@ impl Data<'_> {
 
     pub unsafe fn wait_for_all_keys_released(&mut self) {
         while self.any_key_is_pressed_r() {
-            SDL_Delay(1);
+            self.sdl.delay_ms(1);
         }
         self.reset_mouse_wheel();
     }

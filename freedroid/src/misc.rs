@@ -13,7 +13,7 @@ use crate::{
 use cstr::cstr;
 use defs::MAXBULLETS;
 use log::{error, info, warn};
-use sdl_sys::{SDL_Delay, SDL_GetTicks, SDL_Quit, SDL_UpdateRects};
+use sdl_sys::{SDL_GetTicks, SDL_Quit, SDL_UpdateRects};
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
     borrow::Cow,
@@ -387,7 +387,7 @@ impl Data<'_> {
             self.display_banner(null_mut(), null_mut(), 0);
             self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
 
-            SDL_Delay(1);
+            self.sdl.delay_ms(1);
 
             self.compute_fps_for_this_frame();
 
@@ -407,7 +407,7 @@ impl Data<'_> {
 
             if self.fire_pressed_r() || self.cmd_is_active_r(Cmds::Pause) {
                 while self.cmd_is_active(Cmds::Pause) {
-                    SDL_Delay(1);
+                    self.sdl.delay_ms(1);
                 }
                 break;
             }

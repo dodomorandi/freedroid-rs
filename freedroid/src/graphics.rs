@@ -21,12 +21,12 @@ use cstr::cstr;
 use log::{error, info, trace, warn};
 use sdl::{FrameBuffer, Surface, VideoModeFlags};
 use sdl_sys::{
-    zoomSurface, IMG_Load, SDL_CreateCursor, SDL_CreateRGBSurface, SDL_Cursor, SDL_Delay,
-    SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_FillRect, SDL_FreeCursor,
-    SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetTicks, SDL_GetVideoInfo, SDL_MapRGB,
-    SDL_MapRGBA, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops, SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha,
-    SDL_SetGamma, SDL_UpdateRect, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption,
-    SDL_WM_SetIcon, SDL_RLEACCEL, SDL_SRCALPHA,
+    zoomSurface, IMG_Load, SDL_CreateCursor, SDL_CreateRGBSurface, SDL_Cursor, SDL_DisplayFormat,
+    SDL_DisplayFormatAlpha, SDL_FillRect, SDL_FreeCursor, SDL_FreeSurface, SDL_GetClipRect,
+    SDL_GetError, SDL_GetTicks, SDL_GetVideoInfo, SDL_MapRGB, SDL_MapRGBA, SDL_RWFromFile,
+    SDL_RWFromMem, SDL_RWops, SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma, SDL_UpdateRect,
+    SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_RLEACCEL,
+    SDL_SRCALPHA,
 };
 use std::{
     cell::RefCell,
@@ -38,53 +38,55 @@ use std::{
 };
 
 #[derive(Debug)]
-pub struct Graphics {
+pub struct Graphics<'sdl> {
     vid_info: *const SDL_VideoInfo,
     pub vid_bpp: c_int,
     portrait_raw_mem: [Option<Box<[u8]>>; Droid::NumDroids as usize],
     fonts_loaded: c_int,
     // A pointer to the surfaces containing the map-pics, which may be rescaled with respect to
-    pub map_block_surface_pointer: [[Option<Rc<RefCell<Surface>>>; NUM_MAP_BLOCKS]; NUM_COLORS],
+    pub map_block_surface_pointer:
+        [[Option<Rc<RefCell<Surface<'sdl>>>>; NUM_MAP_BLOCKS]; NUM_COLORS],
     // A pointer to the surfaces containing the original map-pics as read from disk
-    orig_map_block_surface_pointer: [[Option<Rc<RefCell<Surface>>>; NUM_MAP_BLOCKS]; NUM_COLORS],
+    orig_map_block_surface_pointer:
+        [[Option<Rc<RefCell<Surface<'sdl>>>>; NUM_MAP_BLOCKS]; NUM_COLORS],
     // a block for temporary pic-construction
-    pub build_block: Option<Surface>,
+    pub build_block: Option<Surface<'sdl>>,
     pub banner_is_destroyed: i32,
     /* the banner pic */
-    pub banner_pic: Option<Surface>,
-    pub pic999: Option<Surface>,
+    pub banner_pic: Option<Surface<'sdl>>,
+    pub pic999: Option<Surface<'sdl>>,
     pub packed_portraits: [*mut SDL_RWops; Droid::NumDroids as usize],
-    pub decal_pics: [Option<Surface>; NUM_DECAL_PICS],
-    pub takeover_bg_pic: Option<Surface>,
-    pub console_pic: Option<Surface>,
-    pub console_bg_pic1: Option<Surface>,
-    pub console_bg_pic2: Option<Surface>,
-    pub arrow_up: Option<Surface>,
-    pub arrow_down: Option<Surface>,
-    pub arrow_right: Option<Surface>,
-    pub arrow_left: Option<Surface>,
+    pub decal_pics: [Option<Surface<'sdl>>; NUM_DECAL_PICS],
+    pub takeover_bg_pic: Option<Surface<'sdl>>,
+    pub console_pic: Option<Surface<'sdl>>,
+    pub console_bg_pic1: Option<Surface<'sdl>>,
+    pub console_bg_pic2: Option<Surface<'sdl>>,
+    pub arrow_up: Option<Surface<'sdl>>,
+    pub arrow_down: Option<Surface<'sdl>>,
+    pub arrow_right: Option<Surface<'sdl>>,
+    pub arrow_left: Option<Surface<'sdl>>,
     // Side-view of ship: lights off
-    pub ship_off_pic: Option<Surface>,
+    pub ship_off_pic: Option<Surface<'sdl>>,
     // Side-view of ship: lights on
-    pub ship_on_pic: Option<Surface>,
-    pub progress_meter_pic: Option<Surface>,
-    pub progress_filler_pic: Option<Surface>,
+    pub ship_on_pic: Option<Surface<'sdl>>,
+    pub progress_meter_pic: Option<Surface<'sdl>>,
+    pub progress_filler_pic: Option<Surface<'sdl>>,
     /* the graphics display */
-    pub ne_screen: Option<sdl::FrameBuffer>,
-    pub enemy_surface_pointer: [Option<Surface>; ENEMYPHASES as usize],
-    pub influencer_surface_pointer: [Option<Surface>; ENEMYPHASES as usize],
-    pub influ_digit_surface_pointer: [Option<Surface>; DIGITNUMBER],
-    pub enemy_digit_surface_pointer: [Option<Surface>; DIGITNUMBER],
+    pub ne_screen: Option<sdl::FrameBuffer<'sdl>>,
+    pub enemy_surface_pointer: [Option<Surface<'sdl>>; ENEMYPHASES as usize],
+    pub influencer_surface_pointer: [Option<Surface<'sdl>>; ENEMYPHASES as usize],
+    pub influ_digit_surface_pointer: [Option<Surface<'sdl>>; DIGITNUMBER],
+    pub enemy_digit_surface_pointer: [Option<Surface<'sdl>>; DIGITNUMBER],
     pub crosshair_cursor: *mut SDL_Cursor,
     pub arrow_cursor: *mut SDL_Cursor,
     pub number_of_bullet_types: i32,
     pub all_themes: ThemeList,
     pub classic_theme_index: i32,
     number_of_screenshot: u32,
-    pic: Option<Surface>,
+    pic: Option<Surface<'sdl>>,
 }
 
-impl Default for Graphics {
+impl Default for Graphics<'_> {
     fn default() -> Self {
         Self {
             vid_info: null_mut(),
@@ -159,7 +161,7 @@ pub unsafe fn apply_filter(
     defs::OK.into()
 }
 
-impl Graphics {
+impl<'sdl> Graphics<'sdl> {
     /// General block-reading routine: get block from pic-file
     ///
     /// fpath: full pathname of picture-file; if NULL: use previous SDL-surf
@@ -177,7 +179,7 @@ impl Graphics {
         col: c_int,
         block: *const SDL_Rect,
         flags: c_int,
-    ) -> Option<Surface> {
+    ) -> Option<Surface<'sdl>> {
         Self::load_block_vid_bpp_pic(self.vid_bpp, &mut self.pic, fpath, line, col, block, flags)
     }
 
@@ -189,7 +191,7 @@ impl Graphics {
         col: c_int,
         block: *const SDL_Rect,
         flags: c_int,
-    ) -> Option<Surface> {
+    ) -> Option<Surface<'sdl>> {
         if fpath.is_null() && pic.is_none() {
             /* we need some info.. */
             return None;
@@ -436,7 +438,7 @@ impl Data<'_> {
             self.global.game_config.use_fullscreen == 0,
         );
 
-        *ne_screen = match sdl::Video::set_video_mode(
+        *ne_screen = match self.sdl.video.set_video_mode(
             self.vars.screen_rect.w.into(),
             self.vars.screen_rect.h.into(),
             None,
@@ -496,7 +498,7 @@ impl Data<'_> {
         self.play_sound(SoundType::Screenshot as i32);
 
         while self.cmd_is_active(Cmds::Screenshot) {
-            SDL_Delay(1);
+            self.sdl.delay_ms(1);
         }
 
         self.display_banner(
@@ -909,7 +911,7 @@ impl Data<'_> {
                 rect.w.into(),
                 rect.h.into(),
             );
-            SDL_Delay(25);
+            self.sdl.delay_ms(25);
 
             if timeout != 0 && SDL_GetTicks() - now > timeout.try_into().unwrap() {
                 break;
@@ -1106,7 +1108,7 @@ impl Data<'_> {
             }
         }
 
-        let ne_screen = match sdl::Video::set_video_mode(
+        let ne_screen = match self.sdl.video.set_video_mode(
             self.vars.screen_rect.w.into(),
             self.vars.screen_rect.h.into(),
             None,

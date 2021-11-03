@@ -22,7 +22,7 @@ use crate::input::wait_for_key_pressed;
 use clap::{crate_version, Parser};
 use cstr::cstr;
 use log::{error, info, warn};
-use sdl_sys::{SDL_Delay, SDL_GetTicks, SDL_Rect, SDL_ShowCursor, SDL_DISABLE};
+use sdl_sys::{SDL_GetTicks, SDL_Rect, SDL_ShowCursor, SDL_DISABLE};
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
     ffi::CStr,
@@ -1655,7 +1655,7 @@ impl Data<'_> {
 
         self.wait_for_all_keys_released();
         while SDL_GetTicks() - now < SHOW_WAIT {
-            SDL_Delay(1);
+            self.sdl.delay_ms(1);
             if self.any_key_just_pressed() != 0 {
                 break;
             }

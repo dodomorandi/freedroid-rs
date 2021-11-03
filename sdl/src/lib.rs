@@ -135,6 +135,10 @@ where
         // is taken.
         unsafe { CStr::from_ptr(SDL_GetError()) }.to_owned()
     }
+
+    pub fn delay_ms(&self, duration_ms: u32) {
+        unsafe { sdl_sys::SDL_Delay(duration_ms) };
+    }
 }
 
 impl<V, T, M> Sdl<V, T, OnceCell<JoystickSystem>, M>
