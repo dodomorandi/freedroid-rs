@@ -13,14 +13,14 @@ use crate::{
 
 use cstr::cstr;
 use log::{error, info, trace};
-use sdl::{RectRef, Surface};
+use sdl::{Rect, RectRef, Surface};
 #[cfg(not(feature = "arcade-input"))]
 use sdl_sys::SDLKey_SDLK_DELETE;
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_RETURN, SDLMod, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_RSHIFT,
     SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_Event, SDL_EventType, SDL_GetClipRect,
-    SDL_GetTicks, SDL_PushEvent, SDL_Rect, SDL_UpdateRect, SDL_WaitEvent, SDL_BUTTON_LEFT,
-    SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
+    SDL_GetTicks, SDL_PushEvent, SDL_UpdateRect, SDL_WaitEvent, SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE,
+    SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
 };
 use std::{
     ffi::CStr,
@@ -85,7 +85,7 @@ impl Data<'_> {
         let mut store = Surface::from_ptr(
             NonNull::new(SDL_CreateRGBSurface(
                 0,
-                self.vars.screen_rect.w.into(),
+                self.vars.screen_rect.width().into(),
                 height,
                 self.graphics.vid_bpp,
                 0,
@@ -95,10 +95,10 @@ impl Data<'_> {
             ))
             .unwrap(),
         );
-        let store_rect = rect!(
+        let store_rect = Rect::new(
             x0.try_into().unwrap(),
             y0.try_into().unwrap(),
-            self.vars.screen_rect.w,
+            self.vars.screen_rect.width(),
             height.try_into().unwrap(),
         );
         self.graphics
@@ -397,7 +397,7 @@ impl Data<'_> {
         text: *const c_char,
         startx: c_int,
         starty: c_int,
-        mut clip: *const SDL_Rect,
+        mut clip: *const Rect,
     ) -> c_int {
         if text.is_null() {
             return false as c_int;
@@ -410,11 +410,11 @@ impl Data<'_> {
             self.text.my_cursor_y = starty;
         }
 
-        let mut store_clip = rect!(0, 0, 0, 0);
+        let mut store_clip = Rect::default();
         let mut temp_clipping_rect;
         SDL_GetClipRect(
             self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            &mut store_clip,
+            store_clip.as_mut(),
         ); /* store previous clip-rect */
         if !clip.is_null() {
             self.graphics
@@ -423,7 +423,12 @@ impl Data<'_> {
                 .unwrap()
                 .set_clip_rect(RectRef::from(&*clip));
         } else {
-            temp_clipping_rect = rect!(0, 0, self.vars.screen_rect.w, self.vars.screen_rect.h);
+            temp_clipping_rect = Rect::new(
+                0,
+                0,
+                self.vars.screen_rect.width(),
+                self.vars.screen_rect.height(),
+            );
             clip = &mut temp_clipping_rect;
         }
 
@@ -431,12 +436,12 @@ impl Data<'_> {
 
         let clip = &*clip;
         while let Some((&first, rest)) = text.split_first() {
-            if self.text.my_cursor_y >= c_int::from(clip.y) + c_int::from(clip.h) {
+            if self.text.my_cursor_y >= c_int::from(clip.y()) + c_int::from(clip.height()) {
                 break;
             }
 
             if first == b'\n' {
-                self.text.my_cursor_x = clip.x.into();
+                self.text.my_cursor_x = clip.x().into();
                 self.text.my_cursor_y +=
                     (f64::from(font_height(&*self.b_font.current_font)) * TEXT_STRETCH) as c_int;
             } else {
@@ -446,7 +451,7 @@ impl Data<'_> {
             text = rest;
             if self.is_linebreak_needed(text, clip) {
                 text = &text[1..];
-                self.text.my_cursor_x = clip.x.into();
+                self.text.my_cursor_x = clip.x().into();
                 self.text.my_cursor_y +=
                     (f64::from(font_height(&*self.b_font.current_font)) * TEXT_STRETCH) as c_int;
             }
@@ -462,8 +467,8 @@ impl Data<'_> {
          * ScrollText() wants to know if we still wrote something inside the
          * clip-rectangle, of if the Text has been scrolled out
          */
-        if self.text.my_cursor_y < clip.y.into()
-            || starty > c_int::from(clip.y) + c_int::from(clip.h)
+        if self.text.my_cursor_y < clip.y().into()
+            || starty > c_int::from(clip.y()) + c_int::from(clip.height())
         {
             false as c_int
         } else {
@@ -505,7 +510,7 @@ impl Data<'_> {
     ///
     ///  rp: added argument clip, which contains the text-window we're writing in
     ///  (formerly known as "TextBorder")
-    pub unsafe fn is_linebreak_needed(&self, textpos: &[u8], clip: &SDL_Rect) -> bool {
+    pub unsafe fn is_linebreak_needed(&self, textpos: &[u8], clip: &Rect) -> bool {
         // only relevant if we're at the beginning of a word
         let textpos = match textpos.split_first() {
             Some((&c, _)) if c != b' ' => return false,
@@ -521,7 +526,8 @@ impl Data<'_> {
         for c in iter {
             let w = char_width(&*self.b_font.current_font, c);
             needed_space += w;
-            if self.text.my_cursor_x + needed_space > c_int::from(clip.x) + c_int::from(clip.w) - w
+            if self.text.my_cursor_x + needed_space
+                > c_int::from(clip.x()) + c_int::from(clip.width()) - w
             {
                 return true;
             }
@@ -632,10 +638,10 @@ impl Data<'_> {
     pub unsafe fn scroll_text(
         &mut self,
         text: *mut c_char,
-        rect: &mut SDL_Rect,
+        rect: &mut Rect,
         _seconds_minimum_duration: c_int,
     ) -> c_int {
-        let mut insert_line: f32 = rect.y.into();
+        let mut insert_line: f32 = rect.y().into();
         let mut speed = 30; // in pixel / sec
         const MAX_SPEED: c_int = 150;
         let mut just_started = true;
@@ -652,8 +658,8 @@ impl Data<'_> {
         loop {
             let mut prev_tick = SDL_GetTicks();
             background.blit(self.graphics.ne_screen.as_mut().unwrap());
-            if self.display_text(text, rect.x.into(), insert_line as c_int, rect) == 0 {
-                ret = 0; /* Text has been scrolled outside SDL_Rect */
+            if self.display_text(text, rect.x().into(), insert_line as c_int, rect) == 0 {
+                ret = 0; /* Text has been scrolled outside Rect */
                 break;
             }
             assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
@@ -708,8 +714,8 @@ impl Data<'_> {
             insert_line -=
                 (f64::from(SDL_GetTicks() - prev_tick) * f64::from(speed) / 1000.0) as f32;
 
-            if insert_line > f32::from(rect.y) + f32::from(rect.h) {
-                insert_line = f32::from(rect.y) + f32::from(rect.h);
+            if insert_line > f32::from(rect.y()) + f32::from(rect.height()) {
+                insert_line = f32::from(rect.y()) + f32::from(rect.height());
                 if speed < 0 {
                     speed = 0;
                 }

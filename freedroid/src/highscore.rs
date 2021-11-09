@@ -10,6 +10,7 @@ use crate::{
 
 use cstr::cstr;
 use log::{info, warn};
+use sdl::Rect;
 use std::{
     ffi::CStr,
     fmt,
@@ -190,16 +191,17 @@ impl Data<'_> {
         let prev_font =
             std::mem::replace(&mut self.b_font.current_font, self.global.highscore_b_font);
 
-        let user_center_x: i16 = self.vars.user_rect.x + (self.vars.user_rect.w / 2) as i16;
-        let user_center_y: i16 = self.vars.user_rect.y + (self.vars.user_rect.h / 2) as i16;
+        let user_center_x: i16 = self.vars.user_rect.x() + (self.vars.user_rect.width() / 2) as i16;
+        let user_center_y: i16 =
+            self.vars.user_rect.y() + (self.vars.user_rect.height() / 2) as i16;
 
         self.assemble_combat_picture(0);
         self.make_grid_on_screen(Some(&self.vars.user_rect.clone()));
-        let mut dst = rect!(
-            user_center_x - (self.vars.portrait_rect.w / 2) as i16,
-            user_center_y - (self.vars.portrait_rect.h / 2) as i16,
-            self.vars.portrait_rect.w,
-            self.vars.portrait_rect.h,
+        let mut dst = Rect::new(
+            user_center_x - (self.vars.portrait_rect.width() / 2) as i16,
+            user_center_y - (self.vars.portrait_rect.height() / 2) as i16,
+            self.vars.portrait_rect.width(),
+            self.vars.portrait_rect.height(),
         );
 
         let Data {
@@ -216,8 +218,8 @@ impl Data<'_> {
         let h = font_height(&*self.global.para_b_font);
         self.display_text(
             cstr!("Great Score !").as_ptr(),
-            i32::from(dst.x) - h,
-            i32::from(dst.y) - h,
+            i32::from(dst.x()) - h,
+            i32::from(dst.y()) - h,
             &self.vars.user_rect,
         );
 
@@ -225,8 +227,8 @@ impl Data<'_> {
         #[cfg(not(target_os = "android"))]
         self.display_text(
             cstr!("Enter your name: ").as_ptr(),
-            i32::from(dst.x) - 5 * h,
-            i32::from(dst.y) + i32::from(dst.h),
+            i32::from(dst.x()) - 5 * h,
+            i32::from(dst.y()) + i32::from(dst.height()),
             &self.vars.user_rect,
         );
 
@@ -314,14 +316,14 @@ impl Data<'_> {
 
         let len = char_width(&*self.b_font.current_font, b'9');
 
-        let x0 = i32::from(self.vars.screen_rect.w) / 8;
+        let x0 = i32::from(self.vars.screen_rect.width()) / 8;
         let x1 = x0 + 2 * len;
         let x2 = x1 + 11 * len;
         let x3 = x2 + i32::try_from(MAX_NAME_LEN).unwrap() * len;
 
         let height = font_height(&*self.b_font.current_font);
 
-        let y0 = i32::from(self.vars.full_user_rect.y) + height;
+        let y0 = i32::from(self.vars.full_user_rect.y()) + height;
 
         let mut ne_screen = self.graphics.ne_screen.take().unwrap();
         self.centered_print_string(

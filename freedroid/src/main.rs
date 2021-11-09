@@ -1,19 +1,5 @@
 #![feature(array_methods)]
 
-macro_rules! rect {
-    () => {
-        rect!(0, 0, 0, 0)
-    };
-    ($x:expr, $y:expr, $w:expr, $h:expr $(,)?) => {
-        ::sdl_sys::SDL_Rect {
-            x: $x,
-            y: $y,
-            w: $w,
-            h: $h,
-        }
-    };
-}
-
 mod b_font;
 mod bullet;
 mod defs;
@@ -40,7 +26,7 @@ use array_init::array_init;
 use b_font::BFont;
 use bullet::BulletData;
 use defs::{
-    scale_rect, AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Status, BYCOLOR,
+    AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Status, BYCOLOR,
     DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, RESET, SHOW_WAIT,
     STANDARD_MISSION_C,
 };
@@ -55,6 +41,7 @@ use map::{ColorNames, Map};
 use menu::Menu;
 use misc::Misc;
 use once_cell::unsync::OnceCell;
+use sdl::Rect;
 use ship::ShipData;
 use sound::Sound;
 use structs::{Blast, Bullet, Enemy, Level, Ship};
@@ -62,7 +49,7 @@ use takeover::Takeover;
 use text::Text;
 use vars::Vars;
 
-use sdl_sys::{SDL_GetTicks, SDL_Rect, SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE};
+use sdl_sys::{SDL_GetTicks, SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE};
 use std::{
     ops::Not,
     os::raw::{c_char, c_float},
@@ -101,9 +88,9 @@ struct Main<'sdl> {
     pre_take_energy: i32,
     all_bullets: [Bullet<'sdl>; MAXBULLETS + 10],
     all_blasts: [Blast; MAXBLASTS + 10],
-    first_digit_rect: SDL_Rect,
-    second_digit_rect: SDL_Rect,
-    third_digit_rect: SDL_Rect,
+    first_digit_rect: Rect,
+    second_digit_rect: Rect,
+    third_digit_rect: Rect,
     f_p_sover1: f32,
 }
 
@@ -132,9 +119,9 @@ impl Default for Main<'_> {
             pre_take_energy: 0,
             all_bullets: array_init(|_| Bullet::default_const()),
             all_blasts: [Blast::default(); MAXBLASTS + 10],
-            first_digit_rect: rect!(),
-            second_digit_rect: rect!(),
-            third_digit_rect: rect!(),
+            first_digit_rect: Default::default(),
+            second_digit_rect: Default::default(),
+            third_digit_rect: Default::default(),
             f_p_sover1: 0.,
         }
     }
@@ -238,12 +225,12 @@ fn main() {
                     .flat_map(|(rects, &num_rects)| {
                         rects[0..usize::try_from(num_rects).unwrap()].iter_mut()
                     })
-                    .for_each(|rect| scale_rect(rect, scale));
+                    .for_each(|rect| rect.scale(scale));
 
                 for rect in &mut data.main.cur_ship.lift_row_rect
                     [0..usize::try_from(data.main.cur_ship.num_lift_rows).unwrap()]
                 {
-                    scale_rect(rect, scale);
+                    rect.scale(scale);
                 }
             }
 

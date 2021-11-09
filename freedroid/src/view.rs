@@ -14,8 +14,8 @@ use crate::{
 };
 
 use log::{info, trace};
-use sdl::Surface;
-use sdl_sys::{rotozoomSurface, SDL_Color, SDL_FillRect, SDL_MapRGB, SDL_Rect, SDL_UpdateRect};
+use sdl::{Rect, Surface};
+use sdl_sys::{rotozoomSurface, SDL_Color, SDL_FillRect, SDL_MapRGB, SDL_UpdateRect};
 use std::{
     cell::{Cell, RefCell},
     ffi::CStr,
@@ -46,7 +46,7 @@ const FLASH_DARK: SDL_Color = SDL_Color {
 };
 
 impl Data<'_> {
-    pub unsafe fn fill_rect(&mut self, mut rect: SDL_Rect, color: SDL_Color) {
+    pub unsafe fn fill_rect(&mut self, mut rect: Rect, color: SDL_Color) {
         let pixcolor = SDL_MapRGB(
             self.graphics.ne_screen.as_ref().unwrap().format().as_ptr(),
             color.r,
@@ -56,7 +56,7 @@ impl Data<'_> {
 
         SDL_FillRect(
             self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            &mut rect,
+            rect.as_mut(),
             pixcolor,
         );
     }
@@ -117,7 +117,7 @@ impl Data<'_> {
         let mut vect = Finepoint::default();
         let mut len = -1f32;
         let mut map_brick = 0;
-        let mut target_rectangle = rect!(0, 0, 0, 0);
+        let mut target_rectangle = Rect::default();
         (upleft.y..downright.y)
             .flat_map(|line| (upleft.x..downright.x).map(move |col| (line, col)))
             .for_each(|(line, col)| {
@@ -142,14 +142,18 @@ impl Data<'_> {
 
                 map_brick = get_map_brick(&*self.main.cur_level, col.into(), line.into());
                 let user_center = self.vars.get_user_center();
-                target_rectangle.x = user_center.x
-                    + ((-self.vars.me.pos.x + 1.0 * f32::from(col) - 0.5)
-                        * f32::from(self.vars.block_rect.w))
-                    .round() as i16;
-                target_rectangle.y = user_center.y
-                    + ((-self.vars.me.pos.y + 1.0 * f32::from(line) - 0.5)
-                        * f32::from(self.vars.block_rect.h))
-                    .round() as i16;
+                target_rectangle.set_x(
+                    user_center.x()
+                        + ((-self.vars.me.pos.x + 1.0 * f32::from(col) - 0.5)
+                            * f32::from(self.vars.block_rect.width()))
+                        .round() as i16,
+                );
+                target_rectangle.set_y(
+                    user_center.y()
+                        + ((-self.vars.me.pos.y + 1.0 * f32::from(line) - 0.5)
+                            * f32::from(self.vars.block_rect.height()))
+                        .round() as i16,
+                );
 
                 let mut surface = self.graphics.map_block_surface_pointer
                     [usize::try_from((*self.main.cur_level).color).unwrap()]
@@ -166,13 +170,14 @@ impl Data<'_> {
         // if we don't use Fullscreen mode, we have to clear the text-background manually
         // for the info-line text:
 
-        let mut text_rect = rect!(
-            self.vars.full_user_rect.x,
-            (i32::from(self.vars.full_user_rect.y) + i32::from(self.vars.full_user_rect.h)
+        let mut text_rect = Rect::new(
+            self.vars.full_user_rect.x(),
+            (i32::from(self.vars.full_user_rect.y())
+                + i32::from(self.vars.full_user_rect.height())
                 - font_height(&*self.global.font0_b_font))
             .try_into()
             .unwrap(),
-            self.vars.full_user_rect.w,
+            self.vars.full_user_rect.width(),
             font_height(&*self.global.font0_b_font).try_into().unwrap(),
         );
         self.graphics
@@ -183,7 +188,7 @@ impl Data<'_> {
         if self.global.game_config.full_user_rect == 0 {
             SDL_FillRect(
                 self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                &mut text_rect,
+                text_rect.as_mut(),
                 0,
             );
         }
@@ -192,8 +197,10 @@ impl Data<'_> {
             print_string_font(
                 self.graphics.ne_screen.as_mut().unwrap(),
                 self.global.font0_b_font,
-                (self.vars.full_user_rect.x + (self.vars.full_user_rect.w / 6) as i16).into(),
-                i32::from(self.vars.full_user_rect.y) + i32::from(self.vars.full_user_rect.h)
+                (self.vars.full_user_rect.x() + (self.vars.full_user_rect.width() / 6) as i16)
+                    .into(),
+                i32::from(self.vars.full_user_rect.y())
+                    + i32::from(self.vars.full_user_rect.height())
                     - font_height(&*self.global.font0_b_font),
                 format_args!(
                     "GPS: X={:.0} Y={:.0} Lev={}",
@@ -224,8 +231,9 @@ impl Data<'_> {
                     print_string_font(
                         self.graphics.ne_screen.as_mut().unwrap(),
                         self.global.font0_b_font,
-                        self.vars.full_user_rect.x.into(),
-                        self.vars.full_user_rect.y as i32 + self.vars.full_user_rect.h as i32
+                        self.vars.full_user_rect.x().into(),
+                        self.vars.full_user_rect.y() as i32
+                            + self.vars.full_user_rect.height() as i32
                             - font_height(&*self.global.font0_b_font) as i32,
                         format_args!("FPS: {} ", fps_displayed.get()),
                     );
@@ -236,9 +244,10 @@ impl Data<'_> {
                 print_string_font(
                     self.graphics.ne_screen.as_mut().unwrap(),
                     self.global.font0_b_font,
-                    i32::from(self.vars.full_user_rect.x)
-                        + i32::from(self.vars.full_user_rect.w) / 2,
-                    i32::from(self.vars.full_user_rect.y) + i32::from(self.vars.full_user_rect.h)
+                    i32::from(self.vars.full_user_rect.x())
+                        + i32::from(self.vars.full_user_rect.width()) / 2,
+                    i32::from(self.vars.full_user_rect.y())
+                        + i32::from(self.vars.full_user_rect.height())
                         - font_height(&*self.global.font0_b_font),
                     format_args!("Energy: {:.0}", self.vars.me.energy),
                 );
@@ -247,9 +256,10 @@ impl Data<'_> {
                 print_string_font(
                     self.graphics.ne_screen.as_mut().unwrap(),
                     self.global.font0_b_font,
-                    i32::from(self.vars.full_user_rect.x)
-                        + 2 * i32::from(self.vars.full_user_rect.w) / 3,
-                    i32::from(self.vars.full_user_rect.y) + i32::from(self.vars.full_user_rect.h)
+                    i32::from(self.vars.full_user_rect.x())
+                        + 2 * i32::from(self.vars.full_user_rect.width()) / 3,
+                    i32::from(self.vars.full_user_rect.y())
+                        + i32::from(self.vars.full_user_rect.height())
                         - font_height(&*self.global.font0_b_font),
                     format_args!("Deathcount: {:.0}", self.main.death_count,),
                 );
@@ -314,17 +324,17 @@ impl Data<'_> {
         if mask & AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits() as i32 != 0 {
             SDL_UpdateRect(
                 self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                self.vars.user_rect.x.into(),
-                self.vars.user_rect.y.into(),
-                self.vars.user_rect.w.into(),
-                self.vars.user_rect.h.into(),
+                self.vars.user_rect.x().into(),
+                self.vars.user_rect.y().into(),
+                self.vars.user_rect.width().into(),
+                self.vars.user_rect.height().into(),
             );
             SDL_UpdateRect(
                 self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                text_rect.x.into(),
-                text_rect.y.into(),
-                text_rect.w.into(),
-                text_rect.h.into(),
+                text_rect.x().into(),
+                text_rect.y().into(),
+                text_rect.width().into(),
+                text_rect.height().into(),
             );
         }
 
@@ -338,13 +348,13 @@ impl Data<'_> {
         }
 
         let user_center = self.vars.get_user_center();
-        let mut dst = rect!(
-            (f32::from(user_center.x)
-                + (-self.vars.me.pos.x + x) * f32::from(self.vars.block_rect.w)
-                - f32::from(self.vars.block_rect.w / 2)) as i16,
-            (f32::from(user_center.y)
-                + (-self.vars.me.pos.y + y) * f32::from(self.vars.block_rect.h)
-                - f32::from(self.vars.block_rect.h / 2)) as i16,
+        let mut dst = Rect::new(
+            (f32::from(user_center.x())
+                + (-self.vars.me.pos.x + x) * f32::from(self.vars.block_rect.width())
+                - f32::from(self.vars.block_rect.width() / 2)) as i16,
+            (f32::from(user_center.y())
+                + (-self.vars.me.pos.y + y) * f32::from(self.vars.block_rect.height())
+                - f32::from(self.vars.block_rect.height() / 2)) as i16,
             0,
             0,
         );
@@ -429,15 +439,19 @@ impl Data<'_> {
         // now blit the whole construction to screen:
         if x == -1 {
             let user_center = self.vars.get_user_center();
-            dst.x = (f32::from(user_center.x)
-                + (droid.pos.x - self.vars.me.pos.x) * f32::from(self.vars.block_rect.w)
-                - f32::from(self.vars.block_rect.w / 2)) as i16;
-            dst.y = (f32::from(user_center.y)
-                + (droid.pos.y - self.vars.me.pos.y) * f32::from(self.vars.block_rect.h)
-                - f32::from(self.vars.block_rect.h / 2)) as i16;
+            dst.set_x(
+                (f32::from(user_center.x())
+                    + (droid.pos.x - self.vars.me.pos.x) * f32::from(self.vars.block_rect.width())
+                    - f32::from(self.vars.block_rect.width() / 2)) as i16,
+            );
+            dst.set_y(
+                (f32::from(user_center.y())
+                    + (droid.pos.y - self.vars.me.pos.y) * f32::from(self.vars.block_rect.height())
+                    - f32::from(self.vars.block_rect.height() / 2)) as i16,
+            );
         } else {
-            dst.x = x.try_into().unwrap();
-            dst.y = y.try_into().unwrap();
+            dst.set_x(x.try_into().unwrap());
+            dst.set_y(y.try_into().unwrap());
         }
 
         build_block
@@ -458,14 +472,14 @@ impl Data<'_> {
             put_string_font(
                 self.graphics.ne_screen.as_mut().unwrap(),
                 self.global.font0_b_font,
-                (f32::from(self.vars.user_rect.x)
-                    + f32::from(self.vars.user_rect.w / 2)
-                    + f32::from(self.vars.block_rect.w / 3)
-                    + (droid.pos.x - self.vars.me.pos.x) * f32::from(self.vars.block_rect.w))
+                (f32::from(self.vars.user_rect.x())
+                    + f32::from(self.vars.user_rect.width() / 2)
+                    + f32::from(self.vars.block_rect.width() / 3)
+                    + (droid.pos.x - self.vars.me.pos.x) * f32::from(self.vars.block_rect.width()))
                     as i32,
-                (f32::from(self.vars.user_rect.y) + f32::from(self.vars.user_rect.h / 2)
-                    - f32::from(self.vars.block_rect.h / 2)
-                    + (droid.pos.y - self.vars.me.pos.y) * f32::from(self.vars.block_rect.h))
+                (f32::from(self.vars.user_rect.y()) + f32::from(self.vars.user_rect.height() / 2)
+                    - f32::from(self.vars.block_rect.height() / 2)
+                    + (droid.pos.y - self.vars.me.pos.y) * f32::from(self.vars.block_rect.height()))
                     as i32,
                 CStr::from_ptr(droid.text_to_be_displayed).to_bytes(),
             );
@@ -479,14 +493,14 @@ impl Data<'_> {
     /// to the specified coordinates anywhere on the screen, useful e.g.
     /// for using the influencer as a cursor in the menus.
     pub unsafe fn put_influence(&mut self, x: c_int, y: c_int) {
-        let text_rect = rect!(
-            self.vars.user_rect.x
-                + (self.vars.user_rect.w / 2) as i16
-                + (self.vars.block_rect.w / 3) as i16,
-            self.vars.user_rect.y + (self.vars.user_rect.h / 2) as i16
-                - (self.vars.block_rect.h / 2) as i16,
-            self.vars.user_rect.w / 2 - self.vars.block_rect.w / 3,
-            self.vars.user_rect.h / 2,
+        let text_rect = Rect::new(
+            self.vars.user_rect.x()
+                + (self.vars.user_rect.width() / 2) as i16
+                + (self.vars.block_rect.width() / 3) as i16,
+            self.vars.user_rect.y() + (self.vars.user_rect.height() / 2) as i16
+                - (self.vars.block_rect.height() / 2) as i16,
+            self.vars.user_rect.width() / 2 - self.vars.block_rect.width() / 3,
+            self.vars.user_rect.height() / 2,
         );
 
         trace!("PutInfluence real function call confirmed.");
@@ -586,11 +600,11 @@ impl Data<'_> {
 
         if x == -1 {
             let user_center = self.vars.get_user_center();
-            dst.x = user_center.x - (self.vars.block_rect.w / 2) as i16;
-            dst.y = user_center.y - (self.vars.block_rect.h / 2) as i16;
+            dst.set_x(user_center.x() - (self.vars.block_rect.width() / 2) as i16);
+            dst.set_y(user_center.y() - (self.vars.block_rect.height() / 2) as i16);
         } else {
-            dst.x = x.try_into().unwrap();
-            dst.y = y.try_into().unwrap();
+            dst.set_x(x.try_into().unwrap());
+            dst.set_y(y.try_into().unwrap());
         }
 
         let Graphics {
@@ -614,11 +628,11 @@ impl Data<'_> {
             self.b_font.current_font = self.global.font0_b_font;
             self.display_text(
                 self.vars.me.text_to_be_displayed,
-                i32::from(self.vars.user_rect.x)
-                    + i32::from(self.vars.user_rect.w / 2)
-                    + i32::from(self.vars.block_rect.w / 3),
-                i32::from(self.vars.user_rect.y) + i32::from(self.vars.user_rect.h / 2)
-                    - i32::from(self.vars.block_rect.h / 2),
+                i32::from(self.vars.user_rect.x())
+                    + i32::from(self.vars.user_rect.width() / 2)
+                    + i32::from(self.vars.block_rect.width() / 3),
+                i32::from(self.vars.user_rect.y()) + i32::from(self.vars.user_rect.height() / 2)
+                    - i32::from(self.vars.block_rect.height() / 2),
                 &text_rect,
             );
         }
@@ -699,16 +713,16 @@ impl Data<'_> {
         // blit of these surfaces!!!!
         let user_center = self.vars.get_user_center();
         let cur_bullet = &mut self.main.all_bullets[usize::try_from(bullet_number).unwrap()];
-        let mut dst = rect!(
-            (f32::from(user_center.x)
-                - (self.vars.me.pos.x - cur_bullet.pos.x) * f32::from(self.vars.block_rect.w)
+        let mut dst = Rect::new(
+            (f32::from(user_center.x())
+                - (self.vars.me.pos.x - cur_bullet.pos.x) * f32::from(self.vars.block_rect.width())
                 - (cur_bullet.surfaces[phase_of_bullet]
                     .as_ref()
                     .unwrap()
                     .width()
                     / 2) as f32) as i16,
-            (f32::from(user_center.y)
-                - (self.vars.me.pos.y - cur_bullet.pos.y) * f32::from(self.vars.block_rect.w)
+            (f32::from(user_center.y())
+                - (self.vars.me.pos.y - cur_bullet.pos.y) * f32::from(self.vars.block_rect.width())
                 - (cur_bullet.surfaces[phase_of_bullet]
                     .as_ref()
                     .unwrap()
@@ -823,7 +837,7 @@ impl Data<'_> {
                 ..
             } = &mut self.graphics;
             ne_screen.as_mut().unwrap().clear_clip_rect();
-            let mut dst = rect!(0, 0, 0, 0);
+            let mut dst = Rect::default();
             banner_pic
                 .as_mut()
                 .unwrap()
@@ -840,14 +854,16 @@ impl Data<'_> {
                 || previous_right_check
                 || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
             {
-                dst.x = self.vars.left_info_rect.x;
-                dst.y = self.vars.left_info_rect.y
-                    - i16::try_from(font_height(&*self.global.para_b_font)).unwrap();
+                dst.set_x(self.vars.left_info_rect.x());
+                dst.set_y(
+                    self.vars.left_info_rect.y()
+                        - i16::try_from(font_height(&*self.global.para_b_font)).unwrap(),
+                );
                 print_string_font(
                     self.graphics.ne_screen.as_mut().unwrap(),
                     self.global.para_b_font,
-                    dst.x.into(),
-                    dst.y.into(),
+                    dst.x().into(),
+                    dst.y().into(),
                     format_args!(
                         "{}",
                         CStr::from_ptr(left_box.as_ptr() as *const c_char)
@@ -862,14 +878,16 @@ impl Data<'_> {
                     previous_left_box[left_box_len] = b'\0';
                 });
 
-                dst.x = self.vars.right_info_rect.x;
-                dst.y = self.vars.right_info_rect.y
-                    - i16::try_from(font_height(&*self.global.para_b_font)).unwrap();
+                dst.set_x(self.vars.right_info_rect.x());
+                dst.set_y(
+                    self.vars.right_info_rect.y()
+                        - i16::try_from(font_height(&*self.global.para_b_font)).unwrap(),
+                );
                 print_string_font(
                     self.graphics.ne_screen.as_mut().unwrap(),
                     self.global.para_b_font,
-                    dst.x.into(),
-                    dst.y.into(),
+                    dst.x().into(),
+                    dst.y().into(),
                     format_args!(
                         "{}",
                         CStr::from_ptr(right_box.as_ptr() as *const c_char)
@@ -892,8 +910,8 @@ impl Data<'_> {
                     self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                     0,
                     0,
-                    self.vars.banner_rect.w.into(),
-                    self.vars.banner_rect.h.into(),
+                    self.vars.banner_rect.width().into(),
+                    self.vars.banner_rect.height().into(),
                 );
             }
 
@@ -911,13 +929,13 @@ pub unsafe fn put_blast(blast: &Blast, vars: &mut Vars, graphics: &mut Graphics)
     }
 
     let user_center = vars.get_user_center();
-    let mut dst = rect!(
-        (f32::from(user_center.x)
-            - (vars.me.pos.x - blast.px) * f32::from(vars.block_rect.w)
-            - f32::from(vars.block_rect.w / 2)) as i16,
-        (f32::from(user_center.y)
-            - (vars.me.pos.y - blast.py) * f32::from(vars.block_rect.h)
-            - f32::from(vars.block_rect.h / 2)) as i16,
+    let mut dst = Rect::new(
+        (f32::from(user_center.x())
+            - (vars.me.pos.x - blast.px) * f32::from(vars.block_rect.width())
+            - f32::from(vars.block_rect.width() / 2)) as i16,
+        (f32::from(user_center.y())
+            - (vars.me.pos.y - blast.py) * f32::from(vars.block_rect.height())
+            - f32::from(vars.block_rect.height() / 2)) as i16,
         0,
         0,
     );

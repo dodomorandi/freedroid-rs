@@ -1,9 +1,9 @@
 use crate::{
     b_font::font_height,
     defs::{
-        self, scale_rect, AssembleCombatWindowFlags, Criticality, DisplayBannerFlags, Droid,
-        Status, Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAP_DIR_C, MAXBULLETS,
-        SHOW_WAIT, SLOWMO_FACTOR, TITLE_PIC_FILE_C, WAIT_AFTER_KILLED,
+        self, AssembleCombatWindowFlags, Criticality, DisplayBannerFlags, Droid, Status, Themed,
+        FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAP_DIR_C, MAXBULLETS, SHOW_WAIT, SLOWMO_FACTOR,
+        TITLE_PIC_FILE_C, WAIT_AFTER_KILLED,
     },
     global::Global,
     graphics::Graphics,
@@ -22,7 +22,7 @@ use crate::input::wait_for_key_pressed;
 use clap::{crate_version, Parser};
 use cstr::cstr;
 use log::{error, info, warn};
-use sdl_sys::{SDL_GetTicks, SDL_Rect, SDL_ShowCursor, SDL_DISABLE};
+use sdl_sys::{SDL_GetTicks, SDL_ShowCursor, SDL_DISABLE};
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
     ffi::CStr,
@@ -226,8 +226,8 @@ impl Data<'_> {
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
         self.make_grid_on_screen(Some(&rect));
         assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
-        rect.x += 10;
-        rect.w -= 20; //leave some border
+        rect.inc_x(10);
+        rect.dec_width(20); //leave some border
         self.b_font.current_font = self.global.para_b_font;
         self.scroll_text(self.init.debriefing_text, &mut rect, 6);
 
@@ -295,7 +295,7 @@ impl Data<'_> {
             self.vars.classic_user_rect
         };
 
-        scale_rect(&mut self.vars.screen_rect, self.global.game_config.scale); // make sure we open a window of the right (rescaled) size!
+        self.vars.screen_rect.scale(self.global.game_config.scale); // make sure we open a window of the right (rescaled) size!
         self.init_video();
 
         let image = self.find_file(
@@ -970,8 +970,8 @@ impl Data<'_> {
             *prepared_briefing_text.offset(this_text_length) = 0;
 
             let mut rect = self.vars.full_user_rect;
-            rect.x += 10;
-            rect.w -= 10; //leave some border
+            rect.inc_x(10);
+            rect.dec_width(10); //leave some border
             if self.scroll_text(prepared_briefing_text, &mut rect, 0) == 1 {
                 break; // User pressed 'fire'
             }
@@ -1602,7 +1602,7 @@ impl Data<'_> {
         self.activate_conservative_frame_computation();
 
         // TODO: avoid a temporary backup
-        let mut user_rect = std::mem::replace(&mut self.vars.user_rect, rect!(0, 0, 0, 0));
+        let mut user_rect = std::mem::take(&mut self.vars.user_rect);
         let mut ne_screen = self.graphics.ne_screen.take().unwrap();
         self.white_noise(
             &mut ne_screen,
@@ -1615,14 +1615,12 @@ impl Data<'_> {
         self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
         self.make_grid_on_screen(Some(&self.vars.user_rect.clone()));
 
-        let mut dst = SDL_Rect {
-            x: self.vars.get_user_center().x
-                - i16::try_from(self.vars.portrait_rect.w / 2).unwrap(),
-            y: self.vars.get_user_center().y
-                - i16::try_from(self.vars.portrait_rect.h / 2).unwrap(),
-            w: self.vars.portrait_rect.w,
-            h: self.vars.portrait_rect.h,
-        };
+        let mut dst = self.vars.portrait_rect.with_xy(
+            self.vars.get_user_center().x()
+                - i16::try_from(self.vars.portrait_rect.width() / 2).unwrap(),
+            self.vars.get_user_center().y()
+                - i16::try_from(self.vars.portrait_rect.height() / 2).unwrap(),
+        );
         let Graphics {
             pic999, ne_screen, ..
         } = &mut self.graphics;
@@ -1636,14 +1634,14 @@ impl Data<'_> {
         let h = font_height(&*self.global.para_b_font);
         self.display_text(
             cstr!("Transmission").as_ptr() as *mut c_char,
-            i32::from(dst.x) - h,
-            i32::from(dst.y) - h,
+            i32::from(dst.x()) - h,
+            i32::from(dst.y()) - h,
             &self.vars.user_rect,
         );
         self.display_text(
             cstr!("Terminated").as_ptr() as *mut c_char,
-            i32::from(dst.x) - h,
-            i32::from(dst.y) + i32::from(dst.h),
+            i32::from(dst.x()) - h,
+            i32::from(dst.y()) + i32::from(dst.height()),
             &self.vars.user_rect,
         );
         let mut ne_screen = self.graphics.ne_screen.take().unwrap();

@@ -2,7 +2,7 @@
 use crate::defs::{gcw0_ls_pressed_r, gcw0_rs_pressed_r};
 use crate::{
     defs::{
-        self, scale_rect, AssembleCombatWindowFlags, Cmds, Criticality, Status, Themed, FD_DATADIR,
+        self, AssembleCombatWindowFlags, Cmds, Criticality, Status, Themed, FD_DATADIR,
         GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE_C, PROGRESS_METER_FILE_C,
     },
     graphics::{scale_pic, Graphics},
@@ -13,6 +13,7 @@ use crate::{
 use cstr::cstr;
 use defs::MAXBULLETS;
 use log::{error, info, warn};
+use sdl::Rect;
 use sdl_sys::{SDL_GetTicks, SDL_Quit, SDL_UpdateRects};
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
@@ -278,21 +279,22 @@ pub unsafe fn dealloc_c_string(string_ptr: *mut i8) {
 
 impl Data<'_> {
     pub unsafe fn update_progress(&mut self, percent: c_int) {
-        let h = (f64::from(self.vars.progress_bar_rect.h) * f64::from(percent) / 100.) as u16;
-        let mut dst = rect!(
-            self.vars.progress_bar_rect.x + self.vars.progress_meter_rect.x,
-            self.vars.progress_bar_rect.y
-                + self.vars.progress_meter_rect.y
-                + self.vars.progress_bar_rect.h as i16
+        let h =
+            (f64::from(self.vars.progress_bar_rect.height()) * f64::from(percent) / 100.) as u16;
+        let mut dst = Rect::new(
+            self.vars.progress_bar_rect.x() + self.vars.progress_meter_rect.x(),
+            self.vars.progress_bar_rect.y()
+                + self.vars.progress_meter_rect.y()
+                + self.vars.progress_bar_rect.height() as i16
                 - h as i16,
-            self.vars.progress_bar_rect.w,
+            self.vars.progress_bar_rect.width(),
             h,
         );
 
-        let src = rect!(
+        let src = Rect::new(
             0,
-            self.vars.progress_bar_rect.h as i16 - dst.h as i16,
-            dst.h,
+            self.vars.progress_bar_rect.height() as i16 - dst.height() as i16,
+            dst.height(),
             0,
         );
 
@@ -310,7 +312,7 @@ impl Data<'_> {
             ne_screen.as_mut().unwrap(),
             &mut dst,
         );
-        SDL_UpdateRects(ne_screen.as_mut().unwrap().as_mut_ptr(), 1, &mut dst);
+        SDL_UpdateRects(ne_screen.as_mut().unwrap().as_mut_ptr(), 1, dst.as_mut());
     }
 
     /// This function is the key to independence of the framerate for various game elements.
@@ -789,18 +791,15 @@ impl Data<'_> {
                 self.global.game_config.scale,
             );
 
-            scale_rect(
-                &mut self.vars.progress_meter_rect,
-                self.global.game_config.scale,
-            );
-            scale_rect(
-                &mut self.vars.progress_bar_rect,
-                self.global.game_config.scale,
-            );
-            scale_rect(
-                &mut self.vars.progress_text_rect,
-                self.global.game_config.scale,
-            );
+            self.vars
+                .progress_meter_rect
+                .scale(self.global.game_config.scale);
+            self.vars
+                .progress_bar_rect
+                .scale(self.global.game_config.scale);
+            self.vars
+                .progress_text_rect
+                .scale(self.global.game_config.scale);
         }
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
@@ -819,14 +818,14 @@ impl Data<'_> {
         );
 
         let mut dst = self.vars.progress_text_rect;
-        dst.x += self.vars.progress_meter_rect.x;
-        dst.y += self.vars.progress_meter_rect.y;
+        dst.inc_x(self.vars.progress_meter_rect.x());
+        dst.inc_y(self.vars.progress_meter_rect.y());
 
         let mut ne_screen = self.graphics.ne_screen.take().unwrap();
         self.printf_sdl(
             &mut ne_screen,
-            dst.x.into(),
-            dst.y.into(),
+            dst.x().into(),
+            dst.y().into(),
             format_args!("{}", CStr::from_ptr(text).to_str().unwrap()),
         );
 

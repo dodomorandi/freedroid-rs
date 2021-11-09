@@ -12,7 +12,6 @@ use sdl::keysym::{
 use sdl_sys::{
     SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LAST, SDLKey_SDLK_RETURN, SDLKey_SDLK_SPACE, SDLMod_KMOD_LALT,
     SDLMod_KMOD_LCTRL, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_RALT, SDLMod_KMOD_RCTRL, SDLMod_KMOD_RSHIFT,
-    SDL_Rect,
 };
 use std::{ffi::CStr, fmt, os::raw::c_int};
 
@@ -25,14 +24,6 @@ pub const FREE_ONLY: usize = 0x08;
 
 pub const DROID_ROTATION_TIME: f32 = 3.0;
 pub const NUM_DECAL_PICS: usize = 2;
-
-#[inline]
-pub fn scale_rect(rect: &mut SDL_Rect, scale: f32) {
-    rect.x = (f32::from(rect.x) * scale) as i16;
-    rect.y = (f32::from(rect.y) * scale) as i16;
-    rect.w = (f32::from(rect.w) * scale) as u16;
-    rect.h = (f32::from(rect.h) * scale) as u16;
-}
 
 #[inline]
 pub fn scale_point(point: &mut Point, scale: f32) {

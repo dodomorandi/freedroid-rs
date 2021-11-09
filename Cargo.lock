@@ -562,6 +562,7 @@ version = "0.1.0"
 dependencies = [
  "bitflags",
  "cstr",
+ "num-traits",
  "once_cell",
  "sdl-sys",
  "thiserror",

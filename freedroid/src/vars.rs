@@ -5,34 +5,34 @@ use crate::{
 
 use array_init::array_init;
 use cstr::cstr;
-use sdl_sys::SDL_Rect;
+use sdl::Rect;
 use std::{ffi::CStr, os::raw::c_int, ptr::null_mut};
 
 #[derive(Debug)]
 pub struct Vars<'sdl> {
-    pub block_rect: SDL_Rect,
-    pub screen_rect: SDL_Rect,
-    pub user_rect: SDL_Rect,
-    pub classic_user_rect: SDL_Rect,
-    pub full_user_rect: SDL_Rect,
-    pub banner_rect: SDL_Rect,
+    pub block_rect: Rect,
+    pub screen_rect: Rect,
+    pub user_rect: Rect,
+    pub classic_user_rect: Rect,
+    pub full_user_rect: Rect,
+    pub banner_rect: Rect,
     // for droid-pic display in console
-    pub portrait_rect: SDL_Rect,
-    pub cons_droid_rect: SDL_Rect,
-    pub menu_rect: SDL_Rect,
-    pub options_menu_rect: SDL_Rect,
-    pub digit_rect: SDL_Rect,
-    pub cons_header_rect: SDL_Rect,
-    pub cons_menu_rect: SDL_Rect,
-    pub cons_text_rect: SDL_Rect,
-    pub cons_menu_rects: [SDL_Rect; 4],
-    pub cons_menu_item_rect: SDL_Rect,
+    pub portrait_rect: Rect,
+    pub cons_droid_rect: Rect,
+    pub menu_rect: Rect,
+    pub options_menu_rect: Rect,
+    pub digit_rect: Rect,
+    pub cons_header_rect: Rect,
+    pub cons_menu_rect: Rect,
+    pub cons_text_rect: Rect,
+    pub cons_menu_rects: [Rect; 4],
+    pub cons_menu_item_rect: Rect,
 
-    pub left_info_rect: SDL_Rect,
-    pub right_info_rect: SDL_Rect,
-    pub progress_meter_rect: SDL_Rect,
-    pub progress_bar_rect: SDL_Rect,
-    pub progress_text_rect: SDL_Rect,
+    pub left_info_rect: Rect,
+    pub right_info_rect: Rect,
+    pub progress_meter_rect: Rect,
+    pub progress_bar_rect: Rect,
+    pub progress_text_rect: Rect,
 
     /* counter to Message: you have won(this ship */
     pub ship_empty_counter: c_int,
@@ -46,32 +46,32 @@ pub struct Vars<'sdl> {
 impl Default for Vars<'_> {
     fn default() -> Self {
         Self {
-            block_rect: rect! {0, 0, 64, 64},
-            screen_rect: rect! {0, 0, 640, 480},
-            user_rect: rect! {0, 0, 0, 0},
-            classic_user_rect: rect! {32, 150, 9*64, 4*64},
-            full_user_rect: rect! {0, 64, 640, 480 - 64},
-            banner_rect: rect! {0, 0, 640, 64 },
-            portrait_rect: rect! {0, 0, 132, 180},
-            cons_droid_rect: rect! {30, 190, 132, 180},
-            menu_rect: rect! {2*64, 150, 640 - 3*64, 480 - 64},
-            options_menu_rect: rect! {232, 0, 0, 0},
-            digit_rect: rect! {0, 0, 16, 18},
-            cons_header_rect: rect! {75, 64+40, 640 - 80, 135 - 64},
-            cons_menu_rect: rect! {60, 180, 100, 256},
-            cons_text_rect: rect! {180, 180, 640-185, 480 - 185},
+            block_rect: Rect::new(0, 0, 64, 64),
+            screen_rect: Rect::new(0, 0, 640, 480),
+            user_rect: Rect::new(0, 0, 0, 0),
+            classic_user_rect: Rect::new(32, 150, 9 * 64, 4 * 64),
+            full_user_rect: Rect::new(0, 64, 640, 480 - 64),
+            banner_rect: Rect::new(0, 0, 640, 64),
+            portrait_rect: Rect::new(0, 0, 132, 180),
+            cons_droid_rect: Rect::new(30, 190, 132, 180),
+            menu_rect: Rect::new(2 * 64, 150, 640 - 3 * 64, 480 - 64),
+            options_menu_rect: Rect::new(232, 0, 0, 0),
+            digit_rect: Rect::new(0, 0, 16, 18),
+            cons_header_rect: Rect::new(75, 64 + 40, 640 - 80, 135 - 64),
+            cons_menu_rect: Rect::new(60, 180, 100, 256),
+            cons_text_rect: Rect::new(180, 180, 640 - 185, 480 - 185),
             cons_menu_rects: [
-                rect! {60, 180, 100, 62},
-                rect! {60, 181 + 64, 100, 62},
-                rect! {60, 181 + 2*64, 100, 62},
-                rect! {60, 181 + 3*64, 100, 62},
+                Rect::new(60, 180, 100, 62),
+                Rect::new(60, 181 + 64, 100, 62),
+                Rect::new(60, 181 + 2 * 64, 100, 62),
+                Rect::new(60, 181 + 3 * 64, 100, 62),
             ],
-            cons_menu_item_rect: rect! {0, 0, 0, 0},
-            left_info_rect: rect! { 26, 44, 0, 0 },
-            right_info_rect: rect! {484, 44, 0, 0 },
-            progress_meter_rect: rect! {0, 0, 640, 480},
-            progress_bar_rect: rect! {446, 155, 22, 111},
-            progress_text_rect: rect! {213, 390, 157, 30},
+            cons_menu_item_rect: Rect::new(0, 0, 0, 0),
+            left_info_rect: Rect::new(26, 44, 0, 0),
+            right_info_rect: Rect::new(484, 44, 0, 0),
+            progress_meter_rect: Rect::new(0, 0, 640, 480),
+            progress_bar_rect: Rect::new(446, 155, 22, 111),
+            progress_text_rect: Rect::new(213, 390, 157, 30),
             ship_empty_counter: 0,
             me: Influence {
                 ty: Droid::Droid001 as i32,
@@ -97,8 +97,8 @@ impl Default for Vars<'_> {
     }
 }
 
-pub const ORIG_BLOCK_RECT: SDL_Rect = rect! {0, 0, 64, 64}; // not to be rescaled ever!!
-pub const ORIG_DIGIT_RECT: SDL_Rect = rect! {0, 0, 16, 18}; // not to be rescaled!
+pub const ORIG_BLOCK_RECT: Rect = Rect::new(0, 0, 64, 64); // not to be rescaled ever!!
+pub const ORIG_DIGIT_RECT: Rect = Rect::new(0, 0, 16, 18); // not to be rescaled!
 
 pub const CLASS_NAMES: [&CStr; 10] = [
     cstr!("Influence device"),
@@ -167,13 +167,8 @@ pub const WEAPON_NAMES: [&CStr; 7] = [
 
 impl Vars<'_> {
     #[inline]
-    pub fn get_user_center(&self) -> SDL_Rect {
-        let SDL_Rect { x, y, w, h } = self.user_rect;
-        SDL_Rect {
-            x: x + (w / 2) as i16,
-            y: y + (h / 2) as i16,
-            w,
-            h,
-        }
+    pub fn get_user_center(&self) -> Rect {
+        let [x, y] = self.user_rect.center();
+        self.user_rect.with_xy(x, y)
     }
 }

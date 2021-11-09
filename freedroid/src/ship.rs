@@ -12,10 +12,10 @@ use crate::{
 };
 
 use log::{error, warn};
-use sdl::Surface;
+use sdl::{Rect, Surface};
 use sdl_sys::{
     IMG_Load_RW, IMG_isJPG, SDL_Color, SDL_CreateRGBSurface, SDL_DisplayFormat,
-    SDL_DisplayFormatAlpha, SDL_FreeSurface, SDL_GetTicks, SDL_RWops, SDL_Rect, SDL_SetCursor,
+    SDL_DisplayFormatAlpha, SDL_FreeSurface, SDL_GetTicks, SDL_RWops, SDL_SetCursor,
     SDL_ShowCursor, SDL_UpdateRects, SDL_WarpMouse, SDL_DISABLE, SDL_ENABLE,
 };
 use std::{
@@ -32,16 +32,16 @@ pub struct ShipData<'sdl> {
     frame_num: c_int,
     last_droid_type: c_int,
     last_frame_time: u32,
-    src_rect: SDL_Rect,
+    src_rect: Rect,
     enter_console_last_move_tick: u32,
     great_droid_show_last_move_tick: u32,
     enter_lift_last_move_tick: u32,
     droid_background: Option<Surface<'sdl>>,
     droid_pics: Option<Surface<'sdl>>,
-    up_rect: SDL_Rect,
-    down_rect: SDL_Rect,
-    left_rect: SDL_Rect,
-    right_rect: SDL_Rect,
+    up_rect: Rect,
+    down_rect: Rect,
+    left_rect: Rect,
+    right_rect: Rect,
 }
 
 impl Default for ShipData<'_> {
@@ -51,16 +51,16 @@ impl Default for ShipData<'_> {
             frame_num: 0,
             last_droid_type: -1,
             last_frame_time: 0,
-            src_rect: rect!(0, 0, 0, 0),
+            src_rect: Rect::default(),
             enter_console_last_move_tick: 0,
             great_droid_show_last_move_tick: 0,
             enter_lift_last_move_tick: 0,
             droid_background: None,
             droid_pics: None,
-            up_rect: rect!(0, 0, 0, 0),
-            down_rect: rect!(0, 0, 0, 0),
-            left_rect: rect!(0, 0, 0, 0),
-            right_rect: rect!(0, 0, 0, 0),
+            up_rect: Rect::default(),
+            down_rect: Rect::default(),
+            left_rect: Rect::default(),
+            right_rect: Rect::default(),
         }
     }
 }
@@ -135,7 +135,7 @@ impl Data<'_> {
     /// if cycle_time == 0 : display static pic, using only first frame
     pub unsafe fn show_droid_portrait(
         &mut self,
-        mut dst: SDL_Rect,
+        mut dst: Rect,
         droid_type: c_int,
         cycle_time: c_float,
         flags: c_int,
@@ -161,8 +161,16 @@ impl Data<'_> {
         } = self;
         let droid_background = droid_background.get_or_insert_with(|| {
             // first call
-            let tmp =
-                SDL_CreateRGBSurface(0, dst.w.into(), dst.h.into(), graphics.vid_bpp, 0, 0, 0, 0);
+            let tmp = SDL_CreateRGBSurface(
+                0,
+                dst.width().into(),
+                dst.height().into(),
+                graphics.vid_bpp,
+                0,
+                0,
+                0,
+                0,
+            );
             let mut droid_background =
                 Surface::from_ptr(NonNull::new(SDL_DisplayFormat(tmp)).unwrap());
             SDL_FreeSurface(tmp);
@@ -224,14 +232,14 @@ impl Data<'_> {
         }
 
         let droid_pics_ref = self.ship.droid_pics.as_ref().unwrap();
-        let mut num_frames = droid_pics_ref.width() / self.vars.portrait_rect.w;
+        let mut num_frames = droid_pics_ref.width() / self.vars.portrait_rect.width();
 
         // sanity check
         if num_frames == 0 {
             warn!(
                 "Only one frame found. Width droid-pics={}, Frame-width={}",
                 droid_pics_ref.width(),
-                self.vars.portrait_rect.w,
+                self.vars.portrait_rect.width(),
             );
             num_frames = 1; // continue and hope for the best
         }
@@ -248,8 +256,10 @@ impl Data<'_> {
         }
 
         if flags & (RESET | UPDATE) != 0 || need_new_frame {
-            self.ship.src_rect.x = i16::try_from(self.ship.frame_num).unwrap()
-                * i16::try_from(self.ship.src_rect.w).unwrap();
+            self.ship.src_rect.set_x(
+                i16::try_from(self.ship.frame_num).unwrap()
+                    * i16::try_from(self.ship.src_rect.width()).unwrap(),
+            );
 
             let Data {
                 ship:
@@ -275,7 +285,7 @@ impl Data<'_> {
             SDL_UpdateRects(
                 self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                 1,
-                &mut dst,
+                dst.as_mut(),
             );
 
             self.ship.last_frame_time = SDL_GetTicks();
@@ -298,36 +308,33 @@ impl Data<'_> {
 
         let lineskip =
             ((f64::from(font_height(&*self.b_font.current_font)) * TEXT_STRETCH) as f32) as i16;
-        let lastline =
-            self.vars.cons_header_rect.y + i16::try_from(self.vars.cons_header_rect.h).unwrap();
-        self.ship.up_rect = SDL_Rect {
-            x: self.vars.cons_header_rect.x,
-            y: lastline - lineskip,
-            w: 25,
-            h: 13,
-        };
-        self.ship.down_rect = SDL_Rect {
-            x: self.vars.cons_header_rect.x,
-            y: (f32::from(lastline) - 0.5 * f32::from(lineskip)) as i16,
-            w: 25,
-            h: 13,
-        };
-        self.ship.left_rect = SDL_Rect {
-            x: (f32::from(
-                self.vars.cons_header_rect.x + i16::try_from(self.vars.cons_header_rect.w).unwrap(),
+        let lastline = self.vars.cons_header_rect.y()
+            + i16::try_from(self.vars.cons_header_rect.height()).unwrap();
+        self.ship.up_rect = Rect::new(self.vars.cons_header_rect.x(), lastline - lineskip, 25, 13);
+        self.ship.down_rect = Rect::new(
+            self.vars.cons_header_rect.x(),
+            (f32::from(lastline) - 0.5 * f32::from(lineskip)) as i16,
+            25,
+            13,
+        );
+        self.ship.left_rect = Rect::new(
+            (f32::from(
+                self.vars.cons_header_rect.x()
+                    + i16::try_from(self.vars.cons_header_rect.width()).unwrap(),
             ) - 1.5 * f32::from(lineskip)) as i16,
-            y: (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
-            w: 13,
-            h: 25,
-        };
-        self.ship.right_rect = SDL_Rect {
-            x: (f32::from(
-                self.vars.cons_header_rect.x + i16::try_from(self.vars.cons_header_rect.w).unwrap(),
+            (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
+            13,
+            25,
+        );
+        self.ship.right_rect = Rect::new(
+            (f32::from(
+                self.vars.cons_header_rect.x()
+                    + i16::try_from(self.vars.cons_header_rect.width()).unwrap(),
             ) - 1.0 * f32::from(lineskip)) as i16,
-            y: (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
-            w: 13,
-            h: 25,
-        };
+            (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
+            13,
+            25,
+        );
 
         let mut droid_name = [0u8; 80];
         let droid = &*self.vars.droidmap.add(usize::try_from(droid_type).unwrap());
@@ -483,14 +490,14 @@ Paradroid to eliminate all rogue robots.\0",
 
         self.display_text(
             info_text.as_mut_ptr() as *mut c_char,
-            self.vars.cons_text_rect.x.into(),
-            self.vars.cons_text_rect.y.into(),
+            self.vars.cons_text_rect.x().into(),
+            self.vars.cons_text_rect.y().into(),
             &self.vars.cons_text_rect,
         );
 
         self.display_text(
             droid_name.as_mut_ptr() as *mut c_char,
-            i32::from(self.vars.cons_header_rect.x) + i32::from(lineskip),
+            i32::from(self.vars.cons_header_rect.x()) + i32::from(lineskip),
             (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i32,
             null_mut(),
         );
@@ -544,12 +551,12 @@ Paradroid to eliminate all rogue robots.\0",
             SDL_UpdateRects(
                 self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                 1,
-                &mut self.vars.cons_header_rect,
+                self.vars.cons_header_rect.as_mut(),
             );
             SDL_UpdateRects(
                 self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
                 1,
-                &mut self.vars.cons_text_rect,
+                self.vars.cons_text_rect.as_mut(),
             );
         } else {
             assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
@@ -652,12 +659,14 @@ Paradroid to eliminate all rogue robots.\0",
                         if self.input.show_cursor {
                             let mousemove_buf = self.input.last_mouse_event;
                             SDL_WarpMouse(
-                                (self.vars.cons_menu_rects[pos].x
-                                    + i16::try_from(self.vars.cons_menu_rects[pos].w / 2).unwrap())
+                                (self.vars.cons_menu_rects[pos].x()
+                                    + i16::try_from(self.vars.cons_menu_rects[pos].width() / 2)
+                                        .unwrap())
                                 .try_into()
                                 .unwrap(),
-                                (self.vars.cons_menu_rects[pos].y
-                                    + i16::try_from(self.vars.cons_menu_rects[pos].h / 2).unwrap())
+                                (self.vars.cons_menu_rects[pos].y()
+                                    + i16::try_from(self.vars.cons_menu_rects[pos].height() / 2)
+                                        .unwrap())
                                 .try_into()
                                 .unwrap(),
                             );
@@ -680,12 +689,14 @@ Paradroid to eliminate all rogue robots.\0",
                         if self.input.show_cursor {
                             let mousemove_buf = self.input.last_mouse_event;
                             SDL_WarpMouse(
-                                (self.vars.cons_menu_rects[pos].x
-                                    + i16::try_from(self.vars.cons_menu_rects[pos].w / 2).unwrap())
+                                (self.vars.cons_menu_rects[pos].x()
+                                    + i16::try_from(self.vars.cons_menu_rects[pos].width() / 2)
+                                        .unwrap())
                                 .try_into()
                                 .unwrap(),
-                                (self.vars.cons_menu_rects[pos].y
-                                    + i16::try_from(self.vars.cons_menu_rects[pos].h / 2).unwrap())
+                                (self.vars.cons_menu_rects[pos].y()
+                                    + i16::try_from(self.vars.cons_menu_rects[pos].height() / 2)
+                                        .unwrap())
                                 .try_into()
                                 .unwrap(),
                             );
@@ -880,17 +891,17 @@ Paradroid to eliminate all rogue robots.\0",
     }
 
     /// This function should check if the mouse cursor is in the given Rectangle
-    pub unsafe fn cursor_is_on_rect(&self, rect: &SDL_Rect) -> c_int {
+    pub unsafe fn cursor_is_on_rect(&self, rect: &Rect) -> c_int {
         let user_center = self.vars.get_user_center();
         let cur_pos = Point {
-            x: self.input.input_axis.x + (i32::from(user_center.x) - 16),
-            y: self.input.input_axis.y + (i32::from(user_center.y) - 16),
+            x: self.input.input_axis.x + (i32::from(user_center.x()) - 16),
+            y: self.input.input_axis.y + (i32::from(user_center.y()) - 16),
         };
 
-        (cur_pos.x >= rect.x.into()
-            && cur_pos.x <= i32::from(rect.x) + i32::from(rect.w)
-            && cur_pos.y >= rect.y.into()
-            && cur_pos.y <= i32::from(rect.y) + i32::from(rect.h))
+        (cur_pos.x >= rect.x().into()
+            && cur_pos.x <= i32::from(rect.x()) + i32::from(rect.width())
+            && cur_pos.y >= rect.y().into()
+            && cur_pos.y <= i32::from(rect.y()) + i32::from(rect.height()))
         .into()
     }
 
@@ -906,8 +917,8 @@ Paradroid to eliminate all rogue robots.\0",
             b: 0,
             unused: 0,
         }; /* black... */
-        let xoffs: i16 = (self.vars.user_rect.w / 20).try_into().unwrap();
-        let yoffs: i16 = (self.vars.user_rect.h / 5).try_into().unwrap();
+        let xoffs: i16 = (self.vars.user_rect.width() / 20).try_into().unwrap();
+        let yoffs: i16 = (self.vars.user_rect.height() / 5).try_into().unwrap();
 
         SDL_ShowCursor(SDL_DISABLE);
         // fill the user fenster with some color
@@ -921,8 +932,8 @@ Paradroid to eliminate all rogue robots.\0",
             .unwrap()
             .set_clip_rect(&dst);
         dst = self.vars.user_rect;
-        dst.x += xoffs;
-        dst.y += yoffs;
+        dst.inc_x(xoffs);
+        dst.inc_y(yoffs);
 
         let Graphics {
             ship_off_pic,
@@ -940,8 +951,8 @@ Paradroid to eliminate all rogue robots.\0",
                 let src = self.main.cur_ship.level_rects[usize::try_from(level).unwrap()]
                     [usize::try_from(i).unwrap()];
                 dst = src;
-                dst.x += self.vars.user_rect.x + xoffs; /* offset respective to User-Rectangle */
-                dst.y += self.vars.user_rect.y + yoffs;
+                dst.inc_x(self.vars.user_rect.x() + xoffs); /* offset respective to User-Rectangle */
+                dst.inc_y(self.vars.user_rect.y() + yoffs);
                 ship_on_pic.as_mut().unwrap().blit_from_to(
                     &src,
                     ne_screen.as_mut().unwrap(),
@@ -953,8 +964,8 @@ Paradroid to eliminate all rogue robots.\0",
         if liftrow >= 0 {
             let src = self.main.cur_ship.lift_row_rect[usize::try_from(liftrow).unwrap()];
             dst = src;
-            dst.x += self.vars.user_rect.x + xoffs; /* offset respective to User-Rectangle */
-            dst.y += self.vars.user_rect.y + yoffs;
+            dst.inc_x(self.vars.user_rect.x() + xoffs); /* offset respective to User-Rectangle */
+            dst.inc_y(self.vars.user_rect.y() + yoffs);
             ship_on_pic
                 .as_mut()
                 .unwrap()
@@ -1016,8 +1027,8 @@ Paradroid to eliminate all rogue robots.\0",
             .unwrap();
             self.display_text(
                 menu_text.as_mut_ptr() as *mut c_char,
-                self.vars.cons_header_rect.x.into(),
-                self.vars.cons_header_rect.y.into(),
+                self.vars.cons_header_rect.x().into(),
+                self.vars.cons_header_rect.y().into(),
                 &self.vars.cons_header_rect,
             );
 
@@ -1028,19 +1039,20 @@ Paradroid to eliminate all rogue robots.\0",
             .unwrap();
             self.display_text(
                 menu_text.as_mut_ptr() as *mut c_char,
-                self.vars.cons_text_rect.x.into(),
-                c_int::from(self.vars.cons_text_rect.y) + 25,
+                self.vars.cons_text_rect.x().into(),
+                c_int::from(self.vars.cons_text_rect.y()) + 25,
                 &self.vars.cons_text_rect,
             );
         } // only if not UPDATE_ONLY was required
 
-        let src = SDL_Rect {
-            x: i16::try_from(self.vars.cons_menu_rects[0].w).unwrap() * i16::try_from(pos).unwrap()
+        let src = Rect::new(
+            i16::try_from(self.vars.cons_menu_rects[0].width()).unwrap()
+                * i16::try_from(pos).unwrap()
                 + (2. * pos as f32 * self.global.game_config.scale) as i16,
-            y: 0,
-            w: self.vars.cons_menu_rect.w,
-            h: 4 * self.vars.cons_menu_rect.h,
-        };
+            0,
+            self.vars.cons_menu_rect.width(),
+            4 * self.vars.cons_menu_rect.height(),
+        );
         let Data {
             graphics:
                 Graphics {

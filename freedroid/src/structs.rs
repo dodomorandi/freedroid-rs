@@ -1,7 +1,6 @@
 use crate::defs::*;
 
-use sdl::Surface;
-use sdl_sys::SDL_Rect;
+use sdl::{Rect, Surface};
 use std::ptr::null_mut;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -217,7 +216,7 @@ impl Bullet<'_> {
 pub struct BlastSpec<'sdl> {
     pub phases: i32,
     pub picpointer: *mut u8,
-    pub block: *mut SDL_Rect, /* the coordinates of the blocks in ne_blocks */
+    pub block: *mut Rect, /* the coordinates of the blocks in ne_blocks */
     pub total_animation_time: f32,
     pub surfaces: [Option<Surface<'sdl>>; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
                                                                    // the blast images of this blast type
@@ -308,9 +307,9 @@ pub struct Ship {
     pub area_name: [i8; 100],
     pub all_levels: [*mut Level; MAX_LEVELS],
     pub all_lifts: [Lift; MAX_LIFTS],
-    pub lift_row_rect: [SDL_Rect; MAX_LIFT_ROWS], /* the lift-row rectangles */
-    pub level_rects: [[SDL_Rect; MAX_LEVEL_RECTS]; MAX_LEVELS], /* level rectangles */
-    pub num_level_rects: [i32; MAX_LEVELS],       /* how many rects has a level */
+    pub lift_row_rect: [Rect; MAX_LIFT_ROWS], /* the lift-row rectangles */
+    pub level_rects: [[Rect; MAX_LEVEL_RECTS]; MAX_LEVELS], /* level rectangles */
+    pub num_level_rects: [i32; MAX_LEVELS],   /* how many rects has a level */
 }
 
 impl Default for Ship {
@@ -329,8 +328,8 @@ impl Default for Ship {
                 down: 0,
                 lift_row: 0,
             }; MAX_LIFTS],
-            lift_row_rect: [rect!(); MAX_LIFT_ROWS],
-            level_rects: [[rect!(); MAX_LEVEL_RECTS]; MAX_LEVELS],
+            lift_row_rect: [Rect::default(); MAX_LIFT_ROWS],
+            level_rects: [[Rect::default(); MAX_LEVEL_RECTS]; MAX_LEVELS],
             num_level_rects: [0; MAX_LEVELS],
         }
     }

@@ -9,8 +9,8 @@ use crate::{
 };
 
 use cstr::cstr;
-use sdl::Surface;
-use sdl_sys::{SDL_Color, SDL_GetTicks, SDL_Rect, SDL_ShowCursor, SDL_DISABLE};
+use sdl::{Rect, Surface};
+use sdl_sys::{SDL_Color, SDL_GetTicks, SDL_ShowCursor, SDL_DISABLE};
 use std::{
     convert::Infallible,
     ffi::CStr,
@@ -220,25 +220,25 @@ pub struct Takeover<'sdl> {
     opponent_color: Color,
     droid_num: c_int,
     opponent_type: c_int,
-    pub to_game_blocks: [SDL_Rect; NUM_TO_BLOCKS],
-    pub to_ground_blocks: [SDL_Rect; NUM_GROUND_BLOCKS],
-    pub column_block: SDL_Rect,
-    pub leader_block: SDL_Rect,
+    pub to_game_blocks: [Rect; NUM_TO_BLOCKS],
+    pub to_ground_blocks: [Rect; NUM_GROUND_BLOCKS],
+    pub column_block: Rect,
+    pub leader_block: Rect,
     pub left_ground_start: Point,
     pub right_ground_start: Point,
     pub column_start: Point,
     pub leader_block_start: Point,
-    pub leader_led: SDL_Rect,
-    pub fill_block: SDL_Rect,
-    pub element_rect: SDL_Rect,
-    pub capsule_rect: SDL_Rect,
-    pub ground_rect: SDL_Rect,
-    pub column_rect: SDL_Rect,
+    pub leader_led: Rect,
+    pub fill_block: Rect,
+    pub element_rect: Rect,
+    pub capsule_rect: Rect,
+    pub ground_rect: Rect,
+    pub column_rect: Rect,
     // the global surface containing all game-blocks
     pub to_blocks: Option<Surface<'sdl>>,
     // the rectangles containing the blocks
-    pub fill_blocks: [SDL_Rect; NUM_FILL_BLOCKS],
-    pub capsule_blocks: [SDL_Rect; NUM_CAPS_BLOCKS],
+    pub fill_blocks: [Rect; NUM_FILL_BLOCKS],
+    pub capsule_blocks: [Rect; NUM_CAPS_BLOCKS],
     pub left_capsule_starts: [Point; COLORS],
     pub cur_capsule_starts: [Point; COLORS],
     pub playground_starts: [Point; COLORS],
@@ -276,10 +276,10 @@ impl Default for Takeover<'_> {
             opponent_color: Color::Violet,
             droid_num: 0,
             opponent_type: 0,
-            to_game_blocks: [rect!(); NUM_TO_BLOCKS],
-            to_ground_blocks: [rect!(); NUM_GROUND_BLOCKS],
-            column_block: rect!(),
-            leader_block: rect!(),
+            to_game_blocks: [Rect::default(); NUM_TO_BLOCKS],
+            to_ground_blocks: [Rect::default(); NUM_GROUND_BLOCKS],
+            column_block: Rect::default(),
+            leader_block: Rect::default(),
             left_ground_start: Point {
                 x: 2 * 10,
                 y: 2 * 15,
@@ -296,45 +296,15 @@ impl Default for Takeover<'_> {
                 x: 2 * 129,
                 y: 2 * 8,
             },
-            leader_led: rect! {
-                2 * 136,
-                2 * 11,
-                2 * 16,
-                2 * 19,
-            },
-            fill_block: rect! {
-                0,
-                0,
-                2 * 16,
-                2 * 7,
-            },
-            element_rect: rect! {
-                0,
-                0,
-                2 * 32,
-                2 * 8,
-            },
-            capsule_rect: rect! {
-                0,
-                0,
-                2 * 7,
-                2 * 8,
-            },
-            ground_rect: rect! {
-                0,
-                0,
-                2 * 23,
-                2 * 8,
-            },
-            column_rect: rect! {
-                0,
-                0,
-                2 * 30,
-                2 * 8,
-            },
+            leader_led: Rect::new(2 * 136, 2 * 11, 2 * 16, 2 * 19),
+            fill_block: Rect::new(0, 0, 2 * 16, 2 * 7),
+            element_rect: Rect::new(0, 0, 2 * 32, 2 * 8),
+            capsule_rect: Rect::new(0, 0, 2 * 7, 2 * 8),
+            ground_rect: Rect::new(0, 0, 2 * 23, 2 * 8),
+            column_rect: Rect::new(0, 0, 2 * 30, 2 * 8),
             to_blocks: None,
-            fill_blocks: [rect!(); NUM_FILL_BLOCKS],
-            capsule_blocks: [rect!(); NUM_CAPS_BLOCKS],
+            fill_blocks: [Rect::default(); NUM_FILL_BLOCKS],
+            capsule_blocks: [Rect::default(); NUM_CAPS_BLOCKS],
             left_capsule_starts: [
                 Point { x: 4, y: 2 * 27 },
                 Point {
@@ -690,7 +660,7 @@ fn process_playground_row(
     }
 }
 
-/// Define all the SDL_Rects for the takeover-game
+/// Define all the Rects for the takeover-game
 impl Data<'_> {
     pub unsafe fn set_takeover_rects(&mut self) -> c_int {
         let Self {
@@ -707,16 +677,20 @@ impl Data<'_> {
         /* Set the fill-blocks */
         fill_blocks
             .iter_mut()
-            .zip((0..).step_by(usize::from(fill_block.w) + 2))
-            .for_each(|(rect, cur_x)| *rect = rect!(cur_x, 0, fill_block.w, fill_block.h));
+            .zip((0..).step_by(usize::from(fill_block.width()) + 2))
+            .for_each(|(rect, cur_x)| {
+                *rect = Rect::new(cur_x, 0, fill_block.width(), fill_block.height())
+            });
 
         /* Set the capsule Blocks */
         let start_x = i16::try_from(self.takeover.fill_blocks.len()).unwrap()
-            * (i16::try_from(self.takeover.fill_block.w).unwrap() + 2);
+            * (i16::try_from(self.takeover.fill_block.width()).unwrap() + 2);
         capsule_blocks
             .iter_mut()
-            .zip((start_x..).step_by(usize::try_from(capsule_rect.w).unwrap() + 2))
-            .for_each(|(rect, cur_x)| *rect = rect!(cur_x, 0, capsule_rect.w, capsule_rect.h - 2));
+            .zip((start_x..).step_by(usize::try_from(capsule_rect.width()).unwrap() + 2))
+            .for_each(|(rect, cur_x)| {
+                *rect = Rect::new(cur_x, 0, capsule_rect.width(), capsule_rect.height() - 2)
+            });
 
         /* get the game-blocks */
         let Self {
@@ -734,50 +708,50 @@ impl Data<'_> {
         to_game_blocks
             .iter_mut()
             .zip(
-                ((fill_block.h + 2)..)
-                    .step_by(usize::try_from(element_rect.h).unwrap() + 2)
+                ((fill_block.height() + 2)..)
+                    .step_by(usize::try_from(element_rect.height()).unwrap() + 2)
                     .flat_map(|cur_y| {
                         (0..)
-                            .step_by(usize::try_from(element_rect.w).unwrap() + 2)
+                            .step_by(usize::try_from(element_rect.width()).unwrap() + 2)
                             .take(TO_BLOCKS_N)
                             .map(move |cur_x| (cur_x, cur_y))
                     }),
             )
             .for_each(|(rect, (cur_x, cur_y))| {
-                *rect = rect!(
+                *rect = Rect::new(
                     cur_x,
                     cur_y.try_into().unwrap(),
-                    element_rect.w,
-                    element_rect.h,
+                    element_rect.width(),
+                    element_rect.height(),
                 )
             });
-        let mut cur_y = (self.takeover.fill_block.h + 2)
-            + (self.takeover.element_rect.h + 2) * u16::try_from(NUM_PHASES).unwrap() * 2;
+        let mut cur_y = (self.takeover.fill_block.height() + 2)
+            + (self.takeover.element_rect.height() + 2) * u16::try_from(NUM_PHASES).unwrap() * 2;
 
         /* Get the ground, column and leader blocks */
         to_ground_blocks
             .iter_mut()
-            .zip((0..).step_by(usize::try_from(ground_rect.w).unwrap() + 2))
+            .zip((0..).step_by(usize::try_from(ground_rect.width()).unwrap() + 2))
             .for_each(|(rect, cur_x)| {
-                *rect = rect!(
+                *rect = Rect::new(
                     cur_x,
                     cur_y.try_into().unwrap(),
-                    ground_rect.w,
-                    ground_rect.h,
+                    ground_rect.width(),
+                    ground_rect.height(),
                 )
             });
-        cur_y += self.takeover.ground_rect.h + 2;
-        self.takeover.column_block = rect!(
+        cur_y += self.takeover.ground_rect.height() + 2;
+        self.takeover.column_block = Rect::new(
             0,
             cur_y.try_into().unwrap(),
-            self.takeover.column_rect.w,
-            self.takeover.column_rect.h,
+            self.takeover.column_rect.width(),
+            self.takeover.column_rect.height(),
         );
-        self.takeover.leader_block = rect!(
-            i16::try_from(self.takeover.column_rect.w).unwrap() + 2,
+        self.takeover.leader_block = Rect::new(
+            i16::try_from(self.takeover.column_rect.width()).unwrap() + 2,
             cur_y.try_into().unwrap(),
-            self.takeover.leader_led.w * 2 - 4,
-            self.takeover.leader_led.h,
+            self.takeover.leader_led.width() * 2 - 4,
+            self.takeover.leader_led.height(),
         );
         defs::OK.into()
     }
@@ -1146,8 +1120,8 @@ impl Data<'_> {
         let your_color: usize = self.takeover.your_color.into();
         let opponent_color: usize = self.takeover.opponent_color.into();
 
-        let xoffs = self.vars.classic_user_rect.x;
-        let yoffs = self.vars.classic_user_rect.y;
+        let xoffs = self.vars.classic_user_rect.x();
+        let yoffs = self.vars.classic_user_rect.y();
 
         let Data {
             graphics:
@@ -1184,11 +1158,11 @@ impl Data<'_> {
             );
         }
 
-        let mut dst = rect!(
+        let mut dst = Rect::new(
             xoffs + i16::try_from(self.takeover.left_ground_start.x).unwrap(),
             yoffs + i16::try_from(self.takeover.left_ground_start.y).unwrap(),
-            self.vars.user_rect.w,
-            self.vars.user_rect.h,
+            self.vars.user_rect.width(),
+            self.vars.user_rect.height(),
         );
 
         let Data {
@@ -1210,7 +1184,7 @@ impl Data<'_> {
             &mut dst,
         );
 
-        dst.y += i16::try_from(self.takeover.ground_rect.h).unwrap();
+        dst.inc_y(i16::try_from(self.takeover.ground_rect.height()).unwrap());
 
         for _ in 0..12 {
             to_blocks.as_mut().unwrap().blit_from_to(
@@ -1219,7 +1193,7 @@ impl Data<'_> {
                 &mut dst,
             );
 
-            dst.y += i16::try_from(self.takeover.ground_rect.h).unwrap();
+            dst.inc_y(i16::try_from(self.takeover.ground_rect.height()).unwrap());
         }
 
         to_blocks.as_mut().unwrap().blit_from_to(
@@ -1228,7 +1202,7 @@ impl Data<'_> {
             &mut dst,
         );
 
-        dst = rect!(
+        dst = Rect::new(
             xoffs + i16::try_from(self.takeover.leader_block_start.x).unwrap(),
             yoffs + i16::try_from(self.takeover.leader_block_start.y).unwrap(),
             0,
@@ -1240,18 +1214,18 @@ impl Data<'_> {
             &mut dst,
         );
 
-        dst.y += i16::try_from(self.takeover.leader_led.h).unwrap();
+        dst.inc_y(i16::try_from(self.takeover.leader_led.height()).unwrap());
         for _ in 0..12 {
             to_blocks.as_mut().unwrap().blit_from_to(
                 &*column_block,
                 ne_screen.as_mut().unwrap(),
                 &mut dst,
             );
-            dst.y += i16::try_from(self.takeover.column_rect.h).unwrap();
+            dst.inc_y(i16::try_from(self.takeover.column_rect.height()).unwrap());
         }
 
         /* rechte Saeule */
-        dst = rect!(
+        dst = Rect::new(
             xoffs + i16::try_from(self.takeover.right_ground_start.x).unwrap(),
             yoffs + i16::try_from(self.takeover.right_ground_start.y).unwrap(),
             0,
@@ -1263,7 +1237,7 @@ impl Data<'_> {
             ne_screen.as_mut().unwrap(),
             &mut dst,
         );
-        dst.y += i16::try_from(self.takeover.ground_rect.h).unwrap();
+        dst.inc_y(i16::try_from(self.takeover.ground_rect.height()).unwrap());
 
         for _ in 0..12 {
             to_blocks.as_mut().unwrap().blit_from_to(
@@ -1271,7 +1245,7 @@ impl Data<'_> {
                 ne_screen.as_mut().unwrap(),
                 &mut dst,
             );
-            dst.y += i16::try_from(self.takeover.ground_rect.h).unwrap();
+            dst.inc_y(i16::try_from(self.takeover.ground_rect.height()).unwrap());
         }
 
         to_blocks.as_mut().unwrap().blit_from_to(
@@ -1282,9 +1256,9 @@ impl Data<'_> {
 
         /* Fill the Leader-LED with its color */
         let leader_color = usize::try_from(self.takeover.leader_color).unwrap();
-        dst = rect!(
-            xoffs + self.takeover.leader_led.x,
-            yoffs + self.takeover.leader_led.y,
+        dst = Rect::new(
+            xoffs + self.takeover.leader_led.x(),
+            yoffs + self.takeover.leader_led.y(),
             0,
             0,
         );
@@ -1293,7 +1267,7 @@ impl Data<'_> {
             ne_screen.as_mut().unwrap(),
             &mut dst,
         );
-        dst.y += i16::try_from(self.takeover.fill_block.h).unwrap();
+        dst.inc_y(i16::try_from(self.takeover.fill_block.height()).unwrap());
         to_blocks.as_mut().unwrap().blit_from_to(
             &fill_blocks[leader_color],
             ne_screen.as_mut().unwrap(),
@@ -1330,11 +1304,12 @@ impl Data<'_> {
             .copied()
             .enumerate()
             .for_each(|(line, display_column)| {
-                dst = rect!(
+                dst = Rect::new(
                     xoffs + i16::try_from(column_start.x).unwrap(),
                     yoffs
                         + i16::try_from(column_start.y).unwrap()
-                        + i16::try_from(line).unwrap() * i16::try_from(column_rect.h).unwrap(),
+                        + i16::try_from(line).unwrap()
+                            * i16::try_from(column_rect.height()).unwrap(),
                     0,
                     0,
                 );
@@ -1373,13 +1348,13 @@ impl Data<'_> {
             })
             .for_each(
                 |(layer_index, line_index, playground_line, activation_line)| {
-                    dst = rect!(
+                    dst = Rect::new(
                         xoffs
                             + i16::try_from(playground_starts[Color::Yellow as usize].x).unwrap()
-                            + layer_index * i16::try_from(element_rect.w).unwrap(),
+                            + layer_index * i16::try_from(element_rect.width()).unwrap(),
                         yoffs
                             + i16::try_from(playground_starts[Color::Yellow as usize].y).unwrap()
-                            + line_index * i16::try_from(element_rect.h).unwrap(),
+                            + line_index * i16::try_from(element_rect.height()).unwrap(),
                         0,
                         0,
                     );
@@ -1421,14 +1396,14 @@ impl Data<'_> {
             })
             .for_each(
                 |(layer_index, line_index, playground_line, activation_line)| {
-                    dst = rect!(
+                    dst = Rect::new(
                         xoffs
                             + i16::try_from(playground_starts[Color::Violet as usize].x).unwrap()
                             + (i16::try_from(NUM_LAYERS).unwrap() - layer_index - 2)
-                                * i16::try_from(element_rect.w).unwrap(),
+                                * i16::try_from(element_rect.width()).unwrap(),
                         yoffs
                             + i16::try_from(playground_starts[Color::Violet as usize].y).unwrap()
-                            + line_index * i16::try_from(element_rect.h).unwrap(),
+                            + line_index * i16::try_from(element_rect.height()).unwrap(),
                         0,
                         0,
                     );
@@ -1453,12 +1428,12 @@ impl Data<'_> {
                     opponent_color
                 };
 
-                dst = rect!(
+                dst = Rect::new(
                     xoffs + i16::try_from(cur_capsule_starts[color].x).unwrap(),
                     yoffs
                         + i16::try_from(cur_capsule_starts[color].y).unwrap()
                         + i16::try_from(capsule_cur_row[color]).unwrap()
-                            * i16::try_from(capsule_rect.h).unwrap(),
+                            * i16::try_from(capsule_rect.height()).unwrap(),
                     0,
                     0,
                 );
@@ -1471,12 +1446,12 @@ impl Data<'_> {
                 }
 
                 for capsule in 0..capsules.saturating_sub(1) {
-                    dst = rect!(
+                    dst = Rect::new(
                         xoffs + i16::try_from(left_capsule_starts[color].x).unwrap(),
                         yoffs
                             + i16::try_from(left_capsule_starts[color].y).unwrap()
                             + i16::try_from(capsule).unwrap()
-                                * i16::try_from(capsule_rect.h).unwrap(),
+                                * i16::try_from(capsule_rect.height()).unwrap(),
                         0,
                         0,
                     );

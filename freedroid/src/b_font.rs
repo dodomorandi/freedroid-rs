@@ -1,8 +1,8 @@
 use crate::{graphics::scale_pic, Data};
 
 use core::fmt;
-use sdl::Surface;
-use sdl_sys::{IMG_Load, SDL_Rect, SDL_SetColorKey, SDL_SRCCOLORKEY};
+use sdl::{Rect, Surface};
+use sdl_sys::{IMG_Load, SDL_SetColorKey, SDL_SRCCOLORKEY};
 use std::{
     os::raw::{c_char, c_float, c_int},
     ptr::{null_mut, NonNull},
@@ -29,7 +29,7 @@ pub struct BFontInfo<'sdl> {
     pub surface: Option<sdl::Surface<'sdl>>,
 
     /// characters width
-    pub chars: [SDL_Rect; 256],
+    pub chars: [Rect; 256],
 }
 
 pub fn font_height(font: &BFontInfo) -> c_int {
@@ -56,7 +56,7 @@ unsafe fn put_char_font<const F: bool>(
     y: c_int,
     c: u8,
 ) -> c_int {
-    let mut dest = rect!(
+    let mut dest = Rect::new(
         x.try_into().unwrap(),
         y.try_into().unwrap(),
         char_width(font, b' ').try_into().unwrap(),
@@ -70,12 +70,12 @@ unsafe fn put_char_font<const F: bool>(
             &mut dest,
         );
     }
-    dest.w.into()
+    dest.width().into()
 }
 
 /// Return the width of the "c" character
 pub fn char_width(font: &BFontInfo, c: u8) -> c_int {
-    font.chars[usize::from(c)].w.into()
+    font.chars[usize::from(c)].width().into()
 }
 
 pub unsafe fn print_string_font<const F: bool>(
@@ -107,24 +107,26 @@ pub unsafe fn init_font(font: &mut BFontInfo) {
     let mut x = 0;
     while x < (surface_width - 1) {
         if pixels.get(x, 0).unwrap().get() != sentry {
-            font.chars[i].x = x.try_into().unwrap();
-            font.chars[i].y = 1;
-            font.chars[i].h = surface_height;
+            font.chars[i].set_x(x.try_into().unwrap());
+            font.chars[i].set_y(1);
+            font.chars[i].set_height(surface_height);
             while x < surface_width && pixels.get(x, 0).unwrap().get() != sentry {
                 x += 1;
             }
-            font.chars[i].w = (i32::from(x) - i32::from(font.chars[i].x))
-                .try_into()
-                .unwrap();
+            font.chars[i].set_width(
+                (i32::from(x) - i32::from(font.chars[i].x()))
+                    .try_into()
+                    .unwrap(),
+            );
             i += 1;
         } else {
             x += 1;
         }
     }
-    font.chars[b' ' as usize].x = 0;
-    font.chars[b' ' as usize].y = 0;
-    font.chars[b' ' as usize].h = surface_height;
-    font.chars[b' ' as usize].w = font.chars[b'!' as usize].w;
+    font.chars[b' ' as usize].set_x(0);
+    font.chars[b' ' as usize].set_y(0);
+    font.chars[b' ' as usize].set_height(surface_height);
+    font.chars[b' ' as usize].set_width(font.chars[b'!' as usize].width());
 
     let last_row_pixel = pixels.get(0, surface_height - 1).unwrap().get();
     drop(surface);
@@ -188,7 +190,7 @@ impl<'sdl> Data<'sdl> {
         let mut font = Box::new(BFontInfo {
             h: 0,
             surface: Some(surface),
-            chars: [rect!(); 256],
+            chars: [Rect::default(); 256],
         });
         /* Init the font */
         init_font(&mut font);

@@ -146,8 +146,10 @@ impl Data<'_> {
             print_string_font(
                 self.graphics.ne_screen.as_mut().unwrap(),
                 self.global.font0_b_font,
-                i32::from(self.vars.full_user_rect.x) + i32::from(self.vars.full_user_rect.w) / 3,
-                i32::from(self.vars.full_user_rect.y) + i32::from(self.vars.full_user_rect.h)
+                i32::from(self.vars.full_user_rect.x())
+                    + i32::from(self.vars.full_user_rect.width()) / 3,
+                i32::from(self.vars.full_user_rect.y())
+                    + i32::from(self.vars.full_user_rect.height())
                     - font_height(&*self.global.font0_b_font),
                 format_args!("Press F1 for keymap"),
             );
@@ -492,22 +494,25 @@ impl Data<'_> {
         for wp in 0..usize::try_from((*self.main.cur_level).num_waypoints).unwrap() {
             let this_wp = &mut (*self.main.cur_level).all_waypoints[wp];
             // Draw the cross in the middle of the middle of the tile
-            for i in i32::try_from(self.vars.block_rect.w / 4).unwrap()
-                ..i32::try_from(3 * self.vars.block_rect.w / 4).unwrap()
+            for i in i32::try_from(self.vars.block_rect.width() / 4).unwrap()
+                ..i32::try_from(3 * self.vars.block_rect.width() / 4).unwrap()
             {
                 // This draws a (double) line at the upper border of the current block
-                let mut x =
-                    i + i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w / 2)
-                        - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
-                            * f32::from(self.vars.block_rect.w)) as i32;
+                let mut x = i
+                    + i32::from(self.vars.user_rect.x())
+                    + i32::from(self.vars.user_rect.width() / 2)
+                    - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
+                        * f32::from(self.vars.block_rect.width())) as i32;
                 let user_center = self.vars.get_user_center();
-                let mut y = i + i32::from(user_center.y)
+                let mut y = i + i32::from(user_center.y())
                     - ((self.vars.me.pos.y - f32::from(this_wp.y) + 0.5)
-                        * f32::from(self.vars.block_rect.h)) as i32;
-                if x < i32::from(self.vars.user_rect.x)
-                    || x > i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w)
-                    || y < i32::from(self.vars.user_rect.y)
-                    || y > i32::from(self.vars.user_rect.y) + i32::from(self.vars.user_rect.h)
+                        * f32::from(self.vars.block_rect.height())) as i32;
+                if x < i32::from(self.vars.user_rect.x())
+                    || x > i32::from(self.vars.user_rect.x())
+                        + i32::from(self.vars.user_rect.width())
+                    || y < i32::from(self.vars.user_rect.y())
+                    || y > i32::from(self.vars.user_rect.y())
+                        + i32::from(self.vars.user_rect.height())
                 {
                     continue;
                 }
@@ -519,17 +524,21 @@ impl Data<'_> {
                     .set(x.try_into().unwrap(), y.try_into().unwrap(), HIGHLIGHTCOLOR)
                     .unwrap();
 
-                x = i + i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w / 2)
+                x = i
+                    + i32::from(self.vars.user_rect.x())
+                    + i32::from(self.vars.user_rect.width() / 2)
                     - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
-                        * f32::from(self.vars.block_rect.w)) as i32;
-                y = i + i32::from(user_center.y)
+                        * f32::from(self.vars.block_rect.width())) as i32;
+                y = i + i32::from(user_center.y())
                     - ((self.vars.me.pos.y - f32::from(this_wp.y) + 0.5)
-                        * f32::from(self.vars.block_rect.h)) as i32
+                        * f32::from(self.vars.block_rect.height())) as i32
                     + 1;
-                if x < i32::from(self.vars.user_rect.x)
-                    || x > i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w)
-                    || y < i32::from(self.vars.user_rect.y)
-                    || y > i32::from(self.vars.user_rect.y) + i32::from(self.vars.user_rect.h)
+                if x < i32::from(self.vars.user_rect.x())
+                    || x > i32::from(self.vars.user_rect.x())
+                        + i32::from(self.vars.user_rect.width())
+                    || y < i32::from(self.vars.user_rect.y())
+                    || y > i32::from(self.vars.user_rect.y())
+                        + i32::from(self.vars.user_rect.height())
                 {
                     continue;
                 }
@@ -539,17 +548,21 @@ impl Data<'_> {
                     .unwrap();
 
                 // This draws a line at the lower border of the current block
-                x = i + i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w / 2)
+                x = i
+                    + i32::from(self.vars.user_rect.x())
+                    + i32::from(self.vars.user_rect.width() / 2)
                     - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
-                        * f32::from(self.vars.block_rect.w)) as i32;
-                y = -i + i32::from(user_center.y)
+                        * f32::from(self.vars.block_rect.width())) as i32;
+                y = -i + i32::from(user_center.y())
                     - ((self.vars.me.pos.y - f32::from(this_wp.y) - 0.5)
-                        * f32::from(self.vars.block_rect.h)) as i32
+                        * f32::from(self.vars.block_rect.height())) as i32
                     - 1;
-                if x < i32::from(self.vars.user_rect.x)
-                    || x > i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w)
-                    || y < i32::from(self.vars.user_rect.y)
-                    || y > i32::from(self.vars.user_rect.y) + i32::from(self.vars.user_rect.h)
+                if x < i32::from(self.vars.user_rect.x())
+                    || x > i32::from(self.vars.user_rect.x())
+                        + i32::from(self.vars.user_rect.width())
+                    || y < i32::from(self.vars.user_rect.y())
+                    || y > i32::from(self.vars.user_rect.y())
+                        + i32::from(self.vars.user_rect.height())
                 {
                     continue;
                 }
@@ -558,17 +571,21 @@ impl Data<'_> {
                     .set(x.try_into().unwrap(), y.try_into().unwrap(), HIGHLIGHTCOLOR)
                     .unwrap();
 
-                x = i + i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w / 2)
+                x = i
+                    + i32::from(self.vars.user_rect.x())
+                    + i32::from(self.vars.user_rect.width() / 2)
                     - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
-                        * f32::from(self.vars.block_rect.w)) as i32;
-                y = -i + i32::from(user_center.y)
+                        * f32::from(self.vars.block_rect.width())) as i32;
+                y = -i + i32::from(user_center.y())
                     - ((self.vars.me.pos.y - f32::from(this_wp.y) - 0.5)
-                        * f32::from(self.vars.block_rect.h)) as i32
+                        * f32::from(self.vars.block_rect.height())) as i32
                     - 2;
-                if x < i32::from(self.vars.user_rect.x)
-                    || x > i32::from(self.vars.user_rect.x) + i32::from(self.vars.user_rect.w)
-                    || y < i32::from(self.vars.user_rect.y)
-                    || y > i32::from(self.vars.user_rect.y) + i32::from(self.vars.user_rect.h)
+                if x < i32::from(self.vars.user_rect.x())
+                    || x > i32::from(self.vars.user_rect.x())
+                        + i32::from(self.vars.user_rect.width())
+                    || y < i32::from(self.vars.user_rect.y())
+                    || y > i32::from(self.vars.user_rect.y())
+                        + i32::from(self.vars.user_rect.height())
                 {
                     continue;
                 }
@@ -607,22 +624,22 @@ impl Data<'_> {
         let mut pixels = ne_screen.pixels();
 
         let user_center = self.vars.get_user_center();
-        for i in 0..i32::from(self.vars.block_rect.w) {
+        for i in 0..i32::from(self.vars.block_rect.width()) {
             // This draws a (double) line at the upper border of the current block
             pixels
                 .set(
                     u16::try_from(
-                        i + i32::from(self.vars.user_rect.x)
-                            + i32::from(self.vars.user_rect.w / 2)
+                        i + i32::from(self.vars.user_rect.x())
+                            + i32::from(self.vars.user_rect.width() / 2)
                             + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
-                                * f32::from(self.vars.block_rect.w))
+                                * f32::from(self.vars.block_rect.width()))
                                 as i32,
                     )
                     .unwrap(),
                     u16::try_from(
-                        i32::from(user_center.y)
+                        i32::from(user_center.y())
                             + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
-                                * f32::from(self.vars.block_rect.h))
+                                * f32::from(self.vars.block_rect.height()))
                                 as i32,
                     )
                     .unwrap(),
@@ -632,17 +649,17 @@ impl Data<'_> {
             pixels
                 .set(
                     u16::try_from(
-                        i + i32::from(self.vars.user_rect.x)
-                            + i32::from(self.vars.user_rect.w / 2)
+                        i + i32::from(self.vars.user_rect.x())
+                            + i32::from(self.vars.user_rect.width() / 2)
                             + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
-                                * f32::from(self.vars.block_rect.w))
+                                * f32::from(self.vars.block_rect.width()))
                                 as i32,
                     )
                     .unwrap(),
                     u16::try_from(
-                        i32::from(user_center.y)
+                        i32::from(user_center.y())
                             + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
-                                * f32::from(self.vars.block_rect.h))
+                                * f32::from(self.vars.block_rect.height()))
                                 as i32
                             + 1,
                     )
@@ -655,17 +672,17 @@ impl Data<'_> {
             pixels
                 .set(
                     u16::try_from(
-                        i + i32::from(self.vars.user_rect.x)
-                            + i32::from(self.vars.user_rect.w / 2)
+                        i + i32::from(self.vars.user_rect.x())
+                            + i32::from(self.vars.user_rect.width() / 2)
                             + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
-                                * f32::from(self.vars.block_rect.w))
+                                * f32::from(self.vars.block_rect.width()))
                                 as i32,
                     )
                     .unwrap(),
                     u16::try_from(
-                        i32::from(user_center.y)
+                        i32::from(user_center.y())
                             + (((self.vars.me.pos.y).round() - self.vars.me.pos.y + 0.5)
-                                * f32::from(self.vars.block_rect.h))
+                                * f32::from(self.vars.block_rect.height()))
                                 as i32
                             - 1,
                     )
@@ -676,17 +693,17 @@ impl Data<'_> {
             pixels
                 .set(
                     u16::try_from(
-                        i + i32::from(self.vars.user_rect.x)
-                            + i32::from(self.vars.user_rect.w / 2)
+                        i + i32::from(self.vars.user_rect.x())
+                            + i32::from(self.vars.user_rect.width() / 2)
                             + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
-                                * f32::from(self.vars.block_rect.w))
+                                * f32::from(self.vars.block_rect.width()))
                                 as i32,
                     )
                     .unwrap(),
                     u16::try_from(
-                        i32::from(user_center.y)
+                        i32::from(user_center.y())
                             + (((self.vars.me.pos.y).round() - self.vars.me.pos.y + 0.5)
-                                * f32::from(self.vars.block_rect.h))
+                                * f32::from(self.vars.block_rect.height()))
                                 as i32
                             - 2,
                     )
@@ -699,17 +716,17 @@ impl Data<'_> {
             pixels
                 .set(
                     u16::try_from(
-                        i32::from(self.vars.user_rect.x)
-                            + i32::from(self.vars.user_rect.w / 2)
+                        i32::from(self.vars.user_rect.x())
+                            + i32::from(self.vars.user_rect.width() / 2)
                             + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
-                                * f32::from(self.vars.block_rect.w))
+                                * f32::from(self.vars.block_rect.width()))
                                 as i32,
                     )
                     .unwrap(),
                     u16::try_from(
-                        i32::from(user_center.y)
+                        i32::from(user_center.y())
                             + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
-                                * f32::from(self.vars.block_rect.h))
+                                * f32::from(self.vars.block_rect.height()))
                                 as i32
                             + i,
                     )
@@ -720,17 +737,17 @@ impl Data<'_> {
             pixels
                 .set(
                     u16::try_from(
-                        1 + i32::from(self.vars.user_rect.x)
-                            + i32::from(self.vars.user_rect.w / 2)
+                        1 + i32::from(self.vars.user_rect.x())
+                            + i32::from(self.vars.user_rect.width() / 2)
                             + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
-                                * f32::from(self.vars.block_rect.w))
+                                * f32::from(self.vars.block_rect.width()))
                                 as i32,
                     )
                     .unwrap(),
                     u16::try_from(
-                        i32::from(user_center.y)
+                        i32::from(user_center.y())
                             + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
-                                * f32::from(self.vars.block_rect.h))
+                                * f32::from(self.vars.block_rect.height()))
                                 as i32
                             + i,
                     )
@@ -743,17 +760,17 @@ impl Data<'_> {
             pixels
                 .set(
                     u16::try_from(
-                        -1 + i32::from(self.vars.user_rect.x)
-                            + i32::from(self.vars.user_rect.w / 2)
+                        -1 + i32::from(self.vars.user_rect.x())
+                            + i32::from(self.vars.user_rect.width() / 2)
                             + (((self.vars.me.pos.x).round() - self.vars.me.pos.x + 0.5)
-                                * f32::from(self.vars.block_rect.w))
+                                * f32::from(self.vars.block_rect.width()))
                                 as i32,
                     )
                     .unwrap(),
                     u16::try_from(
-                        i32::from(user_center.y)
+                        i32::from(user_center.y())
                             + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
-                                * f32::from(self.vars.block_rect.h))
+                                * f32::from(self.vars.block_rect.height()))
                                 as i32
                             + i,
                     )
@@ -764,17 +781,17 @@ impl Data<'_> {
             pixels
                 .set(
                     u16::try_from(
-                        -2 + i32::from(self.vars.user_rect.x)
-                            + i32::from(self.vars.user_rect.w / 2)
+                        -2 + i32::from(self.vars.user_rect.x())
+                            + i32::from(self.vars.user_rect.width() / 2)
                             + (((self.vars.me.pos.x).round() - self.vars.me.pos.x + 0.5)
-                                * f32::from(self.vars.block_rect.w))
+                                * f32::from(self.vars.block_rect.width()))
                                 as i32,
                     )
                     .unwrap(),
                     u16::try_from(
-                        i32::from(user_center.y)
+                        i32::from(user_center.y())
                             + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
-                                * f32::from(self.vars.block_rect.h))
+                                * f32::from(self.vars.block_rect.height()))
                                 as i32
                             + i,
                     )

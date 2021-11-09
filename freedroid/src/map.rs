@@ -945,11 +945,11 @@ freedroid-discussion@lists.sourceforge.net\n\
                     let xdist = (self.main.all_enemys[j].pos.x - f32::from(doorx))
                         .trunc()
                         .abs();
-                    if xdist < self.vars.block_rect.w.into() {
+                    if xdist < self.vars.block_rect.width().into() {
                         let ydist = (self.main.all_enemys[j].pos.y - f32::from(doory))
                             .trunc()
                             .abs();
-                        if ydist < self.vars.block_rect.h.into() {
+                        if ydist < self.vars.block_rect.height().into() {
                             let dist2 = xdist * xdist + ydist * ydist;
                             if dist2 < DOOROPENDIST2 {
                                 if *pos != MapTile::HGanztuere as i8
@@ -1389,10 +1389,10 @@ freedroid-discussion@lists.sourceforge.net\n\
 
             let rect =
                 &mut self.main.cur_ship.lift_row_rect[usize::try_from(elevator_index).unwrap()];
-            rect.x = x.try_into().unwrap();
-            rect.y = y.try_into().unwrap();
-            rect.w = w.try_into().unwrap();
-            rect.h = h.try_into().unwrap();
+            rect.set_x(x.try_into().unwrap());
+            rect.set_y(y.try_into().unwrap());
+            rect.set_width(w.try_into().unwrap());
+            rect.set_height(h.try_into().unwrap());
 
             self.main.cur_ship.num_lift_rows += 1;
         }
@@ -1424,10 +1424,10 @@ freedroid-discussion@lists.sourceforge.net\n\
 
             let rect = &mut self.main.cur_ship.level_rects[usize::try_from(deck_index).unwrap()]
                 [usize::try_from(rect_index).unwrap()];
-            rect.x = x.try_into().unwrap();
-            rect.y = y.try_into().unwrap();
-            rect.w = w.try_into().unwrap();
-            rect.h = h.try_into().unwrap();
+            rect.set_x(x.try_into().unwrap());
+            rect.set_y(y.try_into().unwrap());
+            rect.set_width(w.try_into().unwrap());
+            rect.set_height(h.try_into().unwrap());
         }
 
         entry_pointer = libc::strstr(

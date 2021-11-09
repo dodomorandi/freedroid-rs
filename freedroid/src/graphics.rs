@@ -1,12 +1,12 @@
 use crate::{
     defs::{
-        self, scale_point, scale_rect, Cmds, Criticality, DisplayBannerFlags, Droid, SoundType,
-        Themed, BANNER_BLOCK_FILE_C, BLAST_BLOCK_FILE_C, BULLET_BLOCK_FILE_C,
-        CONSOLE_BG_PIC1_FILE_C, CONSOLE_BG_PIC2_FILE_C, CONSOLE_PIC_FILE_C, DIGITNUMBER,
-        DIGIT_BLOCK_FILE_C, DROID_BLOCK_FILE_C, ENEMYPHASES, FONT0_FILE, FONT0_FILE_C, FONT1_FILE,
-        FONT1_FILE_C, FONT2_FILE, FONT2_FILE_C, FREE_ONLY, GRAPHICS_DIR_C, ICON_FILE, ICON_FILE_C,
-        INIT_ONLY, MAP_BLOCK_FILE_C, MAXBULLETS, MAX_THEMES, NUM_COLORS, NUM_DECAL_PICS,
-        NUM_MAP_BLOCKS, PARA_FONT_FILE, PARA_FONT_FILE_C, SHIP_OFF_PIC_FILE_C, SHIP_ON_PIC_FILE_C,
+        self, scale_point, Cmds, Criticality, DisplayBannerFlags, Droid, SoundType, Themed,
+        BANNER_BLOCK_FILE_C, BLAST_BLOCK_FILE_C, BULLET_BLOCK_FILE_C, CONSOLE_BG_PIC1_FILE_C,
+        CONSOLE_BG_PIC2_FILE_C, CONSOLE_PIC_FILE_C, DIGITNUMBER, DIGIT_BLOCK_FILE_C,
+        DROID_BLOCK_FILE_C, ENEMYPHASES, FONT0_FILE, FONT0_FILE_C, FONT1_FILE, FONT1_FILE_C,
+        FONT2_FILE, FONT2_FILE_C, FREE_ONLY, GRAPHICS_DIR_C, ICON_FILE, ICON_FILE_C, INIT_ONLY,
+        MAP_BLOCK_FILE_C, MAXBULLETS, MAX_THEMES, NUM_COLORS, NUM_DECAL_PICS, NUM_MAP_BLOCKS,
+        PARA_FONT_FILE, PARA_FONT_FILE_C, SHIP_OFF_PIC_FILE_C, SHIP_ON_PIC_FILE_C,
         TAKEOVER_BG_PIC_FILE_C,
     },
     misc::read_value_from_string,
@@ -19,12 +19,12 @@ use crate::{
 use array_init::array_init;
 use cstr::cstr;
 use log::{error, info, trace, warn};
-use sdl::{FrameBuffer, Surface, VideoModeFlags};
+use sdl::{FrameBuffer, Rect, Surface, VideoModeFlags};
 use sdl_sys::{
     zoomSurface, IMG_Load, SDL_CreateCursor, SDL_CreateRGBSurface, SDL_Cursor, SDL_DisplayFormat,
     SDL_DisplayFormatAlpha, SDL_FillRect, SDL_FreeCursor, SDL_FreeSurface, SDL_GetClipRect,
     SDL_GetError, SDL_GetTicks, SDL_GetVideoInfo, SDL_MapRGB, SDL_MapRGBA, SDL_RWFromFile,
-    SDL_RWFromMem, SDL_RWops, SDL_Rect, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma, SDL_UpdateRect,
+    SDL_RWFromMem, SDL_RWops, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma, SDL_UpdateRect,
     SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_RLEACCEL,
     SDL_SRCALPHA,
 };
@@ -177,7 +177,7 @@ impl<'sdl> Graphics<'sdl> {
         fpath: *mut c_char,
         line: c_int,
         col: c_int,
-        block: *const SDL_Rect,
+        block: *const Rect,
         flags: c_int,
     ) -> Option<Surface<'sdl>> {
         Self::load_block_vid_bpp_pic(self.vid_bpp, &mut self.pic, fpath, line, col, block, flags)
@@ -189,7 +189,7 @@ impl<'sdl> Graphics<'sdl> {
         fpath: *mut c_char,
         line: c_int,
         col: c_int,
-        block: *const SDL_Rect,
+        block: *const Rect,
         flags: c_int,
     ) -> Option<Surface<'sdl>> {
         if fpath.is_null() && pic.is_none() {
@@ -213,10 +213,10 @@ impl<'sdl> Graphics<'sdl> {
 
         let pic = pic.as_mut().unwrap();
         let dim = if block.is_null() {
-            rect!(0, 0, pic.width(), pic.height())
+            Rect::new(0, 0, pic.width(), pic.height())
         } else {
             let block = &*block;
-            rect!(0, 0, block.w, block.h)
+            block.with_xy(0, 0)
         };
 
         let raw_format = pic.raw().format();
@@ -226,7 +226,16 @@ impl<'sdl> Graphics<'sdl> {
         if usealpha {
             SDL_SetAlpha(pic.as_mut_ptr(), 0, 0); /* clear per-surf alpha for internal blit */
         }
-        let tmp = SDL_CreateRGBSurface(0, dim.w.into(), dim.h.into(), vid_bpp, 0, 0, 0, 0);
+        let tmp = SDL_CreateRGBSurface(
+            0,
+            dim.width().into(),
+            dim.height().into(),
+            vid_bpp,
+            0,
+            0,
+            0,
+            0,
+        );
         let mut ret = if usealpha {
             Surface::from_ptr(NonNull::new(SDL_DisplayFormatAlpha(tmp)).unwrap())
         } else {
@@ -234,11 +243,9 @@ impl<'sdl> Graphics<'sdl> {
         };
         SDL_FreeSurface(tmp);
 
-        let src = rect!(
-            i16::try_from(col).unwrap() * i16::try_from(dim.w + 2).unwrap(),
-            i16::try_from(line).unwrap() * i16::try_from(dim.h + 2).unwrap(),
-            dim.w,
-            dim.h,
+        let src = dim.with_xy(
+            i16::try_from(col).unwrap() * i16::try_from(dim.width() + 2).unwrap(),
+            i16::try_from(line).unwrap() * i16::try_from(dim.height() + 2).unwrap(),
         );
         pic.blit_from(&src, &mut ret);
         if usealpha {
@@ -414,16 +421,16 @@ impl Data<'_> {
     /// "second" pixel is blacked out, thereby generation a fading
     /// effect.  This function was created to fade the background of the
     /// Escape menu and its submenus.
-    pub fn make_grid_on_screen(&mut self, grid_rectangle: Option<&SDL_Rect>) {
+    pub fn make_grid_on_screen(&mut self, grid_rectangle: Option<&Rect>) {
         let grid_rectangle = grid_rectangle.unwrap_or(&self.vars.user_rect);
 
         trace!("MakeGridOnScreen(...): real function call confirmed.");
         let ne_screen = self.graphics.ne_screen.as_mut().unwrap();
-        let rect_x = u16::try_from(grid_rectangle.x).unwrap();
-        let rect_y = u16::try_from(grid_rectangle.y).unwrap();
+        let rect_x = u16::try_from(grid_rectangle.x()).unwrap();
+        let rect_y = u16::try_from(grid_rectangle.y()).unwrap();
         let mut ne_screen = ne_screen.lock().unwrap();
-        (rect_y..(rect_y + grid_rectangle.h))
-            .flat_map(|y| (rect_x..(rect_x + grid_rectangle.w)).map(move |x| (x, y)))
+        (rect_y..(rect_y + grid_rectangle.height()))
+            .flat_map(|y| (rect_x..(rect_x + grid_rectangle.width())).map(move |x| (x, y)))
             .filter(|(x, y)| (x + y) % 2 == 0)
             .for_each(|(x, y)| ne_screen.pixels().set(x, y, 0).unwrap());
         trace!("MakeGridOnScreen(...): end of function reached.");
@@ -439,8 +446,8 @@ impl Data<'_> {
         );
 
         *ne_screen = match self.sdl.video.set_video_mode(
-            self.vars.screen_rect.w.into(),
-            self.vars.screen_rect.h.into(),
+            self.vars.screen_rect.width().into(),
+            self.vars.screen_rect.height().into(),
             None,
             vid_flags,
         ) {
@@ -448,7 +455,8 @@ impl Data<'_> {
             None => {
                 error!(
                     "unable to toggle windowed/fullscreen {} x {} video mode.",
-                    self.vars.screen_rect.w, self.vars.screen_rect.h,
+                    self.vars.screen_rect.width(),
+                    self.vars.screen_rect.height(),
                 );
                 panic!(
                     "SDL-Error: {}",
@@ -586,7 +594,7 @@ impl Data<'_> {
     pub unsafe fn scale_stat_rects(&mut self, scale: c_float) {
         macro_rules! scale {
             ($rect:expr) => {
-                scale_rect(&mut $rect, scale);
+                $rect.scale(scale);
             };
         }
 
@@ -611,7 +619,7 @@ impl Data<'_> {
         scale!(self.vars.cons_text_rect);
 
         for block in &mut self.vars.cons_menu_rects {
-            scale_rect(block, scale);
+            block.scale(scale);
         }
 
         scale!(self.vars.cons_menu_item_rect);
@@ -620,19 +628,19 @@ impl Data<'_> {
         scale!(self.vars.right_info_rect);
 
         for block in &mut self.takeover.fill_blocks {
-            scale_rect(block, scale);
+            block.scale(scale);
         }
 
         for block in &mut self.takeover.capsule_blocks {
-            scale_rect(block, scale);
+            block.scale(scale);
         }
 
         for block in &mut self.takeover.to_game_blocks {
-            scale_rect(block, scale);
+            block.scale(scale);
         }
 
         for block in &mut self.takeover.to_ground_blocks {
-            scale_rect(block, scale);
+            block.scale(scale);
         }
 
         scale!(self.takeover.column_block);
@@ -689,9 +697,9 @@ impl Data<'_> {
 
         // these are reset in a theme-change by the theme-config-file
         // therefore we need to rescale them each time again
-        scale_rect(&mut self.main.first_digit_rect, scale);
-        scale_rect(&mut self.main.second_digit_rect, scale);
-        scale_rect(&mut self.main.third_digit_rect, scale);
+        self.main.first_digit_rect.scale(scale);
+        self.main.second_digit_rect.scale(scale);
+        self.main.third_digit_rect.scale(scale);
 
         // note: only rescale these rects the first time!!
         let mut init = false;
@@ -770,8 +778,8 @@ impl Data<'_> {
             //  create a new tmp block-build storage
             let tmp = SDL_CreateRGBSurface(
                 0,
-                self.vars.block_rect.w.into(),
-                self.vars.block_rect.h.into(),
+                self.vars.block_rect.width().into(),
+                self.vars.block_rect.height().into(),
                 self.graphics.vid_bpp,
                 0,
                 0,
@@ -813,7 +821,7 @@ impl Data<'_> {
         self.graphics.ne_screen = Some(ne_screen);
     }
 
-    /// display "white noise" effect in SDL_Rect.
+    /// display "white noise" effect in Rect.
     /// algorith basically stolen from
     /// Greg Knauss's "xteevee" hack in xscreensavers.
     ///
@@ -821,7 +829,7 @@ impl Data<'_> {
     pub unsafe fn white_noise(
         &mut self,
         frame_buffer: &mut FrameBuffer,
-        rect: &mut SDL_Rect,
+        rect: &mut Rect,
         timeout: c_int,
     ) {
         use rand::{
@@ -841,8 +849,8 @@ impl Data<'_> {
         // produce the tiles
         let tmp = SDL_CreateRGBSurface(
             0,
-            rect.w.into(),
-            rect.h.into(),
+            rect.width().into(),
+            rect.height().into(),
             self.graphics.vid_bpp,
             0,
             0,
@@ -858,8 +866,8 @@ impl Data<'_> {
             let mut tile =
                 Surface::from_ptr(NonNull::new(SDL_DisplayFormat(tmp2.as_mut_ptr())).unwrap());
             let mut lock = tile.lock().unwrap();
-            (0..u16::try_from(rect.x).unwrap())
-                .flat_map(|x| (0..rect.h).map(move |y| (x, y)))
+            (0..u16::try_from(rect.x()).unwrap())
+                .flat_map(|x| (0..rect.height()).map(move |y| (x, y)))
                 .for_each(|(x, y)| {
                     if rng.gen_range(0..100) > signal_strengh {
                         lock.pixels()
@@ -879,7 +887,7 @@ impl Data<'_> {
         let now = SDL_GetTicks();
 
         self.wait_for_all_keys_released();
-        let mut clip_rect = rect!();
+        let mut clip_rect = Rect::default();
         loop {
             // pick an old enough tile
             let mut next_tile;
@@ -900,16 +908,16 @@ impl Data<'_> {
             *used_tiles.last_mut().unwrap() = next_tile;
 
             // make sure we can blit the full rect without clipping! (would change *rect!)
-            SDL_GetClipRect(frame_buffer.as_mut_ptr(), &mut clip_rect);
+            SDL_GetClipRect(frame_buffer.as_mut_ptr(), clip_rect.as_mut());
             frame_buffer.clear_clip_rect();
             // set it
             noise_tiles[usize::try_from(next_tile).unwrap()].blit_to(frame_buffer, &mut *rect);
             SDL_UpdateRect(
                 frame_buffer.as_mut_ptr(),
-                rect.x.into(),
-                rect.y.into(),
-                rect.w.into(),
-                rect.h.into(),
+                rect.x().into(),
+                rect.y().into(),
+                rect.width().into(),
+                rect.height().into(),
             );
             self.sdl.delay_ms(25);
 
@@ -1109,8 +1117,8 @@ impl Data<'_> {
         }
 
         let ne_screen = match self.sdl.video.set_video_mode(
-            self.vars.screen_rect.w.into(),
-            self.vars.screen_rect.h.into(),
+            self.vars.screen_rect.width().into(),
+            self.vars.screen_rect.height().into(),
             None,
             vid_flags,
         ) {
@@ -1118,8 +1126,8 @@ impl Data<'_> {
             None => {
                 error!(
                     "Couldn't set {} x {} video mode. SDL: {}",
-                    self.vars.screen_rect.w,
-                    self.vars.screen_rect.h,
+                    self.vars.screen_rect.width(),
+                    self.vars.screen_rect.height(),
                     CStr::from_ptr(SDL_GetError()).to_string_lossy(),
                 );
                 std::process::exit(-1);
@@ -1473,8 +1481,8 @@ impl Data<'_> {
             //  create the tmp block-build storage
             let tmp = SDL_CreateRGBSurface(
                 0,
-                self.vars.block_rect.w.into(),
-                self.vars.block_rect.h.into(),
+                self.vars.block_rect.width().into(),
+                self.vars.block_rect.height().into(),
                 self.graphics.vid_bpp,
                 0,
                 0,
@@ -1771,39 +1779,39 @@ impl Data<'_> {
             data.as_ptr() as *mut c_char,
             DIGIT_ONE_POSITION_X_STRING.as_ptr() as *mut c_char,
             cstr!("%hd").as_ptr() as *mut c_char,
-            &mut self.main.first_digit_rect.x as *mut c_short as *mut c_void,
+            &mut self.main.first_digit_rect.as_mut().x as *mut c_short as *mut c_void,
         );
         read_value_from_string(
             data.as_ptr() as *mut c_char,
             DIGIT_ONE_POSITION_Y_STRING.as_ptr() as *mut c_char,
             cstr!("%hd").as_ptr() as *mut c_char,
-            &mut self.main.first_digit_rect.y as *mut c_short as *mut c_void,
+            &mut self.main.first_digit_rect.as_mut().y as *mut c_short as *mut c_void,
         );
 
         read_value_from_string(
             data.as_ptr() as *mut c_char,
             DIGIT_TWO_POSITION_X_STRING.as_ptr() as *mut c_char,
             cstr!("%hd").as_ptr() as *mut c_char,
-            &mut self.main.second_digit_rect.x as *mut c_short as *mut c_void,
+            &mut self.main.second_digit_rect.as_mut().x as *mut c_short as *mut c_void,
         );
         read_value_from_string(
             data.as_ptr() as *mut c_char,
             DIGIT_TWO_POSITION_Y_STRING.as_ptr() as *mut c_char,
             cstr!("%hd").as_ptr() as *mut c_char,
-            &mut self.main.second_digit_rect.y as *mut c_short as *mut c_void,
+            &mut self.main.second_digit_rect.as_mut().y as *mut c_short as *mut c_void,
         );
 
         read_value_from_string(
             data.as_ptr() as *mut c_char,
             DIGIT_THREE_POSITION_X_STRING.as_ptr() as *mut c_char,
             cstr!("%hd").as_ptr() as *mut c_char,
-            &mut self.main.third_digit_rect.x as *mut i16 as *mut c_void,
+            &mut self.main.third_digit_rect.as_mut().x as *mut i16 as *mut c_void,
         );
         read_value_from_string(
             data.as_ptr() as *mut c_char,
             DIGIT_THREE_POSITION_Y_STRING.as_ptr() as *mut c_char,
             cstr!("%hd").as_ptr() as *mut c_char,
-            &mut self.main.third_digit_rect.y as *mut c_short as *mut c_void,
+            &mut self.main.third_digit_rect.as_mut().y as *mut c_short as *mut c_void,
         );
     }
 
@@ -1838,11 +1846,11 @@ impl Data<'_> {
                 SDL_FreeSurface(tmp); // free the old surface
             });
 
-        static ORIG_BLOCK: OnceCell<SDL_Rect> = OnceCell::new();
+        static ORIG_BLOCK: OnceCell<Rect> = OnceCell::new();
         let orig_block = ORIG_BLOCK.get_or_init(|| self.vars.block_rect);
 
         self.vars.block_rect = *orig_block;
-        scale_rect(&mut self.vars.block_rect, scale);
+        self.vars.block_rect.scale(scale);
     }
 
     /// This function load an image and displays it directly to the self.graphics.ne_screen
@@ -1888,20 +1896,25 @@ impl Data<'_> {
             }
 
             let mut i = 0.;
-            let max = (y2 - y1) * f32::from(self.vars.block_rect.w);
+            let max = (y2 - y1) * f32::from(self.vars.block_rect.width());
             while i < max {
-                let pixx = f32::from(self.vars.user_rect.x) + f32::from(self.vars.user_rect.w / 2)
-                    - f32::from(self.vars.block_rect.w) * (self.vars.me.pos.x - x1);
+                let pixx = f32::from(self.vars.user_rect.x())
+                    + f32::from(self.vars.user_rect.width() / 2)
+                    - f32::from(self.vars.block_rect.width()) * (self.vars.me.pos.x - x1);
                 let user_center = self.vars.get_user_center();
-                let pixy = f32::from(user_center.y)
-                    - f32::from(self.vars.block_rect.h) * (self.vars.me.pos.y - y1)
+                let pixy = f32::from(user_center.y())
+                    - f32::from(self.vars.block_rect.height()) * (self.vars.me.pos.y - y1)
                     + i;
-                if pixx <= self.vars.user_rect.x.into()
+                if pixx <= self.vars.user_rect.x().into()
                     || pixx
-                        >= f32::from(self.vars.user_rect.x) + f32::from(self.vars.user_rect.w) - 1.
-                    || pixy <= f32::from(self.vars.user_rect.y)
+                        >= f32::from(self.vars.user_rect.x())
+                            + f32::from(self.vars.user_rect.width())
+                            - 1.
+                    || pixy <= f32::from(self.vars.user_rect.y())
                     || pixy
-                        >= f32::from(self.vars.user_rect.y) + f32::from(self.vars.user_rect.h) - 1.
+                        >= f32::from(self.vars.user_rect.y())
+                            + f32::from(self.vars.user_rect.height())
+                            - 1.
                 {
                     i += 1.;
                     continue;
@@ -1935,19 +1948,24 @@ impl Data<'_> {
 
         let slope = (y2 - y1) / (x2 - x1);
         let mut i = 0.;
-        let max = (x2 - x1) * f32::from(self.vars.block_rect.w);
+        let max = (x2 - x1) * f32::from(self.vars.block_rect.width());
         while i < max {
-            let pixx = f32::from(self.vars.user_rect.x) + f32::from(self.vars.user_rect.w / 2)
-                - f32::from(self.vars.block_rect.w) * (self.vars.me.pos.x - x1)
+            let pixx = f32::from(self.vars.user_rect.x())
+                + f32::from(self.vars.user_rect.width() / 2)
+                - f32::from(self.vars.block_rect.width()) * (self.vars.me.pos.x - x1)
                 + i;
             let user_center = self.vars.get_user_center();
-            let pixy = f32::from(user_center.y)
-                - f32::from(self.vars.block_rect.h) * (self.vars.me.pos.y - y1)
+            let pixy = f32::from(user_center.y())
+                - f32::from(self.vars.block_rect.height()) * (self.vars.me.pos.y - y1)
                 + i * slope;
-            if pixx <= f32::from(self.vars.user_rect.x)
-                || pixx >= f32::from(self.vars.user_rect.x) + f32::from(self.vars.user_rect.w) - 1.
-                || pixy <= f32::from(self.vars.user_rect.y)
-                || pixy >= f32::from(self.vars.user_rect.y) + f32::from(self.vars.user_rect.h) - 1.
+            if pixx <= f32::from(self.vars.user_rect.x())
+                || pixx
+                    >= f32::from(self.vars.user_rect.x()) + f32::from(self.vars.user_rect.width())
+                        - 1.
+                || pixy <= f32::from(self.vars.user_rect.y())
+                || pixy
+                    >= f32::from(self.vars.user_rect.y()) + f32::from(self.vars.user_rect.height())
+                        - 1.
             {
                 i += 1.;
                 continue;
