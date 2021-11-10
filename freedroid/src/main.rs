@@ -49,7 +49,7 @@ use takeover::Takeover;
 use text::Text;
 use vars::Vars;
 
-use sdl_sys::{SDL_GetTicks, SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE};
+use sdl_sys::{SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE};
 use std::{
     ops::Not,
     os::raw::{c_char, c_float},
@@ -244,8 +244,8 @@ fn main() {
                 DROID_ROTATION_TIME,
                 RESET,
             );
-            let now = SDL_GetTicks();
-            while SDL_GetTicks() - now < SHOW_WAIT && !data.fire_pressed_r() {
+            let now = sdl.ticks_ms();
+            while sdl.ticks_ms() - now < SHOW_WAIT && !data.fire_pressed_r() {
                 data.show_droid_portrait(
                     data.vars.cons_droid_rect,
                     data.vars.me.ty,

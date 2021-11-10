@@ -10,7 +10,7 @@ use crate::{
 
 use cstr::cstr;
 use sdl::{Rect, Surface};
-use sdl_sys::{SDL_Color, SDL_GetTicks, SDL_ShowCursor, SDL_DISABLE};
+use sdl_sys::{SDL_Color, SDL_ShowCursor, SDL_DISABLE};
 use std::{
     convert::Infallible,
     ffi::CStr,
@@ -1471,7 +1471,7 @@ impl Data<'_> {
         const COUNT_TICK_LEN: u32 = 100;
         const MOVE_TICK_LEN: u32 = 60;
 
-        let mut prev_count_tick = SDL_GetTicks();
+        let mut prev_count_tick = self.sdl.ticks_ms();
         let mut prev_move_tick = prev_count_tick;
 
         self.wait_for_all_keys_released();
@@ -1480,7 +1480,7 @@ impl Data<'_> {
         let mut finish_takeover = false;
         let your_color = usize::try_from(self.takeover.your_color).unwrap();
         while !finish_takeover {
-            let cur_time = SDL_GetTicks();
+            let cur_time = self.sdl.ticks_ms();
 
             let do_update_count = cur_time > prev_count_tick + COUNT_TICK_LEN;
             if do_update_count {
@@ -1610,7 +1610,7 @@ impl Data<'_> {
 
         const COUNT_TICK_LEN: u32 = 100; /* countdown in 1/10 second steps */
 
-        let mut prev_count_tick = SDL_GetTicks();
+        let mut prev_count_tick = self.sdl.ticks_ms();
 
         self.wait_for_all_keys_released();
 
@@ -1638,7 +1638,7 @@ impl Data<'_> {
             }
 
             /* wait for next countdown tick */
-            if SDL_GetTicks() >= prev_count_tick + COUNT_TICK_LEN {
+            if self.sdl.ticks_ms() >= prev_count_tick + COUNT_TICK_LEN {
                 prev_count_tick += COUNT_TICK_LEN; /* set for next tick */
                 countdown -= 1; /* Count down */
                 let count_text = format!("Color-{}\0", countdown);
@@ -1854,8 +1854,8 @@ impl Data<'_> {
             assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
             self.wait_for_all_keys_released();
-            let now = SDL_GetTicks();
-            while !self.fire_pressed_r() && SDL_GetTicks() - now < SHOW_WAIT {
+            let now = self.sdl.ticks_ms();
+            while !self.fire_pressed_r() && self.sdl.ticks_ms() - now < SHOW_WAIT {
                 #[cfg(target_os = "android")]
                 assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 

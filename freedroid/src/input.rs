@@ -13,8 +13,8 @@ use sdl::Joystick;
 use sdl_sys::{SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_LALT, SDLKey_SDLK_LCTRL, SDLKey_SDLK_TAB};
 use sdl_sys::{
     SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT, SDLKey_SDLK_RETURN, SDLKey_SDLK_RIGHT,
-    SDLKey_SDLK_SPACE, SDLKey_SDLK_UP, SDLMod, SDL_Event, SDL_GetTicks, SDL_PollEvent,
-    SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
+    SDLKey_SDLK_SPACE, SDLKey_SDLK_UP, SDLMod, SDL_Event, SDL_PollEvent, SDL_BUTTON_LEFT,
+    SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
 };
 #[cfg(not(feature = "gcw0"))]
 use sdl_sys::{SDLKey_SDLK_F12, SDLKey_SDLK_PAUSE, SDLKey_SDLK_RSHIFT};
@@ -240,7 +240,7 @@ impl Data<'_> {
 
     pub unsafe fn update_input(&mut self) -> c_int {
         // switch mouse-cursor visibility as a function of time of last activity
-        if SDL_GetTicks() - self.input.last_mouse_event > CURSOR_KEEP_VISIBLE {
+        if self.sdl.ticks_ms() - self.input.last_mouse_event > CURSOR_KEEP_VISIBLE {
             self.input.show_cursor = false;
         } else {
             self.input.show_cursor = true;
@@ -363,7 +363,7 @@ impl Data<'_> {
                     self.input.input_axis.x = i32::from(button.x) - i32::from(user_center.x()) + 16;
                     self.input.input_axis.y = i32::from(button.y) - i32::from(user_center.y()) + 16;
 
-                    self.input.last_mouse_event = SDL_GetTicks();
+                    self.input.last_mouse_event = self.sdl.ticks_ms();
                 }
 
                 /* Mouse control */
@@ -392,7 +392,7 @@ impl Data<'_> {
                         self.input.wheel_down_events += 1;
                     }
 
-                    self.input.last_mouse_event = SDL_GetTicks();
+                    self.input.last_mouse_event = self.sdl.ticks_ms();
                 }
 
                 sdl_sys::SDL_EventType_SDL_MOUSEBUTTONUP => {

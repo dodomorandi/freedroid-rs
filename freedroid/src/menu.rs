@@ -20,8 +20,7 @@ use cstr::cstr;
 use sdl::Surface;
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT,
-    SDLKey_SDLK_RIGHT, SDLKey_SDLK_UP, SDL_DisplayFormat, SDL_GetTicks, SDL_ShowCursor,
-    SDL_DISABLE, SDL_ENABLE,
+    SDLKey_SDLK_RIGHT, SDLKey_SDLK_UP, SDL_DisplayFormat, SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE,
 };
 use std::{
     alloc::{alloc_zeroed, dealloc, realloc, Layout},
@@ -835,28 +834,28 @@ impl<'sdl> Data<'sdl> {
             && (self.up_pressed() || self.key_is_pressed(SDLKey_SDLK_UP as c_int))
         {
             self.menu.menu_action_directions.up = true;
-            self.menu.last_movekey_time = SDL_GetTicks();
+            self.menu.last_movekey_time = self.sdl.ticks_ms();
             action |= MenuAction::UP;
         }
         if !self.menu.menu_action_directions.down
             && (self.down_pressed() || self.key_is_pressed(SDLKey_SDLK_DOWN as c_int))
         {
             self.menu.menu_action_directions.down = true;
-            self.menu.last_movekey_time = SDL_GetTicks();
+            self.menu.last_movekey_time = self.sdl.ticks_ms();
             action |= MenuAction::DOWN;
         }
         if !self.menu.menu_action_directions.left
             && (self.left_pressed() || self.key_is_pressed(SDLKey_SDLK_LEFT as c_int))
         {
             self.menu.menu_action_directions.left = true;
-            self.menu.last_movekey_time = SDL_GetTicks();
+            self.menu.last_movekey_time = self.sdl.ticks_ms();
             action |= MenuAction::LEFT;
         }
         if !self.menu.menu_action_directions.right
             && (self.right_pressed() || self.key_is_pressed(SDLKey_SDLK_RIGHT as c_int))
         {
             self.menu.menu_action_directions.right = true;
-            self.menu.last_movekey_time = SDL_GetTicks();
+            self.menu.last_movekey_time = self.sdl.ticks_ms();
             action |= MenuAction::RIGHT;
         }
 
@@ -874,7 +873,7 @@ impl<'sdl> Data<'sdl> {
         }
 
         // check if enough time since we registered last new move-action
-        if SDL_GetTicks() - self.menu.last_movekey_time > wait_repeat_ticks {
+        if self.sdl.ticks_ms() - self.menu.last_movekey_time > wait_repeat_ticks {
             if self.menu.menu_action_directions.up {
                 action |= MenuAction::UP;
             }
@@ -1000,7 +999,7 @@ impl<'sdl> Data<'sdl> {
             let action = self.get_menu_action(250);
 
             let time_for_move =
-                SDL_GetTicks() - self.menu.show_menu_last_move_tick > wait_move_ticks;
+                self.sdl.ticks_ms() - self.menu.show_menu_last_move_tick > wait_move_ticks;
             match action {
                 MenuAction::BACK => {
                     finished = true;
@@ -1035,7 +1034,7 @@ impl<'sdl> Data<'sdl> {
                     if let Some(handler) = handler {
                         (handler)(self, action);
                     }
-                    self.menu.show_menu_last_move_tick = SDL_GetTicks();
+                    self.menu.show_menu_last_move_tick = self.sdl.ticks_ms();
                     need_update = true;
                 }
 
@@ -1050,7 +1049,7 @@ impl<'sdl> Data<'sdl> {
                     } else {
                         menu_pos = num_entries - 1;
                     }
-                    self.menu.show_menu_last_move_tick = SDL_GetTicks();
+                    self.menu.show_menu_last_move_tick = self.sdl.ticks_ms();
                     need_update = true;
                 }
 
@@ -1065,7 +1064,7 @@ impl<'sdl> Data<'sdl> {
                     } else {
                         menu_pos = 0;
                     }
-                    self.menu.show_menu_last_move_tick = SDL_GetTicks();
+                    self.menu.show_menu_last_move_tick = self.sdl.ticks_ms();
                     need_update = true;
                 }
 
@@ -1261,7 +1260,7 @@ impl<'sdl> Data<'sdl> {
 
             let action = self.get_menu_action(250);
             let time_for_move =
-                SDL_GetTicks() - self.menu.key_config_menu_last_move_tick > WAIT_MOVE_TICKS;
+                self.sdl.ticks_ms() - self.menu.key_config_menu_last_move_tick > WAIT_MOVE_TICKS;
 
             match action {
                 MenuAction::BACK => {
@@ -1279,7 +1278,7 @@ impl<'sdl> Data<'sdl> {
                     );
                     self.input.key_cmds[sely - 1][selx - 1] = self.getchar_raw(); // includes joystick input!;
                     self.wait_for_all_keys_released();
-                    self.menu.key_config_menu_last_move_tick = SDL_GetTicks();
+                    self.menu.key_config_menu_last_move_tick = self.sdl.ticks_ms();
                 }
 
                 MenuAction::UP | MenuAction::UP_WHEEL => {
@@ -1292,7 +1291,7 @@ impl<'sdl> Data<'sdl> {
                         sely = Cmds::Last as usize;
                     }
                     self.move_menu_position_sound();
-                    self.menu.key_config_menu_last_move_tick = SDL_GetTicks();
+                    self.menu.key_config_menu_last_move_tick = self.sdl.ticks_ms();
                 }
 
                 MenuAction::DOWN | MenuAction::DOWN_WHEEL => {
@@ -1305,7 +1304,7 @@ impl<'sdl> Data<'sdl> {
                         sely = 1;
                     }
                     self.move_menu_position_sound();
-                    self.menu.key_config_menu_last_move_tick = SDL_GetTicks();
+                    self.menu.key_config_menu_last_move_tick = self.sdl.ticks_ms();
                 }
 
                 MenuAction::RIGHT => {
@@ -1319,7 +1318,7 @@ impl<'sdl> Data<'sdl> {
                         selx = 1;
                     }
                     self.move_menu_position_sound();
-                    self.menu.key_config_menu_last_move_tick = SDL_GetTicks();
+                    self.menu.key_config_menu_last_move_tick = self.sdl.ticks_ms();
                 }
 
                 MenuAction::LEFT => {
@@ -1333,7 +1332,7 @@ impl<'sdl> Data<'sdl> {
                         selx = 3;
                     }
                     self.move_menu_position_sound();
-                    self.menu.key_config_menu_last_move_tick = SDL_GetTicks();
+                    self.menu.key_config_menu_last_move_tick = self.sdl.ticks_ms();
                 }
 
                 MenuAction::DELETE => {

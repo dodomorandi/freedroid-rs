@@ -22,7 +22,7 @@ use crate::input::wait_for_key_pressed;
 use clap::{crate_version, Parser};
 use cstr::cstr;
 use log::{error, info, warn};
-use sdl_sys::{SDL_GetTicks, SDL_ShowCursor, SDL_DISABLE};
+use sdl_sys::{SDL_ShowCursor, SDL_DISABLE};
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
     ffi::CStr,
@@ -213,9 +213,9 @@ impl Data<'_> {
 
         self.wait_for_all_keys_released();
 
-        let now = SDL_GetTicks();
+        let now = self.sdl.ticks_ms();
 
-        while SDL_GetTicks() - now < WAIT_AFTER_KILLED {
+        while self.sdl.ticks_ms() - now < WAIT_AFTER_KILLED {
             self.display_banner(null_mut(), null_mut(), 0);
             self.explode_blasts();
             self.move_bullets();
@@ -340,7 +340,7 @@ impl Data<'_> {
          * Initialise random-number generator in order to make
          * level-start etc really different at each program start
          */
-        libc::srand(SDL_GetTicks() as c_uint);
+        libc::srand(self.sdl.ticks_ms() as c_uint);
 
         /* initialize/load the highscore list */
         self.init_highscores();
@@ -1577,9 +1577,9 @@ impl Data<'_> {
 
         self.wait_for_all_keys_released();
 
-        let mut now = SDL_GetTicks();
+        let mut now = self.sdl.ticks_ms();
 
-        while (SDL_GetTicks() - now) < WAIT_AFTER_KILLED {
+        while (self.sdl.ticks_ms() - now) < WAIT_AFTER_KILLED {
             // add "slow motion effect" for final explosion
             self.set_time_factor(SLOWMO_FACTOR);
 
@@ -1649,10 +1649,10 @@ impl Data<'_> {
         assert!(ne_screen.flip());
         self.graphics.ne_screen = Some(ne_screen);
 
-        now = SDL_GetTicks();
+        now = self.sdl.ticks_ms();
 
         self.wait_for_all_keys_released();
-        while SDL_GetTicks() - now < SHOW_WAIT {
+        while self.sdl.ticks_ms() - now < SHOW_WAIT {
             self.sdl.delay_ms(1);
             if self.any_key_just_pressed() != 0 {
                 break;

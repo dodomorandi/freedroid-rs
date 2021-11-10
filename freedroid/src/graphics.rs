@@ -23,10 +23,9 @@ use sdl::{FrameBuffer, Rect, Surface, VideoModeFlags};
 use sdl_sys::{
     zoomSurface, IMG_Load, SDL_CreateCursor, SDL_CreateRGBSurface, SDL_Cursor, SDL_DisplayFormat,
     SDL_DisplayFormatAlpha, SDL_FillRect, SDL_FreeCursor, SDL_FreeSurface, SDL_GetClipRect,
-    SDL_GetError, SDL_GetTicks, SDL_GetVideoInfo, SDL_MapRGB, SDL_MapRGBA, SDL_RWFromFile,
-    SDL_RWFromMem, SDL_RWops, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma, SDL_UpdateRect,
-    SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_RLEACCEL,
-    SDL_SRCALPHA,
+    SDL_GetError, SDL_GetVideoInfo, SDL_MapRGB, SDL_MapRGBA, SDL_RWFromFile, SDL_RWFromMem,
+    SDL_RWops, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma, SDL_UpdateRect, SDL_VideoDriverName,
+    SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_RLEACCEL, SDL_SRCALPHA,
 };
 use std::{
     cell::RefCell,
@@ -884,7 +883,7 @@ impl Data<'_> {
         // let's go
         self.play_sound(SoundType::WhiteNoise as c_int);
 
-        let now = SDL_GetTicks();
+        let now = self.sdl.ticks_ms();
 
         self.wait_for_all_keys_released();
         let mut clip_rect = Rect::default();
@@ -921,7 +920,7 @@ impl Data<'_> {
             );
             self.sdl.delay_ms(25);
 
-            if timeout != 0 && SDL_GetTicks() - now > timeout.try_into().unwrap() {
+            if timeout != 0 && self.sdl.ticks_ms() - now > timeout.try_into().unwrap() {
                 break;
             }
 

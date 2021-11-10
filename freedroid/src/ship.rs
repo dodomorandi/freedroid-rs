@@ -15,8 +15,8 @@ use log::{error, warn};
 use sdl::{Rect, Surface};
 use sdl_sys::{
     IMG_Load_RW, IMG_isJPG, SDL_Color, SDL_CreateRGBSurface, SDL_DisplayFormat,
-    SDL_DisplayFormatAlpha, SDL_FreeSurface, SDL_GetTicks, SDL_RWops, SDL_SetCursor,
-    SDL_ShowCursor, SDL_UpdateRects, SDL_WarpMouse, SDL_DISABLE, SDL_ENABLE,
+    SDL_DisplayFormatAlpha, SDL_FreeSurface, SDL_RWops, SDL_SetCursor, SDL_ShowCursor,
+    SDL_UpdateRects, SDL_WarpMouse, SDL_DISABLE, SDL_ENABLE,
 };
 use std::{
     ffi::CStr,
@@ -80,12 +80,12 @@ impl Data<'_> {
         match AlertNames::try_from(self.main.alert_level).ok() {
             Some(Green) => {}
             Some(Yellow) | Some(Amber) | Some(Red) => {
-                if SDL_GetTicks() - self.ship.last_siren
+                if self.sdl.ticks_ms() - self.ship.last_siren
                     > (SIREN_WAIT * 1000.0 / (self.main.alert_level as f32)) as u32
                 {
                     // higher alert-> faster sirens!
                     self.play_sound(SoundType::Alert as c_int);
-                    self.ship.last_siren = SDL_GetTicks();
+                    self.ship.last_siren = self.sdl.ticks_ms();
                 }
             }
             Some(Last) | None => {
@@ -190,7 +190,7 @@ impl Data<'_> {
                 .unwrap()
                 .blit_from(&dst, droid_background);
             self.ship.frame_num = 0;
-            self.ship.last_frame_time = SDL_GetTicks();
+            self.ship.last_frame_time = self.sdl.ticks_ms();
         }
 
         if droid_type != self.ship.last_droid_type || self.ship.droid_pics.is_none() {
@@ -244,7 +244,7 @@ impl Data<'_> {
             num_frames = 1; // continue and hope for the best
         }
 
-        let frame_duration = SDL_GetTicks() - self.ship.last_frame_time;
+        let frame_duration = self.sdl.ticks_ms() - self.ship.last_frame_time;
 
         if cycle_time != 0. && (frame_duration as f32 > 1000.0 * cycle_time / num_frames as f32) {
             need_new_frame = true;
@@ -288,7 +288,7 @@ impl Data<'_> {
                 dst.as_mut(),
             );
 
-            self.ship.last_frame_time = SDL_GetTicks();
+            self.ship.last_frame_time = self.sdl.ticks_ms();
         }
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
@@ -641,7 +641,7 @@ Paradroid to eliminate all rogue robots.\0",
                 }
             }
             let action = self.get_menu_action(250);
-            if SDL_GetTicks() - self.ship.enter_console_last_move_tick > wait_move_ticks {
+            if self.sdl.ticks_ms() - self.ship.enter_console_last_move_tick > wait_move_ticks {
                 match action {
                     MenuAction::BACK => {
                         finished = true;
@@ -675,7 +675,7 @@ Paradroid to eliminate all rogue robots.\0",
                         }
                         self.move_menu_position_sound();
                         need_update = true;
-                        self.ship.enter_console_last_move_tick = SDL_GetTicks();
+                        self.ship.enter_console_last_move_tick = self.sdl.ticks_ms();
                     }
 
                     MenuAction::DOWN => {
@@ -705,7 +705,7 @@ Paradroid to eliminate all rogue robots.\0",
                         }
                         self.move_menu_position_sound();
                         need_update = true;
-                        self.ship.enter_console_last_move_tick = SDL_GetTicks();
+                        self.ship.enter_console_last_move_tick = self.sdl.ticks_ms();
                     }
 
                     MenuAction::CLICK => {
@@ -825,7 +825,7 @@ Paradroid to eliminate all rogue robots.\0",
             }
 
             let time_for_move =
-                SDL_GetTicks() - self.ship.great_droid_show_last_move_tick > wait_move_ticks;
+                self.sdl.ticks_ms() - self.ship.great_droid_show_last_move_tick > wait_move_ticks;
             match action {
                 MenuAction::BACK | MenuAction::CLICK => {
                     finished = true;
@@ -841,7 +841,7 @@ Paradroid to eliminate all rogue robots.\0",
                         self.move_menu_position_sound();
                         droidtype += 1;
                         need_update = true;
-                        self.ship.great_droid_show_last_move_tick = SDL_GetTicks();
+                        self.ship.great_droid_show_last_move_tick = self.sdl.ticks_ms();
                     }
                 }
 
@@ -854,7 +854,7 @@ Paradroid to eliminate all rogue robots.\0",
                         self.move_menu_position_sound();
                         droidtype -= 1;
                         need_update = true;
-                        self.ship.great_droid_show_last_move_tick = SDL_GetTicks();
+                        self.ship.great_droid_show_last_move_tick = self.sdl.ticks_ms();
                     }
                 }
 
@@ -867,7 +867,7 @@ Paradroid to eliminate all rogue robots.\0",
                         self.move_menu_position_sound();
                         page += 1;
                         need_update = true;
-                        self.ship.great_droid_show_last_move_tick = SDL_GetTicks();
+                        self.ship.great_droid_show_last_move_tick = self.sdl.ticks_ms();
                     }
                 }
 
@@ -880,7 +880,7 @@ Paradroid to eliminate all rogue robots.\0",
                         self.move_menu_position_sound();
                         page -= 1;
                         need_update = true;
-                        self.ship.great_droid_show_last_move_tick = SDL_GetTicks();
+                        self.ship.great_droid_show_last_move_tick = self.sdl.ticks_ms();
                     }
                 }
                 _ => {}
@@ -1116,7 +1116,7 @@ Paradroid to eliminate all rogue robots.\0",
             self.show_lifts(cur_level, liftrow);
 
             let action = self.get_menu_action(500);
-            if SDL_GetTicks() - self.ship.enter_lift_last_move_tick > wait_move_ticks {
+            if self.sdl.ticks_ms() - self.ship.enter_lift_last_move_tick > wait_move_ticks {
                 match action {
                     MenuAction::CLICK => {
                         finished = true;
@@ -1124,7 +1124,7 @@ Paradroid to eliminate all rogue robots.\0",
                     }
 
                     MenuAction::UP | MenuAction::UP_WHEEL => {
-                        self.ship.enter_lift_last_move_tick = SDL_GetTicks();
+                        self.ship.enter_lift_last_move_tick = self.sdl.ticks_ms();
                         if up_lift != -1 {
                             if self.main.cur_ship.all_lifts[usize::try_from(up_lift).unwrap()].x
                                 == 99
@@ -1142,7 +1142,7 @@ Paradroid to eliminate all rogue robots.\0",
                     }
 
                     MenuAction::DOWN | MenuAction::DOWN_WHEEL => {
-                        self.ship.enter_lift_last_move_tick = SDL_GetTicks();
+                        self.ship.enter_lift_last_move_tick = self.sdl.ticks_ms();
                         if down_lift != -1 {
                             if self.main.cur_ship.all_lifts[usize::try_from(down_lift).unwrap()].x
                                 == 99

@@ -19,7 +19,7 @@ use sdl_sys::SDLKey_SDLK_DELETE;
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_RETURN, SDLMod, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_RSHIFT,
     SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_Event, SDL_EventType, SDL_GetClipRect,
-    SDL_GetTicks, SDL_PushEvent, SDL_UpdateRect, SDL_WaitEvent, SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE,
+    SDL_PushEvent, SDL_UpdateRect, SDL_WaitEvent, SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE,
     SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
 };
 use std::{
@@ -146,11 +146,11 @@ impl Data<'_> {
                 }
                 let key = ARCADE_INPUT_CHARS[usize::try_from(inputchar).unwrap()];
 
-                let frame_duration = SDL_GetTicks() - self.text.last_frame_time;
+                let frame_duration = self.sdl.ticks_ms() - self.text.last_frame_time;
                 if frame_duration > blink_time / 2 {
                     input[curpos] = key.try_into().unwrap(); // We want to show the currently chosen character
                     if frame_duration > blink_time {
-                        self.text.last_frame_time = SDL_GetTicks();
+                        self.text.last_frame_time = self.sdl.ticks_ms();
                     } else {
                         input[curpos] = empty_char; // Hmm., how to get character widht? If using '.', or any fill character, we'd need to know
                     }
@@ -656,7 +656,7 @@ impl Data<'_> {
         self.wait_for_all_keys_released();
         let ret;
         loop {
-            let mut prev_tick = SDL_GetTicks();
+            let mut prev_tick = self.sdl.ticks_ms();
             background.blit(self.graphics.ne_screen.as_mut().unwrap());
             if self.display_text(text, rect.x().into(), insert_line as c_int, rect) == 0 {
                 ret = 0; /* Text has been scrolled outside Rect */
@@ -670,11 +670,11 @@ impl Data<'_> {
 
             if just_started {
                 just_started = false;
-                let now = SDL_GetTicks();
+                let now = self.sdl.ticks_ms();
                 let mut key;
                 loop {
                     key = self.any_key_just_pressed();
-                    if key == 0 && (SDL_GetTicks() - now < SHOW_WAIT as u32) {
+                    if key == 0 && (self.sdl.ticks_ms() - now < SHOW_WAIT as u32) {
                         self.sdl.delay_ms(1); // wait before starting auto-scroll
                     } else {
                         break;
@@ -689,7 +689,7 @@ impl Data<'_> {
                     ret = 1;
                     break;
                 }
-                prev_tick = SDL_GetTicks();
+                prev_tick = self.sdl.ticks_ms();
             }
 
             if self.fire_pressed_r() {
@@ -712,7 +712,7 @@ impl Data<'_> {
             }
 
             insert_line -=
-                (f64::from(SDL_GetTicks() - prev_tick) * f64::from(speed) / 1000.0) as f32;
+                (f64::from(self.sdl.ticks_ms() - prev_tick) * f64::from(speed) / 1000.0) as f32;
 
             if insert_line > f32::from(rect.y()) + f32::from(rect.height()) {
                 insert_line = f32::from(rect.y()) + f32::from(rect.height());

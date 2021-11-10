@@ -139,6 +139,12 @@ where
     pub fn delay_ms(&self, duration_ms: u32) {
         unsafe { sdl_sys::SDL_Delay(duration_ms) };
     }
+
+    /// Get the number of milliseconds since the SDL library initialization.
+    /// Note that this value wraps if the program runs for more than ~49 days.
+    pub fn ticks_ms(&self) -> u32 {
+        unsafe { sdl_sys::SDL_GetTicks() }
+    }
 }
 
 impl<V, T, M> Sdl<V, T, OnceCell<JoystickSystem>, M>

@@ -14,7 +14,7 @@ use cstr::cstr;
 use defs::MAXBULLETS;
 use log::{error, info, warn};
 use sdl::Rect;
-use sdl_sys::{SDL_GetTicks, SDL_Quit, SDL_UpdateRects};
+use sdl_sys::{SDL_Quit, SDL_UpdateRects};
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
     borrow::Cow,
@@ -584,13 +584,13 @@ impl Data<'_> {
          * (DO NOT MOVE THIS COMMAND PLEASE!) */
         self.misc.frame_nr += 1;
 
-        self.misc.one_frame_sdl_ticks = SDL_GetTicks();
+        self.misc.one_frame_sdl_ticks = self.sdl.ticks_ms();
     }
 
     pub unsafe fn compute_fps_for_this_frame(&mut self) {
         // In the following paragraph the framerate calculation is done.
         // There are basically two ways to do this:
-        // The first way is to use SDL_GetTicks(), a function measuring milliseconds
+        // The first way is to use self.sdl.ticks_ms(), a function measuring milliseconds
         // since the initialisation of the SDL.
         // The second way is to use gettimeofday, a standard ANSI C function I guess,
         // defined in time.h or so.
@@ -612,7 +612,7 @@ impl Data<'_> {
             ..
         } = &mut self.misc;
 
-        *now_sdl_ticks = SDL_GetTicks();
+        *now_sdl_ticks = self.sdl.ticks_ms();
         *one_frame_delay = c_long::from(*now_sdl_ticks) - c_long::from(*one_frame_sdl_ticks);
         *one_frame_delay = if *one_frame_delay > 0 {
             *one_frame_delay
