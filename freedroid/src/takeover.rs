@@ -10,7 +10,7 @@ use crate::{
 
 use cstr::cstr;
 use sdl::{Rect, Surface};
-use sdl_sys::{SDL_Color, SDL_ShowCursor, SDL_DISABLE};
+use sdl_sys::SDL_Color;
 use std::{
     convert::Infallible,
     ffi::CStr,
@@ -1685,7 +1685,7 @@ impl Data<'_> {
 
         self.vars.me.status = Status::Mobile as i32; /* the new status _after_ the takeover game */
 
-        SDL_ShowCursor(SDL_DISABLE); // no mouse-cursor in takeover game!
+        self.sdl.cursor().hide(); // no mouse-cursor in takeover game!
 
         self.show_droid_info(self.vars.me.ty, -1, 0);
         self.show_droid_portrait(

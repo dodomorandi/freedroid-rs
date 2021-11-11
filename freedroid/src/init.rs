@@ -22,7 +22,6 @@ use crate::input::wait_for_key_pressed;
 use clap::{crate_version, Parser};
 use cstr::cstr;
 use log::{error, info, warn};
-use sdl_sys::{SDL_ShowCursor, SDL_DISABLE};
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
     ffi::CStr,
@@ -201,7 +200,7 @@ impl Data<'_> {
     pub unsafe fn thou_art_victorious(&mut self) {
         self.switch_background_music_to(self.init.debriefing_song.as_ptr());
 
-        SDL_ShowCursor(SDL_DISABLE);
+        self.sdl.cursor().hide();
 
         self.main.show_score = self.main.real_score as c_long;
         self.vars.me.status = Status::Victory as c_int;
@@ -1571,7 +1570,7 @@ impl Data<'_> {
     /// Show end-screen
     pub(crate) unsafe fn thou_art_defeated(&mut self) {
         self.vars.me.status = Status::Terminated as c_int;
-        SDL_ShowCursor(SDL_DISABLE);
+        self.sdl.cursor().hide();
 
         self.explode_influencer();
 

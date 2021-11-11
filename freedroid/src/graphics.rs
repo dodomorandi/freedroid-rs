@@ -19,13 +19,14 @@ use crate::{
 use array_init::array_init;
 use cstr::cstr;
 use log::{error, info, trace, warn};
-use sdl::{FrameBuffer, Rect, Surface, VideoModeFlags};
+use once_cell::sync::Lazy;
+use sdl::{Cursor, CursorData, FrameBuffer, Rect, Surface, VideoModeFlags};
 use sdl_sys::{
-    zoomSurface, IMG_Load, SDL_CreateCursor, SDL_CreateRGBSurface, SDL_Cursor, SDL_DisplayFormat,
-    SDL_DisplayFormatAlpha, SDL_FillRect, SDL_FreeCursor, SDL_FreeSurface, SDL_GetClipRect,
-    SDL_GetError, SDL_GetVideoInfo, SDL_MapRGB, SDL_MapRGBA, SDL_RWFromFile, SDL_RWFromMem,
-    SDL_RWops, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma, SDL_UpdateRect, SDL_VideoDriverName,
-    SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_RLEACCEL, SDL_SRCALPHA,
+    zoomSurface, IMG_Load, SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha,
+    SDL_FillRect, SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetVideoInfo, SDL_MapRGB,
+    SDL_MapRGBA, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops, SDL_SaveBMP_RW, SDL_SetAlpha,
+    SDL_SetGamma, SDL_UpdateRect, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption,
+    SDL_WM_SetIcon, SDL_RLEACCEL, SDL_SRCALPHA,
 };
 use std::{
     cell::RefCell,
@@ -76,8 +77,8 @@ pub struct Graphics<'sdl> {
     pub influencer_surface_pointer: [Option<Surface<'sdl>>; ENEMYPHASES as usize],
     pub influ_digit_surface_pointer: [Option<Surface<'sdl>>; DIGITNUMBER],
     pub enemy_digit_surface_pointer: [Option<Surface<'sdl>>; DIGITNUMBER],
-    pub crosshair_cursor: *mut SDL_Cursor,
-    pub arrow_cursor: *mut SDL_Cursor,
+    pub crosshair_cursor: Option<Cursor<'sdl, 'static>>,
+    pub arrow_cursor: Option<Cursor<'sdl, 'static>>,
     pub number_of_bullet_types: i32,
     pub all_themes: ThemeList,
     pub classic_theme_index: i32,
@@ -117,8 +118,8 @@ impl Default for Graphics<'_> {
             influencer_surface_pointer: array_init(|_| None),
             influ_digit_surface_pointer: array_init(|_| None),
             enemy_digit_surface_pointer: array_init(|_| None),
-            crosshair_cursor: null_mut(),
-            arrow_cursor: null_mut(),
+            crosshair_cursor: None,
+            arrow_cursor: None,
             number_of_bullet_types: 0,
             all_themes: ThemeList {
                 num_themes: 0,
@@ -288,132 +289,83 @@ pub fn scale_pic_surface(pic: &mut Surface, scale: c_float) {
     }
 }
 
-const CROSSHAIR_XPM: [&[u8]; 37] = [
-    /* width height num_colors chars_per_pixel */
-    &*b"    32    32        3            1",
-    /* colors */
-    b"X c #000000",
-    b". c #ffffff",
-    b"  c None",
-    /* pixels */
-    b"                                ",
-    b"                                ",
-    b"               XXXX             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               XXXX             ",
-    b"                                ",
-    b"   XXXXXXXXXXX      XXXXXXXXXX  ",
-    b"   X.........X      X........X  ",
-    b"   X.........X      X........X  ",
-    b"   XXXXXXXXXXX      XXXXXXXXXX  ",
-    b"                                ",
-    b"               XXXX             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               X..X             ",
-    b"               XXXX             ",
-    b"                                ",
-    b"                                ",
-    b"0,0",
-];
+static CROSSHAIR_CURSOR: Lazy<CursorData<32>> = Lazy::new(|| {
+    const XPM: [[u8; 32]; 32] = [
+        *b"                                ",
+        *b"                                ",
+        *b"               XXXX             ",
+        *b"               X..X             ",
+        *b"               X..X             ",
+        *b"               X..X             ",
+        *b"               X..X             ",
+        *b"               X..X             ",
+        *b"               X..X             ",
+        *b"               X..X             ",
+        *b"               X..X             ",
+        *b"               XXXX             ",
+        *b"                                ",
+        *b"   XXXXXXXXXXX      XXXXXXXXXX  ",
+        *b"   X.........X      X........X  ",
+        *b"   X.........X      X........X  ",
+        *b"   XXXXXXXXXXX      XXXXXXXXXX  ",
+        *b"                                ",
+        *b"               XXXX             ",
+        *b"               X..X             ",
+        *b"               X..X             ",
+        *b"               X..X             ",
+        *b"               X..X             ",
+        *b"               X..X             ",
+        *b"               X..X             ",
+        *b"               X..X             ",
+        *b"               X..X             ",
+        *b"               X..X             ",
+        *b"               X..X             ",
+        *b"               XXXX             ",
+        *b"                                ",
+        *b"                                ",
+    ];
 
-const ARROW_XPM: [&[u8]; 37] = [
-    /* width height num_colors chars_per_pixel */
-    &*b"    32    32        3            1",
-    /* colors */
-    b"X c #000000",
-    b". c #ffffff",
-    b"  c None",
-    /* pixels */
-    b"X                               ",
-    b"XX                              ",
-    b"X.X                             ",
-    b"X..X                            ",
-    b"X...X                           ",
-    b"X....X                          ",
-    b"X.....X                         ",
-    b"X......X                        ",
-    b"X.......X                       ",
-    b"X........X                      ",
-    b"X.....XXXXX                     ",
-    b"X..X..X                         ",
-    b"X.X X..X                        ",
-    b"XX  X..X                        ",
-    b"X    X..X                       ",
-    b"     X..X                       ",
-    b"      X..X                      ",
-    b"      X..X                      ",
-    b"       XX                       ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"                                ",
-    b"0,0",
-];
+    CursorData::from_draw(&XPM)
+});
 
-/// This function was taken directly from the example in the SDL docu.
-/// Even there they say they have stolen if from the mailing list.
-/// Anyway it should create a new mouse cursor from an XPM.
-/// The XPM is defined above and not read in from disk or something.
-fn init_system_cursor(image: &[&[u8]]) -> *mut SDL_Cursor {
-    let mut data = [0u8; 4 * 32];
-    let mut mask = [0u8; 4 * 32];
+static ARROW_CURSOR: Lazy<CursorData<32>> = Lazy::new(|| {
+    const XPM: [[u8; 32]; 32] = [
+        *b"X                               ",
+        *b"XX                              ",
+        *b"X.X                             ",
+        *b"X..X                            ",
+        *b"X...X                           ",
+        *b"X....X                          ",
+        *b"X.....X                         ",
+        *b"X......X                        ",
+        *b"X.......X                       ",
+        *b"X........X                      ",
+        *b"X.....XXXXX                     ",
+        *b"X..X..X                         ",
+        *b"X.X X..X                        ",
+        *b"XX  X..X                        ",
+        *b"X    X..X                       ",
+        *b"     X..X                       ",
+        *b"      X..X                      ",
+        *b"      X..X                      ",
+        *b"       XX                       ",
+        *b"                                ",
+        *b"                                ",
+        *b"                                ",
+        *b"                                ",
+        *b"                                ",
+        *b"                                ",
+        *b"                                ",
+        *b"                                ",
+        *b"                                ",
+        *b"                                ",
+        *b"                                ",
+        *b"                                ",
+        *b"                                ",
+    ];
 
-    let mut i: isize = -1;
-    for row in 0..32 {
-        for col in 0..32 {
-            if col % 8 != 0 {
-                data[i as usize] <<= 1;
-                mask[i as usize] <<= 1;
-            } else {
-                i += 1;
-                data[i as usize] = 0;
-                mask[i as usize] = 0;
-            }
-
-            match image[4 + row][col] {
-                b'X' => {
-                    data[i as usize] |= 0x01;
-                    mask[i as usize] |= 0x01;
-                }
-                b'.' => {
-                    mask[i as usize] |= 0x01;
-                }
-                b' ' => {}
-                _ => panic!("invalid XPM charater"),
-            }
-        }
-    }
-
-    let last_line = std::str::from_utf8(image[4 + 32]).unwrap();
-    let mut hots = last_line.splitn(2, ',').map(|x| x.parse().unwrap());
-    let hot_x = hots.next().unwrap();
-    let hot_y = hots.next().unwrap();
-    unsafe { SDL_CreateCursor(data.as_mut_ptr(), mask.as_mut_ptr(), 32, 32, hot_x, hot_y) }
-}
+    CursorData::from_draw(&XPM)
+});
 
 impl Data<'_> {
     /// This function draws a "grid" on the screen, that means every
@@ -585,8 +537,8 @@ impl Data<'_> {
             .load_block(null_mut(), 0, 0, null_mut(), FREE_ONLY as i32);
 
         // free cursors
-        SDL_FreeCursor(self.graphics.crosshair_cursor);
-        SDL_FreeCursor(self.graphics.arrow_cursor);
+        self.graphics.crosshair_cursor = None;
+        self.graphics.arrow_cursor = None;
     }
 
     /// scale all "static" rectangles, which are theme-independent
@@ -1504,8 +1456,9 @@ impl Data<'_> {
             self.set_takeover_rects(); // setup takeover rectangles
 
             // cursor shapes
-            self.graphics.arrow_cursor = init_system_cursor(&ARROW_XPM);
-            self.graphics.crosshair_cursor = init_system_cursor(&CROSSHAIR_XPM);
+            self.graphics.arrow_cursor = Some(self.sdl.cursor().from_data(&ARROW_CURSOR).unwrap());
+            self.graphics.crosshair_cursor =
+                Some(self.sdl.cursor().from_data(&CROSSHAIR_CURSOR).unwrap());
             //---------- get Console pictures
             let fpath = self.find_file(
                 CONSOLE_PIC_FILE_C.as_ptr() as *mut c_char,

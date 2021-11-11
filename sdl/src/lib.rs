@@ -1,5 +1,6 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
+pub mod cursor;
 mod joystick;
 pub mod mixer;
 mod pixel;
@@ -14,6 +15,8 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
+use cursor::CursorHelper;
+pub use cursor::{Cursor, CursorData};
 pub use joystick::{Joystick, JoystickSystem};
 pub use mixer::Mixer;
 use once_cell::unsync::OnceCell;
@@ -144,6 +147,10 @@ where
     /// Note that this value wraps if the program runs for more than ~49 days.
     pub fn ticks_ms(&self) -> u32 {
         unsafe { sdl_sys::SDL_GetTicks() }
+    }
+
+    pub fn cursor(&self) -> CursorHelper {
+        CursorHelper::new()
     }
 }
 

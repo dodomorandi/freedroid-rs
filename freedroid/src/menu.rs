@@ -20,7 +20,7 @@ use cstr::cstr;
 use sdl::Surface;
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT,
-    SDLKey_SDLK_RIGHT, SDLKey_SDLK_UP, SDL_DisplayFormat, SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE,
+    SDLKey_SDLK_RIGHT, SDLKey_SDLK_UP, SDL_DisplayFormat,
 };
 use std::{
     alloc::{alloc_zeroed, dealloc, realloc, Layout},
@@ -310,7 +310,7 @@ impl<'sdl> Data<'sdl> {
             .unwrap(),
         ));
 
-        SDL_ShowCursor(SDL_DISABLE); // deactivate mouse-cursor in menus
+        self.sdl.cursor().hide();
         self.b_font.current_font = self.global.menu_b_font;
         self.menu.font_height = font_height(&*self.b_font.current_font) + 2;
     }
@@ -1079,9 +1079,10 @@ impl<'sdl> Data<'sdl> {
         }
 
         self.clear_graph_mem();
-        SDL_ShowCursor(SDL_ENABLE); // reactivate mouse-cursor for game
-                                    // Since we've faded out the whole scren, it can't hurt
-                                    // to have the top status bar redrawn...
+        self.sdl.cursor().show(); // reactivate mouse-cursor for game
+                                  // Since we've faded out the whole scren, it can't hurt
+                                  // to have the top status bar redrawn...
+
         self.graphics.banner_is_destroyed = true.into();
         self.vars.me.status = Status::Mobile as i32;
 

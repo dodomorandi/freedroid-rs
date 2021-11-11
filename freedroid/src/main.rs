@@ -49,7 +49,6 @@ use takeover::Takeover;
 use text::Text;
 use vars::Vars;
 
-use sdl_sys::{SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE, SDL_ENABLE};
 use std::{
     ops::Not,
     os::raw::{c_char, c_float},
@@ -203,7 +202,7 @@ fn main() {
 
         data.init_freedroid(); // Initialisation of global variables and arrays
 
-        SDL_ShowCursor(SDL_DISABLE);
+        sdl.cursor().hide();
 
         #[cfg(target_os = "windows")]
         {
@@ -267,8 +266,12 @@ fn main() {
 
             data.game_over = false;
 
-            SDL_SetCursor(data.graphics.crosshair_cursor); // default cursor is a crosshair
-            SDL_ShowCursor(SDL_ENABLE);
+            data.graphics
+                .crosshair_cursor
+                .as_ref()
+                .unwrap()
+                .set_active(); // default cursor is a crosshair
+            sdl.cursor().show();
 
             while data.game_over.not() {
                 data.start_taking_time_for_fps_calculation();
@@ -278,9 +281,9 @@ fn main() {
                 data.react_to_special_keys();
 
                 if data.input.show_cursor {
-                    SDL_ShowCursor(SDL_ENABLE);
+                    sdl.cursor().show();
                 } else {
-                    SDL_ShowCursor(SDL_DISABLE);
+                    sdl.cursor().hide();
                 }
 
                 data.move_level_doors();

@@ -15,8 +15,7 @@ use log::{error, warn};
 use sdl::{Rect, Surface};
 use sdl_sys::{
     IMG_Load_RW, IMG_isJPG, SDL_Color, SDL_CreateRGBSurface, SDL_DisplayFormat,
-    SDL_DisplayFormatAlpha, SDL_FreeSurface, SDL_RWops, SDL_SetCursor, SDL_ShowCursor,
-    SDL_UpdateRects, SDL_WarpMouse, SDL_DISABLE, SDL_ENABLE,
+    SDL_DisplayFormatAlpha, SDL_FreeSurface, SDL_RWops, SDL_UpdateRects, SDL_WarpMouse,
 };
 use std::{
     ffi::CStr,
@@ -574,7 +573,7 @@ Paradroid to eliminate all rogue robots.\0",
         self.vars.me.pos.x = (cur_level.xlen / 2) as f32;
         self.vars.me.pos.y = (cur_level.ylen / 2) as f32;
 
-        SDL_ShowCursor(SDL_DISABLE);
+        self.sdl.cursor().hide();
 
         self.set_combat_scale_to(0.25);
 
@@ -615,7 +614,7 @@ Paradroid to eliminate all rogue robots.\0",
             self.input.show_cursor = false;
         }
 
-        SDL_SetCursor(self.graphics.arrow_cursor);
+        self.graphics.arrow_cursor.as_ref().unwrap().set_active();
 
         self.b_font.current_font = self.global.para_b_font;
 
@@ -627,9 +626,9 @@ Paradroid to eliminate all rogue robots.\0",
         let mut need_update = true;
         while !finished {
             if self.input.show_cursor {
-                SDL_ShowCursor(SDL_ENABLE);
+                self.sdl.cursor().show();
             } else {
-                SDL_ShowCursor(SDL_DISABLE);
+                self.sdl.cursor().hide();
             }
 
             // check if the mouse-cursor is on any of the console-menu points
@@ -773,9 +772,13 @@ Paradroid to eliminate all rogue robots.\0",
 
         self.clear_graph_mem();
 
-        SDL_SetCursor(self.graphics.crosshair_cursor);
+        self.graphics
+            .crosshair_cursor
+            .as_ref()
+            .unwrap()
+            .set_active();
         if !self.input.show_cursor {
-            SDL_ShowCursor(SDL_DISABLE);
+            self.sdl.cursor().hide();
         }
     }
 
@@ -798,9 +801,9 @@ Paradroid to eliminate all rogue robots.\0",
             self.show_droid_portrait(self.vars.cons_droid_rect, droidtype, DROID_ROTATION_TIME, 0);
 
             if self.input.show_cursor {
-                SDL_ShowCursor(SDL_ENABLE);
+                self.sdl.cursor().show();
             } else {
-                SDL_ShowCursor(SDL_DISABLE);
+                self.sdl.cursor().hide();
             }
 
             if need_update {
@@ -920,7 +923,7 @@ Paradroid to eliminate all rogue robots.\0",
         let xoffs: i16 = (self.vars.user_rect.width() / 20).try_into().unwrap();
         let yoffs: i16 = (self.vars.user_rect.height() / 5).try_into().unwrap();
 
-        SDL_ShowCursor(SDL_DISABLE);
+        self.sdl.cursor().hide();
         // fill the user fenster with some color
         self.fill_rect(self.vars.user_rect, lift_bg_color);
 
@@ -1083,7 +1086,7 @@ Paradroid to eliminate all rogue robots.\0",
          * by turning off transfer mode as soon as the influ enters the lift */
         self.vars.me.status = Status::Elevator as c_int;
 
-        SDL_ShowCursor(SDL_DISABLE);
+        self.sdl.cursor().hide();
 
         let mut cur_level = (*self.main.cur_level).levelnum;
 
