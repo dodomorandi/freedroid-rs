@@ -2,7 +2,8 @@
 name = "sdl-sys"
 version = "0.1.0"
 edition = "2021"
+build = "build/main.rs"
 
 [build-dependencies]
 bindgen = "0.59.1"
-pkg-config = "0.3.19"
+pkg-config = "0.3.24"

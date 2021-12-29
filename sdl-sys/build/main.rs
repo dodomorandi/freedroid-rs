@@ -2,7 +2,7 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
-    println!("cargo:rerun-if-changed=wrapper.h");
+    println!("cargo:rerun-if-changed=build/wrapper.h");
 
     let sdl = pkg_config::probe_library("sdl").expect("cannot find SDL library using pkg-config");
     for lib in &sdl.libs {
@@ -28,7 +28,7 @@ fn main() {
     }
 
     let bindings = bindgen::Builder::default()
-        .header("wrapper.h")
+        .header("build/wrapper.h")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks))
         .clang_args(
             sdl.include_paths

@@ -1,27 +1,34 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod cursor;
+pub mod event;
 mod joystick;
+pub mod keyboard;
 pub mod mixer;
 mod pixel;
 mod rect;
 pub mod rwops;
 mod surface;
+pub mod system_window_manager;
 mod video;
 
 use std::{
     ffi::{CStr, CString},
     marker::PhantomData,
+    mem::MaybeUninit,
     sync::atomic::{AtomicBool, Ordering},
 };
 
 use cursor::CursorHelper;
 pub use cursor::{Cursor, CursorData};
+pub use event::Event;
 pub use joystick::{Joystick, JoystickSystem};
 pub use mixer::Mixer;
 use once_cell::unsync::OnceCell;
 pub use rect::*;
-use sdl_sys::{SDL_GetError, SDL_InitSubSystem, SDL_Quit, SDL_INIT_AUDIO, SDL_INIT_JOYSTICK};
+use sdl_sys::{
+    SDL_GetError, SDL_InitSubSystem, SDL_Quit, SDL_version, SDL_INIT_AUDIO, SDL_INIT_JOYSTICK,
+};
 pub use surface::*;
 pub use video::{Video, VideoModeFlags};
 
@@ -151,6 +158,18 @@ where
 
     pub fn cursor(&self) -> CursorHelper {
         CursorHelper::new()
+    }
+
+    pub fn next_event(&self) -> Option<Event> {
+        let event = unsafe {
+            let mut event = MaybeUninit::<sdl_sys::SDL_Event>::uninit();
+            if sdl_sys::SDL_PollEvent(event.as_mut_ptr()) == 0 {
+                return None;
+            };
+
+            event.assume_init()
+        };
+        Some(Event::from_raw(event))
     }
 }
 
@@ -316,6 +335,35 @@ where
     // [SDL_GetError] always return a valid C string, even without errors.
     let err = unsafe { CStr::from_ptr(SDL_GetError()) };
     f(err)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Version {
+    major: u8,
+    minor: u8,
+    patch: u8,
+}
+
+impl From<SDL_version> for Version {
+    fn from(version: SDL_version) -> Self {
+        Self::from(&version)
+    }
+}
+
+impl From<&SDL_version> for Version {
+    fn from(version: &SDL_version) -> Self {
+        let &SDL_version {
+            major,
+            minor,
+            patch,
+        } = version;
+
+        Self {
+            major,
+            minor,
+            patch,
+        }
+    }
 }
 
 #[cfg(test)]
