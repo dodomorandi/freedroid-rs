@@ -392,7 +392,7 @@ impl Data<'_> {
         // We check for incorrect droid types, which sometimes might occor, especially after
         // heavy editing of the crew initialisation functions ;)
         assert!(
-            !(droid.ty >= self.main.number_of_droid_types),
+            droid.ty < self.main.number_of_droid_types,
             "nonexistant droid-type encountered: {}",
             droid.ty
         );
@@ -797,14 +797,14 @@ impl Data<'_> {
         let left = CStr::from_ptr(left);
         let left_len = left.to_bytes().len();
         assert!(
-            !(left_len > LEFT_TEXT_LEN),
+            left_len <= LEFT_TEXT_LEN,
             "String {} too long for Left Infoline!!",
             left.to_string_lossy()
         );
         let right = CStr::from_ptr(right);
         let right_len = right.to_bytes().len();
         assert!(
-            !(right_len > RIGHT_TEXT_LEN),
+            right_len <= RIGHT_TEXT_LEN,
             "String {} too long for Right Infoline!!",
             right.to_string_lossy()
         );

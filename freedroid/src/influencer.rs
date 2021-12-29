@@ -222,7 +222,7 @@ impl Data<'_> {
             }
             counter -= 1;
             assert!(
-                !(counter >= MAXBLASTS),
+                counter < MAXBLASTS,
                 "Went out of blasts in ExplodeInfluencer..."
             );
             let blast = &mut self.main.all_blasts[counter];
@@ -261,8 +261,7 @@ impl Data<'_> {
             // At first we just check in which directions (from the last position)
             // the ways are blocked and in which directions the ways are open.
             //
-            let north_south_axis_blocked;
-            if !({
+            let north_south_axis_blocked = if !({
                 let pos_y = lastpos.y
                     + (*self
                         .vars
@@ -282,13 +281,12 @@ impl Data<'_> {
                 self.druid_passable(lastpos.x, pos_y) != Direction::Center as c_int
             }) {
                 info!("North-south-Axis seems to be free.");
-                north_south_axis_blocked = false;
+                false
             } else {
-                north_south_axis_blocked = true;
-            }
+                true
+            };
 
-            let east_west_axis_blocked;
-            if {
+            let east_west_axis_blocked = !({
                 let pos_x = lastpos.x
                     + (*self
                         .vars
@@ -306,11 +304,7 @@ impl Data<'_> {
                     .maxspeed
                         * self.frame_time();
                 self.druid_passable(pos_x, lastpos.y) == Direction::Center as c_int
-            } {
-                east_west_axis_blocked = false;
-            } else {
-                east_west_axis_blocked = true;
-            }
+            });
 
             // Now we try to handle the sitution:
 

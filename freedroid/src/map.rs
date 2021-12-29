@@ -176,7 +176,7 @@ pub unsafe fn get_doors(level: &mut Level) -> c_int {
                 curdoor += 1;
 
                 assert!(
-                    !(curdoor > MAX_DOORS_ON_LEVEL),
+                    curdoor <= MAX_DOORS_ON_LEVEL,
                     "\n\
 \n\
 ----------------------------------------------------------------------\n\
@@ -228,7 +228,7 @@ pub unsafe fn get_refreshes(level: &mut Level) -> c_int {
                 curref += 1;
 
                 assert!(
-                    !(curref > MAX_REFRESHES_ON_LEVEL),
+                    curref <= MAX_REFRESHES_ON_LEVEL,
                     "\n\
                         \n\
 ----------------------------------------------------------------------\n\
@@ -841,7 +841,7 @@ freedroid-discussion@lists.sourceforge.net\n\
                 };
 
                 assert!(
-                    !level_iter.next().is_some(),
+                    level_iter.next().is_none(),
                     "Identical Levelnumber Error in SaveShip."
                 );
 
@@ -1239,7 +1239,7 @@ freedroid-discussion@lists.sourceforge.net\n\
             }
 
             assert!(
-                !(free_all_enemys_position == MAX_ENEMYS_ON_SHIP),
+                free_all_enemys_position != MAX_ENEMYS_ON_SHIP,
                 "No more free position to fill random droids into in GetCrew...Terminating...."
             );
 

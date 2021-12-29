@@ -346,7 +346,7 @@ impl Data<'_> {
 
         /* Now fill the pictures correctly to the structs */
         assert!(
-            !(self.init_pictures() == 0),
+            self.init_pictures() != 0,
             "Error in InitPictures reported back..."
         );
 
@@ -366,7 +366,7 @@ impl Data<'_> {
 
         if let Some(sensitivity) = opt.sensitivity {
             assert!(
-                !(sensitivity > 32),
+                sensitivity <= 32,
                 "\nJoystick sensitivity must lie in the range [0;32]"
             );
 
@@ -540,7 +540,7 @@ impl Data<'_> {
 
         // now have a look at what we found:
         assert!(
-            !(self.graphics.all_themes.num_themes == 0),
+            self.graphics.all_themes.num_themes != 0,
             "No valid graphic-themes found!! You need to install at least one to run Freedroid!!"
         );
 
@@ -687,7 +687,7 @@ impl Data<'_> {
         );
 
         assert!(
-            !(self.load_ship(buffer.as_mut_ptr()) == defs::ERR.into()),
+            self.load_ship(buffer.as_mut_ptr()) != defs::ERR.into(),
             "Error in LoadShip"
         );
         //--------------------
@@ -702,7 +702,7 @@ impl Data<'_> {
         );
 
         assert!(
-            !(self.get_lift_connections(buffer.as_mut_ptr()) == defs::ERR.into()),
+            self.get_lift_connections(buffer.as_mut_ptr()) != defs::ERR.into(),
             "Error in GetLiftConnections"
         );
         //--------------------
@@ -732,7 +732,7 @@ impl Data<'_> {
         // WARNING!! THIS REQUIRES THE freedroid.ruleset FILE TO BE READ ALREADY, BECAUSE
         // ROBOT SPECIFICATIONS ARE ALREADY REQUIRED HERE!!!!!
         assert!(
-            !(self.get_crew(buffer.as_mut_ptr()) == defs::ERR.into()),
+            self.get_crew(buffer.as_mut_ptr()) != defs::ERR.into(),
             "InitNewGame(): Initialization of enemys failed."
         );
 
@@ -767,7 +767,7 @@ impl Data<'_> {
         );
 
         assert!(
-            !(number_of_start_points == 0),
+            number_of_start_points != 0,
             "NOT EVEN ONE SINGLE STARTING POINT ENTRY FOUND!  TERMINATING!"
         );
         info!(
@@ -789,7 +789,7 @@ impl Data<'_> {
             ));
         }
         start_point_pointer = libc::strstr(start_point_pointer, cstr!("Level=").as_ptr())
-            .add(libc::strlen(cstr!("Level=").as_ptr()));
+            .add(cstr!("Level=").to_bytes().len());
         let mut starting_level: c_int = 0;
         let mut starting_x_pos: c_int = 0;
         let mut starting_y_pos: c_int = 0;
@@ -801,7 +801,7 @@ impl Data<'_> {
         self.main.cur_level =
             self.main.cur_ship.all_levels[usize::try_from(starting_level).unwrap()];
         start_point_pointer = libc::strstr(start_point_pointer, cstr!("XPos=").as_ptr())
-            .add(libc::strlen(cstr!("XPos=").as_ptr()));
+            .add(cstr!("XPos=").to_bytes().len());
         libc::sscanf(
             start_point_pointer,
             cstr!("%d").as_ptr() as *mut c_char,
@@ -809,7 +809,7 @@ impl Data<'_> {
         );
         self.vars.me.pos.x = starting_x_pos as c_float;
         start_point_pointer = libc::strstr(start_point_pointer, cstr!("YPos=").as_ptr())
-            .add(libc::strlen(cstr!("YPos=").as_ptr()));
+            .add(cstr!("YPos=").to_bytes().len());
         libc::sscanf(
             start_point_pointer,
             cstr!("%d").as_ptr() as *mut c_char,

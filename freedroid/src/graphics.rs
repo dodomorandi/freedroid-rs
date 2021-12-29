@@ -1131,7 +1131,7 @@ impl Data<'_> {
         let len = metadata.len().try_into().unwrap();
         let mut buf = vec![0; len].into_boxed_slice();
         assert!(
-            !file.read_exact(&mut *buf).is_err(),
+            file.read_exact(&mut *buf).is_ok(),
             "cannot reading file {}. Giving up...",
             fpath.display()
         );
@@ -1677,7 +1677,7 @@ impl Data<'_> {
                 &mut bullet_index as *mut c_int as *mut c_void,
             );
             assert!(
-                !(bullet_index >= self.graphics.number_of_bullet_types),
+                bullet_index < self.graphics.number_of_bullet_types,
                 "----------------------------------------------------------------------\n\
                  Freedroid has encountered a problem:\n\
                  In function 'char* LoadThemeConfigurationFile ( ... ):\n\
