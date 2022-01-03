@@ -198,8 +198,6 @@ fn main() {
     unsafe {
         data.input.joy_sensitivity = 1;
 
-        data.init_keystr();
-
         data.init_freedroid(); // Initialisation of global variables and arrays
 
         sdl.cursor().hide();

@@ -10,7 +10,7 @@ use crate::{
     },
     global::{Global, INFLUENCE_MODE_NAMES},
     graphics::Graphics,
-    input::CMD_STRINGS,
+    input::{CMD_STRINGS, KEY_STRINGS},
     map::COLOR_NAMES,
     misc::dealloc_c_string,
     Data,
@@ -1209,11 +1209,10 @@ impl<'sdl> Data<'sdl> {
                 starty + (posy) * lheight,
                 format_args!(
                     "{}",
-                    CStr::from_ptr(
-                        self.input.keystr[usize::try_from(self.input.key_cmds[i][0]).unwrap()]
-                    )
-                    .to_str()
-                    .unwrap()
+                    KEY_STRINGS[usize::try_from(self.input.key_cmds[i][0]).unwrap()]
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
                 ),
             );
             print_string_font(
@@ -1223,11 +1222,10 @@ impl<'sdl> Data<'sdl> {
                 starty + (posy) * lheight,
                 format_args!(
                     "{}",
-                    CStr::from_ptr(
-                        self.input.keystr[usize::try_from(self.input.key_cmds[i][1]).unwrap()]
-                    )
-                    .to_str()
-                    .unwrap()
+                    KEY_STRINGS[usize::try_from(self.input.key_cmds[i][1]).unwrap()]
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
                 ),
             );
             print_string_font(
@@ -1237,11 +1235,10 @@ impl<'sdl> Data<'sdl> {
                 starty + (posy) * lheight,
                 format_args!(
                     "{}",
-                    CStr::from_ptr(
-                        self.input.keystr[usize::try_from(self.input.key_cmds[i][2]).unwrap()]
-                    )
-                    .to_str()
-                    .unwrap()
+                    KEY_STRINGS[usize::try_from(self.input.key_cmds[i][2]).unwrap()]
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
                 ),
             );
             posy += 1;
