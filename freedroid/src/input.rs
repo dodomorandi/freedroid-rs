@@ -24,13 +24,40 @@ use std::{
     ptr::null,
 };
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+struct InputState {
+    pub pressed: bool,
+    pub fresh: bool,
+}
+
+impl InputState {
+    pub fn is_just_pressed(self) -> bool {
+        self.pressed && self.fresh
+    }
+
+    pub fn set_just_pressed(&mut self) {
+        self.pressed = true;
+        self.fresh = true;
+    }
+
+    pub fn set_just_released(&mut self) {
+        self.pressed = false;
+        self.fresh = true;
+    }
+
+    pub fn set_released(&mut self) {
+        self.pressed = false;
+        self.fresh = false;
+    }
+}
+
 pub struct Input {
     pub show_cursor: bool,
     wheel_up_events: c_int,
     wheel_down_events: c_int,
     pub last_mouse_event: u32,
     current_modifiers: SDLMod,
-    input_state: [c_int; PointerStates::Last as usize],
+    input_state: [InputState; PointerStates::Last as usize],
     event: Option<Event>,
     pub joy: Option<Joystick>,
     pub joy_sensitivity: c_int,
@@ -166,7 +193,7 @@ impl Default for Input {
             wheel_down_events: 0,
             last_mouse_event: 0,
             current_modifiers: 0,
-            input_state: [0; PointerStates::Last as usize],
+            input_state: [Default::default(); PointerStates::Last as usize],
             event: None,
             joy: None,
             joy_sensitivity: 0,
@@ -197,18 +224,6 @@ pub const CMD_STRINGS: [*const c_char; Cmds::Last as usize] = [
 
 pub const CURSOR_KEEP_VISIBLE: u32 = 3000; // ticks to keep mouse-cursor visible without mouse-input
 
-const FRESH_BIT: c_int = 0x01 << 8;
-const PRESSED: c_int = true as c_int | FRESH_BIT;
-const RELEASED: c_int = false as c_int | FRESH_BIT;
-
-const fn is_just_pressed(key_flags: c_int) -> bool {
-    key_flags & PRESSED == PRESSED
-}
-
-fn clear_fresh(key_flags: &mut c_int) {
-    *key_flags &= !FRESH_BIT;
-}
-
 impl Data<'_> {
     /// Check if any keys have been 'freshly' pressed. If yes, return key-code, otherwise 0.
     pub unsafe fn wait_for_key_pressed(&mut self) -> c_int {
@@ -227,11 +242,11 @@ impl Data<'_> {
         self.update_input();
 
         let pressed_key = (0..PointerStates::Last as c_int)
-            .find(|&key| is_just_pressed(self.input.input_state[key as usize]));
+            .find(|&key| self.input.input_state[key as usize].is_just_pressed());
 
         match pressed_key {
             Some(key) => {
-                clear_fresh(&mut self.input.input_state[key as usize]);
+                self.input.input_state[key as usize].fresh = false;
                 key
             }
             None => 0,
@@ -261,8 +276,8 @@ impl Data<'_> {
                             match event.ty {
                                 KeyboardEventType::KeyDown => {
                                     self.input.input_state
-                                        [usize::try_from(event.keysym.symbol as isize).unwrap()] =
-                                        PRESSED;
+                                        [usize::try_from(event.keysym.symbol as isize).unwrap()]
+                                    .set_just_pressed();
                                     #[cfg(feature = "gcw0")]
                                     if input_axis.x != 0 || input_axis.y != 0 {
                                         axis_is_active = true.into(); // 4 GCW-0 ; breaks cursor keys after axis has been active...
@@ -270,8 +285,8 @@ impl Data<'_> {
                                 }
                                 KeyboardEventType::KeyUp => {
                                     self.input.input_state
-                                        [usize::try_from(event.keysym.symbol as isize).unwrap()] =
-                                        RELEASED;
+                                        [usize::try_from(event.keysym.symbol as isize).unwrap()]
+                                    .set_just_released();
                                     #[cfg(feature = "gcw0")]
                                     {
                                         axis_is_active = false.into();
@@ -294,22 +309,22 @@ impl Data<'_> {
                                 // so that it behaves like "set"/"release"
                                 if self.input.joy_sensitivity * i32::from(event.value) > 10000 {
                                     /* about half tilted */
-                                    self.input.input_state[PointerStates::JoyRight as usize] =
-                                        PRESSED;
-                                    self.input.input_state[PointerStates::JoyLeft as usize] =
-                                        false.into();
+                                    self.input.input_state[PointerStates::JoyRight as usize]
+                                        .set_just_pressed();
+                                    self.input.input_state[PointerStates::JoyLeft as usize]
+                                        .set_released();
                                 } else if self.input.joy_sensitivity * i32::from(event.value)
                                     < -10000
                                 {
-                                    self.input.input_state[PointerStates::JoyLeft as usize] =
-                                        PRESSED;
-                                    self.input.input_state[PointerStates::JoyRight as usize] =
-                                        false.into();
+                                    self.input.input_state[PointerStates::JoyLeft as usize]
+                                        .set_just_pressed();
+                                    self.input.input_state[PointerStates::JoyRight as usize]
+                                        .set_released();
                                 } else {
-                                    self.input.input_state[PointerStates::JoyLeft as usize] =
-                                        false.into();
-                                    self.input.input_state[PointerStates::JoyRight as usize] =
-                                        false.into();
+                                    self.input.input_state[PointerStates::JoyLeft as usize]
+                                        .set_released();
+                                    self.input.input_state[PointerStates::JoyRight as usize]
+                                        .set_released();
                                 }
                             } else if (axis == 1) || ((self.input.joy_num_axes >= 5) && (axis == 4))
                             {
@@ -317,21 +332,22 @@ impl Data<'_> {
                                 self.input.input_axis.y = event.value.into();
 
                                 if self.input.joy_sensitivity * i32::from(event.value) > 10000 {
-                                    self.input.input_state[PointerStates::JoyDown as usize] =
-                                        PRESSED;
-                                    self.input.input_state[PointerStates::JoyUp as usize] =
-                                        false.into();
+                                    self.input.input_state[PointerStates::JoyDown as usize]
+                                        .set_just_pressed();
+                                    self.input.input_state[PointerStates::JoyUp as usize]
+                                        .set_released();
                                 } else if self.input.joy_sensitivity * i32::from(event.value)
                                     < -10000
                                 {
-                                    self.input.input_state[PointerStates::JoyUp as usize] = PRESSED;
-                                    self.input.input_state[PointerStates::JoyDown as usize] =
-                                        false.into();
+                                    self.input.input_state[PointerStates::JoyUp as usize]
+                                        .set_just_pressed();
+                                    self.input.input_state[PointerStates::JoyDown as usize]
+                                        .set_released();
                                 } else {
-                                    self.input.input_state[PointerStates::JoyUp as usize] =
-                                        false.into();
-                                    self.input.input_state[PointerStates::JoyDown as usize] =
-                                        false.into();
+                                    self.input.input_state[PointerStates::JoyUp as usize]
+                                        .set_released();
+                                    self.input.input_state[PointerStates::JoyDown as usize]
+                                        .set_released();
                                 }
                             }
                         }
@@ -346,8 +362,9 @@ impl Data<'_> {
                                 _ => None,
                             };
                             if let Some(input_state_index) = input_state_index {
-                                self.input.input_state[input_state_index] =
-                                    if is_pressed { PRESSED } else { RELEASED };
+                                let input_state = &mut self.input.input_state[input_state_index];
+                                input_state.pressed = is_pressed;
+                                input_state.fresh = true;
                             }
                             self.input.axis_is_active = is_pressed.into();
                         }
@@ -395,8 +412,9 @@ impl Data<'_> {
                             };
 
                             if let Some(input_state_index) = input_state_index {
-                                self.input.input_state[input_state_index] =
-                                    if is_pressed { PRESSED } else { RELEASED };
+                                let input_state = &mut self.input.input_state[input_state_index];
+                                input_state.pressed = is_pressed;
+                                input_state.fresh = true;
                             }
                             if is_pressed {
                                 self.input.last_mouse_event = self.sdl.ticks_ms();
@@ -415,7 +433,7 @@ impl Data<'_> {
     pub unsafe fn key_is_pressed(&mut self, key: c_int) -> bool {
         self.update_input();
 
-        (self.input.input_state[usize::try_from(key).unwrap()] & PRESSED) == PRESSED
+        self.input.input_state[usize::try_from(key).unwrap()].is_just_pressed()
     }
 
     /// Does the same as KeyIsPressed, but automatically releases the key as well..
@@ -427,7 +445,7 @@ impl Data<'_> {
     }
 
     pub unsafe fn release_key(&mut self, key: c_int) {
-        self.input.input_state[usize::try_from(key).unwrap()] = false.into();
+        self.input.input_state[usize::try_from(key).unwrap()].set_released();
     }
 
     pub unsafe fn wheel_up_pressed(&mut self) -> bool {
@@ -483,8 +501,8 @@ impl Data<'_> {
         self.update_input();
 
         for state in &mut self.input.input_state {
-            if (*state & PRESSED) != 0 {
-                *state = 0;
+            if state.pressed || state.fresh {
+                state.set_released();
                 return true;
             }
         }
