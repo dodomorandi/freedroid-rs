@@ -14,13 +14,12 @@ use crate::{
 };
 
 use log::{info, trace};
-use sdl::{Rect, Surface};
-use sdl_sys::{rotozoomSurface, SDL_Color, SDL_FillRect, SDL_MapRGB, SDL_UpdateRect};
+use sdl::Rect;
+use sdl_sys::{SDL_Color, SDL_FillRect, SDL_MapRGB, SDL_UpdateRect};
 use std::{
     cell::{Cell, RefCell},
     ffi::CStr,
     os::raw::{c_char, c_int},
-    ptr::NonNull,
 };
 
 const BLINK_LEN: f32 = 1.0;
@@ -689,15 +688,13 @@ impl Data<'_> {
         //if ( cur_bullet.time_in_frames == 1 )
         if cur_bullet.surfaces_were_generated == 0 {
             for i in 0..usize::try_from(bullet.phases).unwrap() {
-                cur_bullet.surfaces[i] = Some(Surface::from_ptr(
-                    NonNull::new(rotozoomSurface(
-                        bullet.surfaces[i].as_mut().unwrap().as_mut_ptr(),
-                        cur_bullet.angle.into(),
-                        1.0,
-                        false.into(),
-                    ))
-                    .unwrap(),
-                ));
+                cur_bullet.surfaces[i] = Some(
+                    bullet.surfaces[i]
+                        .as_mut()
+                        .unwrap()
+                        .rotozoom(cur_bullet.angle.into(), 1.0, false)
+                        .unwrap(),
+                );
             }
             info!(
                 "This was the first time for this bullet, so images were generated... angle={}",

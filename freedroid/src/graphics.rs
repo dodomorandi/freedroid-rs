@@ -22,11 +22,11 @@ use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
 use sdl::{Cursor, CursorData, FrameBuffer, Rect, Surface, VideoModeFlags};
 use sdl_sys::{
-    zoomSurface, IMG_Load, SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha,
-    SDL_FillRect, SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetVideoInfo, SDL_MapRGB,
-    SDL_MapRGBA, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops, SDL_SaveBMP_RW, SDL_SetAlpha,
-    SDL_SetGamma, SDL_UpdateRect, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption,
-    SDL_WM_SetIcon, SDL_RLEACCEL, SDL_SRCALPHA,
+    IMG_Load, SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_FillRect,
+    SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetVideoInfo, SDL_MapRGB, SDL_MapRGBA,
+    SDL_RWFromFile, SDL_RWFromMem, SDL_RWops, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma,
+    SDL_UpdateRect, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon,
+    SDL_RLEACCEL, SDL_SRCALPHA,
 };
 use std::{
     cell::RefCell,
@@ -266,27 +266,9 @@ pub fn scale_pic(pic: &mut Surface, scale: c_float) {
     }
     let scale = scale.into();
 
-    // # Safety
-    // [`zoomSurface`] creates a new SDL_Surface or returns null, therefore no aliasing can occur.
-    unsafe {
-        *pic = Surface::from_ptr(
-            NonNull::new(zoomSurface(pic.as_mut_ptr(), scale, scale, 0))
-                .unwrap_or_else(|| panic!("zoomSurface() failed for scale = {}.", scale)),
-        );
-    }
-}
-
-pub fn scale_pic_surface(pic: &mut Surface, scale: c_float) {
-    if (scale - 1.0).abs() <= f32::EPSILON {
-        return;
-    }
-    let scale = scale.into();
-
-    let new_pic = NonNull::new(unsafe { zoomSurface(pic.as_mut_ptr(), scale, scale, 0) });
-    match new_pic {
-        Some(new_pic) => *pic = unsafe { Surface::from_ptr(new_pic) },
-        None => panic!("zoomSurface() failed for scale = {}.", scale),
-    }
+    *pic = pic
+        .zoom(scale, scale, false)
+        .unwrap_or_else(|| panic!("surface.zoom() failed for scale = {}.", scale));
 }
 
 static CROSSHAIR_CURSOR: Lazy<CursorData<32>> = Lazy::new(|| {
@@ -1785,17 +1767,11 @@ impl Data<'_> {
             })
             .for_each(|(surface, orig_surface)| {
                 let mut orig_surface = orig_surface.as_mut().unwrap().borrow_mut();
-                let tmp = zoomSurface(orig_surface.as_mut_ptr(), scale.into(), scale.into(), 0);
-                assert!(
-                    !tmp.is_null(),
-                    "zoomSurface() failed for scale = {}.",
-                    scale
-                );
+                let mut tmp = orig_surface
+                    .zoom(scale.into(), scale.into(), false)
+                    .unwrap_or_else(|| panic!("surface.zoom() failed for scale = {}.", scale));
                 // and optimize
-                *surface = Some(Rc::new(RefCell::new(Surface::from_ptr(
-                    NonNull::new(SDL_DisplayFormat(tmp)).unwrap(),
-                ))));
-                SDL_FreeSurface(tmp); // free the old surface
+                *surface = Some(Rc::new(RefCell::new(tmp.display_format().unwrap())));
             });
 
         static ORIG_BLOCK: OnceCell<Rect> = OnceCell::new();

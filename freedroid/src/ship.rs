@@ -4,7 +4,7 @@ use crate::{
         AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction, SoundType, Status,
         DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET, TEXT_STRETCH, UPDATE,
     },
-    graphics::{scale_pic_surface, Graphics},
+    graphics::{scale_pic, Graphics},
     map::get_map_brick,
     structs::Point,
     vars::{BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES, WEAPON_NAMES},
@@ -221,7 +221,7 @@ impl Data<'_> {
             // do we have to scale the droid pics
             #[allow(clippy::float_cmp)]
             if self.global.game_config.scale != 1.0 {
-                scale_pic_surface(
+                scale_pic(
                     self.ship.droid_pics.as_mut().unwrap(),
                     self.global.game_config.scale,
                 );

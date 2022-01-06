@@ -8,8 +8,9 @@ use std::{
 };
 
 use sdl_sys::{
-    SDL_Flip, SDL_FreeSurface, SDL_PixelFormat, SDL_Rect, SDL_SetClipRect, SDL_Surface,
-    SDL_UpperBlit, SDL_bool_SDL_TRUE, SDL_ASYNCBLIT, SDL_HWSURFACE, SDL_RLEACCEL,
+    rotozoomSurface, zoomSurface, SDL_DisplayFormat, SDL_Flip, SDL_FreeSurface, SDL_PixelFormat,
+    SDL_Rect, SDL_SetClipRect, SDL_Surface, SDL_UpperBlit, SDL_bool_SDL_TRUE, SDL_ASYNCBLIT,
+    SDL_HWSURFACE, SDL_RLEACCEL,
 };
 
 use crate::{
@@ -193,6 +194,21 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
         let rect = rect.map(|rect| rect.into().as_ptr()).unwrap_or(ptr::null());
         let result = unsafe { SDL_SetClipRect(self.pointer.as_ptr(), rect) };
         result == SDL_bool_SDL_TRUE
+    }
+
+    pub fn zoom(&mut self, x: f64, y: f64, smooth: bool) -> Option<Surface<'sdl>> {
+        let ptr = unsafe { zoomSurface(self.pointer.as_ptr(), x, y, smooth.into()) };
+        NonNull::new(ptr).map(|ptr| unsafe { Surface::from_ptr(ptr) })
+    }
+
+    pub fn rotozoom(&mut self, angle: f64, zoom: f64, smooth: bool) -> Option<Surface<'sdl>> {
+        let ptr = unsafe { rotozoomSurface(self.pointer.as_ptr(), angle, zoom, smooth.into()) };
+        NonNull::new(ptr).map(|ptr| unsafe { Surface::from_ptr(ptr) })
+    }
+
+    pub fn display_format(&mut self) -> Option<Surface<'sdl>> {
+        NonNull::new(unsafe { SDL_DisplayFormat(self.pointer.as_ptr()) })
+            .map(|ptr| unsafe { Surface::from_ptr(ptr) })
     }
 }
 
