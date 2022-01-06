@@ -20,7 +20,7 @@ use cstr::cstr;
 use sdl::Surface;
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT,
-    SDLKey_SDLK_RIGHT, SDLKey_SDLK_UP, SDL_DisplayFormat,
+    SDLKey_SDLK_RIGHT, SDLKey_SDLK_UP,
 };
 use std::{
     alloc::{alloc_zeroed, dealloc, realloc, Layout},
@@ -28,7 +28,7 @@ use std::{
     io::Cursor,
     ops::{AddAssign, Not, SubAssign},
     os::raw::{c_char, c_float, c_int},
-    ptr::{null_mut, NonNull},
+    ptr::null_mut,
     sync::atomic::AtomicBool,
 };
 
@@ -303,12 +303,14 @@ impl<'sdl> Data<'sdl> {
         self.make_grid_on_screen(None);
 
         // keep a global copy of background
-        self.menu.menu_background = Some(Surface::from_ptr(
-            NonNull::new(SDL_DisplayFormat(
-                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            ))
-            .unwrap(),
-        ));
+        self.menu.menu_background = Some(
+            self.graphics
+                .ne_screen
+                .as_mut()
+                .unwrap()
+                .display_format()
+                .unwrap(),
+        );
 
         self.sdl.cursor().hide();
         self.b_font.current_font = self.global.menu_b_font;

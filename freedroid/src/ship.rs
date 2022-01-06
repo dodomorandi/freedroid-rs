@@ -14,8 +14,8 @@ use crate::{
 use log::{error, warn};
 use sdl::{Rect, Surface};
 use sdl_sys::{
-    IMG_Load_RW, IMG_isJPG, SDL_Color, SDL_CreateRGBSurface, SDL_DisplayFormat,
-    SDL_DisplayFormatAlpha, SDL_FreeSurface, SDL_RWops, SDL_UpdateRects, SDL_WarpMouse,
+    IMG_Load_RW, IMG_isJPG, SDL_Color, SDL_CreateRGBSurface, SDL_RWops, SDL_UpdateRects,
+    SDL_WarpMouse,
 };
 use std::{
     ffi::CStr,
@@ -160,19 +160,21 @@ impl Data<'_> {
         } = self;
         let droid_background = droid_background.get_or_insert_with(|| {
             // first call
-            let tmp = SDL_CreateRGBSurface(
-                0,
-                dst.width().into(),
-                dst.height().into(),
-                graphics.vid_bpp,
-                0,
-                0,
-                0,
-                0,
+            let mut tmp = Surface::from_ptr(
+                NonNull::new(SDL_CreateRGBSurface(
+                    0,
+                    dst.width().into(),
+                    dst.height().into(),
+                    graphics.vid_bpp,
+                    0,
+                    0,
+                    0,
+                    0,
+                ))
+                .unwrap(),
             );
-            let mut droid_background =
-                Surface::from_ptr(NonNull::new(SDL_DisplayFormat(tmp)).unwrap());
-            SDL_FreeSurface(tmp);
+            let mut droid_background = tmp.display_format().unwrap();
+            drop(tmp);
             graphics
                 .ne_screen
                 .as_mut()
@@ -200,22 +202,25 @@ impl Data<'_> {
             let tmp = IMG_Load_RW(packed_portrait, 0);
             // important: return seek-position to beginning of RWops for next operation to succeed!
             sdl_rw_seek(packed_portrait, 0, libc::SEEK_SET);
-            if tmp.is_null() {
-                error!(
-                    "failed to unpack droid-portraits of droid-type {}",
-                    droid_type,
-                );
-                return; // ok, so no pic but we continue ;)
-            }
-            // now see if its a jpg, then we add some transparency by color-keying:
-            let raw_droid_pics = if IMG_isJPG(packed_portrait) != 0 {
-                SDL_DisplayFormat(tmp)
-            } else {
-                // else assume it's png ;)
-                SDL_DisplayFormatAlpha(tmp)
+            let mut tmp = match NonNull::new(tmp).map(|ptr| unsafe { Surface::from_ptr(ptr) }) {
+                Some(tmp) => tmp,
+                None => {
+                    error!(
+                        "failed to unpack droid-portraits of droid-type {}",
+                        droid_type,
+                    );
+                    return; // ok, so no pic but we continue ;)
+                }
             };
-            self.ship.droid_pics = Some(Surface::from_ptr(NonNull::new(raw_droid_pics).unwrap()));
-            SDL_FreeSurface(tmp);
+            // now see if its a jpg, then we add some transparency by color-keying:
+            let droid_pics = if IMG_isJPG(packed_portrait) != 0 {
+                tmp.display_format().unwrap()
+            } else {
+                // else assume it's png ;
+                tmp.display_format_alpha().unwrap()
+            };
+            self.ship.droid_pics = Some(droid_pics);
+            drop(tmp);
             sdl_rw_seek(packed_portrait, 0, libc::SEEK_SET);
 
             // do we have to scale the droid pics

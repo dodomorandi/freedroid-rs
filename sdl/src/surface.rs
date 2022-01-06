@@ -8,9 +8,9 @@ use std::{
 };
 
 use sdl_sys::{
-    rotozoomSurface, zoomSurface, SDL_DisplayFormat, SDL_Flip, SDL_FreeSurface, SDL_PixelFormat,
-    SDL_Rect, SDL_SetClipRect, SDL_Surface, SDL_UpperBlit, SDL_bool_SDL_TRUE, SDL_ASYNCBLIT,
-    SDL_HWSURFACE, SDL_RLEACCEL,
+    rotozoomSurface, zoomSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_Flip,
+    SDL_FreeSurface, SDL_PixelFormat, SDL_Rect, SDL_SetClipRect, SDL_Surface, SDL_UpperBlit,
+    SDL_bool_SDL_TRUE, SDL_ASYNCBLIT, SDL_HWSURFACE, SDL_RLEACCEL,
 };
 
 use crate::{
@@ -208,6 +208,11 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
 
     pub fn display_format(&mut self) -> Option<Surface<'sdl>> {
         NonNull::new(unsafe { SDL_DisplayFormat(self.pointer.as_ptr()) })
+            .map(|ptr| unsafe { Surface::from_ptr(ptr) })
+    }
+
+    pub fn display_format_alpha(&mut self) -> Option<Surface<'sdl>> {
+        NonNull::new(unsafe { SDL_DisplayFormatAlpha(self.pointer.as_ptr()) })
             .map(|ptr| unsafe { Surface::from_ptr(ptr) })
     }
 }

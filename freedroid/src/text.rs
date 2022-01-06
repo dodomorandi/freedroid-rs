@@ -18,9 +18,9 @@ use sdl::{Rect, RectRef, Surface};
 use sdl_sys::SDLKey_SDLK_DELETE;
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_RETURN, SDLMod, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_RSHIFT,
-    SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_Event, SDL_EventType, SDL_GetClipRect,
-    SDL_PushEvent, SDL_UpdateRect, SDL_WaitEvent, SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE,
-    SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
+    SDL_CreateRGBSurface, SDL_Event, SDL_EventType, SDL_GetClipRect, SDL_PushEvent, SDL_UpdateRect,
+    SDL_WaitEvent, SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN,
+    SDL_BUTTON_WHEELUP,
 };
 use std::{
     ffi::CStr,
@@ -646,12 +646,13 @@ impl Data<'_> {
         const MAX_SPEED: c_int = 150;
         let mut just_started = true;
 
-        let mut background = Surface::from_ptr(
-            NonNull::new(SDL_DisplayFormat(
-                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            ))
-            .unwrap(),
-        );
+        let mut background = self
+            .graphics
+            .ne_screen
+            .as_mut()
+            .unwrap()
+            .display_format()
+            .unwrap();
 
         self.wait_for_all_keys_released();
         let ret;

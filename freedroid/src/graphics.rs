@@ -22,11 +22,10 @@ use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
 use sdl::{Cursor, CursorData, FrameBuffer, Rect, Surface, VideoModeFlags};
 use sdl_sys::{
-    IMG_Load, SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_FillRect,
-    SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetVideoInfo, SDL_MapRGB, SDL_MapRGBA,
-    SDL_RWFromFile, SDL_RWFromMem, SDL_RWops, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma,
-    SDL_UpdateRect, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon,
-    SDL_RLEACCEL, SDL_SRCALPHA,
+    IMG_Load, SDL_CreateRGBSurface, SDL_FillRect, SDL_FreeSurface, SDL_GetClipRect, SDL_GetError,
+    SDL_GetVideoInfo, SDL_MapRGB, SDL_MapRGBA, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops,
+    SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma, SDL_UpdateRect, SDL_VideoDriverName, SDL_VideoInfo,
+    SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_RLEACCEL, SDL_SRCALPHA,
 };
 use std::{
     cell::RefCell,
@@ -226,22 +225,25 @@ impl<'sdl> Graphics<'sdl> {
         if usealpha {
             SDL_SetAlpha(pic.as_mut_ptr(), 0, 0); /* clear per-surf alpha for internal blit */
         }
-        let tmp = SDL_CreateRGBSurface(
-            0,
-            dim.width().into(),
-            dim.height().into(),
-            vid_bpp,
-            0,
-            0,
-            0,
-            0,
+        let mut tmp = Surface::from_ptr(
+            NonNull::new(SDL_CreateRGBSurface(
+                0,
+                dim.width().into(),
+                dim.height().into(),
+                vid_bpp,
+                0,
+                0,
+                0,
+                0,
+            ))
+            .unwrap(),
         );
         let mut ret = if usealpha {
-            Surface::from_ptr(NonNull::new(SDL_DisplayFormatAlpha(tmp)).unwrap())
+            tmp.display_format_alpha().unwrap()
         } else {
-            Surface::from_ptr(NonNull::new(SDL_DisplayFormat(tmp)).unwrap())
+            tmp.display_format().unwrap()
         };
-        SDL_FreeSurface(tmp);
+        drop(tmp);
 
         let src = dim.with_xy(
             i16::try_from(col).unwrap() * i16::try_from(dim.width() + 2).unwrap(),
@@ -709,20 +711,21 @@ impl Data<'_> {
         // the following are not theme-specific and are therefore only loaded once!
         if init {
             //  create a new tmp block-build storage
-            let tmp = SDL_CreateRGBSurface(
-                0,
-                self.vars.block_rect.width().into(),
-                self.vars.block_rect.height().into(),
-                self.graphics.vid_bpp,
-                0,
-                0,
-                0,
-                0,
+            let mut tmp = Surface::from_ptr(
+                NonNull::new(SDL_CreateRGBSurface(
+                    0,
+                    self.vars.block_rect.width().into(),
+                    self.vars.block_rect.height().into(),
+                    self.graphics.vid_bpp,
+                    0,
+                    0,
+                    0,
+                    0,
+                ))
+                .unwrap(),
             );
-            self.graphics.build_block = Some(Surface::from_ptr(
-                NonNull::new(SDL_DisplayFormatAlpha(tmp)).unwrap(),
-            ));
-            SDL_FreeSurface(tmp);
+            self.graphics.build_block = Some(tmp.display_format_alpha().unwrap());
+            drop(tmp);
 
             // takeover pics
             scale_pic(self.graphics.takeover_bg_pic.as_mut().unwrap(), scale);
@@ -780,29 +783,31 @@ impl Data<'_> {
         });
 
         // produce the tiles
-        let tmp = SDL_CreateRGBSurface(
-            0,
-            rect.width().into(),
-            rect.height().into(),
-            self.graphics.vid_bpp,
-            0,
-            0,
-            0,
-            0,
-        );
-        let mut tmp2 = Surface::from_ptr(NonNull::new(SDL_DisplayFormat(tmp)).unwrap());
-        SDL_FreeSurface(tmp);
-        frame_buffer.blit_from(&*rect, &mut tmp2);
+        let mut tmp = Surface::from_ptr(
+            NonNull::new(SDL_CreateRGBSurface(
+                0,
+                rect.width().into(),
+                rect.height().into(),
+                self.graphics.vid_bpp,
+                0,
+                0,
+                0,
+                0,
+            ))
+            .unwrap(),
+        )
+        .display_format()
+        .unwrap();
+        frame_buffer.blit_from(&*rect, &mut tmp);
 
         let mut rng = rand::thread_rng();
         let mut noise_tiles: [Surface; NOISE_TILES] = array_init(|_| {
-            let mut tile =
-                Surface::from_ptr(NonNull::new(SDL_DisplayFormat(tmp2.as_mut_ptr())).unwrap());
+            let mut tile = tmp.display_format().unwrap();
             let mut lock = tile.lock().unwrap();
             (0..u16::try_from(rect.x()).unwrap())
                 .flat_map(|x| (0..rect.height()).map(move |y| (x, y)))
                 .for_each(|(x, y)| {
-                    if rng.gen_range(0..100) > signal_strengh {
+                    if rng.gen_range(0i32..100) > signal_strengh {
                         lock.pixels()
                             .set(x, y, *grey.choose(&mut rng).unwrap())
                             .unwrap();
@@ -811,7 +816,7 @@ impl Data<'_> {
             drop(lock);
             tile
         });
-        drop(tmp2);
+        drop(tmp);
 
         let mut used_tiles: [c_char; NOISE_TILES / 2 + 1] = [-1; NOISE_TILES / 2 + 1];
         // let's go
@@ -1412,20 +1417,21 @@ impl Data<'_> {
         // the following are not theme-specific and are therefore only loaded once!
         DO_ONCE.call_once(|| {
             //  create the tmp block-build storage
-            let tmp = SDL_CreateRGBSurface(
-                0,
-                self.vars.block_rect.width().into(),
-                self.vars.block_rect.height().into(),
-                self.graphics.vid_bpp,
-                0,
-                0,
-                0,
-                0,
+            let mut tmp = Surface::from_ptr(
+                NonNull::new(SDL_CreateRGBSurface(
+                    0,
+                    self.vars.block_rect.width().into(),
+                    self.vars.block_rect.height().into(),
+                    self.graphics.vid_bpp,
+                    0,
+                    0,
+                    0,
+                    0,
+                ))
+                .unwrap(),
             );
-            self.graphics.build_block = Some(Surface::from_ptr(
-                NonNull::new(SDL_DisplayFormatAlpha(tmp)).unwrap(),
-            ));
-            SDL_FreeSurface(tmp);
+            self.graphics.build_block = Some(tmp.display_format_alpha().unwrap());
+            drop(tmp);
 
             // takeover background pics
             let fpath = self.find_file(
