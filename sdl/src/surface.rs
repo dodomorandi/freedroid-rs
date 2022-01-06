@@ -8,9 +8,9 @@ use std::{
 };
 
 use sdl_sys::{
-    rotozoomSurface, zoomSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_Flip,
-    SDL_FreeSurface, SDL_PixelFormat, SDL_Rect, SDL_SetClipRect, SDL_Surface, SDL_UpperBlit,
-    SDL_bool_SDL_TRUE, SDL_ASYNCBLIT, SDL_HWSURFACE, SDL_RLEACCEL,
+    rotozoomSurface, zoomSurface, SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha,
+    SDL_Flip, SDL_FreeSurface, SDL_PixelFormat, SDL_Rect, SDL_SetClipRect, SDL_Surface,
+    SDL_UpperBlit, SDL_bool_SDL_TRUE, SDL_ASYNCBLIT, SDL_HWSURFACE, SDL_RLEACCEL,
 };
 
 use crate::{
@@ -217,6 +217,24 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
     }
 }
 
+impl GenericSurface<'_, true> {
+    #[must_use]
+    pub fn create_rgb(width: u32, height: u32, depth: u8, mask: Rgba<u32>) -> Option<Self> {
+        let width = width.try_into().expect("width greater than c_int::MAX");
+        let height = height.try_into().expect("height greater than c_int::MAX");
+        let depth = depth.into();
+        let Rgba {
+            red,
+            green,
+            blue,
+            alpha,
+        } = mask;
+
+        let ptr = unsafe { SDL_CreateRGBSurface(0, width, height, depth, red, green, blue, alpha) };
+        NonNull::new(ptr).map(|ptr| unsafe { Self::from_ptr(ptr) })
+    }
+}
+
 impl GenericSurface<'_, false> {
     #[must_use]
     pub fn flip(&mut self) -> bool {
@@ -307,4 +325,12 @@ impl<'a, 'sdl, const FREEABLE: bool> UsableSurfaceRaw<'a, 'sdl, FREEABLE> {
     pub fn refcount(&self) -> c_int {
         unsafe { self.0.pointer.as_ref().refcount }
     }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Rgba<T> {
+    pub red: T,
+    pub green: T,
+    pub blue: T,
+    pub alpha: T,
 }

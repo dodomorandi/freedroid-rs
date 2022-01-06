@@ -13,10 +13,7 @@ use crate::{
 
 use log::{error, warn};
 use sdl::{Rect, Surface};
-use sdl_sys::{
-    IMG_Load_RW, IMG_isJPG, SDL_Color, SDL_CreateRGBSurface, SDL_RWops, SDL_UpdateRects,
-    SDL_WarpMouse,
-};
+use sdl_sys::{IMG_Load_RW, IMG_isJPG, SDL_Color, SDL_RWops, SDL_UpdateRects, SDL_WarpMouse};
 use std::{
     ffi::CStr,
     ops::Not,
@@ -160,21 +157,15 @@ impl Data<'_> {
         } = self;
         let droid_background = droid_background.get_or_insert_with(|| {
             // first call
-            let mut tmp = Surface::from_ptr(
-                NonNull::new(SDL_CreateRGBSurface(
-                    0,
-                    dst.width().into(),
-                    dst.height().into(),
-                    graphics.vid_bpp,
-                    0,
-                    0,
-                    0,
-                    0,
-                ))
-                .unwrap(),
-            );
-            let mut droid_background = tmp.display_format().unwrap();
-            drop(tmp);
+            let mut droid_background = Surface::create_rgb(
+                dst.width().into(),
+                dst.height().into(),
+                graphics.vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
+                Default::default(),
+            )
+            .unwrap()
+            .display_format()
+            .unwrap();
             graphics
                 .ne_screen
                 .as_mut()

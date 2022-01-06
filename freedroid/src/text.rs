@@ -18,16 +18,15 @@ use sdl::{Rect, RectRef, Surface};
 use sdl_sys::SDLKey_SDLK_DELETE;
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_RETURN, SDLMod, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_RSHIFT,
-    SDL_CreateRGBSurface, SDL_Event, SDL_EventType, SDL_GetClipRect, SDL_PushEvent, SDL_UpdateRect,
-    SDL_WaitEvent, SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN,
-    SDL_BUTTON_WHEELUP,
+    SDL_Event, SDL_EventType, SDL_GetClipRect, SDL_PushEvent, SDL_UpdateRect, SDL_WaitEvent,
+    SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
 };
 use std::{
     ffi::CStr,
     fmt,
     io::Cursor,
     os::raw::{c_char, c_int, c_uchar},
-    ptr::{null_mut, NonNull},
+    ptr::null_mut,
 };
 
 #[cfg(feature = "arcade-input")]
@@ -82,19 +81,13 @@ impl Data<'_> {
         let y0 = self.text.my_cursor_y;
         let height = font_height(&*self.b_font.current_font);
 
-        let mut store = Surface::from_ptr(
-            NonNull::new(SDL_CreateRGBSurface(
-                0,
-                self.vars.screen_rect.width().into(),
-                height,
-                self.graphics.vid_bpp,
-                0,
-                0,
-                0,
-                0,
-            ))
-            .unwrap(),
-        );
+        let mut store = Surface::create_rgb(
+            self.vars.screen_rect.width().into(),
+            height.try_into().unwrap(),
+            self.graphics.vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
+            Default::default(),
+        )
+        .unwrap();
         let store_rect = Rect::new(
             x0.try_into().unwrap(),
             y0.try_into().unwrap(),

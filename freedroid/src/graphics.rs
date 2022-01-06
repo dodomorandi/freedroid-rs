@@ -22,9 +22,9 @@ use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
 use sdl::{Cursor, CursorData, FrameBuffer, Rect, Surface, VideoModeFlags};
 use sdl_sys::{
-    IMG_Load, SDL_CreateRGBSurface, SDL_FillRect, SDL_FreeSurface, SDL_GetClipRect, SDL_GetError,
-    SDL_GetVideoInfo, SDL_MapRGB, SDL_MapRGBA, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops,
-    SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma, SDL_UpdateRect, SDL_VideoDriverName, SDL_VideoInfo,
+    IMG_Load, SDL_FillRect, SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetVideoInfo,
+    SDL_MapRGB, SDL_MapRGBA, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops, SDL_SaveBMP_RW,
+    SDL_SetAlpha, SDL_SetGamma, SDL_UpdateRect, SDL_VideoDriverName, SDL_VideoInfo,
     SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_RLEACCEL, SDL_SRCALPHA,
 };
 use std::{
@@ -225,19 +225,13 @@ impl<'sdl> Graphics<'sdl> {
         if usealpha {
             SDL_SetAlpha(pic.as_mut_ptr(), 0, 0); /* clear per-surf alpha for internal blit */
         }
-        let mut tmp = Surface::from_ptr(
-            NonNull::new(SDL_CreateRGBSurface(
-                0,
-                dim.width().into(),
-                dim.height().into(),
-                vid_bpp,
-                0,
-                0,
-                0,
-                0,
-            ))
-            .unwrap(),
-        );
+        let mut tmp = Surface::create_rgb(
+            dim.width().into(),
+            dim.height().into(),
+            vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
+            Default::default(),
+        )
+        .unwrap();
         let mut ret = if usealpha {
             tmp.display_format_alpha().unwrap()
         } else {
@@ -711,21 +705,16 @@ impl Data<'_> {
         // the following are not theme-specific and are therefore only loaded once!
         if init {
             //  create a new tmp block-build storage
-            let mut tmp = Surface::from_ptr(
-                NonNull::new(SDL_CreateRGBSurface(
-                    0,
-                    self.vars.block_rect.width().into(),
-                    self.vars.block_rect.height().into(),
-                    self.graphics.vid_bpp,
-                    0,
-                    0,
-                    0,
-                    0,
-                ))
-                .unwrap(),
-            );
-            self.graphics.build_block = Some(tmp.display_format_alpha().unwrap());
-            drop(tmp);
+            let build_block = Surface::create_rgb(
+                self.vars.block_rect.width().into(),
+                self.vars.block_rect.height().into(),
+                self.graphics.vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
+                Default::default(),
+            )
+            .unwrap()
+            .display_format_alpha()
+            .unwrap();
+            self.graphics.build_block = Some(build_block);
 
             // takeover pics
             scale_pic(self.graphics.takeover_bg_pic.as_mut().unwrap(), scale);
@@ -783,19 +772,14 @@ impl Data<'_> {
         });
 
         // produce the tiles
-        let mut tmp = Surface::from_ptr(
-            NonNull::new(SDL_CreateRGBSurface(
-                0,
-                rect.width().into(),
-                rect.height().into(),
-                self.graphics.vid_bpp,
-                0,
-                0,
-                0,
-                0,
-            ))
-            .unwrap(),
+        //
+        let mut tmp = Surface::create_rgb(
+            rect.width().into(),
+            rect.height().into(),
+            self.graphics.vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
+            Default::default(),
         )
+        .unwrap()
         .display_format()
         .unwrap();
         frame_buffer.blit_from(&*rect, &mut tmp);
@@ -1417,21 +1401,16 @@ impl Data<'_> {
         // the following are not theme-specific and are therefore only loaded once!
         DO_ONCE.call_once(|| {
             //  create the tmp block-build storage
-            let mut tmp = Surface::from_ptr(
-                NonNull::new(SDL_CreateRGBSurface(
-                    0,
-                    self.vars.block_rect.width().into(),
-                    self.vars.block_rect.height().into(),
-                    self.graphics.vid_bpp,
-                    0,
-                    0,
-                    0,
-                    0,
-                ))
-                .unwrap(),
-            );
-            self.graphics.build_block = Some(tmp.display_format_alpha().unwrap());
-            drop(tmp);
+            let build_block = Surface::create_rgb(
+                self.vars.block_rect.width().into(),
+                self.vars.block_rect.height().into(),
+                self.graphics.vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
+                Default::default(),
+            )
+            .unwrap()
+            .display_format_alpha()
+            .unwrap();
+            self.graphics.build_block = Some(build_block);
 
             // takeover background pics
             let fpath = self.find_file(
