@@ -10,7 +10,8 @@ use std::{
 use sdl_sys::{
     rotozoomSurface, zoomSurface, SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha,
     SDL_FillRect, SDL_Flip, SDL_FreeSurface, SDL_PixelFormat, SDL_Rect, SDL_SetClipRect,
-    SDL_Surface, SDL_UpperBlit, SDL_bool_SDL_TRUE, SDL_ASYNCBLIT, SDL_HWSURFACE, SDL_RLEACCEL,
+    SDL_Surface, SDL_UpdateRect, SDL_UpperBlit, SDL_bool_SDL_TRUE, SDL_ASYNCBLIT, SDL_HWSURFACE,
+    SDL_RLEACCEL,
 };
 
 use crate::{
@@ -238,6 +239,22 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
             Ok(())
         } else {
             Err(result)
+        }
+    }
+
+    pub fn update_rect(&mut self, rect: &Rect) {
+        let rect = &rect.0;
+
+        // Safety: we are taking self as mut ref, therefore the an instance of [`SurfaceLockGuard`]
+        // cannot exist.
+        unsafe {
+            SDL_UpdateRect(
+                self.pointer.as_ptr(),
+                rect.x.into(),
+                rect.y.into(),
+                rect.w.into(),
+                rect.h.into(),
+            )
         }
     }
 }

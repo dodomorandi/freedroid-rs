@@ -18,8 +18,8 @@ use sdl::{Rect, RectRef, Surface};
 use sdl_sys::SDLKey_SDLK_DELETE;
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_RETURN, SDLMod, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_RSHIFT,
-    SDL_Event, SDL_EventType, SDL_GetClipRect, SDL_PushEvent, SDL_UpdateRect, SDL_WaitEvent,
-    SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
+    SDL_Event, SDL_EventType, SDL_GetClipRect, SDL_PushEvent, SDL_WaitEvent, SDL_BUTTON_LEFT,
+    SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
 };
 use std::{
     ffi::CStr,
@@ -354,13 +354,13 @@ impl Data<'_> {
         self.put_string(screen, x, y, text_buffer);
         let h = font_height(&*self.b_font.current_font) + 2;
 
-        SDL_UpdateRect(
-            screen.as_mut_ptr(),
-            x,
-            y,
+        // update the relevant line
+        screen.update_rect(&Rect::new(
+            x.try_into().unwrap(),
+            y.try_into().unwrap(),
             textlen.try_into().unwrap(),
             h.try_into().unwrap(),
-        ); // update the relevant line
+        ));
 
         if *text_buffer.last().unwrap() == b'\n' {
             self.text.my_cursor_x = x;

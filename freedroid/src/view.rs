@@ -15,7 +15,7 @@ use crate::{
 
 use log::{info, trace};
 use sdl::{Pixel, Rect};
-use sdl_sys::{SDL_Color, SDL_UpdateRect};
+use sdl_sys::SDL_Color;
 use std::{
     cell::{Cell, RefCell},
     ffi::CStr,
@@ -324,20 +324,9 @@ impl Data<'_> {
         // and all that remains to be done is updating the screen.
 
         if mask & AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits() as i32 != 0 {
-            SDL_UpdateRect(
-                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                self.vars.user_rect.x().into(),
-                self.vars.user_rect.y().into(),
-                self.vars.user_rect.width().into(),
-                self.vars.user_rect.height().into(),
-            );
-            SDL_UpdateRect(
-                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                text_rect.x().into(),
-                text_rect.y().into(),
-                text_rect.width().into(),
-                text_rect.height().into(),
-            );
+            let screen = self.graphics.ne_screen.as_mut().unwrap();
+            screen.update_rect(&self.vars.user_rect);
+            screen.update_rect(&text_rect);
         }
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
@@ -906,13 +895,11 @@ impl Data<'_> {
 
             // finally update the whole top status box
             if (flags & i32::from(DisplayBannerFlags::NO_SDL_UPDATE.bits())) == 0 {
-                SDL_UpdateRect(
-                    self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                    0,
-                    0,
-                    self.vars.banner_rect.width().into(),
-                    self.vars.banner_rect.height().into(),
-                );
+                self.graphics
+                    .ne_screen
+                    .as_mut()
+                    .unwrap()
+                    .update_rect(&self.vars.banner_rect.with_xy(0, 0));
             }
 
             self.graphics.banner_is_destroyed = false.into();

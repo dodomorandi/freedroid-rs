@@ -23,9 +23,8 @@ use once_cell::sync::Lazy;
 use sdl::{Cursor, CursorData, FrameBuffer, Pixel, Rect, Surface, VideoModeFlags};
 use sdl_sys::{
     IMG_Load, SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetVideoInfo, SDL_RWFromFile,
-    SDL_RWFromMem, SDL_RWops, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma, SDL_UpdateRect,
-    SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_RLEACCEL,
-    SDL_SRCALPHA,
+    SDL_RWFromMem, SDL_RWops, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma, SDL_VideoDriverName,
+    SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_RLEACCEL, SDL_SRCALPHA,
 };
 use std::{
     cell::RefCell,
@@ -834,13 +833,7 @@ impl Data<'_> {
             frame_buffer.clear_clip_rect();
             // set it
             noise_tiles[usize::try_from(next_tile).unwrap()].blit_to(frame_buffer, &mut *rect);
-            SDL_UpdateRect(
-                frame_buffer.as_mut_ptr(),
-                rect.x().into(),
-                rect.y().into(),
-                rect.width().into(),
-                rect.height().into(),
-            );
+            frame_buffer.update_rect(rect);
             self.sdl.delay_ms(25);
 
             if timeout != 0 && self.sdl.ticks_ms() - now > timeout.try_into().unwrap() {
