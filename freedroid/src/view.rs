@@ -14,8 +14,8 @@ use crate::{
 };
 
 use log::{info, trace};
-use sdl::Rect;
-use sdl_sys::{SDL_Color, SDL_MapRGB, SDL_UpdateRect};
+use sdl::{Pixel, Rect};
+use sdl_sys::{SDL_Color, SDL_UpdateRect};
 use std::{
     cell::{Cell, RefCell},
     ffi::CStr,
@@ -46,12 +46,13 @@ const FLASH_DARK: SDL_Color = SDL_Color {
 
 impl Data<'_> {
     pub unsafe fn fill_rect(&mut self, rect: Rect, color: SDL_Color) {
-        let pixcolor = SDL_MapRGB(
-            self.graphics.ne_screen.as_ref().unwrap().format().as_ptr(),
-            color.r,
-            color.g,
-            color.b,
-        );
+        let pixcolor = self
+            .graphics
+            .ne_screen
+            .as_ref()
+            .unwrap()
+            .format()
+            .map_rgb(color.r, color.g, color.b);
 
         self.graphics
             .ne_screen
@@ -190,7 +191,7 @@ impl Data<'_> {
                 .ne_screen
                 .as_mut()
                 .unwrap()
-                .fill_with(&text_rect, 0)
+                .fill_with(&text_rect, Pixel::black())
                 .unwrap();
         }
 

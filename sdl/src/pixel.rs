@@ -1,6 +1,6 @@
 use std::{fmt, marker::PhantomData, ops::Not, ptr::NonNull};
 
-use sdl_sys::{SDL_MapRGB, SDL_PixelFormat};
+use sdl_sys::{SDL_MapRGB, SDL_MapRGBA, SDL_PixelFormat};
 
 use crate::UsableSurface;
 
@@ -35,6 +35,29 @@ impl PixelFormatRef<'_> {
             4 => Four,
             _ => panic!("SDL returned an invalid BytesPerPixel value"),
         }
+    }
+
+    pub fn map_rgb(self, red: u8, green: u8, blue: u8) -> Pixel {
+        let result = unsafe { SDL_MapRGB(self.inner.as_ptr(), red, green, blue) };
+        Pixel(result)
+    }
+
+    pub fn map_rgba(self, red: u8, green: u8, blue: u8, alpha: u8) -> Pixel {
+        let result = unsafe { SDL_MapRGBA(self.inner.as_ptr(), red, green, blue, alpha) };
+        Pixel(result)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Pixel(pub(crate) u32);
+
+impl Pixel {
+    pub const fn black() -> Self {
+        Self(0)
+    }
+
+    pub const fn from_u8(color: u8) -> Self {
+        Self(color as u32)
     }
 }
 
@@ -106,7 +129,7 @@ impl<'a, 'b: 'a, 'sdl, const FREEABLE: bool> Pixels<'a, 'b, 'sdl, FREEABLE> {
         Some(PixelMut { pixels: self, pos })
     }
 
-    pub fn set(&mut self, x: u16, y: u16, pixel: u32) -> Result<(), InvalidPixel> {
+    pub fn set(&mut self, x: u16, y: u16, pixel: Pixel) -> Result<(), InvalidPixel> {
         self.get_mut(x, y).ok_or(InvalidPixel)?.set(pixel);
         Ok(())
     }
@@ -214,7 +237,7 @@ impl_pixel_ref!(PixelRef);
 impl_pixel_ref!(PixelMut);
 
 impl<const FREEABLE: bool> PixelMut<'_, '_, '_, '_, FREEABLE> {
-    pub fn set(&mut self, value: u32) {
+    pub fn set(&mut self, value: Pixel) {
         raw_set_pixel(self.pixels.raw_slice_mut(), self.pos, value);
     }
 }
@@ -239,9 +262,10 @@ where
 }
 
 #[inline]
-fn raw_set_pixel(pixels_slice: PixelsSliceMutPerBpp, pos: usize, value: u32) {
+fn raw_set_pixel(pixels_slice: PixelsSliceMutPerBpp, pos: usize, value: Pixel) {
     use PixelsSliceMutPerBpp::*;
 
+    let value = value.0;
     match pixels_slice {
         One(slice) => slice[pos] = value as u8,
         Two(slice) => slice[pos] = value as u16,
@@ -281,7 +305,7 @@ mod tests {
 
     #[test]
     fn set_pixel_3bpp() {
-        const VALUE: u32 = 0x123456;
+        const VALUE: Pixel = Pixel(0x123456);
 
         let mut data = [[0; 3]];
         raw_set_pixel(PixelsSliceMutPerBpp::Three(&mut data), 0, VALUE);
@@ -306,6 +330,6 @@ mod tests {
             alpha: 0,
         };
         let pixel = raw_get_pixel(PixelsSlicePerBpp::Three(&data), 0, || &pixel_format);
-        assert_eq!(pixel, VALUE);
+        assert_eq!(pixel, VALUE.0);
     }
 }

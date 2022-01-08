@@ -24,13 +24,15 @@ pub use cursor::{Cursor, CursorData};
 pub use event::Event;
 pub use joystick::{Joystick, JoystickSystem};
 pub use mixer::Mixer;
-use once_cell::unsync::OnceCell;
+pub use pixel::Pixel;
 pub use rect::*;
 use sdl_sys::{
     SDL_GetError, SDL_InitSubSystem, SDL_Quit, SDL_version, SDL_INIT_AUDIO, SDL_INIT_JOYSTICK,
 };
 pub use surface::*;
 pub use video::{Video, VideoModeFlags};
+
+use once_cell::unsync::OnceCell;
 
 // Temporary
 #[derive(Debug)]

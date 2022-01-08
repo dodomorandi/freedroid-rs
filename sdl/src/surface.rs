@@ -15,7 +15,7 @@ use sdl_sys::{
 
 use crate::{
     get_error,
-    pixel::{PixelFormatRef, Pixels},
+    pixel::{Pixel, PixelFormatRef, Pixels},
     Rect, RectMut, RectRef,
 };
 
@@ -216,22 +216,22 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
             .map(|ptr| unsafe { Surface::from_ptr(ptr) })
     }
 
-    pub fn fill(&mut self, color: u32) -> Result<(), i32> {
+    pub fn fill(&mut self, color: Pixel) -> Result<(), i32> {
         self.fill_with_inner(None, color)
     }
 
-    pub fn fill_with(&mut self, rect: &Rect, color: u32) -> Result<(), i32> {
+    pub fn fill_with(&mut self, rect: &Rect, color: Pixel) -> Result<(), i32> {
         self.fill_with_inner(Some(rect), color)
     }
 
     #[inline]
-    fn fill_with_inner(&mut self, rect: Option<&Rect>, color: u32) -> Result<(), i32> {
+    fn fill_with_inner(&mut self, rect: Option<&Rect>, color: Pixel) -> Result<(), i32> {
         let result = unsafe {
             SDL_FillRect(
                 self.pointer.as_ptr(),
                 rect.map(|rect| rect.as_ref() as *const SDL_Rect as *mut SDL_Rect)
                     .unwrap_or(null_mut()),
-                color,
+                color.0,
             )
         };
         if result == 0 {

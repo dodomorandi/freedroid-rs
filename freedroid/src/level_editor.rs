@@ -10,6 +10,7 @@ use crate::{
 
 use cstr::cstr;
 use log::{info, warn};
+use sdl::Pixel;
 use sdl_sys::{
     SDLKey_SDLK_F1, SDLKey_SDLK_KP0, SDLKey_SDLK_KP1, SDLKey_SDLK_KP2, SDLKey_SDLK_KP3,
     SDLKey_SDLK_KP4, SDLKey_SDLK_KP5, SDLKey_SDLK_KP6, SDLKey_SDLK_KP7, SDLKey_SDLK_KP8,
@@ -22,8 +23,8 @@ use std::{
     ptr::null_mut,
 };
 
-const HIGHLIGHTCOLOR: u32 = 255;
-const HIGHLIGHTCOLOR2: i32 = 100;
+const HIGHLIGHTCOLOR: Pixel = Pixel::from_u8(255);
+const HIGHLIGHTCOLOR2: Pixel = Pixel::from_u8(100);
 
 /// create a new empty waypoint on position x/y
 fn create_waypoint(level: &mut Level, block_x: c_int, block_y: c_int) {
@@ -608,7 +609,7 @@ impl Data<'_> {
                         this_wp.y.into(),
                         (*self.main.cur_level).all_waypoints[connection].x.into(),
                         (*self.main.cur_level).all_waypoints[connection].y.into(),
-                        HIGHLIGHTCOLOR as i32,
+                        HIGHLIGHTCOLOR,
                     );
                 }
             }

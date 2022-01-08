@@ -20,12 +20,12 @@ use array_init::array_init;
 use cstr::cstr;
 use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
-use sdl::{Cursor, CursorData, FrameBuffer, Rect, Surface, VideoModeFlags};
+use sdl::{Cursor, CursorData, FrameBuffer, Pixel, Rect, Surface, VideoModeFlags};
 use sdl_sys::{
-    IMG_Load, SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetVideoInfo, SDL_MapRGB,
-    SDL_MapRGBA, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops, SDL_SaveBMP_RW, SDL_SetAlpha,
-    SDL_SetGamma, SDL_UpdateRect, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption,
-    SDL_WM_SetIcon, SDL_RLEACCEL, SDL_SRCALPHA,
+    IMG_Load, SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetVideoInfo, SDL_RWFromFile,
+    SDL_RWFromMem, SDL_RWops, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma, SDL_UpdateRect,
+    SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_RLEACCEL,
+    SDL_SRCALPHA,
 };
 use std::{
     cell::RefCell,
@@ -152,7 +152,7 @@ pub unsafe fn apply_filter(
             green = (green as c_float * fgreen) as u8;
             blue = (blue as c_float * fblue) as u8;
 
-            let pixel_value = SDL_MapRGBA(surface.raw().format(), red, green, blue, alpha);
+            let pixel_value = surface.format().map_rgba(red, green, blue, alpha);
             let mut surface = surface.lock().unwrap();
             surface.pixels().set(x, y, pixel_value).unwrap();
         });
@@ -361,7 +361,7 @@ impl Data<'_> {
         (rect_y..(rect_y + grid_rectangle.height()))
             .flat_map(|y| (rect_x..(rect_x + grid_rectangle.width())).map(move |x| (x, y)))
             .filter(|(x, y)| (x + y) % 2 == 0)
-            .for_each(|(x, y)| ne_screen.pixels().set(x, y, 0).unwrap());
+            .for_each(|(x, y)| ne_screen.pixels().set(x, y, Pixel::black()).unwrap());
         trace!("MakeGridOnScreen(...): end of function reached.");
     }
 
@@ -766,9 +766,9 @@ impl Data<'_> {
 
         let signal_strengh = 60;
 
-        let grey: [u32; NOISE_COLORS] = array_init(|index| {
+        let grey: [Pixel; NOISE_COLORS] = array_init(|index| {
             let color = (((index as f64 + 1.0) / (NOISE_COLORS as f64)) * 255.0) as u8;
-            SDL_MapRGB(frame_buffer.format().as_ptr(), color, color, color)
+            frame_buffer.format().map_rgb(color, color, color)
         });
 
         // produce the tiles
@@ -927,7 +927,7 @@ impl Data<'_> {
         ne_screen.clear_clip_rect();
 
         // Now we fill the screen with black color...
-        ne_screen.fill(0).unwrap();
+        ne_screen.fill(Pixel::black()).unwrap();
         assert!(ne_screen.flip());
     }
 
@@ -1793,7 +1793,7 @@ impl Data<'_> {
         mut y1: c_float,
         mut x2: c_float,
         mut y2: c_float,
-        color: c_int,
+        color: Pixel,
     ) {
         if (x1 - x2).abs() <= f32::EPSILON && (y1 - y2).abs() <= f32::EPSILON {
             return;
@@ -1836,11 +1836,11 @@ impl Data<'_> {
                 let mut ne_screen = ne_screen.lock().unwrap();
                 ne_screen
                     .pixels()
-                    .set(pixx as u16, pixy as u16, color.try_into().unwrap())
+                    .set(pixx as u16, pixy as u16, color)
                     .unwrap();
                 ne_screen
                     .pixels()
-                    .set(pixx as u16 - 1, pixy as u16, color.try_into().unwrap())
+                    .set(pixx as u16 - 1, pixy as u16, color)
                     .unwrap();
 
                 i += 1.;
@@ -1887,11 +1887,11 @@ impl Data<'_> {
             let mut ne_screen = ne_screen.lock().unwrap();
             ne_screen
                 .pixels()
-                .set(pixx as u16, pixy as u16, color.try_into().unwrap())
+                .set(pixx as u16, pixy as u16, color)
                 .unwrap();
             ne_screen
                 .pixels()
-                .set(pixx as u16, pixy as u16 - 1, color.try_into().unwrap())
+                .set(pixx as u16, pixy as u16 - 1, color)
                 .unwrap();
             i += 1.;
         }
