@@ -15,7 +15,7 @@ use crate::{
 
 use log::{info, trace};
 use sdl::Rect;
-use sdl_sys::{SDL_Color, SDL_FillRect, SDL_MapRGB, SDL_UpdateRect};
+use sdl_sys::{SDL_Color, SDL_MapRGB, SDL_UpdateRect};
 use std::{
     cell::{Cell, RefCell},
     ffi::CStr,
@@ -45,7 +45,7 @@ const FLASH_DARK: SDL_Color = SDL_Color {
 };
 
 impl Data<'_> {
-    pub unsafe fn fill_rect(&mut self, mut rect: Rect, color: SDL_Color) {
+    pub unsafe fn fill_rect(&mut self, rect: Rect, color: SDL_Color) {
         let pixcolor = SDL_MapRGB(
             self.graphics.ne_screen.as_ref().unwrap().format().as_ptr(),
             color.r,
@@ -53,11 +53,12 @@ impl Data<'_> {
             color.b,
         );
 
-        SDL_FillRect(
-            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            rect.as_mut(),
-            pixcolor,
-        );
+        self.graphics
+            .ne_screen
+            .as_mut()
+            .unwrap()
+            .fill_with(&rect, pixcolor)
+            .unwrap();
     }
 
     /// This function assembles the contents of the combat window
@@ -169,7 +170,7 @@ impl Data<'_> {
         // if we don't use Fullscreen mode, we have to clear the text-background manually
         // for the info-line text:
 
-        let mut text_rect = Rect::new(
+        let text_rect = Rect::new(
             self.vars.full_user_rect.x(),
             (i32::from(self.vars.full_user_rect.y())
                 + i32::from(self.vars.full_user_rect.height())
@@ -185,11 +186,12 @@ impl Data<'_> {
             .unwrap()
             .set_clip_rect(&text_rect);
         if self.global.game_config.full_user_rect == 0 {
-            SDL_FillRect(
-                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                text_rect.as_mut(),
-                0,
-            );
+            self.graphics
+                .ne_screen
+                .as_mut()
+                .unwrap()
+                .fill_with(&text_rect, 0)
+                .unwrap();
         }
 
         if self.global.game_config.draw_position != 0 {

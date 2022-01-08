@@ -9,8 +9,8 @@ use std::{
 
 use sdl_sys::{
     rotozoomSurface, zoomSurface, SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha,
-    SDL_Flip, SDL_FreeSurface, SDL_PixelFormat, SDL_Rect, SDL_SetClipRect, SDL_Surface,
-    SDL_UpperBlit, SDL_bool_SDL_TRUE, SDL_ASYNCBLIT, SDL_HWSURFACE, SDL_RLEACCEL,
+    SDL_FillRect, SDL_Flip, SDL_FreeSurface, SDL_PixelFormat, SDL_Rect, SDL_SetClipRect,
+    SDL_Surface, SDL_UpperBlit, SDL_bool_SDL_TRUE, SDL_ASYNCBLIT, SDL_HWSURFACE, SDL_RLEACCEL,
 };
 
 use crate::{
@@ -214,6 +214,31 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
     pub fn display_format_alpha(&mut self) -> Option<Surface<'sdl>> {
         NonNull::new(unsafe { SDL_DisplayFormatAlpha(self.pointer.as_ptr()) })
             .map(|ptr| unsafe { Surface::from_ptr(ptr) })
+    }
+
+    pub fn fill(&mut self, color: u32) -> Result<(), i32> {
+        self.fill_with_inner(None, color)
+    }
+
+    pub fn fill_with(&mut self, rect: &Rect, color: u32) -> Result<(), i32> {
+        self.fill_with_inner(Some(rect), color)
+    }
+
+    #[inline]
+    fn fill_with_inner(&mut self, rect: Option<&Rect>, color: u32) -> Result<(), i32> {
+        let result = unsafe {
+            SDL_FillRect(
+                self.pointer.as_ptr(),
+                rect.map(|rect| rect.as_ref() as *const SDL_Rect as *mut SDL_Rect)
+                    .unwrap_or(null_mut()),
+                color,
+            )
+        };
+        if result == 0 {
+            Ok(())
+        } else {
+            Err(result)
+        }
     }
 }
 

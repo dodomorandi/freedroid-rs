@@ -22,10 +22,10 @@ use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
 use sdl::{Cursor, CursorData, FrameBuffer, Rect, Surface, VideoModeFlags};
 use sdl_sys::{
-    IMG_Load, SDL_FillRect, SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetVideoInfo,
-    SDL_MapRGB, SDL_MapRGBA, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops, SDL_SaveBMP_RW,
-    SDL_SetAlpha, SDL_SetGamma, SDL_UpdateRect, SDL_VideoDriverName, SDL_VideoInfo,
-    SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_RLEACCEL, SDL_SRCALPHA,
+    IMG_Load, SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetVideoInfo, SDL_MapRGB,
+    SDL_MapRGBA, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops, SDL_SaveBMP_RW, SDL_SetAlpha,
+    SDL_SetGamma, SDL_UpdateRect, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption,
+    SDL_WM_SetIcon, SDL_RLEACCEL, SDL_SRCALPHA,
 };
 use std::{
     cell::RefCell,
@@ -927,7 +927,7 @@ impl Data<'_> {
         ne_screen.clear_clip_rect();
 
         // Now we fill the screen with black color...
-        SDL_FillRect(ne_screen.as_mut_ptr(), null_mut(), 0);
+        ne_screen.fill(0).unwrap();
         assert!(ne_screen.flip());
     }
 
