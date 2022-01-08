@@ -466,7 +466,8 @@ impl Data<'_> {
                     match event {
                         Event::Quit => {
                             info!("User requested termination, terminating.");
-                            self.quit_successfully();
+                            self.quit.set(true);
+                            return 0;
                         }
 
                         Event::Keyboard(event) => {

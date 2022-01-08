@@ -692,6 +692,10 @@ impl Data<'_> {
                 break;
             }
 
+            if self.quit.get() {
+                return 1;
+            }
+
             if self.up_pressed() || self.wheel_up_pressed() {
                 speed -= 5;
                 if speed < -MAX_SPEED {

@@ -261,7 +261,7 @@ impl<'sdl> Data<'sdl> {
                 || key == self.input.key_cmds[Cmds::Fire as usize][1]
                 || key == self.input.key_cmds[Cmds::Fire as usize][2]
             {
-                self.quit_successfully();
+                self.quit.set(true);
             }
         }
 
@@ -1073,7 +1073,7 @@ impl<'sdl> Data<'sdl> {
                 _ => {}
             }
 
-            if self.menu.quit_menu {
+            if self.quit.get() || self.menu.quit_menu {
                 finished = true;
             }
 

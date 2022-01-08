@@ -50,6 +50,7 @@ use text::Text;
 use vars::Vars;
 
 use std::{
+    cell::Cell,
     ops::Not,
     os::raw::{c_char, c_float},
     ptr::null_mut,
@@ -148,6 +149,7 @@ struct Data<'sdl> {
     takeover: Takeover<'sdl>,
     graphics: Graphics<'sdl>,
     main: Main<'sdl>,
+    quit: Cell<bool>,
 }
 
 impl<'sdl> Data<'sdl> {
@@ -172,6 +174,7 @@ impl<'sdl> Data<'sdl> {
             takeover: Default::default(),
             graphics: Default::default(),
             main: Default::default(),
+            quit: Cell::new(false),
         }
     }
 }
@@ -208,8 +211,11 @@ fn main() {
             win32_disclaimer();
         }
 
-        loop {
+        while data.quit.get().not() {
             data.init_new_mission(STANDARD_MISSION_C.as_ptr() as *mut c_char);
+            if data.quit.get() {
+                break;
+            }
 
             // scale Level-pic rects
             let scale = data.global.game_config.scale;
@@ -242,7 +248,10 @@ fn main() {
                 RESET,
             );
             let now = sdl.ticks_ms();
-            while sdl.ticks_ms() - now < SHOW_WAIT && !data.fire_pressed_r() {
+            while data.quit.get().not()
+                && sdl.ticks_ms() - now < SHOW_WAIT
+                && !data.fire_pressed_r()
+            {
                 data.show_droid_portrait(
                     data.vars.cons_droid_rect,
                     data.vars.me.ty,
@@ -271,7 +280,7 @@ fn main() {
                 .set_active(); // default cursor is a crosshair
             sdl.cursor().show();
 
-            while data.game_over.not() {
+            while data.quit.get().not() && data.game_over.not() {
                 data.start_taking_time_for_fps_calculation();
 
                 data.update_counters_for_this_frame();
@@ -336,6 +345,22 @@ fn main() {
                 data.compute_fps_for_this_frame();
             }
         }
+
+        info!("Termination of Freedroid initiated.");
+
+        info!("Writing config file");
+        data.save_game_config();
+        info!("Writing highscores to disk");
+        data.save_highscores();
+
+        // ----- free memory
+        data.free_ship_memory();
+        data.free_graphics();
+        data.sound = None;
+        data.free_menu_data();
+        data.free_game_mem();
+
+        info!("Thank you for playing Freedroid.");
     }
 }
 

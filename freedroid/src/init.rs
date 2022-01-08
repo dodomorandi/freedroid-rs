@@ -845,6 +845,10 @@ impl Data<'_> {
         );
         self.title(briefing_section_pointer);
 
+        if self.quit.get() {
+            return;
+        }
+
         /* Den Banner fuer das Spiel anzeigen */
         self.clear_graph_mem();
         self.display_banner(

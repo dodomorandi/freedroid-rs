@@ -14,7 +14,6 @@ use cstr::cstr;
 use defs::MAXBULLETS;
 use log::{error, info, warn};
 use sdl::Rect;
-use sdl_sys::SDL_Quit;
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
     borrow::Cow,
@@ -23,7 +22,6 @@ use std::{
     fs::{self, File},
     os::raw::{c_char, c_float, c_int, c_long, c_void},
     path::Path,
-    process,
     ptr::null_mut,
 };
 
@@ -342,29 +340,6 @@ impl Data<'_> {
     /// Update the factor affecting the current speed of 'time flow'
     pub fn set_time_factor(&mut self, time_factor: c_float) {
         self.misc.current_time_factor = time_factor;
-    }
-
-    /// This function is used for terminating freedroid.  It will close
-    /// the SDL submodules and exit.
-    pub unsafe fn quit_successfully(&mut self) -> ! {
-        info!("Termination of Freedroid initiated.");
-
-        info!("Writing config file");
-        self.save_game_config();
-        info!("Writing highscores to disk");
-        self.save_highscores();
-
-        // ----- free memory
-        self.free_ship_memory();
-        self.free_graphics();
-        self.sound = None;
-        self.free_menu_data();
-        self.free_game_mem();
-
-        // ----- exit
-        info!("Thank you for playing Freedroid.");
-        SDL_Quit();
-        process::exit(defs::ERR.into());
     }
 
     /// realise Pause-Mode: the game process is halted,
