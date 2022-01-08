@@ -96,6 +96,7 @@ impl Rect {
         ]
     }
 
+    #[must_use]
     pub fn with_xy(&self, x: i16, y: i16) -> Self {
         let SDL_Rect { w, h, .. } = self.0;
         Self(SDL_Rect { x, y, w, h })
