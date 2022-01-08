@@ -2,6 +2,7 @@ use num_traits::{AsPrimitive, Float};
 use sdl_sys::SDL_Rect;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
 pub struct Rect(pub(crate) SDL_Rect);
 
 impl Rect {

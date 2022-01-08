@@ -10,8 +10,8 @@ use std::{
 use sdl_sys::{
     rotozoomSurface, zoomSurface, SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha,
     SDL_FillRect, SDL_Flip, SDL_FreeSurface, SDL_PixelFormat, SDL_Rect, SDL_SetClipRect,
-    SDL_Surface, SDL_UpdateRect, SDL_UpperBlit, SDL_bool_SDL_TRUE, SDL_ASYNCBLIT, SDL_HWSURFACE,
-    SDL_RLEACCEL,
+    SDL_Surface, SDL_UpdateRect, SDL_UpdateRects, SDL_UpperBlit, SDL_bool_SDL_TRUE, SDL_ASYNCBLIT,
+    SDL_HWSURFACE, SDL_RLEACCEL,
 };
 
 use crate::{
@@ -254,6 +254,23 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
                 rect.y.into(),
                 rect.w.into(),
                 rect.h.into(),
+            )
+        }
+    }
+
+    pub fn update_rects(&mut self, rects: &[Rect]) {
+        // Safety:
+        //
+        // - we are taking self as mut ref, therefore the an instance of [`SurfaceLockGuard`]
+        // cannot exist.
+        // - [`Rect`] is transparent, therefore it is safe to cast from `*const Rect` to `*const
+        // SDL_Rect`.
+        // - `SDL_UpdateRects` does not change rects, function signature is not const-correct.
+        unsafe {
+            SDL_UpdateRects(
+                self.pointer.as_ptr(),
+                rects.len().try_into().expect("too many rectangles"),
+                rects.as_ptr() as *const SDL_Rect as *mut SDL_Rect,
             )
         }
     }

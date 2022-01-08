@@ -13,7 +13,7 @@ use crate::{
 
 use log::{error, warn};
 use sdl::{Rect, Surface};
-use sdl_sys::{IMG_Load_RW, IMG_isJPG, SDL_Color, SDL_RWops, SDL_UpdateRects, SDL_WarpMouse};
+use sdl_sys::{IMG_Load_RW, IMG_isJPG, SDL_Color, SDL_RWops, SDL_WarpMouse};
 use std::{
     ffi::CStr,
     ops::Not,
@@ -277,12 +277,11 @@ impl Data<'_> {
                 &mut dst,
             );
 
-            SDL_UpdateRects(
-                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                1,
-                dst.as_mut(),
-            );
-
+            self.graphics
+                .ne_screen
+                .as_mut()
+                .unwrap()
+                .update_rects(&[dst]);
             self.ship.last_frame_time = self.sdl.ticks_ms();
         }
 
@@ -543,16 +542,9 @@ Paradroid to eliminate all rogue robots.\0",
         }
 
         if flags & i32::from(UPDATE_ONLY) != 0 {
-            SDL_UpdateRects(
-                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                1,
-                self.vars.cons_header_rect.as_mut(),
-            );
-            SDL_UpdateRects(
-                self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-                1,
-                self.vars.cons_text_rect.as_mut(),
-            );
+            let screen = self.graphics.ne_screen.as_mut().unwrap();
+            screen.update_rects(&[self.vars.cons_header_rect]);
+            screen.update_rects(&[self.vars.cons_text_rect]);
         } else {
             assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
         }

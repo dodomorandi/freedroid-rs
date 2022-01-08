@@ -14,7 +14,7 @@ use cstr::cstr;
 use defs::MAXBULLETS;
 use log::{error, info, warn};
 use sdl::Rect;
-use sdl_sys::{SDL_Quit, SDL_UpdateRects};
+use sdl_sys::SDL_Quit;
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
     borrow::Cow,
@@ -312,7 +312,7 @@ impl Data<'_> {
             ne_screen.as_mut().unwrap(),
             &mut dst,
         );
-        SDL_UpdateRects(ne_screen.as_mut().unwrap().as_mut_ptr(), 1, dst.as_mut());
+        ne_screen.as_mut().unwrap().update_rects(&[dst]);
     }
 
     /// This function is the key to independence of the framerate for various game elements.
