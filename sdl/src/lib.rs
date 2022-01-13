@@ -16,6 +16,7 @@ use std::{
     ffi::{CStr, CString},
     marker::PhantomData,
     mem::MaybeUninit,
+    ptr::NonNull,
     sync::atomic::{AtomicBool, Ordering},
 };
 
@@ -27,7 +28,8 @@ pub use mixer::Mixer;
 pub use pixel::Pixel;
 pub use rect::*;
 use sdl_sys::{
-    SDL_GetError, SDL_InitSubSystem, SDL_Quit, SDL_version, SDL_INIT_AUDIO, SDL_INIT_JOYSTICK,
+    IMG_Load, SDL_GetError, SDL_InitSubSystem, SDL_Quit, SDL_version, SDL_INIT_AUDIO,
+    SDL_INIT_JOYSTICK,
 };
 pub use surface::*;
 pub use video::{Video, VideoModeFlags};
@@ -172,6 +174,11 @@ where
             event.assume_init()
         };
         Some(Event::from_raw(event))
+    }
+
+    pub fn load_image_from_c_str_path<'a>(&'a self, path: &CStr) -> Option<Surface<'a>> {
+        NonNull::new(unsafe { IMG_Load(path.as_ptr()) })
+            .map(|ptr| unsafe { Surface::from_ptr(ptr) })
     }
 }
 

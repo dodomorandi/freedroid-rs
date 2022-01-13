@@ -302,7 +302,7 @@ impl Data<'_> {
             Criticality::WarnOnly as c_int,
         );
         if fpath.is_null().not() {
-            self.display_image(fpath);
+            self.display_image(CStr::from_ptr(fpath));
         }
         self.make_grid_on_screen(Some(&self.vars.screen_rect.clone()));
         self.display_banner(

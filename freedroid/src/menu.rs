@@ -1360,7 +1360,8 @@ impl<'sdl> Data<'sdl> {
             Themed::NoTheme as i32,
             Criticality::Critical as i32,
         );
-        self.display_image(image);
+        assert!(image.is_null().not());
+        self.display_image(CStr::from_ptr(image));
         self.make_grid_on_screen(Some(&screen));
 
         let oldfont = std::mem::replace(&mut self.b_font.current_font, self.global.font1_b_font);

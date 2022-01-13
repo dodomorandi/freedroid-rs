@@ -13,7 +13,7 @@ use crate::{
     structs::ThemeList,
     takeover::TO_BLOCK_FILE_C,
     vars::{ORIG_BLOCK_RECT, ORIG_DIGIT_RECT},
-    Data,
+    Data, Sdl,
 };
 
 use array_init::array_init;
@@ -22,16 +22,16 @@ use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
 use sdl::{Cursor, CursorData, FrameBuffer, Pixel, Rect, Surface, VideoModeFlags};
 use sdl_sys::{
-    IMG_Load, SDL_FreeSurface, SDL_GetClipRect, SDL_GetError, SDL_GetVideoInfo, SDL_RWFromFile,
-    SDL_RWFromMem, SDL_RWops, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma, SDL_VideoDriverName,
-    SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_RLEACCEL, SDL_SRCALPHA,
+    SDL_GetClipRect, SDL_GetError, SDL_GetVideoInfo, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops,
+    SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma, SDL_VideoDriverName, SDL_VideoInfo,
+    SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_RLEACCEL, SDL_SRCALPHA,
 };
 use std::{
     cell::RefCell,
     ffi::CStr,
     ops::Not,
     os::raw::{c_char, c_float, c_int, c_short, c_void},
-    ptr::{null_mut, NonNull},
+    ptr::null_mut,
     rc::Rc,
 };
 
@@ -172,25 +172,38 @@ impl<'sdl> Graphics<'sdl> {
     ///       This will avoid copying & mallocing a new pic, NULL will be returned
     pub unsafe fn load_block(
         &mut self,
-        fpath: *mut c_char,
+        fpath: Option<&CStr>,
         line: c_int,
         col: c_int,
         block: *const Rect,
         flags: c_int,
+        sdl: &'sdl Sdl,
     ) -> Option<Surface<'sdl>> {
-        Self::load_block_vid_bpp_pic(self.vid_bpp, &mut self.pic, fpath, line, col, block, flags)
+        Self::load_block_vid_bpp_pic(
+            self.vid_bpp,
+            &mut self.pic,
+            fpath,
+            line,
+            col,
+            block,
+            flags,
+            sdl,
+        )
     }
 
+    // FIXME: create a better abstraction
+    #[allow(clippy::too_many_arguments)]
     pub unsafe fn load_block_vid_bpp_pic(
         vid_bpp: i32,
-        pic: &mut Option<Surface>,
-        fpath: *mut c_char,
+        pic: &mut Option<Surface<'sdl>>,
+        fpath: Option<&CStr>,
         line: c_int,
         col: c_int,
         block: *const Rect,
         flags: c_int,
+        sdl: &'sdl Sdl,
     ) -> Option<Surface<'sdl>> {
-        if fpath.is_null() && pic.is_none() {
+        if fpath.is_none() && pic.is_none() {
             /* we need some info.. */
             return None;
         }
@@ -200,9 +213,9 @@ impl<'sdl> Graphics<'sdl> {
             return None;
         }
 
-        if !fpath.is_null() {
+        if let Some(fpath) = fpath {
             // initialize: read & malloc new pic, dont' return a copy!!
-            *pic = Some(Surface::from_ptr(NonNull::new(IMG_Load(fpath)).unwrap()));
+            *pic = Some(sdl.load_image_from_c_str_path(fpath).unwrap());
         }
 
         if (flags & INIT_ONLY as c_int) != 0 {
@@ -511,7 +524,7 @@ impl Data<'_> {
 
         // free Load_Block()-internal buffer
         self.graphics
-            .load_block(null_mut(), 0, 0, null_mut(), FREE_ONLY as i32);
+            .load_block(None, 0, 0, null_mut(), FREE_ONLY as i32, self.sdl);
 
         // free cursors
         self.graphics.crosshair_cursor = None;
@@ -1015,19 +1028,19 @@ impl Data<'_> {
                 Themed::NoTheme as c_int,
                 Criticality::WarnOnly as c_int,
             );
-            if fpath.is_null() {
-                warn!("Could not find icon file '{}'", ICON_FILE);
-            } else {
-                let img = IMG_Load(fpath);
-                if img.is_null() {
-                    warn!(
-                        "IMG_Load failed for icon file '{}'\n",
-                        CStr::from_ptr(fpath).to_string_lossy()
-                    );
-                } else {
-                    SDL_WM_SetIcon(img, null_mut());
-                    SDL_FreeSurface(img);
-                }
+
+            let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
+            match fpath {
+                Some(fpath) => match self.sdl.load_image_from_c_str_path(fpath) {
+                    Some(mut img) => SDL_WM_SetIcon(img.as_mut_ptr(), null_mut()),
+                    None => {
+                        warn!(
+                            "SDL load image failed for icon file '{}'\n",
+                            fpath.to_string_lossy()
+                        );
+                    }
+                },
+                None => warn!("Could not find icon file '{}'", ICON_FILE),
             }
         }
 
@@ -1144,8 +1157,9 @@ impl Data<'_> {
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
+        let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
         self.graphics
-            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as i32); /* init function */
+            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as i32, self.sdl); /* init function */
         let Self {
             graphics:
                 Graphics {
@@ -1174,11 +1188,12 @@ impl Data<'_> {
                 *orig_surface = Graphics::load_block_vid_bpp_pic(
                     *vid_bpp,
                     pic,
-                    null_mut(),
+                    None,
                     color_index.try_into().unwrap(),
                     block_index.try_into().unwrap(),
                     &ORIG_BLOCK_RECT,
                     0,
+                    self.sdl,
                 )
                 .map(|surface| Rc::new(RefCell::new(surface)));
                 *surface = orig_surface.as_ref().map(Rc::clone);
@@ -1192,8 +1207,9 @@ impl Data<'_> {
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
+        let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
         self.graphics
-            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int, self.sdl);
 
         let Self {
             graphics:
@@ -1212,11 +1228,12 @@ impl Data<'_> {
                 *influencer_surface = Graphics::load_block_vid_bpp_pic(
                     *vid_bpp,
                     pic,
-                    null_mut(),
+                    None,
                     0,
                     index.try_into().unwrap(),
                     &ORIG_BLOCK_RECT,
                     0,
+                    self.sdl,
                 );
 
                 /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
@@ -1231,11 +1248,12 @@ impl Data<'_> {
                 *enemy_surface = Graphics::load_block_vid_bpp_pic(
                     *vid_bpp,
                     pic,
-                    null_mut(),
+                    None,
                     1,
                     index.try_into().unwrap(),
                     &ORIG_BLOCK_RECT,
                     0,
+                    self.sdl,
                 );
 
                 /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
@@ -1250,8 +1268,9 @@ impl Data<'_> {
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
+        let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
         self.graphics
-            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int, self.sdl);
         std::slice::from_raw_parts_mut(
             self.vars.bulletmap,
             self.graphics.number_of_bullet_types.try_into().unwrap(),
@@ -1267,11 +1286,12 @@ impl Data<'_> {
         })
         .for_each(|(bullet_type_index, phase_index, surface)| {
             *surface = self.graphics.load_block(
-                null_mut(),
+                None,
                 bullet_type_index.try_into().unwrap(),
                 phase_index.try_into().unwrap(),
                 &ORIG_BLOCK_RECT,
                 0,
+                self.sdl,
             );
         });
 
@@ -1284,8 +1304,9 @@ impl Data<'_> {
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
+        let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
         self.graphics
-            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int, self.sdl);
 
         let Self { vars, graphics, .. } = self;
         vars.blastmap
@@ -1300,11 +1321,12 @@ impl Data<'_> {
             })
             .for_each(|(blast_type_index, surface_index, surface)| {
                 *surface = graphics.load_block(
-                    null_mut(),
+                    None,
                     blast_type_index.try_into().unwrap(),
                     surface_index.try_into().unwrap(),
                     &ORIG_BLOCK_RECT,
                     0,
+                    self.sdl,
                 );
             });
 
@@ -1317,8 +1339,9 @@ impl Data<'_> {
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
+        let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
         self.graphics
-            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int, self.sdl);
         let Self {
             graphics:
                 Graphics {
@@ -1337,11 +1360,12 @@ impl Data<'_> {
                 *surface = Graphics::load_block_vid_bpp_pic(
                     *vid_bpp,
                     pic,
-                    null_mut(),
+                    None,
                     0,
                     index.try_into().unwrap(),
                     &ORIG_DIGIT_RECT,
                     0,
+                    self.sdl,
                 );
             });
         enemy_digit_surface_pointer
@@ -1351,11 +1375,12 @@ impl Data<'_> {
                 *surface = Graphics::load_block_vid_bpp_pic(
                     *vid_bpp,
                     pic,
-                    null_mut(),
+                    None,
                     0,
                     (index + 10).try_into().unwrap(),
                     &ORIG_DIGIT_RECT,
                     0,
+                    self.sdl,
                 );
             });
 
@@ -1368,28 +1393,37 @@ impl Data<'_> {
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
-        self.takeover.to_blocks = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
+        let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
+        self.takeover.to_blocks = self
+            .graphics
+            .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
 
         self.update_progress(60);
 
-        self.graphics.ship_on_pic = Some(Surface::from_ptr(
-            NonNull::new(IMG_Load(self.find_file(
-                SHIP_ON_PIC_FILE_C.as_ptr() as *mut c_char,
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-                Themed::UseTheme as c_int,
-                Criticality::Critical as c_int,
-            )))
-            .unwrap(),
-        ));
-        self.graphics.ship_off_pic = Some(Surface::from_ptr(
-            NonNull::new(IMG_Load(self.find_file(
-                SHIP_OFF_PIC_FILE_C.as_ptr() as *mut c_char,
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-                Themed::UseTheme as c_int,
-                Criticality::Critical as c_int,
-            )))
-            .unwrap(),
-        ));
+        let path = self.find_file(
+            SHIP_ON_PIC_FILE_C.as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::UseTheme as c_int,
+            Criticality::Critical as c_int,
+        );
+        assert!(path.is_null().not());
+        self.graphics.ship_on_pic = Some(
+            self.sdl
+                .load_image_from_c_str_path(CStr::from_ptr(path))
+                .unwrap(),
+        );
+        let path = self.find_file(
+            SHIP_OFF_PIC_FILE_C.as_ptr() as *mut c_char,
+            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            Themed::UseTheme as c_int,
+            Criticality::Critical as c_int,
+        );
+        assert!(path.is_null().not());
+        self.graphics.ship_off_pic = Some(
+            self.sdl
+                .load_image_from_c_str_path(CStr::from_ptr(path))
+                .unwrap(),
+        );
 
         // the following are not theme-specific and are therefore only loaded once!
         DO_ONCE.call_once(|| {
@@ -1412,7 +1446,10 @@ impl Data<'_> {
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            self.graphics.takeover_bg_pic = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
+            let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
+            self.graphics.takeover_bg_pic =
+                self.graphics
+                    .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
             self.set_takeover_rects(); // setup takeover rectangles
 
             // cursor shapes
@@ -1426,60 +1463,84 @@ impl Data<'_> {
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            self.graphics.console_pic = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
+            let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
+            self.graphics.console_pic =
+                self.graphics
+                    .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
             let fpath = self.find_file(
                 CONSOLE_BG_PIC1_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            self.graphics.console_bg_pic1 = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
+            let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
+            self.graphics.console_bg_pic1 =
+                self.graphics
+                    .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
             let fpath = self.find_file(
                 CONSOLE_BG_PIC2_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            self.graphics.console_bg_pic2 = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
+            let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
+            self.graphics.console_bg_pic2 =
+                self.graphics
+                    .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
 
             self.update_progress(80);
 
-            self.graphics.arrow_up = Some(Surface::from_ptr(
-                NonNull::new(IMG_Load(self.find_file(
-                    cstr!("arrow_up.png").as_ptr() as *mut c_char,
-                    GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-                    Themed::NoTheme as c_int,
-                    Criticality::Critical as c_int,
-                )))
-                .unwrap(),
-            ));
-            self.graphics.arrow_down = Some(Surface::from_ptr(
-                NonNull::new(IMG_Load(self.find_file(
-                    cstr!("arrow_down.png").as_ptr() as *mut c_char,
-                    GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-                    Themed::NoTheme as c_int,
-                    Criticality::Critical as c_int,
-                )))
-                .unwrap(),
-            ));
-            self.graphics.arrow_right = Some(Surface::from_ptr(
-                NonNull::new(IMG_Load(self.find_file(
-                    cstr!("arrow_right.png").as_ptr() as *mut c_char,
-                    GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-                    Themed::NoTheme as c_int,
-                    Criticality::Critical as c_int,
-                )))
-                .unwrap(),
-            ));
-            self.graphics.arrow_left = Some(Surface::from_ptr(
-                NonNull::new(IMG_Load(self.find_file(
-                    cstr!("arrow_left.png").as_ptr() as *mut c_char,
-                    GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-                    Themed::NoTheme as c_int,
-                    Criticality::Critical as c_int,
-                )))
-                .unwrap(),
-            ));
+            let path = self.find_file(
+                cstr!("arrow_up.png").as_ptr() as *mut c_char,
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            );
+            assert!(path.is_null().not());
+            self.graphics.arrow_up = Some(
+                self.sdl
+                    .load_image_from_c_str_path(CStr::from_ptr(path))
+                    .unwrap(),
+            );
+
+            let path = self.find_file(
+                cstr!("arrow_down.png").as_ptr() as *mut c_char,
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            );
+            assert!(path.is_null().not());
+            self.graphics.arrow_down = Some(
+                self.sdl
+                    .load_image_from_c_str_path(CStr::from_ptr(path))
+                    .unwrap(),
+            );
+
+            let path = self.find_file(
+                cstr!("arrow_right.png").as_ptr() as *mut c_char,
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            );
+            assert!(path.is_null().not());
+            self.graphics.arrow_right = Some(
+                self.sdl
+                    .load_image_from_c_str_path(CStr::from_ptr(path))
+                    .unwrap(),
+            );
+
+            let path = self.find_file(
+                cstr!("arrow_left.png").as_ptr() as *mut c_char,
+                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            );
+            assert!(path.is_null().not());
+            self.graphics.arrow_left = Some(
+                self.sdl
+                    .load_image_from_c_str_path(CStr::from_ptr(path))
+                    .unwrap(),
+            );
             //---------- get Banner
             let fpath = self.find_file(
                 BANNER_BLOCK_FILE_C.as_ptr() as *mut c_char,
@@ -1487,7 +1548,10 @@ impl Data<'_> {
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            self.graphics.banner_pic = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
+            let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
+            self.graphics.banner_pic =
+                self.graphics
+                    .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
 
             self.update_progress(90);
             //---------- get Droid images ----------
@@ -1544,7 +1608,10 @@ impl Data<'_> {
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            self.graphics.pic999 = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
+            let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
+            self.graphics.pic999 = self
+                .graphics
+                .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
 
             // get the Ashes pics
             libc::strcpy(fname.as_mut_ptr(), cstr!("Ashes.png").as_ptr());
@@ -1558,14 +1625,15 @@ impl Data<'_> {
                 warn!("deactivated display of droid-decals");
                 self.global.game_config.show_decals = false.into();
             } else {
+                let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
                 self.graphics
-                    .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int);
+                    .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int, self.sdl);
                 self.graphics.decal_pics[0] =
                     self.graphics
-                        .load_block(null_mut(), 0, 0, &ORIG_BLOCK_RECT, 0);
+                        .load_block(None, 0, 0, &ORIG_BLOCK_RECT, 0, self.sdl);
                 self.graphics.decal_pics[1] =
                     self.graphics
-                        .load_block(null_mut(), 0, 1, &ORIG_BLOCK_RECT, 0);
+                        .load_block(None, 0, 1, &ORIG_BLOCK_RECT, 0, self.sdl);
             }
         });
 
@@ -1764,14 +1832,17 @@ impl Data<'_> {
     /// This might be very handy, especially in the Title() function to
     /// display the title image and perhaps also for displaying the ship
     /// and that.
-    pub unsafe fn display_image(&mut self, datafile: *mut c_char) {
-        let mut image = Surface::from_ptr(NonNull::new(IMG_Load(datafile)).unwrap_or_else(|| {
-            panic!(
-                "couldn't load image {}: {}",
-                CStr::from_ptr(datafile).to_string_lossy(),
-                CStr::from_ptr(SDL_GetError()).to_string_lossy()
-            )
-        }));
+    pub unsafe fn display_image(&mut self, datafile: &CStr) {
+        let mut image = self
+            .sdl
+            .load_image_from_c_str_path(datafile)
+            .unwrap_or_else(|| {
+                panic!(
+                    "couldn't load image {}: {}",
+                    datafile.to_string_lossy(),
+                    CStr::from_ptr(SDL_GetError()).to_string_lossy()
+                )
+            });
 
         if (self.global.game_config.scale - 1.).abs() > c_float::EPSILON {
             scale_pic(&mut image, self.global.game_config.scale);

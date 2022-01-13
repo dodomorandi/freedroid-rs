@@ -20,6 +20,7 @@ use std::{
     env,
     ffi::CStr,
     fs::{self, File},
+    ops::Not,
     os::raw::{c_char, c_float, c_int, c_long, c_void},
     path::Path,
     ptr::null_mut,
@@ -742,25 +743,30 @@ impl Data<'_> {
         }
 
         if self.graphics.progress_meter_pic.is_none() {
-            let mut fpath = self.find_file(
+            let fpath = self.find_file(
                 PROGRESS_METER_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            self.graphics.progress_meter_pic = self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
+            let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
+            self.graphics.progress_meter_pic =
+                self.graphics
+                    .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
             scale_pic(
                 self.graphics.progress_meter_pic.as_mut().unwrap(),
                 self.global.game_config.scale,
             );
-            fpath = self.find_file(
+            let fpath = self.find_file(
                 PROGRESS_FILLER_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
+            let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
             self.graphics.progress_filler_pic =
-                self.graphics.load_block(fpath, 0, 0, null_mut(), 0);
+                self.graphics
+                    .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
             scale_pic(
                 self.graphics.progress_filler_pic.as_mut().unwrap(),
                 self.global.game_config.scale,

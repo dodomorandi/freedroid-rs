@@ -1,11 +1,12 @@
 use crate::{graphics::scale_pic, Data};
 
 use core::fmt;
-use sdl::{Rect, Surface};
-use sdl_sys::{IMG_Load, SDL_SetColorKey, SDL_SRCCOLORKEY};
+use sdl::Rect;
+use sdl_sys::{SDL_SetColorKey, SDL_SRCCOLORKEY};
 use std::{
+    ffi::CStr,
     os::raw::{c_char, c_float, c_int},
-    ptr::{null_mut, NonNull},
+    ptr::null_mut,
 };
 
 #[derive(Debug)]
@@ -184,7 +185,10 @@ impl<'sdl> Data<'sdl> {
             return null_mut();
         }
 
-        let mut surface = Surface::from_ptr(NonNull::new(IMG_Load(filename)).unwrap());
+        let mut surface = self
+            .sdl
+            .load_image_from_c_str_path(CStr::from_ptr(filename))
+            .unwrap();
         scale_pic(&mut surface, scale);
 
         let mut font = Box::new(BFontInfo {
