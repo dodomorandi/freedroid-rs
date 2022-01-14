@@ -13,12 +13,12 @@ use crate::{
 
 use log::{error, warn};
 use sdl::{Rect, Surface};
-use sdl_sys::{IMG_Load_RW, IMG_isJPG, SDL_Color, SDL_RWops, SDL_WarpMouse};
+use sdl_sys::{IMG_isJPG, SDL_Color, SDL_WarpMouse};
 use std::{
     ffi::CStr,
     ops::Not,
     os::raw::{c_char, c_float, c_int},
-    ptr::{null_mut, NonNull},
+    ptr::null_mut,
 };
 
 const UPDATE_ONLY: u8 = 0x01;
@@ -59,12 +59,6 @@ impl Default for ShipData<'_> {
             right_rect: Rect::default(),
         }
     }
-}
-
-#[inline]
-pub unsafe fn sdl_rw_seek(ctx: *mut SDL_RWops, offset: c_int, whence: c_int) -> c_int {
-    let seek: unsafe fn(*mut SDL_RWops, c_int, c_int) -> c_int = std::mem::transmute((*ctx).seek);
-    seek(ctx, offset, whence)
 }
 
 impl Data<'_> {
@@ -188,12 +182,16 @@ impl Data<'_> {
         if droid_type != self.ship.last_droid_type || self.ship.droid_pics.is_none() {
             // we need to unpack the droid-pics into our local storage
             self.ship.droid_pics = None;
-            let packed_portrait =
-                self.graphics.packed_portraits[usize::try_from(droid_type).unwrap()];
-            let tmp = IMG_Load_RW(packed_portrait, 0);
+            let packed_portrait = self.graphics.packed_portraits
+                [usize::try_from(droid_type).unwrap()]
+            .as_ref()
+            .unwrap();
+            let tmp = packed_portrait.image_load();
             // important: return seek-position to beginning of RWops for next operation to succeed!
-            sdl_rw_seek(packed_portrait, 0, libc::SEEK_SET);
-            let mut tmp = match NonNull::new(tmp).map(|ptr| unsafe { Surface::from_ptr(ptr) }) {
+            packed_portrait
+                .seek(0, sdl::rwops::Whence::Set)
+                .expect("unable to seek rw_ops");
+            let mut tmp = match tmp {
                 Some(tmp) => tmp,
                 None => {
                     error!(
@@ -204,7 +202,7 @@ impl Data<'_> {
                 }
             };
             // now see if its a jpg, then we add some transparency by color-keying:
-            let droid_pics = if IMG_isJPG(packed_portrait) != 0 {
+            let droid_pics = if IMG_isJPG(packed_portrait.as_ptr()) != 0 {
                 tmp.display_format().unwrap()
             } else {
                 // else assume it's png ;
@@ -212,7 +210,9 @@ impl Data<'_> {
             };
             self.ship.droid_pics = Some(droid_pics);
             drop(tmp);
-            sdl_rw_seek(packed_portrait, 0, libc::SEEK_SET);
+            packed_portrait
+                .seek(0, sdl::rwops::Whence::Set)
+                .expect("unable to seek rw_ops");
 
             // do we have to scale the droid pics
             #[allow(clippy::float_cmp)]

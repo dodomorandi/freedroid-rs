@@ -539,6 +539,7 @@ dependencies = [
  "bitflags",
  "cc",
  "cstr",
+ "log",
  "num-traits",
  "once_cell",
  "pkg-config",

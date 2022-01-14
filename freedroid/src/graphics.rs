@@ -20,17 +20,18 @@ use array_init::array_init;
 use cstr::cstr;
 use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
-use sdl::{Cursor, CursorData, FrameBuffer, Pixel, Rect, Surface, VideoModeFlags};
+use sdl::{Cursor, CursorData, FrameBuffer, Pixel, Rect, RwOpsOwned, Surface, VideoModeFlags};
 use sdl_sys::{
-    SDL_GetClipRect, SDL_GetError, SDL_GetVideoInfo, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops,
-    SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma, SDL_VideoDriverName, SDL_VideoInfo,
-    SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_RLEACCEL, SDL_SRCALPHA,
+    SDL_GetClipRect, SDL_GetError, SDL_GetVideoInfo, SDL_RWFromFile, SDL_SaveBMP_RW, SDL_SetAlpha,
+    SDL_SetGamma, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon,
+    SDL_RLEACCEL, SDL_SRCALPHA,
 };
 use std::{
     cell::RefCell,
     ffi::CStr,
     ops::Not,
     os::raw::{c_char, c_float, c_int, c_short, c_void},
+    pin::Pin,
     ptr::null_mut,
     rc::Rc,
 };
@@ -39,7 +40,6 @@ use std::{
 pub struct Graphics<'sdl> {
     vid_info: *const SDL_VideoInfo,
     pub vid_bpp: c_int,
-    portrait_raw_mem: [Option<Box<[u8]>>; Droid::NumDroids as usize],
     fonts_loaded: c_int,
     // A pointer to the surfaces containing the map-pics, which may be rescaled with respect to
     pub map_block_surface_pointer:
@@ -53,7 +53,7 @@ pub struct Graphics<'sdl> {
     /* the banner pic */
     pub banner_pic: Option<Surface<'sdl>>,
     pub pic999: Option<Surface<'sdl>>,
-    pub packed_portraits: [*mut SDL_RWops; Droid::NumDroids as usize],
+    pub packed_portraits: [Option<RwOpsOwned>; Droid::NumDroids as usize],
     pub decal_pics: [Option<Surface<'sdl>>; NUM_DECAL_PICS],
     pub takeover_bg_pic: Option<Surface<'sdl>>,
     pub console_pic: Option<Surface<'sdl>>,
@@ -89,7 +89,6 @@ impl Default for Graphics<'_> {
         Self {
             vid_info: null_mut(),
             vid_bpp: 0,
-            portrait_raw_mem: array_init(|_| None),
             fonts_loaded: 0,
             map_block_surface_pointer: array_init(|_| array_init(|_| None)),
             orig_map_block_surface_pointer: array_init(|_| array_init(|_| None)),
@@ -97,7 +96,7 @@ impl Default for Graphics<'_> {
             banner_is_destroyed: 0,
             banner_pic: None,
             pic999: None,
-            packed_portraits: [null_mut(); Droid::NumDroids as usize],
+            packed_portraits: array_init(|_| None),
             decal_pics: array_init(|_| None),
             takeover_bg_pic: None,
             console_pic: None,
@@ -459,20 +458,7 @@ impl Data<'_> {
 
     pub unsafe fn free_graphics(&mut self) {
         // free RWops structures
-        self.graphics
-            .packed_portraits
-            .iter()
-            .filter(|packed_portrait| !packed_portrait.is_null())
-            .for_each(|&packed_portrait| {
-                let close: unsafe fn(context: *mut SDL_RWops) -> c_int =
-                    std::mem::transmute((*packed_portrait).close);
-                close(packed_portrait);
-            });
-
-        self.graphics
-            .portrait_raw_mem
-            .iter_mut()
-            .for_each(|mem| drop(mem.take()));
+        self.graphics.packed_portraits.fill_with(|| None);
 
         self.graphics.enemy_surface_pointer = array_init(|_| None);
         self.graphics.influencer_surface_pointer = array_init(|_| None);
@@ -1072,10 +1058,7 @@ impl Data<'_> {
     }
 
     /// load a pic into memory and return the SDL_RWops pointer to it
-    pub unsafe fn load_raw_pic(
-        fpath: *const c_char,
-        raw_mem: &mut Option<Box<[u8]>>,
-    ) -> *mut SDL_RWops {
+    pub unsafe fn load_raw_pic(fpath: *const c_char) -> Option<RwOpsOwned> {
         use std::{fs::File, io::Read, path::Path};
 
         // sanity check
@@ -1106,7 +1089,7 @@ impl Data<'_> {
         };
 
         let len = metadata.len().try_into().unwrap();
-        let mut buf = vec![0; len].into_boxed_slice();
+        let mut buf: Pin<Box<[u8]>> = vec![0; len].into_boxed_slice().into();
         assert!(
             file.read_exact(&mut *buf).is_ok(),
             "cannot reading file {}. Giving up...",
@@ -1114,9 +1097,7 @@ impl Data<'_> {
         );
         drop(file);
 
-        let ops = SDL_RWFromMem(buf.as_mut_ptr() as *mut c_void, len.try_into().unwrap());
-        *raw_mem = Some(buf);
-        ops
+        RwOpsOwned::from_buffer(buf).ok()
     }
 
     /// Get the pics for: druids, bullets, blasts
@@ -1565,8 +1546,7 @@ impl Data<'_> {
             droids
                 .iter()
                 .zip(graphics.packed_portraits.iter_mut())
-                .zip(graphics.portrait_raw_mem.iter_mut())
-                .for_each(|((droid, packed_portrait), raw_portrait)| {
+                .for_each(|(droid, packed_portrait)| {
                     // first check if we find a file with rotation-frames: first try .jpg
                     libc::strcpy(fname.as_mut_ptr(), droid.druidname.as_ptr());
                     libc::strcat(fname.as_mut_ptr(), cstr!(".jpg").as_ptr());
@@ -1592,7 +1572,7 @@ impl Data<'_> {
                         );
                     }
 
-                    *packed_portrait = Self::load_raw_pic(fpath, raw_portrait);
+                    *packed_portrait = Self::load_raw_pic(fpath);
                 });
 
             self.update_progress(95);

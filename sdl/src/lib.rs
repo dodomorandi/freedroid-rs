@@ -27,6 +27,7 @@ pub use joystick::{Joystick, JoystickSystem};
 pub use mixer::Mixer;
 pub use pixel::Pixel;
 pub use rect::*;
+pub use rwops::RwOpsOwned;
 use sdl_sys::{
     IMG_Load, SDL_GetError, SDL_InitSubSystem, SDL_Quit, SDL_version, SDL_INIT_AUDIO,
     SDL_INIT_JOYSTICK,
