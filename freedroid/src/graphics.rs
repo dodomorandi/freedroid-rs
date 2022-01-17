@@ -24,8 +24,8 @@ use sdl::{
     ColorKeyFlag, Cursor, CursorData, FrameBuffer, Pixel, Rect, RwOpsOwned, Surface, VideoModeFlags,
 };
 use sdl_sys::{
-    SDL_GetError, SDL_GetVideoInfo, SDL_RWFromFile, SDL_SaveBMP_RW, SDL_SetGamma,
-    SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon,
+    SDL_GetVideoInfo, SDL_RWFromFile, SDL_SaveBMP_RW, SDL_SetGamma, SDL_VideoDriverName,
+    SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon,
 };
 use std::{
     cell::RefCell,
@@ -402,10 +402,7 @@ impl Data<'_> {
                     self.vars.screen_rect.width(),
                     self.vars.screen_rect.height(),
                 );
-                panic!(
-                    "SDL-Error: {}",
-                    CStr::from_ptr(SDL_GetError()).to_string_lossy()
-                );
+                panic!("SDL-Error: {}", self.sdl.get_error().to_string_lossy());
             }
         };
 
@@ -1057,7 +1054,7 @@ impl Data<'_> {
                     "Couldn't set {} x {} video mode. SDL: {}",
                     self.vars.screen_rect.width(),
                     self.vars.screen_rect.height(),
-                    CStr::from_ptr(SDL_GetError()).to_string_lossy(),
+                    self.sdl.get_error().to_string_lossy(),
                 );
                 std::process::exit(-1);
             }
@@ -1849,7 +1846,7 @@ impl Data<'_> {
                 panic!(
                     "couldn't load image {}: {}",
                     datafile.to_string_lossy(),
-                    CStr::from_ptr(SDL_GetError()).to_string_lossy()
+                    self.sdl.get_error().to_string_lossy(),
                 )
             });
 
