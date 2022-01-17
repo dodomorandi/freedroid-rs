@@ -22,9 +22,9 @@ const MIX_MAX_VOLUME: u8 = 128;
 
 #[inline]
 fn mix_load_wav<'a>(mixer: &'a Mixer, file: &CStr) -> Option<Chunk<'a>> {
-    use sdl::rwops::Mode;
+    use sdl::rwops::{Mode, ReadWriteMode};
 
-    let file = RwOps::from_c_str_path(file, Mode::Read)?;
+    let file = RwOps::from_c_str_path(file, Mode::from(ReadWriteMode::Read))?;
     mixer.load_wav_from_rwops(file)
 }
 

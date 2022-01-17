@@ -4,6 +4,7 @@ use std::{
     mem,
     ops::Not,
     os::raw::c_int,
+    path::{Path, PathBuf},
     pin::Pin,
     ptr::NonNull,
 };
@@ -21,6 +22,28 @@ pub struct RwOps<'a> {
 }
 
 impl<'a> RwOps<'a> {
+    #[cfg(unix)]
+    pub fn from_pathbuf(path: PathBuf, mode: Mode) -> Option<Self> {
+        use std::os::unix::ffi::OsStringExt;
+
+        let mut path = path.into_os_string().into_vec();
+        path.push(0);
+        let c_path = CStr::from_bytes_with_nul(&path).ok()?;
+        Self::from_c_str_path(c_path, mode)
+    }
+
+    #[cfg(not(unix))]
+    pub fn from_pathbuf(path: PathBuf, mode: Mode) -> Option<Self> {
+        Self::from_path(&path, mode)
+    }
+
+    pub fn from_path(path: &Path, mode: Mode) -> Option<Self> {
+        let mut path = path.to_string_lossy().into_owned().into_bytes();
+        path.push(0);
+        let c_path = CStr::from_bytes_with_nul(&path).ok()?;
+        Self::from_c_str_path(c_path, mode)
+    }
+
     pub fn from_c_str_path(path: &CStr, mode: Mode) -> Option<Self> {
         let ret = unsafe { SDL_RWFromFile(path.as_ptr(), mode.to_c_str().as_ptr()) };
         NonNull::new(ret).map(|inner| Self {
@@ -58,6 +81,10 @@ impl<'a> RwOps<'a> {
 
     pub fn seek(&self, offset: i64, whence: Whence) -> Result<u64, RwSeekError> {
         unsafe { seek(self.inner, offset, whence) }
+    }
+
+    pub fn as_mut_ptr(&mut self) -> *mut SDL_RWops {
+        self.inner.as_ptr()
     }
 }
 
@@ -212,7 +239,7 @@ impl Drop for RwOpsOwned {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Mode {
+pub enum ReadWriteMode {
     Read,
     Write,
     ReadWrite,
@@ -221,17 +248,46 @@ pub enum Mode {
     Truncate,
 }
 
-impl Mode {
-    pub fn to_c_str(self) -> &'static CStr {
-        use Mode::*;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Mode {
+    pub rw_mode: ReadWriteMode,
+    pub binary: bool,
+}
 
-        match self {
-            Read => cstr!("r"),
-            Write => cstr!("w"),
-            ReadWrite => cstr!("r+"),
-            Append => cstr!("a"),
-            AppendRead => cstr!("a+"),
-            Truncate => cstr!("w+"),
+impl From<ReadWriteMode> for Mode {
+    fn from(rw_mode: ReadWriteMode) -> Self {
+        Self {
+            rw_mode,
+            binary: false,
+        }
+    }
+}
+
+impl Mode {
+    #[must_use]
+    pub fn with_binary(self, binary: bool) -> Self {
+        Self {
+            rw_mode: self.rw_mode,
+            binary,
+        }
+    }
+
+    pub fn to_c_str(self) -> &'static CStr {
+        use ReadWriteMode::*;
+
+        match (self.rw_mode, self.binary) {
+            (Read, false) => cstr!("r"),
+            (Read, true) => cstr!("rb"),
+            (Write, false) => cstr!("w"),
+            (Write, true) => cstr!("wb"),
+            (ReadWrite, false) => cstr!("r+"),
+            (ReadWrite, true) => cstr!("r+b"),
+            (Append, false) => cstr!("a"),
+            (Append, true) => cstr!("ab"),
+            (AppendRead, false) => cstr!("a+"),
+            (AppendRead, true) => cstr!("a+b"),
+            (Truncate, false) => cstr!("w+"),
+            (Truncate, true) => cstr!("w+b"),
         }
     }
 }

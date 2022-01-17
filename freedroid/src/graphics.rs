@@ -21,11 +21,13 @@ use cstr::cstr;
 use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
 use sdl::{
-    ColorKeyFlag, Cursor, CursorData, FrameBuffer, Pixel, Rect, RwOpsOwned, Surface, VideoModeFlags,
+    rwops::{self, RwOps},
+    ColorKeyFlag, Cursor, CursorData, FrameBuffer, Pixel, Rect, RwOpsOwned, Surface,
+    VideoModeFlags,
 };
 use sdl_sys::{
-    SDL_GetVideoInfo, SDL_RWFromFile, SDL_SaveBMP_RW, SDL_SetGamma, SDL_VideoDriverName,
-    SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon,
+    SDL_GetVideoInfo, SDL_SaveBMP_RW, SDL_SetGamma, SDL_VideoDriverName, SDL_VideoInfo,
+    SDL_WM_SetCaption, SDL_WM_SetIcon,
 };
 use std::{
     cell::RefCell,
@@ -422,18 +424,28 @@ impl Data<'_> {
     ///        but will silently overwrite them.  No problem in most
     ///        cases I think.
     pub unsafe fn take_screenshot(&mut self) {
+        use rwops::{Mode, ReadWriteMode};
+
         self.activate_conservative_frame_computation();
 
         let screenshot_filename =
-            format!("Screenshot_{}.bmp\0", self.graphics.number_of_screenshot);
+            format!("Screenshot_{}.bmp", self.graphics.number_of_screenshot).into();
+        let mut rw_ops = match RwOps::from_pathbuf(
+            screenshot_filename,
+            Mode::from(ReadWriteMode::Write).with_binary(true),
+        ) {
+            Some(rw_ops) => rw_ops,
+            None => {
+                error!("Unable to take screenshot, cannot write to file.");
+                return;
+            }
+        };
         SDL_SaveBMP_RW(
             self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            SDL_RWFromFile(
-                screenshot_filename.as_ptr() as *const c_char,
-                cstr!("wb").as_ptr(),
-            ),
-            1,
+            rw_ops.as_mut_ptr(),
+            0,
         );
+        drop(rw_ops);
         self.graphics.number_of_screenshot = self.graphics.number_of_screenshot.wrapping_add(1);
         self.display_banner(
             cstr!("Screenshot").as_ptr(),
