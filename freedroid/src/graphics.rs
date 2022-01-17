@@ -20,11 +20,12 @@ use array_init::array_init;
 use cstr::cstr;
 use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
-use sdl::{Cursor, CursorData, FrameBuffer, Pixel, Rect, RwOpsOwned, Surface, VideoModeFlags};
+use sdl::{
+    ColorKeyFlag, Cursor, CursorData, FrameBuffer, Pixel, Rect, RwOpsOwned, Surface, VideoModeFlags,
+};
 use sdl_sys::{
-    SDL_GetError, SDL_GetVideoInfo, SDL_RWFromFile, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma,
-    SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_RLEACCEL,
-    SDL_SRCALPHA,
+    SDL_GetError, SDL_GetVideoInfo, SDL_RWFromFile, SDL_SaveBMP_RW, SDL_SetGamma,
+    SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon,
 };
 use std::{
     cell::RefCell,
@@ -234,7 +235,10 @@ impl<'sdl> Graphics<'sdl> {
         let usealpha = (*raw_format).Amask != 0;
 
         if usealpha {
-            SDL_SetAlpha(pic.as_mut_ptr(), 0, 0); /* clear per-surf alpha for internal blit */
+            // clear per-surf alpha for internal blit */
+            if pic.set_alpha(ColorKeyFlag::empty(), 0).not() {
+                error!("Cannot set alpha channel on surface");
+            }
         }
         let mut tmp = Surface::create_rgb(
             dim.width().into(),
@@ -255,12 +259,12 @@ impl<'sdl> Graphics<'sdl> {
             i16::try_from(line).unwrap() * i16::try_from(dim.height() + 2).unwrap(),
         );
         pic.blit_from(&src, &mut ret);
-        if usealpha {
-            SDL_SetAlpha(
-                ret.as_mut_ptr(),
-                SDL_SRCALPHA as u32 | SDL_RLEACCEL as u32,
-                255,
-            );
+        if usealpha
+            && ret
+                .set_alpha(ColorKeyFlag::SRC_ALPHA | ColorKeyFlag::RLE_ACCEL, 255)
+                .not()
+        {
+            error!("Cannot set alpha channel on surface");
         }
 
         Some(ret)
@@ -609,14 +613,18 @@ impl Data<'_> {
             .iter_mut()
             .flatten()
             .for_each(|surface| {
-                SDL_SetAlpha(surface.as_mut_ptr(), 0, 0);
+                if surface.set_alpha(ColorKeyFlag::empty(), 0).not() {
+                    error!("Cannot set alpha channel on surface");
+                }
             });
         self.graphics
             .enemy_digit_surface_pointer
             .iter_mut()
             .flatten()
             .for_each(|surface| {
-                SDL_SetAlpha(surface.as_mut_ptr(), 0, 0);
+                if surface.set_alpha(ColorKeyFlag::empty(), 0).not() {
+                    error!("Cannot set alpha channel on surface");
+                }
             });
         if (scale - 1.).abs() <= f32::EPSILON {
             return;
@@ -657,12 +665,16 @@ impl Data<'_> {
         for surface in &mut self.graphics.influencer_surface_pointer {
             let surface = surface.as_mut().unwrap();
             scale_pic(surface, scale);
-            SDL_SetAlpha(surface.as_mut_ptr(), 0, 0);
+            if surface.set_alpha(ColorKeyFlag::empty(), 0).not() {
+                error!("Cannot set alpha channel on surface");
+            }
         }
         for surface in &mut self.graphics.enemy_surface_pointer {
             let surface = surface.as_mut().unwrap();
             scale_pic(surface, scale);
-            SDL_SetAlpha(surface.as_mut_ptr(), 0, 0);
+            if surface.set_alpha(ColorKeyFlag::empty(), 0).not() {
+                error!("Cannot set alpha channel on surface");
+            }
         }
 
         //---------- rescale Bullet blocks
@@ -686,12 +698,16 @@ impl Data<'_> {
         for surface in &mut self.graphics.influ_digit_surface_pointer {
             let surface = surface.as_mut().unwrap();
             scale_pic(surface, scale);
-            SDL_SetAlpha(surface.as_mut_ptr(), 0, 0);
+            if surface.set_alpha(ColorKeyFlag::empty(), 0).not() {
+                error!("Cannot set alpha channel on surface");
+            }
         }
         for surface in &mut self.graphics.enemy_digit_surface_pointer {
             let surface = surface.as_mut().unwrap();
             scale_pic(surface, scale);
-            SDL_SetAlpha(surface.as_mut_ptr(), 0, 0);
+            if surface.set_alpha(ColorKeyFlag::empty(), 0).not() {
+                error!("Cannot set alpha channel on surface");
+            }
         }
 
         //---------- rescale Takeover pics
@@ -1217,7 +1233,14 @@ impl Data<'_> {
                 );
 
                 /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
-                SDL_SetAlpha(influencer_surface.as_mut().unwrap().as_mut_ptr(), 0, 0);
+                if influencer_surface
+                    .as_mut()
+                    .unwrap()
+                    .set_alpha(ColorKeyFlag::empty(), 0)
+                    .not()
+                {
+                    error!("Cannot set alpha channel on surface");
+                }
             },
         );
 
@@ -1237,7 +1260,14 @@ impl Data<'_> {
                 );
 
                 /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
-                SDL_SetAlpha(enemy_surface.as_mut().unwrap().as_mut_ptr(), 0, 0);
+                if enemy_surface
+                    .as_mut()
+                    .unwrap()
+                    .set_alpha(ColorKeyFlag::empty(), 0)
+                    .not()
+                {
+                    error!("Cannot set alpha channel on surface");
+                }
             });
 
         self.update_progress(30);

@@ -11,9 +11,9 @@ use bitflags::bitflags;
 use sdl_sys::{
     rotozoomSurface, zoomSurface, SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha,
     SDL_FillRect, SDL_Flip, SDL_FreeSurface, SDL_GetClipRect, SDL_PixelFormat, SDL_Rect,
-    SDL_SetClipRect, SDL_SetColorKey, SDL_Surface, SDL_UpdateRect, SDL_UpdateRects, SDL_UpperBlit,
-    SDL_bool_SDL_TRUE, SDL_ASYNCBLIT, SDL_HWACCEL, SDL_HWSURFACE, SDL_PREALLOC, SDL_RLEACCEL,
-    SDL_RLEACCELOK, SDL_SRCALPHA, SDL_SRCCOLORKEY,
+    SDL_SetAlpha, SDL_SetClipRect, SDL_SetColorKey, SDL_Surface, SDL_UpdateRect, SDL_UpdateRects,
+    SDL_UpperBlit, SDL_bool_SDL_TRUE, SDL_ASYNCBLIT, SDL_HWACCEL, SDL_HWSURFACE, SDL_PREALLOC,
+    SDL_RLEACCEL, SDL_RLEACCELOK, SDL_SRCALPHA, SDL_SRCCOLORKEY,
 };
 
 use crate::{
@@ -286,6 +286,11 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
         let mut rect = Rect::default();
         unsafe { SDL_GetClipRect(self.pointer.as_ptr(), rect.as_mut_ptr()) };
         rect
+    }
+
+    #[must_use = "success/failure is given as true/false"]
+    pub fn set_alpha(&mut self, flag: ColorKeyFlag, alpha: u8) -> bool {
+        unsafe { SDL_SetAlpha(self.pointer.as_ptr(), flag.bits(), alpha) == 0 }
     }
 }
 
