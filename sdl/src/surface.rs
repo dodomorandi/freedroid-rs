@@ -7,11 +7,13 @@ use std::{
     ptr::{self, null_mut, NonNull},
 };
 
+use bitflags::bitflags;
 use sdl_sys::{
     rotozoomSurface, zoomSurface, SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha,
     SDL_FillRect, SDL_Flip, SDL_FreeSurface, SDL_PixelFormat, SDL_Rect, SDL_SetClipRect,
-    SDL_Surface, SDL_UpdateRect, SDL_UpdateRects, SDL_UpperBlit, SDL_bool_SDL_TRUE, SDL_ASYNCBLIT,
-    SDL_HWSURFACE, SDL_RLEACCEL,
+    SDL_SetColorKey, SDL_Surface, SDL_UpdateRect, SDL_UpdateRects, SDL_UpperBlit,
+    SDL_bool_SDL_TRUE, SDL_ASYNCBLIT, SDL_HWACCEL, SDL_HWSURFACE, SDL_PREALLOC, SDL_RLEACCEL,
+    SDL_RLEACCELOK, SDL_SRCALPHA, SDL_SRCCOLORKEY,
 };
 
 use crate::{
@@ -273,6 +275,23 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
                 rects.as_ptr() as *const SDL_Rect as *mut SDL_Rect,
             )
         }
+    }
+
+    #[must_use = "success/failure is given as true/false"]
+    pub fn set_color_key(&mut self, flag: ColorKeyFlag, key: Pixel) -> bool {
+        unsafe { SDL_SetColorKey(self.pointer.as_ptr(), flag.bits(), key.0) == 0 }
+    }
+}
+
+bitflags! {
+    #[derive(Default)]
+    pub struct ColorKeyFlag: u32 {
+        const HW_ACCEL = SDL_HWACCEL as u32;
+        const SRC_COLOR_KEY = SDL_SRCCOLORKEY as u32;
+        const RLE_ACCEL_OK = SDL_RLEACCELOK as u32;
+        const RLE_ACCEL = SDL_RLEACCEL as u32;
+        const SRC_ALPHA = SDL_SRCALPHA as u32;
+        const PRE_ALLOC = SDL_PREALLOC as u32;
     }
 }
 

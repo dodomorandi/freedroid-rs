@@ -61,6 +61,12 @@ impl Pixel {
     }
 }
 
+impl From<u32> for Pixel {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BytesPerPixel {
     One,

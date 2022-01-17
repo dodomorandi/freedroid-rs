@@ -1,8 +1,7 @@
 use crate::{graphics::scale_pic, Data};
 
 use core::fmt;
-use sdl::Rect;
-use sdl_sys::{SDL_SetColorKey, SDL_SRCCOLORKEY};
+use sdl::{ColorKeyFlag, Rect};
 use std::{
     ffi::CStr,
     os::raw::{c_char, c_float, c_int},
@@ -135,7 +134,10 @@ pub unsafe fn init_font(font: &mut BFontInfo) {
 
     font.h = surface.height().into();
 
-    SDL_SetColorKey(surface.as_mut_ptr(), SDL_SRCCOLORKEY as u32, last_row_pixel);
+    assert!(
+        surface.set_color_key(ColorKeyFlag::SRC_COLOR_KEY, last_row_pixel.into()),
+        "SDL set color key failed"
+    );
 }
 
 pub unsafe fn centered_put_string_font<const F: bool>(
