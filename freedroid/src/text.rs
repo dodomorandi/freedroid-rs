@@ -18,8 +18,8 @@ use sdl::{Rect, RectRef, Surface};
 use sdl_sys::SDLKey_SDLK_DELETE;
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_RETURN, SDLMod, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_RSHIFT,
-    SDL_Event, SDL_EventType, SDL_GetClipRect, SDL_PushEvent, SDL_WaitEvent, SDL_BUTTON_LEFT,
-    SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
+    SDL_Event, SDL_EventType, SDL_PushEvent, SDL_WaitEvent, SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE,
+    SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
 };
 use std::{
     ffi::CStr,
@@ -403,12 +403,10 @@ impl Data<'_> {
             self.text.my_cursor_y = starty;
         }
 
-        let mut store_clip = Rect::default();
         let mut temp_clipping_rect;
-        SDL_GetClipRect(
-            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            store_clip.as_mut(),
-        ); /* store previous clip-rect */
+
+        // store previous clip-rect
+        let store_clip = self.graphics.ne_screen.as_ref().unwrap().get_clip_rect();
         if !clip.is_null() {
             self.graphics
                 .ne_screen

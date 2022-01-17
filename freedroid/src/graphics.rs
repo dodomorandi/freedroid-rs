@@ -22,9 +22,9 @@ use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
 use sdl::{Cursor, CursorData, FrameBuffer, Pixel, Rect, RwOpsOwned, Surface, VideoModeFlags};
 use sdl_sys::{
-    SDL_GetClipRect, SDL_GetError, SDL_GetVideoInfo, SDL_RWFromFile, SDL_SaveBMP_RW, SDL_SetAlpha,
-    SDL_SetGamma, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon,
-    SDL_RLEACCEL, SDL_SRCALPHA,
+    SDL_GetError, SDL_GetVideoInfo, SDL_RWFromFile, SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetGamma,
+    SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_RLEACCEL,
+    SDL_SRCALPHA,
 };
 use std::{
     cell::RefCell,
@@ -807,8 +807,7 @@ impl Data<'_> {
         let now = self.sdl.ticks_ms();
 
         self.wait_for_all_keys_released();
-        let mut clip_rect = Rect::default();
-        loop {
+        let clip_rect = loop {
             // pick an old enough tile
             let mut next_tile;
             loop {
@@ -828,7 +827,7 @@ impl Data<'_> {
             *used_tiles.last_mut().unwrap() = next_tile;
 
             // make sure we can blit the full rect without clipping! (would change *rect!)
-            SDL_GetClipRect(frame_buffer.as_mut_ptr(), clip_rect.as_mut());
+            let clip_rect = frame_buffer.get_clip_rect();
             frame_buffer.clear_clip_rect();
             // set it
             noise_tiles[usize::try_from(next_tile).unwrap()].blit_to(frame_buffer, &mut *rect);
@@ -836,13 +835,13 @@ impl Data<'_> {
             self.sdl.delay_ms(25);
 
             if timeout != 0 && self.sdl.ticks_ms() - now > timeout.try_into().unwrap() {
-                break;
+                break clip_rect;
             }
 
             if self.any_key_just_pressed() != 0 {
-                break;
+                break clip_rect;
             }
-        }
+        };
 
         //restore previous clip-rectange
         frame_buffer.set_clip_rect(&clip_rect);
