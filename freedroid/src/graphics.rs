@@ -25,7 +25,7 @@ use sdl::{
     ColorKeyFlag, Cursor, CursorData, FrameBuffer, Pixel, Rect, RwOpsOwned, Surface,
     VideoModeFlags,
 };
-use sdl_sys::{SDL_GetVideoInfo, SDL_VideoInfo, SDL_WM_SetIcon};
+use sdl_sys::{SDL_GetVideoInfo, SDL_VideoInfo};
 use std::{
     borrow::Cow,
     cell::RefCell,
@@ -1051,7 +1051,7 @@ impl Data<'_> {
             let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
             match fpath {
                 Some(fpath) => match self.sdl.load_image_from_c_str_path(fpath) {
-                    Some(mut img) => SDL_WM_SetIcon(img.as_mut_ptr(), null_mut()),
+                    Some(mut img) => self.sdl.video.window_manager().set_icon(&mut img, None),
                     None => {
                         warn!(
                             "SDL load image failed for icon file '{}'\n",

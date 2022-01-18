@@ -257,7 +257,7 @@ impl<V, T, J, M> Builder<V, T, J, M> {
         value |= u32::try_from(sdl_sys::SDL_INIT_VIDEO).unwrap();
         Builder {
             value,
-            video: Video,
+            video: Video::new(),
             timer,
             joystick,
             mixer: audio,

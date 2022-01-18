@@ -1,25 +1,33 @@
 use std::{
+    cell::Cell,
     ffi::CStr,
-    marker::PhantomData,
     num::NonZeroU8,
     ops::Not,
     os::raw::{c_char, c_int},
-    ptr::NonNull,
+    ptr::{null_mut, NonNull},
 };
 
 use bitflags::bitflags;
 use sdl_sys::{
-    SDL_SetGamma, SDL_SetVideoMode, SDL_VideoDriverName, SDL_WM_SetCaption, SDL_ANYFORMAT,
-    SDL_ASYNCBLIT, SDL_DOUBLEBUF, SDL_FULLSCREEN, SDL_HWPALETTE, SDL_HWSURFACE, SDL_NOFRAME,
-    SDL_OPENGL, SDL_OPENGLBLIT, SDL_RESIZABLE,
+    SDL_SetGamma, SDL_SetVideoMode, SDL_VideoDriverName, SDL_WM_SetCaption, SDL_WM_SetIcon,
+    SDL_ANYFORMAT, SDL_ASYNCBLIT, SDL_DOUBLEBUF, SDL_FULLSCREEN, SDL_HWPALETTE, SDL_HWSURFACE,
+    SDL_NOFRAME, SDL_OPENGL, SDL_OPENGLBLIT, SDL_RESIZABLE,
 };
 
-use crate::FrameBuffer;
+use crate::{FrameBuffer, Surface};
 
 #[derive(Debug)]
-pub struct Video;
+pub struct Video {
+    set_video_mode_called: Cell<bool>,
+}
 
 impl Video {
+    pub(crate) const fn new() -> Self {
+        Self {
+            set_video_mode_called: Cell::new(false),
+        }
+    }
+
     pub fn set_video_mode(
         &self,
         width: c_int,
@@ -27,6 +35,7 @@ impl Video {
         bits_per_pixel: Option<NonZeroU8>,
         flags: VideoModeFlags,
     ) -> Option<FrameBuffer> {
+        self.set_video_mode_called.set(true);
         unsafe {
             let surface_ptr = SDL_SetVideoMode(
                 width,
@@ -57,16 +66,33 @@ impl Video {
     }
 
     pub fn window_manager(&self) -> WindowManager<'_> {
-        WindowManager(PhantomData)
+        WindowManager(self)
     }
 }
 
 #[derive(Debug)]
-pub struct WindowManager<'a>(PhantomData<&'a ()>);
+pub struct WindowManager<'a>(&'a Video);
 
 impl WindowManager<'_> {
     pub fn set_caption(&self, title: &CStr, icon: &CStr) {
         unsafe { SDL_WM_SetCaption(title.as_ptr(), icon.as_ptr()) }
+    }
+
+    pub fn set_icon(&self, icon: &mut Surface, mask: Option<&mut [u8]>) {
+        if self.0.set_video_mode_called.get() {
+            panic!("SDL video wm set_icon must be called before set_video_mode");
+        }
+
+        if let Some(mask) = mask.as_ref() {
+            assert_eq!(mask.len(), (icon.height() * (icon.width() / 8)).into());
+        }
+
+        unsafe {
+            SDL_WM_SetIcon(
+                icon.as_mut_ptr(),
+                mask.map(|mask| mask.as_mut_ptr()).unwrap_or(null_mut()),
+            )
+        }
     }
 }
 
