@@ -25,10 +25,9 @@ use sdl::{
     ColorKeyFlag, Cursor, CursorData, FrameBuffer, Pixel, Rect, RwOpsOwned, Surface,
     VideoModeFlags,
 };
-use sdl_sys::{
-    SDL_GetVideoInfo, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon,
-};
+use sdl_sys::{SDL_GetVideoInfo, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon};
 use std::{
+    borrow::Cow,
     cell::RefCell,
     ffi::CStr,
     ops::Not,
@@ -957,8 +956,8 @@ impl Data<'_> {
         const YN: [&str; 2] = ["no", "yes"];
 
         self.graphics.vid_info = SDL_GetVideoInfo(); /* just curious */
-        let mut vid_driver: [c_char; 81] = [0; 81];
-        SDL_VideoDriverName(vid_driver.as_mut_ptr(), 80);
+        let mut vid_driver = [0; 81];
+        let vid_driver = self.sdl.video.get_driver_name(&mut vid_driver);
 
         let vid_info_ref = *self.graphics.vid_info;
         if cfg!(os_target = "android") {
@@ -1024,7 +1023,9 @@ impl Data<'_> {
         );
         info!(
             "Video Driver Name: {}",
-            CStr::from_ptr(vid_driver.as_ptr()).to_string_lossy()
+            vid_driver
+                .map(|vid_driver| vid_driver.to_string_lossy())
+                .unwrap_or(Cow::Borrowed("UNKNOWN DRIVER"))
         );
         info!("----------------------------------------------------------------------");
 

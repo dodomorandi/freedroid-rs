@@ -1,9 +1,16 @@
-use std::{num::NonZeroU8, os::raw::c_int, ptr::NonNull};
+use std::{
+    ffi::CStr,
+    num::NonZeroU8,
+    ops::Not,
+    os::raw::{c_char, c_int},
+    ptr::NonNull,
+};
 
 use bitflags::bitflags;
 use sdl_sys::{
-    SDL_SetGamma, SDL_SetVideoMode, SDL_ANYFORMAT, SDL_ASYNCBLIT, SDL_DOUBLEBUF, SDL_FULLSCREEN,
-    SDL_HWPALETTE, SDL_HWSURFACE, SDL_NOFRAME, SDL_OPENGL, SDL_OPENGLBLIT, SDL_RESIZABLE,
+    SDL_SetGamma, SDL_SetVideoMode, SDL_VideoDriverName, SDL_ANYFORMAT, SDL_ASYNCBLIT,
+    SDL_DOUBLEBUF, SDL_FULLSCREEN, SDL_HWPALETTE, SDL_HWSURFACE, SDL_NOFRAME, SDL_OPENGL,
+    SDL_OPENGLBLIT, SDL_RESIZABLE,
 };
 
 use crate::FrameBuffer;
@@ -33,6 +40,19 @@ impl Video {
     #[must_use = "success/failure is given as true/false"]
     pub fn set_gamma(&self, red: f32, green: f32, blue: f32) -> bool {
         unsafe { SDL_SetGamma(red, green, blue) == 0 }
+    }
+
+    pub fn get_driver_name<'a>(&self, buffer: &'a mut [u8]) -> Option<&'a CStr> {
+        if buffer.is_empty() {
+            return None;
+        }
+
+        let len = buffer.len().try_into().unwrap_or(c_int::MAX);
+        let pointer = unsafe { SDL_VideoDriverName(buffer.as_mut_ptr() as *mut c_char, len) };
+        pointer
+            .is_null()
+            .not()
+            .then(|| unsafe { CStr::from_ptr(buffer.as_ptr() as *const c_char) })
     }
 }
 
