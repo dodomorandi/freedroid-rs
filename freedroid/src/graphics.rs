@@ -26,8 +26,7 @@ use sdl::{
     VideoModeFlags,
 };
 use sdl_sys::{
-    SDL_GetVideoInfo, SDL_SetGamma, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption,
-    SDL_WM_SetIcon,
+    SDL_GetVideoInfo, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon,
 };
 use std::{
     cell::RefCell,
@@ -1083,7 +1082,9 @@ impl Data<'_> {
 
         info!("Got video mode: ");
 
-        SDL_SetGamma(1., 1., 1.);
+        if self.sdl.video.set_gamma(1., 1., 1.).not() {
+            error!("Unable to set SDL gamma");
+        };
         self.global.game_config.current_gamma_correction = 1.;
     }
 

@@ -2,8 +2,8 @@ use std::{num::NonZeroU8, os::raw::c_int, ptr::NonNull};
 
 use bitflags::bitflags;
 use sdl_sys::{
-    SDL_SetVideoMode, SDL_ANYFORMAT, SDL_ASYNCBLIT, SDL_DOUBLEBUF, SDL_FULLSCREEN, SDL_HWPALETTE,
-    SDL_HWSURFACE, SDL_NOFRAME, SDL_OPENGL, SDL_OPENGLBLIT, SDL_RESIZABLE,
+    SDL_SetGamma, SDL_SetVideoMode, SDL_ANYFORMAT, SDL_ASYNCBLIT, SDL_DOUBLEBUF, SDL_FULLSCREEN,
+    SDL_HWPALETTE, SDL_HWSURFACE, SDL_NOFRAME, SDL_OPENGL, SDL_OPENGLBLIT, SDL_RESIZABLE,
 };
 
 use crate::FrameBuffer;
@@ -28,6 +28,11 @@ impl Video {
             );
             NonNull::new(surface_ptr).map(|surface_ptr| FrameBuffer::from_ptr(surface_ptr))
         }
+    }
+
+    #[must_use = "success/failure is given as true/false"]
+    pub fn set_gamma(&self, red: f32, green: f32, blue: f32) -> bool {
+        unsafe { SDL_SetGamma(red, green, blue) == 0 }
     }
 }
 
