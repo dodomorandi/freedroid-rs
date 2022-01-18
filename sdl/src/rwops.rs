@@ -13,7 +13,7 @@ use cstr::cstr;
 use log::error;
 use sdl_sys::{IMG_Load_RW, SDL_FreeRW, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops};
 
-use crate::Surface;
+use crate::{sealed::Sealed, Surface};
 
 #[derive(Debug)]
 pub struct RwOps<'a> {
@@ -235,6 +235,25 @@ impl Drop for RwOpsOwned {
                 error!("SDL rw ops has not been closed successfully");
             }
         }
+    }
+}
+
+pub trait RwOpsCapability: Sealed {
+    fn as_inner(&self) -> NonNull<SDL_RWops>;
+}
+
+impl Sealed for RwOps<'_> {}
+impl Sealed for RwOpsOwned {}
+
+impl RwOpsCapability for RwOps<'_> {
+    fn as_inner(&self) -> NonNull<SDL_RWops> {
+        self.inner
+    }
+}
+
+impl RwOpsCapability for RwOpsOwned {
+    fn as_inner(&self) -> NonNull<SDL_RWops> {
+        self.rw_ops
     }
 }
 

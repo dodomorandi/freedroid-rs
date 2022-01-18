@@ -26,8 +26,8 @@ use sdl::{
     VideoModeFlags,
 };
 use sdl_sys::{
-    SDL_GetVideoInfo, SDL_SaveBMP_RW, SDL_SetGamma, SDL_VideoDriverName, SDL_VideoInfo,
-    SDL_WM_SetCaption, SDL_WM_SetIcon,
+    SDL_GetVideoInfo, SDL_SetGamma, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption,
+    SDL_WM_SetIcon,
 };
 use std::{
     cell::RefCell,
@@ -440,11 +440,17 @@ impl Data<'_> {
                 return;
             }
         };
-        SDL_SaveBMP_RW(
-            self.graphics.ne_screen.as_mut().unwrap().as_mut_ptr(),
-            rw_ops.as_mut_ptr(),
-            0,
-        );
+        if self
+            .graphics
+            .ne_screen
+            .as_mut()
+            .unwrap()
+            .save_bmp_rw(&mut rw_ops)
+            .not()
+        {
+            error!("Unable to take screenshot, cannot write to file.");
+            return;
+        }
         drop(rw_ops);
         self.graphics.number_of_screenshot = self.graphics.number_of_screenshot.wrapping_add(1);
         self.display_banner(

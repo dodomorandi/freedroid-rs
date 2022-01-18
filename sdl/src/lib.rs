@@ -376,6 +376,10 @@ impl From<&SDL_version> for Version {
     }
 }
 
+mod sealed {
+    pub trait Sealed {}
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Mutex;
