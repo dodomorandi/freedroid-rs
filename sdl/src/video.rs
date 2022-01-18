@@ -1,5 +1,6 @@
 use std::{
     ffi::CStr,
+    marker::PhantomData,
     num::NonZeroU8,
     ops::Not,
     os::raw::{c_char, c_int},
@@ -8,9 +9,9 @@ use std::{
 
 use bitflags::bitflags;
 use sdl_sys::{
-    SDL_SetGamma, SDL_SetVideoMode, SDL_VideoDriverName, SDL_ANYFORMAT, SDL_ASYNCBLIT,
-    SDL_DOUBLEBUF, SDL_FULLSCREEN, SDL_HWPALETTE, SDL_HWSURFACE, SDL_NOFRAME, SDL_OPENGL,
-    SDL_OPENGLBLIT, SDL_RESIZABLE,
+    SDL_SetGamma, SDL_SetVideoMode, SDL_VideoDriverName, SDL_WM_SetCaption, SDL_ANYFORMAT,
+    SDL_ASYNCBLIT, SDL_DOUBLEBUF, SDL_FULLSCREEN, SDL_HWPALETTE, SDL_HWSURFACE, SDL_NOFRAME,
+    SDL_OPENGL, SDL_OPENGLBLIT, SDL_RESIZABLE,
 };
 
 use crate::FrameBuffer;
@@ -53,6 +54,19 @@ impl Video {
             .is_null()
             .not()
             .then(|| unsafe { CStr::from_ptr(buffer.as_ptr() as *const c_char) })
+    }
+
+    pub fn window_manager(&self) -> WindowManager<'_> {
+        WindowManager(PhantomData)
+    }
+}
+
+#[derive(Debug)]
+pub struct WindowManager<'a>(PhantomData<&'a ()>);
+
+impl WindowManager<'_> {
+    pub fn set_caption(&self, title: &CStr, icon: &CStr) {
+        unsafe { SDL_WM_SetCaption(title.as_ptr(), icon.as_ptr()) }
     }
 }
 

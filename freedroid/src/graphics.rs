@@ -25,7 +25,7 @@ use sdl::{
     ColorKeyFlag, Cursor, CursorData, FrameBuffer, Pixel, Rect, RwOpsOwned, Surface,
     VideoModeFlags,
 };
-use sdl_sys::{SDL_GetVideoInfo, SDL_VideoInfo, SDL_WM_SetCaption, SDL_WM_SetIcon};
+use sdl_sys::{SDL_GetVideoInfo, SDL_VideoInfo, SDL_WM_SetIcon};
 use std::{
     borrow::Cow,
     cell::RefCell,
@@ -1037,7 +1037,10 @@ impl Data<'_> {
 
         if flag!(wm_available) {
             /* if there's a window-manager */
-            SDL_WM_SetCaption(cstr!("Freedroid").as_ptr(), cstr!("").as_ptr());
+            self.sdl
+                .video
+                .window_manager()
+                .set_caption(cstr!("Freedroid"), cstr!(""));
             let fpath = self.find_file(
                 ICON_FILE_C.as_ptr() as *mut c_char,
                 GRAPHICS_DIR_C.as_ptr() as *mut c_char,
