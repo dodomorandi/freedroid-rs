@@ -13,7 +13,7 @@ use crate::{
 
 use log::{error, warn};
 use sdl::{rwops::RwOpsCapability, Rect, Surface};
-use sdl_sys::{IMG_isJPG, SDL_Color, SDL_WarpMouse};
+use sdl_sys::{SDL_Color, SDL_WarpMouse};
 use std::{
     ffi::CStr,
     ops::Not,
@@ -202,7 +202,7 @@ impl Data<'_> {
                 }
             };
             // now see if its a jpg, then we add some transparency by color-keying:
-            let droid_pics = if IMG_isJPG(packed_portrait.as_mut_ptr()) != 0 {
+            let droid_pics = if packed_portrait.is_jpg() {
                 tmp.display_format().unwrap()
             } else {
                 // else assume it's png ;

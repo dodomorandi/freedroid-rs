@@ -11,7 +11,7 @@ use std::{
 
 use cstr::cstr;
 use log::error;
-use sdl_sys::{IMG_Load_RW, SDL_FreeRW, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops};
+use sdl_sys::{IMG_Load_RW, IMG_isJPG, SDL_FreeRW, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops};
 
 use crate::{sealed::Sealed, Surface};
 
@@ -220,6 +220,10 @@ pub trait RwOpsCapability: Sized + Sealed {
         let inner = self.as_inner();
         mem::forget(self);
         inner
+    }
+
+    fn is_jpg(&mut self) -> bool {
+        unsafe { IMG_isJPG(self.as_inner().as_ptr()) != 0 }
     }
 }
 
