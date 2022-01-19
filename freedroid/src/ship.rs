@@ -13,7 +13,7 @@ use crate::{
 
 use log::{error, warn};
 use sdl::{rwops::RwOpsCapability, Rect, Surface};
-use sdl_sys::{SDL_Color, SDL_WarpMouse};
+use sdl_sys::SDL_Color;
 use std::{
     ffi::CStr,
     ops::Not,
@@ -645,7 +645,7 @@ Paradroid to eliminate all rogue robots.\0",
                         // this is a dirty hack, but that should be enough for here...
                         if self.input.show_cursor {
                             let mousemove_buf = self.input.last_mouse_event;
-                            SDL_WarpMouse(
+                            self.sdl.warp_mouse(
                                 (self.vars.cons_menu_rects[pos].x()
                                     + i16::try_from(self.vars.cons_menu_rects[pos].width() / 2)
                                         .unwrap())
@@ -675,7 +675,7 @@ Paradroid to eliminate all rogue robots.\0",
                         // this is a dirty hack, but that should be enough for here...
                         if self.input.show_cursor {
                             let mousemove_buf = self.input.last_mouse_event;
-                            SDL_WarpMouse(
+                            self.sdl.warp_mouse(
                                 (self.vars.cons_menu_rects[pos].x()
                                     + i16::try_from(self.vars.cons_menu_rects[pos].width() / 2)
                                         .unwrap())

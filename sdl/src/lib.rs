@@ -29,8 +29,8 @@ pub use pixel::Pixel;
 pub use rect::*;
 pub use rwops::RwOpsOwned;
 use sdl_sys::{
-    IMG_Load, SDL_GetError, SDL_InitSubSystem, SDL_Quit, SDL_version, SDL_INIT_AUDIO,
-    SDL_INIT_JOYSTICK,
+    IMG_Load, SDL_GetError, SDL_InitSubSystem, SDL_Quit, SDL_WarpMouse, SDL_version,
+    SDL_INIT_AUDIO, SDL_INIT_JOYSTICK,
 };
 pub use surface::*;
 pub use video::{Video, VideoModeFlags};
@@ -180,6 +180,10 @@ where
     pub fn load_image_from_c_str_path<'a>(&'a self, path: &CStr) -> Option<Surface<'a>> {
         NonNull::new(unsafe { IMG_Load(path.as_ptr()) })
             .map(|ptr| unsafe { Surface::from_ptr(ptr) })
+    }
+
+    pub fn warp_mouse(&self, x: u16, y: u16) {
+        unsafe { SDL_WarpMouse(x, y) }
     }
 }
 
