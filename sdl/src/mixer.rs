@@ -7,7 +7,7 @@ use sdl_sys::{
     MIX_DEFAULT_FORMAT, MIX_DEFAULT_FREQUENCY,
 };
 
-use crate::rwops::RwOps;
+use crate::rwops::{RwOps, RwOpsCapability};
 
 #[derive(Debug)]
 pub struct Mixer;

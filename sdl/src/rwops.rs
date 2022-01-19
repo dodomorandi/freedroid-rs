@@ -52,16 +52,6 @@ impl<'a> RwOps<'a> {
         })
     }
 
-    pub fn inner(&self) -> NonNull<SDL_RWops> {
-        self.inner
-    }
-
-    pub fn into_inner(self) -> NonNull<SDL_RWops> {
-        let Self { inner, .. } = self;
-        mem::forget(self);
-        inner
-    }
-
     pub fn close(mut self) -> Result<bool, Self> {
         let inner = unsafe { self.inner.as_mut() };
         if let Some(close_fn) = inner.close {
@@ -77,14 +67,6 @@ impl<'a> RwOps<'a> {
 
     pub fn image_load(&self) -> Option<Surface<'a>> {
         unsafe { image_load(self.inner) }
-    }
-
-    pub fn seek(&self, offset: i64, whence: Whence) -> Result<u64, RwSeekError> {
-        unsafe { seek(self.inner, offset, whence) }
-    }
-
-    pub fn as_mut_ptr(&mut self) -> *mut SDL_RWops {
-        self.inner.as_ptr()
     }
 }
 
@@ -136,25 +118,6 @@ pub enum RwSeekError {
 
     #[error("SDL error")]
     Sdl,
-}
-
-/// # Safety
-///
-/// `rw_ops.seek` must be a valid, non-null pointer.
-unsafe fn seek(
-    rw_ops: NonNull<SDL_RWops>,
-    offset: i64,
-    whence: Whence,
-) -> Result<u64, RwSeekError> {
-    let offset = offset.try_into().map_err(|_| RwSeekError::OffsetTooLarge)?;
-
-    let rw_ops = rw_ops.as_ptr();
-    let seek_fn = unsafe { (*rw_ops).seek };
-    debug_assert!(seek_fn.is_some());
-    let seek_fn = unsafe { seek_fn.unwrap_unchecked() };
-    unsafe { seek_fn(rw_ops, offset, whence.into()) }
-        .try_into()
-        .map_err(|_| RwSeekError::Sdl)
 }
 
 // # Safety
@@ -215,16 +178,8 @@ impl RwOpsOwned {
         }
     }
 
-    pub fn as_ptr(&self) -> *mut SDL_RWops {
-        self.rw_ops.as_ptr()
-    }
-
     pub fn image_load(&self) -> Option<Surface<'static>> {
         unsafe { image_load(self.rw_ops) }
-    }
-
-    pub fn seek(&self, offset: i64, whence: Whence) -> Result<u64, RwSeekError> {
-        unsafe { seek(self.rw_ops, offset, whence) }
     }
 }
 
@@ -238,8 +193,34 @@ impl Drop for RwOpsOwned {
     }
 }
 
-pub trait RwOpsCapability: Sealed {
+pub trait RwOpsCapability: Sized + Sealed {
     fn as_inner(&self) -> NonNull<SDL_RWops>;
+
+    fn seek(&self, offset: i64, whence: Whence) -> Result<u64, RwSeekError> {
+        let offset = offset.try_into().map_err(|_| RwSeekError::OffsetTooLarge)?;
+
+        let rw_ops = self.as_inner().as_ptr();
+        let seek_fn = unsafe { (*rw_ops).seek };
+        debug_assert!(seek_fn.is_some());
+        let seek_fn = unsafe { seek_fn.unwrap_unchecked() };
+        unsafe { seek_fn(rw_ops, offset, whence.into()) }
+            .try_into()
+            .map_err(|_| RwSeekError::Sdl)
+    }
+
+    fn as_ptr(&self) -> *const SDL_RWops {
+        self.as_inner().as_ptr()
+    }
+
+    fn as_mut_ptr(&mut self) -> *mut SDL_RWops {
+        self.as_inner().as_ptr()
+    }
+
+    fn into_inner(self) -> NonNull<SDL_RWops> {
+        let inner = self.as_inner();
+        mem::forget(self);
+        inner
+    }
 }
 
 impl Sealed for RwOps<'_> {}
