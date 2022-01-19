@@ -80,6 +80,15 @@ impl KeySym {
             unicode: raw.unicode,
         })
     }
+
+    pub fn to_raw(&self) -> SDL_keysym {
+        SDL_keysym {
+            scancode: self.scancode,
+            sym: self.symbol as u32,
+            mod_: self.mod_ as u32,
+            unicode: self.unicode,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, thiserror::Error)]
@@ -608,6 +617,10 @@ impl Mod {
             sdl_sys::SDLMod_KMOD_MODE => Mode,
             _ => return Err(InvalidMod),
         })
+    }
+
+    pub fn is_shift(&self) -> bool {
+        matches!(self, Self::LeftShift | Self::RightShift)
     }
 }
 

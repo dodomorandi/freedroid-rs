@@ -1,15 +1,16 @@
 use std::{ffi::c_void, os::raw::c_int, ptr::NonNull};
 
 use sdl_sys::{
-    SDL_Event, SDL_EventType_SDL_ACTIVEEVENT, SDL_EventType_SDL_JOYAXISMOTION,
+    SDL_ActiveEvent, SDL_Event, SDL_EventType_SDL_ACTIVEEVENT, SDL_EventType_SDL_JOYAXISMOTION,
     SDL_EventType_SDL_JOYBALLMOTION, SDL_EventType_SDL_JOYBUTTONDOWN,
     SDL_EventType_SDL_JOYBUTTONUP, SDL_EventType_SDL_JOYHATMOTION, SDL_EventType_SDL_KEYDOWN,
     SDL_EventType_SDL_KEYUP, SDL_EventType_SDL_MOUSEBUTTONDOWN, SDL_EventType_SDL_MOUSEBUTTONUP,
     SDL_EventType_SDL_MOUSEMOTION, SDL_EventType_SDL_NOEVENT, SDL_EventType_SDL_NUMEVENTS,
     SDL_EventType_SDL_QUIT, SDL_EventType_SDL_SYSWMEVENT, SDL_EventType_SDL_USEREVENT,
-    SDL_EventType_SDL_VIDEOEXPOSE, SDL_EventType_SDL_VIDEORESIZE, SDL_JoyAxisEvent,
-    SDL_JoyBallEvent, SDL_JoyButtonEvent, SDL_JoyHatEvent, SDL_MouseButtonEvent,
-    SDL_MouseMotionEvent, SDL_ResizeEvent, SDL_UserEvent,
+    SDL_EventType_SDL_VIDEOEXPOSE, SDL_EventType_SDL_VIDEORESIZE, SDL_ExposeEvent,
+    SDL_JoyAxisEvent, SDL_JoyBallEvent, SDL_JoyButtonEvent, SDL_JoyHatEvent, SDL_KeyboardEvent,
+    SDL_MouseButtonEvent, SDL_MouseMotionEvent, SDL_QuitEvent, SDL_ResizeEvent, SDL_SysWMEvent,
+    SDL_SysWMmsg, SDL_UserEvent,
 };
 
 use crate::{keyboard::KeySym, system_window_manager};
@@ -321,6 +322,7 @@ impl Event {
                     msg: NonNull::new(cur.msg).map(|ptr| {
                         system_window_manager::Message::try_from(unsafe { ptr.as_ref() }).unwrap()
                     }),
+                    pointer: cur.msg,
                 })
             }
             EventType::VideoResize => {
@@ -353,6 +355,160 @@ impl Event {
 
     pub fn from_raw(event: SDL_Event) -> Self {
         Self::try_from_raw(event).unwrap()
+    }
+
+    pub fn to_raw(&self) -> SDL_Event {
+        match self {
+            &Event::Active(ActiveEvent { gain, state }) => SDL_Event {
+                active: SDL_ActiveEvent {
+                    type_: EventType::ActiveEvent as u8,
+                    gain: gain.into(),
+                    state,
+                },
+            },
+            &Event::Keyboard(KeyboardEvent {
+                ty,
+                which,
+                state,
+                ref keysym,
+            }) => {
+                let type_ = match ty {
+                    KeyboardEventType::KeyDown => EventType::KeyDown as u8,
+                    KeyboardEventType::KeyUp => EventType::KeyUp as u8,
+                };
+
+                SDL_Event {
+                    key: SDL_KeyboardEvent {
+                        type_,
+                        which,
+                        state: state as u8,
+                        keysym: keysym.to_raw(),
+                    },
+                }
+            }
+            &Event::MouseMotion(MouseMotionEvent {
+                which,
+                state,
+                x,
+                y,
+                xrel,
+                yrel,
+            }) => SDL_Event {
+                motion: SDL_MouseMotionEvent {
+                    type_: EventType::MouseMotion as u8,
+                    which,
+                    state,
+                    x,
+                    y,
+                    xrel,
+                    yrel,
+                },
+            },
+            &Event::MouseButton(MouseButtonEvent {
+                ty,
+                which,
+                button,
+                state,
+                x,
+                y,
+            }) => SDL_Event {
+                button: SDL_MouseButtonEvent {
+                    type_: ty as u8,
+                    which,
+                    button,
+                    state: state as u8,
+                    x,
+                    y,
+                },
+            },
+            &Event::JoyAxis(JoyAxisEvent { which, axis, value }) => SDL_Event {
+                jaxis: SDL_JoyAxisEvent {
+                    type_: EventType::JoyAxisMotion as u8,
+                    which,
+                    axis,
+                    value,
+                },
+            },
+            &Event::JoyBall(JoyBallEvent {
+                which,
+                ball,
+                xrel,
+                yrel,
+            }) => SDL_Event {
+                jball: SDL_JoyBallEvent {
+                    type_: EventType::JoyBallMotion as u8,
+                    which,
+                    ball,
+                    xrel,
+                    yrel,
+                },
+            },
+            &Event::JoyHat(JoyHatEvent { which, hat, value }) => SDL_Event {
+                jhat: SDL_JoyHatEvent {
+                    type_: EventType::JoyHatMotion as u8,
+                    which,
+                    hat,
+                    value: value as u8,
+                },
+            },
+            &Event::JoyButton(JoyButtonEvent {
+                ty,
+                which,
+                button,
+                state,
+            }) => SDL_Event {
+                jbutton: SDL_JoyButtonEvent {
+                    type_: ty as u8,
+                    which,
+                    button,
+                    state: state as u8,
+                },
+            },
+            &Event::Resize(ResizeEvent { w, h }) => SDL_Event {
+                resize: SDL_ResizeEvent {
+                    type_: EventType::VideoResize as u8,
+                    w,
+                    h,
+                },
+            },
+            Event::Exposure => SDL_Event {
+                expose: SDL_ExposeEvent {
+                    type_: EventType::VideoExpose as u8,
+                },
+            },
+            Event::Quit => SDL_Event {
+                quit: SDL_QuitEvent {
+                    type_: EventType::Quit as u8,
+                },
+            },
+            &Event::User(UserEvent {
+                ty,
+                code,
+                data1,
+                data2,
+            }) => SDL_Event {
+                user: SDL_UserEvent {
+                    type_: ty as u8,
+                    code,
+                    data1,
+                    data2,
+                },
+            },
+            &Event::SymWindowManager(SysWindowManagerEvent { pointer, .. }) => SDL_Event {
+                syswm: SDL_SysWMEvent {
+                    type_: EventType::SysWmEvent as u8,
+                    msg: pointer,
+                },
+            },
+        }
+    }
+}
+
+impl TryFrom<SDL_Event> for Event {
+    type Error = InvalidRawEvent;
+
+    fn try_from(event: SDL_Event) -> Result<Self, Self::Error> {
+        Event::try_from_raw(event)
     }
 }
 
@@ -553,7 +709,8 @@ pub struct UserEvent {
     pub data2: *mut c_void,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SysWindowManagerEvent {
     pub msg: Option<system_window_manager::Message>,
+    pub pointer: *mut SDL_SysWMmsg,
 }

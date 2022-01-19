@@ -23,14 +23,15 @@ use std::{
 use cursor::CursorHelper;
 pub use cursor::{Cursor, CursorData};
 pub use event::Event;
+use event::InvalidRawEvent;
 pub use joystick::{Joystick, JoystickSystem};
 pub use mixer::Mixer;
 pub use pixel::Pixel;
 pub use rect::*;
 pub use rwops::RwOpsOwned;
 use sdl_sys::{
-    IMG_Load, SDL_GetError, SDL_InitSubSystem, SDL_Quit, SDL_WarpMouse, SDL_version,
-    SDL_INIT_AUDIO, SDL_INIT_JOYSTICK,
+    IMG_Load, SDL_GetError, SDL_InitSubSystem, SDL_PushEvent, SDL_Quit, SDL_WaitEvent,
+    SDL_WarpMouse, SDL_version, SDL_INIT_AUDIO, SDL_INIT_JOYSTICK,
 };
 pub use surface::*;
 pub use video::{Video, VideoModeFlags};
@@ -177,6 +178,22 @@ where
         Some(Event::from_raw(event))
     }
 
+    #[must_use = "success/failure is given as true/false"]
+    pub fn push_even(&self, event: &Event) -> bool {
+        unsafe { SDL_PushEvent(&mut event.to_raw()) == 0 }
+    }
+
+    pub fn wait_event(&self) -> Result<Event, WaitEventError> {
+        let mut event = MaybeUninit::uninit();
+        let result = unsafe { SDL_WaitEvent(event.as_mut_ptr()) };
+        if result != 1 {
+            return Err(WaitEventError::Sdl);
+        }
+
+        let event = unsafe { event.assume_init() }.try_into()?;
+        Ok(event)
+    }
+
     pub fn load_image_from_c_str_path<'a>(&'a self, path: &CStr) -> Option<Surface<'a>> {
         NonNull::new(unsafe { IMG_Load(path.as_ptr()) })
             .map(|ptr| unsafe { Surface::from_ptr(ptr) })
@@ -185,6 +202,14 @@ where
     pub fn warp_mouse(&self, x: u16, y: u16) {
         unsafe { SDL_WarpMouse(x, y) }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum WaitEventError {
+    #[error("unable to convert SDL error to wrapped error: {0}")]
+    InvalidEvent(#[from] InvalidRawEvent),
+    #[error("SDL error")]
+    Sdl,
 }
 
 impl<V, T, M> Sdl<V, T, OnceCell<JoystickSystem>, M>
@@ -356,6 +381,22 @@ pub struct Version {
     major: u8,
     minor: u8,
     patch: u8,
+}
+
+impl Version {
+    pub fn to_raw(&self) -> SDL_version {
+        let &Self {
+            major,
+            minor,
+            patch,
+        } = self;
+
+        SDL_version {
+            major,
+            minor,
+            patch,
+        }
+    }
 }
 
 impl From<SDL_version> for Version {

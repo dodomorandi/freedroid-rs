@@ -11,13 +11,13 @@ mod x11 {
     };
 
     use sdl_sys::{
-        XButtonEvent, XCirculateEvent, XCirculateRequestEvent, XClientMessageEvent, XColormapEvent,
-        XConfigureEvent, XConfigureRequestEvent, XCreateWindowEvent, XCrossingEvent,
-        XDestroyWindowEvent, XExposeEvent, XFocusChangeEvent, XGenericEvent, XGraphicsExposeEvent,
-        XGravityEvent, XKeyEvent, XKeymapEvent, XMapEvent, XMapRequestEvent, XMappingEvent,
-        XMotionEvent, XNoExposeEvent, XPropertyEvent, XReparentEvent, XResizeRequestEvent,
-        XSelectionClearEvent, XSelectionEvent, XSelectionRequestEvent, XUnmapEvent,
-        XVisibilityEvent,
+        SDL_SysWMmsg__bindgen_ty_1, XButtonEvent, XCirculateEvent, XCirculateRequestEvent,
+        XClientMessageEvent, XColormapEvent, XConfigureEvent, XConfigureRequestEvent,
+        XCreateWindowEvent, XCrossingEvent, XDestroyWindowEvent, XExposeEvent, XFocusChangeEvent,
+        XGenericEvent, XGraphicsExposeEvent, XGravityEvent, XKeyEvent, XKeymapEvent, XMapEvent,
+        XMapRequestEvent, XMappingEvent, XMotionEvent, XNoExposeEvent, XPropertyEvent,
+        XReparentEvent, XResizeRequestEvent, XSelectionClearEvent, XSelectionEvent,
+        XSelectionRequestEvent, XUnmapEvent, XVisibilityEvent,
     };
 
     use super::*;
@@ -30,6 +30,24 @@ mod x11 {
         pub version: Version,
         pub subsystem: Subsystem,
         pub event: XEvent,
+    }
+
+    impl Message {
+        pub fn to_raw(&self) -> SDL_SysWMmsg {
+            let &Self {
+                version,
+                subsystem,
+                ref event,
+            } = self;
+            let version = version.to_raw();
+            let subsystem = subsystem as u32;
+
+            SDL_SysWMmsg {
+                version,
+                subsystem,
+                event: SDL_SysWMmsg__bindgen_ty_1 { xevent: event.0 },
+            }
+        }
     }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -13,18 +13,21 @@ use crate::{
 
 use cstr::cstr;
 use log::{error, info, trace};
-use sdl::{Rect, RectRef, Surface};
+use sdl::{
+    event::{JoyButtonEventType, KeyboardEventType, MouseButtonEventType},
+    Event, Rect, RectRef, Surface,
+};
 #[cfg(not(feature = "arcade-input"))]
 use sdl_sys::SDLKey_SDLK_DELETE;
 use sdl_sys::{
-    SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_RETURN, SDLMod, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_RSHIFT,
-    SDL_Event, SDL_EventType, SDL_PushEvent, SDL_WaitEvent, SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE,
+    SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_RETURN, SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE,
     SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
 };
 use std::{
     ffi::CStr,
     fmt,
     io::Cursor,
+    ops::Not,
     os::raw::{c_char, c_int, c_uchar},
     ptr::null_mut,
 };
@@ -221,85 +224,78 @@ impl Data<'_> {
     ///
     /// Return the (SDLKey) of the next key-pressed event cast to
     pub unsafe fn getchar_raw(&mut self) -> c_int {
-        let mut event = SDL_Event::default();
         let mut return_key = 0;
 
         loop {
-            SDL_WaitEvent(&mut event); /* wait for next event */
-
-            match SDL_EventType::from(event.type_) {
-                sdl_sys::SDL_EventType_SDL_KEYDOWN => {
+            match self.sdl.wait_event().unwrap() {
+                Event::Keyboard(event) if matches!(event.ty, KeyboardEventType::KeyDown) => {
                     /*
                      * here we use the fact that, I cite from SDL_keyboard.h:
                      * "The keyboard syms have been cleverly chosen to map to ASCII"
                      * ... I hope that this design feature is portable, and durable ;)
                      */
-                    let key = event.key;
-                    return_key = key.keysym.sym as c_int;
-                    const SHIFT: SDLMod =
-                        SDLMod_KMOD_LSHIFT as SDLMod | SDLMod_KMOD_RSHIFT as SDLMod;
-                    if key.keysym.mod_ & SHIFT != 0 {
-                        return_key = u8::try_from(key.keysym.sym as u32)
+                    return_key = event.keysym.symbol as c_int;
+                    if event.keysym.mod_.is_shift() {
+                        return_key = u8::try_from(event.keysym.symbol as isize)
                             .unwrap()
                             .to_ascii_uppercase()
                             .into();
                     }
                 }
 
-                sdl_sys::SDL_EventType_SDL_JOYBUTTONDOWN => {
-                    let jbutton = event.jbutton;
-                    if jbutton.button == 0 {
+                Event::JoyButton(event) if matches!(event.ty, JoyButtonEventType::Down) => {
+                    if event.button == 0 {
                         return_key = PointerStates::JoyButton1 as c_int;
-                    } else if jbutton.button == 1 {
+                    } else if event.button == 1 {
                         return_key = PointerStates::JoyButton2 as c_int;
-                    } else if jbutton.button == 2 {
+                    } else if event.button == 2 {
                         return_key = PointerStates::JoyButton3 as c_int;
-                    } else if jbutton.button == 3 {
+                    } else if event.button == 3 {
                         return_key = PointerStates::JoyButton4 as c_int;
                     }
                 }
 
-                sdl_sys::SDL_EventType_SDL_JOYAXISMOTION => {
-                    let jaxis = event.jaxis;
-                    let axis = jaxis.axis;
+                Event::JoyAxis(event) => {
+                    let axis = event.axis;
                     if axis == 0 || ((self.input.joy_num_axes >= 5) && (axis == 3))
                     /* x-axis */
                     {
-                        if self.input.joy_sensitivity * i32::from(jaxis.value) > 10000
+                        if self.input.joy_sensitivity * i32::from(event.value) > 10000
                         /* about half tilted */
                         {
                             return_key = PointerStates::JoyRight as c_int;
-                        } else if self.input.joy_sensitivity * i32::from(jaxis.value) < -10000 {
+                        } else if self.input.joy_sensitivity * i32::from(event.value) < -10000 {
                             return_key = PointerStates::JoyLeft as c_int;
                         }
                     } else if (axis == 1) || ((self.input.joy_num_axes >= 5) && (axis == 4))
                     /* y-axis */
                     {
-                        if self.input.joy_sensitivity * i32::from(jaxis.value) > 10000 {
+                        if self.input.joy_sensitivity * i32::from(event.value) > 10000 {
                             return_key = PointerStates::JoyDown as c_int;
-                        } else if self.input.joy_sensitivity * i32::from(jaxis.value) < -10000 {
+                        } else if self.input.joy_sensitivity * i32::from(event.value) < -10000 {
                             return_key = PointerStates::JoyUp as c_int;
                         }
                     }
                 }
 
-                sdl_sys::SDL_EventType_SDL_MOUSEBUTTONDOWN => {
-                    let button = event.button;
-                    if button.button == SDL_BUTTON_LEFT as u8 {
+                Event::MouseButton(event) if matches!(event.ty, MouseButtonEventType::Down) => {
+                    if event.button == SDL_BUTTON_LEFT as u8 {
                         return_key = PointerStates::MouseButton1 as c_int;
-                    } else if button.button == SDL_BUTTON_RIGHT as u8 {
+                    } else if event.button == SDL_BUTTON_RIGHT as u8 {
                         return_key = PointerStates::MouseButton2 as c_int;
-                    } else if button.button == SDL_BUTTON_MIDDLE as u8 {
+                    } else if event.button == SDL_BUTTON_MIDDLE as u8 {
                         return_key = PointerStates::MouseButton3 as c_int;
-                    } else if button.button == SDL_BUTTON_WHEELUP as u8 {
+                    } else if event.button == SDL_BUTTON_WHEELUP as u8 {
                         return_key = PointerStates::MouseWheelup as c_int;
-                    } else if button.button == SDL_BUTTON_WHEELDOWN as u8 {
+                    } else if event.button == SDL_BUTTON_WHEELDOWN as u8 {
                         return_key = PointerStates::MouseWheeldown as c_int;
                     }
                 }
 
-                _ => {
-                    SDL_PushEvent(&mut event); /* put this event back into the queue */
+                event => {
+                    if self.sdl.push_even(&event).not() {
+                        error!("Unable to push SDL event back to queue");
+                    }
                     self.update_input(); /* and treat it the usual way */
                     continue;
                 }
