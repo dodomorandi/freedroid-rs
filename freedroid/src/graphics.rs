@@ -691,10 +691,7 @@ impl Data<'_> {
         }
 
         //---------- rescale Bullet blocks
-        let bulletmap = std::slice::from_raw_parts_mut(
-            self.vars.bulletmap,
-            usize::try_from(self.graphics.number_of_bullet_types).unwrap(),
-        );
+        let bulletmap = &mut self.vars.bulletmap;
         bulletmap
             .iter_mut()
             .flat_map(|bullet| bullet.surfaces.iter_mut())
@@ -1301,29 +1298,27 @@ impl Data<'_> {
         let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
         self.graphics
             .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int, self.sdl);
-        std::slice::from_raw_parts_mut(
-            self.vars.bulletmap,
-            self.graphics.number_of_bullet_types.try_into().unwrap(),
-        )
-        .iter_mut()
-        .enumerate()
-        .flat_map(|(bullet_type_index, bullet)| {
-            bullet
-                .surfaces
-                .iter_mut()
-                .enumerate()
-                .map(move |(phase_index, surface)| (bullet_type_index, phase_index, surface))
-        })
-        .for_each(|(bullet_type_index, phase_index, surface)| {
-            *surface = self.graphics.load_block(
-                None,
-                bullet_type_index.try_into().unwrap(),
-                phase_index.try_into().unwrap(),
-                &ORIG_BLOCK_RECT,
-                0,
-                self.sdl,
-            );
-        });
+        self.vars
+            .bulletmap
+            .iter_mut()
+            .enumerate()
+            .flat_map(|(bullet_type_index, bullet)| {
+                bullet
+                    .surfaces
+                    .iter_mut()
+                    .enumerate()
+                    .map(move |(phase_index, surface)| (bullet_type_index, phase_index, surface))
+            })
+            .for_each(|(bullet_type_index, phase_index, surface)| {
+                *surface = self.graphics.load_block(
+                    None,
+                    bullet_type_index.try_into().unwrap(),
+                    phase_index.try_into().unwrap(),
+                    &ORIG_BLOCK_RECT,
+                    0,
+                    self.sdl,
+                );
+            });
 
         self.update_progress(35);
 
@@ -1760,14 +1755,14 @@ impl Data<'_> {
                 read.as_ptr() as *mut c_char,
                 cstr!("we will use number of phases=").as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*self.vars.bulletmap.offset(bullet_index.try_into().unwrap())).phases
+                &mut self.vars.bulletmap[usize::try_from(bullet_index).unwrap()].phases
                     as *mut c_int as *mut c_void,
             );
             read_value_from_string(
                 read.as_ptr() as *mut c_char,
                 cstr!("and number of phase changes per second=").as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
-                &mut (*self.vars.bulletmap.offset(bullet_index.try_into().unwrap()))
+                &mut self.vars.bulletmap[usize::try_from(bullet_index).unwrap()]
                     .phase_changes_per_second as *mut c_float as *mut c_void,
             );
             reader = &reader[read_start + 1..];

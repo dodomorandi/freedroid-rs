@@ -657,10 +657,7 @@ impl Data<'_> {
             return;
         }
 
-        let bullet = &mut *self
-            .vars
-            .bulletmap
-            .offset(cur_bullet.ty.try_into().unwrap());
+        let bullet = &mut self.vars.bulletmap[usize::try_from(cur_bullet.ty).unwrap()];
         let mut phase_of_bullet =
             (cur_bullet.time_in_seconds * bullet.phase_changes_per_second) as usize;
 

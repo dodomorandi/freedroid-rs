@@ -569,13 +569,13 @@ impl Data<'_> {
     /// Fire-Routine for the Influencer only !! (should be changed)
     pub unsafe fn fire_bullet(&mut self) {
         let guntype = self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].gun; /* which gun do we have ? */
-        let bullet_speed = (*self.vars.bulletmap.add(usize::try_from(guntype).unwrap())).speed;
+        let bullet_speed = self.vars.bulletmap[usize::try_from(guntype).unwrap()].speed;
 
         if self.vars.me.firewait > 0. {
             return;
         }
         self.vars.me.firewait =
-            (*self.vars.bulletmap.add(usize::try_from(guntype).unwrap())).recharging_time;
+            self.vars.bulletmap[usize::try_from(guntype).unwrap()].recharging_time;
 
         self.fire_bullet_sound(guntype);
 

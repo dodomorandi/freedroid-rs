@@ -166,7 +166,7 @@ impl Data<'_> {
         // the target
 
         if xdist.abs() > ydist.abs() {
-            cur_bullet.speed.x = (*self.vars.bulletmap.add(guntype.try_into().unwrap())).speed;
+            cur_bullet.speed.x = self.vars.bulletmap[usize::try_from(guntype).unwrap()].speed;
             cur_bullet.speed.y = ydist * cur_bullet.speed.x / xdist;
             if xdist < 0. {
                 cur_bullet.speed.x = -cur_bullet.speed.x;
@@ -175,7 +175,7 @@ impl Data<'_> {
         }
 
         if xdist.abs() < ydist.abs() {
-            cur_bullet.speed.y = (*self.vars.bulletmap.add(guntype.try_into().unwrap())).speed;
+            cur_bullet.speed.y = self.vars.bulletmap[usize::try_from(guntype).unwrap()].speed;
             cur_bullet.speed.x = xdist * cur_bullet.speed.y / ydist;
             if ydist < 0. {
                 cur_bullet.speed.x = -cur_bullet.speed.x;
@@ -190,18 +190,16 @@ impl Data<'_> {
         cur_bullet.pos.y = this_robot.pos.y;
 
         cur_bullet.pos.x += (cur_bullet.speed.x)
-            / ((*self.vars.bulletmap.add(guntype.try_into().unwrap())).speed).abs()
+            / (self.vars.bulletmap[usize::try_from(guntype).unwrap()].speed).abs()
             * 0.5;
         cur_bullet.pos.y += (cur_bullet.speed.y)
-            / ((*self.vars.bulletmap.add(guntype.try_into().unwrap())).speed).abs()
+            / (self.vars.bulletmap[usize::try_from(guntype).unwrap()].speed).abs()
             * 0.5;
 
-        this_robot.firewait = (*self.vars.bulletmap.add(
-            self.vars.droidmap[usize::try_from(this_robot.ty).unwrap()]
-                .gun
-                .try_into()
-                .unwrap(),
-        ))
+        this_robot.firewait = self.vars.bulletmap[usize::try_from(
+            self.vars.droidmap[usize::try_from(this_robot.ty).unwrap()].gun,
+        )
+        .unwrap()]
         .recharging_time;
 
         cur_bullet.ty = guntype.try_into().unwrap();

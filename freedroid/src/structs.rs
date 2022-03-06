@@ -188,7 +188,7 @@ impl Default for Enemy {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct BulletSpec<'sdl> {
     pub recharging_time: f32, // time until the next shot can be made, measures in seconds
     pub speed: f32,           /* speed of the bullet */

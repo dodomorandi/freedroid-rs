@@ -119,24 +119,14 @@ struct Opt {
 impl Data<'_> {
     pub unsafe fn free_game_mem(&mut self) {
         // free bullet map
-        if self.vars.bulletmap.is_null().not() {
-            let bullet_map = std::slice::from_raw_parts_mut(
-                self.vars.bulletmap,
-                usize::try_from(self.graphics.number_of_bullet_types).unwrap(),
-            );
+        if self.vars.bulletmap.is_empty().not() {
+            let bullet_map = &mut *self.vars.bulletmap;
             for bullet in bullet_map {
                 for surface in &mut bullet.surfaces {
                     *surface = None;
                 }
             }
-            dealloc(
-                self.vars.bulletmap as *mut u8,
-                Layout::array::<BulletSpec>(
-                    usize::try_from(self.graphics.number_of_bullet_types).unwrap(),
-                )
-                .unwrap(),
-            );
-            self.vars.bulletmap = null_mut();
+            self.vars.bulletmap.clear();
         }
 
         // free blast map
@@ -229,7 +219,7 @@ impl Data<'_> {
     /// This must not be confused with initnewgame, which
     /// only initializes a new mission for the game.
     pub unsafe fn init_freedroid(&mut self) {
-        self.vars.bulletmap = null_mut(); // That will cause the memory to be allocated later
+        self.vars.bulletmap.clear(); // That will cause the memory to be allocated later
 
         for bullet in &mut self.main.all_bullets[..MAXBULLETS] {
             bullet.surfaces_were_generated = false.into();
@@ -1366,18 +1356,10 @@ impl Data<'_> {
         // If we would do that in any case, every Init_Game_Data call would destroy the loaded
         // image files AND MOST LIKELY CAUSE A SEGFAULT!!!
         //
-        if self.vars.bulletmap.is_null() {
-            self.vars.bulletmap = alloc_zeroed(
-                Layout::array::<BulletSpec>(
-                    usize::try_from(self.graphics.number_of_bullet_types).unwrap(),
-                )
-                .unwrap(),
-            ) as *mut BulletSpec;
-            std::ptr::write_bytes(
-                self.vars.bulletmap,
-                0,
-                usize::try_from(self.graphics.number_of_bullet_types).unwrap(),
-            );
+        if self.vars.bulletmap.is_empty() {
+            self.vars
+                .bulletmap
+                .reserve(usize::try_from(self.graphics.number_of_bullet_types).unwrap());
             info!(
                 "We have counted {} different bullet types in the game data file.",
                 self.graphics.number_of_bullet_types
@@ -1389,7 +1371,6 @@ impl Data<'_> {
         // Now we start to read the values for each bullet type:
         //
         let mut bullet_pointer = data_pointer as *mut c_char;
-        let mut bullet_index = 0;
         loop {
             bullet_pointer = libc::strstr(bullet_pointer, NEW_BULLET_TYPE_BEGIN_STRING.as_ptr());
             if bullet_pointer.is_null() {
@@ -1399,13 +1380,13 @@ impl Data<'_> {
             info!("Found another Bullet specification entry!  Lets add that to the others!");
             bullet_pointer = bullet_pointer.add(1); // to avoid doubly taking this entry
 
+            let mut bullet = BulletSpec::default();
             // Now we read in the recharging time for this bullettype(=weapontype)
             read_value_from_string(
                 bullet_pointer,
                 BULLET_RECHARGE_TIME_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
-                &mut (*self.vars.bulletmap.add(bullet_index)).recharging_time as *mut _
-                    as *mut c_void,
+                &mut bullet.recharging_time as *mut _ as *mut c_void,
             );
 
             // Now we read in the maximal speed this type of bullet can go.
@@ -1413,7 +1394,7 @@ impl Data<'_> {
                 bullet_pointer,
                 BULLET_SPEED_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
-                &mut (*self.vars.bulletmap.add(bullet_index)).speed as *mut _ as *mut c_void,
+                &mut bullet.speed as *mut _ as *mut c_void,
             );
 
             // Now we read in the damage this bullet can do
@@ -1421,7 +1402,7 @@ impl Data<'_> {
                 bullet_pointer,
                 BULLET_DAMAGE_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*self.vars.bulletmap.add(bullet_index)).damage as *mut _ as *mut c_void,
+                &mut bullet.damage as *mut _ as *mut c_void,
             );
 
             // Now we read in the number of phases that are designed for this bullet type
@@ -1434,10 +1415,10 @@ impl Data<'_> {
                 bullet_pointer,
                 BULLET_BLAST_TYPE_CAUSED_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*self.vars.bulletmap.add(bullet_index)).blast as *mut _ as *mut c_void,
+                &mut bullet.blast as *mut _ as *mut c_void,
             );
 
-            bullet_index += 1;
+            self.vars.bulletmap.push(bullet);
         }
 
         //--------------------
@@ -1467,10 +1448,7 @@ impl Data<'_> {
 
         // Now that all the calibrations factors have been read in, we can start to
         // apply them to all the bullet types
-        for bullet in std::slice::from_raw_parts_mut(
-            self.vars.bulletmap,
-            usize::try_from(self.graphics.number_of_bullet_types).unwrap(),
-        ) {
+        for bullet in &mut self.vars.bulletmap {
             bullet.speed *= bullet_speed_calibrator;
             bullet.damage = (bullet.damage as f32 * bullet_damage_calibrator) as c_int;
         }

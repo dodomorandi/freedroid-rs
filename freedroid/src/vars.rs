@@ -39,7 +39,7 @@ pub struct Vars<'sdl> {
     pub me: Influence,
 
     pub droidmap: Vec<DruidSpec>,
-    pub bulletmap: *mut BulletSpec<'sdl>,
+    pub bulletmap: Vec<BulletSpec<'sdl>>,
     pub blastmap: [BlastSpec<'sdl>; ALLBLASTTYPES],
 }
 
@@ -91,7 +91,7 @@ impl Default for Vars<'_> {
                     MAX_INFLU_POSITION_HISTORY],
             },
             droidmap: Default::default(),
-            bulletmap: null_mut(),
+            bulletmap: Default::default(),
             blastmap: array_init(|_| BlastSpec::default_const()),
         }
     }

@@ -64,7 +64,7 @@ impl Data<'_> {
                     {
                         let enemy = &mut self.main.all_enemys[enemy_index];
                         enemy.energy -=
-                            (*self.vars.bulletmap.add(BulletKind::Flash as usize)).damage as f32;
+                            self.vars.bulletmap[BulletKind::Flash as usize].damage as f32;
 
                         // Since the enemy just got hit, it might as well say so :)
                         self.enemy_hit_by_bullet_text(enemy_index.try_into().unwrap());
@@ -78,7 +78,7 @@ impl Data<'_> {
                         == 0
                 {
                     self.vars.me.energy -=
-                        (*self.vars.bulletmap.add(BulletKind::Flash as usize)).damage as f32;
+                        self.vars.bulletmap[BulletKind::Flash as usize].damage as f32;
                 }
             }
 
@@ -136,7 +136,7 @@ impl Data<'_> {
 
                             if self.main.invincible_mode == 0 {
                                 self.vars.me.energy -=
-                                    (*self.vars.bulletmap.add(cur_bullet.ty.into())).damage as f32;
+                                    self.vars.bulletmap[usize::from(cur_bullet.ty)].damage as f32;
                             }
 
                             self.delete_bullet(num);
@@ -163,12 +163,9 @@ impl Data<'_> {
                         // FIXME
                         if (xdist * xdist + ydist * ydist) < self.get_druid_hit_dist_squared() {
                             // The enemy who was hit, loses some energy, depending on the bullet
-                            self.main.all_enemys[enemy_index].energy -= (*self
-                                .vars
-                                .bulletmap
-                                .add(cur_bullet.ty.try_into().unwrap()))
-                            .damage
-                                as f32;
+                            self.main.all_enemys[enemy_index].energy -=
+                                self.vars.bulletmap[usize::try_from(cur_bullet.ty).unwrap()].damage
+                                    as f32;
 
                             self.delete_bullet(num);
                             self.got_hit_sound();
@@ -397,7 +394,7 @@ impl Data<'_> {
         //
         if cur_bullet.surfaces_were_generated != 0 {
             info!("DeleteBullet: freeing this bullets attached surfaces...");
-            let bullet_spec = &*self.vars.bulletmap.add(cur_bullet.ty.into());
+            let bullet_spec = &self.vars.bulletmap[usize::from(cur_bullet.ty)];
             for phase in 0..usize::try_from(bullet_spec.phases).unwrap() {
                 cur_bullet.surfaces[phase] = None;
             }
