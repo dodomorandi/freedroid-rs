@@ -1792,8 +1792,7 @@ impl Data<'_> {
 
                 // We provide some security agains too high energy/health values gained
                 // by very rapid successions of successful takeover attempts
-                let droid_map =
-                    std::slice::from_raw_parts(self.vars.droidmap, Droid::NumDroids as usize);
+                let droid_map = &self.vars.droidmap;
                 if self.vars.me.energy > droid_map[Droid::Droid001 as usize].maxenergy {
                     self.vars.me.energy = droid_map[Droid::Droid001 as usize].maxenergy;
                 }

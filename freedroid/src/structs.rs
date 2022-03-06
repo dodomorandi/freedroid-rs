@@ -102,6 +102,31 @@ pub struct DruidSpec {
     pub notes: *mut i8, /* notes on the druid of this type */
 }
 
+impl Default for DruidSpec {
+    fn default() -> Self {
+        Self {
+            druidname: Default::default(),
+            maxspeed: Default::default(),
+            class: Default::default(),
+            accel: Default::default(),
+            maxenergy: Default::default(),
+            lose_health: Default::default(),
+            gun: Default::default(),
+            aggression: Default::default(),
+            flashimmune: Default::default(),
+            score: Default::default(),
+            height: Default::default(),
+            weight: Default::default(),
+            drive: Default::default(),
+            brain: Default::default(),
+            sensor1: Default::default(),
+            sensor2: Default::default(),
+            sensor3: Default::default(),
+            notes: null_mut(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Influence {
     pub ty: i32,          /* what kind of druid is this ? */

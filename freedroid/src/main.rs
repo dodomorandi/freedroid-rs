@@ -84,7 +84,7 @@ struct Main<'sdl> {
     /* for bullet debugging: stop where u are */
     stop_influencer: i32,
     num_enemys: i32,
-    number_of_droid_types: i32,
+    number_of_droid_types: u8,
     pre_take_energy: i32,
     all_bullets: [Bullet<'sdl>; MAXBULLETS + 10],
     all_blasts: [Blast; MAXBLASTS + 10],

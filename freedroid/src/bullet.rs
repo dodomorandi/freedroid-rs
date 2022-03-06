@@ -60,8 +60,7 @@ impl Data<'_> {
                     }
 
                     if self.is_visible(&enemy.pos) != 0
-                        && (*self.vars.droidmap.add(usize::try_from(enemy.ty).unwrap())).flashimmune
-                            == 0
+                        && self.vars.droidmap[usize::try_from(enemy.ty).unwrap()].flashimmune == 0
                     {
                         let enemy = &mut self.main.all_enemys[enemy_index];
                         enemy.energy -=
@@ -75,11 +74,7 @@ impl Data<'_> {
                 // droids with flash are always flash-immune!
                 // -> we don't get hurt by our own flashes!
                 if self.main.invincible_mode == 0
-                    && (*self
-                        .vars
-                        .droidmap
-                        .add(usize::try_from(self.vars.me.ty).unwrap()))
-                    .flashimmune
+                    && self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].flashimmune
                         == 0
                 {
                     self.vars.me.energy -=

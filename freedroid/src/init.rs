@@ -158,23 +158,14 @@ impl Data<'_> {
     }
 
     pub unsafe fn free_druidmap(&mut self) {
-        if self.vars.droidmap.is_null() {
+        if self.vars.droidmap.is_empty() {
             return;
         }
-        let droid_map = std::slice::from_raw_parts(
-            self.vars.droidmap,
-            usize::try_from(self.main.number_of_droid_types).unwrap(),
-        );
-        for droid in droid_map {
+        for droid in &self.vars.droidmap {
             dealloc_c_string(droid.notes);
         }
 
-        dealloc(
-            self.vars.droidmap as *mut u8,
-            Layout::array::<DruidSpec>(usize::try_from(self.main.number_of_droid_types).unwrap())
-                .unwrap(),
-        );
-        self.vars.droidmap = null_mut();
+        self.vars.droidmap.clear();
     }
 
     /// This function checks, if the influencer has succeeded in his given
@@ -875,7 +866,7 @@ impl Data<'_> {
         self.vars.me.ty = Droid::Droid001 as c_int;
         self.vars.me.speed.x = 0.;
         self.vars.me.speed.y = 0.;
-        self.vars.me.energy = (*self.vars.droidmap.add(Droid::Droid001 as usize)).maxenergy;
+        self.vars.me.energy = self.vars.droidmap[Droid::Droid001 as usize].maxenergy;
         self.vars.me.health = self.vars.me.energy; /* start with max. health */
         self.vars.me.status = Status::Mobile as c_int;
         self.vars.me.phase = 0.;
@@ -1148,14 +1139,15 @@ impl Data<'_> {
         self.main.number_of_droid_types = count_string_occurences(
             data_pointer as *mut c_char,
             NEW_ROBOT_BEGIN_STRING.as_ptr() as *mut c_char,
-        );
+        )
+        .try_into()
+        .unwrap();
 
         // Now that we know how many robots are defined in freedroid.ruleset, we can allocate
         // a fitting amount of memory.
-        self.vars.droidmap = alloc_zeroed(
-            Layout::array::<DruidSpec>(usize::try_from(self.main.number_of_droid_types).unwrap())
-                .unwrap(),
-        ) as *mut DruidSpec;
+        self.vars
+            .droidmap
+            .reserve(self.main.number_of_droid_types.into());
         info!(
             "We have counted {} different druid types in the game data file.",
             self.main.number_of_droid_types,
@@ -1164,7 +1156,6 @@ impl Data<'_> {
 
         //Now we start to read the values for each robot:
         //Of which parts is it composed, which stats does it have?
-        let mut robot_index = 0;
         loop {
             robot_pointer = libc::strstr(robot_pointer, NEW_ROBOT_BEGIN_STRING.as_ptr());
             if robot_pointer.is_null() {
@@ -1175,11 +1166,12 @@ impl Data<'_> {
             robot_pointer = robot_pointer.add(1); // to avoid doubly taking this entry
 
             // Now we read in the Name of this droid.  We consider as a name the rest of the
+            let mut droid = DruidSpec::default();
             read_value_from_string(
                 robot_pointer,
                 DROIDNAME_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%s").as_ptr() as *mut c_char,
-                &mut (*self.vars.droidmap.add(robot_index)).druidname as *mut _ as *mut c_void,
+                &mut droid.druidname as *mut _ as *mut c_void,
             );
 
             // Now we read in the maximal speed this droid can go.
@@ -1187,7 +1179,7 @@ impl Data<'_> {
                 robot_pointer,
                 MAXSPEED_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
-                &mut (*self.vars.droidmap.add(robot_index)).maxspeed as *mut _ as *mut c_void,
+                &mut droid.maxspeed as *mut _ as *mut c_void,
             );
 
             // Now we read in the class of this droid.
@@ -1195,7 +1187,7 @@ impl Data<'_> {
                 robot_pointer,
                 CLASS_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*self.vars.droidmap.add(robot_index)).class as *mut _ as *mut c_void,
+                &mut droid.class as *mut _ as *mut c_void,
             );
 
             // Now we read in the maximal acceleration this droid can go.
@@ -1203,7 +1195,7 @@ impl Data<'_> {
                 robot_pointer,
                 ACCELERATION_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
-                &mut (*self.vars.droidmap.add(robot_index)).accel as *mut _ as *mut c_void,
+                &mut droid.accel as *mut _ as *mut c_void,
             );
 
             // Now we read in the maximal energy this droid can store.
@@ -1211,7 +1203,7 @@ impl Data<'_> {
                 robot_pointer,
                 MAXENERGY_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
-                &mut (*self.vars.droidmap.add(robot_index)).maxenergy as *mut _ as *mut c_void,
+                &mut droid.maxenergy as *mut _ as *mut c_void,
             );
 
             // Now we read in the lose_health rate.
@@ -1219,7 +1211,7 @@ impl Data<'_> {
                 robot_pointer,
                 LOSEHEALTH_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
-                &mut (*self.vars.droidmap.add(robot_index)).lose_health as *mut _ as *mut c_void,
+                &mut droid.lose_health as *mut _ as *mut c_void,
             );
 
             // Now we read in the class of this droid.
@@ -1227,7 +1219,7 @@ impl Data<'_> {
                 robot_pointer,
                 GUN_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*self.vars.droidmap.add(robot_index)).gun as *mut _ as *mut c_void,
+                &mut droid.gun as *mut _ as *mut c_void,
             );
 
             // Now we read in the aggression rate of this droid.
@@ -1235,7 +1227,7 @@ impl Data<'_> {
                 robot_pointer,
                 AGGRESSION_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*self.vars.droidmap.add(robot_index)).aggression as *mut _ as *mut c_void,
+                &mut droid.aggression as *mut _ as *mut c_void,
             );
 
             // Now we read in the flash immunity of this droid.
@@ -1243,7 +1235,7 @@ impl Data<'_> {
                 robot_pointer,
                 FLASHIMMUNE_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*self.vars.droidmap.add(robot_index)).flashimmune as *mut _ as *mut c_void,
+                &mut droid.flashimmune as *mut _ as *mut c_void,
             );
 
             // Now we score to be had for destroying one droid of this type
@@ -1251,7 +1243,7 @@ impl Data<'_> {
                 robot_pointer,
                 SCORE_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*self.vars.droidmap.add(robot_index)).score as *mut _ as *mut c_void,
+                &mut droid.score as *mut _ as *mut c_void,
             );
 
             // Now we read in the height of this droid of this type
@@ -1259,7 +1251,7 @@ impl Data<'_> {
                 robot_pointer,
                 HEIGHT_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%f").as_ptr() as *mut c_char,
-                &mut (*self.vars.droidmap.add(robot_index)).height as *mut _ as *mut c_void,
+                &mut droid.height as *mut _ as *mut c_void,
             );
 
             // Now we read in the weight of this droid type
@@ -1267,7 +1259,7 @@ impl Data<'_> {
                 robot_pointer,
                 WEIGHT_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*self.vars.droidmap.add(robot_index)).weight as *mut _ as *mut c_void,
+                &mut droid.weight as *mut _ as *mut c_void,
             );
 
             // Now we read in the drive of this droid of this type
@@ -1275,7 +1267,7 @@ impl Data<'_> {
                 robot_pointer,
                 DRIVE_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*self.vars.droidmap.add(robot_index)).drive as *mut _ as *mut c_void,
+                &mut droid.drive as *mut _ as *mut c_void,
             );
 
             // Now we read in the brain of this droid of this type
@@ -1283,7 +1275,7 @@ impl Data<'_> {
                 robot_pointer,
                 BRAIN_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*self.vars.droidmap.add(robot_index)).brain as *mut _ as *mut c_void,
+                &mut droid.brain as *mut _ as *mut c_void,
             );
 
             // Now we read in the sensor 1, 2 and 3 of this droid type
@@ -1291,41 +1283,36 @@ impl Data<'_> {
                 robot_pointer,
                 SENSOR1_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*self.vars.droidmap.add(robot_index)).sensor1 as *mut _ as *mut c_void,
+                &mut droid.sensor1 as *mut _ as *mut c_void,
             );
             read_value_from_string(
                 robot_pointer,
                 SENSOR2_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*self.vars.droidmap.add(robot_index)).sensor2 as *mut _ as *mut c_void,
+                &mut droid.sensor2 as *mut _ as *mut c_void,
             );
             read_value_from_string(
                 robot_pointer,
                 SENSOR3_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
-                &mut (*self.vars.droidmap.add(robot_index)).sensor3 as *mut _ as *mut c_void,
+                &mut droid.sensor3 as *mut _ as *mut c_void,
             );
 
             // Now we read in the notes concerning this droid.  We consider as notes all the rest of the
             // line after the NOTES_BEGIN_STRING until the "\n" is found.
-            (*self.vars.droidmap.add(robot_index)).notes = read_and_malloc_string_from_data(
+            droid.notes = read_and_malloc_string_from_data(
                 robot_pointer,
                 NOTES_BEGIN_STRING.as_ptr() as *mut c_char,
                 cstr!("\n").as_ptr() as *mut c_char,
             );
 
-            // Now we're potentially ready to process the next droid.  Therefore we proceed to
-            // the next number in the Droidmap array.
-            robot_index += 1;
+            self.vars.droidmap.push(droid);
         }
 
         info!("That must have been the last robot.  We're done reading the robot data.");
         info!("Applying the calibration factors to all droids...");
 
-        for droid in std::slice::from_raw_parts_mut(
-            self.vars.droidmap,
-            self.main.number_of_droid_types.try_into().unwrap(),
-        ) {
+        for droid in &mut self.vars.droidmap {
             droid.maxspeed *= maxspeed_calibrator;
             droid.accel *= acceleration_calibrator;
             droid.maxenergy *= maxenergy_calibrator;

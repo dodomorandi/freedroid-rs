@@ -1183,7 +1183,7 @@ freedroid-discussion@lists.sourceforge.net\n\
             let mut list_index = 0;
             while list_index < self.main.number_of_droid_types {
                 if libc::strcmp(
-                    (*self.vars.droidmap.add(usize::try_from(list_index).unwrap()))
+                    self.vars.droidmap[usize::try_from(list_index).unwrap()]
                         .druidname
                         .as_ptr(),
                     type_indication_string.as_ptr(),
@@ -1206,7 +1206,7 @@ freedroid-discussion@lists.sourceforge.net\n\
                     list_index,
                 );
             }
-            list_of_types_allowed[different_random_types] = list_index;
+            list_of_types_allowed[different_random_types] = list_index.into();
             different_random_types += 1;
 
             search_pointer = libc::strstr(
@@ -1317,7 +1317,7 @@ freedroid-discussion@lists.sourceforge.net\n\
                 // Do nothing to unused entries
                 continue;
             }
-            enemy.energy = (*self.vars.droidmap.add(usize::try_from(ty).unwrap())).maxenergy;
+            enemy.energy = self.vars.droidmap[usize::try_from(ty).unwrap()].maxenergy;
             enemy.status = Status::Mobile as c_int;
             self.main.num_enemys += 1;
         }

@@ -4,9 +4,8 @@ use crate::defs::{gcw0_a_pressed, gcw0_any_button_pressed, gcw0_any_button_press
 use crate::{
     b_font::{char_width, font_height, print_string_font},
     defs::{
-        AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags, Droid, MapTile,
-        MenuAction, Status, Themed, BYCOLOR, CREDITS_PIC_FILE_C, GRAPHICS_DIR_C, MAX_MAP_COLS,
-        MAX_MAP_ROWS,
+        AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags, MapTile, MenuAction,
+        Status, Themed, BYCOLOR, CREDITS_PIC_FILE_C, GRAPHICS_DIR_C, MAX_MAP_COLS, MAX_MAP_ROWS,
     },
     global::{Global, INFLUENCE_MODE_NAMES},
     graphics::Graphics,
@@ -330,7 +329,6 @@ impl<'sdl> Data<'sdl> {
         const Y0: i32 = 20;
 
         let cur_level = &mut *self.main.cur_level;
-        let droid_map = std::slice::from_raw_parts(self.vars.droidmap, Droid::NumDroids as usize);
         let mut resume = false;
         while !resume {
             self.clear_graph_mem();
@@ -523,7 +521,7 @@ impl<'sdl> Data<'sdl> {
                                     "{}.   {}   {:.0}   {:.0}   {:.0}    {}.\n",
                                     i,
                                     CStr::from_ptr(
-                                        droid_map
+                                        self.vars.droidmap
                                             [usize::try_from(self.main.all_enemys[i].ty).unwrap()]
                                         .druidname
                                         .as_ptr()
@@ -586,9 +584,10 @@ impl<'sdl> Data<'sdl> {
                                 i,
                                 self.main.all_enemys[i].levelnum.clone(),
                                 CStr::from_ptr(
-                                    droid_map[usize::try_from(self.main.all_enemys[i].ty).unwrap()]
-                                        .druidname
-                                        .as_ptr()
+                                    self.vars.droidmap
+                                        [usize::try_from(self.main.all_enemys[i].ty).unwrap()]
+                                    .druidname
+                                    .as_ptr()
                                 )
                                 .to_str()
                                 .unwrap(),
@@ -653,7 +652,7 @@ impl<'sdl> Data<'sdl> {
                     let input = self.get_string(40, 2);
                     let mut i = 0;
                     for _ in 0..u32::try_from(self.main.number_of_droid_types).unwrap() {
-                        if libc::strcmp(droid_map[i].druidname.as_ptr(), input) != 0 {
+                        if libc::strcmp(self.vars.droidmap[i].druidname.as_ptr(), input) != 0 {
                             break;
                         }
                         i += 1;
@@ -674,7 +673,7 @@ impl<'sdl> Data<'sdl> {
                     } else {
                         self.vars.me.ty = i.try_into().unwrap();
                         self.vars.me.energy =
-                            droid_map[usize::try_from(self.vars.me.ty).unwrap()].maxenergy;
+                            self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxenergy;
                         self.vars.me.health = self.vars.me.energy;
                         self.printf_sdl(
                             &mut ne_screen,

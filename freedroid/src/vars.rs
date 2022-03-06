@@ -38,7 +38,7 @@ pub struct Vars<'sdl> {
     pub ship_empty_counter: c_int,
     pub me: Influence,
 
-    pub droidmap: *mut DruidSpec,
+    pub droidmap: Vec<DruidSpec>,
     pub bulletmap: *mut BulletSpec<'sdl>,
     pub blastmap: [BlastSpec<'sdl>; ALLBLASTTYPES],
 }
@@ -90,7 +90,7 @@ impl Default for Vars<'_> {
                 position_history_ring_buffer: [Gps { x: 0., y: 0., z: 0 };
                     MAX_INFLU_POSITION_HISTORY],
             },
-            droidmap: null_mut(),
+            droidmap: Default::default(),
             bulletmap: null_mut(),
             blastmap: array_init(|_| BlastSpec::default_const()),
         }

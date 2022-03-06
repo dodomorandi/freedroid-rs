@@ -1585,7 +1585,7 @@ impl Data<'_> {
 
             self.update_progress(90);
             //---------- get Droid images ----------
-            let droids = std::slice::from_raw_parts(self.vars.droidmap, Droid::NumDroids as usize);
+            let droids = &mut self.vars.droidmap;
             let Self {
                 graphics,
                 global,
@@ -1625,6 +1625,7 @@ impl Data<'_> {
                 });
 
             self.update_progress(95);
+            let droids = &self.vars.droidmap;
             // we need the 999.png in any case for transparency!
             libc::strcpy(
                 fname.as_mut_ptr(),

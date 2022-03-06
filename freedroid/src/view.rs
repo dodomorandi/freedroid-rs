@@ -365,7 +365,7 @@ impl Data<'_> {
         let droid = &self.main.all_enemys[usize::try_from(enemy_index).unwrap()];
         let ty = droid.ty;
         let phase = droid.phase;
-        let name = &mut (*self.vars.droidmap.offset(ty.try_into().unwrap())).druidname;
+        let name = &self.vars.droidmap[usize::try_from(ty).unwrap()].druidname;
 
         if (droid.status == Status::Terminated as i32)
             || (droid.status == Status::Out as i32)
@@ -383,7 +383,7 @@ impl Data<'_> {
         // We check for incorrect droid types, which sometimes might occor, especially after
         // heavy editing of the crew initialisation functions ;)
         assert!(
-            droid.ty < self.main.number_of_droid_types,
+            droid.ty < self.main.number_of_droid_types.into(),
             "nonexistant droid-type encountered: {}",
             droid.ty
         );
@@ -516,7 +516,7 @@ impl Data<'_> {
         // Now we draw the first digit of the influencers current number.
         let mut dst = self.main.first_digit_rect;
         influ_digit_surface_pointer[usize::try_from(
-            (*vars.droidmap.offset(vars.me.ty.try_into().unwrap())).druidname[0] - b'1' as i8 + 1,
+            vars.droidmap[usize::try_from(vars.me.ty).unwrap()].druidname[0] - b'1' as i8 + 1,
         )
         .unwrap()]
         .as_mut()
@@ -526,7 +526,7 @@ impl Data<'_> {
         // Now we draw the second digit of the influencers current number.
         dst = self.main.second_digit_rect;
         influ_digit_surface_pointer[usize::try_from(
-            (*vars.droidmap.offset(vars.me.ty.try_into().unwrap())).druidname[1] - b'1' as i8 + 1,
+            vars.droidmap[usize::try_from(vars.me.ty).unwrap()].druidname[1] - b'1' as i8 + 1,
         )
         .unwrap()]
         .as_mut()
@@ -537,7 +537,7 @@ impl Data<'_> {
         dst = self.main.third_digit_rect;
 
         influ_digit_surface_pointer[usize::try_from(
-            (*vars.droidmap.offset(vars.me.ty.try_into().unwrap())).druidname[2] - b'1' as i8 + 1,
+            vars.droidmap[usize::try_from(vars.me.ty).unwrap()].druidname[2] - b'1' as i8 + 1,
         )
         .unwrap()]
         .as_mut()
@@ -545,11 +545,7 @@ impl Data<'_> {
         .blit_to(build_block.as_mut().unwrap(), &mut dst);
 
         if self.vars.me.energy * 100.
-            / (*self
-                .vars
-                .droidmap
-                .offset(self.vars.me.ty.try_into().unwrap()))
-            .maxenergy
+            / self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxenergy
             <= BLINKENERGY
             && x == -1
         {

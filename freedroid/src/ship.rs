@@ -331,7 +331,7 @@ impl Data<'_> {
         );
 
         let mut droid_name = [0u8; 80];
-        let droid = &*self.vars.droidmap.add(usize::try_from(droid_type).unwrap());
+        let droid = &self.vars.droidmap[usize::try_from(droid_type).unwrap()];
         write!(
             droid_name.as_mut(),
             "  Unit type {} - {}\0",
