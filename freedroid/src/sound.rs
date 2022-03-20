@@ -331,19 +331,23 @@ impl<'sdl> Data<'sdl> {
             }
         } else {
             // not using BYCOLOR mechanism: just play specified song
-            let fpath = self.find_file(
-                filename_raw.as_ptr() as *const c_char,
-                SOUND_DIR_C.as_ptr() as *mut c_char,
+            let fpath = match Self::find_file_static(
+                &self.global,
+                &mut self.misc,
+                filename_raw,
+                Some(SOUND_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::WarnOnly as c_int,
-            );
-            if fpath.is_null() {
-                error!(
-                    "Error loading sound-file: {}",
-                    filename_raw.to_string_lossy()
-                );
-                return;
-            }
+            ) {
+                Some(x) => x,
+                None => {
+                    error!(
+                        "Error loading sound-file: {}",
+                        filename_raw.to_string_lossy()
+                    );
+                    return;
+                }
+            };
 
             let &mut Self {
                 sdl, ref mut sound, ..
@@ -352,7 +356,7 @@ impl<'sdl> Data<'sdl> {
             let mixer = sdl.mixer.get().unwrap();
             let sound = sound.as_mut().unwrap();
 
-            sound.tmp_mod_file = mixer.load_music_from_c_str_path(CStr::from_ptr(fpath));
+            sound.tmp_mod_file = mixer.load_music_from_c_str_path(fpath);
             match sound.tmp_mod_file.as_ref() {
                 Some(music) => {
                     mixer.play_music(music, None);
@@ -451,16 +455,16 @@ Continuing with sound disabled",
             let fpath = Data::find_file_static(
                 global,
                 misc,
-                sample_filename.as_ptr(),
-                SOUND_DIR_C.as_ptr() as *mut c_char,
+                sample_filename,
+                Some(SOUND_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::WarnOnly as c_int,
             );
 
             let loaded_wav_file = &mut loaded_wav_files[sound_file_index];
 
-            if !fpath.is_null() {
-                *loaded_wav_file = mix_load_wav(mixer, CStr::from_ptr(fpath));
+            if let Some(fpath) = fpath {
+                *loaded_wav_file = mix_load_wav(mixer, fpath);
             }
 
             if loaded_wav_file.is_none() {
@@ -488,14 +492,14 @@ Continuing with sound disabled",
             let fpath = Data::find_file_static(
                 global,
                 misc,
-                music_file.as_ptr(),
-                SOUND_DIR_C.as_ptr() as *mut c_char,
+                music_file,
+                Some(SOUND_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::WarnOnly as c_int,
             );
             let music_song = &mut music_songs[music_file_index];
-            if !fpath.is_null() {
-                *music_song = mixer.load_music_from_c_str_path(CStr::from_ptr(fpath));
+            if let Some(fpath) = fpath {
+                *music_song = mixer.load_music_from_c_str_path(fpath);
             }
             if music_song.is_none() {
                 error!("Error loading sound-file: {}", music_file.to_string_lossy());

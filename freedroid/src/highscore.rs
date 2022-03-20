@@ -17,10 +17,10 @@ use std::{
     fs::File,
     io::{Read, Write},
     mem,
-    ops::Not,
     os::raw::{c_char, c_int, c_long},
     path::Path,
     ptr::null_mut,
+    rc::Rc,
 };
 
 #[derive(Debug, Default)]
@@ -188,8 +188,10 @@ impl Data<'_> {
             None => return,
         };
 
-        let prev_font =
-            std::mem::replace(&mut self.b_font.current_font, self.global.highscore_b_font);
+        let prev_font = std::mem::replace(
+            &mut self.b_font.current_font,
+            self.global.highscore_b_font.clone(),
+        );
 
         let user_center_x: i16 = self.vars.user_rect.x() + (self.vars.user_rect.width() / 2) as i16;
         let user_center_y: i16 =
@@ -215,7 +217,14 @@ impl Data<'_> {
             .unwrap()
             .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
 
-        let h = font_height(&*self.global.para_b_font);
+        let h = font_height(
+            &*self
+                .global
+                .para_b_font
+                .as_ref()
+                .unwrap()
+                .ro(&self.font_owner),
+        );
         self.display_text(
             cstr!("Great Score !").as_ptr(),
             i32::from(dst.x()) - h,
@@ -295,14 +304,16 @@ impl Data<'_> {
     /// Display the high scores of the single player game.
     /// This function is actually a submenu of the MainMenu.
     pub unsafe fn show_highscores(&mut self) {
-        let fpath = self.find_file(
-            HS_BACKGROUND_FILE_C.as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        let fpath = Self::find_file_static(
+            &self.global,
+            &mut self.misc,
+            HS_BACKGROUND_FILE_C,
+            Some(GRAPHICS_DIR_C),
             Themed::NoTheme as c_int,
             Criticality::WarnOnly as c_int,
         );
-        if fpath.is_null().not() {
-            self.display_image(CStr::from_ptr(fpath));
+        if let Some(fpath) = fpath {
+            Self::display_image(self.sdl, &self.global, &mut self.graphics, fpath);
         }
         self.make_grid_on_screen(Some(&self.vars.screen_rect.clone()));
         self.display_banner(
@@ -311,22 +322,25 @@ impl Data<'_> {
             DisplayBannerFlags::FORCE_UPDATE.bits().into(),
         );
 
-        let prev_font =
-            std::mem::replace(&mut self.b_font.current_font, self.global.highscore_b_font);
+        let highscore_font = self.global.highscore_b_font.as_ref().unwrap();
+        let prev_font = self.b_font.current_font.replace(Rc::clone(highscore_font));
+        let highscore_font = highscore_font.ro(&self.font_owner);
 
-        let len = char_width(&*self.b_font.current_font, b'9');
+        let len = char_width(highscore_font, b'9');
 
         let x0 = i32::from(self.vars.screen_rect.width()) / 8;
         let x1 = x0 + 2 * len;
         let x2 = x1 + 11 * len;
         let x3 = x2 + i32::try_from(MAX_NAME_LEN).unwrap() * len;
 
-        let height = font_height(&*self.b_font.current_font);
+        let height = font_height(highscore_font);
 
         let y0 = i32::from(self.vars.full_user_rect.y()) + height;
 
         let mut ne_screen = self.graphics.ne_screen.take().unwrap();
-        self.centered_print_string(
+        Self::centered_print_string(
+            &self.b_font,
+            &mut self.font_owner,
             &mut ne_screen,
             y0,
             format_args!("Top {}  scores\n", self.highscore.num),

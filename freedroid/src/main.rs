@@ -1,5 +1,6 @@
 #![feature(array_methods)]
 
+mod array_c_string;
 mod b_font;
 mod bullet;
 mod defs;
@@ -22,8 +23,9 @@ mod text;
 mod vars;
 mod view;
 
+use array_c_string::ArrayCString;
 use array_init::array_init;
-use b_font::BFont;
+use b_font::{BFont, BFontInfo};
 use bullet::BulletData;
 use defs::{
     AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Status, BYCOLOR,
@@ -41,6 +43,7 @@ use map::{ColorNames, Map};
 use menu::Menu;
 use misc::Misc;
 use once_cell::unsync::OnceCell;
+use qcell::{TCell, TCellOwner};
 use sdl::Rect;
 use ship::ShipData;
 use sound::Sound;
@@ -49,12 +52,7 @@ use takeover::Takeover;
 use text::Text;
 use vars::Vars;
 
-use std::{
-    cell::Cell,
-    ops::Not,
-    os::raw::{c_char, c_float},
-    ptr::null_mut,
-};
+use std::{cell::Cell, fs::File, ops::Not, os::raw::c_float, path::Path, ptr::null_mut};
 
 struct Main<'sdl> {
     last_got_into_blast_sound: c_float,
@@ -129,6 +127,10 @@ impl Default for Main<'_> {
 
 type Sdl = sdl::Sdl<sdl::Video, sdl::Timer, OnceCell<sdl::JoystickSystem>, OnceCell<sdl::Mixer>>;
 
+pub struct FontCellMarker;
+type FontCell<'sdl> = TCell<FontCellMarker, BFontInfo<'sdl>>;
+type FontCellOwner = TCellOwner<FontCellMarker>;
+
 struct Data<'sdl> {
     game_over: bool,
     sdl: &'sdl Sdl,
@@ -150,6 +152,7 @@ struct Data<'sdl> {
     graphics: Graphics<'sdl>,
     main: Main<'sdl>,
     quit: Cell<bool>,
+    font_owner: FontCellOwner,
 }
 
 impl<'sdl> Data<'sdl> {
@@ -175,6 +178,7 @@ impl<'sdl> Data<'sdl> {
             graphics: Default::default(),
             main: Default::default(),
             quit: Cell::new(false),
+            font_owner: FontCellOwner::new(),
         }
     }
 }
@@ -212,7 +216,7 @@ fn main() {
         }
 
         while data.quit.get().not() {
-            data.init_new_mission(STANDARD_MISSION_C.as_ptr() as *mut c_char);
+            data.init_new_mission(STANDARD_MISSION_C);
             if data.quit.get() {
                 break;
             }
@@ -449,4 +453,143 @@ impl Data<'_> {
             enemy.text_visible_time += misc.frame_time(global, main.f_p_sover1);
         }
     }
+}
+
+#[inline]
+fn find_subslice(data: &[u8], needle: &[u8]) -> Option<usize> {
+    data.windows(needle.len()).position(|s| s == needle)
+}
+
+#[inline]
+fn split_at_subslice<'a>(data: &'a [u8], needle: &[u8]) -> Option<(&'a [u8], &'a [u8])> {
+    let pos = find_subslice(data, needle)?;
+    let (before, after) = data.split_at(pos);
+    Some((before, &after[needle.len()..]))
+}
+
+#[inline]
+fn split_at_subslice_mut<'a>(
+    data: &'a mut [u8],
+    needle: &[u8],
+) -> Option<(&'a mut [u8], &'a mut [u8])> {
+    let pos = find_subslice(data, needle)?;
+    let (before, after) = data.split_at_mut(pos);
+    Some((before, &mut after[needle.len()..]))
+}
+
+/// This function read in a file with the specified name, allocated
+/// memory for it of course, looks for the file end string and then
+/// terminates the whole read in file with a 0 character, so that it
+/// can easily be treated like a common string.
+pub fn read_and_malloc_and_terminate_file(filename: &Path, file_end_string: &[u8]) -> Box<[u8]> {
+    use bstr::ByteSlice;
+    use std::io::Read;
+
+    info!(
+        "ReadAndMallocAndTerminateFile: The filename is: {}",
+        filename.display()
+    );
+
+    // Read the whole theme data to memory
+    let mut file = match File::open(filename) {
+        Ok(file) => {
+            info!("ReadAndMallocAndTerminateFile: Opening file succeeded...");
+            file
+        }
+        Err(_) => {
+            panic!(
+                "\n\
+        ----------------------------------------------------------------------\n\
+        Freedroid has encountered a problem:\n\
+        In function 'char* ReadAndMallocAndTerminateFile ( char* filename ):\n\
+        \n\
+        Freedroid was unable to open a given text file, that should be there and\n\
+        should be accessible.\n\
+        \n\
+        This might be due to a wrong file name in a mission file, a wrong filename\n\
+        in the source or a serious bug in the source.\n\
+        \n\
+        The file that couldn't be located was: {}\n\
+        \n\
+        Please check that your external text files are properly set up.\n\
+        \n\
+        Please also don't forget, that you might have to run 'make install'\n\
+        again after you've made modifications to the data files in the source tree.\n\
+        \n\
+        Freedroid will terminate now to draw attention to the data problem it could\n\
+        not resolve.... Sorry, if that interrupts a major game of yours.....\n\
+        ----------------------------------------------------------------------\n\
+        ",
+                filename.display()
+            );
+        }
+    };
+    let file_len = match file
+        .metadata()
+        .ok()
+        .and_then(|metadata| usize::try_from(metadata.len()).ok())
+    {
+        Some(file_len) => {
+            info!("ReadAndMallocAndTerminateFile: fstating file succeeded...");
+            file_len
+        }
+        None => {
+            panic!("ReadAndMallocAndTerminateFile: Error fstat-ing File....");
+        }
+    };
+
+    let mut all_data: Box<[u8]> = vec![0; file_len + 64 * 2 + 10000].into_boxed_slice();
+
+    match file.read_exact(&mut all_data[..file_len]) {
+        Ok(()) => info!("ReadAndMallocAndTerminateFile: Reading file succeeded..."),
+        Err(_) => {
+            panic!("ReadAndMallocAndTerminateFile: Reading file failed...");
+        }
+    }
+    all_data[file_len..].fill(0);
+
+    drop(file);
+
+    info!("ReadAndMallocAndTerminateFile: Adding a 0 at the end of read data....");
+
+    match all_data.find(file_end_string) {
+        None => {
+            panic!(
+                "\n\
+                ----------------------------------------------------------------------\n\
+                Freedroid has encountered a problem:\n\
+                In function 'char* ReadAndMallocAndTerminateFile ( char* filename ):\n\
+                \n\
+                Freedroid was unable to find the string, that should terminate the given\n\
+                file within this file.\n\
+                \n\
+                This might be due to a corrupt text file on disk that does not confirm to\n\
+                the file standards of this version of freedroid or (less likely) to a serious\n\
+                bug in the reading function.\n\
+                \n\
+                The file that is concerned is: {}\n\
+                The string, that could not be located was: {}\n\
+                \n\
+                Please check that your external text files are properly set up.\n\
+                \n\
+                Please also don't forget, that you might have to run 'make install'\n\
+                again after you've made modifications to the data files in the source tree.\n\
+                \n\
+                Freedroid will terminate now to draw attention to the data problem it could\n\
+                not resolve.... Sorry, if that interrupts a major game of yours.....\n\
+                ----------------------------------------------------------------------\n\
+                \n",
+                filename.display(),
+                String::from_utf8_lossy(file_end_string)
+            );
+        }
+        Some(pos) => all_data[pos] = 0,
+    }
+
+    info!(
+        "ReadAndMallocAndTerminateFile: The content of the read file: \n{}",
+        String::from_utf8_lossy(all_data.split(|&c| c == b'\0').next().unwrap_or(b""))
+    );
+
+    all_data
 }

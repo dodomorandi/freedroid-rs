@@ -298,10 +298,15 @@ impl Data<'_> {
         use std::io::Write;
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
-        self.b_font.current_font = self.global.para_b_font;
+        self.b_font.current_font = self.global.para_b_font.clone();
 
-        let lineskip =
-            ((f64::from(font_height(&*self.b_font.current_font)) * TEXT_STRETCH) as f32) as i16;
+        let lineskip = ((f64::from(font_height(
+            self.b_font
+                .current_font
+                .as_ref()
+                .unwrap()
+                .ro(&self.font_owner),
+        )) * TEXT_STRETCH) as f32) as i16;
         let lastline = self.vars.cons_header_rect.y()
             + i16::try_from(self.vars.cons_header_rect.height()).unwrap();
         self.ship.up_rect = Rect::new(self.vars.cons_header_rect.x(), lastline - lineskip, 25, 13);
@@ -604,7 +609,7 @@ Paradroid to eliminate all rogue robots.\0",
 
         self.graphics.arrow_cursor.as_ref().unwrap().set_active();
 
-        self.b_font.current_font = self.global.para_b_font;
+        self.b_font.current_font = self.global.para_b_font.clone();
 
         let mut pos = 0; // starting menu position
         self.paint_console_menu(c_int::try_from(pos).unwrap(), 0);

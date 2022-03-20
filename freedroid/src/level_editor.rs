@@ -144,14 +144,21 @@ impl Data<'_> {
                 );
             }
 
+            let font0 = self
+                .global
+                .font0_b_font
+                .as_ref()
+                .unwrap()
+                .rw(&mut self.font_owner);
+
             print_string_font(
                 self.graphics.ne_screen.as_mut().unwrap(),
-                self.global.font0_b_font,
+                font0,
                 i32::from(self.vars.full_user_rect.x())
                     + i32::from(self.vars.full_user_rect.width()) / 3,
                 i32::from(self.vars.full_user_rect.y())
                     + i32::from(self.vars.full_user_rect.height())
-                    - font_height(&*self.global.font0_b_font),
+                    - font_height(&*font0),
                 format_args!("Press F1 for keymap"),
             );
 
@@ -184,58 +191,62 @@ impl Data<'_> {
                 let mut k = 3;
                 self.make_grid_on_screen(None);
                 let mut ne_screen = self.graphics.ne_screen.take().unwrap();
-                self.centered_put_string(
-                    &mut ne_screen,
-                    k * font_height(&*self.global.menu_b_font),
-                    b"Level Editor Keymap",
-                );
+                let menu_b_font = self
+                    .global
+                    .menu_b_font
+                    .as_ref()
+                    .unwrap()
+                    .ro(&self.font_owner);
+                let font_height = font_height(menu_b_font);
+
+                self.centered_put_string(&mut ne_screen, k * font_height, b"Level Editor Keymap");
                 k += 2;
                 self.put_string(
                     &mut ne_screen,
                     keymap_offset,
-                    (k) * font_height(&*self.global.menu_b_font),
+                    k * font_height,
                     b"Use cursor keys to move around.",
                 );
                 k += 1;
                 self.put_string(
                     &mut ne_screen,
                     keymap_offset,
-                    (k) * font_height(&*self.global.menu_b_font),
+                    k * font_height,
                     b"Use number pad to plant walls.",
                 );
                 k += 1;
                 self.put_string(
                     &mut ne_screen,
                     keymap_offset,
-                    (k) * font_height(&*self.global.menu_b_font),
+                    k * font_height,
                     b"Use shift and number pad to plant extras.",
                 );
                 k += 1;
                 self.put_string(
                     &mut ne_screen,
                     keymap_offset,
-                    (k) * font_height(&*self.global.menu_b_font),
+                    k * font_height,
                     b"R...Refresh, 1-5...Blocktype 1-5, L...Lift",
                 );
                 k += 1;
                 self.put_string(
                     &mut ne_screen,
                     keymap_offset,
-                    (k) * font_height(&*self.global.menu_b_font),
+                    k * font_height,
                     b"F...Fine grid, T/SHIFT + T...Doors",
                 );
                 k += 1;
                 self.put_string(
                     &mut ne_screen,
                     keymap_offset,
-                    (k) * font_height(&*self.global.menu_b_font),
+                    k * font_height,
                     b"M...Alert, E...Enter tile by number",
                 );
                 k += 1;
                 self.put_string(
                     &mut ne_screen,
                     keymap_offset,
-                    (k) * font_height(&*self.global.menu_b_font),
+                    k * font_height,
                     b"Space/Enter...Floor",
                 );
                 k += 2;
@@ -243,21 +254,21 @@ impl Data<'_> {
                 self.put_string(
                     &mut ne_screen,
                     keymap_offset,
-                    (k) * font_height(&*self.global.menu_b_font),
+                    k * font_height,
                     b"I/O...zoom INTO/OUT OF the map",
                 );
                 k += 2;
                 self.put_string(
                     &mut ne_screen,
                     keymap_offset,
-                    (k) * font_height(&*self.global.menu_b_font),
+                    k * font_height,
                     b"P...toggle wayPOINT on/off",
                 );
                 k += 1;
                 self.put_string(
                     &mut ne_screen,
                     keymap_offset,
-                    (k) * font_height(&*self.global.menu_b_font),
+                    k * font_height,
                     b"C...start/end waypoint CONNECTION",
                 );
 
@@ -278,9 +289,19 @@ impl Data<'_> {
             //
             if self.key_is_pressed_r(b'e'.into()) {
                 let mut ne_screen = self.graphics.ne_screen.take().unwrap();
-                self.centered_put_string(
+                let menu_b_font = self
+                    .global
+                    .menu_b_font
+                    .as_ref()
+                    .unwrap()
+                    .ro(&self.font_owner);
+                let font_height = font_height(menu_b_font);
+
+                Self::centered_put_string_static(
+                    &self.b_font,
+                    &mut self.font_owner,
                     &mut ne_screen,
-                    6 * font_height(&*self.global.menu_b_font),
+                    6 * font_height,
                     b"Please enter new value: ",
                 );
                 assert!(ne_screen.flip());

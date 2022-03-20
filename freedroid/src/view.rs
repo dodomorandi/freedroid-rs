@@ -171,15 +171,21 @@ impl Data<'_> {
         // if we don't use Fullscreen mode, we have to clear the text-background manually
         // for the info-line text:
 
+        let font0_b_font = self
+            .global
+            .font0_b_font
+            .as_ref()
+            .unwrap()
+            .rw(&mut self.font_owner);
         let text_rect = Rect::new(
             self.vars.full_user_rect.x(),
             (i32::from(self.vars.full_user_rect.y())
                 + i32::from(self.vars.full_user_rect.height())
-                - font_height(&*self.global.font0_b_font))
+                - font_height(font0_b_font))
             .try_into()
             .unwrap(),
             self.vars.full_user_rect.width(),
-            font_height(&*self.global.font0_b_font).try_into().unwrap(),
+            font_height(font0_b_font).try_into().unwrap(),
         );
         self.graphics
             .ne_screen
@@ -198,12 +204,12 @@ impl Data<'_> {
         if self.global.game_config.draw_position != 0 {
             print_string_font(
                 self.graphics.ne_screen.as_mut().unwrap(),
-                self.global.font0_b_font,
+                font0_b_font,
                 (self.vars.full_user_rect.x() + (self.vars.full_user_rect.width() / 6) as i16)
                     .into(),
                 i32::from(self.vars.full_user_rect.y())
                     + i32::from(self.vars.full_user_rect.height())
-                    - font_height(&*self.global.font0_b_font),
+                    - font_height(font0_b_font),
                 format_args!(
                     "GPS: X={:.0} Y={:.0} Lev={}",
                     self.vars.me.pos.x.round(),
@@ -229,40 +235,52 @@ impl Data<'_> {
                     }
                 });
 
+                let font0_b_font = self
+                    .global
+                    .font0_b_font
+                    .as_ref()
+                    .unwrap()
+                    .rw(&mut self.font_owner);
                 FPS_DISPLAYED.with(|fps_displayed| {
                     print_string_font(
                         self.graphics.ne_screen.as_mut().unwrap(),
-                        self.global.font0_b_font,
+                        font0_b_font,
                         self.vars.full_user_rect.x().into(),
                         self.vars.full_user_rect.y() as i32
                             + self.vars.full_user_rect.height() as i32
-                            - font_height(&*self.global.font0_b_font) as i32,
+                            - font_height(font0_b_font) as i32,
                         format_args!("FPS: {} ", fps_displayed.get()),
                     );
                 });
             }
+            let font0_b_font = self
+                .global
+                .font0_b_font
+                .as_ref()
+                .unwrap()
+                .rw(&mut self.font_owner);
 
             if self.global.game_config.draw_energy != 0 {
                 print_string_font(
                     self.graphics.ne_screen.as_mut().unwrap(),
-                    self.global.font0_b_font,
+                    font0_b_font,
                     i32::from(self.vars.full_user_rect.x())
                         + i32::from(self.vars.full_user_rect.width()) / 2,
                     i32::from(self.vars.full_user_rect.y())
                         + i32::from(self.vars.full_user_rect.height())
-                        - font_height(&*self.global.font0_b_font),
+                        - font_height(font0_b_font),
                     format_args!("Energy: {:.0}", self.vars.me.energy),
                 );
             }
             if self.global.game_config.draw_death_count != 0 {
                 print_string_font(
                     self.graphics.ne_screen.as_mut().unwrap(),
-                    self.global.font0_b_font,
+                    font0_b_font,
                     i32::from(self.vars.full_user_rect.x())
                         + 2 * i32::from(self.vars.full_user_rect.width()) / 3,
                     i32::from(self.vars.full_user_rect.y())
                         + i32::from(self.vars.full_user_rect.height())
-                        - font_height(&*self.global.font0_b_font),
+                        - font_height(font0_b_font),
                     format_args!("Deathcount: {:.0}", self.main.death_count,),
                 );
             }
@@ -410,19 +428,19 @@ impl Data<'_> {
             ne_screen,
             ..
         } = &mut self.graphics;
-        enemy_digit_surface_pointer[usize::try_from(name[0] - b'1' as i8 + 1).unwrap()]
+        enemy_digit_surface_pointer[usize::try_from(name[0] + 1 - b'1').unwrap()]
             .as_mut()
             .unwrap()
             .blit_to(build_block.as_mut().unwrap(), &mut dst);
 
         dst = self.main.second_digit_rect;
-        enemy_digit_surface_pointer[usize::try_from(name[1] - b'1' as i8 + 1).unwrap()]
+        enemy_digit_surface_pointer[usize::try_from(name[1] + 1 - b'1').unwrap()]
             .as_mut()
             .unwrap()
             .blit_to(build_block.as_mut().unwrap(), &mut dst);
 
         dst = self.main.third_digit_rect;
-        enemy_digit_surface_pointer[usize::try_from(name[2] - b'1' as i8 + 1).unwrap()]
+        enemy_digit_surface_pointer[usize::try_from(name[2] + 1 - b'1').unwrap()]
             .as_mut()
             .unwrap()
             .blit_to(build_block.as_mut().unwrap(), &mut dst);
@@ -462,7 +480,11 @@ impl Data<'_> {
         {
             put_string_font(
                 self.graphics.ne_screen.as_mut().unwrap(),
-                self.global.font0_b_font,
+                self.global
+                    .font0_b_font
+                    .as_ref()
+                    .unwrap()
+                    .rw(&mut self.font_owner),
                 (f32::from(self.vars.user_rect.x())
                     + f32::from(self.vars.user_rect.width() / 2)
                     + f32::from(self.vars.block_rect.width() / 3)
@@ -516,7 +538,7 @@ impl Data<'_> {
         // Now we draw the first digit of the influencers current number.
         let mut dst = self.main.first_digit_rect;
         influ_digit_surface_pointer[usize::try_from(
-            vars.droidmap[usize::try_from(vars.me.ty).unwrap()].druidname[0] - b'1' as i8 + 1,
+            vars.droidmap[usize::try_from(vars.me.ty).unwrap()].druidname[0] + 1 - b'1',
         )
         .unwrap()]
         .as_mut()
@@ -526,7 +548,7 @@ impl Data<'_> {
         // Now we draw the second digit of the influencers current number.
         dst = self.main.second_digit_rect;
         influ_digit_surface_pointer[usize::try_from(
-            vars.droidmap[usize::try_from(vars.me.ty).unwrap()].druidname[1] - b'1' as i8 + 1,
+            vars.droidmap[usize::try_from(vars.me.ty).unwrap()].druidname[1] + 1 - b'1',
         )
         .unwrap()]
         .as_mut()
@@ -537,7 +559,7 @@ impl Data<'_> {
         dst = self.main.third_digit_rect;
 
         influ_digit_surface_pointer[usize::try_from(
-            vars.droidmap[usize::try_from(vars.me.ty).unwrap()].druidname[2] - b'1' as i8 + 1,
+            vars.droidmap[usize::try_from(vars.me.ty).unwrap()].druidname[2] + 1 - b'1',
         )
         .unwrap()]
         .as_mut()
@@ -612,7 +634,7 @@ impl Data<'_> {
             && self.vars.me.text_visible_time < self.global.game_config.wanted_text_visible_time
             && self.global.game_config.droid_talk != 0
         {
-            self.b_font.current_font = self.global.font0_b_font;
+            self.b_font.current_font = self.global.font0_b_font.clone();
             self.display_text(
                 self.vars.me.text_to_be_displayed,
                 i32::from(self.vars.user_rect.x())
@@ -836,14 +858,19 @@ impl Data<'_> {
                 || previous_right_check
                 || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
             {
+                let para_b_font = self
+                    .global
+                    .para_b_font
+                    .as_ref()
+                    .unwrap()
+                    .rw(&mut self.font_owner);
                 dst.set_x(self.vars.left_info_rect.x());
                 dst.set_y(
-                    self.vars.left_info_rect.y()
-                        - i16::try_from(font_height(&*self.global.para_b_font)).unwrap(),
+                    self.vars.left_info_rect.y() - i16::try_from(font_height(para_b_font)).unwrap(),
                 );
                 print_string_font(
                     self.graphics.ne_screen.as_mut().unwrap(),
-                    self.global.para_b_font,
+                    para_b_font,
                     dst.x().into(),
                     dst.y().into(),
                     format_args!(
@@ -863,11 +890,11 @@ impl Data<'_> {
                 dst.set_x(self.vars.right_info_rect.x());
                 dst.set_y(
                     self.vars.right_info_rect.y()
-                        - i16::try_from(font_height(&*self.global.para_b_font)).unwrap(),
+                        - i16::try_from(font_height(para_b_font)).unwrap(),
                 );
                 print_string_font(
                     self.graphics.ne_screen.as_mut().unwrap(),
-                    self.global.para_b_font,
+                    para_b_font,
                     dst.x().into(),
                     dst.y().into(),
                     format_args!(

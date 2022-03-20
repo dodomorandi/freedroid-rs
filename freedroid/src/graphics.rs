@@ -1,4 +1,5 @@
 use crate::{
+    array_c_string::ArrayCString,
     defs::{
         self, scale_point, Cmds, Criticality, DisplayBannerFlags, Droid, SoundType, Themed,
         BANNER_BLOCK_FILE_C, BLAST_BLOCK_FILE_C, BULLET_BLOCK_FILE_C, CONSOLE_BG_PIC1_FILE_C,
@@ -9,7 +10,9 @@ use crate::{
         PARA_FONT_FILE, PARA_FONT_FILE_C, SHIP_OFF_PIC_FILE_C, SHIP_ON_PIC_FILE_C,
         TAKEOVER_BG_PIC_FILE_C,
     },
+    global::Global,
     misc::read_value_from_string,
+    read_and_malloc_and_terminate_file,
     structs::ThemeList,
     takeover::TO_BLOCK_FILE_C,
     vars::{ORIG_BLOCK_RECT, ORIG_DIGIT_RECT},
@@ -32,6 +35,7 @@ use std::{
     ffi::CStr,
     ops::Not,
     os::raw::{c_char, c_float, c_int, c_short, c_void},
+    path::Path,
     pin::Pin,
     ptr::null_mut,
     rc::Rc,
@@ -510,20 +514,12 @@ impl Data<'_> {
         self.takeover.to_blocks = None;
 
         // free fonts
-        let fonts = [
-            self.global.menu_b_font,
-            self.global.para_b_font,
-            self.global.highscore_b_font,
-            self.global.font0_b_font,
-            self.global.font1_b_font,
-            self.global.font2_b_font,
-        ];
-        for (index, font) in fonts.iter().copied().enumerate() {
-            if font.is_null() || fonts[..index].contains(&font) {
-                continue;
-            }
-            drop(Box::from_raw(font));
-        }
+        self.global.menu_b_font = None;
+        self.global.para_b_font = None;
+        self.global.highscore_b_font = None;
+        self.global.font0_b_font = None;
+        self.global.font1_b_font = None;
+        self.global.font2_b_font = None;
 
         // free Load_Block()-internal buffer
         self.graphics
@@ -873,61 +869,82 @@ impl Data<'_> {
         frame_buffer.set_clip_rect(&clip_rect);
     }
 
-    pub unsafe fn load_fonts(&mut self) -> c_int {
-        let mut fpath = self.find_file(
-            PARA_FONT_FILE_C.as_ptr(),
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+    pub fn load_fonts(&mut self) -> c_int {
+        let Self {
+            global,
+            sdl,
+            b_font,
+            misc,
+            ..
+        } = self;
+
+        let mut fpath = Data::find_file_static(
+            global,
+            misc,
+            PARA_FONT_FILE_C,
+            Some(GRAPHICS_DIR_C),
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
-        );
-        self.global.para_b_font = self.load_font(fpath, self.global.game_config.scale);
-        assert!(
-            !self.global.para_b_font.is_null(),
-            "font file named {} was not found.",
-            PARA_FONT_FILE
-        );
+        )
+        .unwrap_or_else(|| panic!("font file named {} was not found.", PARA_FONT_FILE));
 
-        fpath = self.find_file(
-            FONT0_FILE_C.as_ptr(),
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        global.para_b_font = Some(Self::load_font(
+            sdl,
+            b_font,
+            fpath,
+            global.game_config.scale,
+        ));
+
+        fpath = Data::find_file_static(
+            global,
+            misc,
+            FONT0_FILE_C,
+            Some(GRAPHICS_DIR_C),
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
-        );
-        self.global.font0_b_font = self.load_font(fpath, self.global.game_config.scale);
-        assert!(
-            !self.global.font0_b_font.is_null(),
-            "font file named {} was not found.\n",
-            FONT0_FILE
-        );
+        )
+        .unwrap_or_else(|| panic!("font file named {} was not found.", FONT0_FILE));
+        global.font0_b_font = Some(Self::load_font(
+            sdl,
+            b_font,
+            fpath,
+            global.game_config.scale,
+        ));
 
-        fpath = self.find_file(
-            FONT1_FILE_C.as_ptr(),
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        fpath = Self::find_file_static(
+            global,
+            misc,
+            FONT1_FILE_C,
+            Some(GRAPHICS_DIR_C),
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
-        );
-        self.global.font1_b_font = self.load_font(fpath, self.global.game_config.scale);
-        assert!(
-            !self.global.font1_b_font.is_null(),
-            "font file named {} was not found.",
-            FONT1_FILE
-        );
+        )
+        .unwrap_or_else(|| panic!("font file named {} was not found.", FONT1_FILE));
+        global.font1_b_font = Some(Self::load_font(
+            sdl,
+            b_font,
+            fpath,
+            global.game_config.scale,
+        ));
 
-        fpath = self.find_file(
-            FONT2_FILE_C.as_ptr(),
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        fpath = Self::find_file_static(
+            global,
+            misc,
+            FONT2_FILE_C,
+            Some(GRAPHICS_DIR_C),
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
-        );
-        self.global.font2_b_font = self.load_font(fpath, self.global.game_config.scale);
-        assert!(
-            !self.global.font2_b_font.is_null(),
-            "font file named {} was not found.",
-            FONT2_FILE
-        );
+        )
+        .unwrap_or_else(|| panic!("font file named {} was not found.", FONT2_FILE));
+        global.font2_b_font = Some(Self::load_font(
+            sdl,
+            b_font,
+            fpath,
+            global.game_config.scale,
+        ));
 
-        self.global.menu_b_font = self.global.para_b_font;
-        self.global.highscore_b_font = self.global.para_b_font;
+        global.menu_b_font = global.para_b_font.clone();
+        global.highscore_b_font = global.para_b_font.clone();
 
         self.graphics.fonts_loaded = true.into();
 
@@ -1033,22 +1050,26 @@ impl Data<'_> {
         };
 
         if flag!(wm_available) {
+            let Self {
+                sdl, global, misc, ..
+            } = self;
+
             /* if there's a window-manager */
-            self.sdl
-                .video
+            sdl.video
                 .window_manager()
                 .set_caption(cstr!("Freedroid"), cstr!(""));
-            let fpath = self.find_file(
-                ICON_FILE_C.as_ptr() as *mut c_char,
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            let fpath = Self::find_file_static(
+                global,
+                misc,
+                ICON_FILE_C,
+                Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::WarnOnly as c_int,
             );
 
-            let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
             match fpath {
-                Some(fpath) => match self.sdl.load_image_from_c_str_path(fpath) {
-                    Some(mut img) => self.sdl.video.window_manager().set_icon(&mut img, None),
+                Some(fpath) => match sdl.load_image_from_c_str_path(fpath) {
+                    Some(mut img) => sdl.video.window_manager().set_icon(&mut img, None),
                     None => {
                         warn!(
                             "SDL load image failed for icon file '{}'\n",
@@ -1090,16 +1111,9 @@ impl Data<'_> {
     }
 
     /// load a pic into memory and return the SDL_RWops pointer to it
-    pub unsafe fn load_raw_pic(fpath: *const c_char) -> Option<RwOpsOwned> {
-        use std::{fs::File, io::Read, path::Path};
-
-        // sanity check
-        assert!(
-            !fpath.is_null(),
-            "load_raw_pic() called with NULL argument!"
-        );
-
-        let fpath = match CStr::from_ptr(fpath).to_str() {
+    pub fn load_raw_pic(fpath: &CStr) -> Option<RwOpsOwned> {
+        use std::{fs::File, io::Read};
+        let fpath = match fpath.to_str() {
             Ok(fpath) => fpath,
             Err(err) => {
                 panic!("unable to convert path with invalid UTF-8 data: {}", err);
@@ -1142,20 +1156,20 @@ impl Data<'_> {
         use std::sync::Once;
 
         static DO_ONCE: Once = Once::new();
-        let mut fname: [c_char; 500] = [0; 500];
+        let mut fname = ArrayCString::<500>::new();
 
         // Loading all these pictures might take a while...
         // and we do not want do deal with huge frametimes, which
         // could box the influencer out of the ship....
         self.activate_conservative_frame_computation();
 
-        let oldfont = self.b_font.current_font;
+        let oldfont = self.b_font.current_font.take();
 
         if self.graphics.fonts_loaded == 0 {
             self.load_fonts();
         }
 
-        self.b_font.current_font = self.global.font0_b_font;
+        self.b_font.current_font = self.global.font0_b_font.clone();
 
         self.init_progress(cstr!("Loading pictures").as_ptr() as *mut c_char);
 
@@ -1164,13 +1178,14 @@ impl Data<'_> {
         self.update_progress(15);
 
         //---------- get Map blocks
-        let fpath = self.find_file(
-            MAP_BLOCK_FILE_C.as_ptr(),
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        let fpath = Self::find_file_static(
+            &self.global,
+            &mut self.misc,
+            MAP_BLOCK_FILE_C,
+            Some(GRAPHICS_DIR_C),
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
-        let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
         self.graphics
             .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as i32, self.sdl); /* init function */
         let Self {
@@ -1214,13 +1229,14 @@ impl Data<'_> {
 
         self.update_progress(20);
         //---------- get Droid-model  blocks
-        let fpath = self.find_file(
-            DROID_BLOCK_FILE_C.as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        let fpath = Self::find_file_static(
+            &self.global,
+            &mut self.misc,
+            DROID_BLOCK_FILE_C,
+            Some(GRAPHICS_DIR_C),
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
-        let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
         self.graphics
             .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int, self.sdl);
 
@@ -1289,13 +1305,14 @@ impl Data<'_> {
 
         self.update_progress(30);
         //---------- get Bullet blocks
-        let fpath = self.find_file(
-            BULLET_BLOCK_FILE_C.as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        let fpath = Self::find_file_static(
+            &self.global,
+            &mut self.misc,
+            BULLET_BLOCK_FILE_C,
+            Some(GRAPHICS_DIR_C),
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
-        let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
         self.graphics
             .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int, self.sdl);
         self.vars
@@ -1323,13 +1340,14 @@ impl Data<'_> {
         self.update_progress(35);
 
         //---------- get Blast blocks
-        let fpath = self.find_file(
-            BLAST_BLOCK_FILE_C.as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        let fpath = Self::find_file_static(
+            &self.global,
+            &mut self.misc,
+            BLAST_BLOCK_FILE_C,
+            Some(GRAPHICS_DIR_C),
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
-        let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
         self.graphics
             .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int, self.sdl);
 
@@ -1358,13 +1376,14 @@ impl Data<'_> {
         self.update_progress(45);
 
         //---------- get Digit blocks
-        let fpath = self.find_file(
-            DIGIT_BLOCK_FILE_C.as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        let fpath = Self::find_file_static(
+            &self.global,
+            &mut self.misc,
+            DIGIT_BLOCK_FILE_C,
+            Some(GRAPHICS_DIR_C),
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
-        let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
         self.graphics
             .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int, self.sdl);
         let Self {
@@ -1412,43 +1431,40 @@ impl Data<'_> {
         self.update_progress(50);
 
         //---------- get Takeover pics
-        let fpath = self.find_file(
-            TO_BLOCK_FILE_C.as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        let fpath = Self::find_file_static(
+            &self.global,
+            &mut self.misc,
+            TO_BLOCK_FILE_C,
+            Some(GRAPHICS_DIR_C),
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
-        let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
         self.takeover.to_blocks = self
             .graphics
             .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
 
         self.update_progress(60);
 
-        let path = self.find_file(
-            SHIP_ON_PIC_FILE_C.as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        let path = Self::find_file_static(
+            &self.global,
+            &mut self.misc,
+            SHIP_ON_PIC_FILE_C,
+            Some(GRAPHICS_DIR_C),
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
-        );
-        assert!(path.is_null().not());
-        self.graphics.ship_on_pic = Some(
-            self.sdl
-                .load_image_from_c_str_path(CStr::from_ptr(path))
-                .unwrap(),
-        );
-        let path = self.find_file(
-            SHIP_OFF_PIC_FILE_C.as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        )
+        .unwrap();
+        self.graphics.ship_on_pic = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
+        let path = Self::find_file_static(
+            &self.global,
+            &mut self.misc,
+            SHIP_OFF_PIC_FILE_C,
+            Some(GRAPHICS_DIR_C),
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
-        );
-        assert!(path.is_null().not());
-        self.graphics.ship_off_pic = Some(
-            self.sdl
-                .load_image_from_c_str_path(CStr::from_ptr(path))
-                .unwrap(),
-        );
+        )
+        .unwrap();
+        self.graphics.ship_off_pic = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
 
         // the following are not theme-specific and are therefore only loaded once!
         DO_ONCE.call_once(|| {
@@ -1465,13 +1481,14 @@ impl Data<'_> {
             self.graphics.build_block = Some(build_block);
 
             // takeover background pics
-            let fpath = self.find_file(
-                TAKEOVER_BG_PIC_FILE_C.as_ptr() as *mut c_char,
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            let fpath = Self::find_file_static(
+                &self.global,
+                &mut self.misc,
+                TAKEOVER_BG_PIC_FILE_C,
+                Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
             self.graphics.takeover_bg_pic =
                 self.graphics
                     .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
@@ -1482,98 +1499,94 @@ impl Data<'_> {
             self.graphics.crosshair_cursor =
                 Some(self.sdl.cursor().from_data(&CROSSHAIR_CURSOR).unwrap());
             //---------- get Console pictures
-            let fpath = self.find_file(
-                CONSOLE_PIC_FILE_C.as_ptr() as *mut c_char,
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            let fpath = Self::find_file_static(
+                &self.global,
+                &mut self.misc,
+                CONSOLE_PIC_FILE_C,
+                Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
             self.graphics.console_pic =
                 self.graphics
                     .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
-            let fpath = self.find_file(
-                CONSOLE_BG_PIC1_FILE_C.as_ptr() as *mut c_char,
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            let fpath = Self::find_file_static(
+                &self.global,
+                &mut self.misc,
+                CONSOLE_BG_PIC1_FILE_C,
+                Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
             self.graphics.console_bg_pic1 =
                 self.graphics
                     .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
-            let fpath = self.find_file(
-                CONSOLE_BG_PIC2_FILE_C.as_ptr() as *mut c_char,
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            let fpath = Self::find_file_static(
+                &self.global,
+                &mut self.misc,
+                CONSOLE_BG_PIC2_FILE_C,
+                Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
             self.graphics.console_bg_pic2 =
                 self.graphics
                     .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
 
             self.update_progress(80);
 
-            let path = self.find_file(
-                cstr!("arrow_up.png").as_ptr() as *mut c_char,
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            let path = Self::find_file_static(
+                &self.global,
+                &mut self.misc,
+                cstr!("arrow_up.png"),
+                Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
-            );
-            assert!(path.is_null().not());
-            self.graphics.arrow_up = Some(
-                self.sdl
-                    .load_image_from_c_str_path(CStr::from_ptr(path))
-                    .unwrap(),
-            );
+            )
+            .unwrap();
+            self.graphics.arrow_up = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
 
-            let path = self.find_file(
-                cstr!("arrow_down.png").as_ptr() as *mut c_char,
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            let path = Self::find_file_static(
+                &self.global,
+                &mut self.misc,
+                cstr!("arrow_down.png"),
+                Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
-            );
-            assert!(path.is_null().not());
-            self.graphics.arrow_down = Some(
-                self.sdl
-                    .load_image_from_c_str_path(CStr::from_ptr(path))
-                    .unwrap(),
-            );
+            )
+            .unwrap();
+            self.graphics.arrow_down = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
 
-            let path = self.find_file(
-                cstr!("arrow_right.png").as_ptr() as *mut c_char,
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            let path = Self::find_file_static(
+                &self.global,
+                &mut self.misc,
+                cstr!("arrow_right.png"),
+                Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
-            );
-            assert!(path.is_null().not());
-            self.graphics.arrow_right = Some(
-                self.sdl
-                    .load_image_from_c_str_path(CStr::from_ptr(path))
-                    .unwrap(),
-            );
+            )
+            .unwrap();
+            self.graphics.arrow_right = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
 
-            let path = self.find_file(
-                cstr!("arrow_left.png").as_ptr() as *mut c_char,
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            let path = Self::find_file_static(
+                &self.global,
+                &mut self.misc,
+                cstr!("arrow_left.png"),
+                Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
-            );
-            assert!(path.is_null().not());
-            self.graphics.arrow_left = Some(
-                self.sdl
-                    .load_image_from_c_str_path(CStr::from_ptr(path))
-                    .unwrap(),
-            );
+            )
+            .unwrap();
+            self.graphics.arrow_left = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
             //---------- get Banner
-            let fpath = self.find_file(
-                BANNER_BLOCK_FILE_C.as_ptr() as *mut c_char,
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            let fpath = Self::find_file_static(
+                &self.global,
+                &mut self.misc,
+                BANNER_BLOCK_FILE_C,
+                Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
             self.graphics.banner_pic =
                 self.graphics
                     .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
@@ -1592,74 +1605,69 @@ impl Data<'_> {
                 .zip(graphics.packed_portraits.iter_mut())
                 .for_each(|(droid, packed_portrait)| {
                     // first check if we find a file with rotation-frames: first try .jpg
-                    libc::strcpy(fname.as_mut_ptr(), droid.druidname.as_ptr());
-                    libc::strcat(fname.as_mut_ptr(), cstr!(".jpg").as_ptr());
+                    fname.set(&*droid.druidname);
+                    fname.push_str(".jpg");
                     let mut fpath = Self::find_file_static(
                         global,
                         misc,
-                        fname.as_mut_ptr(),
-                        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                        &*fname,
+                        Some(GRAPHICS_DIR_C),
                         Themed::NoTheme as c_int,
                         Criticality::Ignore as c_int,
                     );
                     // then try with .png
-                    if fpath.is_null() {
-                        libc::strcpy(fname.as_mut_ptr(), droid.druidname.as_ptr());
-                        libc::strcat(fname.as_mut_ptr(), cstr!(".png").as_ptr());
+                    if fpath.is_none() {
+                        fname.truncate(droid.druidname.len());
+                        fname.push_str(".png");
                         fpath = Self::find_file_static(
                             global,
                             misc,
-                            fname.as_mut_ptr(),
-                            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+                            &*fname,
+                            Some(GRAPHICS_DIR_C),
                             Themed::NoTheme as c_int,
                             Criticality::Critical as c_int,
                         );
                     }
 
+                    let fpath = fpath.expect("unable to find droid imag");
                     *packed_portrait = Self::load_raw_pic(fpath);
                 });
 
             self.update_progress(95);
             let droids = &self.vars.droidmap;
             // we need the 999.png in any case for transparency!
-            libc::strcpy(
-                fname.as_mut_ptr(),
-                droids[Droid::Droid999 as usize].druidname.as_ptr(),
-            );
-            libc::strcat(fname.as_mut_ptr(), cstr!(".png").as_ptr());
-            let fpath = self.find_file(
-                fname.as_mut_ptr(),
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            fname.set(&*droids[Droid::Droid999 as usize].druidname);
+            fname.push_str(".png");
+            let fpath = Self::find_file_static(
+                &self.global,
+                &mut self.misc,
+                &fname,
+                Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
             self.graphics.pic999 = self
                 .graphics
                 .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
 
             // get the Ashes pics
-            libc::strcpy(fname.as_mut_ptr(), cstr!("Ashes.png").as_ptr());
-            let fpath = self.find_file(
-                fname.as_mut_ptr(),
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            let fpath = Self::find_file_static(
+                &self.global,
+                &mut self.misc,
+                cstr!("Ashes.png"),
+                Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::WarnOnly as c_int,
             );
-            if fpath.is_null() {
-                warn!("deactivated display of droid-decals");
-                self.global.game_config.show_decals = false.into();
-            } else {
-                let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
+
+            self.graphics
+                .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int, self.sdl);
+            self.graphics.decal_pics[0] =
                 self.graphics
-                    .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int, self.sdl);
-                self.graphics.decal_pics[0] =
-                    self.graphics
-                        .load_block(None, 0, 0, &ORIG_BLOCK_RECT, 0, self.sdl);
-                self.graphics.decal_pics[1] =
-                    self.graphics
-                        .load_block(None, 0, 1, &ORIG_BLOCK_RECT, 0, self.sdl);
-            }
+                    .load_block(None, 0, 0, &ORIG_BLOCK_RECT, 0, self.sdl);
+            self.graphics.decal_pics[1] =
+                self.graphics
+                    .load_block(None, 0, 1, &ORIG_BLOCK_RECT, 0, self.sdl);
         });
 
         self.update_progress(96);
@@ -1683,19 +1691,24 @@ impl Data<'_> {
     pub unsafe fn load_theme_configuration_file(&mut self) {
         use bstr::ByteSlice;
 
-        const END_OF_THEME_DATA_STRING: &CStr = cstr!("**** End of theme data section ****");
+        const END_OF_THEME_DATA_STRING: &[u8] = b"**** End of theme data section ****";
 
-        let fpath = self.find_file(
-            cstr!("config.theme").as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        let fpath = Self::find_file_static(
+            &self.global,
+            &mut self.misc,
+            cstr!("config.theme"),
+            Some(GRAPHICS_DIR_C),
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
+        )
+        .expect("Unable to read file config.theme");
+        let fpath = Path::new(
+            fpath
+                .to_str()
+                .expect("unable to convert C string to UTF-8 string"),
         );
 
-        let data = self.read_and_malloc_and_terminate_file(
-            fpath,
-            END_OF_THEME_DATA_STRING.as_ptr() as *mut c_char,
-        );
+        let data = read_and_malloc_and_terminate_file(fpath, END_OF_THEME_DATA_STRING);
 
         //--------------------
         // Now the file is read in entirely and
@@ -1857,23 +1870,20 @@ impl Data<'_> {
     /// This might be very handy, especially in the Title() function to
     /// display the title image and perhaps also for displaying the ship
     /// and that.
-    pub unsafe fn display_image(&mut self, datafile: &CStr) {
-        let mut image = self
-            .sdl
-            .load_image_from_c_str_path(datafile)
-            .unwrap_or_else(|| {
-                panic!(
-                    "couldn't load image {}: {}",
-                    datafile.to_string_lossy(),
-                    self.sdl.get_error().to_string_lossy(),
-                )
-            });
+    pub fn display_image(sdl: &Sdl, global: &Global, graphics: &mut Graphics, datafile: &CStr) {
+        let mut image = sdl.load_image_from_c_str_path(datafile).unwrap_or_else(|| {
+            panic!(
+                "couldn't load image {}: {}",
+                datafile.to_string_lossy(),
+                sdl.get_error().to_string_lossy(),
+            )
+        });
 
-        if (self.global.game_config.scale - 1.).abs() > c_float::EPSILON {
-            scale_pic(&mut image, self.global.game_config.scale);
+        if (global.game_config.scale - 1.).abs() > c_float::EPSILON {
+            scale_pic(&mut image, global.game_config.scale);
         }
 
-        image.blit(self.graphics.ne_screen.as_mut().unwrap());
+        image.blit(graphics.ne_screen.as_mut().unwrap());
     }
 
     pub unsafe fn draw_line_between_tiles(

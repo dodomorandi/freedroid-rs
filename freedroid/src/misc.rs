@@ -7,7 +7,7 @@ use crate::{
     },
     graphics::{scale_pic, Graphics},
     input::CMD_STRINGS,
-    Data, Global,
+    ArrayCString, Data, Global,
 };
 
 use cstr::cstr;
@@ -20,7 +20,6 @@ use std::{
     env,
     ffi::CStr,
     fs::{self, File},
-    ops::Not,
     os::raw::{c_char, c_float, c_int, c_long, c_void},
     path::Path,
     ptr::null_mut,
@@ -30,7 +29,7 @@ use std::{
 pub struct Misc {
     previous_time: f32,
     current_time_factor: f32,
-    file_path: [u8; 1024],
+    file_path: ArrayCString<1024>,
     frame_nr: c_int,
     one_frame_sdl_ticks: u32,
     now_sdl_ticks: u32,
@@ -42,7 +41,7 @@ impl Default for Misc {
         Self {
             previous_time: 0.1,
             current_time_factor: 1.,
-            file_path: [0; 1024],
+            file_path: Default::default(),
             frame_nr: 0,
             one_frame_sdl_ticks: 0,
             now_sdl_ticks: 0,
@@ -623,26 +622,26 @@ impl Data<'_> {
     ///
     /// !! do never try to free the returned string !!
     /// or to keep using it after a new call to find_file!
-    pub unsafe fn find_file(
-        &mut self,
-        fname: *const c_char,
-        subdir: *mut c_char,
+    pub fn find_file<'a>(
+        &'a mut self,
+        fname: &CStr,
+        subdir: Option<&CStr>,
         use_theme: c_int,
         critical: c_int,
-    ) -> *mut c_char {
+    ) -> Option<&'a CStr> {
         let Self { global, misc, .. } = self;
         Self::find_file_static(global, misc, fname, subdir, use_theme, critical)
     }
 
-    pub unsafe fn find_file_static(
+    pub fn find_file_static<'a>(
         global: &Global,
-        misc: &mut Misc,
-        fname: *const c_char,
-        mut subdir: *mut c_char,
+        misc: &'a mut Misc,
+        fname: &CStr,
+        subdir: Option<&CStr>,
         use_theme: c_int,
         mut critical: c_int,
-    ) -> *mut c_char {
-        use std::io::Write;
+    ) -> Option<&'a CStr> {
+        use std::fmt::Write;
 
         if critical != Criticality::Ignore as c_int
             && critical != Criticality::WarnOnly as c_int
@@ -655,35 +654,24 @@ impl Data<'_> {
             critical = Criticality::Critical as c_int;
         }
 
-        if fname.is_null() {
-            error!("find_file() called with empty filename!");
-            return null_mut();
-        }
-        if subdir.is_null() {
-            subdir = cstr!("").as_ptr() as *mut c_char;
-        }
-
         let mut inner = |datadir| {
             let theme_dir = if use_theme == Themed::UseTheme as c_int {
                 Cow::Owned(format!(
                     "{}_theme/",
-                    CStr::from_ptr(global.game_config.theme_name.as_ptr()).to_string_lossy(),
+                    global.game_config.theme_name.to_string_lossy(),
                 ))
             } else {
                 Cow::Borrowed("")
             };
 
-            write!(
-                &mut misc.file_path[..],
-                "{}/{}/{}/{}\0",
-                datadir,
-                CStr::from_ptr(subdir).to_string_lossy(),
-                theme_dir,
-                CStr::from_ptr(fname).to_string_lossy(),
-            )
-            .unwrap();
+            misc.file_path.clear();
+            write!(misc.file_path, "{datadir}",).unwrap();
+            if let Some(subdir) = subdir {
+                write!(misc.file_path, "/{}", subdir.to_string_lossy()).unwrap();
+            }
+            write!(misc.file_path, "/{theme_dir}/{}", fname.to_string_lossy()).unwrap();
 
-            CStr::from_ptr(misc.file_path.as_ptr() as *const c_char)
+            misc.file_path
                 .to_str()
                 .map(|file_path| Path::new(file_path).exists())
                 .unwrap_or(false)
@@ -704,27 +692,26 @@ impl Data<'_> {
             // how critical is this file for the game:
             match critical {
                 Criticality::WarnOnly => {
-                    let fname = CStr::from_ptr(fname).to_string_lossy();
+                    let fname = fname.to_string_lossy();
                     if use_theme == Themed::UseTheme as c_int {
                         warn!(
                             "file {} not found in theme-dir: graphics/{}_theme/",
                             fname,
-                            CStr::from_ptr(global.game_config.theme_name.as_ptr())
-                                .to_string_lossy(),
+                            global.game_config.theme_name.to_string_lossy(),
                         );
                     } else {
                         warn!("file {} not found ", fname);
                     }
-                    return null_mut();
+                    return None;
                 }
-                Criticality::Ignore => return null_mut(),
+                Criticality::Ignore => return None,
                 Criticality::Critical => {
-                    let fname = CStr::from_ptr(fname).to_string_lossy();
+                    let fname = fname.to_string_lossy();
                     if use_theme == Themed::UseTheme as c_int {
                         panic!(
                         "file {} not found in theme-dir: graphics/{}_theme/, cannot run without it!",
                         fname,
-                        CStr::from_ptr(global.game_config.theme_name.as_ptr()).to_string_lossy(),
+                        global.game_config.theme_name.to_string_lossy(),
                     );
                     } else {
                         panic!("file {} not found, cannot run without it!", fname);
@@ -733,7 +720,7 @@ impl Data<'_> {
             }
         }
 
-        misc.file_path.as_mut_ptr() as *mut c_char
+        Some(&*misc.file_path)
     }
 
     /// show_progress: display empty progress meter with given text
@@ -743,13 +730,14 @@ impl Data<'_> {
         }
 
         if self.graphics.progress_meter_pic.is_none() {
-            let fpath = self.find_file(
-                PROGRESS_METER_FILE_C.as_ptr() as *mut c_char,
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            let fpath = Self::find_file_static(
+                &self.global,
+                &mut self.misc,
+                PROGRESS_METER_FILE_C,
+                Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
             self.graphics.progress_meter_pic =
                 self.graphics
                     .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
@@ -757,13 +745,14 @@ impl Data<'_> {
                 self.graphics.progress_meter_pic.as_mut().unwrap(),
                 self.global.game_config.scale,
             );
-            let fpath = self.find_file(
-                PROGRESS_FILLER_FILE_C.as_ptr() as *mut c_char,
-                GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+            let fpath = Self::find_file_static(
+                &self.global,
+                &mut self.misc,
+                PROGRESS_FILLER_FILE_C,
+                Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            let fpath = fpath.is_null().not().then(|| CStr::from_ptr(fpath));
             self.graphics.progress_filler_pic =
                 self.graphics
                     .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
@@ -812,134 +801,6 @@ impl Data<'_> {
 
         assert!(ne_screen.flip());
         self.graphics.ne_screen = Some(ne_screen);
-    }
-
-    /// This function read in a file with the specified name, allocated
-    /// memory for it of course, looks for the file end string and then
-    /// terminates the whole read in file with a 0 character, so that it
-    /// can easily be treated like a common string.
-    pub unsafe fn read_and_malloc_and_terminate_file(
-        &mut self,
-        filename: *mut c_char,
-        file_end_string: *mut c_char,
-    ) -> Box<[c_char]> {
-        use bstr::ByteSlice;
-        use std::io::Read;
-
-        let filename = CStr::from_ptr(filename).to_str().unwrap();
-        let file_end_string = CStr::from_ptr(file_end_string);
-        info!(
-            "ReadAndMallocAndTerminateFile: The filename is: {}",
-            filename
-        );
-
-        // Read the whole theme data to memory
-        let mut file = match File::open(filename) {
-            Ok(file) => {
-                info!("ReadAndMallocAndTerminateFile: Opening file succeeded...");
-                file
-            }
-            Err(_) => {
-                panic!(
-                    "\n\
-        ----------------------------------------------------------------------\n\
-        Freedroid has encountered a problem:\n\
-        In function 'char* ReadAndMallocAndTerminateFile ( char* filename ):\n\
-        \n\
-        Freedroid was unable to open a given text file, that should be there and\n\
-        should be accessible.\n\
-        \n\
-        This might be due to a wrong file name in a mission file, a wrong filename\n\
-        in the source or a serious bug in the source.\n\
-        \n\
-        The file that couldn't be located was: {}\n\
-        \n\
-        Please check that your external text files are properly set up.\n\
-        \n\
-        Please also don't forget, that you might have to run 'make install'\n\
-        again after you've made modifications to the data files in the source tree.\n\
-        \n\
-        Freedroid will terminate now to draw attention to the data problem it could\n\
-        not resolve.... Sorry, if that interrupts a major game of yours.....\n\
-        ----------------------------------------------------------------------\n\
-        ",
-                    filename
-                );
-            }
-        };
-        let file_len = match file
-            .metadata()
-            .ok()
-            .and_then(|metadata| usize::try_from(metadata.len()).ok())
-        {
-            Some(file_len) => {
-                info!("ReadAndMallocAndTerminateFile: fstating file succeeded...");
-                file_len
-            }
-            None => {
-                panic!("ReadAndMallocAndTerminateFile: Error fstat-ing File....");
-            }
-        };
-
-        let mut all_data: Box<[c_char]> = vec![0; file_len + 64 * 2 + 10000].into_boxed_slice();
-
-        {
-            let data = std::slice::from_raw_parts_mut(all_data.as_mut_ptr() as *mut u8, file_len);
-            match file.read_exact(data) {
-                Ok(()) => info!("ReadAndMallocAndTerminateFile: Reading file succeeded..."),
-                Err(_) => {
-                    panic!("ReadAndMallocAndTerminateFile: Reading file failed...");
-                }
-            }
-        }
-        all_data[file_len..].fill(0);
-
-        drop(file);
-
-        info!("ReadAndMallocAndTerminateFile: Adding a 0 at the end of read data....");
-
-        match std::slice::from_raw_parts(all_data.as_ptr() as *const u8, all_data.len())
-            .find(file_end_string.to_bytes())
-        {
-            None => {
-                panic!(
-                    "\n\
-                ----------------------------------------------------------------------\n\
-                Freedroid has encountered a problem:\n\
-                In function 'char* ReadAndMallocAndTerminateFile ( char* filename ):\n\
-                \n\
-                Freedroid was unable to find the string, that should terminate the given\n\
-                file within this file.\n\
-                \n\
-                This might be due to a corrupt text file on disk that does not confirm to\n\
-                the file standards of this version of freedroid or (less likely) to a serious\n\
-                bug in the reading function.\n\
-                \n\
-                The file that is concerned is: {}\n\
-                The string, that could not be located was: {}\n\
-                \n\
-                Please check that your external text files are properly set up.\n\
-                \n\
-                Please also don't forget, that you might have to run 'make install'\n\
-                again after you've made modifications to the data files in the source tree.\n\
-                \n\
-                Freedroid will terminate now to draw attention to the data problem it could\n\
-                not resolve.... Sorry, if that interrupts a major game of yours.....\n\
-                ----------------------------------------------------------------------\n\
-                \n",
-                    filename,
-                    file_end_string.to_string_lossy()
-                );
-            }
-            Some(pos) => all_data[pos] = 0,
-        }
-
-        info!(
-            "ReadAndMallocAndTerminateFile: The content of the read file: \n{}",
-            CStr::from_ptr(all_data.as_ptr()).to_string_lossy()
-        );
-
-        all_data
     }
 
     /// This function teleports the influencer to a new position on the
@@ -1127,10 +988,7 @@ impl Data<'_> {
         {
             let value = read_variable(&data, THEME_NAME);
             if let Some(value) = value {
-                self.global.game_config.theme_name[..value.len()].copy_from_slice(
-                    std::slice::from_raw_parts(value.as_ptr() as *const c_char, value.len()),
-                );
-                self.global.game_config.theme_name[value.len()] = 0;
+                self.global.game_config.theme_name.set_slice(value);
             }
         }
         parse_variable! { self.global.game_config.full_user_rect = FULL_USER_RECT; };

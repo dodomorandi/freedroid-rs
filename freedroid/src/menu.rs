@@ -312,8 +312,14 @@ impl<'sdl> Data<'sdl> {
         );
 
         self.sdl.cursor().hide();
-        self.b_font.current_font = self.global.menu_b_font;
-        self.menu.font_height = font_height(&*self.b_font.current_font) + 2;
+        self.b_font.current_font = self.global.menu_b_font.clone();
+        self.menu.font_height = font_height(
+            self.b_font
+                .current_font
+                .as_ref()
+                .unwrap()
+                .ro(&self.font_owner),
+        ) + 2;
     }
 
     pub unsafe fn cheatmenu(&mut self) {
@@ -321,7 +327,7 @@ impl<'sdl> Data<'sdl> {
         // the time spend in the menu.
         self.activate_conservative_frame_computation();
 
-        let font = self.global.font0_b_font;
+        let font = self.global.font0_b_font.clone();
 
         self.b_font.current_font = font; /* not the ideal one, but there's currently */
         /* no other it seems.. */
@@ -1124,14 +1130,25 @@ impl<'sdl> Data<'sdl> {
 
     /// subroutine to display the current key-config and highlight current selection
     pub unsafe fn display_key_config(&mut self, selx: c_int, sely: c_int) {
-        let current_font = self.b_font.current_font;
+        let current_font = self
+            .b_font
+            .current_font
+            .as_ref()
+            .unwrap()
+            .ro(&self.font_owner);
         let startx = i32::from(self.vars.full_user_rect.x())
             + (1.2 * f32::from(self.vars.block_rect.width())) as i32;
         let starty = i32::from(self.vars.full_user_rect.y()) + font_height(&*current_font);
         let col1 = startx + (7.5 * f64::from(char_width(&*current_font, b'O'))) as i32;
         let col2 = col1 + (6.5 * f64::from(char_width(&*current_font, b'O'))) as i32;
         let col3 = col2 + (6.5 * f64::from(char_width(&*current_font, b'O'))) as i32;
-        let lheight = font_height(&*self.global.font0_b_font) + 2;
+        let lheight = font_height(
+            self.global
+                .font0_b_font
+                .as_ref()
+                .unwrap()
+                .ro(&self.font_owner),
+        ) + 2;
 
         let Data { menu, graphics, .. } = self;
         menu.menu_background
@@ -1148,18 +1165,24 @@ impl<'sdl> Data<'sdl> {
             format_args!("(RShldr to clear an entry)"),
         );
 
+        let font0_b_font = self
+            .global
+            .font0_b_font
+            .as_ref()
+            .unwrap()
+            .rw(&mut self.font_owner);
         #[cfg(not(feature = "gcw0"))]
         {
             print_string_font(
                 self.graphics.ne_screen.as_mut().unwrap(),
-                self.global.font0_b_font,
+                font0_b_font,
                 col1,
                 starty,
                 format_args!("(RShldr to clear an entry)"),
             );
             print_string_font(
                 self.graphics.ne_screen.as_mut().unwrap(),
-                self.global.font0_b_font,
+                font0_b_font,
                 col1,
                 starty,
                 format_args!("(Backspace to clear an entry)"),
@@ -1169,28 +1192,28 @@ impl<'sdl> Data<'sdl> {
         let mut posy = 1;
         print_string_font(
             self.graphics.ne_screen.as_mut().unwrap(),
-            self.global.font0_b_font,
+            font0_b_font,
             startx,
             starty + (posy) * lheight,
             format_args!("Command"),
         );
         print_string_font(
             self.graphics.ne_screen.as_mut().unwrap(),
-            self.global.font0_b_font,
+            font0_b_font,
             col1,
             starty + (posy) * lheight,
             format_args!("Key1"),
         );
         print_string_font(
             self.graphics.ne_screen.as_mut().unwrap(),
-            self.global.font0_b_font,
+            font0_b_font,
             col2,
             starty + (posy) * lheight,
             format_args!("Key2"),
         );
         print_string_font(
             self.graphics.ne_screen.as_mut().unwrap(),
-            self.global.font0_b_font,
+            font0_b_font,
             col3,
             starty + (posy) * lheight,
             format_args!("Key3"),
@@ -1208,9 +1231,9 @@ impl<'sdl> Data<'sdl> {
                 },
                 global:
                     Global {
-                        font0_b_font,
-                        font1_b_font,
-                        font2_b_font,
+                        ref font0_b_font,
+                        ref font1_b_font,
+                        ref font2_b_font,
                         ..
                     },
                 ..
@@ -1226,14 +1249,17 @@ impl<'sdl> Data<'sdl> {
 
             print_string_font(
                 ne_screen.as_mut().unwrap(),
-                font0_b_font,
+                font0_b_font.as_ref().unwrap().rw(&mut self.font_owner),
                 startx,
                 starty + (posy) * lheight,
                 format_args!("{}", CStr::from_ptr(cmd_string).to_str().unwrap()),
             );
             print_string_font(
                 ne_screen.as_mut().unwrap(),
-                pos_font(1, 1 + i),
+                pos_font(1, 1 + i)
+                    .as_ref()
+                    .unwrap()
+                    .rw(&mut self.font_owner),
                 col1,
                 starty + (posy) * lheight,
                 format_args!(
@@ -1246,7 +1272,10 @@ impl<'sdl> Data<'sdl> {
             );
             print_string_font(
                 ne_screen.as_mut().unwrap(),
-                pos_font(2, 1 + i),
+                pos_font(2, 1 + i)
+                    .as_ref()
+                    .unwrap()
+                    .rw(&mut self.font_owner),
                 col2,
                 starty + (posy) * lheight,
                 format_args!(
@@ -1259,7 +1288,10 @@ impl<'sdl> Data<'sdl> {
             );
             print_string_font(
                 ne_screen.as_mut().unwrap(),
-                pos_font(3, 1 + i),
+                pos_font(3, 1 + i)
+                    .as_ref()
+                    .unwrap()
+                    .rw(&mut self.font_owner),
                 col3,
                 starty + (posy) * lheight,
                 format_args!(
@@ -1376,22 +1408,33 @@ impl<'sdl> Data<'sdl> {
     pub unsafe fn show_credits(&mut self) {
         let col2 = 2 * i32::from(self.vars.user_rect.width()) / 3;
 
-        let h = font_height(&*self.global.menu_b_font);
-        let em = char_width(&*self.global.menu_b_font, b'm');
+        let menu_b_font = self
+            .global
+            .menu_b_font
+            .as_ref()
+            .unwrap()
+            .ro(&self.font_owner);
+        let h = font_height(menu_b_font);
+        let em = char_width(menu_b_font, b'm');
 
         let screen = self.vars.screen_rect;
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
-        let image = self.find_file(
-            CREDITS_PIC_FILE_C.as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        let image = Self::find_file_static(
+            &self.global,
+            &mut self.misc,
+            CREDITS_PIC_FILE_C,
+            Some(GRAPHICS_DIR_C),
             Themed::NoTheme as i32,
             Criticality::Critical as i32,
-        );
-        assert!(image.is_null().not());
-        self.display_image(CStr::from_ptr(image));
+        )
+        .unwrap();
+        Self::display_image(&self.sdl, &self.global, &mut self.graphics, image);
         self.make_grid_on_screen(Some(&screen));
 
-        let oldfont = std::mem::replace(&mut self.b_font.current_font, self.global.font1_b_font);
+        let oldfont = std::mem::replace(
+            &mut self.b_font.current_font,
+            self.global.font1_b_font.clone(),
+        );
 
         let mut ne_screen = self.graphics.ne_screen.take().unwrap();
         self.printf_sdl(
@@ -1516,7 +1559,13 @@ impl<'sdl> Data<'sdl> {
             let mut ne_screen = self.graphics.ne_screen.take().unwrap();
             self.centered_put_string(
                 &mut ne_screen,
-                3 * font_height(&*self.global.menu_b_font),
+                3 * font_height(
+                    self.global
+                        .menu_b_font
+                        .as_ref()
+                        .unwrap()
+                        .ro(&self.font_owner),
+                ),
                 &output[..position],
             );
             assert!(ne_screen.flip());
@@ -2018,7 +2067,7 @@ impl<'sdl> Data<'sdl> {
 
         self.graphics.all_themes.cur_tnum = theme_index;
         libc::strcpy(
-            self.global.game_config.theme_name.as_mut_ptr(),
+            self.global.game_config.theme_name.as_mut_ptr() as *mut c_char,
             self.graphics.all_themes.theme_name
                 [usize::try_from(self.graphics.all_themes.cur_tnum).unwrap()]
                 as *const c_char,

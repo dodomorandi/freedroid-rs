@@ -1,26 +1,32 @@
-use crate::{graphics::scale_pic, Data};
+use crate::{graphics::scale_pic, Data, FontCell, FontCellOwner, Sdl};
 
-use core::fmt;
 use sdl::{ColorKeyFlag, Rect};
 use std::{
     ffi::CStr,
-    os::raw::{c_char, c_float, c_int},
-    ptr::null_mut,
+    fmt,
+    os::raw::{c_float, c_int},
+    rc::Rc,
 };
 
-#[derive(Debug)]
+#[derive(Default)]
 pub struct BFont<'sdl> {
-    pub current_font: *mut BFontInfo<'sdl>,
+    pub current_font: Option<Rc<FontCell<'sdl>>>,
 }
 
-impl Default for BFont<'_> {
-    fn default() -> Self {
-        Self {
-            current_font: null_mut(),
-        }
+impl fmt::Debug for BFont<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BFont")
+            .field("current_font", {
+                match self.current_font {
+                    Some(_) => &"Some(Rc(BFontInfo))",
+                    None => &"None",
+                }
+            })
+            .finish()
     }
 }
 
+#[derive(Debug)]
 pub struct BFontInfo<'sdl> {
     /// font height
     pub h: c_int,
@@ -36,20 +42,20 @@ pub fn font_height(font: &BFontInfo) -> c_int {
     font.h
 }
 
-pub unsafe fn put_string_font<const F: bool>(
+pub fn put_string_font<const F: bool>(
     surface: &mut sdl::GenericSurface<F>,
-    font: *mut BFontInfo,
+    font: &mut BFontInfo,
     mut x: c_int,
     y: c_int,
     text: &[u8],
 ) {
     for &c in text {
-        x += put_char_font(surface, &mut *font, x, y, c);
+        x += put_char_font(surface, font, x, y, c);
     }
 }
 
 /// Put a single char on the surface with the specified font
-unsafe fn put_char_font<const F: bool>(
+fn put_char_font<const F: bool>(
     surface: &mut sdl::GenericSurface<F>,
     font: &mut BFontInfo,
     x: c_int,
@@ -78,9 +84,9 @@ pub fn char_width(font: &BFontInfo, c: u8) -> c_int {
     font.chars[usize::from(c)].width().into()
 }
 
-pub unsafe fn print_string_font<const F: bool>(
+pub fn print_string_font<const F: bool>(
     surface: &mut sdl::GenericSurface<F>,
-    font: *mut BFontInfo,
+    font: &mut BFontInfo,
     x: c_int,
     y: c_int,
     format_args: fmt::Arguments,
@@ -94,7 +100,7 @@ pub unsafe fn print_string_font<const F: bool>(
     put_string_font(surface, font, x, y, &temp[..written]);
 }
 
-pub unsafe fn init_font(font: &mut BFontInfo) {
+pub fn init_font(font: &mut BFontInfo) {
     let mut i: usize = b'!'.into();
 
     let mut surface = font.surface.as_mut().unwrap().lock().unwrap();
@@ -140,9 +146,9 @@ pub unsafe fn init_font(font: &mut BFontInfo) {
     );
 }
 
-pub unsafe fn centered_put_string_font<const F: bool>(
+pub fn centered_put_string_font<const F: bool>(
     surface: &mut sdl::GenericSurface<F>,
-    font: *mut BFontInfo,
+    font: &mut BFontInfo,
     y: c_int,
     text: &[u8],
 ) {
@@ -156,60 +162,81 @@ pub unsafe fn centered_put_string_font<const F: bool>(
 }
 
 impl<'sdl> Data<'sdl> {
-    pub unsafe fn put_string<const F: bool>(
-        &self,
+    pub fn put_string<const F: bool>(
+        &mut self,
         surface: &mut sdl::GenericSurface<F>,
         x: c_int,
         y: c_int,
         text: &[u8],
     ) {
-        put_string_font(surface, self.b_font.current_font, x, y, text);
+        Self::put_string_static(&self.b_font, &mut self.font_owner, surface, x, y, text);
+    }
+
+    pub fn put_string_static<const F: bool>(
+        b_font: &BFont,
+        font_owner: &mut FontCellOwner,
+        surface: &mut sdl::GenericSurface<F>,
+        x: c_int,
+        y: c_int,
+        text: &[u8],
+    ) {
+        put_string_font(
+            surface,
+            b_font.current_font.as_ref().unwrap().rw(font_owner),
+            x,
+            y,
+            text,
+        );
     }
 
     /// Puts a single char on the surface
-    pub unsafe fn put_char<const F: bool>(
+    pub fn put_char<const F: bool>(
         &mut self,
         surface: &mut sdl::GenericSurface<F>,
         x: c_int,
         y: c_int,
         c: u8,
     ) -> c_int {
-        put_char_font(surface, &mut *self.b_font.current_font, x, y, c)
+        put_char_font(
+            surface,
+            self.b_font
+                .current_font
+                .as_ref()
+                .unwrap()
+                .rw(&mut self.font_owner),
+            x,
+            y,
+            c,
+        )
     }
 
     /// Load the font and stores it in the BFont_Info structure
-    pub unsafe fn load_font(
-        &mut self,
-        filename: *mut c_char,
+    pub fn load_font(
+        sdl: &'sdl Sdl,
+        b_font: &mut BFont<'sdl>,
+        filename: &CStr,
         scale: c_float,
-    ) -> *mut BFontInfo<'sdl> {
-        if filename.is_null() {
-            return null_mut();
-        }
-
-        let mut surface = self
-            .sdl
-            .load_image_from_c_str_path(CStr::from_ptr(filename))
-            .unwrap();
+    ) -> Rc<FontCell<'sdl>> {
+        let mut surface = sdl.load_image_from_c_str_path(filename).unwrap();
         scale_pic(&mut surface, scale);
 
-        let mut font = Box::new(BFontInfo {
+        let mut font = BFontInfo {
             h: 0,
             surface: Some(surface),
             chars: [Rect::default(); 256],
-        });
+        };
         /* Init the font */
         init_font(&mut font);
 
-        let font = Box::into_raw(font);
         /* Set the font as the current font */
-        self.b_font.current_font = font;
-
+        let font = Rc::new(FontCell::new(font));
+        b_font.current_font = Some(Rc::clone(&font));
         font
     }
 
-    pub unsafe fn centered_print_string<const F: bool>(
-        &self,
+    pub fn centered_print_string<const F: bool>(
+        b_font: &BFont,
+        font_owner: &mut FontCellOwner,
         surface: &mut sdl::GenericSurface<F>,
         y: c_int,
         format_args: fmt::Arguments,
@@ -220,10 +247,10 @@ impl<'sdl> Data<'sdl> {
         let mut cursor = Cursor::new(temp.as_mut());
         cursor.write_fmt(format_args).unwrap();
         let written = cursor.position().try_into().unwrap();
-        self.centered_put_string(surface, y, &temp[..written]);
+        Self::centered_put_string_static(b_font, font_owner, surface, y, &temp[..written]);
     }
 
-    pub unsafe fn print_string<const F: bool>(
+    pub fn print_string<const F: bool>(
         &mut self,
         surface: &mut sdl::GenericSurface<F>,
         x: c_int,
@@ -236,20 +263,61 @@ impl<'sdl> Data<'sdl> {
         let mut cursor = Cursor::new(temp.as_mut());
         cursor.write_fmt(format_args).unwrap();
         let written = cursor.position().try_into().unwrap();
-        put_string_font(surface, self.b_font.current_font, x, y, &temp[..written]);
+        put_string_font(
+            surface,
+            self.b_font
+                .current_font
+                .as_ref()
+                .unwrap()
+                .rw(&mut self.font_owner),
+            x,
+            y,
+            &temp[..written],
+        );
     }
 
-    pub unsafe fn centered_put_string<const F: bool>(
-        &self,
+    pub fn centered_put_string<const F: bool>(
+        &mut self,
         surface: &mut sdl::GenericSurface<F>,
         y: c_int,
         text: &[u8],
     ) {
-        centered_put_string_font(surface, self.b_font.current_font, y, text);
+        centered_put_string_font(
+            surface,
+            self.b_font
+                .current_font
+                .as_ref()
+                .unwrap()
+                .rw(&mut self.font_owner),
+            y,
+            text,
+        );
     }
 
-    pub unsafe fn text_width(&self, text: &[u8]) -> c_int {
-        text_width_font(&*self.b_font.current_font, text)
+    pub fn centered_put_string_static<const F: bool>(
+        b_font: &BFont,
+        font_owner: &mut FontCellOwner,
+        surface: &mut sdl::GenericSurface<F>,
+        y: c_int,
+        text: &[u8],
+    ) {
+        centered_put_string_font(
+            surface,
+            b_font.current_font.as_ref().unwrap().rw(font_owner),
+            y,
+            text,
+        );
+    }
+
+    pub fn text_width(&self, text: &[u8]) -> c_int {
+        text_width_font(
+            self.b_font
+                .current_font
+                .as_ref()
+                .unwrap()
+                .ro(&self.font_owner),
+            text,
+        )
     }
 }
 

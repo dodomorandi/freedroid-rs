@@ -1,7 +1,7 @@
-use crate::{b_font::BFontInfo, structs::Config};
+use crate::{structs::Config, FontCell};
 
 use cstr::cstr;
-use std::{ffi::CStr, ptr::null_mut};
+use std::{ffi::CStr, fmt, rc::Rc};
 
 pub const INFLUENCE_MODE_NAMES: [&CStr; 17] = [
     cstr!("Mobile"),
@@ -23,14 +23,13 @@ pub const INFLUENCE_MODE_NAMES: [&CStr; 17] = [
     cstr!("-- OUT --"),
 ];
 
-#[derive(Debug)]
 pub struct Global<'sdl> {
-    pub menu_b_font: *mut BFontInfo<'sdl>,
-    pub para_b_font: *mut BFontInfo<'sdl>,
-    pub highscore_b_font: *mut BFontInfo<'sdl>,
-    pub font0_b_font: *mut BFontInfo<'sdl>,
-    pub font1_b_font: *mut BFontInfo<'sdl>,
-    pub font2_b_font: *mut BFontInfo<'sdl>,
+    pub menu_b_font: Option<Rc<FontCell<'sdl>>>,
+    pub para_b_font: Option<Rc<FontCell<'sdl>>>,
+    pub highscore_b_font: Option<Rc<FontCell<'sdl>>>,
+    pub font0_b_font: Option<Rc<FontCell<'sdl>>>,
+    pub font1_b_font: Option<Rc<FontCell<'sdl>>>,
+    pub font2_b_font: Option<Rc<FontCell<'sdl>>>,
     pub skip_a_few_frames: i32,
     pub level_doors_not_moved_time: f32,
     pub droid_radius: f32,
@@ -42,15 +41,59 @@ pub struct Global<'sdl> {
     pub game_config: Config,
 }
 
+impl fmt::Debug for Global<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn debug_opt_fontcell(fontcell: &Option<Rc<FontCell<'_>>>) -> &'static str {
+            match fontcell {
+                Some(_) => "Some(Rc(FontCell))",
+                None => "None",
+            }
+        }
+
+        f.debug_struct("Global")
+            .field("menu_b_font", &debug_opt_fontcell(&self.menu_b_font))
+            .field("para_b_font", &debug_opt_fontcell(&self.para_b_font))
+            .field(
+                "highscore_b_font",
+                &debug_opt_fontcell(&self.highscore_b_font),
+            )
+            .field("font0_b_font", &debug_opt_fontcell(&self.font0_b_font))
+            .field("font1_b_font", &debug_opt_fontcell(&self.font1_b_font))
+            .field("font2_b_font", &debug_opt_fontcell(&self.font2_b_font))
+            .field("skip_a_few_frames", &self.skip_a_few_frames)
+            .field(
+                "level_doors_not_moved_time",
+                &self.level_doors_not_moved_time,
+            )
+            .field("droid_radius", &self.droid_radius)
+            .field(
+                "time_for_each_phase_of_door_movement",
+                &self.time_for_each_phase_of_door_movement,
+            )
+            .field("blast_radius", &self.blast_radius)
+            .field("blast_damage_per_second", &self.blast_damage_per_second)
+            .field(
+                "current_combat_scale_factor",
+                &self.current_combat_scale_factor,
+            )
+            .field(
+                "collision_lose_energy_calibrator",
+                &self.collision_lose_energy_calibrator,
+            )
+            .field("game_config", &self.game_config)
+            .finish()
+    }
+}
+
 impl Default for Global<'_> {
     fn default() -> Self {
         Self {
-            menu_b_font: null_mut(),
-            para_b_font: null_mut(),
-            highscore_b_font: null_mut(),
-            font0_b_font: null_mut(),
-            font1_b_font: null_mut(),
-            font2_b_font: null_mut(),
+            menu_b_font: Default::default(),
+            para_b_font: Default::default(),
+            highscore_b_font: Default::default(),
+            font0_b_font: Default::default(),
+            font1_b_font: Default::default(),
+            font2_b_font: Default::default(),
             skip_a_few_frames: 0,
             level_doors_not_moved_time: 0.,
             droid_radius: 0.,
@@ -69,7 +112,7 @@ impl Default for Global<'_> {
                 current_bg_music_volume: 0.,
                 current_sound_fx_volume: 0.,
                 current_gamma_correction: 0.,
-                theme_name: [0; 100],
+                theme_name: Default::default(),
                 full_user_rect: 0,
                 use_fullscreen: 0,
                 takeover_activates: 0,

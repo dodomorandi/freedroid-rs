@@ -3,11 +3,13 @@ use crate::{
         self, Criticality, Direction, MapTile, Status, Themed, DIRECTIONS, MAP_DIR_C, MAXWAYPOINTS,
         MAX_ALERTS_ON_LEVEL, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_REFRESHES_ON_LEVEL,
     },
+    find_subslice,
     menu::SHIP_EXT,
     misc::{
         dealloc_c_string, locate_string_in_data, my_random, read_and_malloc_string_from_data,
         read_value_from_string,
     },
+    read_and_malloc_and_terminate_file, split_at_subslice, split_at_subslice_mut,
     structs::{Finepoint, GrobPoint, Level},
     Data,
 };
@@ -15,11 +17,13 @@ use crate::{
 use cstr::cstr;
 use defs::{MAX_DOORS_ON_LEVEL, MAX_WP_CONNECTIONS};
 use log::{error, info, trace, warn};
+use nom::{Finish, Parser};
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
     ffi::CStr,
     ops::Not,
     os::raw::{c_char, c_float, c_int, c_uchar, c_void},
+    path::Path,
     ptr::null_mut,
 };
 
@@ -1254,11 +1258,10 @@ freedroid-discussion@lists.sourceforge.net\n\
     }
 
     /// This function initializes all enemys
-    pub unsafe fn get_crew(&mut self, filename: *mut c_char) -> c_int {
-        const END_OF_DROID_DATA_STRING: &CStr = cstr!("*** End of Droid Data ***");
-        const DROIDS_LEVEL_DESCRIPTION_START_STRING: &CStr = cstr!("** Beginning of new Level **");
-        const DROIDS_LEVEL_DESCRIPTION_END_STRING: &CStr =
-            cstr!("** End of this levels droid data **");
+    pub unsafe fn get_crew(&mut self, filename: &CStr) -> c_int {
+        const END_OF_DROID_DATA_STRING: &[u8] = b"*** End of Droid Data ***";
+        const DROIDS_LEVEL_DESCRIPTION_START_STRING: &[u8] = b"** Beginning of new Level **";
+        const DROIDS_LEVEL_DESCRIPTION_END_STRING: &[u8] = b"** End of this levels droid data **";
 
         /* Clear Enemy - Array */
         self.clear_enemys();
@@ -1266,45 +1269,43 @@ freedroid-discussion@lists.sourceforge.net\n\
         //Now its time to start decoding the droids file.
         //For that, we must get it into memory first.
         //The procedure is the same as with LoadShip
-        let fpath = self.find_file(
-            filename,
-            MAP_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
+        let fpath = self
+            .find_file(
+                filename,
+                Some(MAP_DIR_C),
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            )
+            .unwrap();
+        let fpath = Path::new(
+            fpath
+                .to_str()
+                .expect("unable to convert C string to UTF-8 string"),
         );
 
-        let main_droids_file_pointer = self.read_and_malloc_and_terminate_file(
-            fpath,
-            END_OF_DROID_DATA_STRING.as_ptr() as *mut c_char,
-        );
+        let mut main_droids_file =
+            read_and_malloc_and_terminate_file(fpath, END_OF_DROID_DATA_STRING);
 
         // The Droid crew file for this map is now completely read into memory
         // It's now time to decode the file and to fill the array of enemys with
         // new droids of the given types.
-        let mut droid_section_pointer = libc::strstr(
-            main_droids_file_pointer.as_ptr(),
-            DROIDS_LEVEL_DESCRIPTION_START_STRING.as_ptr() as *mut c_char,
-        );
-        while droid_section_pointer.is_null().not() {
-            droid_section_pointer = droid_section_pointer.add(libc::strlen(
-                DROIDS_LEVEL_DESCRIPTION_START_STRING.as_ptr() as *mut c_char,
-            ));
+        let mut droid_section_slice_opt = split_at_subslice_mut(
+            &mut *main_droids_file,
+            DROIDS_LEVEL_DESCRIPTION_START_STRING,
+        )
+        .map(|(_, s)| s);
+        while let Some(droid_section_slice) = droid_section_slice_opt {
             info!("Found another levels droids description starting point entry!");
-            let end_of_this_droid_section_pointer = libc::strstr(
-                droid_section_pointer,
-                DROIDS_LEVEL_DESCRIPTION_END_STRING.as_ptr() as *mut c_char,
-            );
-            assert!(
-                !end_of_this_droid_section_pointer.is_null(),
-                "GetCrew: Unterminated droid section encountered!! Terminating."
-            );
-            self.get_this_levels_droids(droid_section_pointer);
-            droid_section_pointer = end_of_this_droid_section_pointer.add(2); // Move past the inserted String terminator
+            let end_of_this_droid_section_index =
+                find_subslice(droid_section_slice, DROIDS_LEVEL_DESCRIPTION_END_STRING)
+                    .expect("GetCrew: Unterminated droid section encountered.");
+            self.get_this_levels_droids(droid_section_slice.as_mut_ptr() as *mut c_char);
 
-            droid_section_pointer = libc::strstr(
-                droid_section_pointer,
-                DROIDS_LEVEL_DESCRIPTION_START_STRING.as_ptr() as *mut c_char,
-            );
+            droid_section_slice_opt = split_at_subslice_mut(
+                &mut droid_section_slice[(end_of_this_droid_section_index + 2)..],
+                DROIDS_LEVEL_DESCRIPTION_START_STRING,
+            )
+            .map(|(_, s)| s);
         }
 
         // Now that the correct crew types have been filled into the
@@ -1326,66 +1327,52 @@ freedroid-discussion@lists.sourceforge.net\n\
     }
 
     /// loads lift-connctions to cur-ship struct
-    pub unsafe fn get_lift_connections(&mut self, filename: *mut c_char) -> c_int {
-        macro_rules! read_int_from_string_into {
-            ($ptr:expr, $str:tt, $value:expr) => {
-                read_value_from_string(
-                    $ptr,
-                    cstr!($str).as_ptr() as *mut c_char,
-                    cstr!("%d").as_ptr() as *mut c_char,
-                    &mut $value as *mut _ as *mut c_void,
-                );
-            };
-        }
-
-        macro_rules! read_int_from_string {
-            ($ptr:expr, $str:tt, $value:ident) => {
-                let mut $value: c_int = 0;
-                read_int_from_string_into!($ptr, $str, $value);
-            };
-        }
-
-        const END_OF_LIFT_DATA_STRING: &CStr = cstr!("*** End of elevator specification file ***");
-        const START_OF_LIFT_DATA_STRING: &CStr = cstr!("*** Beginning of Lift Data ***");
-        const START_OF_LIFT_RECTANGLE_DATA_STRING: &CStr =
-            cstr!("*** Beginning of elevator rectangles ***");
+    pub unsafe fn get_lift_connections(&mut self, filename: &CStr) -> c_int {
+        const END_OF_LIFT_DATA_STRING: &[u8] = b"*** End of elevator specification file ***";
+        const START_OF_LIFT_DATA_STRING: &[u8] = b"*** Beginning of Lift Data ***";
+        const START_OF_LIFT_RECTANGLE_DATA_STRING: &[u8] =
+            b"*** Beginning of elevator rectangles ***";
 
         /* Now get the lift-connection data from "FILE.elv" file */
-        let fpath = self.find_file(
-            filename,
-            MAP_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
+        let fpath = self
+            .find_file(
+                filename,
+                Some(MAP_DIR_C),
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            )
+            .unwrap();
+        let fpath = Path::new(
+            fpath
+                .to_str()
+                .expect("unable to convert C string to UTF-8 string"),
         );
 
-        let mut data = self.read_and_malloc_and_terminate_file(
-            fpath,
-            END_OF_LIFT_DATA_STRING.as_ptr() as *mut c_char,
-        );
+        let data = read_and_malloc_and_terminate_file(fpath, END_OF_LIFT_DATA_STRING);
 
         // At first we read in the rectangles that define where the colums of the
         // lift are, so that we can highlight them later.
         self.main.cur_ship.num_lift_rows = 0;
-        let mut entry_pointer = locate_string_in_data(
-            data.as_mut_ptr(),
-            START_OF_LIFT_RECTANGLE_DATA_STRING.as_ptr() as *mut c_char,
-        );
+        let mut entry_slice =
+            &data[find_subslice(&*data, START_OF_LIFT_RECTANGLE_DATA_STRING).unwrap()..];
         loop {
-            entry_pointer = libc::strstr(
-                entry_pointer,
-                cstr!("Elevator Number=").as_ptr() as *mut c_char,
-            );
-            if entry_pointer.is_null() {
-                break;
-            }
+            let next_entry_slice =
+                split_at_subslice(entry_slice, b"Elevator Number=").map(|(_, s)| s);
+            entry_slice = match next_entry_slice {
+                Some(x) => x,
+                None => break,
+            };
 
-            read_int_from_string!(entry_pointer, "Elevator Number=", elevator_index);
-            entry_pointer = entry_pointer.add(1);
+            let elevator_index = nom::character::complete::i32::<_, ()>(entry_slice)
+                .finish()
+                .unwrap()
+                .1;
+            entry_slice = &entry_slice[1..];
 
-            read_int_from_string!(entry_pointer, "ElRowX=", x);
-            read_int_from_string!(entry_pointer, "ElRowY=", y);
-            read_int_from_string!(entry_pointer, "ElRowW=", w);
-            read_int_from_string!(entry_pointer, "ElRowH=", h);
+            let x = read_tagged_i32(entry_slice, "ElRowX=");
+            let y = read_tagged_i32(entry_slice, "ElRowY=");
+            let w = read_tagged_i32(entry_slice, "ElRowW=");
+            let h = read_tagged_i32(entry_slice, "ElRowH=");
 
             let rect =
                 &mut self.main.cur_ship.lift_row_rect[usize::try_from(elevator_index).unwrap()];
@@ -1403,24 +1390,30 @@ freedroid-discussion@lists.sourceforge.net\n\
         // elevator and console functions.
         //
         self.main.cur_ship.num_level_rects.fill(0); // this initializes zeros for the number
-        entry_pointer = data.as_mut_ptr();
+        let mut entry_slice = &*data;
 
         loop {
-            entry_pointer = libc::strstr(entry_pointer, cstr!("DeckNr=").as_ptr() as *mut c_char);
-            if entry_pointer.is_null() {
-                break;
-            }
+            let next_entry_slice = split_at_subslice(entry_slice, b"DeckNr=").map(|(_, s)| s);
 
-            read_int_from_string!(entry_pointer, "DeckNr=", deck_index);
-            read_int_from_string!(entry_pointer, "RectNumber=", rect_index);
-            entry_pointer = entry_pointer.add(1); // to prevent doubly taking this entry
+            entry_slice = match next_entry_slice {
+                Some(x) => x,
+                None => break,
+            };
 
-            self.main.cur_ship.num_level_rects[usize::try_from(deck_index).unwrap()] += 1; // count the number of rects for this deck one up
+            let deck_index = nom::character::complete::i32::<_, ()>(entry_slice)
+                .finish()
+                .unwrap()
+                .1;
+            let rect_index = read_tagged_i32(entry_slice, "RectNumber=");
+            entry_slice = &entry_slice[1..];
 
-            read_int_from_string!(entry_pointer, "DeckX=", x);
-            read_int_from_string!(entry_pointer, "DeckY=", y);
-            read_int_from_string!(entry_pointer, "DeckW=", w);
-            read_int_from_string!(entry_pointer, "DeckH=", h);
+            // count the number of rects for this deck one up
+            self.main.cur_ship.num_level_rects[usize::try_from(deck_index).unwrap()] += 1;
+
+            let x = read_tagged_i32(&entry_slice[1..], "DeckX=");
+            let y = read_tagged_i32(entry_slice, "DeckY=");
+            let w = read_tagged_i32(entry_slice, "DeckW=");
+            let h = read_tagged_i32(entry_slice, "DeckH=");
 
             let rect = &mut self.main.cur_ship.level_rects[usize::try_from(deck_index).unwrap()]
                 [usize::try_from(rect_index).unwrap()];
@@ -1430,33 +1423,31 @@ freedroid-discussion@lists.sourceforge.net\n\
             rect.set_height(h.try_into().unwrap());
         }
 
-        entry_pointer = libc::strstr(
-            data.as_ptr(),
-            START_OF_LIFT_DATA_STRING.as_ptr() as *mut c_char,
-        );
-        assert!(
-            !entry_pointer.is_null(),
-            "START OF LIFT DATA STRING NOT FOUND!  Terminating..."
-        );
+        let mut entry_slice = &data[find_subslice(&*data, START_OF_LIFT_DATA_STRING)
+            .expect("START OF LIFT DATA STRING NOT FOUND!  Terminating...")..];
 
         let mut label: c_int = 0;
-        entry_pointer = data.as_mut_ptr();
         loop {
-            entry_pointer = libc::strstr(entry_pointer, cstr!("Label=").as_ptr() as *mut c_char);
-            if entry_pointer.is_null() {
-                break;
-            }
+            let next_entry_slice = split_at_subslice(entry_slice, b"Label=").map(|(_, s)| s);
 
-            read_int_from_string_into!(entry_pointer, "Label=", label);
+            entry_slice = match next_entry_slice {
+                Some(x) => x,
+                None => break,
+            };
+
+            label = nom::character::complete::i32::<_, ()>(entry_slice)
+                .finish()
+                .unwrap()
+                .1;
             let cur_lift = &mut self.main.cur_ship.all_lifts[usize::try_from(label).unwrap()];
-            entry_pointer = entry_pointer.add(1); // to avoid doubly taking this entry
+            entry_slice = &entry_slice[1..];
 
-            read_int_from_string_into!(entry_pointer, "Deck=", cur_lift.level);
-            read_int_from_string_into!(entry_pointer, "PosX=", cur_lift.x);
-            read_int_from_string_into!(entry_pointer, "PosY=", cur_lift.y);
-            read_int_from_string_into!(entry_pointer, "LevelUp=", cur_lift.up);
-            read_int_from_string_into!(entry_pointer, "LevelDown=", cur_lift.down);
-            read_int_from_string_into!(entry_pointer, "LiftRow=", cur_lift.lift_row);
+            cur_lift.level = read_tagged_i32(entry_slice, "Deck=");
+            cur_lift.x = read_tagged_i32(entry_slice, "PosX=");
+            cur_lift.y = read_tagged_i32(entry_slice, "PosY=");
+            cur_lift.up = read_tagged_i32(entry_slice, "LevelUp=");
+            cur_lift.down = read_tagged_i32(entry_slice, "LevelDown=");
+            cur_lift.lift_row = read_tagged_i32(entry_slice, "LiftRow=");
         }
 
         self.main.cur_ship.num_lifts = label;
@@ -1464,26 +1455,31 @@ freedroid-discussion@lists.sourceforge.net\n\
         defs::OK.into()
     }
 
-    pub unsafe fn load_ship(&mut self, filename: *mut c_char) -> c_int {
+    pub unsafe fn load_ship(&mut self, filename: &CStr) -> c_int {
         let mut level_start: [*mut c_char; MAX_LEVELS] = [null_mut(); MAX_LEVELS];
         self.free_ship_memory(); // clear vestiges of previous ship data, if any
 
         /* Read the whole ship-data to memory */
-        const END_OF_SHIP_DATA_STRING: &CStr = cstr!("*** End of Ship Data ***");
-        let fpath = self.find_file(
-            filename,
-            MAP_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
+        const END_OF_SHIP_DATA_STRING: &[u8] = b"*** End of Ship Data ***";
+        let fpath = self
+            .find_file(
+                filename,
+                Some(MAP_DIR_C),
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            )
+            .unwrap();
+        let fpath = Path::new(
+            fpath
+                .to_str()
+                .expect("unable to convert C string to UTF-8 string"),
         );
-        let mut ship_data = self.read_and_malloc_and_terminate_file(
-            fpath,
-            END_OF_SHIP_DATA_STRING.as_ptr() as *mut c_char,
-        );
+
+        let mut ship_data = read_and_malloc_and_terminate_file(fpath, END_OF_SHIP_DATA_STRING);
 
         // Now we read the Area-name from the loaded data
         let buffer = read_and_malloc_string_from_data(
-            ship_data.as_mut_ptr(),
+            ship_data.as_mut_ptr() as *mut c_char,
             AREA_NAME_STRING_C.as_ptr() as *mut c_char,
             cstr!("\"").as_ptr() as *mut c_char,
         );
@@ -1496,18 +1492,19 @@ freedroid-discussion@lists.sourceforge.net\n\
         // until it is no longer found in the ship file.  good.
 
         let mut level_anz = 0;
-        let mut endpt = ship_data.as_mut_ptr();
-        level_start[level_anz] = ship_data.as_mut_ptr();
+        let mut ship_rest = &mut *ship_data;
+        level_start[level_anz] = ship_rest.as_mut_ptr() as *mut c_char;
 
         loop {
-            endpt = libc::strstr(endpt, LEVEL_END_STRING_C.as_ptr());
-            if endpt.is_null() {
-                break;
-            }
+            let next_ship_rest =
+                split_at_subslice_mut(ship_rest, LEVEL_END_STRING.as_bytes()).map(|(_, s)| s);
+            ship_rest = match next_ship_rest {
+                Some(x) => x,
+                None => break,
+            };
 
-            endpt = endpt.add(LEVEL_END_STRING_C.to_bytes().len());
             level_anz += 1;
-            level_start[level_anz] = endpt.add(1);
+            level_start[level_anz] = ship_rest.as_mut_ptr().add(1) as *mut c_char;
         }
 
         /* init the level-structs */
@@ -1619,5 +1616,35 @@ freedroid-discussion@lists.sourceforge.net\n\
         } else {
             i.try_into().unwrap()
         }
+    }
+}
+
+fn read_tagged_i32(s: &[u8], tag: &str) -> i32 {
+    use nom::character::complete::{self, space0};
+
+    let pos = s
+        .windows(tag.len())
+        .enumerate()
+        .find(|&(_, s)| s == tag.as_bytes())
+        .unwrap()
+        .0;
+
+    space0::<_, ()>
+        .and(complete::i32)
+        .parse(&s[(pos + tag.len())..])
+        .map(|(_, (_, n))| n)
+        .unwrap()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn read_tagged_i32_simple() {
+        assert_eq!(
+            read_tagged_i32(b"assd Hello=       5 World".as_slice(), "Hello="),
+            5,
+        );
     }
 }

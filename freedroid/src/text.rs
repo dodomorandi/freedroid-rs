@@ -82,7 +82,13 @@ impl Data<'_> {
 
         let x0 = self.text.my_cursor_x;
         let y0 = self.text.my_cursor_y;
-        let height = font_height(&*self.b_font.current_font);
+        let height = font_height(
+            self.b_font
+                .current_font
+                .as_ref()
+                .unwrap()
+                .ro(&self.font_owner),
+        );
 
         let mut store = Surface::create_rgb(
             self.vars.screen_rect.width().into(),
@@ -344,11 +350,33 @@ impl Data<'_> {
         let text_buffer = &self.text.text_buffer[..usize::try_from(cursor_pos).unwrap()];
         let textlen: c_int = text_buffer
             .iter()
-            .map(|&c| char_width(&*self.b_font.current_font, c))
+            .map(|&c| {
+                char_width(
+                    self.b_font
+                        .current_font
+                        .as_ref()
+                        .unwrap()
+                        .ro(&self.font_owner),
+                    c,
+                )
+            })
             .sum();
 
-        self.put_string(screen, x, y, text_buffer);
-        let h = font_height(&*self.b_font.current_font) + 2;
+        Self::put_string_static(
+            &self.b_font,
+            &mut self.font_owner,
+            screen,
+            x,
+            y,
+            text_buffer,
+        );
+        let h = font_height(
+            self.b_font
+                .current_font
+                .as_ref()
+                .unwrap()
+                .ro(&self.font_owner),
+        ) + 2;
 
         // update the relevant line
         screen.update_rect(&Rect::new(
@@ -429,8 +457,13 @@ impl Data<'_> {
 
             if first == b'\n' {
                 self.text.my_cursor_x = clip.x().into();
-                self.text.my_cursor_y +=
-                    (f64::from(font_height(&*self.b_font.current_font)) * TEXT_STRETCH) as c_int;
+                self.text.my_cursor_y += (f64::from(font_height(
+                    self.b_font
+                        .current_font
+                        .as_ref()
+                        .unwrap()
+                        .ro(&self.font_owner),
+                )) * TEXT_STRETCH) as c_int;
             } else {
                 self.display_char(first as c_uchar);
             }
@@ -439,8 +472,13 @@ impl Data<'_> {
             if self.is_linebreak_needed(text, clip) {
                 text = &text[1..];
                 self.text.my_cursor_x = clip.x().into();
-                self.text.my_cursor_y +=
-                    (f64::from(font_height(&*self.b_font.current_font)) * TEXT_STRETCH) as c_int;
+                self.text.my_cursor_y += (f64::from(font_height(
+                    self.b_font
+                        .current_font
+                        .as_ref()
+                        .unwrap()
+                        .ro(&self.font_owner),
+                )) * TEXT_STRETCH) as c_int;
             }
         }
 
@@ -485,7 +523,14 @@ impl Data<'_> {
         // After the char has been displayed, we must move the cursor to its
         // new position.  That depends of course on the char displayed.
         //
-        self.text.my_cursor_x += char_width(&*self.b_font.current_font, c);
+        self.text.my_cursor_x += char_width(
+            self.b_font
+                .current_font
+                .as_ref()
+                .unwrap()
+                .ro(&self.font_owner),
+            c,
+        );
     }
 
     ///  This function checks if the next word still fits in this line
@@ -511,7 +556,14 @@ impl Data<'_> {
             .copied()
             .take_while(|&c| c != b' ' && c != b'\n');
         for c in iter {
-            let w = char_width(&*self.b_font.current_font, c);
+            let w = char_width(
+                self.b_font
+                    .current_font
+                    .as_ref()
+                    .unwrap()
+                    .ro(&self.font_owner),
+                c,
+            );
             needed_space += w;
             if self.text.my_cursor_x + needed_space
                 > c_int::from(clip.x()) + c_int::from(clip.width()) - w

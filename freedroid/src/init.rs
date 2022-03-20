@@ -1,4 +1,5 @@
 use crate::{
+    array_c_string::ArrayCString,
     b_font::font_height,
     defs::{
         self, AssembleCombatWindowFlags, Criticality, DisplayBannerFlags, Droid, Status, Themed,
@@ -11,7 +12,9 @@ use crate::{
         count_string_occurences, dealloc_c_string, locate_string_in_data, my_random,
         read_and_malloc_string_from_data, read_value_from_string,
     },
+    read_and_malloc_and_terminate_file,
     sound::Sound,
+    split_at_subslice,
     structs::{BulletSpec, DruidSpec},
     Data,
 };
@@ -22,6 +25,7 @@ use crate::input::wait_for_key_pressed;
 use clap::{crate_version, Parser};
 use cstr::cstr;
 use log::{error, info, warn};
+use nom::Finish;
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
     ffi::CStr,
@@ -34,16 +38,16 @@ use std::{
 #[derive(Debug)]
 pub struct Init {
     debriefing_text: *mut c_char,
-    debriefing_song: [c_char; 500],
-    previous_mission_name: [c_char; 500],
+    debriefing_song: ArrayCString<500>,
+    previous_mission_name: ArrayCString<500>,
 }
 
 impl Default for Init {
     fn default() -> Self {
         Self {
             debriefing_text: null_mut(),
-            debriefing_song: [0; 500],
-            previous_mission_name: [0; 500],
+            debriefing_song: Default::default(),
+            previous_mission_name: Default::default(),
         }
     }
 }
@@ -208,7 +212,7 @@ impl Data<'_> {
         assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
         rect.inc_x(10);
         rect.dec_width(20); //leave some border
-        self.b_font.current_font = self.global.para_b_font;
+        self.b_font.current_font = self.global.para_b_font.clone();
         self.scroll_text(self.init.debriefing_text, &mut rect, 6);
 
         self.wait_for_all_keys_released();
@@ -278,14 +282,16 @@ impl Data<'_> {
         self.vars.screen_rect.scale(self.global.game_config.scale); // make sure we open a window of the right (rescaled) size!
         self.init_video();
 
-        let image = self.find_file(
-            TITLE_PIC_FILE_C.as_ptr() as *mut c_char,
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        let image = Self::find_file_static(
+            &self.global,
+            &mut self.misc,
+            TITLE_PIC_FILE_C,
+            Some(GRAPHICS_DIR_C),
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
-        );
-        assert!(image.is_null().not());
-        self.display_image(CStr::from_ptr(image)); // show title pic
+        )
+        .unwrap();
+        Self::display_image(&self.sdl, &self.global, &mut self.graphics, image); // show title pic
         assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
         self.load_fonts(); // we need this for progress-meter!
@@ -308,8 +314,8 @@ impl Data<'_> {
 
         self.init_joy();
 
-        self.init_game_data(cstr!("freedroid.ruleset").as_ptr() as *mut c_char); // load the default ruleset. This can be */
-                                                                                 // overwritten from the mission file.
+        self.init_game_data(cstr!("freedroid.ruleset")); // load the default ruleset. This can be
+                                                         // overwritten from the mission file.
 
         self.update_progress(10);
 
@@ -536,7 +542,7 @@ impl Data<'_> {
             .iter()
             .copied()
             .position(|theme_name| {
-                libc::strcmp(theme_name as *const _, game_config.theme_name.as_mut_ptr()) == 0
+                libc::strcmp(theme_name as *const _, game_config.theme_name.as_ptr()) == 0
             });
 
         match selected_theme_index {
@@ -553,7 +559,7 @@ impl Data<'_> {
                     CStr::from_ptr(self.global.game_config.theme_name.as_ptr()).to_string_lossy(),
                 );
                 libc::strcpy(
-                    self.global.game_config.theme_name.as_mut_ptr(),
+                    self.global.game_config.theme_name.as_mut_ptr() as *mut c_char,
                     self.graphics.all_themes.theme_name[classic_theme_index] as *const _,
                 );
                 self.graphics.all_themes.cur_tnum = classic_theme_index.try_into().unwrap();
@@ -566,8 +572,8 @@ impl Data<'_> {
         );
     }
 
-    pub unsafe fn init_new_mission(&mut self, mission_name: *mut c_char) {
-        const END_OF_MISSION_DATA_STRING: &CStr = cstr!("*** End of Mission File ***");
+    pub unsafe fn init_new_mission(&mut self, mission_name: &CStr) {
+        const END_OF_MISSION_DATA_STRING: &[u8] = b"*** End of Mission File ***";
         const MISSION_BRIEFING_BEGIN_STRING: &CStr =
             cstr!("** Start of Mission Briefing Text Section **");
         const MISSION_ENDTITLE_SONG_NAME_STRING: &CStr =
@@ -580,17 +586,19 @@ impl Data<'_> {
         const MISSION_ENDTITLE_BEGIN_STRING: &CStr =
             cstr!("** Beginning of End Title Text Section **");
         const MISSION_ENDTITLE_END_STRING: &CStr = cstr!("** End of End Title Text Section **");
-        const MISSION_START_POINT_STRING: &CStr = cstr!("Possible Start Point : ");
+        const MISSION_START_POINT_STRING_C: &CStr = cstr!("Possible Start Point : ");
+        const MISSION_START_POINT_STRING: &[u8] = b"Possible Start Point : ";
 
         // We store the mission name in case the influ
         // gets destroyed so we know where to continue in
         // case the player doesn't want to return to the very beginning
         // but just to replay this mission.
-        libc::strcpy(self.init.previous_mission_name.as_mut_ptr(), mission_name);
+        self.init.previous_mission_name.clear();
+        self.init.previous_mission_name.push_cstr(mission_name);
 
         info!(
             "A new mission is being initialized from file {}.",
-            CStr::from_ptr(mission_name).to_string_lossy()
+            mission_name.to_string_lossy()
         );
 
         //--------------------
@@ -624,20 +632,28 @@ impl Data<'_> {
         //For that, we must get it into memory first.
         //The procedure is the same as with LoadShip
 
-        let oldfont = std::mem::replace(&mut self.b_font.current_font, self.global.font0_b_font);
+        let oldfont = std::mem::replace(
+            &mut self.b_font.current_font,
+            self.global.font0_b_font.clone(),
+        );
 
         /* Read the whole mission data to memory */
-        let fpath = self.find_file(
-            mission_name,
-            MAP_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
+        let fpath = self
+            .find_file(
+                mission_name,
+                Some(MAP_DIR_C),
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            )
+            .unwrap();
+        let fpath = Path::new(
+            fpath
+                .to_str()
+                .expect("Unable to convert C string to UTF-8 string"),
         );
 
-        let mut main_mission_pointer = self.read_and_malloc_and_terminate_file(
-            fpath,
-            END_OF_MISSION_DATA_STRING.as_ptr() as *mut c_char,
-        );
+        let mut main_mission_pointer =
+            read_and_malloc_and_terminate_file(fpath, END_OF_MISSION_DATA_STRING);
 
         //--------------------
         // Now the mission file is read into memory.  That means we can start to decode the details given
@@ -647,29 +663,29 @@ impl Data<'_> {
         // First we extract the game physics file name from the
         // mission file and load the game data.
         //
-        let mut buffer: [c_char; 500] = [0; 500];
+        let mut buffer = ArrayCString::<500>::new();
         read_value_from_string(
-            main_mission_pointer.as_mut_ptr(),
+            main_mission_pointer.as_mut_ptr() as *mut c_char,
             GAMEDATANAME_INDICATION_STRING.as_ptr() as *mut c_char,
             cstr!("%s").as_ptr() as *mut c_char,
             buffer.as_mut_ptr() as *mut c_void,
         );
 
-        self.init_game_data(buffer.as_mut_ptr());
+        self.init_game_data(&*buffer);
 
         //--------------------
         // Now its time to get the shipname from the mission file and
         // read the ship file into the right memory structures
         //
         read_value_from_string(
-            main_mission_pointer.as_mut_ptr(),
+            main_mission_pointer.as_mut_ptr() as *mut c_char,
             SHIPNAME_INDICATION_STRING.as_ptr() as *mut c_char,
             cstr!("%s").as_ptr() as *mut c_char,
             buffer.as_mut_ptr() as *mut c_void,
         );
 
         assert!(
-            self.load_ship(buffer.as_mut_ptr()) != defs::ERR.into(),
+            self.load_ship(&*buffer) != defs::ERR.into(),
             "Error in LoadShip"
         );
         //--------------------
@@ -677,14 +693,14 @@ impl Data<'_> {
         // read the elevator file into the right memory structures
         //
         read_value_from_string(
-            main_mission_pointer.as_mut_ptr(),
+            main_mission_pointer.as_mut_ptr() as *mut c_char,
             ELEVATORNAME_INDICATION_STRING.as_ptr() as *mut c_char,
             cstr!("%s").as_ptr() as *mut c_char,
             buffer.as_mut_ptr() as *mut c_void,
         );
 
         assert!(
-            self.get_lift_connections(buffer.as_mut_ptr()) != defs::ERR.into(),
+            self.get_lift_connections(&*buffer) != defs::ERR.into(),
             "Error in GetLiftConnections"
         );
         //--------------------
@@ -704,7 +720,7 @@ impl Data<'_> {
         // assemble an appropriate crew out of it
         //
         read_value_from_string(
-            main_mission_pointer.as_mut_ptr(),
+            main_mission_pointer.as_mut_ptr() as *mut c_char,
             CREWNAME_INDICATION_STRING.as_ptr() as *mut c_char,
             cstr!("%s").as_ptr() as *mut c_char,
             buffer.as_mut_ptr() as *mut c_void,
@@ -714,7 +730,7 @@ impl Data<'_> {
         // WARNING!! THIS REQUIRES THE freedroid.ruleset FILE TO BE READ ALREADY, BECAUSE
         // ROBOT SPECIFICATIONS ARE ALREADY REQUIRED HERE!!!!!
         assert!(
-            self.get_crew(buffer.as_mut_ptr()) != defs::ERR.into(),
+            self.get_crew(&*buffer) != defs::ERR.into(),
             "InitNewGame(): Initialization of enemys failed."
         );
 
@@ -723,7 +739,7 @@ impl Data<'_> {
         // can be used, if the mission is completed and also the end title music name
         // must be read in as well
         read_value_from_string(
-            main_mission_pointer.as_mut_ptr(),
+            main_mission_pointer.as_mut_ptr() as *mut c_char,
             MISSION_ENDTITLE_SONG_NAME_STRING.as_ptr() as *mut c_char,
             cstr!("%s").as_ptr() as *mut c_char,
             self.init.debriefing_song.as_mut_ptr() as *mut c_void,
@@ -733,7 +749,7 @@ impl Data<'_> {
             dealloc_c_string(self.init.debriefing_text);
         }
         self.init.debriefing_text = read_and_malloc_string_from_data(
-            main_mission_pointer.as_mut_ptr(),
+            main_mission_pointer.as_mut_ptr() as *mut c_char,
             MISSION_ENDTITLE_BEGIN_STRING.as_ptr() as *mut c_char,
             MISSION_ENDTITLE_END_STRING.as_ptr() as *mut c_char,
         );
@@ -744,8 +760,8 @@ impl Data<'_> {
         // influencer at the beginning of the mission.
 
         let number_of_start_points = count_string_occurences(
-            main_mission_pointer.as_mut_ptr(),
-            MISSION_START_POINT_STRING.as_ptr() as *mut c_char,
+            main_mission_pointer.as_mut_ptr() as *mut c_char,
+            MISSION_START_POINT_STRING_C.as_ptr() as *mut c_char,
         );
 
         assert!(
@@ -759,44 +775,40 @@ impl Data<'_> {
 
         // Now that we know how many different starting points there are, we can randomly select
         // one of them and read then in this one starting point into the right structures...
-        let real_start_point = my_random(number_of_start_points - 1) + 1;
-        let mut start_point_pointer = main_mission_pointer.as_mut_ptr();
-        for _ in 0..real_start_point {
-            start_point_pointer = libc::strstr(
-                start_point_pointer,
-                MISSION_START_POINT_STRING.as_ptr() as *mut c_char,
-            );
-            start_point_pointer = start_point_pointer.add(libc::strlen(
-                MISSION_START_POINT_STRING.as_ptr() as *mut c_char,
-            ));
-        }
-        start_point_pointer = libc::strstr(start_point_pointer, cstr!("Level=").as_ptr())
-            .add(cstr!("Level=").to_bytes().len());
-        let mut starting_level: c_int = 0;
-        let mut starting_x_pos: c_int = 0;
-        let mut starting_y_pos: c_int = 0;
-        libc::sscanf(
-            start_point_pointer,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut starting_level,
-        );
+        let start_point_index = main_mission_pointer
+            .windows(MISSION_START_POINT_STRING.len())
+            .enumerate()
+            .filter(|&(_, slice)| slice == MISSION_START_POINT_STRING)
+            .map(|(index, _)| index)
+            .nth(usize::try_from(my_random(number_of_start_points - 1)).unwrap())
+            .unwrap();
+
+        let start_point_slice = split_at_subslice(
+            &main_mission_pointer[(start_point_index + MISSION_START_POINT_STRING.len())..],
+            b"Level=",
+        )
+        .expect("unable to find Level parameter in mission data")
+        .1;
+        let starting_level = nom::character::complete::i32::<_, ()>(start_point_slice)
+            .finish()
+            .unwrap()
+            .1;
         self.main.cur_level =
             self.main.cur_ship.all_levels[usize::try_from(starting_level).unwrap()];
-        start_point_pointer = libc::strstr(start_point_pointer, cstr!("XPos=").as_ptr())
-            .add(cstr!("XPos=").to_bytes().len());
-        libc::sscanf(
-            start_point_pointer,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut starting_x_pos,
-        );
+
+        let start_point_slice = split_at_subslice(start_point_slice, b"XPos=").unwrap().1;
+        let starting_x_pos = nom::character::complete::i32::<_, ()>(start_point_slice)
+            .finish()
+            .expect("unable to find XPos parameter in mission data")
+            .1;
         self.vars.me.pos.x = starting_x_pos as c_float;
-        start_point_pointer = libc::strstr(start_point_pointer, cstr!("YPos=").as_ptr())
-            .add(cstr!("YPos=").to_bytes().len());
-        libc::sscanf(
-            start_point_pointer,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut starting_y_pos,
-        );
+
+        let start_point_slice = split_at_subslice(start_point_slice, b"YPos=").unwrap().1;
+        let starting_y_pos = nom::character::complete::i32::<_, ()>(start_point_slice)
+            .finish()
+            .expect("unable to find YPos parameter in mission data")
+            .1;
+
         self.vars.me.pos.y = starting_y_pos as c_float;
         info!(
             "Final starting position: Level={} XPos={} YPos={}.",
@@ -822,7 +834,7 @@ impl Data<'_> {
         // Now we search for the beginning of the mission briefing big section NOT subsection.
         // We display the title and explanation of controls and such...
         let briefing_section_pointer = locate_string_in_data(
-            main_mission_pointer.as_mut_ptr(),
+            main_mission_pointer.as_mut_ptr() as *mut c_char,
             MISSION_BRIEFING_BEGIN_STRING.as_ptr() as *mut c_char,
         );
         self.title(briefing_section_pointer);
@@ -879,14 +891,14 @@ impl Data<'_> {
         const END_OF_BRIEFING_SUBSECTION_STRING: &CStr =
             cstr!("* End of Mission Briefing Text Subsection *");
 
-        let mut buffer: [c_char; 500] = [0; 500];
+        let mut buffer = ArrayCString::<500>::new();
         read_value_from_string(
             mission_briefing_pointer,
             BRIEFING_TITLE_SONG_STRING.as_ptr() as *mut c_char,
             cstr!("%s").as_ptr() as *mut c_char,
             buffer.as_mut_ptr() as *mut c_void,
         );
-        self.switch_background_music_to(buffer.as_mut_ptr());
+        self.switch_background_music_to(buffer.as_mut_ptr() as *mut c_char);
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
         read_value_from_string(
@@ -895,18 +907,20 @@ impl Data<'_> {
             cstr!("%s").as_ptr() as *mut c_char,
             buffer.as_mut_ptr() as *mut c_void,
         );
-        let image = self.find_file(
-            buffer.as_mut_ptr(),
-            GRAPHICS_DIR_C.as_ptr() as *mut c_char,
+        let image = Self::find_file_static(
+            &self.global,
+            &mut self.misc,
+            &*buffer,
+            Some(GRAPHICS_DIR_C),
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
-        );
-        assert!(image.is_null().not());
-        self.display_image(CStr::from_ptr(image));
+        )
+        .unwrap();
+        Self::display_image(&self.sdl, &self.global, &mut self.graphics, image);
         self.make_grid_on_screen(Some(&self.vars.screen_rect.clone()));
         self.vars.me.status = Status::Briefing as c_int;
 
-        self.b_font.current_font = self.global.para_b_font;
+        self.b_font.current_font = self.global.para_b_font.clone();
 
         self.display_banner(
             null_mut(),
@@ -974,23 +988,27 @@ impl Data<'_> {
 
     /// This function loads all the constant variables of the game from
     /// a dat file, that should be optimally human readable.
-    pub unsafe fn init_game_data(&mut self, data_filename: *mut c_char) {
-        const END_OF_GAME_DAT_STRING: &CStr = cstr!("*** End of game.dat File ***");
+    pub unsafe fn init_game_data(&mut self, data_filename: &CStr) {
+        const END_OF_GAME_DAT_STRING: &[u8] = b"*** End of game.dat File ***";
 
         /* Read the whole game data to memory */
-        let fpath = self.find_file(
-            data_filename,
-            MAP_DIR_C.as_ptr() as *mut c_char,
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
+        let fpath = self
+            .find_file(
+                data_filename,
+                Some(MAP_DIR_C),
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            )
+            .unwrap();
+        let fpath = Path::new(
+            fpath
+                .to_str()
+                .expect("unable to convert C string to UTF-8 string"),
         );
 
-        let mut data = self.read_and_malloc_and_terminate_file(
-            fpath,
-            END_OF_GAME_DAT_STRING.as_ptr() as *mut c_char,
-        );
+        let mut data = read_and_malloc_and_terminate_file(fpath, END_OF_GAME_DAT_STRING);
 
-        self.get_general_game_constants(data.as_mut_ptr());
+        self.get_general_game_constants(data.as_mut_ptr() as *mut c_char);
         self.get_robot_data(data.as_mut_ptr() as *mut c_void);
         self.get_bullet_data(data.as_mut_ptr() as *mut c_void);
 
@@ -1001,13 +1019,13 @@ impl Data<'_> {
             cstr!("Time in seconds for the animation of blast one :");
 
         read_value_from_string(
-            data.as_mut_ptr(),
+            data.as_mut_ptr() as *mut c_char,
             BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
             &mut self.vars.blastmap[0].total_animation_time as *mut f32 as *mut c_void,
         );
         read_value_from_string(
-            data.as_mut_ptr(),
+            data.as_mut_ptr() as *mut c_char,
             BLAST_TWO_TOTAL_AMOUNT_OF_TIME_STRING.as_ptr() as *mut c_char,
             cstr!("%f").as_ptr() as *mut c_char,
             &mut self.vars.blastmap[1].total_animation_time as *mut f32 as *mut c_void,
@@ -1600,8 +1618,14 @@ impl Data<'_> {
             .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
         self.thou_art_defeated_sound();
 
-        self.b_font.current_font = self.global.para_b_font;
-        let h = font_height(&*self.global.para_b_font);
+        self.b_font.current_font = self.global.para_b_font.clone();
+        let h = font_height(
+            self.global
+                .para_b_font
+                .as_deref()
+                .unwrap()
+                .ro(&self.font_owner),
+        );
         self.display_text(
             cstr!("Transmission").as_ptr() as *mut c_char,
             i32::from(dst.x()) - h,

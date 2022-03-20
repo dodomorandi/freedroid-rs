@@ -1,4 +1,4 @@
-use crate::defs::*;
+use crate::{array_c_string::ArrayCString, defs::*};
 
 use sdl::{Rect, Surface};
 use std::ptr::null_mut;
@@ -41,9 +41,9 @@ pub struct Config {
     pub current_bg_music_volume: f32,
     pub current_sound_fx_volume: f32,
     pub current_gamma_correction: f32,
-    pub theme_name: [i8; 100], // name of graphics-theme : dirname = graphics/TNAME_theme/
-    pub full_user_rect: i32,   // use "full" or "classic" (=small) User_Rect
-    pub use_fullscreen: i32,   // toggle for use of fullscreen vs. X11-window
+    pub theme_name: ArrayCString<100>, // name of graphics-theme : dirname = graphics/TNAME_theme/
+    pub full_user_rect: i32,           // use "full" or "classic" (=small) User_Rect
+    pub use_fullscreen: i32,           // toggle for use of fullscreen vs. X11-window
     pub takeover_activates: i32, // toggle if takeover-mode also does 'Activate' (i.e. lifts/consoles)
     pub fire_hold_takeover: i32, // Activate Takeover-mode after a delay if fire is held without a direction
     pub show_decals: i32,        // show dead droids-ashes...
@@ -82,7 +82,7 @@ pub struct Gps {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DruidSpec {
-    pub druidname: [i8; 20],
+    pub druidname: ArrayCString<20>,
     pub maxspeed: f32, /* the maximum of speed it can go */
     pub class: i32,
     pub accel: f32,       /* its acceleration */
