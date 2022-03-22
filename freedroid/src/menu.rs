@@ -445,7 +445,9 @@ impl<'sdl> Data<'sdl> {
                 }
 
                 Some(b'z') => {
+                    self.graphics.ne_screen = Some(ne_screen);
                     self.clear_graph_mem();
+                    ne_screen = self.graphics.ne_screen.take().unwrap();
                     self.printf_sdl(
                         &mut ne_screen,
                         X0,
@@ -489,7 +491,9 @@ impl<'sdl> Data<'sdl> {
                                 }
                             }
                             if l % 20 == 0 {
+                                self.graphics.ne_screen = Some(ne_screen);
                                 self.clear_graph_mem();
+                                ne_screen = self.graphics.ne_screen.take().unwrap();
                                 self.printf_sdl(
                                     &mut ne_screen,
                                     X0,
@@ -560,7 +564,9 @@ impl<'sdl> Data<'sdl> {
                             }
                         }
                         if i % 13 == 0 {
+                            self.graphics.ne_screen = Some(ne_screen);
                             self.clear_graph_mem();
+                            ne_screen = self.graphics.ne_screen.take().unwrap();
                             self.printf_sdl(
                                 &mut ne_screen,
                                 X0,
@@ -622,7 +628,9 @@ impl<'sdl> Data<'sdl> {
 
                 Some(b't') => {
                     /* Teleportation */
+                    self.graphics.ne_screen = Some(ne_screen);
                     self.clear_graph_mem();
+                    ne_screen = self.graphics.ne_screen.take().unwrap();
                     self.printf_sdl(&mut ne_screen, X0, Y0, format_args!("Enter Level, X, Y: "));
                     let input = self.get_string(40, 2);
                     let mut l_num = 0;
@@ -642,7 +650,9 @@ impl<'sdl> Data<'sdl> {
 
                 Some(b'r') => {
                     /* change to new robot type */
+                    self.graphics.ne_screen = Some(ne_screen);
                     self.clear_graph_mem();
+                    ne_screen = self.graphics.ne_screen.take().unwrap();
                     self.printf_sdl(
                         &mut ne_screen,
                         X0,
@@ -669,7 +679,9 @@ impl<'sdl> Data<'sdl> {
                             ),
                         );
                         self.getchar_raw();
+                        self.graphics.ne_screen = Some(ne_screen);
                         self.clear_graph_mem();
+                        ne_screen = self.graphics.ne_screen.take().unwrap();
                     } else {
                         self.vars.me.ty = i.try_into().unwrap();
                         self.vars.me.energy =
@@ -696,7 +708,9 @@ impl<'sdl> Data<'sdl> {
 
                 Some(b'e') => {
                     /* complete heal */
+                    self.graphics.ne_screen = Some(ne_screen);
                     self.clear_graph_mem();
+                    ne_screen = self.graphics.ne_screen.take().unwrap();
                     self.printf_sdl(
                         &mut ne_screen,
                         X0,
@@ -755,7 +769,9 @@ impl<'sdl> Data<'sdl> {
                             }
                         }
                         if i % 20 == 0 {
+                            self.graphics.ne_screen = Some(ne_screen);
                             self.clear_graph_mem();
+                            ne_screen = self.graphics.ne_screen.take().unwrap();
                             self.printf_sdl(
                                 &mut ne_screen,
                                 X0,
