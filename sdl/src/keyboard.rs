@@ -1,3 +1,4 @@
+use bitflags::bitflags;
 use sdl_sys::{
     SDLKey_SDLK_0, SDLKey_SDLK_1, SDLKey_SDLK_2, SDLKey_SDLK_3, SDLKey_SDLK_4, SDLKey_SDLK_5,
     SDLKey_SDLK_6, SDLKey_SDLK_7, SDLKey_SDLK_8, SDLKey_SDLK_9, SDLKey_SDLK_AMPERSAND,
@@ -52,8 +53,8 @@ use sdl_sys::{
     SDLKey_SDLK_m, SDLKey_SDLK_n, SDLKey_SDLK_o, SDLKey_SDLK_p, SDLKey_SDLK_q, SDLKey_SDLK_r,
     SDLKey_SDLK_s, SDLKey_SDLK_t, SDLKey_SDLK_u, SDLKey_SDLK_v, SDLKey_SDLK_w, SDLKey_SDLK_x,
     SDLKey_SDLK_y, SDLKey_SDLK_z, SDLMod_KMOD_CAPS, SDLMod_KMOD_LALT, SDLMod_KMOD_LCTRL,
-    SDLMod_KMOD_LMETA, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_MODE, SDLMod_KMOD_NONE, SDLMod_KMOD_NUM,
-    SDLMod_KMOD_RALT, SDLMod_KMOD_RCTRL, SDLMod_KMOD_RMETA, SDLMod_KMOD_RSHIFT, SDL_keysym,
+    SDLMod_KMOD_LMETA, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_MODE, SDLMod_KMOD_NUM, SDLMod_KMOD_RALT,
+    SDLMod_KMOD_RCTRL, SDLMod_KMOD_RESERVED, SDLMod_KMOD_RMETA, SDLMod_KMOD_RSHIFT, SDL_keysym,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -71,7 +72,7 @@ pub struct KeySym {
 impl KeySym {
     pub fn from_raw(raw: SDL_keysym) -> Result<Self, InvalidKeySym> {
         let symbol = Key::from_raw(raw.sym).map_err(|_| InvalidKeySym::Key)?;
-        let mod_ = Mod::from_raw(raw.mod_).map_err(|_| InvalidKeySym::Mod)?;
+        let mod_ = Mod::from_bits(raw.mod_).ok_or(InvalidKeySym::Mod)?;
 
         Ok(Self {
             scancode: raw.scancode,
@@ -85,7 +86,7 @@ impl KeySym {
         SDL_keysym {
             scancode: self.scancode,
             sym: self.symbol as u32,
-            mod_: self.mod_ as u32,
+            mod_: self.mod_.bits(),
             unicode: self.unicode,
         }
     }
@@ -583,44 +584,26 @@ impl Key {
 #[error("invalid virtual key")]
 pub struct InvalidKey;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Mod {
-    None = SDLMod_KMOD_NONE as isize,
-    LeftShift = SDLMod_KMOD_LSHIFT as isize,
-    RightShift = SDLMod_KMOD_RSHIFT as isize,
-    LeftCtrl = SDLMod_KMOD_LCTRL as isize,
-    RightCtrl = SDLMod_KMOD_RCTRL as isize,
-    LeftAlt = SDLMod_KMOD_LALT as isize,
-    RightAlt = SDLMod_KMOD_RALT as isize,
-    LeftMeta = SDLMod_KMOD_LMETA as isize,
-    RightMeta = SDLMod_KMOD_RMETA as isize,
-    Num = SDLMod_KMOD_NUM as isize,
-    Caps = SDLMod_KMOD_CAPS as isize,
-    Mode = SDLMod_KMOD_MODE as isize,
+bitflags! {
+    pub struct Mod: u32 {
+        const LEFT_SHIFT = SDLMod_KMOD_LSHIFT;
+        const RIGHT_SHIFT = SDLMod_KMOD_RSHIFT;
+        const LEFT_CTRL = SDLMod_KMOD_LCTRL;
+        const RIGHT_CTRL = SDLMod_KMOD_RCTRL;
+        const LEFT_ALT = SDLMod_KMOD_LALT;
+        const RIGHT_ALT = SDLMod_KMOD_RALT;
+        const LEFT_META = SDLMod_KMOD_LMETA;
+        const RIGHT_META = SDLMod_KMOD_RMETA;
+        const NUM = SDLMod_KMOD_NUM;
+        const CAPS = SDLMod_KMOD_CAPS;
+        const MODE = SDLMod_KMOD_MODE;
+        const RESERVED = SDLMod_KMOD_RESERVED;
+    }
 }
 
 impl Mod {
-    fn from_raw(raw: u32) -> Result<Self, InvalidMod> {
-        use Mod::*;
-        Ok(match raw {
-            sdl_sys::SDLMod_KMOD_NONE => None,
-            sdl_sys::SDLMod_KMOD_LSHIFT => LeftShift,
-            sdl_sys::SDLMod_KMOD_RSHIFT => RightShift,
-            sdl_sys::SDLMod_KMOD_LCTRL => LeftCtrl,
-            sdl_sys::SDLMod_KMOD_RCTRL => RightCtrl,
-            sdl_sys::SDLMod_KMOD_LALT => LeftAlt,
-            sdl_sys::SDLMod_KMOD_RALT => RightAlt,
-            sdl_sys::SDLMod_KMOD_LMETA => LeftMeta,
-            sdl_sys::SDLMod_KMOD_RMETA => RightMeta,
-            sdl_sys::SDLMod_KMOD_NUM => Num,
-            sdl_sys::SDLMod_KMOD_CAPS => Caps,
-            sdl_sys::SDLMod_KMOD_MODE => Mode,
-            _ => return Err(InvalidMod),
-        })
-    }
-
     pub fn is_shift(&self) -> bool {
-        matches!(self, Self::LeftShift | Self::RightShift)
+        self.intersects(Self::LEFT_SHIFT | Self::RIGHT_SHIFT)
     }
 }
 

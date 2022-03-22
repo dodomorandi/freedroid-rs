@@ -471,7 +471,7 @@ impl Data<'_> {
                         }
 
                         Event::Keyboard(event) => {
-                            self.input.current_modifiers = event.keysym.mod_ as u32;
+                            self.input.current_modifiers = event.keysym.mod_.bits().into();
                             match event.ty {
                                 KeyboardEventType::KeyDown => {
                                     self.input.input_state
