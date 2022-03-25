@@ -458,7 +458,9 @@ impl<'sdl> Data<'sdl> {
                         ),
                     );
                     self.printf_sdl(&mut ne_screen, -1, -1, format_args!("New zoom factor: "));
+                    self.graphics.ne_screen = Some(ne_screen);
                     let input = self.get_string(40, 2);
+                    ne_screen = self.graphics.ne_screen.take().unwrap();
                     libc::sscanf(
                         input,
                         cstr!("%f").as_ptr() as *mut c_char,
@@ -632,7 +634,9 @@ impl<'sdl> Data<'sdl> {
                     self.clear_graph_mem();
                     ne_screen = self.graphics.ne_screen.take().unwrap();
                     self.printf_sdl(&mut ne_screen, X0, Y0, format_args!("Enter Level, X, Y: "));
+                    self.graphics.ne_screen = Some(ne_screen);
                     let input = self.get_string(40, 2);
+                    ne_screen = self.graphics.ne_screen.take().unwrap();
                     let mut l_num = 0;
                     let mut x = 0;
                     let mut y = 0;
@@ -659,7 +663,9 @@ impl<'sdl> Data<'sdl> {
                         Y0,
                         format_args!("Type number of new robot: "),
                     );
+                    self.graphics.ne_screen = Some(ne_screen);
                     let input = self.get_string(40, 2);
+                    ne_screen = self.graphics.ne_screen.take().unwrap();
                     let mut i = 0;
                     for _ in 0..u32::try_from(self.main.number_of_droid_types).unwrap() {
                         if libc::strcmp(self.vars.droidmap[i].druidname.as_ptr(), input) != 0 {
@@ -723,7 +729,9 @@ impl<'sdl> Data<'sdl> {
                         -1,
                         format_args!("Enter your new energy: "),
                     );
+                    self.graphics.ne_screen = Some(ne_screen);
                     let input = self.get_string(40, 2);
+                    ne_screen = self.graphics.ne_screen.take().unwrap();
                     let mut num = 0;
                     libc::sscanf(input, cstr!("%d").as_ptr() as *mut c_char, &mut num);
                     drop(Vec::from_raw_parts(input as *mut i8, 45, 45));
@@ -746,11 +754,15 @@ impl<'sdl> Data<'sdl> {
                 Some(b'm') => {
                     /* Show deck map in Concept view */
                     self.printf_sdl(&mut ne_screen, -1, -1, format_args!("\nLevelnum: "));
+                    self.graphics.ne_screen = Some(ne_screen);
                     let input = self.get_string(40, 2);
+                    ne_screen = self.graphics.ne_screen.take().unwrap();
                     let mut l_num = 0;
                     libc::sscanf(input, cstr!("%d").as_ptr() as *mut c_char, &mut l_num);
                     drop(Vec::from_raw_parts(input as *mut i8, 45, 45));
+                    self.graphics.ne_screen = Some(ne_screen);
                     self.show_deck_map();
+                    ne_screen = self.graphics.ne_screen.take().unwrap();
                     self.getchar_raw();
                 }
 
