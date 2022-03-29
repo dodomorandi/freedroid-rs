@@ -291,7 +291,7 @@ impl Data<'_> {
             Criticality::Critical as c_int,
         )
         .unwrap();
-        Self::display_image(&self.sdl, &self.global, &mut self.graphics, image); // show title pic
+        Self::display_image(self.sdl, &self.global, &mut self.graphics, image); // show title pic
         assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
         self.load_fonts(); // we need this for progress-meter!
@@ -916,7 +916,7 @@ impl Data<'_> {
             Criticality::Critical as c_int,
         )
         .unwrap();
-        Self::display_image(&self.sdl, &self.global, &mut self.graphics, image);
+        Self::display_image(self.sdl, &self.global, &mut self.graphics, image);
         self.make_grid_on_screen(Some(&self.vars.screen_rect.clone()));
         self.vars.me.status = Status::Briefing as c_int;
 

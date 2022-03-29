@@ -1428,7 +1428,7 @@ impl<'sdl> Data<'sdl> {
             Criticality::Critical as i32,
         )
         .unwrap();
-        Self::display_image(&self.sdl, &self.global, &mut self.graphics, image);
+        Self::display_image(self.sdl, &self.global, &mut self.graphics, image);
         self.make_grid_on_screen(Some(&screen));
 
         let oldfont = std::mem::replace(

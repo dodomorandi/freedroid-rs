@@ -222,6 +222,7 @@ pub trait RwOpsCapability: Sized + Sealed {
         inner
     }
 
+    #[allow(clippy::wrong_self_convention)]
     fn is_jpg(&mut self) -> bool {
         unsafe { IMG_isJPG(self.as_inner().as_ptr()) != 0 }
     }

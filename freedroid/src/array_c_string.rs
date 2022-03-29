@@ -151,6 +151,6 @@ impl<const N: usize> Default for ArrayCString<N> {
 
 impl<const N: usize> PartialEq for ArrayCString<N> {
     fn eq(&self, other: &Self) -> bool {
-        &**self == &**other
+        **self == **other
     }
 }
