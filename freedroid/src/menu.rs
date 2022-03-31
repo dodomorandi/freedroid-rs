@@ -3,6 +3,7 @@ use crate::defs::{gcw0_a_pressed, gcw0_any_button_pressed, gcw0_any_button_press
 
 use crate::{
     b_font::{char_width, font_height, print_string_font},
+    cur_level,
     defs::{
         AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags, MapTile, MenuAction,
         Status, Themed, BYCOLOR, CREDITS_PIC_FILE_C, GRAPHICS_DIR_C, MAX_MAP_COLS, MAX_MAP_ROWS,
@@ -12,7 +13,8 @@ use crate::{
     input::{CMD_STRINGS, KEY_STRINGS},
     map::COLOR_NAMES,
     misc::dealloc_c_string,
-    Data,
+    sound::Sound,
+    Data, Sdl,
 };
 
 use cstr::cstr;
@@ -334,18 +336,20 @@ impl<'sdl> Data<'sdl> {
         const X0: i32 = 50;
         const Y0: i32 = 20;
 
-        let cur_level = &mut *self.main.cur_level;
         let mut resume = false;
         while !resume {
             self.clear_graph_mem();
             let mut ne_screen = self.graphics.ne_screen.take().unwrap();
-            self.printf_sdl(
+            Self::printf_sdl_static(
+                &mut self.text,
+                &self.b_font,
+                &mut self.font_owner,
                 &mut ne_screen,
                 X0,
                 Y0,
                 format_args!(
                     "Current position: Level={}, X={:.0}, Y={:.0}\n",
-                    cur_level.levelnum,
+                    cur_level!(self.main).levelnum,
                     self.vars.me.pos.x.clone(),
                     self.vars.me.pos.y.clone(),
                 ),
@@ -486,9 +490,12 @@ impl<'sdl> Data<'sdl> {
                     /* robot list of this deck */
                     let mut l = 0; /* line counter for enemy output */
                     for i in 0..usize::try_from(self.main.num_enemys).unwrap() {
-                        if self.main.all_enemys[i].levelnum == cur_level.levelnum {
+                        if self.main.all_enemys[i].levelnum == cur_level!(self.main).levelnum {
                             if l != 0 && l % 20 == 0 {
-                                self.printf_sdl(
+                                Self::printf_sdl_static(
+                                    &mut self.text,
+                                    &self.b_font,
+                                    &mut self.font_owner,
                                     &mut ne_screen,
                                     -1,
                                     -1,
@@ -502,13 +509,19 @@ impl<'sdl> Data<'sdl> {
                                 self.graphics.ne_screen = Some(ne_screen);
                                 self.clear_graph_mem();
                                 ne_screen = self.graphics.ne_screen.take().unwrap();
-                                self.printf_sdl(
+                                Self::printf_sdl_static(
+                                    &mut self.text,
+                                    &self.b_font,
+                                    &mut self.font_owner,
                                     &mut ne_screen,
                                     X0,
                                     Y0,
                                     format_args!(" NR.   ID  X    Y   ENERGY   Status\n"),
                                 );
-                                self.printf_sdl(
+                                Self::printf_sdl_static(
+                                    &mut self.text,
+                                    &self.b_font,
+                                    &mut self.font_owner,
                                     &mut ne_screen,
                                     -1,
                                     -1,
@@ -620,6 +633,7 @@ impl<'sdl> Data<'sdl> {
 
                 Some(b'd') => {
                     /* destroy all robots on this level, haha */
+                    let cur_level = cur_level!(self.main);
                     for enemy in &mut self.main.all_enemys {
                         if enemy.levelnum == cur_level.levelnum {
                             enemy.energy = -100.;
@@ -774,7 +788,7 @@ impl<'sdl> Data<'sdl> {
 
                 Some(b'w') => {
                     /* print waypoint info of current level */
-                    for (i, waypoint) in cur_level.all_waypoints.iter_mut().enumerate() {
+                    for i in 0..cur_level!(self.main).all_waypoints.len() {
                         if i != 0 && i % 20 == 0 {
                             self.printf_sdl(
                                 &mut ne_screen,
@@ -803,7 +817,12 @@ impl<'sdl> Data<'sdl> {
                                 format_args!("------------------------------------\n"),
                             );
                         }
-                        self.printf_sdl(
+                        let cur_level = cur_level!(self.main);
+                        let waypoint = &cur_level.all_waypoints[i];
+                        Self::printf_sdl_static(
+                            &mut self.text,
+                            &self.b_font,
+                            &mut self.font_owner,
                             &mut ne_screen,
                             -1,
                             -1,
@@ -1580,9 +1599,8 @@ impl<'sdl> Data<'sdl> {
     pub unsafe fn handle_le_name(&mut self, action: MenuAction) -> *const c_char {
         use std::sync::atomic::Ordering;
 
-        let cur_level = &mut *self.main.cur_level;
         if action == MenuAction::INFO {
-            return cur_level.levelname;
+            return cur_level!(self.main).levelname;
         }
 
         if action == MenuAction::CLICK {
@@ -1594,12 +1612,13 @@ impl<'sdl> Data<'sdl> {
             );
             assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
             static ALREADY_FREED: AtomicBool = AtomicBool::new(false);
+            let cur_level = cur_level!(mut self.main);
             match ALREADY_FREED.compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire) {
                 Ok(_) => dealloc_c_string(cur_level.levelname),
                 Err(_) => drop(Vec::from_raw_parts(cur_level.levelname as *mut i8, 20, 20)),
             }
 
-            cur_level.levelname = self.get_string(15, 2);
+            cur_level!(mut self.main).levelname = self.get_string(15, 2);
             self.initiate_menu(false);
         }
 
@@ -1624,7 +1643,7 @@ impl<'sdl> Data<'sdl> {
     }
 
     pub unsafe fn handle_le_level_number(&mut self, action: MenuAction) -> *const c_char {
-        let cur_level = &*self.main.cur_level;
+        let cur_level = self.main.cur_level();
         if action == MenuAction::INFO {
             libc::sprintf(
                 self.menu.le_level_number_buf.as_mut_ptr(),
@@ -1650,11 +1669,14 @@ impl<'sdl> Data<'sdl> {
     }
 
     pub unsafe fn handle_le_color(&mut self, action: MenuAction) -> *const c_char {
-        let cur_level = &mut *self.main.cur_level;
+        let cur_level = cur_level!(mut self.main);
         if action == MenuAction::INFO {
             return COLOR_NAMES[usize::try_from(cur_level.color).unwrap()].as_ptr();
         }
-        self.menu_change_int(
+        Self::menu_change_static(
+            self.main.sound_on,
+            &self.sdl,
+            self.sound.as_ref().unwrap(),
             action,
             &mut cur_level.color,
             1,
@@ -1668,7 +1690,7 @@ impl<'sdl> Data<'sdl> {
     }
 
     pub unsafe fn handle_le_size_x(&mut self, action: MenuAction) -> *const c_char {
-        let cur_level = &mut *self.main.cur_level;
+        let cur_level = cur_level!(mut self.main);
         if action == MenuAction::INFO {
             libc::sprintf(
                 self.menu.le_size_x_buf.as_mut_ptr(),
@@ -1679,7 +1701,10 @@ impl<'sdl> Data<'sdl> {
         }
 
         let oldxlen = cur_level.xlen;
-        self.menu_change_int(
+        Self::menu_change_static(
+            self.main.sound_on,
+            &self.sdl,
+            self.sound.as_ref().unwrap(),
             action,
             &mut cur_level.xlen,
             1,
@@ -1713,7 +1738,7 @@ impl<'sdl> Data<'sdl> {
     pub unsafe fn handle_le_size_y(&mut self, action: MenuAction) -> *const c_char {
         use std::cmp::Ordering;
 
-        let cur_level = &mut *self.main.cur_level;
+        let cur_level = cur_level!(mut self.main);
         if action == MenuAction::INFO {
             libc::sprintf(
                 self.menu.le_size_y_buf.as_mut_ptr(),
@@ -1724,7 +1749,10 @@ impl<'sdl> Data<'sdl> {
         }
 
         let oldylen = cur_level.ylen;
-        self.menu_change_int(
+        Self::menu_change_static(
+            self.main.sound_on,
+            &self.sdl,
+            self.sound.as_ref().unwrap(),
             action,
             &mut cur_level.ylen,
             1,
@@ -2008,6 +2036,7 @@ impl<'sdl> Data<'sdl> {
         null_mut()
     }
 
+    #[inline]
     unsafe fn menu_change<T>(
         &self,
         action: MenuAction,
@@ -2018,14 +2047,38 @@ impl<'sdl> Data<'sdl> {
     ) where
         T: PartialOrd + AddAssign + SubAssign,
     {
+        Self::menu_change_static(
+            self.main.sound_on,
+            &self.sdl,
+            self.sound.as_ref().unwrap(),
+            action,
+            val,
+            step,
+            min_value,
+            max_value,
+        )
+    }
+
+    unsafe fn menu_change_static<T>(
+        sound_on: c_int,
+        sdl: &Sdl,
+        sound: &Sound,
+        action: MenuAction,
+        val: &mut T,
+        step: T,
+        min_value: T,
+        max_value: T,
+    ) where
+        T: PartialOrd + AddAssign + SubAssign,
+    {
         if action == MenuAction::RIGHT && *val < max_value {
-            self.move_lift_sound();
+            Self::move_lift_sound_static(sound_on, sdl, sound);
             *val += step;
             if *val > max_value {
                 *val = max_value;
             }
         } else if action == MenuAction::LEFT && *val > min_value {
-            self.move_lift_sound();
+            Self::move_lift_sound_static(sound_on, sdl, sound);
             *val -= step;
             if *val <= min_value {
                 *val = min_value;

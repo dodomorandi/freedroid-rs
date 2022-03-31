@@ -1,6 +1,7 @@
 #![feature(array_methods)]
 
 mod array_c_string;
+mod array_index;
 mod b_font;
 mod bullet;
 mod defs;
@@ -24,12 +25,13 @@ mod vars;
 mod view;
 
 use array_c_string::ArrayCString;
+pub use array_index::ArrayIndex;
 use array_init::array_init;
 use b_font::{BFont, BFontInfo};
 use bullet::BulletData;
 use defs::{
     AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Status, BYCOLOR,
-    DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, RESET, SHOW_WAIT,
+    DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, RESET, SHOW_WAIT,
     STANDARD_MISSION_C,
 };
 use global::Global;
@@ -60,7 +62,7 @@ struct Main<'sdl> {
     // Toggle TRUE/FALSE for turning sounds on/off
     sound_on: i32,
     // the current level data
-    cur_level: *mut Level,
+    cur_level_index: Option<ArrayIndex<MAX_LEVELS>>,
     // the current ship-data
     cur_ship: Ship,
     show_score: i64,
@@ -98,7 +100,7 @@ impl Default for Main<'_> {
             last_got_into_blast_sound: 2.,
             last_refresh_sound: 2.,
             sound_on: 1,
-            cur_level: null_mut(),
+            cur_level_index: None,
             cur_ship: Ship::default(),
             show_score: 0,
             real_score: 0.,
@@ -328,14 +330,15 @@ fn main() {
                 data.check_influence_enemy_collision();
 
                 // control speed of time-flow: dark-levels=emptyLevelSpeedup, normal-levels=1.0
-                if (*data.main.cur_level).empty == 0 {
+                let cur_level = data.main.cur_level_mut();
+                if cur_level.empty == 0 {
                     data.set_time_factor(1.0);
-                } else if (*data.main.cur_level).color == ColorNames::Dark as i32 {
+                } else if cur_level.color == ColorNames::Dark as i32 {
                     // if level is already dark
                     data.set_time_factor(data.global.game_config.empty_level_speedup);
-                } else if (*data.main.cur_level).timer <= 0. {
+                } else if cur_level.timer <= 0. {
                     // time to switch off the lights ...
-                    (*data.main.cur_level).color = ColorNames::Dark as i32;
+                    cur_level.color = ColorNames::Dark as i32;
                     data.switch_background_music_to(BYCOLOR.as_ptr()); // start new background music
                 }
 
@@ -381,9 +384,10 @@ impl Data<'_> {
         self.vars.me.last_crysound_time += self.frame_time();
         self.vars.me.timer += self.frame_time();
 
-        let cur_level = &mut *self.main.cur_level;
-        if cur_level.timer >= 0.0 {
-            cur_level.timer -= self.frame_time();
+        let mut timer = self.main.cur_level().timer;
+        if timer >= 0.0 {
+            timer -= self.frame_time();
+            self.main.cur_level_mut().timer = timer;
         }
 
         self.vars.me.last_transfer_sound_time += self.frame_time();
@@ -402,6 +406,7 @@ impl Data<'_> {
         if self.vars.ship_empty_counter > 1 {
             self.vars.ship_empty_counter -= 1;
         }
+        let cur_level = self.main.cur_level_mut();
         if cur_level.empty > 2 {
             cur_level.empty -= 1;
         }
@@ -593,3 +598,32 @@ pub fn read_and_malloc_and_terminate_file(filename: &Path, file_end_string: &[u8
 
     all_data
 }
+
+impl Main<'_> {
+    pub fn cur_level_mut(&mut self) -> &mut Level {
+        cur_level!(mut self)
+    }
+
+    pub fn cur_level(&self) -> &Level {
+        cur_level!(self)
+    }
+}
+
+macro_rules! cur_level {
+    (mut $main:expr) => {
+        $main.cur_ship.all_levels[$main
+            .cur_level_index
+            .expect("no current level index available")]
+        .as_mut()
+        .expect("current level is None")
+    };
+
+    ($main:expr) => {
+        $main.cur_ship.all_levels[$main
+            .cur_level_index
+            .expect("no current level index available")]
+        .as_ref()
+        .expect("current level is None")
+    };
+}
+pub(crate) use cur_level;

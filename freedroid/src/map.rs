@@ -1,7 +1,7 @@
 use crate::{
     defs::{
         self, Criticality, Direction, MapTile, Status, Themed, DIRECTIONS, MAP_DIR_C, MAXWAYPOINTS,
-        MAX_ALERTS_ON_LEVEL, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_REFRESHES_ON_LEVEL,
+        MAX_ALERTS_ON_LEVEL, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_MAP_ROWS, MAX_REFRESHES_ON_LEVEL,
     },
     find_subslice,
     menu::SHIP_EXT,
@@ -10,7 +10,7 @@ use crate::{
         read_value_from_string,
     },
     read_and_malloc_and_terminate_file, split_at_subslice, split_at_subslice_mut,
-    structs::{Finepoint, GrobPoint, Level},
+    structs::{Finepoint, GrobPoint, Level, Waypoint},
     Data,
 };
 
@@ -299,12 +299,30 @@ pub unsafe fn get_alerts(level: &mut Level) {
 /// into a Level-struct:
 ///
 /// Doors and Waypoints Arrays are initialized too
-pub unsafe fn level_to_struct(data: *mut c_char) -> *mut Level {
+pub unsafe fn level_to_struct(data: *mut c_char) -> Option<Level> {
     /* Get the memory for one level */
-    let loadlevel_ptr = alloc_zeroed(Layout::new::<Level>()) as *mut Level;
-    let loadlevel = &mut *loadlevel_ptr;
-
-    loadlevel.empty = false.into();
+    let mut loadlevel = Level {
+        empty: false.into(),
+        timer: 0.,
+        levelnum: 0,
+        levelname: null_mut(),
+        background_song_name: null_mut(),
+        level_enter_comment: null_mut(),
+        xlen: 0,
+        ylen: 0,
+        color: 0,
+        map: [null_mut(); MAX_MAP_ROWS],
+        refreshes: [GrobPoint { x: 0, y: 0 }; MAX_REFRESHES_ON_LEVEL],
+        doors: [GrobPoint { x: 0, y: 0 }; MAX_DOORS_ON_LEVEL],
+        alerts: [GrobPoint { x: 0, y: 0 }; MAX_ALERTS_ON_LEVEL],
+        num_waypoints: 0,
+        all_waypoints: [Waypoint {
+            x: 0,
+            y: 0,
+            num_connections: 0,
+            connections: [0; MAX_WP_CONNECTIONS],
+        }; MAXWAYPOINTS],
+    };
 
     info!("Starting to process information for another level:");
 
@@ -351,19 +369,19 @@ pub unsafe fn level_to_struct(data: *mut c_char) -> *mut Level {
     // find the map data
     let map_begin = libc::strstr(data, MAP_BEGIN_STRING_C.as_ptr());
     if map_begin.is_null() {
-        return null_mut();
+        return None;
     }
 
     /* set position to Waypoint-Data */
     let wp_begin = libc::strstr(data, WP_BEGIN_STRING_C.as_ptr());
     if wp_begin.is_null() {
-        return null_mut();
+        return None;
     }
 
     // find end of level-data
     let level_end = libc::strstr(data, LEVEL_END_STRING_C.as_ptr());
     if level_end.is_null() {
-        return null_mut();
+        return None;
     }
 
     /* now scan the map */
@@ -374,7 +392,7 @@ pub unsafe fn level_to_struct(data: *mut c_char) -> *mut Level {
     for i in 0..usize::try_from(loadlevel.ylen).unwrap() {
         let this_line = libc::strtok(null_mut(), cstr!("\n").as_ptr());
         if this_line.is_null() {
-            return null_mut();
+            return None;
         }
         loadlevel.map[i] =
             alloc_zeroed(Layout::array::<i8>(loadlevel.xlen.try_into().unwrap()).unwrap())
@@ -384,13 +402,13 @@ pub unsafe fn level_to_struct(data: *mut c_char) -> *mut Level {
 
         for k in 0..usize::try_from(loadlevel.xlen).unwrap() {
             if *pos == 0 {
-                return null_mut();
+                return None;
             }
             let mut tmp: c_int = 0;
             let res = libc::sscanf(pos, cstr!("%d").as_ptr(), &mut tmp as *mut _ as *mut c_void);
             *(loadlevel.map[i].add(k)) = tmp as c_char;
             if res == 0 || res == libc::EOF {
-                return null_mut();
+                return None;
             }
             pos = pos.add(libc::strcspn(pos, WHITE_SPACE.as_ptr())); // skip last token
             pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace of next one
@@ -404,7 +422,7 @@ pub unsafe fn level_to_struct(data: *mut c_char) -> *mut Level {
     for i in 0..MAXWAYPOINTS {
         let this_line = libc::strtok(null_mut(), cstr!("\n").as_ptr());
         if this_line.is_null() {
-            return null_mut();
+            return None;
         }
         if this_line == level_end {
             loadlevel.num_waypoints = i.try_into().unwrap();
@@ -454,7 +472,7 @@ pub unsafe fn level_to_struct(data: *mut c_char) -> *mut Level {
         loadlevel.all_waypoints[i].num_connections = k.try_into().unwrap();
     }
 
-    loadlevel_ptr
+    Some(loadlevel)
 }
 
 impl Data<'_> {
@@ -500,17 +518,17 @@ impl Data<'_> {
             .all_levels
             .iter_mut()
             .take(usize::try_from(self.main.cur_ship.num_levels).unwrap())
-            .map(|&mut level| level as *mut Level)
             .for_each(|level| {
-                free_level_memory(level);
-                dealloc(level as *mut u8, Layout::new::<Level>());
+                if let Some(mut level) = level.take() {
+                    free_level_memory(&mut level);
+                }
             });
     }
 
     pub unsafe fn animate_refresh(&mut self) {
         self.map.inner_wait_counter += self.frame_time() * 10.;
 
-        let cur_level = &*self.main.cur_level;
+        let cur_level = self.main.cur_level();
         cur_level
             .refreshes
             .iter()
@@ -527,7 +545,7 @@ impl Data<'_> {
     }
 
     pub unsafe fn is_passable(&self, x: c_float, y: c_float, check_pos: c_int) -> c_int {
-        let map_brick = get_map_brick(&*self.main.cur_level, x, y);
+        let map_brick = get_map_brick(&*self.main.cur_level(), x, y);
 
         let fx = (x - 0.5) - (x - 0.5).floor();
         let fy = (y - 0.5) - (y - 0.5).floor();
@@ -785,7 +803,7 @@ impl Data<'_> {
             .cur_ship
             .all_levels
             .iter()
-            .take_while(|level| level.is_null().not())
+            .take_while(|level| level.is_some())
             .count();
 
         trace!("SaveShip(): now opening the ship file...");
@@ -832,17 +850,13 @@ freedroid-discussion@lists.sourceforge.net\n\
                     .main
                     .cur_ship
                     .all_levels
-                    .iter()
-                    .copied()
-                    .take_while(|level| level.is_null().not())
-                    .filter(|&level| (*level).levelnum == i);
+                    .iter_mut()
+                    .map_while(|level| level.as_mut())
+                    .filter(|level| level.levelnum == i);
 
-                let level = match level_iter.next() {
-                    Some(level) => level,
-                    None => {
-                        panic!("Missing Levelnumber error in SaveShip.");
-                    }
-                };
+                let level = level_iter
+                    .next()
+                    .expect("Missing Levelnumber error in SaveShip.");
 
                 assert!(
                     level_iter.next().is_none(),
@@ -852,17 +866,9 @@ freedroid-discussion@lists.sourceforge.net\n\
                 //--------------------
                 // Now comes the real saving part FOR ONE LEVEL.  First THE LEVEL is packed into a string and
                 // then this string is wirtten to the file.  easy. simple.
-                let level_mem = self.struct_to_mem(level);
-                ship_file.write_all(CStr::from_ptr(level_mem).to_bytes())?;
-
-                let mem_amount = usize::try_from((*level).xlen + 1).unwrap()
-                    * usize::try_from((*level).ylen).unwrap()
-                    + usize::try_from((*level).num_waypoints).unwrap() * MAX_WP_CONNECTIONS * 4
-                    + 50000;
-                dealloc(
-                    level_mem as *mut u8,
-                    Layout::array::<u8>(mem_amount).unwrap(),
-                );
+                let level_mem = struct_to_mem(level);
+                ship_file
+                    .write_all(CStr::from_ptr(level_mem.as_ptr() as *const c_char).to_bytes())?;
             }
 
             //--------------------
@@ -907,7 +913,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         }
         self.global.level_doors_not_moved_time = 0.;
 
-        let cur_level = &*self.main.cur_level;
+        let cur_level = self.main.cur_level();
         for i in 0..MAX_DOORS_ON_LEVEL {
             let doorx = cur_level.doors[i].x;
             let doory = cur_level.doors[i].y;
@@ -979,100 +985,6 @@ freedroid-discussion@lists.sourceforge.net\n\
                 }
             }
         }
-    }
-
-    /// Returns a pointer to Map in a memory field
-    pub unsafe fn struct_to_mem(&mut self, level: *mut Level) -> *mut c_char {
-        use std::io::Write;
-
-        let level = &mut *level;
-        let xlen = level.xlen;
-        let ylen = level.ylen;
-
-        let anz_wp = usize::try_from(level.num_waypoints).unwrap();
-
-        /* estimate the amount of memory needed */
-        let mem_amount = usize::try_from(xlen + 1).unwrap() * usize::try_from(ylen).unwrap()
-            + anz_wp * MAX_WP_CONNECTIONS * 4
-            + 50000; /* Map-memory; Puffer fuer Dimensionen, mark-strings .. */
-
-        /* allocate some memory */
-        let level_mem = alloc_zeroed(Layout::array::<u8>(mem_amount).unwrap());
-        assert!(
-            !level_mem.is_null(),
-            "could not allocate memory, terminating."
-        );
-        let mut level_cursor =
-            std::io::Cursor::new(std::slice::from_raw_parts_mut(level_mem, mem_amount));
-
-        // Write the data to memory:
-        // Here the levelnumber and general information about the level is written
-        writeln!(level_cursor, "Levelnumber: {}", level.levelnum).unwrap();
-        writeln!(level_cursor, "xlen of this level: {}", level.xlen).unwrap();
-        writeln!(level_cursor, "ylen of this level: {}", level.ylen).unwrap();
-        writeln!(level_cursor, "color of this level: {}", level.color).unwrap();
-        writeln!(
-            level_cursor,
-            "{}{}",
-            LEVEL_NAME_STRING,
-            CStr::from_ptr(level.levelname).to_str().unwrap()
-        )
-        .unwrap();
-        writeln!(
-            level_cursor,
-            "{}{}",
-            LEVEL_ENTER_COMMENT_STRING,
-            CStr::from_ptr(level.level_enter_comment).to_str().unwrap()
-        )
-        .unwrap();
-        writeln!(
-            level_cursor,
-            "{}{}",
-            BACKGROUND_SONG_NAME_STRING,
-            CStr::from_ptr(level.background_song_name).to_str().unwrap()
-        )
-        .unwrap();
-
-        // Now the beginning of the actual map data is marked:
-        writeln!(level_cursor, "{}", MAP_BEGIN_STRING).unwrap();
-
-        // Now in the loop each line of map data should be saved as a whole
-        for i in 0..usize::try_from(ylen).unwrap() {
-            reset_level_map(level); // make sure all doors are closed
-            for j in 0..usize::try_from(xlen).unwrap() {
-                write!(level_cursor, "{:02} ", *level.map[i].add(j)).unwrap();
-            }
-            writeln!(level_cursor).unwrap();
-        }
-
-        // --------------------
-        // The next thing we must do is write the waypoints of this level
-
-        writeln!(level_cursor, "{}", WP_BEGIN_STRING).unwrap();
-
-        for i in 0..usize::try_from(level.num_waypoints).unwrap() {
-            write!(
-                level_cursor,
-                "Nr.={:3} x={:4} y={:4}\t {}",
-                i, level.all_waypoints[i].x, level.all_waypoints[i].y, CONNECTION_STRING
-            )
-            .unwrap();
-
-            let this_wp = &level.all_waypoints[i];
-            for j in 0..usize::try_from(this_wp.num_connections).unwrap() {
-                write!(level_cursor, "{:2} ", this_wp.connections[j]).unwrap();
-            }
-            writeln!(level_cursor).unwrap();
-        }
-
-        writeln!(level_cursor, "{}", LEVEL_END_STRING).unwrap();
-        writeln!(
-            level_cursor,
-            "----------------------------------------------------------------------"
-        )
-        .unwrap();
-
-        level_mem as *mut c_char
     }
 
     pub unsafe fn druid_passable(&self, x: c_float, y: c_float) -> c_int {
@@ -1519,14 +1431,17 @@ freedroid-discussion@lists.sourceforge.net\n\
             .enumerate()
             .take(level_anz)
             .try_for_each(|(index, (level, start))| {
-                *level = level_to_struct(start);
-
-                if level.is_null() {
-                    error!("reading of level {} failed", index);
-                    return None;
+                match level_to_struct(start) {
+                    Some(new_level) => {
+                        let level = level.insert(new_level);
+                        interpret_map(level); // initialize doors, refreshes and lifts
+                        Some(())
+                    }
+                    None => {
+                        error!("reading of level {} failed", index);
+                        None
+                    }
                 }
-                interpret_map(&mut **level); // initialize doors, refreshes and lifts
-                Some(())
             });
         if result.is_none() {
             return defs::ERR.into();
@@ -1538,7 +1453,7 @@ freedroid-discussion@lists.sourceforge.net\n\
     /// ActSpecialField: checks Influencer on SpecialFields like
     /// Lifts and Konsoles and acts on it
     pub unsafe fn act_special_field(&mut self, x: c_float, y: c_float) {
-        let map_tile = get_map_brick(&*self.main.cur_level, x, y);
+        let map_tile = get_map_brick(self.main.cur_level(), x, y);
 
         let myspeed2 = self.vars.me.speed.x * self.vars.me.speed.x
             + self.vars.me.speed.y * self.vars.me.speed.y;
@@ -1577,7 +1492,7 @@ freedroid-discussion@lists.sourceforge.net\n\
     }
 
     pub unsafe fn get_current_lift(&self) -> c_int {
-        let curlev = (*self.main.cur_level).levelnum;
+        let curlev = self.main.cur_level().levelnum;
 
         let gx = self.vars.me.pos.x.round() as c_int;
         let gy = self.vars.me.pos.y.round() as c_int;
@@ -1634,6 +1549,94 @@ fn read_tagged_i32(s: &[u8], tag: &str) -> i32 {
         .parse(&s[(pos + tag.len())..])
         .map(|(_, (_, n))| n)
         .unwrap()
+}
+
+/// Returns a pointer to Map in a memory field
+pub unsafe fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
+    use std::io::Write;
+
+    let xlen = level.xlen;
+    let ylen = level.ylen;
+
+    let anz_wp = usize::try_from(level.num_waypoints).unwrap();
+
+    /* estimate the amount of memory needed */
+    let mem_amount = usize::try_from(xlen + 1).unwrap() * usize::try_from(ylen).unwrap()
+        + anz_wp * MAX_WP_CONNECTIONS * 4
+        + 50000; /* Map-memory; Puffer fuer Dimensionen, mark-strings .. */
+
+    /* allocate some memory */
+    let mut level_mem = vec![0; mem_amount].into_boxed_slice();
+    let mut level_cursor = std::io::Cursor::new(&mut *level_mem);
+
+    // Write the data to memory:
+    // Here the levelnumber and general information about the level is written
+    writeln!(level_cursor, "Levelnumber: {}", level.levelnum).unwrap();
+    writeln!(level_cursor, "xlen of this level: {}", level.xlen).unwrap();
+    writeln!(level_cursor, "ylen of this level: {}", level.ylen).unwrap();
+    writeln!(level_cursor, "color of this level: {}", level.color).unwrap();
+    writeln!(
+        level_cursor,
+        "{}{}",
+        LEVEL_NAME_STRING,
+        CStr::from_ptr(level.levelname).to_str().unwrap()
+    )
+    .unwrap();
+    writeln!(
+        level_cursor,
+        "{}{}",
+        LEVEL_ENTER_COMMENT_STRING,
+        CStr::from_ptr(level.level_enter_comment).to_str().unwrap()
+    )
+    .unwrap();
+    writeln!(
+        level_cursor,
+        "{}{}",
+        BACKGROUND_SONG_NAME_STRING,
+        CStr::from_ptr(level.background_song_name).to_str().unwrap()
+    )
+    .unwrap();
+
+    // Now the beginning of the actual map data is marked:
+    writeln!(level_cursor, "{}", MAP_BEGIN_STRING).unwrap();
+
+    // Now in the loop each line of map data should be saved as a whole
+    for i in 0..usize::try_from(ylen).unwrap() {
+        reset_level_map(level); // make sure all doors are closed
+        for j in 0..usize::try_from(xlen).unwrap() {
+            write!(level_cursor, "{:02} ", *level.map[i].add(j)).unwrap();
+        }
+        writeln!(level_cursor).unwrap();
+    }
+
+    // --------------------
+    // The next thing we must do is write the waypoints of this level
+
+    writeln!(level_cursor, "{}", WP_BEGIN_STRING).unwrap();
+
+    for i in 0..usize::try_from(level.num_waypoints).unwrap() {
+        write!(
+            level_cursor,
+            "Nr.={:3} x={:4} y={:4}\t {}",
+            i, level.all_waypoints[i].x, level.all_waypoints[i].y, CONNECTION_STRING
+        )
+        .unwrap();
+
+        let this_wp = &level.all_waypoints[i];
+        for j in 0..usize::try_from(this_wp.num_connections).unwrap() {
+            write!(level_cursor, "{:2} ", this_wp.connections[j]).unwrap();
+        }
+        writeln!(level_cursor).unwrap();
+    }
+
+    writeln!(level_cursor, "{}", LEVEL_END_STRING).unwrap();
+    writeln!(
+        level_cursor,
+        "----------------------------------------------------------------------"
+    )
+    .unwrap();
+
+    level_mem
 }
 
 #[cfg(test)]

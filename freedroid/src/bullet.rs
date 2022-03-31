@@ -22,7 +22,7 @@ impl Data<'_> {
     }
 
     pub unsafe fn check_bullet_collisions(&mut self, num: c_int) {
-        let level = (*self.main.cur_level).levelnum;
+        let level = self.main.cur_level().levelnum;
         let cur_bullet = &mut self.main.all_bullets[usize::try_from(num).unwrap()];
 
         match BulletKind::try_from(cur_bullet.ty) {
@@ -251,7 +251,7 @@ impl Data<'_> {
     }
 
     pub unsafe fn check_blast_collisions(&mut self, num: c_int) {
-        let level = (*self.main.cur_level).levelnum;
+        let level = self.main.cur_level().levelnum;
         /* check Blast-Bullet Collisions and kill hit Bullets */
         for bullet_index in 0..MAXBULLETS {
             let cur_blast = &self.main.all_blasts[usize::try_from(num).unwrap()];

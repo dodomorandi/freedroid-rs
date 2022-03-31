@@ -1,4 +1,5 @@
 use crate::{
+    cur_level,
     defs::{
         self, Direction, Droid, Explosion, MapTile, SoundType, Status, ENEMYPHASES, MAXBLASTS,
         MAXBULLETS, PUSHSPEED, WAIT_COLLISION,
@@ -100,7 +101,7 @@ impl Data<'_> {
             let enemy = &mut main.all_enemys[enemy_index];
 
             /* ignore enemy that are not on this level or dead */
-            if enemy.levelnum != (*main.cur_level).levelnum {
+            if enemy.levelnum != cur_level!(main).levelnum {
                 continue;
             }
             if enemy.status == Status::Out as c_int || enemy.status == Status::Terminated as c_int {
@@ -173,7 +174,7 @@ impl Data<'_> {
                 self.takeover(enemy_index.try_into().unwrap());
 
                 if self.level_empty() != 0 {
-                    (*self.main.cur_level).empty = true.into();
+                    self.main.cur_level_mut().empty = true.into();
                 }
             }
         }
@@ -296,12 +297,12 @@ impl Data<'_> {
                 // if its an open door, we also correct the east-west position, in the
                 // sense that we move thowards the middle
                 if get_map_brick(
-                    &*self.main.cur_level,
+                    self.main.cur_level(),
                     self.vars.me.pos.x,
                     self.vars.me.pos.y - 0.5,
                 ) == MapTile::HGanztuere as u8
                     || get_map_brick(
-                        &*self.main.cur_level,
+                        self.main.cur_level(),
                         self.vars.me.pos.x,
                         self.vars.me.pos.y + 0.5,
                     ) == MapTile::HGanztuere as u8
@@ -324,12 +325,12 @@ impl Data<'_> {
                 // if its an open door, we also correct the north-south position, in the
                 // sense that we move thowards the middle
                 if (get_map_brick(
-                    &*self.main.cur_level,
+                    self.main.cur_level(),
                     self.vars.me.pos.x + 0.5,
                     self.vars.me.pos.y,
                 ) == MapTile::VGanztuere as u8)
                     || (get_map_brick(
-                        &*self.main.cur_level,
+                        self.main.cur_level(),
                         self.vars.me.pos.x - 0.5,
                         self.vars.me.pos.y,
                     ) == MapTile::VGanztuere as u8)
@@ -424,7 +425,7 @@ impl Data<'_> {
         self.vars.me.position_history_ring_buffer[self.influencer.current_zero_ring_index] = Gps {
             x: self.vars.me.pos.x,
             y: self.vars.me.pos.y,
-            z: (*self.main.cur_level).levelnum,
+            z: self.main.cur_level().levelnum,
         };
 
         self.permanent_lose_energy(); /* influ permanently loses energy */
@@ -696,7 +697,7 @@ impl Data<'_> {
         self.vars.me.position_history_ring_buffer.fill(Gps {
             x: self.vars.me.pos.x,
             y: self.vars.me.pos.y,
-            z: (*self.main.cur_level).levelnum,
+            z: self.main.cur_level().levelnum,
         });
     }
 }

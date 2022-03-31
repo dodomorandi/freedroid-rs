@@ -16,7 +16,7 @@ use crate::{
     sound::Sound,
     split_at_subslice,
     structs::{BulletSpec, DruidSpec},
-    Data,
+    ArrayIndex, Data,
 };
 
 #[cfg(target_os = "windows")]
@@ -793,8 +793,7 @@ impl Data<'_> {
             .finish()
             .unwrap()
             .1;
-        self.main.cur_level =
-            self.main.cur_ship.all_levels[usize::try_from(starting_level).unwrap()];
+        self.main.cur_level_index = Some(ArrayIndex::new(usize::try_from(starting_level).unwrap()));
 
         let start_point_slice = split_at_subslice(start_point_slice, b"XPos=").unwrap().1;
         let starting_x_pos = nom::character::complete::i32::<_, ()>(start_point_slice)
@@ -816,10 +815,10 @@ impl Data<'_> {
         );
 
         /* Reactivate the light on alle Levels, that might have been dark */
-        for &level in &self.main.cur_ship.all_levels
+        for level in &mut self.main.cur_ship.all_levels
             [0..usize::try_from(self.main.cur_ship.num_levels).unwrap()]
         {
-            (*level).empty = false.into();
+            level.as_mut().unwrap().empty = false.into();
         }
 
         info!("InitNewMission: All levels have been set to 'active'...",);
@@ -852,15 +851,14 @@ impl Data<'_> {
         );
 
         // Switch_Background_Music_To (COMBAT_BACKGROUND_MUSIC_SOUND);
-        self.switch_background_music_to((*self.main.cur_level).background_song_name);
+        self.switch_background_music_to(self.main.cur_level().background_song_name);
 
         for level_index in 0..usize::try_from(self.main.cur_ship.num_levels).unwrap() {
-            self.main.cur_level = self.main.cur_ship.all_levels[level_index];
+            self.main.cur_level_index = Some(ArrayIndex::new(level_index));
             self.shuffle_enemys();
         }
 
-        self.main.cur_level =
-            self.main.cur_ship.all_levels[usize::try_from(starting_level).unwrap()];
+        self.main.cur_level_index = Some(ArrayIndex::new(usize::try_from(starting_level).unwrap()));
 
         // Now that the briefing and all that is done,
         // the influence structure can be initialized for

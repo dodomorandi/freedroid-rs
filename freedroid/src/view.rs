@@ -98,8 +98,8 @@ impl Data<'_> {
             if (mask & AssembleCombatWindowFlags::SHOW_FULL_MAP.bits() as i32) != 0 {
                 let upleft = GrobPoint { x: -5, y: -5 };
                 let downright = GrobPoint {
-                    x: (*self.main.cur_level).xlen as i8 + 5,
-                    y: (*self.main.cur_level).ylen as i8 + 5,
+                    x: self.main.cur_level().xlen as i8 + 5,
+                    y: self.main.cur_level().ylen as i8 + 5,
                 };
                 (upleft, downright)
             } else {
@@ -141,7 +141,7 @@ impl Data<'_> {
                     }
                 }
 
-                map_brick = get_map_brick(&*self.main.cur_level, col.into(), line.into());
+                map_brick = get_map_brick(self.main.cur_level(), col.into(), line.into());
                 let user_center = self.vars.get_user_center();
                 target_rectangle.set_x(
                     user_center.x()
@@ -157,8 +157,7 @@ impl Data<'_> {
                 );
 
                 let mut surface = self.graphics.map_block_surface_pointer
-                    [usize::try_from((*self.main.cur_level).color).unwrap()]
-                    [usize::from(map_brick)]
+                    [usize::try_from(self.main.cur_level().color).unwrap()][usize::from(map_brick)]
                 .as_mut()
                 .unwrap()
                 .borrow_mut();
@@ -214,7 +213,7 @@ impl Data<'_> {
                     "GPS: X={:.0} Y={:.0} Lev={}",
                     self.vars.me.pos.x.round(),
                     self.vars.me.pos.y.round(),
-                    (*self.main.cur_level).levelnum,
+                    self.main.cur_level().levelnum,
                 ),
             );
         }
@@ -295,7 +294,7 @@ impl Data<'_> {
             for enemy_index in 0..usize::try_from(self.main.num_enemys).unwrap() {
                 let enemy = &self.main.all_enemys[enemy_index];
                 if (enemy.status == Status::Terminated as i32)
-                    && (enemy.levelnum == (*self.main.cur_level).levelnum)
+                    && (enemy.levelnum == self.main.cur_level().levelnum)
                     && self.is_visible(&enemy.pos) != 0
                 {
                     let x = enemy.pos.x;
@@ -304,7 +303,7 @@ impl Data<'_> {
                 }
             }
 
-            let levelnum = (*self.main.cur_level).levelnum;
+            let levelnum = self.main.cur_level().levelnum;
             for enemy_index in 0..usize::try_from(self.main.num_enemys).unwrap() {
                 let enemy = &self.main.all_enemys[enemy_index];
                 if !((enemy.levelnum != levelnum)
@@ -387,7 +386,7 @@ impl Data<'_> {
 
         if (droid.status == Status::Terminated as i32)
             || (droid.status == Status::Out as i32)
-            || (droid.levelnum != (*self.main.cur_level).levelnum)
+            || (droid.levelnum != self.main.cur_level().levelnum)
         {
             return;
         }

@@ -1,4 +1,5 @@
 use crate::{
+    cur_level,
     defs::{
         Explosion, Status, AGGRESSIONMAX, DECKCOMPLETEBONUS, ENEMYMAXWAIT, ENEMYPHASES, MAXBULLETS,
         MAXWAYPOINTS, MAX_ENEMYS_ON_SHIP, ROBOT_MAX_WAIT_BETWEEN_SHOTS, SLOWMO_FACTOR,
@@ -42,9 +43,10 @@ impl Data<'_> {
             ..
         } = self;
 
+        let cur_level = cur_level!(mut main);
         for enemy in &mut main.all_enemys[..usize::try_from(main.num_enemys).unwrap()] {
             /* ignore enemys that are dead or on other levels or dummys */
-            if enemy.levelnum != (*main.cur_level).levelnum {
+            if enemy.levelnum != cur_level.levelnum {
                 continue;
             }
             if enemy.status == Status::Out as i32 {
@@ -74,7 +76,7 @@ impl Data<'_> {
             let enemy = &self.main.all_enemys[enemy_index];
             if enemy.status == Status::Out as i32
                 || enemy.status == Status::Terminated as i32
-                || enemy.levelnum != (*self.main.cur_level).levelnum
+                || enemy.levelnum != self.main.cur_level().levelnum
             {
                 continue;
             }
@@ -99,7 +101,7 @@ impl Data<'_> {
         //
 
         // ignore robots on other levels
-        if this_robot.levelnum != (*self.main.cur_level).levelnum {
+        if this_robot.levelnum != self.main.cur_level().levelnum {
             return;
         }
 
@@ -226,7 +228,7 @@ impl Data<'_> {
             if self.level_empty() != 0 {
                 self.main.real_score += DECKCOMPLETEBONUS;
 
-                let cur_level = &mut *self.main.cur_level;
+                let cur_level = self.main.cur_level_mut();
                 cur_level.empty = true.into();
                 cur_level.timer = WAIT_LEVELEMPTY;
                 self.set_time_factor(SLOWMO_FACTOR); // watch final explosion in slow-motion
@@ -254,7 +256,7 @@ impl Data<'_> {
             main, misc, global, ..
         } = self;
 
-        let curlev = (*main.cur_level).levelnum;
+        let curlev = main.cur_level().levelnum;
 
         let enemy_num: usize = enemy_num.try_into().unwrap();
         let (enemys_before, rest) =
@@ -326,7 +328,7 @@ impl Data<'_> {
         let this_robot = &mut self.main.all_enemys[usize::try_from(enemy_num).unwrap()];
 
         // We do some definitions to save us some more typing later...
-        let wp_list = (*self.main.cur_level).all_waypoints;
+        let wp_list = cur_level!(self.main).all_waypoints;
         let nextwp = usize::try_from(this_robot.nextwaypoint).unwrap();
 
         // determine the remaining way until the target point is reached
@@ -351,7 +353,7 @@ impl Data<'_> {
     }
 
     pub unsafe fn shuffle_enemys(&mut self) {
-        let cur_level = &*self.main.cur_level;
+        let cur_level = cur_level!(self.main);
         let cur_level_num = cur_level.levelnum;
         let mut used_wp: [bool; MAXWAYPOINTS] = [false; MAXWAYPOINTS];
         let mut warned = false;
@@ -410,7 +412,7 @@ impl Data<'_> {
         let this_robot = &mut main.all_enemys[usize::try_from(enemy_num).unwrap()];
 
         // We do some definitions to save us some more typing later...
-        let wp_list = (*main.cur_level).all_waypoints;
+        let wp_list = &cur_level!(main).all_waypoints;
         let nextwp: usize = this_robot.nextwaypoint.try_into().unwrap();
         let maxspeed = vars.droidmap[usize::try_from(this_robot.ty).unwrap()].maxspeed;
 

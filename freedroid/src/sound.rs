@@ -97,13 +97,22 @@ impl Data<'_> {
         self.play_sound(SoundType::Transfer as i32);
     }
 
+    #[inline]
     pub unsafe fn play_sound(&self, tune: c_int) {
-        if self.main.sound_on == 0 {
+        Self::play_sound_static(
+            self.main.sound_on,
+            &self.sdl,
+            &self.sound.as_ref().unwrap(),
+            tune,
+        )
+    }
+
+    pub unsafe fn play_sound_static(sound_on: c_int, sdl: &Sdl, sound: &Sound, tune: c_int) {
+        if sound_on == 0 {
             return;
         }
 
-        let mixer = self.sdl.mixer.get().unwrap();
-        let sound = self.sound.as_ref().unwrap();
+        let mixer = sdl.mixer.get().unwrap();
         let tune = usize::try_from(tune).unwrap();
         let newest_sound_channel = mixer.play_channel_timed(
             None,
@@ -216,12 +225,17 @@ This usually just means that too many samples where played at the same time",
         self.play_sound(SoundType::Refresh as i32);
     }
 
+    #[inline]
     pub unsafe fn move_lift_sound(&self) {
-        if self.main.sound_on == 0 {
+        Self::move_lift_sound_static(self.main.sound_on, &self.sdl, self.sound.as_ref().unwrap())
+    }
+
+    pub unsafe fn move_lift_sound_static(sound_on: c_int, sdl: &Sdl, sound: &Sound) {
+        if sound_on == 0 {
             return;
         }
 
-        self.play_sound(SoundType::MoveElevator as i32);
+        Self::play_sound_static(sound_on, sdl, sound, SoundType::MoveElevator as i32);
     }
 
     pub unsafe fn menu_item_selected_sound(&self) {
@@ -315,19 +329,19 @@ impl<'sdl> Data<'sdl> {
         // if filename_raw==BYCOLOR then chose bg_music[color]
         // NOTE: if new level-color is the same as before, just resume paused music!
         if filename_raw.to_bytes() == BYCOLOR.to_bytes() {
-            if sound.paused && sound.prev_color == (*main.cur_level).color {
+            if sound.paused && sound.prev_color == main.cur_level().color {
                 // current level-song was just paused
                 mixer.resume_music();
                 sound.paused = false;
             } else {
                 mixer.play_music(
-                    sound.music_songs[usize::try_from((*main.cur_level).color).unwrap()]
+                    sound.music_songs[usize::try_from(main.cur_level().color).unwrap()]
                         .as_ref()
                         .unwrap(),
                     None,
                 );
                 sound.paused = false;
-                sound.prev_color = (*main.cur_level).color;
+                sound.prev_color = main.cur_level().color;
             }
         } else {
             // not using BYCOLOR mechanism: just play specified song

@@ -1,8 +1,8 @@
 use crate::{
-    b_font::{char_width, font_height},
+    b_font::{char_width, font_height, BFont},
     defs::{Cmds, PointerStates, SHOW_WAIT, TEXT_STRETCH},
     misc::my_random,
-    Data,
+    Data, FontCellOwner,
 };
 
 #[cfg(feature = "arcade-input")]
@@ -323,8 +323,29 @@ impl Data<'_> {
     /// Added functionality to PrintString() is:
     ///  o) passing -1 as coord uses previous x and next-line y for printing
     ///  o) Screen is updated immediatly after print, using SDL_flip()
+    #[inline]
     pub unsafe fn printf_sdl<const F: bool>(
         &mut self,
+        screen: &mut sdl::GenericSurface<F>,
+        x: c_int,
+        y: c_int,
+        format_args: fmt::Arguments,
+    ) {
+        Self::printf_sdl_static::<F>(
+            &mut self.text,
+            &self.b_font,
+            &mut self.font_owner,
+            screen,
+            x,
+            y,
+            format_args,
+        )
+    }
+
+    pub unsafe fn printf_sdl_static<const F: bool>(
+        text: &mut Text,
+        b_font: &BFont,
+        font_owner: &mut FontCellOwner,
         screen: &mut sdl::GenericSurface<F>,
         mut x: c_int,
         mut y: c_int,
@@ -333,50 +354,28 @@ impl Data<'_> {
         use std::io::Write;
 
         if x == -1 {
-            x = self.text.my_cursor_x;
+            x = text.my_cursor_x;
         } else {
-            self.text.my_cursor_x = x;
+            text.my_cursor_x = x;
         }
 
         if y == -1 {
-            y = self.text.my_cursor_y;
+            y = text.my_cursor_y;
         } else {
-            self.text.my_cursor_y = y;
+            text.my_cursor_y = y;
         }
 
-        let mut cursor = Cursor::new(self.text.text_buffer.as_mut());
+        let mut cursor = Cursor::new(text.text_buffer.as_mut());
         cursor.write_fmt(format_args).unwrap();
         let cursor_pos = cursor.position();
-        let text_buffer = &self.text.text_buffer[..usize::try_from(cursor_pos).unwrap()];
+        let text_buffer = &text.text_buffer[..usize::try_from(cursor_pos).unwrap()];
         let textlen: c_int = text_buffer
             .iter()
-            .map(|&c| {
-                char_width(
-                    self.b_font
-                        .current_font
-                        .as_ref()
-                        .unwrap()
-                        .ro(&self.font_owner),
-                    c,
-                )
-            })
+            .map(|&c| char_width(b_font.current_font.as_ref().unwrap().ro(&font_owner), c))
             .sum();
 
-        Self::put_string_static(
-            &self.b_font,
-            &mut self.font_owner,
-            screen,
-            x,
-            y,
-            text_buffer,
-        );
-        let h = font_height(
-            self.b_font
-                .current_font
-                .as_ref()
-                .unwrap()
-                .ro(&self.font_owner),
-        ) + 2;
+        Self::put_string_static(&b_font, font_owner, screen, x, y, text_buffer);
+        let h = font_height(b_font.current_font.as_ref().unwrap().ro(font_owner)) + 2;
 
         // update the relevant line
         screen.update_rect(&Rect::new(
@@ -387,11 +386,11 @@ impl Data<'_> {
         ));
 
         if *text_buffer.last().unwrap() == b'\n' {
-            self.text.my_cursor_x = x;
-            self.text.my_cursor_y = (f64::from(y) + 1.1 * f64::from(h)) as c_int;
+            text.my_cursor_x = x;
+            text.my_cursor_y = (f64::from(y) + 1.1 * f64::from(h)) as c_int;
         } else {
-            self.text.my_cursor_x += textlen;
-            self.text.my_cursor_y = y;
+            text.my_cursor_x += textlen;
+            text.my_cursor_y = y;
         }
     }
 

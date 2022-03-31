@@ -1,5 +1,6 @@
 use crate::{
     b_font::{font_height, print_string_font},
+    cur_level,
     defs::{
         AssembleCombatWindowFlags, Cmds, MapTile, MAXWAYPOINTS, MAX_WP_CONNECTIONS, NUM_MAP_BLOCKS,
     },
@@ -134,10 +135,10 @@ impl Data<'_> {
                 self.draw_line_between_tiles(
                     block_x as f32,
                     block_y as f32,
-                    (*self.main.cur_level).all_waypoints[usize::try_from(origin_waypoint).unwrap()]
+                    self.main.cur_level().all_waypoints[usize::try_from(origin_waypoint).unwrap()]
                         .x
                         .into(),
-                    (*self.main.cur_level).all_waypoints[usize::try_from(origin_waypoint).unwrap()]
+                    self.main.cur_level().all_waypoints[usize::try_from(origin_waypoint).unwrap()]
                         .y
                         .into(),
                     HIGHLIGHTCOLOR2,
@@ -172,7 +173,7 @@ impl Data<'_> {
             }
 
             if self.right_pressed_r()
-                && (self.vars.me.pos.x.round() as c_int) < (*self.main.cur_level).xlen - 1
+                && (self.vars.me.pos.x.round() as c_int) < self.main.cur_level().xlen - 1
             {
                 self.vars.me.pos.x += 1.;
             }
@@ -182,7 +183,7 @@ impl Data<'_> {
             }
 
             if self.down_pressed_r()
-                && (self.vars.me.pos.y.round() as c_int) < (*self.main.cur_level).ylen - 1
+                && (self.vars.me.pos.y.round() as c_int) < self.main.cur_level().ylen - 1
             {
                 self.vars.me.pos.y += 1.;
             }
@@ -316,7 +317,7 @@ impl Data<'_> {
                 if special_map_value >= NUM_MAP_BLOCKS.try_into().unwrap() {
                     special_map_value = 0;
                 }
-                *((*self.main.cur_level).map[usize::try_from(block_y).unwrap()])
+                *(self.main.cur_level().map[usize::try_from(block_y).unwrap()])
                     .add(block_x.try_into().unwrap()) = special_map_value.try_into().unwrap();
             }
 
@@ -338,9 +339,9 @@ impl Data<'_> {
             if self.key_is_pressed_r(b'p'.into()) {
                 // find out if there is a waypoint on the current square
                 let mut i = 0;
-                while i < usize::try_from((*self.main.cur_level).num_waypoints).unwrap() {
-                    if i32::from((*self.main.cur_level).all_waypoints[i].x) == block_x
-                        && i32::from((*self.main.cur_level).all_waypoints[i].y) == block_y
+                while i < usize::try_from(self.main.cur_level().num_waypoints).unwrap() {
+                    if i32::from(self.main.cur_level().all_waypoints[i].x) == block_x
+                        && i32::from(self.main.cur_level().all_waypoints[i].y) == block_y
                     {
                         break;
                     }
@@ -349,11 +350,11 @@ impl Data<'_> {
                 }
 
                 // if its waypoint already, this waypoint must be deleted.
-                if i < usize::try_from((*self.main.cur_level).num_waypoints).unwrap() {
-                    delete_waypoint(&mut *self.main.cur_level, i.try_into().unwrap());
+                if i < usize::try_from(self.main.cur_level().num_waypoints).unwrap() {
+                    delete_waypoint(self.main.cur_level_mut(), i.try_into().unwrap());
                 } else {
                     // if its not a waypoint already, it must be made into one
-                    create_waypoint(&mut *self.main.cur_level, block_x, block_y);
+                    create_waypoint(self.main.cur_level_mut(), block_x, block_y);
                 }
             } // if 'p' pressed (toggle waypoint)
 
@@ -363,9 +364,9 @@ impl Data<'_> {
             if self.key_is_pressed_r(b'c'.into()) {
                 // Determine which waypoint is currently targeted
                 let mut i = 0;
-                while i < usize::try_from((*self.main.cur_level).num_waypoints).unwrap() {
-                    if i32::from((*self.main.cur_level).all_waypoints[i].x) == block_x
-                        && i32::from((*self.main.cur_level).all_waypoints[i].y) == block_y
+                while i < usize::try_from(self.main.cur_level().num_waypoints).unwrap() {
+                    if i32::from(self.main.cur_level().all_waypoints[i].x) == block_x
+                        && i32::from(self.main.cur_level().all_waypoints[i].y) == block_y
                     {
                         break;
                     }
@@ -373,11 +374,11 @@ impl Data<'_> {
                     i += 1;
                 }
 
-                if i == usize::try_from((*self.main.cur_level).num_waypoints).unwrap() {
+                if i == usize::try_from(self.main.cur_level().num_waypoints).unwrap() {
                     warn!("Sorry, no waypoint here to connect.");
                 } else if origin_waypoint == -1 {
                     origin_waypoint = i.try_into().unwrap();
-                    src_wp = &mut (*self.main.cur_level).all_waypoints[i];
+                    src_wp = &mut cur_level!(mut self.main).all_waypoints[i];
                     if (*src_wp).num_connections < c_int::try_from(MAX_WP_CONNECTIONS).unwrap() {
                         info!("Waypoint nr. {}. selected as origin", i);
                     } else {
@@ -403,7 +404,7 @@ impl Data<'_> {
                 }
             }
 
-            let map_tile = &mut *((*self.main.cur_level).map[usize::try_from(block_y).unwrap()]
+            let map_tile = &mut *(self.main.cur_level().map[usize::try_from(block_y).unwrap()]
                 .add(block_x.try_into().unwrap()));
 
             // If the person using the level editor pressed some editing keys, insert the
@@ -513,8 +514,8 @@ impl Data<'_> {
         let block_x = self.vars.me.pos.x.round();
         let block_y = self.vars.me.pos.y.round();
 
-        for wp in 0..usize::try_from((*self.main.cur_level).num_waypoints).unwrap() {
-            let this_wp = &mut (*self.main.cur_level).all_waypoints[wp];
+        for wp in 0..usize::try_from(self.main.cur_level().num_waypoints).unwrap() {
+            let this_wp = &cur_level!(self.main).all_waypoints[wp];
             // Draw the cross in the middle of the middle of the tile
             for i in i32::try_from(self.vars.block_rect.width() / 4).unwrap()
                 ..i32::try_from(3 * self.vars.block_rect.width() / 4).unwrap()
@@ -625,11 +626,14 @@ impl Data<'_> {
                     &this_wp.connections[0..usize::try_from(this_wp.num_connections).unwrap()]
                 {
                     let connection = usize::try_from(connection).unwrap();
-                    self.draw_line_between_tiles(
+                    let waypoint = &cur_level!(self.main).all_waypoints[connection];
+                    Self::draw_line_between_tiles_static(
+                        &self.vars,
+                        &mut self.graphics,
                         this_wp.x.into(),
                         this_wp.y.into(),
-                        (*self.main.cur_level).all_waypoints[connection].x.into(),
-                        (*self.main.cur_level).all_waypoints[connection].y.into(),
+                        waypoint.x.into(),
+                        waypoint.y.into(),
                         HIGHLIGHTCOLOR,
                     );
                 }

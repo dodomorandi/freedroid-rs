@@ -7,7 +7,7 @@ use crate::{
     },
     graphics::{scale_pic, Graphics},
     input::CMD_STRINGS,
-    ArrayCString, Data, Global,
+    ArrayCString, ArrayIndex, Data, Global,
 };
 
 use cstr::cstr;
@@ -809,25 +809,25 @@ impl Data<'_> {
         let cur_level = level_num;
         let mut array_num = 0;
 
-        if cur_level != (*self.main.cur_level).levelnum {
+        if cur_level != self.main.cur_level().levelnum {
             //--------------------
             // In case a real level change has happend,
             // we need to do a lot of work:
 
             loop {
-                let tmp = self.main.cur_ship.all_levels[array_num];
-                if tmp.is_null() {
-                    break;
-                }
-
-                if (*tmp).levelnum == cur_level {
-                    break;
-                } else {
-                    array_num += 1;
+                match self.main.cur_ship.all_levels[array_num] {
+                    Some(level) => {
+                        if level.levelnum == cur_level {
+                            break;
+                        } else {
+                            array_num += 1;
+                        }
+                    }
+                    None => break,
                 }
             }
 
-            self.main.cur_level = self.main.cur_ship.all_levels[array_num];
+            self.main.cur_level_index = Some(ArrayIndex::new(array_num));
 
             self.shuffle_enemys();
 

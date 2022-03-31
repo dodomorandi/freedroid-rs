@@ -15,7 +15,7 @@ use crate::{
     read_and_malloc_and_terminate_file,
     structs::ThemeList,
     takeover::TO_BLOCK_FILE_C,
-    vars::{ORIG_BLOCK_RECT, ORIG_DIGIT_RECT},
+    vars::{Vars, ORIG_BLOCK_RECT, ORIG_DIGIT_RECT},
     Data, Sdl,
 };
 
@@ -1886,8 +1886,21 @@ impl Data<'_> {
         image.blit(graphics.ne_screen.as_mut().unwrap());
     }
 
+    #[inline]
     pub unsafe fn draw_line_between_tiles(
         &mut self,
+        x1: c_float,
+        y1: c_float,
+        x2: c_float,
+        y2: c_float,
+        color: Pixel,
+    ) {
+        Self::draw_line_between_tiles_static(&self.vars, &mut self.graphics, x1, y1, x2, y2, color)
+    }
+
+    pub unsafe fn draw_line_between_tiles_static(
+        vars: &Vars,
+        graphics: &mut Graphics,
         mut x1: c_float,
         mut y1: c_float,
         mut x2: c_float,
@@ -1908,30 +1921,25 @@ impl Data<'_> {
             }
 
             let mut i = 0.;
-            let max = (y2 - y1) * f32::from(self.vars.block_rect.width());
+            let max = (y2 - y1) * f32::from(vars.block_rect.width());
             while i < max {
-                let pixx = f32::from(self.vars.user_rect.x())
-                    + f32::from(self.vars.user_rect.width() / 2)
-                    - f32::from(self.vars.block_rect.width()) * (self.vars.me.pos.x - x1);
-                let user_center = self.vars.get_user_center();
+                let pixx = f32::from(vars.user_rect.x()) + f32::from(vars.user_rect.width() / 2)
+                    - f32::from(vars.block_rect.width()) * (vars.me.pos.x - x1);
+                let user_center = vars.get_user_center();
                 let pixy = f32::from(user_center.y())
-                    - f32::from(self.vars.block_rect.height()) * (self.vars.me.pos.y - y1)
+                    - f32::from(vars.block_rect.height()) * (vars.me.pos.y - y1)
                     + i;
-                if pixx <= self.vars.user_rect.x().into()
+                if pixx <= vars.user_rect.x().into()
                     || pixx
-                        >= f32::from(self.vars.user_rect.x())
-                            + f32::from(self.vars.user_rect.width())
-                            - 1.
-                    || pixy <= f32::from(self.vars.user_rect.y())
+                        >= f32::from(vars.user_rect.x()) + f32::from(vars.user_rect.width()) - 1.
+                    || pixy <= f32::from(vars.user_rect.y())
                     || pixy
-                        >= f32::from(self.vars.user_rect.y())
-                            + f32::from(self.vars.user_rect.height())
-                            - 1.
+                        >= f32::from(vars.user_rect.y()) + f32::from(vars.user_rect.height()) - 1.
                 {
                     i += 1.;
                     continue;
                 }
-                let ne_screen = self.graphics.ne_screen.as_mut().unwrap();
+                let ne_screen = graphics.ne_screen.as_mut().unwrap();
                 let mut ne_screen = ne_screen.lock().unwrap();
                 ne_screen
                     .pixels()
@@ -1960,29 +1968,24 @@ impl Data<'_> {
 
         let slope = (y2 - y1) / (x2 - x1);
         let mut i = 0.;
-        let max = (x2 - x1) * f32::from(self.vars.block_rect.width());
+        let max = (x2 - x1) * f32::from(vars.block_rect.width());
         while i < max {
-            let pixx = f32::from(self.vars.user_rect.x())
-                + f32::from(self.vars.user_rect.width() / 2)
-                - f32::from(self.vars.block_rect.width()) * (self.vars.me.pos.x - x1)
+            let pixx = f32::from(vars.user_rect.x()) + f32::from(vars.user_rect.width() / 2)
+                - f32::from(vars.block_rect.width()) * (vars.me.pos.x - x1)
                 + i;
-            let user_center = self.vars.get_user_center();
+            let user_center = vars.get_user_center();
             let pixy = f32::from(user_center.y())
-                - f32::from(self.vars.block_rect.height()) * (self.vars.me.pos.y - y1)
+                - f32::from(vars.block_rect.height()) * (vars.me.pos.y - y1)
                 + i * slope;
-            if pixx <= f32::from(self.vars.user_rect.x())
-                || pixx
-                    >= f32::from(self.vars.user_rect.x()) + f32::from(self.vars.user_rect.width())
-                        - 1.
-                || pixy <= f32::from(self.vars.user_rect.y())
-                || pixy
-                    >= f32::from(self.vars.user_rect.y()) + f32::from(self.vars.user_rect.height())
-                        - 1.
+            if pixx <= f32::from(vars.user_rect.x())
+                || pixx >= f32::from(vars.user_rect.x()) + f32::from(vars.user_rect.width()) - 1.
+                || pixy <= f32::from(vars.user_rect.y())
+                || pixy >= f32::from(vars.user_rect.y()) + f32::from(vars.user_rect.height()) - 1.
             {
                 i += 1.;
                 continue;
             }
-            let ne_screen = self.graphics.ne_screen.as_mut().unwrap();
+            let ne_screen = graphics.ne_screen.as_mut().unwrap();
             let mut ne_screen = ne_screen.lock().unwrap();
             ne_screen
                 .pixels()

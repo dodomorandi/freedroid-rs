@@ -330,7 +330,7 @@ pub struct Ship {
     pub num_lifts: i32,
     pub num_lift_rows: i32,
     pub area_name: [i8; 100],
-    pub all_levels: [*mut Level; MAX_LEVELS],
+    pub all_levels: [Option<Level>; MAX_LEVELS],
     pub all_lifts: [Lift; MAX_LIFTS],
     pub lift_row_rect: [Rect; MAX_LIFT_ROWS], /* the lift-row rectangles */
     pub level_rects: [[Rect; MAX_LEVEL_RECTS]; MAX_LEVELS], /* level rectangles */
@@ -344,7 +344,7 @@ impl Default for Ship {
             num_lifts: 0,
             num_lift_rows: 0,
             area_name: [0; 100],
-            all_levels: [null_mut(); MAX_LEVELS],
+            all_levels: [None; MAX_LEVELS],
             all_lifts: [Lift {
                 level: 0,
                 x: 0,

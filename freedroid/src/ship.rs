@@ -1,5 +1,6 @@
 use crate::{
     b_font::font_height,
+    cur_level,
     defs::{
         AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction, SoundType, Status,
         DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET, TEXT_STRETCH, UPDATE,
@@ -8,7 +9,7 @@ use crate::{
     map::get_map_brick,
     structs::Point,
     vars::{BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES, WEAPON_NAMES},
-    Data,
+    ArrayIndex, Data,
 };
 
 use log::{error, warn};
@@ -88,8 +89,9 @@ impl Data<'_> {
         }
 
         // so much to the sirens, now make sure the alert-tiles are updated correctly:
-        let posx = (*self.main.cur_level).alerts[0].x;
-        let posy = (*self.main.cur_level).alerts[0].y;
+        let cur_level = cur_level!(mut self.main);
+        let posx = cur_level.alerts[0].x;
+        let posy = cur_level.alerts[0].y;
         if posx == -1 {
             // no alerts here...
             return;
@@ -98,20 +100,20 @@ impl Data<'_> {
         let cur_alert = AlertNames::try_from(self.main.alert_level).unwrap();
 
         // check if alert-tiles are up-to-date
-        if get_map_brick(&*self.main.cur_level, posx.into(), posy.into()) == cur_alert as u8 {
+        if get_map_brick(cur_level, posx.into(), posy.into()) == cur_alert as u8 {
             // ok
             return;
         }
 
-        for alert in &mut (*self.main.cur_level).alerts {
+        for alert in &mut cur_level.alerts {
             let posx = alert.x;
             let posy = alert.y;
             if posx == -1 {
                 break;
             }
 
-            *(*self.main.cur_level).map[usize::try_from(posy).unwrap()]
-                .add(usize::try_from(posx).unwrap()) = cur_alert as i8;
+            *cur_level.map[usize::try_from(posy).unwrap()].add(usize::try_from(posx).unwrap()) =
+                cur_alert as i8;
         }
     }
 
@@ -562,7 +564,7 @@ Paradroid to eliminate all rogue robots.\0",
     pub unsafe fn show_deck_map(&mut self) {
         let tmp = self.vars.me.pos;
 
-        let cur_level = &*self.main.cur_level;
+        let cur_level = self.main.cur_level();
         self.vars.me.pos.x = (cur_level.xlen / 2) as f32;
         self.vars.me.pos.y = (cur_level.ylen / 2) as f32;
 
@@ -729,7 +731,7 @@ Paradroid to eliminate all rogue robots.\0",
                                     null_mut(),
                                     DisplayBannerFlags::FORCE_UPDATE.bits().into(),
                                 );
-                                self.show_lifts((*self.main.cur_level).levelnum, -1);
+                                self.show_lifts(self.main.cur_level().levelnum, -1);
                                 self.wait_for_key_pressed();
                                 self.paint_console_menu(pos.try_into().unwrap(), 0);
                             }
@@ -1013,7 +1015,7 @@ Paradroid to eliminate all rogue robots.\0",
                 CStr::from_ptr(self.main.cur_ship.area_name.as_ptr())
                     .to_str()
                     .unwrap(),
-                CStr::from_ptr((*self.main.cur_level).levelname)
+                CStr::from_ptr(self.main.cur_level().levelname)
                     .to_str()
                     .unwrap(),
                 AlertNames::try_from(self.main.alert_level)
@@ -1081,7 +1083,7 @@ Paradroid to eliminate all rogue robots.\0",
 
         self.sdl.cursor().hide();
 
-        let mut cur_level = (*self.main.cur_level).levelnum;
+        let mut cur_level = self.main.cur_level().levelnum;
 
         let cur_lift = self.get_current_lift();
         if cur_lift == -1 {
@@ -1165,23 +1167,23 @@ Paradroid to eliminate all rogue robots.\0",
         // is no need to reshuffle enemys or to reset influencers position.  Therefore, only
         // when a real level change has occured, we need to do real changes as below, where
         // we set the new level and set new position and initiate timers and all that...
-        if cur_level != (*self.main.cur_level).levelnum {
+        if cur_level != self.main.cur_level().levelnum {
             let mut array_num = 0;
 
             loop {
-                let tmp = self.main.cur_ship.all_levels[array_num];
-                if tmp.is_null() {
-                    break;
-                }
-
-                if (*tmp).levelnum == cur_level {
-                    break;
-                } else {
-                    array_num += 1;
+                match self.main.cur_ship.all_levels[array_num] {
+                    Some(level) => {
+                        if level.levelnum == cur_level {
+                            break;
+                        } else {
+                            array_num += 1;
+                        }
+                    }
+                    None => break,
                 }
             }
 
-            self.main.cur_level = self.main.cur_ship.all_levels[array_num];
+            self.main.cur_level_index = Some(ArrayIndex::new(array_num));
 
             // set the position of the influencer to the correct locatiohn
             self.vars.me.pos.x = self.main.cur_ship.all_lifts[cur_lift].x as f32;
@@ -1195,9 +1197,8 @@ Paradroid to eliminate all rogue robots.\0",
             }
         }
 
-        let cur_level = &*self.main.cur_level;
         self.leave_lift_sound();
-        self.switch_background_music_to(cur_level.background_song_name);
+        self.switch_background_music_to(self.main.cur_level().background_song_name);
         self.clear_graph_mem();
         self.display_banner(
             null_mut(),
@@ -1207,11 +1208,11 @@ Paradroid to eliminate all rogue robots.\0",
 
         self.vars.me.status = Status::Mobile as c_int;
         self.vars.me.text_visible_time = 0.;
-        self.vars.me.text_to_be_displayed = cur_level.level_enter_comment;
+        self.vars.me.text_to_be_displayed = self.main.cur_level().level_enter_comment;
     }
 
     pub unsafe fn level_empty(&self) -> c_int {
-        let cur_level = &*self.main.cur_level;
+        let cur_level = self.main.cur_level();
         if cur_level.empty != 0 {
             return true.into();
         }
