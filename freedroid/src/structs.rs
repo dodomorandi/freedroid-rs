@@ -240,8 +240,6 @@ impl Bullet<'_> {
 #[derive(Debug)]
 pub struct BlastSpec<'sdl> {
     pub phases: i32,
-    pub picpointer: *mut u8,
-    pub block: *mut Rect, /* the coordinates of the blocks in ne_blocks */
     pub total_animation_time: f32,
     pub surfaces: [Option<Surface<'sdl>>; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
                                                                    // the blast images of this blast type
@@ -251,8 +249,6 @@ impl BlastSpec<'_> {
     pub const fn default_const() -> Self {
         Self {
             phases: 0,
-            picpointer: null_mut(),
-            block: null_mut(),
             total_animation_time: 0.,
             surfaces: [
                 None, None, None, None, None, None, None, None, None, None, None, None,
