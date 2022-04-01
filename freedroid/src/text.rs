@@ -371,10 +371,10 @@ impl Data<'_> {
         let text_buffer = &text.text_buffer[..usize::try_from(cursor_pos).unwrap()];
         let textlen: c_int = text_buffer
             .iter()
-            .map(|&c| char_width(b_font.current_font.as_ref().unwrap().ro(&font_owner), c))
+            .map(|&c| char_width(b_font.current_font.as_ref().unwrap().ro(font_owner), c))
             .sum();
 
-        Self::put_string_static(&b_font, font_owner, screen, x, y, text_buffer);
+        Self::put_string_static(b_font, font_owner, screen, x, y, text_buffer);
         let h = font_height(b_font.current_font.as_ref().unwrap().ro(font_owner)) + 2;
 
         // update the relevant line

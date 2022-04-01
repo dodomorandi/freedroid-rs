@@ -1170,16 +1170,11 @@ Paradroid to eliminate all rogue robots.\0",
         if cur_level != self.main.cur_level().levelnum {
             let mut array_num = 0;
 
-            loop {
-                match self.main.cur_ship.all_levels[array_num] {
-                    Some(level) => {
-                        if level.levelnum == cur_level {
-                            break;
-                        } else {
-                            array_num += 1;
-                        }
-                    }
-                    None => break,
+            while let Some(level) = self.main.cur_ship.all_levels[array_num] {
+                if level.levelnum == cur_level {
+                    break;
+                } else {
+                    array_num += 1;
                 }
             }
 

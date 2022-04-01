@@ -1673,16 +1673,17 @@ impl<'sdl> Data<'sdl> {
         if action == MenuAction::INFO {
             return COLOR_NAMES[usize::try_from(cur_level.color).unwrap()].as_ptr();
         }
-        Self::menu_change_static(
-            self.main.sound_on,
-            &self.sdl,
-            self.sound.as_ref().unwrap(),
+        MenuChange {
+            sound_on: self.main.sound_on,
+            sdl: self.sdl,
+            sound: self.sound.as_ref().unwrap(),
             action,
-            &mut cur_level.color,
-            1,
-            0,
-            c_int::try_from(COLOR_NAMES.len()).unwrap() - 1,
-        );
+            val: &mut cur_level.color,
+            step: 1,
+            min_value: 0,
+            max_value: c_int::try_from(COLOR_NAMES.len()).unwrap() - 1,
+        }
+        .run();
         self.switch_background_music_to(BYCOLOR.as_ptr());
         self.initiate_menu(false);
 
@@ -1701,16 +1702,17 @@ impl<'sdl> Data<'sdl> {
         }
 
         let oldxlen = cur_level.xlen;
-        Self::menu_change_static(
-            self.main.sound_on,
-            &self.sdl,
-            self.sound.as_ref().unwrap(),
+        MenuChange {
+            sound_on: self.main.sound_on,
+            sdl: self.sdl,
+            sound: self.sound.as_ref().unwrap(),
             action,
-            &mut cur_level.xlen,
-            1,
-            0,
-            i32::try_from(MAX_MAP_COLS).unwrap() - 1,
-        );
+            val: &mut cur_level.xlen,
+            step: 1,
+            min_value: 0,
+            max_value: i32::try_from(MAX_MAP_COLS).unwrap() - 1,
+        }
+        .run();
         let newmem = usize::try_from(cur_level.xlen).unwrap();
         // adjust memory sizes for new value
         for row in 0..usize::try_from(cur_level.ylen).unwrap() {
@@ -1749,16 +1751,17 @@ impl<'sdl> Data<'sdl> {
         }
 
         let oldylen = cur_level.ylen;
-        Self::menu_change_static(
-            self.main.sound_on,
-            &self.sdl,
-            self.sound.as_ref().unwrap(),
+        MenuChange {
+            sound_on: self.main.sound_on,
+            sdl: self.sdl,
+            sound: self.sound.as_ref().unwrap(),
             action,
-            &mut cur_level.ylen,
-            1,
-            0,
-            i32::try_from(MAX_MAP_ROWS - 1).unwrap(),
-        );
+            val: &mut cur_level.ylen,
+            step: 1,
+            min_value: 0,
+            max_value: i32::try_from(MAX_MAP_ROWS - 1).unwrap(),
+        }
+        .run();
         let layout = Layout::array::<i8>(usize::try_from(cur_level.xlen).unwrap()).unwrap();
         match oldylen.cmp(&cur_level.ylen) {
             Ordering::Greater => {
@@ -2047,43 +2050,17 @@ impl<'sdl> Data<'sdl> {
     ) where
         T: PartialOrd + AddAssign + SubAssign,
     {
-        Self::menu_change_static(
-            self.main.sound_on,
-            &self.sdl,
-            self.sound.as_ref().unwrap(),
+        MenuChange {
+            sound_on: self.main.sound_on,
+            sdl: self.sdl,
+            sound: self.sound.as_ref().unwrap(),
             action,
             val,
             step,
             min_value,
             max_value,
-        )
-    }
-
-    unsafe fn menu_change_static<T>(
-        sound_on: c_int,
-        sdl: &Sdl,
-        sound: &Sound,
-        action: MenuAction,
-        val: &mut T,
-        step: T,
-        min_value: T,
-        max_value: T,
-    ) where
-        T: PartialOrd + AddAssign + SubAssign,
-    {
-        if action == MenuAction::RIGHT && *val < max_value {
-            Self::move_lift_sound_static(sound_on, sdl, sound);
-            *val += step;
-            if *val > max_value {
-                *val = max_value;
-            }
-        } else if action == MenuAction::LEFT && *val > min_value {
-            Self::move_lift_sound_static(sound_on, sdl, sound);
-            *val -= step;
-            if *val <= min_value {
-                *val = min_value;
-            }
         }
+        .run()
     }
 
     pub unsafe fn menu_change_float(
@@ -2134,5 +2111,49 @@ pub fn is_toggle_on(toggle: c_int) -> *const c_char {
         cstr!("YES").as_ptr()
     } else {
         cstr!("NO").as_ptr()
+    }
+}
+
+#[must_use]
+struct MenuChange<'a, 'b, T> {
+    sound_on: c_int,
+    sdl: &'a Sdl,
+    sound: &'a Sound<'b>,
+    action: MenuAction,
+    val: &'a mut T,
+    step: T,
+    min_value: T,
+    max_value: T,
+}
+
+impl<T> MenuChange<'_, '_, T>
+where
+    T: PartialOrd + AddAssign + SubAssign,
+{
+    unsafe fn run(self) {
+        let Self {
+            sound_on,
+            sdl,
+            sound,
+            action,
+            val,
+            step,
+            min_value,
+            max_value,
+        } = self;
+
+        if action == MenuAction::RIGHT && *val < max_value {
+            Data::move_lift_sound_static(sound_on, sdl, sound);
+            *val += step;
+            if *val > max_value {
+                *val = max_value;
+            }
+        } else if action == MenuAction::LEFT && *val > min_value {
+            Data::move_lift_sound_static(sound_on, sdl, sound);
+            *val -= step;
+            if *val <= min_value {
+                *val = min_value;
+            }
+        }
     }
 }

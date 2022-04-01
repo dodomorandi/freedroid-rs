@@ -814,16 +814,11 @@ impl Data<'_> {
             // In case a real level change has happend,
             // we need to do a lot of work:
 
-            loop {
-                match self.main.cur_ship.all_levels[array_num] {
-                    Some(level) => {
-                        if level.levelnum == cur_level {
-                            break;
-                        } else {
-                            array_num += 1;
-                        }
-                    }
-                    None => break,
+            while let Some(level) = self.main.cur_ship.all_levels[array_num] {
+                if level.levelnum == cur_level {
+                    break;
+                } else {
+                    array_num += 1;
                 }
             }
 

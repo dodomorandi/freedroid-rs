@@ -101,8 +101,8 @@ impl Data<'_> {
     pub unsafe fn play_sound(&self, tune: c_int) {
         Self::play_sound_static(
             self.main.sound_on,
-            &self.sdl,
-            &self.sound.as_ref().unwrap(),
+            self.sdl,
+            self.sound.as_ref().unwrap(),
             tune,
         )
     }
@@ -227,7 +227,7 @@ This usually just means that too many samples where played at the same time",
 
     #[inline]
     pub unsafe fn move_lift_sound(&self) {
-        Self::move_lift_sound_static(self.main.sound_on, &self.sdl, self.sound.as_ref().unwrap())
+        Self::move_lift_sound_static(self.main.sound_on, self.sdl, self.sound.as_ref().unwrap())
     }
 
     pub unsafe fn move_lift_sound_static(sound_on: c_int, sdl: &Sdl, sound: &Sound) {
