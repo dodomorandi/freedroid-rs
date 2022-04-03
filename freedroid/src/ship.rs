@@ -7,7 +7,7 @@ use crate::{
     },
     graphics::{scale_pic, Graphics},
     map::get_map_brick,
-    structs::Point,
+    structs::{Point, TextToBeDisplayed},
     vars::{BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES, WEAPON_NAMES},
     ArrayIndex, Data,
 };
@@ -430,7 +430,7 @@ Paradroid to eliminate all rogue robots.\0",
                 write!(
                     info_text.as_mut(),
                     "Notes: {}\0",
-                    CStr::from_ptr(droid.notes).to_str().unwrap()
+                    droid.notes.to_str().unwrap()
                 )
                 .unwrap();
             }
@@ -1015,9 +1015,7 @@ Paradroid to eliminate all rogue robots.\0",
                 CStr::from_ptr(self.main.cur_ship.area_name.as_ptr())
                     .to_str()
                     .unwrap(),
-                CStr::from_ptr(self.main.cur_level().levelname)
-                    .to_str()
-                    .unwrap(),
+                self.main.cur_level().levelname.to_str().unwrap(),
                 AlertNames::try_from(self.main.alert_level)
                     .unwrap()
                     .to_str(),
@@ -1170,7 +1168,7 @@ Paradroid to eliminate all rogue robots.\0",
         if cur_level != self.main.cur_level().levelnum {
             let mut array_num = 0;
 
-            while let Some(level) = self.main.cur_ship.all_levels[array_num] {
+            while let Some(level) = &self.main.cur_ship.all_levels[array_num] {
                 if level.levelnum == cur_level {
                     break;
                 } else {
@@ -1193,7 +1191,7 @@ Paradroid to eliminate all rogue robots.\0",
         }
 
         self.leave_lift_sound();
-        self.switch_background_music_to(self.main.cur_level().background_song_name);
+        self.switch_background_music_to(self.main.cur_level().background_song_name.as_ptr());
         self.clear_graph_mem();
         self.display_banner(
             null_mut(),
@@ -1203,7 +1201,7 @@ Paradroid to eliminate all rogue robots.\0",
 
         self.vars.me.status = Status::Mobile as c_int;
         self.vars.me.text_visible_time = 0.;
-        self.vars.me.text_to_be_displayed = self.main.cur_level().level_enter_comment;
+        self.vars.me.text_to_be_displayed = TextToBeDisplayed::LevelEnterComment;
     }
 
     pub unsafe fn level_empty(&self) -> c_int {

@@ -102,6 +102,50 @@ impl<const N: usize> ArrayCString<N> {
     pub fn as_mut_ptr(&mut self) -> *mut u8 {
         self.0.as_mut_ptr()
     }
+
+    #[inline]
+    fn eq_bytes(&self, other: &[u8]) -> bool {
+        if other.len() >= N {
+            return false;
+        }
+
+        let iter = self
+            .0
+            .iter()
+            .copied()
+            .take_while(|&c| c != 0)
+            .zip(other.iter().copied());
+
+        let mut len = 0;
+        for (a, b) in iter {
+            if a != b {
+                return false;
+            }
+            len += 1;
+        }
+
+        len == other.len()
+    }
+}
+
+impl<const N: usize> TryFrom<&str> for ArrayCString<N> {
+    type Error = Error;
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        let mut arr = Self::new();
+        arr.try_push_str(s)?;
+        Ok(arr)
+    }
+}
+
+impl<const N: usize> TryFrom<&CStr> for ArrayCString<N> {
+    type Error = Error;
+
+    fn try_from(s: &CStr) -> Result<Self, Self::Error> {
+        let mut arr = Self::new();
+        arr.try_push_cstr(s)?;
+        Ok(arr)
+    }
 }
 
 impl<const N: usize> Index<usize> for ArrayCString<N> {
@@ -151,6 +195,36 @@ impl<const N: usize> Default for ArrayCString<N> {
 
 impl<const N: usize> PartialEq for ArrayCString<N> {
     fn eq(&self, other: &Self) -> bool {
-        **self == **other
+        for (a, b) in self.0.iter().copied().zip(other.0.iter().copied()) {
+            if a != b || (a == 0) != (b == 0) {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+impl<const N: usize> PartialEq<str> for ArrayCString<N> {
+    fn eq(&self, other: &str) -> bool {
+        self.eq_bytes(other.as_bytes())
+    }
+}
+
+impl<const N: usize> PartialEq<CStr> for ArrayCString<N> {
+    fn eq(&self, other: &CStr) -> bool {
+        self.eq_bytes(other.to_bytes())
+    }
+}
+
+impl<const N: usize> PartialEq<ArrayCString<N>> for str {
+    fn eq(&self, other: &ArrayCString<N>) -> bool {
+        other == self
+    }
+}
+
+impl<const N: usize> PartialEq<ArrayCString<N>> for CStr {
+    fn eq(&self, other: &ArrayCString<N>) -> bool {
+        other == self
     }
 }

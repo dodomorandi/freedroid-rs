@@ -6,7 +6,7 @@ use crate::{
     },
     map::get_map_brick,
     misc::my_random,
-    structs::{Finepoint, Gps},
+    structs::{Finepoint, Gps, TextToBeDisplayed},
     Data,
 };
 
@@ -15,7 +15,7 @@ use defs::{Cmds, BLINKENERGY, MAX_INFLU_POSITION_HISTORY, WAIT_TRANSFERMODE};
 use log::{info, warn};
 use std::{
     ops::Not,
-    os::raw::{c_char, c_float, c_int},
+    os::raw::{c_float, c_int},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -76,14 +76,14 @@ impl Data<'_> {
             // since robots like the refresh, the influencer might also say so...
             if self.global.game_config.droid_talk != 0 {
                 self.vars.me.text_to_be_displayed =
-                    cstr!("Ahhh, that feels so good...").as_ptr() as *mut c_char;
+                    TextToBeDisplayed::String(cstr!("Ahhh, that feels so good..."));
                 self.vars.me.text_visible_time = 0.;
             }
         } else {
             // If nothing more is to be had, the influencer might also say so...
             if self.global.game_config.droid_talk != 0 {
                 self.vars.me.text_to_be_displayed =
-                    cstr!("Oh, it seems that was it again.").as_ptr() as *mut c_char;
+                    TextToBeDisplayed::String(cstr!("Oh, it seems that was it again."));
                 self.vars.me.text_visible_time = 0.;
             }
         }

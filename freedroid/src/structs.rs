@@ -1,7 +1,11 @@
 use crate::{array_c_string::ArrayCString, defs::*};
 
+use array_init::array_init;
 use sdl::{Rect, Surface};
-use std::ptr::null_mut;
+use std::{
+    ffi::{CStr, CString},
+    ptr::null_mut,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Point {
@@ -9,11 +13,11 @@ pub struct Point {
     pub y: i32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ThemeList {
     pub num_themes: i32,
     pub cur_tnum: i32,
-    pub theme_name: [*mut u8; MAX_THEMES],
+    pub theme_name: [CString; MAX_THEMES],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -80,7 +84,7 @@ pub struct Gps {
     pub z: i32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct DruidSpec {
     pub druidname: ArrayCString<20>,
     pub maxspeed: f32, /* the maximum of speed it can go */
@@ -99,32 +103,14 @@ pub struct DruidSpec {
     pub sensor1: i32,
     pub sensor2: i32,
     pub sensor3: i32,
-    pub notes: *mut i8, /* notes on the druid of this type */
+    pub notes: CString, /* notes on the druid of this type */
 }
 
-impl Default for DruidSpec {
-    fn default() -> Self {
-        Self {
-            druidname: Default::default(),
-            maxspeed: Default::default(),
-            class: Default::default(),
-            accel: Default::default(),
-            maxenergy: Default::default(),
-            lose_health: Default::default(),
-            gun: Default::default(),
-            aggression: Default::default(),
-            flashimmune: Default::default(),
-            score: Default::default(),
-            height: Default::default(),
-            weight: Default::default(),
-            drive: Default::default(),
-            brain: Default::default(),
-            sensor1: Default::default(),
-            sensor2: Default::default(),
-            sensor3: Default::default(),
-            notes: null_mut(),
-        }
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TextToBeDisplayed {
+    None,
+    String(&'static CStr),
+    LevelEnterComment,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -141,7 +127,7 @@ pub struct Influence {
     pub last_crysound_time: f32,
     pub last_transfer_sound_time: f32,
     pub text_visible_time: f32,
-    pub text_to_be_displayed: *mut i8,
+    pub text_to_be_displayed: TextToBeDisplayed,
     pub position_history_ring_buffer: [Gps; MAX_INFLU_POSITION_HISTORY],
 }
 
@@ -301,14 +287,14 @@ pub struct Waypoint {
     pub connections: [i32; MAX_WP_CONNECTIONS],
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Level {
     pub empty: i32,
     pub timer: f32,
     pub levelnum: i32,      /* Number of this level */
-    pub levelname: *mut i8, /* Name of this level */
-    pub background_song_name: *mut i8,
-    pub level_enter_comment: *mut i8,
+    pub levelname: CString, /* Name of this level */
+    pub background_song_name: CString,
+    pub level_enter_comment: CString,
     pub xlen: i32, /* X dimension */
     pub ylen: i32,
     pub color: i32,
@@ -320,7 +306,7 @@ pub struct Level {
     pub all_waypoints: [Waypoint; MAXWAYPOINTS],
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Ship {
     pub num_levels: i32,
     pub num_lifts: i32,
@@ -340,7 +326,7 @@ impl Default for Ship {
             num_lifts: 0,
             num_lift_rows: 0,
             area_name: [0; 100],
-            all_levels: [None; MAX_LEVELS],
+            all_levels: array_init(|_| None),
             all_lifts: [Lift {
                 level: 0,
                 x: 0,

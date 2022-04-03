@@ -6,8 +6,7 @@ use crate::{
     find_subslice,
     menu::SHIP_EXT,
     misc::{
-        dealloc_c_string, locate_string_in_data, my_random, read_and_malloc_string_from_data,
-        read_value_from_string,
+        locate_string_in_data, my_random, read_and_malloc_string_from_data, read_value_from_string,
     },
     read_and_malloc_and_terminate_file, split_at_subslice, split_at_subslice_mut,
     structs::{Finepoint, GrobPoint, Level, Waypoint},
@@ -90,9 +89,9 @@ pub unsafe fn free_level_memory(level: *mut Level) {
     }
 
     let level = &mut *level;
-    drop(Vec::from_raw_parts(level.levelname as *mut u8, 20, 20));
-    dealloc_c_string(level.background_song_name);
-    dealloc_c_string(level.level_enter_comment);
+    level.levelname = Default::default();
+    level.background_song_name = Default::default();
+    level.level_enter_comment = Default::default();
 
     let xlen = level.xlen;
     level
@@ -305,9 +304,9 @@ pub unsafe fn level_to_struct(data: *mut c_char) -> Option<Level> {
         empty: false.into(),
         timer: 0.,
         levelnum: 0,
-        levelname: null_mut(),
-        background_song_name: null_mut(),
-        level_enter_comment: null_mut(),
+        levelname: Default::default(),
+        background_song_name: Default::default(),
+        level_enter_comment: Default::default(),
         xlen: 0,
         ylen: 0,
         color: 0,
@@ -350,21 +349,15 @@ pub unsafe fn level_to_struct(data: *mut c_char) -> Option<Level> {
     info!("ylen of this level: {} ", loadlevel.ylen);
     info!("color of this level: {} ", loadlevel.ylen);
 
-    loadlevel.levelname = read_and_malloc_string_from_data(
-        data,
-        LEVEL_NAME_STRING_C.as_ptr() as *mut c_char,
-        cstr!("\n").as_ptr() as *mut c_char,
-    );
-    loadlevel.background_song_name = read_and_malloc_string_from_data(
-        data,
-        BACKGROUND_SONG_NAME_STRING_C.as_ptr() as *mut c_char,
-        cstr!("\n").as_ptr() as *mut c_char,
-    );
-    loadlevel.level_enter_comment = read_and_malloc_string_from_data(
-        data,
-        LEVEL_ENTER_COMMENT_STRING_C.as_ptr() as *mut c_char,
-        cstr!("\n").as_ptr() as *mut c_char,
-    );
+    {
+        let data = CStr::from_ptr(data);
+        loadlevel.levelname =
+            read_and_malloc_string_from_data(data, LEVEL_NAME_STRING_C, cstr!("\n"));
+        loadlevel.background_song_name =
+            read_and_malloc_string_from_data(data, BACKGROUND_SONG_NAME_STRING_C, cstr!("\n"));
+        loadlevel.level_enter_comment =
+            read_and_malloc_string_from_data(data, LEVEL_ENTER_COMMENT_STRING_C, cstr!("\n"));
+    }
 
     // find the map data
     let map_begin = libc::strstr(data, MAP_BEGIN_STRING_C.as_ptr());
@@ -1391,13 +1384,17 @@ freedroid-discussion@lists.sourceforge.net\n\
 
         // Now we read the Area-name from the loaded data
         let buffer = read_and_malloc_string_from_data(
-            ship_data.as_mut_ptr() as *mut c_char,
-            AREA_NAME_STRING_C.as_ptr() as *mut c_char,
-            cstr!("\"").as_ptr() as *mut c_char,
+            CStr::from_ptr(ship_data.as_ptr() as *const c_char),
+            AREA_NAME_STRING_C,
+            cstr!("\""),
         );
-        libc::strncpy(self.main.cur_ship.area_name.as_mut_ptr(), buffer, 99);
+        libc::strncpy(
+            self.main.cur_ship.area_name.as_mut_ptr(),
+            buffer.as_ptr(),
+            99,
+        );
         self.main.cur_ship.area_name[99] = 0;
-        dealloc_c_string(buffer);
+        drop(buffer);
 
         // Now we count the number of levels and remember their start-addresses.
         // This is done by searching for the LEVEL_END_STRING again and again
@@ -1579,21 +1576,21 @@ pub unsafe fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
         level_cursor,
         "{}{}",
         LEVEL_NAME_STRING,
-        CStr::from_ptr(level.levelname).to_str().unwrap()
+        level.levelname.to_str().unwrap()
     )
     .unwrap();
     writeln!(
         level_cursor,
         "{}{}",
         LEVEL_ENTER_COMMENT_STRING,
-        CStr::from_ptr(level.level_enter_comment).to_str().unwrap()
+        level.level_enter_comment.to_str().unwrap()
     )
     .unwrap();
     writeln!(
         level_cursor,
         "{}{}",
         BACKGROUND_SONG_NAME_STRING,
-        CStr::from_ptr(level.background_song_name).to_str().unwrap()
+        level.background_song_name.to_str().unwrap()
     )
     .unwrap();
 

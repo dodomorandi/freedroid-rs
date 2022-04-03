@@ -2,6 +2,7 @@ use crate::{
     b_font::{char_width, font_height, BFont},
     defs::{Cmds, PointerStates, SHOW_WAIT, TEXT_STRETCH},
     misc::my_random,
+    structs::TextToBeDisplayed,
     Data, FontCellOwner,
 };
 
@@ -24,12 +25,11 @@ use sdl_sys::{
     SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
 };
 use std::{
-    ffi::CStr,
+    ffi::{CStr, CString},
     fmt,
     io::Cursor,
     ops::Not,
     os::raw::{c_char, c_int, c_uchar},
-    ptr::null_mut,
 };
 
 #[cfg(feature = "arcade-input")]
@@ -72,12 +72,12 @@ impl Data<'_> {
     /// * echo=2    print using graphics-text
     ///
     /// values of echo > 2 are ignored and treated like echo=0
-    pub unsafe fn get_string(&mut self, max_len: c_int, echo: c_int) -> *mut c_char {
+    pub unsafe fn get_string(&mut self, max_len: c_int, echo: c_int) -> Option<CString> {
         let max_len: usize = max_len.try_into().unwrap();
 
         if echo == 1 {
             error!("GetString(): sorry, echo=1 currently not implemented!\n");
-            return null_mut();
+            return None;
         }
 
         let x0 = self.text.my_cursor_x;
@@ -114,12 +114,12 @@ impl Data<'_> {
         #[cfg(feature = "arcade-input")]
         let mut inputchar: c_int = 17; // initial char = A
         #[cfg(feature = "arcade-input")]
-        let empty_char = b' ' as c_char; //for "empty" input line / backspace etc...
+        let empty_char = b' '; //for "empty" input line / backspace etc...
 
         #[cfg(not(feature = "arcade-input"))]
-        let empty_char = b'.' as c_char; //for "empty" input linue / backspace etc...
+        let empty_char = b'.'; //for "empty" input linue / backspace etc...
 
-        let mut input = vec![empty_char; max_len + 5].into_boxed_slice();
+        let mut input = vec![empty_char; max_len + 5];
         input[max_len] = 0;
 
         let mut finished = false;
@@ -133,7 +133,7 @@ impl Data<'_> {
                 &mut ne_screen,
                 x0,
                 y0,
-                CStr::from_ptr(input.as_ptr()).to_bytes(),
+                CStr::from_ptr(input.as_ptr() as *const c_char).to_bytes(),
             );
             assert!(ne_screen.flip());
             self.graphics.ne_screen = Some(ne_screen);
@@ -213,17 +213,21 @@ impl Data<'_> {
                     if curpos > 0 {
                         curpos -= 1
                     };
-                    input[curpos] = b'.' as c_char;
+                    input[curpos] = b'.';
                 }
             }
         }
 
+        let end_pos = input.iter().copied().position(|c| c == 0).unwrap();
+        input.truncate(end_pos + 1);
+        let input = CString::from_vec_with_nul(input).unwrap();
+
         info!(
             "GetString(..): The final string is: {}",
-            CStr::from_ptr(input.as_ptr()).to_string_lossy()
+            input.to_string_lossy()
         );
 
-        Box::into_raw(input) as *mut c_char
+        Some(input)
     }
 
     /// Should do roughly what getchar() does, but in raw (SLD) keyboard mode.
@@ -636,38 +640,31 @@ impl Data<'_> {
 
         self.vars.me.text_visible_time = 0.;
 
-        match my_random(6) {
+        let new_text = match my_random(6) {
             0 => {
-                self.vars.me.text_to_be_displayed =
-                    cstr!("Aaarrgh, aah, that burnt me!").as_ptr() as *mut c_char
+                cstr!("Aaarrgh, aah, that burnt me!")
             }
             1 => {
-                self.vars.me.text_to_be_displayed =
-                    cstr!("Hell, that blast was hot!").as_ptr() as *mut c_char
+                cstr!("Hell, that blast was hot!")
             }
             2 => {
-                self.vars.me.text_to_be_displayed =
-                    cstr!("Ghaart, I hate to stain my chassis like that.").as_ptr() as *mut c_char
+                cstr!("Ghaart, I hate to stain my chassis like that.")
             }
             3 => {
-                self.vars.me.text_to_be_displayed =
-                    cstr!("Oh no!  I think I've burnt a cable!").as_ptr() as *mut c_char
+                cstr!("Oh no!  I think I've burnt a cable!")
             }
             4 => {
-                self.vars.me.text_to_be_displayed =
-                    cstr!("Oh no, my poor transfer connectors smolder!").as_ptr() as *mut c_char
+                cstr!("Oh no, my poor transfer connectors smolder!")
             }
             5 => {
-                self.vars.me.text_to_be_displayed =
-                    cstr!("I hope that didn't melt any circuits!").as_ptr() as *mut c_char
+                cstr!("I hope that didn't melt any circuits!")
             }
             6 => {
-                self.vars.me.text_to_be_displayed =
-                    cstr!("So that gives some more black scars on me ol' dented chassis!").as_ptr()
-                        as *mut c_char
+                cstr!("So that gives some more black scars on me ol' dented chassis!")
             }
             _ => unreachable!(),
-        }
+        };
+        self.vars.me.text_to_be_displayed = TextToBeDisplayed::String(new_text);
     }
 
     /// Scrolls a given text down inside the given rect
@@ -675,7 +672,7 @@ impl Data<'_> {
     /// returns 0 if end of text was scolled out, 1 if user pressed fire
     pub unsafe fn scroll_text(
         &mut self,
-        text: *mut c_char,
+        text: *const c_char,
         rect: &mut Rect,
         _seconds_minimum_duration: c_int,
     ) -> c_int {

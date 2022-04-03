@@ -307,10 +307,10 @@ impl Data<'_> {
                 );
                 assert!(ne_screen.flip());
                 self.graphics.ne_screen = Some(ne_screen);
-                let numeric_input_string = self.get_string(10, 2);
+                let numeric_input_string = self.get_string(10, 2).unwrap();
                 let mut special_map_value: c_int = 0;
                 libc::sscanf(
-                    numeric_input_string,
+                    numeric_input_string.as_ptr(),
                     cstr!("%d").as_ptr() as *mut c_char,
                     &mut special_map_value,
                 );

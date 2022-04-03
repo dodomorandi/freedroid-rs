@@ -1,12 +1,12 @@
 use crate::{
     defs::{Droid, Status, ALLBLASTTYPES, MAX_INFLU_POSITION_HISTORY},
-    structs::{BlastSpec, BulletSpec, DruidSpec, Finepoint, Gps, Influence},
+    structs::{BlastSpec, BulletSpec, DruidSpec, Finepoint, Gps, Influence, TextToBeDisplayed},
 };
 
 use array_init::array_init;
 use cstr::cstr;
 use sdl::Rect;
-use std::{ffi::CStr, os::raw::c_int, ptr::null_mut};
+use std::{ffi::CStr, os::raw::c_int};
 
 #[derive(Debug)]
 pub struct Vars<'sdl> {
@@ -86,7 +86,7 @@ impl Default for Vars<'_> {
                 last_crysound_time: 0.,
                 last_transfer_sound_time: 0.,
                 text_visible_time: 0.,
-                text_to_be_displayed: null_mut(),
+                text_to_be_displayed: TextToBeDisplayed::None,
                 position_history_ring_buffer: [Gps { x: 0., y: 0., z: 0 };
                     MAX_INFLU_POSITION_HISTORY],
             },

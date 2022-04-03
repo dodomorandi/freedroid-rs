@@ -15,10 +15,9 @@ use defs::MAXBULLETS;
 use log::{error, info, warn};
 use sdl::Rect;
 use std::{
-    alloc::{alloc_zeroed, dealloc, Layout},
     borrow::Cow,
     env,
-    ffi::CStr,
+    ffi::{CStr, CString},
     fs::{self, File},
     os::raw::{c_char, c_float, c_int, c_long, c_void},
     path::Path,
@@ -186,44 +185,52 @@ pub unsafe fn count_string_occurences(
 /// from after there up to a sting end indicator and mallocs memory for
 /// it, copys it there and returns it.
 /// The original source string specified should in no way be modified.
-pub unsafe fn read_and_malloc_string_from_data(
-    search_string: *mut c_char,
-    start_indication_string: *mut c_char,
-    end_indication_string: *mut c_char,
-) -> *mut c_char {
-    let search_pointer = libc::strstr(search_string, start_indication_string);
-    if search_pointer.is_null() {
-        panic!(
-            "\n\
-             \n\
-             ----------------------------------------------------------------------\n\
-             Freedroid has encountered a problem:\n\
-             In function 'char* ReadAndMalocStringFromData ( ... ):\n\
-             A starter string that was supposed to be in some data, most likely from an external\n\
-             data file could not be found, which indicates a corrupted data file or \n\
-             a serious bug in the reading functions.\n\
-             \n\
-             The string that couldn't be located was: {}\n\
-             \n\
-             Please check that your external text files are properly set up.\n\
-             \n\
-             Please also don't forget, that you might have to run 'make install'\n\
-             again after you've made modifications to the data files in the source tree.\n\
-             \n\
-             Freedroid will terminate now to draw attention to the data problem it could\n\
-             not resolve.... Sorry, if that interrupts a major game of yours.....\n\
-             ----------------------------------------------------------------------\n\
-             \n",
-            CStr::from_ptr(start_indication_string).to_string_lossy()
-        );
-    } else {
-        // Now we move to the beginning
-        let search_pointer = search_pointer.add(libc::strlen(start_indication_string));
-        let end_of_string_pointer = libc::strstr(search_pointer, end_indication_string);
-        // Now we move to the end with the end pointer
-        assert!(
-            !end_of_string_pointer.is_null(),
-            "\n\
+pub fn read_and_malloc_string_from_data(
+    search_string: &CStr,
+    start_indication_string: &CStr,
+    end_indication_string: &CStr,
+) -> CString {
+    let search_slice = search_string.to_bytes();
+    let start_indication_slice = start_indication_string.to_bytes();
+    let mut search_pos = search_slice
+        .windows(start_indication_slice.len())
+        .position(|s| s == start_indication_slice)
+        .unwrap_or_else(|| {
+            panic!(
+                "\n\
+                 \n\
+                 ----------------------------------------------------------------------\n\
+                 Freedroid has encountered a problem:\n\
+                 In function 'char* ReadAndMalocStringFromData ( ... ):\n\
+                 A starter string that was supposed to be in some data, most likely from an external\n\
+                 data file could not be found, which indicates a corrupted data file or \n\
+                 a serious bug in the reading functions.\n\
+                 \n\
+                 The string that couldn't be located was: {}\n\
+                 \n\
+                 Please check that your external text files are properly set up.\n\
+                 \n\
+                 Please also don't forget, that you might have to run 'make install'\n\
+                 again after you've made modifications to the data files in the source tree.\n\
+                 \n\
+                 Freedroid will terminate now to draw attention to the data problem it could\n\
+                 not resolve.... Sorry, if that interrupts a major game of yours.....\n\
+                 ----------------------------------------------------------------------\n\
+                 \n",
+                start_indication_string.to_string_lossy()
+            )
+        });
+
+    // Now we move to the beginning
+    search_pos += start_indication_slice.len();
+    let end_indication_slice = end_indication_string.to_bytes();
+    let search_slice = &search_slice[search_pos..];
+    let string_length = search_slice
+        .windows(end_indication_slice.len())
+        .position(|s| s == end_indication_slice)
+        .unwrap_or_else(|| {
+            panic!(
+                "\n\
                  \n\
                  ----------------------------------------------------------------------\n\
                  Freedroid has encountered a problem:\n\
@@ -244,35 +251,18 @@ pub unsafe fn read_and_malloc_string_from_data(
                  not resolve.... Sorry, if that interrupts a major game of yours.....\n\
                  ----------------------------------------------------------------------\n\
                  \n",
-            CStr::from_ptr(end_indication_string).to_string_lossy()
-        );
+                end_indication_string.to_string_lossy()
+            )
+        });
 
-        // Now we allocate memory and copy the string...
-        let string_length = end_of_string_pointer.offset_from(search_pointer);
+    let return_string = CString::new(&search_slice[..string_length]).unwrap();
 
-        let return_string =
-            alloc_zeroed(Layout::array::<i8>(usize::try_from(string_length).unwrap() + 1).unwrap())
-                as *mut c_char;
-        libc::strncpy(
-            return_string,
-            search_pointer,
-            string_length.try_into().unwrap(),
-        );
-        *return_string.add(string_length.try_into().unwrap()) = 0;
-
-        info!(
-            "ReadAndMalocStringFromData): Successfully identified string: {}.",
-            CStr::from_ptr(return_string).to_string_lossy()
-        );
-        return_string
-    }
-}
-
-pub unsafe fn dealloc_c_string(string_ptr: *mut i8) {
-    dealloc(
-        string_ptr as *mut u8,
-        Layout::array::<i8>(CStr::from_ptr(string_ptr).to_bytes_with_nul().len()).unwrap(),
+    info!(
+        "ReadAndMalocStringFromData): Successfully identified string: {}.",
+        return_string.to_string_lossy()
     );
+
+    return_string
 }
 
 impl Data<'_> {
@@ -814,7 +804,7 @@ impl Data<'_> {
             // In case a real level change has happend,
             // we need to do a lot of work:
 
-            while let Some(level) = self.main.cur_ship.all_levels[array_num] {
+            while let Some(level) = &self.main.cur_ship.all_levels[array_num] {
                 if level.levelnum == cur_level {
                     break;
                 } else {

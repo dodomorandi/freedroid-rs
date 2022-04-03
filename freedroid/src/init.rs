@@ -9,13 +9,13 @@ use crate::{
     global::Global,
     graphics::Graphics,
     misc::{
-        count_string_occurences, dealloc_c_string, locate_string_in_data, my_random,
+        count_string_occurences, locate_string_in_data, my_random,
         read_and_malloc_string_from_data, read_value_from_string,
     },
     read_and_malloc_and_terminate_file,
     sound::Sound,
     split_at_subslice,
-    structs::{BulletSpec, DruidSpec},
+    structs::{BulletSpec, DruidSpec, TextToBeDisplayed},
     ArrayIndex, Data,
 };
 
@@ -28,28 +28,18 @@ use log::{error, info, warn};
 use nom::Finish;
 use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
-    ffi::CStr,
+    ffi::{CStr, CString},
     ops::Not,
     os::raw::{c_char, c_float, c_int, c_long, c_uint, c_void},
     path::Path,
     ptr::null_mut,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Init {
-    debriefing_text: *mut c_char,
+    debriefing_text: CString,
     debriefing_song: ArrayCString<500>,
     previous_mission_name: ArrayCString<500>,
-}
-
-impl Default for Init {
-    fn default() -> Self {
-        Self {
-            debriefing_text: null_mut(),
-            debriefing_song: Default::default(),
-            previous_mission_name: Default::default(),
-        }
-    }
 }
 
 const MISSION_COMPLETE_BONUS: f32 = 1000.;
@@ -147,16 +137,15 @@ impl Data<'_> {
         drop(self.highscore.entries.take());
 
         // free constant text blobs
-        dealloc_c_string(self.init.debriefing_text);
-        self.init.debriefing_text = null_mut();
+        self.init.debriefing_text = Default::default();
     }
 
-    pub unsafe fn free_druidmap(&mut self) {
+    pub fn free_druidmap(&mut self) {
         if self.vars.droidmap.is_empty() {
             return;
         }
-        for droid in &self.vars.droidmap {
-            dealloc_c_string(droid.notes);
+        for droid in &mut self.vars.droidmap {
+            droid.notes = Default::default();
         }
 
         self.vars.droidmap.clear();
@@ -213,7 +202,7 @@ impl Data<'_> {
         rect.inc_x(10);
         rect.dec_width(20); //leave some border
         self.b_font.current_font = self.global.para_b_font.clone();
-        self.scroll_text(self.init.debriefing_text, &mut rect, 6);
+        self.scroll_text(self.init.debriefing_text.as_ptr(), &mut rect, 6);
 
         self.wait_for_all_keys_released();
     }
@@ -231,7 +220,7 @@ impl Data<'_> {
 
         self.global.skip_a_few_frames = false.into();
         self.vars.me.text_visible_time = 0.;
-        self.vars.me.text_to_be_displayed = null_mut();
+        self.vars.me.text_to_be_displayed = TextToBeDisplayed::None;
 
         // these are the hardcoded game-defaults, they can be overloaded by the config-file if present
         self.global.game_config.current_bg_music_volume = 0.3;
@@ -398,15 +387,7 @@ impl Data<'_> {
 
         // just to make sure...
         self.graphics.all_themes.num_themes = 0;
-        self.graphics
-            .all_themes
-            .theme_name
-            .iter_mut()
-            .filter(|name| name.is_null().not())
-            .for_each(|name| {
-                dealloc_c_string(*name as *mut i8);
-                *name = null_mut();
-            });
+        self.graphics.all_themes.theme_name.fill(Default::default());
 
         let mut add_theme_from_dir = |dir_name: &Path| {
             let dir_name = dir_name.join("graphics");
@@ -480,11 +461,7 @@ impl Data<'_> {
                                 .all_themes
                                 .theme_name
                                 .iter()
-                                .copied()
-                                .filter(|theme| theme.is_null().not())
-                                .filter_map(|theme| {
-                                    CStr::from_ptr(theme as *const c_char).to_str().ok()
-                                })
+                                .filter_map(|s| s.to_str().ok())
                                 .any(|theme| theme == theme_name);
 
                             if theme_exists {
@@ -496,17 +473,10 @@ impl Data<'_> {
                                     classic_theme_index =
                                         self.graphics.all_themes.num_themes.try_into().unwrap();
                                 }
-                                let new_theme = &mut self.graphics.all_themes.theme_name
-                                    [usize::try_from(self.graphics.all_themes.num_themes).unwrap()];
-                                *new_theme = alloc_zeroed(
-                                    Layout::array::<u8>(theme_name.len() + 1).unwrap(),
-                                ) as *mut u8;
-                                std::ptr::copy_nonoverlapping(
-                                    theme_name.as_ptr(),
-                                    *new_theme,
-                                    theme_name.len(),
-                                );
-                                *new_theme.add(theme_name.len()) = b'\0';
+                                self.graphics.all_themes.theme_name[usize::try_from(
+                                    self.graphics.all_themes.num_themes,
+                                )
+                                .unwrap()] = CString::new(theme_name).unwrap();
 
                                 self.graphics.all_themes.num_themes += 1;
                             }
@@ -540,28 +510,25 @@ impl Data<'_> {
         let selected_theme_index = all_themes.theme_name
             [..usize::try_from(all_themes.num_themes).unwrap()]
             .iter()
-            .copied()
-            .position(|theme_name| {
-                libc::strcmp(theme_name as *const _, game_config.theme_name.as_ptr()) == 0
-            });
+            .position(|theme_name| **theme_name == game_config.theme_name);
 
         match selected_theme_index {
             Some(index) => {
                 info!(
                     "Found selected theme {} from GameConfig.",
-                    CStr::from_ptr(self.global.game_config.theme_name.as_ptr()).to_string_lossy(),
+                    self.global.game_config.theme_name.to_string_lossy(),
                 );
                 self.graphics.all_themes.cur_tnum = index.try_into().unwrap();
             }
             None => {
                 warn!(
                     "selected theme {} not valid! Using classic theme.",
-                    CStr::from_ptr(self.global.game_config.theme_name.as_ptr()).to_string_lossy(),
+                    self.global.game_config.theme_name.to_string_lossy(),
                 );
-                libc::strcpy(
-                    self.global.game_config.theme_name.as_mut_ptr() as *mut c_char,
-                    self.graphics.all_themes.theme_name[classic_theme_index] as *const _,
-                );
+                self.global
+                    .game_config
+                    .theme_name
+                    .set(&self.graphics.all_themes.theme_name[classic_theme_index]);
                 self.graphics.all_themes.cur_tnum = classic_theme_index.try_into().unwrap();
             }
         }
@@ -712,7 +679,7 @@ impl Data<'_> {
         //  if (Me.TextToBeDisplayed) free (Me.TextToBeDisplayed);
 
         self.vars.me.text_to_be_displayed =
-            cstr!("Ok. I'm on board.  Let's get to work.").as_ptr() as *mut c_char; // taken from Paradroid.mission
+            TextToBeDisplayed::String(cstr!("Ok. I'm on board.  Let's get to work.")); // taken from Paradroid.mission
         self.vars.me.text_visible_time = 0.;
 
         //--------------------
@@ -745,13 +712,10 @@ impl Data<'_> {
             self.init.debriefing_song.as_mut_ptr() as *mut c_void,
         );
 
-        if self.init.debriefing_text.is_null().not() {
-            dealloc_c_string(self.init.debriefing_text);
-        }
         self.init.debriefing_text = read_and_malloc_string_from_data(
-            main_mission_pointer.as_mut_ptr() as *mut c_char,
-            MISSION_ENDTITLE_BEGIN_STRING.as_ptr() as *mut c_char,
-            MISSION_ENDTITLE_END_STRING.as_ptr() as *mut c_char,
+            CStr::from_ptr(main_mission_pointer.as_ptr() as *const c_char),
+            MISSION_ENDTITLE_BEGIN_STRING,
+            MISSION_ENDTITLE_END_STRING,
         );
 
         //--------------------
@@ -851,7 +815,7 @@ impl Data<'_> {
         );
 
         // Switch_Background_Music_To (COMBAT_BACKGROUND_MUSIC_SOUND);
-        self.switch_background_music_to(self.main.cur_level().background_song_name);
+        self.switch_background_music_to(self.main.cur_level().background_song_name.as_ptr());
 
         for level_index in 0..usize::try_from(self.main.cur_ship.num_levels).unwrap() {
             self.main.cur_level_index = Some(ArrayIndex::new(level_index));
@@ -1307,9 +1271,9 @@ impl Data<'_> {
             // Now we read in the notes concerning this droid.  We consider as notes all the rest of the
             // line after the NOTES_BEGIN_STRING until the "\n" is found.
             droid.notes = read_and_malloc_string_from_data(
-                robot_pointer,
-                NOTES_BEGIN_STRING.as_ptr() as *mut c_char,
-                cstr!("\n").as_ptr() as *mut c_char,
+                CStr::from_ptr(robot_pointer),
+                NOTES_BEGIN_STRING,
+                cstr!("\n"),
             );
 
             self.vars.droidmap.push(droid);

@@ -2,6 +2,7 @@
 use crate::defs::{gcw0_a_pressed, gcw0_any_button_pressed, gcw0_any_button_pressed_r};
 
 use crate::{
+    array_c_string::ArrayCString,
     b_font::{char_width, font_height, print_string_font},
     cur_level,
     defs::{
@@ -12,7 +13,6 @@ use crate::{
     graphics::Graphics,
     input::{CMD_STRINGS, KEY_STRINGS},
     map::COLOR_NAMES,
-    misc::dealloc_c_string,
     sound::Sound,
     Data, Sdl,
 };
@@ -30,10 +30,9 @@ use std::{
     ops::{AddAssign, Not, SubAssign},
     os::raw::{c_char, c_float, c_int},
     ptr::null_mut,
-    sync::atomic::AtomicBool,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Menu<'sdl> {
     font_height: i32,
     menu_background: Option<Surface<'sdl>>,
@@ -43,13 +42,13 @@ pub struct Menu<'sdl> {
     menu_action_directions: MenuActionDirections,
     show_menu_last_move_tick: u32,
     key_config_menu_last_move_tick: u32,
-    fname: [c_char; 255],
-    le_level_number_buf: [c_char; 256],
-    le_size_x_buf: [c_char; 256],
-    le_size_y_buf: [c_char; 256],
-    empty_level_speedup_buf: [c_char; 256],
-    music_volume_buf: [c_char; 256],
-    sound_volume_buf: [c_char; 256],
+    fname: ArrayCString<256>,
+    le_level_number_buf: ArrayCString<256>,
+    le_size_x_buf: ArrayCString<256>,
+    le_size_y_buf: ArrayCString<256>,
+    empty_level_speedup_buf: ArrayCString<256>,
+    music_volume_buf: ArrayCString<256>,
+    sound_volume_buf: ArrayCString<256>,
 }
 
 #[derive(Debug, Default)]
@@ -58,28 +57,6 @@ struct MenuActionDirections {
     down: bool,
     left: bool,
     right: bool,
-}
-
-impl Default for Menu<'_> {
-    fn default() -> Self {
-        Self {
-            font_height: 0,
-            menu_background: None,
-            quit_menu: false,
-            quit_level_editor: false,
-            last_movekey_time: 0,
-            menu_action_directions: Default::default(),
-            show_menu_last_move_tick: 0,
-            key_config_menu_last_move_tick: 0,
-            fname: [0; 255],
-            le_level_number_buf: [0; 256],
-            le_size_x_buf: [0; 256],
-            le_size_y_buf: [0; 256],
-            empty_level_speedup_buf: [0; 256],
-            music_volume_buf: [0; 256],
-            sound_volume_buf: [0; 256],
-        }
-    }
 }
 
 // const FILENAME_LEN: u8 = 128;
@@ -128,7 +105,7 @@ macro_rules! menu_entry {
 
 pub struct MenuEntry<'sdl> {
     name: *const c_char,
-    handler: Option<unsafe fn(&mut Data<'sdl>, MenuAction) -> *const c_char>,
+    handler: Option<for<'a> unsafe fn(&'a mut Data<'sdl>, MenuAction) -> Option<&'a CStr>>,
     submenu: *const MenuEntry<'sdl>,
 }
 
@@ -214,9 +191,9 @@ impl<'sdl> Data<'sdl> {
         menu_entry! {},
     ];
 
-    pub unsafe fn handle_quit_game(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_quit_game(&mut self, action: MenuAction) -> Option<&CStr> {
         if action != MenuAction::CLICK {
-            return null_mut();
+            return None;
         }
 
         self.menu_item_selected_sound();
@@ -266,7 +243,7 @@ impl<'sdl> Data<'sdl> {
             }
         }
 
-        null_mut()
+        None
     }
 
     /// simple wrapper to ShowMenu() to provide the external entry point into the main menu
@@ -469,14 +446,13 @@ impl<'sdl> Data<'sdl> {
                     );
                     self.printf_sdl(&mut ne_screen, -1, -1, format_args!("New zoom factor: "));
                     self.graphics.ne_screen = Some(ne_screen);
-                    let input = self.get_string(40, 2);
+                    let input = self.get_string(40, 2).unwrap();
                     ne_screen = self.graphics.ne_screen.take().unwrap();
                     libc::sscanf(
-                        input,
+                        input.as_ptr(),
                         cstr!("%f").as_ptr() as *mut c_char,
                         &mut self.global.current_combat_scale_factor,
                     );
-                    drop(Vec::from_raw_parts(input as *mut i8, 45, 45));
                     self.set_combat_scale_to(self.global.current_combat_scale_factor);
                 }
 
@@ -655,20 +631,19 @@ impl<'sdl> Data<'sdl> {
                     ne_screen = self.graphics.ne_screen.take().unwrap();
                     self.printf_sdl(&mut ne_screen, X0, Y0, format_args!("Enter Level, X, Y: "));
                     self.graphics.ne_screen = Some(ne_screen);
-                    let input = self.get_string(40, 2);
+                    let input = self.get_string(40, 2).unwrap();
                     ne_screen = self.graphics.ne_screen.take().unwrap();
                     let mut l_num = 0;
                     let mut x = 0;
                     let mut y = 0;
 
                     libc::sscanf(
-                        input,
+                        input.as_ptr(),
                         cstr!("%d, %d, %d\n").as_ptr() as *mut c_char,
                         &mut l_num,
                         &mut x,
                         &mut y,
                     );
-                    drop(Vec::from_raw_parts(input as *mut i8, 45, 45));
                     self.teleport(l_num, x, y);
                 }
 
@@ -684,11 +659,11 @@ impl<'sdl> Data<'sdl> {
                         format_args!("Type number of new robot: "),
                     );
                     self.graphics.ne_screen = Some(ne_screen);
-                    let input = self.get_string(40, 2);
+                    let input = self.get_string(40, 2).unwrap();
                     ne_screen = self.graphics.ne_screen.take().unwrap();
                     let mut i = 0;
                     for _ in 0..u32::try_from(self.main.number_of_droid_types).unwrap() {
-                        if libc::strcmp(self.vars.droidmap[i].druidname.as_ptr(), input) != 0 {
+                        if self.vars.droidmap[i].druidname != *input {
                             break;
                         }
                         i += 1;
@@ -699,10 +674,7 @@ impl<'sdl> Data<'sdl> {
                             &mut ne_screen,
                             X0,
                             Y0 + 20,
-                            format_args!(
-                                "Unrecognized robot-type: {}",
-                                CStr::from_ptr(input).to_str().unwrap(),
-                            ),
+                            format_args!("Unrecognized robot-type: {}", input.to_str().unwrap(),),
                         );
                         self.getchar_raw();
                         self.graphics.ne_screen = Some(ne_screen);
@@ -717,14 +689,10 @@ impl<'sdl> Data<'sdl> {
                             &mut ne_screen,
                             X0,
                             Y0 + 20,
-                            format_args!(
-                                "You are now a {}. Have fun!\n",
-                                CStr::from_ptr(input).to_str().unwrap(),
-                            ),
+                            format_args!("You are now a {}. Have fun!\n", input.to_str().unwrap(),),
                         );
                         self.getchar_raw();
                     }
-                    drop(Vec::from_raw_parts(input as *mut i8, 45, 45));
                 }
 
                 Some(b'i') => {
@@ -750,11 +718,14 @@ impl<'sdl> Data<'sdl> {
                         format_args!("Enter your new energy: "),
                     );
                     self.graphics.ne_screen = Some(ne_screen);
-                    let input = self.get_string(40, 2);
+                    let input = self.get_string(40, 2).unwrap();
                     ne_screen = self.graphics.ne_screen.take().unwrap();
                     let mut num = 0;
-                    libc::sscanf(input, cstr!("%d").as_ptr() as *mut c_char, &mut num);
-                    drop(Vec::from_raw_parts(input as *mut i8, 45, 45));
+                    libc::sscanf(
+                        input.as_ptr(),
+                        cstr!("%d").as_ptr() as *mut c_char,
+                        &mut num,
+                    );
                     self.vars.me.energy = num as f32;
                     if self.vars.me.energy > self.vars.me.health {
                         self.vars.me.health = self.vars.me.energy;
@@ -775,11 +746,14 @@ impl<'sdl> Data<'sdl> {
                     /* Show deck map in Concept view */
                     self.printf_sdl(&mut ne_screen, -1, -1, format_args!("\nLevelnum: "));
                     self.graphics.ne_screen = Some(ne_screen);
-                    let input = self.get_string(40, 2);
+                    let input = self.get_string(40, 2).unwrap();
                     ne_screen = self.graphics.ne_screen.take().unwrap();
                     let mut l_num = 0;
-                    libc::sscanf(input, cstr!("%d").as_ptr() as *mut c_char, &mut l_num);
-                    drop(Vec::from_raw_parts(input as *mut i8, 45, 45));
+                    libc::sscanf(
+                        input.as_ptr(),
+                        cstr!("%d").as_ptr() as *mut c_char,
+                        &mut l_num,
+                    );
                     self.graphics.ne_screen = Some(ne_screen);
                     self.show_deck_map();
                     ne_screen = self.graphics.ne_screen.take().unwrap();
@@ -1008,14 +982,8 @@ impl<'sdl> Data<'sdl> {
                 menu_entries.iter().enumerate().for_each(|(i, entry)| {
                     let arg = entry
                         .handler
-                        .map(|handler| (handler)(self, MenuAction::INFO))
-                        .unwrap_or(null_mut());
-
-                    let arg = if arg.is_null() {
-                        cstr!("").as_ptr()
-                    } else {
-                        arg
-                    };
+                        .and_then(|handler| (handler)(self, MenuAction::INFO))
+                        .unwrap_or(cstr!(""));
 
                     let mut full_name: [u8; 256] = [0; 256];
                     let mut cursor = Cursor::new(full_name.as_mut());
@@ -1023,7 +991,7 @@ impl<'sdl> Data<'sdl> {
                         cursor,
                         "{}{}",
                         CStr::from_ptr(entry.name).to_str().unwrap(),
-                        CStr::from_ptr(arg).to_str().unwrap()
+                        arg.to_str().unwrap()
                     )
                     .unwrap();
                     let position = usize::try_from(cursor.position()).unwrap();
@@ -1522,38 +1490,38 @@ impl<'sdl> Data<'sdl> {
         self.show_menu(Self::LEVEL_EDITOR_MENU.as_ptr());
     }
 
-    pub unsafe fn handle_configure_keys(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_configure_keys(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::CLICK {
             self.menu_item_selected_sound();
             self.key_config_menu();
         }
 
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_highscores(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_highscores(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::CLICK {
             self.menu_item_selected_sound();
             self.show_highscores();
         }
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_credits(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_credits(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::CLICK {
             self.menu_item_selected_sound();
             self.show_credits();
         }
 
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_le_save_ship(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_le_save_ship(&mut self, action: MenuAction) -> Option<&CStr> {
         use std::io::Write;
 
         const SHIPNAME: &CStr = cstr!("Testship");
         libc::snprintf(
-            self.menu.fname.as_mut_ptr(),
+            self.menu.fname.as_mut_ptr() as *mut c_char,
             self.menu.fname.len() - 1,
             cstr!("%s%s").as_ptr() as *mut c_char,
             SHIPNAME.as_ptr() as *mut c_char,
@@ -1561,7 +1529,7 @@ impl<'sdl> Data<'sdl> {
         );
 
         if action == MenuAction::INFO {
-            return self.menu.fname.as_ptr();
+            return Some(self.menu.fname.as_ref());
         }
 
         if action == MenuAction::CLICK {
@@ -1593,14 +1561,12 @@ impl<'sdl> Data<'sdl> {
             self.initiate_menu(false);
         }
 
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_le_name(&mut self, action: MenuAction) -> *const c_char {
-        use std::sync::atomic::Ordering;
-
+    pub unsafe fn handle_le_name(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
-            return cur_level!(self.main).levelname;
+            return Some(&cur_level!(self.main).levelname);
         }
 
         if action == MenuAction::CLICK {
@@ -1611,46 +1577,40 @@ impl<'sdl> Data<'sdl> {
                 &self.vars.full_user_rect,
             );
             assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
-            static ALREADY_FREED: AtomicBool = AtomicBool::new(false);
-            let cur_level = cur_level!(mut self.main);
-            match ALREADY_FREED.compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire) {
-                Ok(_) => dealloc_c_string(cur_level.levelname),
-                Err(_) => drop(Vec::from_raw_parts(cur_level.levelname as *mut i8, 20, 20)),
-            }
 
-            cur_level!(mut self.main).levelname = self.get_string(15, 2);
+            cur_level!(mut self.main).levelname = self.get_string(15, 2).unwrap();
             self.initiate_menu(false);
         }
 
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_open_level_editor(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_open_level_editor(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::CLICK {
             self.menu_item_selected_sound();
             self.level_editor();
         }
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_le_exit(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_le_exit(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::CLICK {
             self.menu_item_selected_sound();
             self.menu.quit_level_editor = true;
             self.menu.quit_menu = true;
         }
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_le_level_number(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_le_level_number(&mut self, action: MenuAction) -> Option<&CStr> {
         let cur_level = self.main.cur_level();
         if action == MenuAction::INFO {
             libc::sprintf(
-                self.menu.le_level_number_buf.as_mut_ptr(),
+                self.menu.le_level_number_buf.as_mut_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
                 cur_level.levelnum,
             );
-            return self.menu.le_level_number_buf.as_ptr();
+            return Some(self.menu.le_level_number_buf.as_ref());
         }
 
         let mut curlevel = cur_level.levelnum;
@@ -1665,13 +1625,13 @@ impl<'sdl> Data<'sdl> {
         self.switch_background_music_to(BYCOLOR.as_ptr());
         self.initiate_menu(false);
 
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_le_color(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_le_color(&mut self, action: MenuAction) -> Option<&CStr> {
         let cur_level = cur_level!(mut self.main);
         if action == MenuAction::INFO {
-            return COLOR_NAMES[usize::try_from(cur_level.color).unwrap()].as_ptr();
+            return Some(COLOR_NAMES[usize::try_from(cur_level.color).unwrap()]);
         }
         MenuChange {
             sound_on: self.main.sound_on,
@@ -1687,18 +1647,18 @@ impl<'sdl> Data<'sdl> {
         self.switch_background_music_to(BYCOLOR.as_ptr());
         self.initiate_menu(false);
 
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_le_size_x(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_le_size_x(&mut self, action: MenuAction) -> Option<&CStr> {
         let cur_level = cur_level!(mut self.main);
         if action == MenuAction::INFO {
             libc::sprintf(
-                self.menu.le_size_x_buf.as_mut_ptr(),
+                self.menu.le_size_x_buf.as_mut_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
                 cur_level.xlen,
             );
-            return self.menu.le_size_x_buf.as_ptr();
+            return Some(self.menu.le_size_x_buf.as_ref());
         }
 
         let oldxlen = cur_level.xlen;
@@ -1734,20 +1694,20 @@ impl<'sdl> Data<'sdl> {
             }
         }
         self.initiate_menu(false);
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_le_size_y(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_le_size_y(&mut self, action: MenuAction) -> Option<&CStr> {
         use std::cmp::Ordering;
 
         let cur_level = cur_level!(mut self.main);
         if action == MenuAction::INFO {
             libc::sprintf(
-                self.menu.le_size_y_buf.as_mut_ptr(),
+                self.menu.le_size_y_buf.as_mut_ptr() as *mut c_char,
                 cstr!("%d").as_ptr() as *mut c_char,
                 cur_level.ylen,
             );
-            return self.menu.le_size_y_buf.as_ptr();
+            return Some(self.menu.le_size_y_buf.as_ref());
         }
 
         let oldylen = cur_level.ylen;
@@ -1784,10 +1744,10 @@ impl<'sdl> Data<'sdl> {
         }
 
         self.initiate_menu(false);
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_strictly_classic(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_strictly_classic(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::CLICK {
             self.menu_item_selected_sound();
             self.global.game_config.droid_talk = false.into();
@@ -1805,16 +1765,18 @@ impl<'sdl> Data<'sdl> {
             self.initiate_menu(false);
         }
 
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_window_type(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_window_type(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
-            return if self.global.game_config.full_user_rect != 0 {
-                cstr!("Full").as_ptr()
+            let s = if self.global.game_config.full_user_rect != 0 {
+                cstr!("Full")
             } else {
-                cstr!("Classic").as_ptr()
+                cstr!("Classic")
             };
+
+            return Some(s);
         }
 
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
@@ -1829,14 +1791,15 @@ impl<'sdl> Data<'sdl> {
 
             self.initiate_menu(false);
         }
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_theme(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_theme(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
-            return self.graphics.all_themes.theme_name
-                [usize::try_from(self.graphics.all_themes.cur_tnum).unwrap()]
-                as *const c_char;
+            return Some(
+                &*self.graphics.all_themes.theme_name
+                    [usize::try_from(self.graphics.all_themes.cur_tnum).unwrap()],
+            );
         }
 
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
@@ -1860,24 +1823,24 @@ impl<'sdl> Data<'sdl> {
             self.initiate_menu(false);
         }
 
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_droid_talk(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_droid_talk(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
-            return is_toggle_on(self.global.game_config.droid_talk);
+            return Some(is_toggle_on(self.global.game_config.droid_talk));
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
             let toggle = &mut self.global.game_config.droid_talk as *mut i32;
             self.flip_toggle(toggle);
         }
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_all_map_visible(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_all_map_visible(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
-            return is_toggle_on(self.global.game_config.all_map_visible);
+            return Some(is_toggle_on(self.global.game_config.all_map_visible));
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
@@ -1885,12 +1848,12 @@ impl<'sdl> Data<'sdl> {
             self.flip_toggle(toggle);
             self.initiate_menu(false);
         }
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_show_decals(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_show_decals(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
-            return is_toggle_on(self.global.game_config.show_decals);
+            return Some(is_toggle_on(self.global.game_config.show_decals));
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
@@ -1898,57 +1861,57 @@ impl<'sdl> Data<'sdl> {
             self.flip_toggle(toggle);
             self.initiate_menu(false);
         }
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_transfer_is_activate(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_transfer_is_activate(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
-            return is_toggle_on(self.global.game_config.takeover_activates);
+            return Some(is_toggle_on(self.global.game_config.takeover_activates));
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
             let toggle = &mut self.global.game_config.takeover_activates as *mut i32;
             self.flip_toggle(toggle);
         }
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_fire_is_transfer(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_fire_is_transfer(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
-            return is_toggle_on(self.global.game_config.fire_hold_takeover);
+            return Some(is_toggle_on(self.global.game_config.fire_hold_takeover));
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
             let toggle = &mut self.global.game_config.fire_hold_takeover as *mut i32;
             self.flip_toggle(toggle);
         }
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_empty_level_speedup(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_empty_level_speedup(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
             libc::sprintf(
-                self.menu.empty_level_speedup_buf.as_mut_ptr(),
+                self.menu.empty_level_speedup_buf.as_mut_ptr() as *mut c_char,
                 cstr!("%3.1f").as_ptr() as *mut c_char,
                 f64::from(self.global.game_config.empty_level_speedup),
             );
-            return self.menu.empty_level_speedup_buf.as_ptr();
+            return Some(self.menu.empty_level_speedup_buf.as_ref());
         }
 
         let mut f = self.global.game_config.empty_level_speedup;
         self.menu_change_float(action, &mut f, 0.1, 0.5, 2.0);
         self.global.game_config.empty_level_speedup = f;
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_music_volume(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_music_volume(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
             libc::sprintf(
-                self.menu.music_volume_buf.as_mut_ptr(),
+                self.menu.music_volume_buf.as_mut_ptr() as *mut c_char,
                 cstr!("%4.2f").as_ptr() as *mut c_char,
                 f64::from(self.global.game_config.current_bg_music_volume),
             );
-            return self.menu.music_volume_buf.as_ptr();
+            return Some(self.menu.music_volume_buf.as_ref());
         }
 
         let mut f = self.global.game_config.current_bg_music_volume;
@@ -1956,17 +1919,17 @@ impl<'sdl> Data<'sdl> {
         self.global.game_config.current_bg_music_volume = f;
 
         self.set_bg_music_volume(self.global.game_config.current_bg_music_volume);
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_sound_volume(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_sound_volume(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
             libc::sprintf(
-                self.menu.sound_volume_buf.as_mut_ptr(),
+                self.menu.sound_volume_buf.as_mut_ptr() as *mut c_char,
                 cstr!("%4.2f").as_ptr() as *mut c_char,
                 f64::from(self.global.game_config.current_sound_fx_volume),
             );
-            return self.menu.sound_volume_buf.as_ptr();
+            return Some(self.menu.sound_volume_buf.as_ref());
         }
 
         let mut f = self.global.game_config.current_sound_fx_volume;
@@ -1982,24 +1945,24 @@ impl<'sdl> Data<'sdl> {
         let sound = sound.as_ref().unwrap();
         let mixer = sdl.mixer.get().unwrap();
         sound.set_sound_f_x_volume(main, mixer, global.game_config.current_sound_fx_volume);
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_fullscreen(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_fullscreen(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
-            return is_toggle_on(self.global.game_config.use_fullscreen);
+            return Some(is_toggle_on(self.global.game_config.use_fullscreen));
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
             self.toggle_fullscreen();
             self.menu_item_selected_sound();
         }
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_show_position(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_show_position(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
-            return is_toggle_on(self.global.game_config.draw_position);
+            return Some(is_toggle_on(self.global.game_config.draw_position));
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
@@ -2008,12 +1971,12 @@ impl<'sdl> Data<'sdl> {
             self.global.game_config.draw_position = f;
             self.initiate_menu(false);
         }
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_show_framerate(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_show_framerate(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
-            return is_toggle_on(self.global.game_config.draw_framerate);
+            return Some(is_toggle_on(self.global.game_config.draw_framerate));
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
@@ -2022,12 +1985,12 @@ impl<'sdl> Data<'sdl> {
             self.global.game_config.draw_framerate = f;
             self.initiate_menu(false);
         }
-        null_mut()
+        None
     }
 
-    pub unsafe fn handle_show_energy(&mut self, action: MenuAction) -> *const c_char {
+    pub unsafe fn handle_show_energy(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
-            return is_toggle_on(self.global.game_config.draw_energy);
+            return Some(is_toggle_on(self.global.game_config.draw_energy));
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
@@ -2036,7 +1999,7 @@ impl<'sdl> Data<'sdl> {
             self.global.game_config.draw_energy = f;
             self.initiate_menu(false);
         }
-        null_mut()
+        None
     }
 
     #[inline]
@@ -2096,21 +2059,19 @@ impl<'sdl> Data<'sdl> {
         assert!(theme_index >= 0 && theme_index < self.graphics.all_themes.num_themes);
 
         self.graphics.all_themes.cur_tnum = theme_index;
-        libc::strcpy(
-            self.global.game_config.theme_name.as_mut_ptr() as *mut c_char,
-            self.graphics.all_themes.theme_name
-                [usize::try_from(self.graphics.all_themes.cur_tnum).unwrap()]
-                as *const c_char,
+        self.global.game_config.theme_name.set(
+            &self.graphics.all_themes.theme_name
+                [usize::try_from(self.graphics.all_themes.cur_tnum).unwrap()],
         );
         self.init_pictures();
     }
 }
 
-pub fn is_toggle_on(toggle: c_int) -> *const c_char {
+pub fn is_toggle_on(toggle: c_int) -> &'static CStr {
     if toggle != 0 {
-        cstr!("YES").as_ptr()
+        cstr!("YES")
     } else {
-        cstr!("NO").as_ptr()
+        cstr!("NO")
     }
 }
 

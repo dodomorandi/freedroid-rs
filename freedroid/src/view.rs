@@ -8,7 +8,7 @@ use crate::{
     global::INFLUENCE_MODE_NAMES,
     graphics::{apply_filter, Graphics},
     map::get_map_brick,
-    structs::{Blast, Finepoint, GrobPoint},
+    structs::{Blast, Finepoint, GrobPoint, TextToBeDisplayed},
     vars::Vars,
     Data, Main,
 };
@@ -20,6 +20,7 @@ use std::{
     cell::{Cell, RefCell},
     ffi::CStr,
     os::raw::{c_char, c_int},
+    ptr::null,
 };
 
 const BLINK_LEN: f32 = 1.0;
@@ -634,8 +635,15 @@ impl Data<'_> {
             && self.global.game_config.droid_talk != 0
         {
             self.b_font.current_font = self.global.font0_b_font.clone();
+            let text_to_display = match self.vars.me.text_to_be_displayed {
+                TextToBeDisplayed::None => null(),
+                TextToBeDisplayed::String(s) => s.as_ptr(),
+                TextToBeDisplayed::LevelEnterComment => {
+                    self.main.cur_level().level_enter_comment.as_ptr()
+                }
+            };
             self.display_text(
-                self.vars.me.text_to_be_displayed,
+                text_to_display,
                 i32::from(self.vars.user_rect.x())
                     + i32::from(self.vars.user_rect.width() / 2)
                     + i32::from(self.vars.block_rect.width() / 3),

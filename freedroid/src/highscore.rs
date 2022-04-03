@@ -1,4 +1,5 @@
 use crate::{
+    array_c_string::ArrayCString,
     b_font::{char_width, font_height},
     defs::{
         self, Criticality, DisplayBannerFlags, Status, Themed, DATE_LEN, GRAPHICS_DIR_C,
@@ -17,7 +18,7 @@ use std::{
     fs::File,
     io::{Read, Write},
     mem,
-    os::raw::{c_char, c_int, c_long},
+    os::raw::{c_int, c_long},
     path::Path,
     ptr::null_mut,
     rc::Rc,
@@ -30,9 +31,9 @@ pub struct Highscore {
 }
 
 pub struct HighscoreEntry {
-    name: [c_char; MAX_NAME_LEN + 5],
+    name: ArrayCString<{ MAX_NAME_LEN + 5 }>,
     score: c_long,
-    date: [c_char; DATE_LEN + 5],
+    date: ArrayCString<{ DATE_LEN + 5 }>,
 }
 
 impl fmt::Debug for HighscoreEntry {
@@ -64,39 +65,26 @@ impl fmt::Debug for HighscoreEntry {
 
 impl Default for HighscoreEntry {
     fn default() -> Self {
-        let mut name = [0; MAX_NAME_LEN + 5];
-        name.iter_mut()
-            .zip(HS_EMPTY_ENTRY.bytes().map(|c| c as c_char))
-            .for_each(|(dst, src)| *dst = src);
-
-        let mut date = [0; DATE_LEN + 5];
-        date.iter_mut()
-            .zip(b" --- ".iter().copied().map(|c| c as c_char))
-            .for_each(|(dst, src)| *dst = src);
-        let score = -1;
-
-        Self { name, score, date }
+        Self {
+            name: ArrayCString::try_from(HS_EMPTY_ENTRY).unwrap(),
+            date: ArrayCString::try_from(" --- ").unwrap(),
+            score: -1,
+        }
     }
 }
 
 impl HighscoreEntry {
-    fn new(name: &str, score: i64, date: &str) -> Self {
-        let mut real_name = [0; MAX_NAME_LEN + 5];
-        name.bytes()
-            .take(MAX_NAME_LEN)
-            .zip(real_name.iter_mut())
-            .for_each(|(src, dst)| *dst = src as c_char);
-
-        let mut real_date = [0; DATE_LEN + 5];
-        date.bytes()
-            .take(DATE_LEN)
-            .zip(real_date.iter_mut())
-            .for_each(|(src, dst)| *dst = src as c_char);
-
+    fn new<Name, Date>(name: Name, score: i64, date: Date) -> Self
+    where
+        Name: TryInto<ArrayCString<{ MAX_NAME_LEN + 5 }>>,
+        Date: TryInto<ArrayCString<{ DATE_LEN + 5 }>>,
+        Name::Error: fmt::Debug,
+        Date::Error: fmt::Debug,
+    {
         Self {
-            name: real_name,
+            name: name.try_into().unwrap(),
+            date: date.try_into().unwrap(),
             score,
-            date: real_date,
         }
     }
 }
@@ -255,17 +243,11 @@ impl Data<'_> {
         #[cfg(target_os = "android")]
         let new_entry = HighscoreEntry::new("Player", score as i64, &date);
         #[cfg(not(target_os = "android"))]
-        let new_entry = {
-            let tmp_name = self.get_string(MAX_NAME_LEN as c_int, 2);
-            let mut new_entry = HighscoreEntry::new("", score as i64, &date);
-            libc::strcpy(new_entry.name.as_mut_ptr(), tmp_name);
-            drop(Vec::from_raw_parts(
-                tmp_name,
-                MAX_NAME_LEN + 5,
-                MAX_NAME_LEN + 5,
-            ));
-            new_entry
-        };
+        let new_entry = HighscoreEntry::new(
+            &*self.get_string(MAX_NAME_LEN as c_int, 2).unwrap(),
+            score as i64,
+            &*date,
+        );
 
         let mut ne_screen = self.graphics.ne_screen.take().unwrap();
         self.printf_sdl(&mut ne_screen, -1, -1, format_args!("\n"));
