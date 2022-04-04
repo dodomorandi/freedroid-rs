@@ -2,10 +2,7 @@ use crate::{array_c_string::ArrayCString, defs::*};
 
 use array_init::array_init;
 use sdl::{Rect, Surface};
-use std::{
-    ffi::{CStr, CString},
-    ptr::null_mut,
-};
+use std::ffi::{CStr, CString};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Point {
@@ -131,7 +128,7 @@ pub struct Influence {
     pub position_history_ring_buffer: [Gps; MAX_INFLU_POSITION_HISTORY],
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Enemy {
     pub ty: i32,           /* gibt die Nummer in Druidmap an */
     pub levelnum: i32,     /* Level in dem sich enemy befindet */
@@ -147,31 +144,6 @@ pub struct Enemy {
     pub firewait: f32,     /* gibt die Zeit bis zum naechsten Schuss an */
     pub text_visible_time: f32,
     pub text_to_be_displayed: &'static str,
-    pub number_of_periodic_special_statements: i32,
-    pub periodic_special_statements: *mut *mut i8,
-}
-
-impl Default for Enemy {
-    fn default() -> Self {
-        Self {
-            ty: 0,
-            levelnum: 0,
-            pos: Finepoint { x: 0., y: 0. },
-            speed: Finepoint { x: 0., y: 0. },
-            energy: 0.,
-            phase: 0.,
-            nextwaypoint: 0,
-            lastwaypoint: 0,
-            status: 0,
-            warten: 0.,
-            passable: 0,
-            firewait: 0.,
-            text_visible_time: 0.,
-            text_to_be_displayed: "",
-            number_of_periodic_special_statements: 0,
-            periodic_special_statements: null_mut(),
-        }
-    }
 }
 
 #[derive(Debug, Default)]
