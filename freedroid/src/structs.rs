@@ -146,7 +146,7 @@ pub struct Enemy {
     pub passable: u8,      /* Zeit (counter), in der druid passable ist */
     pub firewait: f32,     /* gibt die Zeit bis zum naechsten Schuss an */
     pub text_visible_time: f32,
-    pub text_to_be_displayed: *mut i8,
+    pub text_to_be_displayed: &'static str,
     pub number_of_periodic_special_statements: i32,
     pub periodic_special_statements: *mut *mut i8,
 }
@@ -167,7 +167,7 @@ impl Default for Enemy {
             passable: 0,
             firewait: 0.,
             text_visible_time: 0.,
-            text_to_be_displayed: null_mut(),
+            text_to_be_displayed: "",
             number_of_periodic_special_statements: 0,
             periodic_special_statements: null_mut(),
         }

@@ -586,30 +586,15 @@ impl Data<'_> {
         }
 
         robot.text_visible_time = 0.;
-        match my_random(4) {
-            0 => {
-                robot.text_to_be_displayed =
-                    cstr!("Unhandled exception fault.  Press ok to reboot.").as_ptr()
-                        as *mut c_char;
-            }
-            1 => {
-                robot.text_to_be_displayed =
-                    cstr!("System fault. Please buy a newer version.").as_ptr() as *mut c_char;
-            }
-            2 => {
-                robot.text_to_be_displayed =
-                    cstr!("System error. Might be a virus.").as_ptr() as *mut c_char;
-            }
-            3 => {
-                robot.text_to_be_displayed =
-                    cstr!("System error. Pleae buy an upgrade from MS.").as_ptr() as *mut c_char;
-            }
-            4 => {
-                robot.text_to_be_displayed =
-                    cstr!("System error. Press any key to reboot.").as_ptr() as *mut c_char;
-            }
+        let text = match my_random(4) {
+            0 => "Unhandled exception fault.  Press ok to reboot.",
+            1 => "System fault. Please buy a newer version.",
+            2 => "System error. Might be a virus.",
+            3 => "System error. Pleae buy an upgrade from MS.",
+            4 => "System error. Press any key to reboot.",
             _ => unreachable!(),
-        }
+        };
+        robot.text_to_be_displayed = text;
     }
 
     pub unsafe fn enemy_influ_collision_text(&mut self, enemy: c_int) {
@@ -620,17 +605,12 @@ impl Data<'_> {
         }
 
         robot.text_visible_time = 0.;
-        match my_random(1) {
-            0 => {
-                robot.text_to_be_displayed =
-                    cstr!("Hey, I'm from MS! Walk outa my way!").as_ptr() as *mut c_char;
-            }
-            1 => {
-                robot.text_to_be_displayed =
-                    cstr!("Hey, I know the big MS boss! You better go.").as_ptr() as *mut c_char;
-            }
+        let text = match my_random(1) {
+            0 => "Hey, I'm from MS! Walk outa my way!",
+            1 => "Hey, I know the big MS boss! You better go.",
             _ => unreachable!(),
-        }
+        };
+        robot.text_to_be_displayed = text;
     }
 
     pub unsafe fn add_influ_burnt_text(&mut self) {

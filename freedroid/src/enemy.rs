@@ -10,12 +10,8 @@ use crate::{
     Data,
 };
 
-use cstr::cstr;
 use log::warn;
-use std::{
-    ops::Not,
-    os::raw::{c_char, c_int},
-};
+use std::{ops::Not, os::raw::c_int};
 
 /// according to the intro, the laser can be "focused on any target
 /// within a range of eight metres"
@@ -446,7 +442,7 @@ impl Data<'_> {
         }
     }
 
-    pub unsafe fn clear_enemys(&mut self) {
+    pub fn clear_enemys(&mut self) {
         for enemy in &mut self.main.all_enemys[..MAX_ENEMYS_ON_SHIP] {
             enemy.ty = -1;
             enemy.levelnum = -1;
@@ -458,7 +454,7 @@ impl Data<'_> {
             enemy.firewait = 0.;
             enemy.energy = -1.;
             enemy.text_visible_time = 0.;
-            enemy.text_to_be_displayed = cstr!("").as_ptr() as *mut c_char;
+            enemy.text_to_be_displayed = "";
         }
 
         self.main.num_enemys = 0;

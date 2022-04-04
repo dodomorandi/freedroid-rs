@@ -494,7 +494,7 @@ impl Data<'_> {
                     - f32::from(self.vars.block_rect.height() / 2)
                     + (droid.pos.y - self.vars.me.pos.y) * f32::from(self.vars.block_rect.height()))
                     as i32,
-                CStr::from_ptr(droid.text_to_be_displayed).to_bytes(),
+                droid.text_to_be_displayed.as_bytes(),
             );
         }
 
