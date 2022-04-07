@@ -59,7 +59,12 @@ impl<const N: usize> ArrayCString<N> {
         Ok(())
     }
 
+    #[inline]
     pub fn try_push_str(&mut self, s: impl AsRef<str>) -> Result<(), Error> {
+        self.try_push_bytes(s.as_ref())
+    }
+
+    pub fn try_push_bytes(&mut self, s: impl AsRef<[u8]>) -> Result<(), Error> {
         let cur_len = self.len();
         let s = s.as_ref();
         let new_len = cur_len
@@ -67,7 +72,7 @@ impl<const N: usize> ArrayCString<N> {
             .filter(|&new_len| new_len < N - 1)
             .ok_or(Error)?;
 
-        self.0[cur_len..new_len].copy_from_slice(s.as_bytes());
+        self.0[cur_len..new_len].copy_from_slice(s);
         self.0[new_len] = b'\0';
         Ok(())
     }
@@ -90,6 +95,11 @@ impl<const N: usize> ArrayCString<N> {
     #[inline]
     pub fn push_str(&mut self, s: impl AsRef<str>) {
         self.try_push_str(s).expect("reached end of array buffer")
+    }
+
+    #[inline]
+    pub fn push_bytes(&mut self, s: impl AsRef<[u8]>) {
+        self.try_push_bytes(s).expect("reached end of array buffer")
     }
 
     pub fn truncate(&mut self, new_len: usize) {
@@ -213,6 +223,18 @@ impl<const N: usize> PartialEq<str> for ArrayCString<N> {
 
 impl<const N: usize> PartialEq<CStr> for ArrayCString<N> {
     fn eq(&self, other: &CStr) -> bool {
+        self.eq_bytes(other.to_bytes())
+    }
+}
+
+impl<const N: usize> PartialEq<&str> for ArrayCString<N> {
+    fn eq(&self, other: &&str) -> bool {
+        self.eq_bytes(other.as_bytes())
+    }
+}
+
+impl<const N: usize> PartialEq<&CStr> for ArrayCString<N> {
+    fn eq(&self, other: &&CStr) -> bool {
         self.eq_bytes(other.to_bytes())
     }
 }

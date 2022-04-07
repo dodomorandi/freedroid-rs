@@ -191,7 +191,8 @@ impl<'sdl> Data<'sdl> {
 
     /// Puts a single char on the surface
     pub fn put_char<const F: bool>(
-        &mut self,
+        b_font: &BFont,
+        font_owner: &mut FontCellOwner,
         surface: &mut sdl::GenericSurface<F>,
         x: c_int,
         y: c_int,
@@ -199,11 +200,7 @@ impl<'sdl> Data<'sdl> {
     ) -> c_int {
         put_char_font(
             surface,
-            self.b_font
-                .current_font
-                .as_ref()
-                .unwrap()
-                .rw(&mut self.font_owner),
+            b_font.current_font.as_ref().unwrap().rw(font_owner),
             x,
             y,
             c,

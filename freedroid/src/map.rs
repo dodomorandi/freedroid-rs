@@ -6,13 +6,14 @@ use crate::{
     find_subslice,
     menu::SHIP_EXT,
     misc::{
-        locate_string_in_data, my_random, read_and_malloc_string_from_data, read_value_from_string,
+        locate_string_in_data, my_random, read_and_malloc_string_from_data, read_i32_from_string,
     },
     read_and_malloc_and_terminate_file, split_at_subslice, split_at_subslice_mut,
     structs::{Finepoint, GrobPoint, Level, Waypoint},
     Data,
 };
 
+use bstr::ByteSlice;
 use cstr::cstr;
 use defs::{MAX_DOORS_ON_LEVEL, MAX_WP_CONNECTIONS};
 use log::{error, info, trace, warn};
@@ -21,7 +22,7 @@ use std::{
     alloc::{alloc_zeroed, dealloc, Layout},
     ffi::CStr,
     ops::Not,
-    os::raw::{c_char, c_float, c_int, c_uchar, c_void},
+    os::raw::{c_char, c_float, c_int, c_uchar},
     path::Path,
     ptr::null_mut,
 };
@@ -36,8 +37,6 @@ pub const COLOR_NAMES: [&CStr; 7] = [
     cstr!("Dark"),
 ];
 
-const WHITE_SPACE: &CStr = cstr!(" \t");
-
 const WALLPASS: f32 = 4_f32 / 64.;
 
 const KONSOLEPASS_X: f32 = 0.5625;
@@ -50,22 +49,14 @@ const V_RANDBREITE: f32 = 5_f32 / 64.;
 const H_RANDSPACE: f32 = WALLPASS;
 const H_RANDBREITE: f32 = 5_f32 / 64.;
 
-const AREA_NAME_STRING_C: &CStr = cstr!("Area name=\"");
+const AREA_NAME_STRING: &[u8] = b"Area name=\"";
 const LEVEL_NAME_STRING: &str = "Name of this level=";
-const LEVEL_NAME_STRING_C: &CStr = cstr!("Name of this level=");
 const LEVEL_ENTER_COMMENT_STRING: &str = "Comment of the Influencer on entering this level=\"";
-const LEVEL_ENTER_COMMENT_STRING_C: &CStr =
-    cstr!("Comment of the Influencer on entering this level=\"");
 const BACKGROUND_SONG_NAME_STRING: &str = "Name of background song for this level=";
-const BACKGROUND_SONG_NAME_STRING_C: &CStr = cstr!("Name of background song for this level=");
 const MAP_BEGIN_STRING: &str = "begin_map";
-const MAP_BEGIN_STRING_C: &CStr = cstr!("begin_map");
 const WP_BEGIN_STRING: &str = "begin_waypoints";
-const WP_BEGIN_STRING_C: &CStr = cstr!("begin_waypoints");
 const LEVEL_END_STRING: &str = "end_level";
-const LEVEL_END_STRING_C: &CStr = cstr!("end_level");
 const CONNECTION_STRING: &str = "connections: ";
-const CONNECTION_STRING_C: &CStr = cstr!("connections: ");
 
 #[derive(Debug, Default)]
 pub struct Map {
@@ -293,12 +284,27 @@ pub unsafe fn get_alerts(level: &mut Level) {
     }
 }
 
+fn whitespace<T, E>(input: T) -> nom::IResult<T, T, E>
+where
+    T: nom::InputTakeAtPosition + Default + Clone,
+    E: nom::error::ParseError<T>,
+    for<'a> &'a str: nom::FindToken<<T as nom::InputTakeAtPosition>::Item>,
+{
+    use nom::{
+        bytes::complete::is_a,
+        combinator::{map, opt},
+    };
+    map(opt(is_a(" \t")), |s| s.unwrap_or_default())(input)
+}
+
 /// This function is for LOADING map data!
 /// This function extracts the data from *data and writes them
 /// into a Level-struct:
 ///
 /// Doors and Waypoints Arrays are initialized too
-pub unsafe fn level_to_struct(data: *mut c_char) -> Option<Level> {
+pub unsafe fn level_to_struct(data: &[u8]) -> Option<Level> {
+    use nom::{bytes::complete::tag, character::complete::i32, sequence::tuple};
+
     /* Get the memory for one level */
     let mut loadlevel = Level {
         empty: false.into(),
@@ -326,140 +332,143 @@ pub unsafe fn level_to_struct(data: *mut c_char) -> Option<Level> {
     info!("Starting to process information for another level:");
 
     /* Read Header Data: levelnum and x/ylen */
-    let data_pointer = libc::strstr(data, cstr!("Levelnumber:").as_ptr() as *mut c_char);
-    assert!(
-        !data_pointer.is_null(),
-        "No Levelnumber entry found! Terminating! "
-    );
-    libc::sscanf(
-        data_pointer,
-        cstr!(
-            "Levelnumber: %u \n xlen of this level: %u \n ylen of this level: %u \n color of this \
-             level: %u"
-        )
-        .as_ptr(),
-        &mut (loadlevel.levelnum) as *mut _ as *mut c_void,
-        &mut (loadlevel.xlen) as *mut _ as *mut c_void,
-        &mut (loadlevel.ylen) as *mut _ as *mut c_void,
-        &mut (loadlevel.color) as *mut _ as *mut c_void,
-    );
+    let data_pointer = find_subslice(data, b"Levelnumber:")
+        .map(|pos| &data[pos..])
+        .expect("No Levelnumber entry found! Terminating! ");
+
+    (
+        _,
+        (
+            _,
+            _,
+            loadlevel.levelnum,
+            _,
+            _,
+            loadlevel.xlen,
+            _,
+            _,
+            loadlevel.ylen,
+            _,
+            _,
+            loadlevel.color,
+        ),
+    ) = tuple::<_, _, (), _>((
+        tag("Levelnumber: "),
+        whitespace,
+        i32,
+        tag("\nxlen of this level: "),
+        whitespace,
+        i32,
+        tag("\nylen of this level: "),
+        whitespace,
+        i32,
+        tag("\ncolor of this level: "),
+        whitespace,
+        i32,
+    ))(data_pointer)
+    .finish()
+    .unwrap();
 
     info!("Levelnumber : {} ", loadlevel.levelnum);
     info!("xlen of this level: {} ", loadlevel.xlen);
     info!("ylen of this level: {} ", loadlevel.ylen);
     info!("color of this level: {} ", loadlevel.ylen);
 
-    {
-        let data = CStr::from_ptr(data);
-        loadlevel.levelname =
-            read_and_malloc_string_from_data(data, LEVEL_NAME_STRING_C, cstr!("\n"));
-        loadlevel.background_song_name =
-            read_and_malloc_string_from_data(data, BACKGROUND_SONG_NAME_STRING_C, cstr!("\n"));
-        loadlevel.level_enter_comment =
-            read_and_malloc_string_from_data(data, LEVEL_ENTER_COMMENT_STRING_C, cstr!("\n"));
-    }
+    loadlevel.levelname =
+        read_and_malloc_string_from_data(data, LEVEL_NAME_STRING.as_bytes(), b"\n");
+    loadlevel.background_song_name =
+        read_and_malloc_string_from_data(data, BACKGROUND_SONG_NAME_STRING.as_bytes(), b"\n");
+    loadlevel.level_enter_comment =
+        read_and_malloc_string_from_data(data, LEVEL_ENTER_COMMENT_STRING.as_bytes(), b"\n");
 
     // find the map data
-    let map_begin = libc::strstr(data, MAP_BEGIN_STRING_C.as_ptr());
-    if map_begin.is_null() {
-        return None;
-    }
+    let map_begin = data.find(MAP_BEGIN_STRING.as_bytes())?;
 
     /* set position to Waypoint-Data */
-    let wp_begin = libc::strstr(data, WP_BEGIN_STRING_C.as_ptr());
-    if wp_begin.is_null() {
-        return None;
-    }
+    let wp_begin = data.find(WP_BEGIN_STRING.as_bytes())?;
 
     // find end of level-data
-    let level_end = libc::strstr(data, LEVEL_END_STRING_C.as_ptr());
-    if level_end.is_null() {
-        return None;
-    }
+    let level_end = data.find(LEVEL_END_STRING.as_bytes())?;
 
     /* now scan the map */
-    let mut next_line = map_begin;
-    libc::strtok(next_line, cstr!("\n").as_ptr());
+    let mut lines = data[map_begin..].lines().skip(1);
 
     /* read MapData */
     for i in 0..usize::try_from(loadlevel.ylen).unwrap() {
-        let this_line = libc::strtok(null_mut(), cstr!("\n").as_ptr());
-        if this_line.is_null() {
-            return None;
-        }
+        let this_line = lines.next()?;
         loadlevel.map[i] =
             alloc_zeroed(Layout::array::<i8>(loadlevel.xlen.try_into().unwrap()).unwrap())
                 as *mut c_char;
-        let mut pos = this_line;
-        pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace
+        let mut pos = this_line.trim_start();
 
         for k in 0..usize::try_from(loadlevel.xlen).unwrap() {
-            if *pos == 0 {
+            if pos.is_empty() {
                 return None;
             }
-            let mut tmp: c_int = 0;
-            let res = libc::sscanf(pos, cstr!("%d").as_ptr(), &mut tmp as *mut _ as *mut c_void);
-            *(loadlevel.map[i].add(k)) = tmp as c_char;
-            if res == 0 || res == libc::EOF {
-                return None;
-            }
-            pos = pos.add(libc::strcspn(pos, WHITE_SPACE.as_ptr())); // skip last token
-            pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace of next one
+            let raw_number;
+            (raw_number, pos) = pos
+                .iter()
+                .position(|&c| c.is_ascii_digit().not())
+                .map(|end_of_digits| pos.split_at(end_of_digits))
+                .unwrap_or((pos, b""));
+            let tmp = std::str::from_utf8(raw_number)
+                .ok()
+                .and_then(|s| s.trim_start().parse().ok())?;
+            *(loadlevel.map[i].add(k)) = tmp;
+            pos = pos.trim_start();
         }
     }
 
     /* Get Waypoints */
-    next_line = wp_begin;
-    libc::strtok(next_line, cstr!("\n").as_ptr());
+    let mut lines = data[wp_begin..level_end].lines().skip(1);
 
     for i in 0..MAXWAYPOINTS {
-        let this_line = libc::strtok(null_mut(), cstr!("\n").as_ptr());
-        if this_line.is_null() {
-            return None;
-        }
-        if this_line == level_end {
-            loadlevel.num_waypoints = i.try_into().unwrap();
-            break;
-        }
+        let this_line = match lines.next() {
+            Some(x) => x,
+            None => {
+                loadlevel.num_waypoints = i.try_into().unwrap();
+                break;
+            }
+        };
 
-        let mut nr: c_int = 0;
-        let mut x: c_int = 0;
-        let mut y: c_int = 0;
-        libc::sscanf(
-            this_line,
-            cstr!("Nr.=%d \t x=%d \t y=%d").as_ptr(),
-            &mut nr as *mut _ as *mut c_void,
-            &mut x as *mut _ as *mut c_void,
-            &mut y as *mut _ as *mut c_void,
-        );
+        let (_, (_, _, _, _, _, _, x, _, _, _, y)) = tuple::<_, _, (), _>((
+            tag("Nr.="),
+            whitespace,
+            i32,
+            whitespace,
+            tag("x="),
+            whitespace,
+            i32,
+            whitespace,
+            tag("y="),
+            whitespace,
+            i32,
+        ))(this_line)
+        .finish()
+        .unwrap();
 
         loadlevel.all_waypoints[i].x = x.try_into().unwrap();
         loadlevel.all_waypoints[i].y = y.try_into().unwrap();
 
-        let mut pos = libc::strstr(this_line, CONNECTION_STRING_C.as_ptr());
-        pos = pos.add(CONNECTION_STRING_C.to_bytes().len()); // skip connection-string
-        pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace
+        let mut pos = this_line
+            [this_line.find(CONNECTION_STRING).unwrap() + CONNECTION_STRING.len()..]
+            .trim_start();
 
         let mut k = 0;
         while k < MAX_WP_CONNECTIONS {
-            if *pos == 0 {
+            if pos.is_empty() {
                 break;
             }
-            let mut connection: c_int = 0;
-            let res = libc::sscanf(
-                pos,
-                cstr!("%d").as_ptr(),
-                &mut connection as *mut _ as *mut c_void,
-            );
-            if connection == -1 || res == 0 || res == libc::EOF {
-                break;
+
+            match tuple((whitespace, i32))(pos).finish() {
+                Ok((rest, (_, connection))) => {
+                    loadlevel.all_waypoints[i].connections[k] = connection;
+                    pos = rest.trim_start();
+
+                    k += 1;
+                }
+                Err(()) => break,
             }
-            loadlevel.all_waypoints[i].connections[k] = connection;
-
-            pos = pos.add(libc::strcspn(pos, WHITE_SPACE.as_ptr())); // skip last token
-            pos = pos.add(libc::strspn(pos, WHITE_SPACE.as_ptr())); // skip initial whitespace for next one
-
-            k += 1;
         }
 
         loadlevel.all_waypoints[i].num_connections = k.try_into().unwrap();
@@ -1034,69 +1043,39 @@ freedroid-discussion@lists.sourceforge.net\n\
     /// in a already read in droids file and decodes all the contents of that
     /// droid section to fill the AllEnemys array with droid types accoriding
     /// to the specifications made in the file.
-    pub unsafe fn get_this_levels_droids(&mut self, section_pointer: *mut c_char) {
-        const DROIDS_LEVEL_INDICATION_STRING: &CStr = cstr!("Level=");
-        const DROIDS_LEVEL_END_INDICATION_STRING: &CStr =
-            cstr!("** End of this levels droid data **");
-        const DROIDS_MAXRAND_INDICATION_STRING: &CStr = cstr!("Maximum number of Random Droids=");
-        const DROIDS_MINRAND_INDICATION_STRING: &CStr = cstr!("Minimum number of Random Droids=");
-        const ALLOWED_TYPE_INDICATION_STRING: &CStr =
-            cstr!("Allowed Type of Random Droid for this level: ");
+    pub unsafe fn get_this_levels_droids(&mut self, section_data: &[u8]) {
+        const DROIDS_LEVEL_INDICATION_STRING: &[u8] = b"Level=";
+        const DROIDS_LEVEL_END_INDICATION_STRING: &[u8] = b"** End of this levels droid data **";
+        const DROIDS_MAXRAND_INDICATION_STRING: &[u8] = b"Maximum number of Random Droids=";
+        const DROIDS_MINRAND_INDICATION_STRING: &[u8] = b"Minimum number of Random Droids=";
+        const ALLOWED_TYPE_INDICATION_STRING: &[u8] =
+            b"Allowed Type of Random Droid for this level: ";
 
-        let end_of_this_level_data = locate_string_in_data(
-            section_pointer,
-            DROIDS_LEVEL_END_INDICATION_STRING.as_ptr() as *mut c_char,
-        );
-        *end_of_this_level_data = 0;
+        let section_data = &section_data
+            [..locate_string_in_data(section_data, DROIDS_LEVEL_END_INDICATION_STRING)];
 
         // Now we read in the level number for this level
-        let mut our_level_number: c_int = 0;
-        read_value_from_string(
-            section_pointer,
-            DROIDS_LEVEL_INDICATION_STRING.as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut our_level_number as *mut c_int as *mut c_void,
-        );
+        let our_level_number = read_i32_from_string(section_data, DROIDS_LEVEL_INDICATION_STRING);
 
         // Now we read in the maximal number of random droids for this level
-        let mut max_rand: c_int = 0;
-        read_value_from_string(
-            section_pointer,
-            DROIDS_MAXRAND_INDICATION_STRING.as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut max_rand as *mut c_int as *mut c_void,
-        );
+        let max_rand = read_i32_from_string(section_data, DROIDS_MAXRAND_INDICATION_STRING);
 
         // Now we read in the minimal number of random droids for this level
-        let mut min_rand: c_int = 0;
-        read_value_from_string(
-            section_pointer,
-            DROIDS_MINRAND_INDICATION_STRING.as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut min_rand as *mut c_int as *mut c_void,
-        );
+        let min_rand = read_i32_from_string(section_data, DROIDS_MINRAND_INDICATION_STRING);
 
         let mut different_random_types = 0;
-        let mut search_pointer = libc::strstr(
-            section_pointer,
-            ALLOWED_TYPE_INDICATION_STRING.as_ptr() as *mut c_char,
-        );
-        let mut type_indication_string: [c_char; 1000] = [0; 1000];
+        let mut search_pos_opt = section_data.find(ALLOWED_TYPE_INDICATION_STRING);
         let mut list_of_types_allowed: [c_int; 1000] = [0; 1000];
-        while search_pointer.is_null().not() {
-            search_pointer = search_pointer.add(ALLOWED_TYPE_INDICATION_STRING.to_bytes().len());
-            libc::strncpy(type_indication_string.as_mut_ptr(), search_pointer, 3); // Every type is 3 characters long
-            type_indication_string[3] = 0;
+        while let Some(mut search_pos) = search_pos_opt {
+            search_pos += ALLOWED_TYPE_INDICATION_STRING.len();
+            let remaining_data = &section_data[search_pos..];
+            let type_indication_string = &remaining_data[..3];
             // Now that we have got a type indication string, we only need to translate it
             // into a number corresponding to that droid in the droid list
             let mut list_index = 0;
             while list_index < self.main.number_of_droid_types {
-                if libc::strcmp(
-                    self.vars.droidmap[usize::try_from(list_index).unwrap()]
-                        .druidname
-                        .as_ptr(),
-                    type_indication_string.as_ptr(),
-                ) == 0
+                if self.vars.droidmap[usize::try_from(list_index).unwrap()].druidname
+                    == std::str::from_utf8(type_indication_string).unwrap()
                 {
                     break;
                 }
@@ -1105,23 +1084,22 @@ freedroid-discussion@lists.sourceforge.net\n\
             if list_index >= self.main.number_of_droid_types {
                 panic!(
                     "unknown droid type: {} found in data file for level {}",
-                    CStr::from_ptr(type_indication_string.as_ptr()).to_string_lossy(),
+                    String::from_utf8_lossy(type_indication_string),
                     our_level_number,
                 );
             } else {
                 info!(
                     "Type indication string {} translated to type Nr.{}.",
-                    CStr::from_ptr(type_indication_string.as_ptr()).to_string_lossy(),
+                    String::from_utf8_lossy(type_indication_string),
                     list_index,
                 );
             }
             list_of_types_allowed[different_random_types] = list_index.into();
             different_random_types += 1;
 
-            search_pointer = libc::strstr(
-                search_pointer,
-                ALLOWED_TYPE_INDICATION_STRING.as_ptr() as *mut c_char,
-            )
+            search_pos_opt = remaining_data
+                .find(ALLOWED_TYPE_INDICATION_STRING)
+                .map(|pos| pos + search_pos);
         }
         info!(
             "Found {} different allowed random types for this level. ",
@@ -1163,7 +1141,7 @@ freedroid-discussion@lists.sourceforge.net\n\
     }
 
     /// This function initializes all enemys
-    pub unsafe fn get_crew(&mut self, filename: &CStr) -> c_int {
+    pub unsafe fn get_crew(&mut self, filename: &[u8]) -> c_int {
         const END_OF_DROID_DATA_STRING: &[u8] = b"*** End of Droid Data ***";
         const DROIDS_LEVEL_DESCRIPTION_START_STRING: &[u8] = b"** Beginning of new Level **";
         const DROIDS_LEVEL_DESCRIPTION_END_STRING: &[u8] = b"** End of this levels droid data **";
@@ -1204,7 +1182,7 @@ freedroid-discussion@lists.sourceforge.net\n\
             let end_of_this_droid_section_index =
                 find_subslice(droid_section_slice, DROIDS_LEVEL_DESCRIPTION_END_STRING)
                     .expect("GetCrew: Unterminated droid section encountered.");
-            self.get_this_levels_droids(droid_section_slice.as_mut_ptr() as *mut c_char);
+            self.get_this_levels_droids(droid_section_slice);
 
             droid_section_slice_opt = split_at_subslice_mut(
                 &mut droid_section_slice[(end_of_this_droid_section_index + 2)..],
@@ -1232,7 +1210,7 @@ freedroid-discussion@lists.sourceforge.net\n\
     }
 
     /// loads lift-connctions to cur-ship struct
-    pub unsafe fn get_lift_connections(&mut self, filename: &CStr) -> c_int {
+    pub unsafe fn get_lift_connections(&mut self, filename: &[u8]) -> c_int {
         const END_OF_LIFT_DATA_STRING: &[u8] = b"*** End of elevator specification file ***";
         const START_OF_LIFT_DATA_STRING: &[u8] = b"*** Beginning of Lift Data ***";
         const START_OF_LIFT_RECTANGLE_DATA_STRING: &[u8] =
@@ -1360,8 +1338,8 @@ freedroid-discussion@lists.sourceforge.net\n\
         defs::OK.into()
     }
 
-    pub unsafe fn load_ship(&mut self, filename: &CStr) -> c_int {
-        let mut level_start: [*mut c_char; MAX_LEVELS] = [null_mut(); MAX_LEVELS];
+    pub unsafe fn load_ship(&mut self, filename: &[u8]) -> c_int {
+        let mut level_start: [Option<&[u8]>; MAX_LEVELS] = [None; MAX_LEVELS];
         self.free_ship_memory(); // clear vestiges of previous ship data, if any
 
         /* Read the whole ship-data to memory */
@@ -1380,20 +1358,11 @@ freedroid-discussion@lists.sourceforge.net\n\
                 .expect("unable to convert C string to UTF-8 string"),
         );
 
-        let mut ship_data = read_and_malloc_and_terminate_file(fpath, END_OF_SHIP_DATA_STRING);
+        let ship_data = read_and_malloc_and_terminate_file(fpath, END_OF_SHIP_DATA_STRING);
 
         // Now we read the Area-name from the loaded data
-        let buffer = read_and_malloc_string_from_data(
-            CStr::from_ptr(ship_data.as_ptr() as *const c_char),
-            AREA_NAME_STRING_C,
-            cstr!("\""),
-        );
-        libc::strncpy(
-            self.main.cur_ship.area_name.as_mut_ptr(),
-            buffer.as_ptr(),
-            99,
-        );
-        self.main.cur_ship.area_name[99] = 0;
+        let buffer = read_and_malloc_string_from_data(&*ship_data, AREA_NAME_STRING, b"\"");
+        self.main.cur_ship.area_name.set_slice(buffer.to_bytes());
         drop(buffer);
 
         // Now we count the number of levels and remember their start-addresses.
@@ -1401,19 +1370,19 @@ freedroid-discussion@lists.sourceforge.net\n\
         // until it is no longer found in the ship file.  good.
 
         let mut level_anz = 0;
-        let mut ship_rest = &mut *ship_data;
-        level_start[level_anz] = ship_rest.as_mut_ptr() as *mut c_char;
+        let mut ship_rest = &*ship_data;
+        level_start[level_anz] = Some(ship_rest);
 
         loop {
             let next_ship_rest =
-                split_at_subslice_mut(ship_rest, LEVEL_END_STRING.as_bytes()).map(|(_, s)| s);
+                split_at_subslice(ship_rest, LEVEL_END_STRING.as_bytes()).map(|(_, s)| s);
             ship_rest = match next_ship_rest {
                 Some(x) => x,
                 None => break,
             };
 
             level_anz += 1;
-            level_start[level_anz] = ship_rest.as_mut_ptr().add(1) as *mut c_char;
+            level_start[level_anz] = Some(&ship_rest[1..])
         }
 
         /* init the level-structs */
@@ -1428,7 +1397,7 @@ freedroid-discussion@lists.sourceforge.net\n\
             .enumerate()
             .take(level_anz)
             .try_for_each(|(index, (level, start))| {
-                match level_to_struct(start) {
+                match level_to_struct(start.unwrap()) {
                     Some(new_level) => {
                         let level = level.insert(new_level);
                         interpret_map(level); // initialize doors, refreshes and lifts
@@ -1532,7 +1501,7 @@ freedroid-discussion@lists.sourceforge.net\n\
 }
 
 fn read_tagged_i32(s: &[u8], tag: &str) -> i32 {
-    use nom::character::complete::{self, space0};
+    use nom::character::complete;
 
     let pos = s
         .windows(tag.len())
@@ -1541,7 +1510,7 @@ fn read_tagged_i32(s: &[u8], tag: &str) -> i32 {
         .unwrap()
         .0;
 
-    space0::<_, ()>
+    whitespace::<_, ()>
         .and(complete::i32)
         .parse(&s[(pos + tag.len())..])
         .map(|(_, (_, n))| n)

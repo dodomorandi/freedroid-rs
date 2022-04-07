@@ -1,19 +1,17 @@
 use crate::{
-    array_c_string::ArrayCString,
     defs::{
         self, scale_point, Cmds, Criticality, DisplayBannerFlags, Droid, SoundType, Themed,
-        BANNER_BLOCK_FILE_C, BLAST_BLOCK_FILE_C, BULLET_BLOCK_FILE_C, CONSOLE_BG_PIC1_FILE_C,
-        CONSOLE_BG_PIC2_FILE_C, CONSOLE_PIC_FILE_C, DIGITNUMBER, DIGIT_BLOCK_FILE_C,
-        DROID_BLOCK_FILE_C, ENEMYPHASES, FONT0_FILE, FONT0_FILE_C, FONT1_FILE, FONT1_FILE_C,
-        FONT2_FILE, FONT2_FILE_C, FREE_ONLY, GRAPHICS_DIR_C, ICON_FILE, ICON_FILE_C, INIT_ONLY,
-        MAP_BLOCK_FILE_C, MAXBULLETS, NUM_COLORS, NUM_DECAL_PICS, NUM_MAP_BLOCKS, PARA_FONT_FILE,
-        PARA_FONT_FILE_C, SHIP_OFF_PIC_FILE_C, SHIP_ON_PIC_FILE_C, TAKEOVER_BG_PIC_FILE_C,
+        BANNER_BLOCK_FILE, BLAST_BLOCK_FILE, BULLET_BLOCK_FILE, CONSOLE_BG_PIC1_FILE,
+        CONSOLE_BG_PIC2_FILE, CONSOLE_PIC_FILE, DIGITNUMBER, DIGIT_BLOCK_FILE, DROID_BLOCK_FILE,
+        ENEMYPHASES, FONT0_FILE, FONT1_FILE, FONT2_FILE, FREE_ONLY, GRAPHICS_DIR_C, ICON_FILE,
+        INIT_ONLY, MAP_BLOCK_FILE, MAXBULLETS, NUM_COLORS, NUM_DECAL_PICS, NUM_MAP_BLOCKS,
+        PARA_FONT_FILE, SHIP_OFF_PIC_FILE, SHIP_ON_PIC_FILE, TAKEOVER_BG_PIC_FILE,
     },
     global::Global,
-    misc::read_value_from_string,
+    misc::{read_float_from_string, read_i16_from_string, read_i32_from_string},
     read_and_malloc_and_terminate_file,
     structs::ThemeList,
-    takeover::TO_BLOCK_FILE_C,
+    takeover::TO_BLOCK_FILE,
     vars::{Vars, ORIG_BLOCK_RECT, ORIG_DIGIT_RECT},
     Data, Sdl,
 };
@@ -33,12 +31,13 @@ use std::{
     cell::RefCell,
     ffi::CStr,
     ops::Not,
-    os::raw::{c_char, c_float, c_int, c_short, c_void},
+    os::raw::{c_char, c_float, c_int},
     path::Path,
     pin::Pin,
     ptr::null_mut,
     rc::Rc,
 };
+use tinyvec_string::ArrayString;
 
 #[derive(Debug)]
 pub struct Graphics<'sdl> {
@@ -880,7 +879,7 @@ impl Data<'_> {
         let mut fpath = Data::find_file_static(
             global,
             misc,
-            PARA_FONT_FILE_C,
+            PARA_FONT_FILE.as_bytes(),
             Some(GRAPHICS_DIR_C),
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
@@ -897,7 +896,7 @@ impl Data<'_> {
         fpath = Data::find_file_static(
             global,
             misc,
-            FONT0_FILE_C,
+            FONT0_FILE.as_bytes(),
             Some(GRAPHICS_DIR_C),
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
@@ -913,7 +912,7 @@ impl Data<'_> {
         fpath = Self::find_file_static(
             global,
             misc,
-            FONT1_FILE_C,
+            FONT1_FILE.as_bytes(),
             Some(GRAPHICS_DIR_C),
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
@@ -929,7 +928,7 @@ impl Data<'_> {
         fpath = Self::find_file_static(
             global,
             misc,
-            FONT2_FILE_C,
+            FONT2_FILE.as_bytes(),
             Some(GRAPHICS_DIR_C),
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
@@ -1060,7 +1059,7 @@ impl Data<'_> {
             let fpath = Self::find_file_static(
                 global,
                 misc,
-                ICON_FILE_C,
+                ICON_FILE.as_bytes(),
                 Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::WarnOnly as c_int,
@@ -1155,7 +1154,7 @@ impl Data<'_> {
         use std::sync::Once;
 
         static DO_ONCE: Once = Once::new();
-        let mut fname = ArrayCString::<500>::new();
+        let mut fname = ArrayString::<[u8; 500]>::new();
 
         // Loading all these pictures might take a while...
         // and we do not want do deal with huge frametimes, which
@@ -1180,7 +1179,7 @@ impl Data<'_> {
         let fpath = Self::find_file_static(
             &self.global,
             &mut self.misc,
-            MAP_BLOCK_FILE_C,
+            MAP_BLOCK_FILE,
             Some(GRAPHICS_DIR_C),
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
@@ -1231,7 +1230,7 @@ impl Data<'_> {
         let fpath = Self::find_file_static(
             &self.global,
             &mut self.misc,
-            DROID_BLOCK_FILE_C,
+            DROID_BLOCK_FILE,
             Some(GRAPHICS_DIR_C),
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
@@ -1307,7 +1306,7 @@ impl Data<'_> {
         let fpath = Self::find_file_static(
             &self.global,
             &mut self.misc,
-            BULLET_BLOCK_FILE_C,
+            BULLET_BLOCK_FILE,
             Some(GRAPHICS_DIR_C),
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
@@ -1342,7 +1341,7 @@ impl Data<'_> {
         let fpath = Self::find_file_static(
             &self.global,
             &mut self.misc,
-            BLAST_BLOCK_FILE_C,
+            BLAST_BLOCK_FILE,
             Some(GRAPHICS_DIR_C),
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
@@ -1378,7 +1377,7 @@ impl Data<'_> {
         let fpath = Self::find_file_static(
             &self.global,
             &mut self.misc,
-            DIGIT_BLOCK_FILE_C,
+            DIGIT_BLOCK_FILE,
             Some(GRAPHICS_DIR_C),
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
@@ -1433,7 +1432,7 @@ impl Data<'_> {
         let fpath = Self::find_file_static(
             &self.global,
             &mut self.misc,
-            TO_BLOCK_FILE_C,
+            TO_BLOCK_FILE,
             Some(GRAPHICS_DIR_C),
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
@@ -1447,7 +1446,7 @@ impl Data<'_> {
         let path = Self::find_file_static(
             &self.global,
             &mut self.misc,
-            SHIP_ON_PIC_FILE_C,
+            SHIP_ON_PIC_FILE,
             Some(GRAPHICS_DIR_C),
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
@@ -1457,7 +1456,7 @@ impl Data<'_> {
         let path = Self::find_file_static(
             &self.global,
             &mut self.misc,
-            SHIP_OFF_PIC_FILE_C,
+            SHIP_OFF_PIC_FILE,
             Some(GRAPHICS_DIR_C),
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
@@ -1483,7 +1482,7 @@ impl Data<'_> {
             let fpath = Self::find_file_static(
                 &self.global,
                 &mut self.misc,
-                TAKEOVER_BG_PIC_FILE_C,
+                TAKEOVER_BG_PIC_FILE,
                 Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
@@ -1501,7 +1500,7 @@ impl Data<'_> {
             let fpath = Self::find_file_static(
                 &self.global,
                 &mut self.misc,
-                CONSOLE_PIC_FILE_C,
+                CONSOLE_PIC_FILE,
                 Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
@@ -1512,7 +1511,7 @@ impl Data<'_> {
             let fpath = Self::find_file_static(
                 &self.global,
                 &mut self.misc,
-                CONSOLE_BG_PIC1_FILE_C,
+                CONSOLE_BG_PIC1_FILE,
                 Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
@@ -1523,7 +1522,7 @@ impl Data<'_> {
             let fpath = Self::find_file_static(
                 &self.global,
                 &mut self.misc,
-                CONSOLE_BG_PIC2_FILE_C,
+                CONSOLE_BG_PIC2_FILE,
                 Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
@@ -1537,7 +1536,7 @@ impl Data<'_> {
             let path = Self::find_file_static(
                 &self.global,
                 &mut self.misc,
-                cstr!("arrow_up.png"),
+                b"arrow_up.png",
                 Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
@@ -1548,7 +1547,7 @@ impl Data<'_> {
             let path = Self::find_file_static(
                 &self.global,
                 &mut self.misc,
-                cstr!("arrow_down.png"),
+                b"arrow_down.png",
                 Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
@@ -1559,7 +1558,7 @@ impl Data<'_> {
             let path = Self::find_file_static(
                 &self.global,
                 &mut self.misc,
-                cstr!("arrow_right.png"),
+                b"arrow_right.png",
                 Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
@@ -1570,7 +1569,7 @@ impl Data<'_> {
             let path = Self::find_file_static(
                 &self.global,
                 &mut self.misc,
-                cstr!("arrow_left.png"),
+                b"arrow_left.png",
                 Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
@@ -1581,7 +1580,7 @@ impl Data<'_> {
             let fpath = Self::find_file_static(
                 &self.global,
                 &mut self.misc,
-                BANNER_BLOCK_FILE_C,
+                BANNER_BLOCK_FILE,
                 Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
@@ -1604,12 +1603,13 @@ impl Data<'_> {
                 .zip(graphics.packed_portraits.iter_mut())
                 .for_each(|(droid, packed_portrait)| {
                     // first check if we find a file with rotation-frames: first try .jpg
-                    fname.set(&*droid.druidname);
+                    fname.clear();
+                    fname.push_str(droid.druidname.to_str().unwrap());
                     fname.push_str(".jpg");
                     let mut fpath = Self::find_file_static(
                         global,
                         misc,
-                        &*fname,
+                        fname.as_ref(),
                         Some(GRAPHICS_DIR_C),
                         Themed::NoTheme as c_int,
                         Criticality::Ignore as c_int,
@@ -1621,7 +1621,7 @@ impl Data<'_> {
                         fpath = Self::find_file_static(
                             global,
                             misc,
-                            &*fname,
+                            fname.as_ref(),
                             Some(GRAPHICS_DIR_C),
                             Themed::NoTheme as c_int,
                             Criticality::Critical as c_int,
@@ -1635,12 +1635,13 @@ impl Data<'_> {
             self.update_progress(95);
             let droids = &self.vars.droidmap;
             // we need the 999.png in any case for transparency!
-            fname.set(&*droids[Droid::Droid999 as usize].druidname);
+            fname.clear();
+            fname.push_str(droids[Droid::Droid999 as usize].druidname.to_str().unwrap());
             fname.push_str(".png");
             let fpath = Self::find_file_static(
                 &self.global,
                 &mut self.misc,
-                &fname,
+                fname.as_ref(),
                 Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
@@ -1653,7 +1654,7 @@ impl Data<'_> {
             let fpath = Self::find_file_static(
                 &self.global,
                 &mut self.misc,
-                cstr!("Ashes.png"),
+                b"Ashes.png",
                 Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::WarnOnly as c_int,
@@ -1695,7 +1696,7 @@ impl Data<'_> {
         let fpath = Self::find_file_static(
             &self.global,
             &mut self.misc,
-            cstr!("config.theme"),
+            b"config.theme",
             Some(GRAPHICS_DIR_C),
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
@@ -1713,34 +1714,20 @@ impl Data<'_> {
         // Now the file is read in entirely and
         // we can start to analyze its content,
         //
-        const BLAST_ONE_NUMBER_OF_PHASES_STRING: &CStr = cstr!("How many phases in Blast one :");
-        const BLAST_TWO_NUMBER_OF_PHASES_STRING: &CStr = cstr!("How many phases in Blast two :");
+        const BLAST_ONE_NUMBER_OF_PHASES_STRING: &[u8] = b"How many phases in Blast one :";
+        const BLAST_TWO_NUMBER_OF_PHASES_STRING: &[u8] = b"How many phases in Blast two :";
 
-        read_value_from_string(
-            data.as_ptr() as *mut c_char,
-            BLAST_ONE_NUMBER_OF_PHASES_STRING.as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut self.vars.blastmap[0].phases as *mut c_int as *mut c_void,
-        );
+        self.vars.blastmap[0].phases =
+            read_i32_from_string(&*data, BLAST_ONE_NUMBER_OF_PHASES_STRING);
 
-        read_value_from_string(
-            data.as_ptr() as *mut c_char,
-            BLAST_TWO_NUMBER_OF_PHASES_STRING.as_ptr() as *mut c_char,
-            cstr!("%d").as_ptr() as *mut c_char,
-            &mut self.vars.blastmap[1].phases as *mut c_int as *mut c_void,
-        );
+        self.vars.blastmap[1].phases =
+            read_i32_from_string(&*data, BLAST_TWO_NUMBER_OF_PHASES_STRING);
 
         // Next we read in the number of phases that are to be used for each bullet type
         let mut reader = std::slice::from_raw_parts(data.as_ptr() as *const u8, data.len());
         while let Some(read_start) = reader.find(b"For Bullettype Nr.=") {
             let read = &reader[read_start..];
-            let mut bullet_index: c_int = 0;
-            read_value_from_string(
-                read.as_ptr() as *mut c_char,
-                cstr!("For Bullettype Nr.=").as_ptr() as *mut c_char,
-                cstr!("%d").as_ptr() as *mut c_char,
-                &mut bullet_index as *mut c_int as *mut c_void,
-            );
+            let bullet_index = read_i32_from_string(read, b"For Bullettype Nr.=");
             assert!(
                 bullet_index < self.graphics.number_of_bullet_types,
                 "----------------------------------------------------------------------\n\
@@ -1763,20 +1750,10 @@ impl Data<'_> {
                  not resolve.... Sorry, if that interrupts a major game of yours.....\n\
                  ----------------------------------------------------------------------\n"
             );
-            read_value_from_string(
-                read.as_ptr() as *mut c_char,
-                cstr!("we will use number of phases=").as_ptr() as *mut c_char,
-                cstr!("%d").as_ptr() as *mut c_char,
-                &mut self.vars.bulletmap[usize::try_from(bullet_index).unwrap()].phases
-                    as *mut c_int as *mut c_void,
-            );
-            read_value_from_string(
-                read.as_ptr() as *mut c_char,
-                cstr!("and number of phase changes per second=").as_ptr() as *mut c_char,
-                cstr!("%f").as_ptr() as *mut c_char,
-                &mut self.vars.bulletmap[usize::try_from(bullet_index).unwrap()]
-                    .phase_changes_per_second as *mut c_float as *mut c_void,
-            );
+            self.vars.bulletmap[usize::try_from(bullet_index).unwrap()].phases =
+                read_i32_from_string(read, b"we will use number of phases=");
+            self.vars.bulletmap[usize::try_from(bullet_index).unwrap()].phase_changes_per_second =
+                read_float_from_string(read, b"and number of phase changes per second=");
             reader = &reader[read_start + 1..];
         }
 
@@ -1785,51 +1762,27 @@ impl Data<'_> {
         // display the digits.  This must also be read from the configuration
         // file of the theme
         //
-        const DIGIT_ONE_POSITION_X_STRING: &CStr = cstr!("First digit x :");
-        const DIGIT_ONE_POSITION_Y_STRING: &CStr = cstr!("First digit y :");
-        const DIGIT_TWO_POSITION_X_STRING: &CStr = cstr!("Second digit x :");
-        const DIGIT_TWO_POSITION_Y_STRING: &CStr = cstr!("Second digit y :");
-        const DIGIT_THREE_POSITION_X_STRING: &CStr = cstr!("Third digit x :");
-        const DIGIT_THREE_POSITION_Y_STRING: &CStr = cstr!("Third digit y :");
+        const DIGIT_ONE_POSITION_X_STRING: &[u8] = b"First digit x :";
+        const DIGIT_ONE_POSITION_Y_STRING: &[u8] = b"First digit y :";
+        const DIGIT_TWO_POSITION_X_STRING: &[u8] = b"Second digit x :";
+        const DIGIT_TWO_POSITION_Y_STRING: &[u8] = b"Second digit y :";
+        const DIGIT_THREE_POSITION_X_STRING: &[u8] = b"Third digit x :";
+        const DIGIT_THREE_POSITION_Y_STRING: &[u8] = b"Third digit y :";
 
-        read_value_from_string(
-            data.as_ptr() as *mut c_char,
-            DIGIT_ONE_POSITION_X_STRING.as_ptr() as *mut c_char,
-            cstr!("%hd").as_ptr() as *mut c_char,
-            &mut self.main.first_digit_rect.as_mut().x as *mut c_short as *mut c_void,
-        );
-        read_value_from_string(
-            data.as_ptr() as *mut c_char,
-            DIGIT_ONE_POSITION_Y_STRING.as_ptr() as *mut c_char,
-            cstr!("%hd").as_ptr() as *mut c_char,
-            &mut self.main.first_digit_rect.as_mut().y as *mut c_short as *mut c_void,
-        );
+        self.main.first_digit_rect.as_mut().x =
+            read_i16_from_string(&*data, DIGIT_ONE_POSITION_X_STRING);
+        self.main.first_digit_rect.as_mut().y =
+            read_i16_from_string(&*data, DIGIT_ONE_POSITION_Y_STRING);
 
-        read_value_from_string(
-            data.as_ptr() as *mut c_char,
-            DIGIT_TWO_POSITION_X_STRING.as_ptr() as *mut c_char,
-            cstr!("%hd").as_ptr() as *mut c_char,
-            &mut self.main.second_digit_rect.as_mut().x as *mut c_short as *mut c_void,
-        );
-        read_value_from_string(
-            data.as_ptr() as *mut c_char,
-            DIGIT_TWO_POSITION_Y_STRING.as_ptr() as *mut c_char,
-            cstr!("%hd").as_ptr() as *mut c_char,
-            &mut self.main.second_digit_rect.as_mut().y as *mut c_short as *mut c_void,
-        );
+        self.main.second_digit_rect.as_mut().x =
+            read_i16_from_string(&*data, DIGIT_TWO_POSITION_X_STRING);
+        self.main.second_digit_rect.as_mut().y =
+            read_i16_from_string(&*data, DIGIT_TWO_POSITION_Y_STRING);
 
-        read_value_from_string(
-            data.as_ptr() as *mut c_char,
-            DIGIT_THREE_POSITION_X_STRING.as_ptr() as *mut c_char,
-            cstr!("%hd").as_ptr() as *mut c_char,
-            &mut self.main.third_digit_rect.as_mut().x as *mut i16 as *mut c_void,
-        );
-        read_value_from_string(
-            data.as_ptr() as *mut c_char,
-            DIGIT_THREE_POSITION_Y_STRING.as_ptr() as *mut c_char,
-            cstr!("%hd").as_ptr() as *mut c_char,
-            &mut self.main.third_digit_rect.as_mut().y as *mut c_short as *mut c_void,
-        );
+        self.main.third_digit_rect.as_mut().x =
+            read_i16_from_string(&*data, DIGIT_THREE_POSITION_X_STRING);
+        self.main.third_digit_rect.as_mut().y =
+            read_i16_from_string(&*data, DIGIT_THREE_POSITION_Y_STRING);
     }
 
     /// This function resizes all blocks and structures involved in assembling

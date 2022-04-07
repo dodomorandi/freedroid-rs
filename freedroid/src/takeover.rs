@@ -13,7 +13,6 @@ use sdl::{Rect, Surface};
 use sdl_sys::SDL_Color;
 use std::{
     convert::Infallible,
-    ffi::CStr,
     ops::{Deref, DerefMut},
     os::raw::{c_char, c_int},
     ptr::null_mut,
@@ -341,7 +340,7 @@ impl Default for Takeover<'_> {
 }
 
 /* File containing the Takeover-blocks */
-pub const TO_BLOCK_FILE_C: &CStr = cstr!("to_elem.png");
+pub const TO_BLOCK_FILE: &[u8] = b"to_elem.png";
 
 /* --------------- individual block dimensions --------------- */
 const NUM_PHASES: usize =		5       /* number of color-phases for current "flow" */;

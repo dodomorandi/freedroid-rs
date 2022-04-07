@@ -1,9 +1,13 @@
 use crate::{
     b_font::{char_width, font_height, BFont},
     defs::{Cmds, PointerStates, SHOW_WAIT, TEXT_STRETCH},
+    global::Global,
+    graphics::Graphics,
+    input::Input,
     misc::my_random,
     structs::TextToBeDisplayed,
-    Data, FontCellOwner,
+    vars::Vars,
+    Data, FontCellOwner, Sdl,
 };
 
 #[cfg(feature = "arcade-input")]
@@ -25,6 +29,7 @@ use sdl_sys::{
     SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
 };
 use std::{
+    cell::Cell,
     ffi::{CStr, CString},
     fmt,
     io::Cursor,
@@ -414,78 +419,85 @@ impl Data<'_> {
     /// out of clip-rect completely)
     pub unsafe fn display_text(
         &mut self,
-        text: *const c_char,
+        text: &[u8],
+        startx: c_int,
+        starty: c_int,
+        clip: *const Rect,
+    ) -> c_int {
+        let Self {
+            text: data_text,
+            graphics,
+            vars,
+            b_font,
+            font_owner,
+            ..
+        } = self;
+        Self::display_text_static(
+            data_text, graphics, vars, b_font, font_owner, text, startx, starty, clip,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub unsafe fn display_text_static(
+        data_text: &mut Text,
+        graphics: &mut Graphics,
+        vars: &Vars,
+        b_font: &BFont,
+        font_owner: &mut FontCellOwner,
+        mut text: &[u8],
         startx: c_int,
         starty: c_int,
         mut clip: *const Rect,
     ) -> c_int {
-        if text.is_null() {
-            return false as c_int;
-        }
-
         if startx != -1 {
-            self.text.my_cursor_x = startx;
+            data_text.my_cursor_x = startx;
         }
         if starty != -1 {
-            self.text.my_cursor_y = starty;
+            data_text.my_cursor_y = starty;
         }
 
         let mut temp_clipping_rect;
 
         // store previous clip-rect
-        let store_clip = self.graphics.ne_screen.as_ref().unwrap().get_clip_rect();
+        let store_clip = graphics.ne_screen.as_ref().unwrap().get_clip_rect();
         if !clip.is_null() {
-            self.graphics
+            graphics
                 .ne_screen
                 .as_mut()
                 .unwrap()
                 .set_clip_rect(RectRef::from(&*clip));
         } else {
-            temp_clipping_rect = Rect::new(
-                0,
-                0,
-                self.vars.screen_rect.width(),
-                self.vars.screen_rect.height(),
-            );
+            temp_clipping_rect =
+                Rect::new(0, 0, vars.screen_rect.width(), vars.screen_rect.height());
             clip = &mut temp_clipping_rect;
         }
 
-        let mut text = CStr::from_ptr(text).to_bytes();
-
         let clip = &*clip;
         while let Some((&first, rest)) = text.split_first() {
-            if self.text.my_cursor_y >= c_int::from(clip.y()) + c_int::from(clip.height()) {
+            if data_text.my_cursor_y >= c_int::from(clip.y()) + c_int::from(clip.height()) {
                 break;
             }
 
             if first == b'\n' {
-                self.text.my_cursor_x = clip.x().into();
-                self.text.my_cursor_y += (f64::from(font_height(
-                    self.b_font
-                        .current_font
-                        .as_ref()
-                        .unwrap()
-                        .ro(&self.font_owner),
+                data_text.my_cursor_x = clip.x().into();
+                data_text.my_cursor_y += (f64::from(font_height(
+                    b_font.current_font.as_ref().unwrap().ro(font_owner),
                 )) * TEXT_STRETCH) as c_int;
             } else {
-                self.display_char(first as c_uchar);
+                Self::display_char(graphics, data_text, b_font, font_owner, first as c_uchar);
             }
 
             text = rest;
-            if self.is_linebreak_needed(text, clip) {
+            if Self::is_linebreak_needed(b_font, font_owner, data_text, text, clip) {
                 text = &text[1..];
-                self.text.my_cursor_x = clip.x().into();
-                self.text.my_cursor_y += (f64::from(font_height(
-                    self.b_font
-                        .current_font
-                        .as_ref()
-                        .unwrap()
-                        .ro(&self.font_owner),
+                data_text.my_cursor_x = clip.x().into();
+                data_text.my_cursor_y += (f64::from(font_height(
+                    b_font.current_font.as_ref().unwrap().ro(font_owner),
                 )) * TEXT_STRETCH) as c_int;
             }
         }
 
-        self.graphics
+        graphics
             .ne_screen
             .as_mut()
             .unwrap()
@@ -495,7 +507,7 @@ impl Data<'_> {
          * ScrollText() wants to know if we still wrote something inside the
          * clip-rectangle, of if the Text has been scrolled out
          */
-        if self.text.my_cursor_y < clip.y().into()
+        if data_text.my_cursor_y < clip.y().into()
             || starty > c_int::from(clip.y()) + c_int::from(clip.height())
         {
             false as c_int
@@ -506,7 +518,13 @@ impl Data<'_> {
 
     /// This function displays a char. It uses Menu_BFont now
     /// to do this.  MyCursorX is  updated to new position.
-    pub unsafe fn display_char(&mut self, c: c_uchar) {
+    pub unsafe fn display_char(
+        graphics: &mut Graphics,
+        text: &mut Text,
+        b_font: &BFont,
+        font_owner: &mut FontCellOwner,
+        c: c_uchar,
+    ) {
         // don't accept non-printable characters
         assert!(
             (c.is_ascii_graphic() || c.is_ascii_whitespace()),
@@ -514,26 +532,21 @@ impl Data<'_> {
             c
         );
 
-        let mut ne_screen = self.graphics.ne_screen.take().unwrap();
-        self.put_char(
+        let mut ne_screen = graphics.ne_screen.take().unwrap();
+        Self::put_char(
+            b_font,
+            font_owner,
             &mut ne_screen,
-            self.text.my_cursor_x,
-            self.text.my_cursor_y,
+            text.my_cursor_x,
+            text.my_cursor_y,
             c,
         );
-        self.graphics.ne_screen = Some(ne_screen);
+        graphics.ne_screen = Some(ne_screen);
 
         // After the char has been displayed, we must move the cursor to its
         // new position.  That depends of course on the char displayed.
         //
-        self.text.my_cursor_x += char_width(
-            self.b_font
-                .current_font
-                .as_ref()
-                .unwrap()
-                .ro(&self.font_owner),
-            c,
-        );
+        text.my_cursor_x += char_width(b_font.current_font.as_ref().unwrap().ro(font_owner), c);
     }
 
     ///  This function checks if the next word still fits in this line
@@ -545,7 +558,13 @@ impl Data<'_> {
     ///
     ///  rp: added argument clip, which contains the text-window we're writing in
     ///  (formerly known as "TextBorder")
-    pub unsafe fn is_linebreak_needed(&self, textpos: &[u8], clip: &Rect) -> bool {
+    pub unsafe fn is_linebreak_needed(
+        b_font: &BFont,
+        font_owner: &FontCellOwner,
+        text: &Text,
+        textpos: &[u8],
+        clip: &Rect,
+    ) -> bool {
         // only relevant if we're at the beginning of a word
         let textpos = match textpos.split_first() {
             Some((&c, _)) if c != b' ' => return false,
@@ -559,16 +578,9 @@ impl Data<'_> {
             .copied()
             .take_while(|&c| c != b' ' && c != b'\n');
         for c in iter {
-            let w = char_width(
-                self.b_font
-                    .current_font
-                    .as_ref()
-                    .unwrap()
-                    .ro(&self.font_owner),
-                c,
-            );
+            let w = char_width(b_font.current_font.as_ref().unwrap().ro(font_owner), c);
             needed_space += w;
-            if self.text.my_cursor_x + needed_space
+            if text.my_cursor_x + needed_space
                 > c_int::from(clip.x()) + c_int::from(clip.width()) - w
             {
                 return true;
@@ -652,7 +664,51 @@ impl Data<'_> {
     /// returns 0 if end of text was scolled out, 1 if user pressed fire
     pub unsafe fn scroll_text(
         &mut self,
-        text: *const c_char,
+        text: &[u8],
+        rect: &mut Rect,
+        seconds_minimum_duration: c_int,
+    ) -> c_int {
+        let Self {
+            sdl,
+            b_font,
+            text: data_text,
+            input,
+            global,
+            vars,
+            graphics,
+            quit,
+            font_owner,
+            ..
+        } = self;
+
+        Self::scroll_text_static(
+            graphics,
+            input,
+            sdl,
+            vars,
+            global,
+            data_text,
+            b_font,
+            font_owner,
+            quit,
+            text,
+            rect,
+            seconds_minimum_duration,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub unsafe fn scroll_text_static(
+        graphics: &mut Graphics,
+        input: &mut Input,
+        sdl: &Sdl,
+        vars: &Vars,
+        global: &Global,
+        data_text: &mut Text,
+        b_font: &BFont,
+        font_owner: &mut FontCellOwner,
+        quit: &Cell<bool>,
+        text: &[u8],
         rect: &mut Rect,
         _seconds_minimum_duration: c_int,
     ) -> c_int {
@@ -661,70 +717,91 @@ impl Data<'_> {
         const MAX_SPEED: c_int = 150;
         let mut just_started = true;
 
-        let mut background = self
-            .graphics
+        let mut background = graphics
             .ne_screen
             .as_mut()
             .unwrap()
             .display_format()
             .unwrap();
 
-        self.wait_for_all_keys_released();
+        Self::wait_for_all_keys_released_static(
+            input,
+            sdl,
+            vars,
+            quit,
+            #[cfg(target_os = "android")]
+            graphics,
+        );
         let ret;
         loop {
-            let mut prev_tick = self.sdl.ticks_ms();
-            background.blit(self.graphics.ne_screen.as_mut().unwrap());
-            if self.display_text(text, rect.x().into(), insert_line as c_int, rect) == 0 {
+            let mut prev_tick = sdl.ticks_ms();
+            background.blit(graphics.ne_screen.as_mut().unwrap());
+            if Self::display_text_static(
+                data_text,
+                graphics,
+                vars,
+                b_font,
+                font_owner,
+                text,
+                rect.x().into(),
+                insert_line as c_int,
+                rect,
+            ) == 0
+            {
                 ret = 0; /* Text has been scrolled outside Rect */
                 break;
             }
-            assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
+            assert!(graphics.ne_screen.as_mut().unwrap().flip());
 
-            if self.global.game_config.hog_cpu != 0 {
-                self.sdl.delay_ms(1);
+            if global.game_config.hog_cpu != 0 {
+                sdl.delay_ms(1);
             }
 
             if just_started {
                 just_started = false;
-                let now = self.sdl.ticks_ms();
+                let now = sdl.ticks_ms();
                 let mut key;
                 loop {
-                    key = self.any_key_just_pressed();
-                    if key == 0 && (self.sdl.ticks_ms() - now < SHOW_WAIT as u32) {
-                        self.sdl.delay_ms(1); // wait before starting auto-scroll
+                    key = Self::any_key_just_pressed_static(sdl, input, vars, quit);
+                    if key == 0 && (sdl.ticks_ms() - now < SHOW_WAIT as u32) {
+                        sdl.delay_ms(1); // wait before starting auto-scroll
                     } else {
                         break;
                     }
                 }
 
-                if (key == self.input.key_cmds[Cmds::Fire as usize][0])
-                    || (key == self.input.key_cmds[Cmds::Fire as usize][1])
-                    || (key == self.input.key_cmds[Cmds::Fire as usize][2])
+                if (key == input.key_cmds[Cmds::Fire as usize][0])
+                    || (key == input.key_cmds[Cmds::Fire as usize][1])
+                    || (key == input.key_cmds[Cmds::Fire as usize][2])
                 {
                     trace!("in just_started: Fire registered");
                     ret = 1;
                     break;
                 }
-                prev_tick = self.sdl.ticks_ms();
+                prev_tick = sdl.ticks_ms();
             }
 
-            if self.fire_pressed_r() {
+            if Self::fire_pressed_r_static(sdl, input, vars, quit) {
                 trace!("outside just_started: Fire registered");
                 ret = 1;
                 break;
             }
 
-            if self.quit.get() {
+            if quit.get() {
                 return 1;
             }
 
-            if self.up_pressed() || self.wheel_up_pressed() {
+            if Self::up_pressed_static(sdl, input, vars, quit)
+                || Self::wheel_up_pressed_static(sdl, input, vars, quit)
+            {
                 speed -= 5;
                 if speed < -MAX_SPEED {
                     speed = -MAX_SPEED;
                 }
             }
-            if self.down_pressed() || self.wheel_down_pressed() {
+            if Self::down_pressed_static(sdl, input, vars, quit)
+                || Self::wheel_down_pressed_static(sdl, input, vars, quit)
+            {
                 speed += 5;
                 if speed > MAX_SPEED {
                     speed = MAX_SPEED;
@@ -732,7 +809,7 @@ impl Data<'_> {
             }
 
             insert_line -=
-                (f64::from(self.sdl.ticks_ms() - prev_tick) * f64::from(speed) / 1000.0) as f32;
+                (f64::from(sdl.ticks_ms() - prev_tick) * f64::from(speed) / 1000.0) as f32;
 
             if insert_line > f32::from(rect.y()) + f32::from(rect.height()) {
                 insert_line = f32::from(rect.y()) + f32::from(rect.height());
@@ -742,8 +819,8 @@ impl Data<'_> {
             }
         }
 
-        background.blit(self.graphics.ne_screen.as_mut().unwrap());
-        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
+        background.blit(graphics.ne_screen.as_mut().unwrap());
+        assert!(graphics.ne_screen.as_mut().unwrap().flip());
 
         ret
     }

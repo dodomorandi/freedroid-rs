@@ -32,7 +32,7 @@ use bullet::BulletData;
 use defs::{
     AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Status, BYCOLOR,
     DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, RESET, SHOW_WAIT,
-    STANDARD_MISSION_C,
+    STANDARD_MISSION,
 };
 use global::Global;
 use graphics::Graphics;
@@ -218,7 +218,7 @@ fn main() {
         }
 
         while data.quit.get().not() {
-            data.init_new_mission(STANDARD_MISSION_C);
+            data.init_new_mission(STANDARD_MISSION);
             if data.quit.get() {
                 break;
             }
@@ -339,7 +339,7 @@ fn main() {
                 } else if cur_level.timer <= 0. {
                     // time to switch off the lights ...
                     cur_level.color = ColorNames::Dark as i32;
-                    data.switch_background_music_to(BYCOLOR.as_ptr()); // start new background music
+                    data.switch_background_music_to(Some(BYCOLOR)); // start new background music
                 }
 
                 data.check_if_mission_is_complete();

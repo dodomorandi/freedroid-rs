@@ -18,9 +18,10 @@ use sdl_sys::SDL_Color;
 use std::{
     ffi::CStr,
     ops::Not,
-    os::raw::{c_char, c_float, c_int},
+    os::raw::{c_float, c_int},
     ptr::null_mut,
 };
+use tinyvec_string::ArrayString;
 
 const UPDATE_ONLY: u8 = 0x01;
 
@@ -297,7 +298,7 @@ impl Data<'_> {
     ///
     ///  does update the screen: all if flags=0, text-rect if flags=UPDATE_ONLY
     pub unsafe fn show_droid_info(&mut self, droid_type: c_int, page: c_int, flags: c_int) {
-        use std::io::Write;
+        use std::fmt::Write;
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
         self.b_font.current_font = self.global.para_b_font.clone();
@@ -337,11 +338,11 @@ impl Data<'_> {
             25,
         );
 
-        let mut droid_name = [0u8; 80];
+        let mut droid_name = ArrayString::<[u8; 80]>::default();
         let droid = &self.vars.droidmap[usize::try_from(droid_type).unwrap()];
         write!(
-            droid_name.as_mut(),
-            "  Unit type {} - {}\0",
+            droid_name,
+            "  Unit type {} - {}",
             CStr::from_ptr(droid.druidname.as_ptr()).to_str().unwrap(),
             CLASS_NAMES[usize::try_from(droid.class).unwrap()]
                 .to_str()
@@ -349,44 +350,40 @@ impl Data<'_> {
         )
         .unwrap();
 
-        let mut info_text = [0u8; 1000];
+        let mut info_text = ArrayString::<[u8; 1000]>::default();
         let mut show_arrows = false;
         match page {
             -3 => {
                 // Title screen: intro unit
                 write!(
-                    info_text.as_mut(),
+                    info_text,
                     "This is the unit that you currently control. Prepare to board Robo-frighter \
-Paradroid to eliminate all rogue robots.\0",
+                     Paradroid to eliminate all rogue robots.",
                 )
                 .unwrap();
             }
             -2 => {
                 // Takeover: unit that you wish to control
                 write!(
-                    info_text.as_mut(),
-                    "This is the unit that you wish to control.\n\n Prepare to takeover.\0",
+                    info_text,
+                    "This is the unit that you wish to control.\n\n Prepare to takeover.",
                 )
                 .unwrap();
             }
             -1 => {
                 // Takeover: unit that you control
-                write!(
-                    info_text.as_mut(),
-                    "This is the unit that you currently control.\0"
-                )
-                .unwrap();
+                write!(info_text, "This is the unit that you currently control.").unwrap();
             }
             0 => {
                 show_arrows = true;
                 write!(
-                    info_text.as_mut(),
+                    info_text,
                     "Entry : {:02}\n\
                  Class : {}\n\
                  Height : {:5.2} m\n\
                  Weight: {} kg\n\
                  Drive : {} \n\
-                 Brain : {}\0",
+                 Brain : {}",
                     droid_type + 1,
                     CLASSES[usize::try_from(droid.class).unwrap()]
                         .to_str()
@@ -405,11 +402,11 @@ Paradroid to eliminate all rogue robots.\0",
             1 => {
                 show_arrows = true;
                 write!(
-                    info_text.as_mut(),
+                    info_text,
                     "Armament : {}\n\
                  Sensors  1: {}\n\
                     2: {}\n\
-                    3: {}\0",
+                    3: {}",
                     WEAPON_NAMES[usize::try_from(droid.gun).unwrap()]
                         .to_str()
                         .unwrap(),
@@ -427,17 +424,12 @@ Paradroid to eliminate all rogue robots.\0",
             }
             2 => {
                 show_arrows = true;
-                write!(
-                    info_text.as_mut(),
-                    "Notes: {}\0",
-                    droid.notes.to_str().unwrap()
-                )
-                .unwrap();
+                write!(info_text, "Notes: {}", droid.notes.to_str().unwrap()).unwrap();
             }
             _ => {
                 write!(
-                    info_text.as_mut(),
-                    "ERROR: Page not implemented!! \nPlease report bug!\0",
+                    info_text,
+                    "ERROR: Page not implemented!! \nPlease report bug!",
                 )
                 .unwrap();
             }
@@ -490,14 +482,14 @@ Paradroid to eliminate all rogue robots.\0",
         }
 
         self.display_text(
-            info_text.as_mut_ptr() as *mut c_char,
+            info_text.as_ref(),
             self.vars.cons_text_rect.x().into(),
             self.vars.cons_text_rect.y().into(),
             &self.vars.cons_text_rect,
         );
 
         self.display_text(
-            droid_name.as_mut_ptr() as *mut c_char,
+            droid_name.as_ref(),
             i32::from(self.vars.cons_header_rect.x()) + i32::from(lineskip),
             (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i32,
             null_mut(),
@@ -982,8 +974,7 @@ Paradroid to eliminate all rogue robots.\0",
     /// pos  : 0<=pos<=3: which menu-position is currently active?
     /// flag : UPDATE_ONLY  only update the console-menu bar, not text & background
     pub unsafe fn paint_console_menu(&mut self, pos: c_int, flag: c_int) {
-        use std::io::Write;
-        let mut menu_text: [u8; 200] = [0; 200];
+        use std::fmt::Write;
 
         if (flag & i32::from(UPDATE_ONLY)) == 0 {
             self.clear_graph_mem();
@@ -1009,9 +1000,10 @@ Paradroid to eliminate all rogue robots.\0",
                 DisplayBannerFlags::FORCE_UPDATE.bits().into(),
             );
 
+            let mut menu_text = ArrayString::<[u8; 200]>::default();
             write!(
-                &mut menu_text[..],
-                "Area : {}\nDeck : {}    Alert: {}\0",
+                menu_text,
+                "Area : {}\nDeck : {}    Alert: {}",
                 CStr::from_ptr(self.main.cur_ship.area_name.as_ptr())
                     .to_str()
                     .unwrap(),
@@ -1022,19 +1014,14 @@ Paradroid to eliminate all rogue robots.\0",
             )
             .unwrap();
             self.display_text(
-                menu_text.as_mut_ptr() as *mut c_char,
+                menu_text.as_ref(),
                 self.vars.cons_header_rect.x().into(),
                 self.vars.cons_header_rect.y().into(),
                 &self.vars.cons_header_rect,
             );
 
-            write!(
-                &mut menu_text[..],
-                "Logout from console\n\nDroid info\n\nDeck map\n\nShip map\0"
-            )
-            .unwrap();
             self.display_text(
-                menu_text.as_mut_ptr() as *mut c_char,
+                b"Logout from console\n\nDroid info\n\nDeck map\n\nShip map",
                 self.vars.cons_text_rect.x().into(),
                 c_int::from(self.vars.cons_text_rect.y()) + 25,
                 &self.vars.cons_text_rect,
@@ -1091,7 +1078,7 @@ Paradroid to eliminate all rogue robots.\0",
         let mut cur_lift: usize = cur_lift.try_into().unwrap();
 
         self.enter_lift_sound();
-        self.switch_background_music_to(null_mut()); // turn off Bg music
+        self.switch_background_music_to(None); // turn off Bg music
 
         let mut up_lift = self.main.cur_ship.all_lifts[cur_lift].up;
         let mut down_lift = self.main.cur_ship.all_lifts[cur_lift].down;
@@ -1191,7 +1178,14 @@ Paradroid to eliminate all rogue robots.\0",
         }
 
         self.leave_lift_sound();
-        self.switch_background_music_to(self.main.cur_level().background_song_name.as_ptr());
+        Self::switch_background_music_to_static(
+            self.sound.as_mut().unwrap(),
+            &self.main,
+            &self.global,
+            &mut self.misc,
+            self.sdl,
+            Some(self.main.cur_level().background_song_name.to_bytes()),
+        );
         self.clear_graph_mem();
         self.display_banner(
             null_mut(),

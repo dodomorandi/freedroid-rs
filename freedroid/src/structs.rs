@@ -283,7 +283,7 @@ pub struct Ship {
     pub num_levels: i32,
     pub num_lifts: i32,
     pub num_lift_rows: i32,
-    pub area_name: [i8; 100],
+    pub area_name: ArrayCString<100>,
     pub all_levels: [Option<Level>; MAX_LEVELS],
     pub all_lifts: [Lift; MAX_LIFTS],
     pub lift_row_rect: [Rect; MAX_LIFT_ROWS], /* the lift-row rectangles */
@@ -297,7 +297,7 @@ impl Default for Ship {
             num_levels: 0,
             num_lifts: 0,
             num_lift_rows: 0,
-            area_name: [0; 100],
+            area_name: Default::default(),
             all_levels: array_init(|_| None),
             all_lifts: [Lift {
                 level: 0,

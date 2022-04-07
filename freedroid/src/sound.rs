@@ -6,7 +6,6 @@ use crate::{
 };
 
 use array_init::array_init;
-use cstr::cstr;
 use log::{error, info, warn};
 use sdl::{
     mixer::{Chunk, Music, OpenAudio},
@@ -15,7 +14,7 @@ use sdl::{
 };
 use std::{
     ffi::CStr,
-    os::raw::{c_char, c_float, c_int},
+    os::raw::{c_float, c_int},
 };
 
 const MIX_MAX_VOLUME: u8 = 128;
@@ -28,54 +27,54 @@ fn mix_load_wav<'a>(mixer: &'a Mixer, file: &CStr) -> Option<Chunk<'a>> {
     mixer.load_wav_from_rwops(file)
 }
 
-const SOUND_SAMPLE_FILENAMES: [&CStr; SoundType::All as usize] = [
-    cstr!("ERRORSOUND_NILL.NOWAV"),
-    cstr!("Blast_Sound_0.wav"),
+const SOUND_SAMPLE_FILENAMES: [&str; SoundType::All as usize] = [
+    "ERRORSOUND_NILL.NOWAV",
+    "Blast_Sound_0.wav",
     // "Collision_Sound_0.wav", // replaced by damage-dependent-sounds:  Collision_[Neutral|GotDamaged|DamagedEnemy]
-    cstr!("Collision_Neutral.wav"),
-    cstr!("Collision_GotDamaged.wav"),
-    cstr!("Collision_DamagedEnemy.wav"),
+    "Collision_Neutral.wav",
+    "Collision_GotDamaged.wav",
+    "Collision_DamagedEnemy.wav",
     //"GotIntoBlast_Sound_0.wav", // replaced by GotIntoBlast_Sound_1.wav
-    cstr!("GotIntoBlast_Sound_1.wav"),
-    cstr!("MoveElevator_Sound_0.wav"),
-    cstr!("Refresh_Sound_0.wav"),
-    cstr!("LeaveElevator_Sound_0.wav"),
-    cstr!("EnterElevator_Sound_0.wav"),
-    cstr!("ThouArtDefeated_Sound_0.wav"),
-    cstr!("Got_Hit_Sound_0.wav"),
-    cstr!("TakeoverSetCapsule_Sound_0.wav"),
-    cstr!("Menu_Item_Selected_Sound_0.wav"),
-    cstr!("Move_Menu_Position_Sound_0.wav"),
-    cstr!("Takeover_Game_Won_Sound_0.wav"),
-    cstr!("Takeover_Game_Deadlock_Sound_0.wav"),
-    cstr!("Takeover_Game_Lost_Sound_0.wav"),
-    cstr!("Fire_Bullet_Pulse_Sound_0.wav"),
-    cstr!("Fire_Bullet_Single_Pulse_Sound_0.wav"),
-    cstr!("Fire_Bullet_Military_Sound_0.wav"),
-    cstr!("Fire_Bullet_Flash_Sound_0.wav"),
-    cstr!("Fire_Bullet_Exterminator_Sound_0.wav"),
-    cstr!("Fire_Bullet_Laser_Rifle_Sound.wav"),
-    cstr!("Cry_Sound_0.wav"),
-    cstr!("Takeover_Sound_0.wav"),
-    cstr!("Countdown_Sound.wav"),
-    cstr!("EndCountdown_Sound.wav"),
-    cstr!("InfluExplosion.wav"),
-    cstr!("WhiteNoise.wav"),
-    cstr!("Alert.wav"),
-    cstr!("Screenshot.wav"),
+    "GotIntoBlast_Sound_1.wav",
+    "MoveElevator_Sound_0.wav",
+    "Refresh_Sound_0.wav",
+    "LeaveElevator_Sound_0.wav",
+    "EnterElevator_Sound_0.wav",
+    "ThouArtDefeated_Sound_0.wav",
+    "Got_Hit_Sound_0.wav",
+    "TakeoverSetCapsule_Sound_0.wav",
+    "Menu_Item_Selected_Sound_0.wav",
+    "Move_Menu_Position_Sound_0.wav",
+    "Takeover_Game_Won_Sound_0.wav",
+    "Takeover_Game_Deadlock_Sound_0.wav",
+    "Takeover_Game_Lost_Sound_0.wav",
+    "Fire_Bullet_Pulse_Sound_0.wav",
+    "Fire_Bullet_Single_Pulse_Sound_0.wav",
+    "Fire_Bullet_Military_Sound_0.wav",
+    "Fire_Bullet_Flash_Sound_0.wav",
+    "Fire_Bullet_Exterminator_Sound_0.wav",
+    "Fire_Bullet_Laser_Rifle_Sound.wav",
+    "Cry_Sound_0.wav",
+    "Takeover_Sound_0.wav",
+    "Countdown_Sound.wav",
+    "EndCountdown_Sound.wav",
+    "InfluExplosion.wav",
+    "WhiteNoise.wav",
+    "Alert.wav",
+    "Screenshot.wav",
 ];
 
-const MUSIC_FILES: [&CStr; NUM_COLORS] = [
-    cstr!("AnarchyMenu1.mod"),          // RED
-    cstr!("starpaws.mod"),              // YELLOW
-    cstr!("The_Last_V8.mod"),           // GREEN
-    cstr!("dreamfish-green_beret.mod"), // GRAY
+const MUSIC_FILES: [&[u8]; NUM_COLORS] = [
+    b"AnarchyMenu1.mod",          // RED
+    b"starpaws.mod",              // YELLOW
+    b"The_Last_V8.mod",           // GREEN
+    b"dreamfish-green_beret.mod", // GRAY
     #[cfg(feature = "gcw0")]
-    cstr!("dreamfish-green_beret.mod"), // GRAY
+    b"dreamfish-green_beret.mod", // GRAY
     #[cfg(not(feature = "gcw0"))]
-    cstr!("dreamfish-sanxion.mod"), // BLUE // CRASHES the GCW0 ???
-    cstr!("kollaps-tron.mod"),          // GREENBLUE
-    cstr!("dreamfish-uridium2_loader.mod"), // DARK
+    b"dreamfish-sanxion.mod", // BLUE // CRASHES the GCW0 ???
+    b"kollaps-tron.mod",          // GREENBLUE
+    b"dreamfish-uridium2_loader.mod", // DARK
 ];
 
 #[derive(Debug)]
@@ -125,14 +124,14 @@ impl Data<'_> {
                 warn!(
                     "Could not play sound-sample: {} Error: {}.\
 This usually just means that too many samples where played at the same time",
-                    SOUND_SAMPLE_FILENAMES[tune].to_string_lossy(),
+                    SOUND_SAMPLE_FILENAMES[tune],
                     err.to_string_lossy(),
                 );
             });
         } else {
             info!(
                 "Successfully playing file {}.",
-                SOUND_SAMPLE_FILENAMES[tune].to_string_lossy()
+                SOUND_SAMPLE_FILENAMES[tune]
             );
         };
     }
@@ -306,29 +305,46 @@ impl<'sdl> Data<'sdl> {
         }
     }
 
-    pub unsafe fn switch_background_music_to(&mut self, filename_raw: *const c_char) {
-        if self.main.sound_on == 0 {
-            return;
-        }
-
+    pub unsafe fn switch_background_music_to(&mut self, filename_raw: Option<&[u8]>) {
         let Self {
-            sdl, sound, main, ..
+            sdl,
+            sound,
+            misc,
+            global,
+            main,
+            ..
         } = self;
 
-        let mixer = sdl.mixer.get().unwrap();
         let sound = sound.as_mut().unwrap();
-        if filename_raw.is_null() {
-            mixer.pause_music();
-            sound.paused = true;
+        Self::switch_background_music_to_static(sound, main, global, misc, sdl, filename_raw)
+    }
+
+    pub unsafe fn switch_background_music_to_static<'a>(
+        sound: &mut Sound<'a>,
+        main: &Main,
+        global: &Global,
+        misc: &mut Misc,
+        sdl: &'a Sdl,
+        filename_raw: Option<&[u8]>,
+    ) {
+        if main.sound_on == 0 {
             return;
         }
 
-        let filename_raw = CStr::from_ptr(filename_raw);
+        let mixer = sdl.mixer.get().unwrap();
+        let filename_raw = match filename_raw {
+            Some(x) => x,
+            None => {
+                mixer.pause_music();
+                sound.paused = true;
+                return;
+            }
+        };
 
         // New feature: choose background music by level-color:
         // if filename_raw==BYCOLOR then chose bg_music[color]
         // NOTE: if new level-color is the same as before, just resume paused music!
-        if filename_raw.to_bytes() == BYCOLOR.to_bytes() {
+        if filename_raw == BYCOLOR {
             if sound.paused && sound.prev_color == main.cur_level().color {
                 // current level-song was just paused
                 mixer.resume_music();
@@ -346,8 +362,8 @@ impl<'sdl> Data<'sdl> {
         } else {
             // not using BYCOLOR mechanism: just play specified song
             let fpath = match Self::find_file_static(
-                &self.global,
-                &mut self.misc,
+                global,
+                misc,
                 filename_raw,
                 Some(SOUND_DIR_C),
                 Themed::NoTheme as c_int,
@@ -357,18 +373,13 @@ impl<'sdl> Data<'sdl> {
                 None => {
                     error!(
                         "Error loading sound-file: {}",
-                        filename_raw.to_string_lossy()
+                        String::from_utf8_lossy(filename_raw)
                     );
                     return;
                 }
             };
 
-            let &mut Self {
-                sdl, ref mut sound, ..
-            } = self;
-
             let mixer = sdl.mixer.get().unwrap();
-            let sound = sound.as_mut().unwrap();
 
             sound.tmp_mod_file = mixer.load_music_from_c_str_path(fpath);
             match sound.tmp_mod_file.as_ref() {
@@ -385,8 +396,8 @@ impl<'sdl> Data<'sdl> {
             };
         }
 
-        self.sdl.mixer.get().unwrap().replace_music_volume(Some(
-            (self.global.game_config.current_bg_music_volume * f32::from(MIX_MAX_VOLUME)) as u32,
+        sdl.mixer.get().unwrap().replace_music_volume(Some(
+            (global.game_config.current_bg_music_volume * f32::from(MIX_MAX_VOLUME)) as u32,
         ));
     }
 
@@ -469,7 +480,7 @@ Continuing with sound disabled",
             let fpath = Data::find_file_static(
                 global,
                 misc,
-                sample_filename,
+                sample_filename.as_bytes(),
                 Some(SOUND_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::WarnOnly as c_int,
@@ -482,10 +493,7 @@ Continuing with sound disabled",
             }
 
             if loaded_wav_file.is_none() {
-                error!(
-                    "Could not load Sound-sample: {}",
-                    sample_filename.to_string_lossy()
-                );
+                error!("Could not load Sound-sample: {}", sample_filename);
                 warn!(
                     "Continuing with sound disabled. Error = {}",
                     sdl.get_error().to_string_lossy()
@@ -493,10 +501,7 @@ Continuing with sound disabled",
                 main.sound_on = false.into();
                 return None;
             } else {
-                info!(
-                    "Successfully loaded file {}.",
-                    sample_filename.to_string_lossy()
-                );
+                info!("Successfully loaded file {}.", sample_filename);
             }
         }
 
@@ -516,7 +521,10 @@ Continuing with sound disabled",
                 *music_song = mixer.load_music_from_c_str_path(fpath);
             }
             if music_song.is_none() {
-                error!("Error loading sound-file: {}", music_file.to_string_lossy());
+                error!(
+                    "Error loading sound-file: {}",
+                    String::from_utf8_lossy(music_file)
+                );
                 warn!(
                     "SDL Mixer Error: {}. Continuing with sound disabled",
                     sdl.get_error().to_string_lossy()
@@ -524,7 +532,10 @@ Continuing with sound disabled",
                 main.sound_on = false.into();
                 return None;
             } else {
-                info!("Successfully loaded file {}.", music_file.to_string_lossy());
+                info!(
+                    "Successfully loaded file {}.",
+                    String::from_utf8_lossy(music_file)
+                );
             }
         }
 

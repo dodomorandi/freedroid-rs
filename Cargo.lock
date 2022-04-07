@@ -244,6 +244,7 @@ dependencies = [
  "rand",
  "sdl",
  "sdl-sys",
+ "tinyvec_string",
 ]
 
 [[package]]
@@ -647,6 +648,21 @@ dependencies = [
  "libc",
  "wasi",
  "winapi",
+]
+
+[[package]]
+name = "tinyvec"
+version = "1.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c1c1d5a42b6245520c249549ec267180beaffcc0615401ac8e31853d4b6d8d2"
+
+[[package]]
+name = "tinyvec_string"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be28110ab94064f103a2a24597ed8f556f831d7334751ab991967de16c12d18f"
+dependencies = [
+ "tinyvec",
 ]
 
 [[package]]

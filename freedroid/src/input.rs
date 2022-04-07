@@ -1,9 +1,10 @@
 #[cfg(target_os = "android")]
-use crate::graphics::NE_SCREEN;
+use crate::graphics::{Graphics, NE_SCREEN};
 use crate::{
     defs::{Cmds, MenuAction, PointerStates},
     structs::Point,
-    Data,
+    vars::Vars,
+    Data, Sdl,
 };
 
 use cstr::cstr;
@@ -19,6 +20,7 @@ use sdl_sys::{
 #[cfg(not(feature = "gcw0"))]
 use sdl_sys::{SDLKey_SDLK_F12, SDLKey_SDLK_PAUSE, SDLKey_SDLK_RSHIFT};
 use std::{
+    cell::Cell,
     ffi::CStr,
     fmt,
     os::raw::{c_char, c_int},
@@ -434,17 +436,43 @@ impl Data<'_> {
     }
 
     pub unsafe fn any_key_just_pressed(&mut self) -> c_int {
+        let Self {
+            sdl,
+            input,
+            vars,
+            quit,
+            #[cfg(target_os = "android")]
+            graphics,
+            ..
+        } = self;
+
+        Self::any_key_just_pressed_static(
+            sdl,
+            input,
+            vars,
+            quit,
+            #[cfg(target_os = "android")]
+            graphics,
+        )
+    }
+
+    pub unsafe fn any_key_just_pressed_static(
+        sdl: &Sdl,
+        input: &mut Input,
+        vars: &Vars,
+        quit: &Cell<bool>,
+    ) -> c_int {
         #[cfg(target_os = "android")]
         assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
-        self.update_input();
+        Self::update_input_static(sdl, input, vars, quit);
 
         let pressed_key = (0..PointerStates::Last as c_int)
-            .find(|&key| self.input.input_state[key as usize].is_just_pressed());
+            .find(|&key| input.input_state[key as usize].is_just_pressed());
 
         match pressed_key {
             Some(key) => {
-                self.input.input_state[key as usize].fresh = false;
+                input.input_state[key as usize].fresh = false;
                 key
             }
             None => 0,
@@ -452,29 +480,45 @@ impl Data<'_> {
     }
 
     pub unsafe fn update_input(&mut self) -> c_int {
+        let Self {
+            sdl,
+            input,
+            quit,
+            vars,
+            ..
+        } = self;
+        Self::update_input_static(sdl, input, vars, quit)
+    }
+
+    pub unsafe fn update_input_static(
+        sdl: &Sdl,
+        input: &mut Input,
+        vars: &Vars,
+        quit: &Cell<bool>,
+    ) -> c_int {
         // switch mouse-cursor visibility as a function of time of last activity
-        if self.sdl.ticks_ms() - self.input.last_mouse_event > CURSOR_KEEP_VISIBLE {
-            self.input.show_cursor = false;
+        if sdl.ticks_ms() - input.last_mouse_event > CURSOR_KEEP_VISIBLE {
+            input.show_cursor = false;
         } else {
-            self.input.show_cursor = true;
+            input.show_cursor = true;
         }
 
         loop {
-            self.input.event = self.sdl.next_event();
-            match &self.input.event {
+            input.event = sdl.next_event();
+            match &input.event {
                 Some(event) => {
                     match event {
                         Event::Quit => {
                             info!("User requested termination, terminating.");
-                            self.quit.set(true);
+                            quit.set(true);
                             return 0;
                         }
 
                         Event::Keyboard(event) => {
-                            self.input.current_modifiers = event.keysym.mod_.bits();
+                            input.current_modifiers = event.keysym.mod_.bits();
                             match event.ty {
                                 KeyboardEventType::KeyDown => {
-                                    self.input.input_state
+                                    input.input_state
                                         [usize::try_from(event.keysym.symbol as isize).unwrap()]
                                     .set_just_pressed();
                                     #[cfg(feature = "gcw0")]
@@ -483,7 +527,7 @@ impl Data<'_> {
                                     }
                                 }
                                 KeyboardEventType::KeyUp => {
-                                    self.input.input_state
+                                    input.input_state
                                         [usize::try_from(event.keysym.symbol as isize).unwrap()]
                                     .set_just_released();
                                     #[cfg(feature = "gcw0")]
@@ -496,56 +540,49 @@ impl Data<'_> {
 
                         Event::JoyAxis(event) => {
                             let axis = event.axis;
-                            if axis == 0 || ((self.input.joy_num_axes >= 5) && (axis == 3))
+                            if axis == 0 || ((input.joy_num_axes >= 5) && (axis == 3))
                             /* x-axis */
                             {
-                                self.input.input_axis.x = event.value.into();
+                                input.input_axis.x = event.value.into();
 
                                 // this is a bit tricky, because we want to allow direction keys
                                 // to be soft-released. When mapping the joystick->keyboard, we
                                 // therefore have to make sure that this mapping only occurs when
                                 // and actual _change_ of the joystick-direction ('digital') occurs
                                 // so that it behaves like "set"/"release"
-                                if self.input.joy_sensitivity * i32::from(event.value) > 10000 {
+                                if input.joy_sensitivity * i32::from(event.value) > 10000 {
                                     /* about half tilted */
-                                    self.input.input_state[PointerStates::JoyRight as usize]
+                                    input.input_state[PointerStates::JoyRight as usize]
                                         .set_just_pressed();
-                                    self.input.input_state[PointerStates::JoyLeft as usize]
+                                    input.input_state[PointerStates::JoyLeft as usize]
                                         .set_released();
-                                } else if self.input.joy_sensitivity * i32::from(event.value)
-                                    < -10000
-                                {
-                                    self.input.input_state[PointerStates::JoyLeft as usize]
+                                } else if input.joy_sensitivity * i32::from(event.value) < -10000 {
+                                    input.input_state[PointerStates::JoyLeft as usize]
                                         .set_just_pressed();
-                                    self.input.input_state[PointerStates::JoyRight as usize]
+                                    input.input_state[PointerStates::JoyRight as usize]
                                         .set_released();
                                 } else {
-                                    self.input.input_state[PointerStates::JoyLeft as usize]
+                                    input.input_state[PointerStates::JoyLeft as usize]
                                         .set_released();
-                                    self.input.input_state[PointerStates::JoyRight as usize]
+                                    input.input_state[PointerStates::JoyRight as usize]
                                         .set_released();
                                 }
-                            } else if (axis == 1) || ((self.input.joy_num_axes >= 5) && (axis == 4))
-                            {
+                            } else if (axis == 1) || ((input.joy_num_axes >= 5) && (axis == 4)) {
                                 /* y-axis */
-                                self.input.input_axis.y = event.value.into();
+                                input.input_axis.y = event.value.into();
 
-                                if self.input.joy_sensitivity * i32::from(event.value) > 10000 {
-                                    self.input.input_state[PointerStates::JoyDown as usize]
+                                if input.joy_sensitivity * i32::from(event.value) > 10000 {
+                                    input.input_state[PointerStates::JoyDown as usize]
                                         .set_just_pressed();
-                                    self.input.input_state[PointerStates::JoyUp as usize]
-                                        .set_released();
-                                } else if self.input.joy_sensitivity * i32::from(event.value)
-                                    < -10000
-                                {
-                                    self.input.input_state[PointerStates::JoyUp as usize]
+                                    input.input_state[PointerStates::JoyUp as usize].set_released();
+                                } else if input.joy_sensitivity * i32::from(event.value) < -10000 {
+                                    input.input_state[PointerStates::JoyUp as usize]
                                         .set_just_pressed();
-                                    self.input.input_state[PointerStates::JoyDown as usize]
+                                    input.input_state[PointerStates::JoyDown as usize]
                                         .set_released();
                                 } else {
-                                    self.input.input_state[PointerStates::JoyUp as usize]
-                                        .set_released();
-                                    self.input.input_state[PointerStates::JoyDown as usize]
+                                    input.input_state[PointerStates::JoyUp as usize].set_released();
+                                    input.input_state[PointerStates::JoyDown as usize]
                                         .set_released();
                                 }
                             }
@@ -561,21 +598,21 @@ impl Data<'_> {
                                 _ => None,
                             };
                             if let Some(input_state_index) = input_state_index {
-                                let input_state = &mut self.input.input_state[input_state_index];
+                                let input_state = &mut input.input_state[input_state_index];
                                 input_state.pressed = is_pressed;
                                 input_state.fresh = true;
                             }
-                            self.input.axis_is_active = is_pressed.into();
+                            input.axis_is_active = is_pressed.into();
                         }
 
                         Event::MouseMotion(event) => {
-                            let user_center = self.vars.get_user_center();
-                            self.input.input_axis.x =
+                            let user_center = vars.get_user_center();
+                            input.input_axis.x =
                                 i32::from(event.x) - i32::from(user_center.x()) + 16;
-                            self.input.input_axis.y =
+                            input.input_axis.y =
                                 i32::from(event.y) - i32::from(user_center.y()) + 16;
 
-                            self.input.last_mouse_event = self.sdl.ticks_ms();
+                            input.last_mouse_event = sdl.ticks_ms();
                         }
 
                         Event::MouseButton(event) => {
@@ -588,7 +625,7 @@ impl Data<'_> {
 
                             let input_state_index = match event.button {
                                 BUTTON_LEFT => {
-                                    self.input.axis_is_active = is_pressed.into();
+                                    input.axis_is_active = is_pressed.into();
                                     Some(PointerStates::MouseButton1 as usize)
                                 }
                                 BUTTON_RIGHT => Some(PointerStates::MouseButton2 as usize),
@@ -597,13 +634,13 @@ impl Data<'_> {
                                 // count the number of not yet read-out events
                                 BUTTON_WHEELUP => {
                                     if is_pressed {
-                                        self.input.wheel_up_events += 1;
+                                        input.wheel_up_events += 1;
                                     }
                                     None
                                 }
                                 BUTTON_WHEELDOWN => {
                                     if is_pressed {
-                                        self.input.wheel_down_events += 1;
+                                        input.wheel_down_events += 1;
                                     }
                                     None
                                 }
@@ -611,12 +648,12 @@ impl Data<'_> {
                             };
 
                             if let Some(input_state_index) = input_state_index {
-                                let input_state = &mut self.input.input_state[input_state_index];
+                                let input_state = &mut input.input_state[input_state_index];
                                 input_state.pressed = is_pressed;
                                 input_state.fresh = true;
                             }
                             if is_pressed {
-                                self.input.last_mouse_event = self.sdl.ticks_ms();
+                                input.last_mouse_event = sdl.ticks_ms();
                             }
                         }
 
@@ -630,27 +667,75 @@ impl Data<'_> {
     }
 
     pub unsafe fn key_is_pressed(&mut self, key: c_int) -> bool {
-        self.update_input();
+        let Self {
+            sdl,
+            input,
+            vars,
+            quit,
+            ..
+        } = self;
 
-        self.input.input_state[usize::try_from(key).unwrap()].is_just_pressed()
+        Self::key_is_pressed_static(sdl, input, vars, quit, key)
+    }
+
+    pub unsafe fn key_is_pressed_static(
+        sdl: &Sdl,
+        input: &mut Input,
+        vars: &Vars,
+        quit: &Cell<bool>,
+        key: c_int,
+    ) -> bool {
+        Self::update_input_static(sdl, input, vars, quit);
+
+        input.input_state[usize::try_from(key).unwrap()].is_just_pressed()
     }
 
     /// Does the same as KeyIsPressed, but automatically releases the key as well..
     pub unsafe fn key_is_pressed_r(&mut self, key: c_int) -> bool {
-        let ret = self.key_is_pressed(key);
+        let Self {
+            sdl,
+            input,
+            vars,
+            quit,
+            ..
+        } = self;
 
-        self.release_key(key);
+        Self::key_is_pressed_r_static(sdl, input, vars, quit, key)
+    }
+
+    pub unsafe fn key_is_pressed_r_static(
+        sdl: &Sdl,
+        input: &mut Input,
+        vars: &Vars,
+        quit: &Cell<bool>,
+        key: c_int,
+    ) -> bool {
+        let ret = Self::key_is_pressed_static(sdl, input, vars, quit, key);
+
+        input.release_key(key);
         ret
     }
 
-    pub unsafe fn release_key(&mut self, key: c_int) {
-        self.input.input_state[usize::try_from(key).unwrap()].set_released();
+    pub unsafe fn wheel_up_pressed(&mut self) -> bool {
+        let Self {
+            sdl,
+            input,
+            vars,
+            quit,
+            ..
+        } = self;
+        Self::wheel_up_pressed_static(sdl, input, vars, quit)
     }
 
-    pub unsafe fn wheel_up_pressed(&mut self) -> bool {
-        self.update_input();
-        if self.input.wheel_up_events != 0 {
-            self.input.wheel_up_events -= 1;
+    pub unsafe fn wheel_up_pressed_static(
+        sdl: &Sdl,
+        input: &mut Input,
+        vars: &Vars,
+        quit: &Cell<bool>,
+    ) -> bool {
+        Self::update_input_static(sdl, input, vars, quit);
+        if input.wheel_up_events != 0 {
+            input.wheel_up_events -= 1;
             true
         } else {
             false
@@ -658,9 +743,25 @@ impl Data<'_> {
     }
 
     pub unsafe fn wheel_down_pressed(&mut self) -> bool {
-        self.update_input();
-        if self.input.wheel_down_events != 0 {
-            self.input.wheel_down_events -= 1;
+        let Self {
+            sdl,
+            input,
+            vars,
+            quit,
+            ..
+        } = self;
+        Self::wheel_down_pressed_static(sdl, input, vars, quit)
+    }
+
+    pub unsafe fn wheel_down_pressed_static(
+        sdl: &Sdl,
+        input: &mut Input,
+        vars: &Vars,
+        quit: &Cell<bool>,
+    ) -> bool {
+        Self::update_input_static(sdl, input, vars, quit);
+        if input.wheel_down_events != 0 {
+            input.wheel_down_events -= 1;
             true
         } else {
             false
@@ -668,50 +769,141 @@ impl Data<'_> {
     }
 
     pub unsafe fn cmd_is_active(&mut self, cmd: Cmds) -> bool {
+        let Self {
+            sdl,
+            input,
+            vars,
+            quit,
+            ..
+        } = self;
+
+        Self::cmd_is_active_static(sdl, input, vars, quit, cmd)
+    }
+
+    pub unsafe fn cmd_is_active_static(
+        sdl: &Sdl,
+        input: &mut Input,
+        vars: &Vars,
+        quit: &Cell<bool>,
+        cmd: Cmds,
+    ) -> bool {
         let cmd = cmd as usize;
-        self.key_is_pressed(self.input.key_cmds[cmd][0])
-            || self.key_is_pressed(self.input.key_cmds[cmd][1])
-            || self.key_is_pressed(self.input.key_cmds[cmd][2])
+        Self::key_is_pressed_static(sdl, input, vars, quit, input.key_cmds[cmd][0])
+            || Self::key_is_pressed_static(sdl, input, vars, quit, input.key_cmds[cmd][1])
+            || Self::key_is_pressed_static(sdl, input, vars, quit, input.key_cmds[cmd][2])
     }
 
     /// the same but release the keys: use only for menus!
     pub unsafe fn cmd_is_active_r(&mut self, cmd: Cmds) -> bool {
+        let Self {
+            sdl,
+            input,
+            vars,
+            quit,
+            ..
+        } = self;
+        Self::cmd_is_active_r_static(sdl, input, vars, quit, cmd)
+    }
+
+    /// the same but release the keys: use only for menus!
+    pub unsafe fn cmd_is_active_r_static(
+        sdl: &Sdl,
+        input: &mut Input,
+        vars: &Vars,
+        quit: &Cell<bool>,
+        cmd: Cmds,
+    ) -> bool {
         let cmd = cmd as usize;
 
-        let c1 = self.key_is_pressed_r(self.input.key_cmds[cmd][0]);
-        let c2 = self.key_is_pressed_r(self.input.key_cmds[cmd][1]);
-        let c3 = self.key_is_pressed_r(self.input.key_cmds[cmd][2]);
+        let c1 = Self::key_is_pressed_r_static(sdl, input, vars, quit, input.key_cmds[cmd][0]);
+        let c2 = Self::key_is_pressed_r_static(sdl, input, vars, quit, input.key_cmds[cmd][1]);
+        let c3 = Self::key_is_pressed_r_static(sdl, input, vars, quit, input.key_cmds[cmd][2]);
 
         c1 || c2 || c3
     }
 
     pub unsafe fn wait_for_all_keys_released(&mut self) {
-        while self.any_key_is_pressed_r() {
-            self.sdl.delay_ms(1);
+        let Self {
+            input,
+            sdl,
+            vars,
+            quit,
+            #[cfg(target_os = "android")]
+            graphics,
+            ..
+        } = self;
+
+        Self::wait_for_all_keys_released_static(
+            input,
+            sdl,
+            vars,
+            quit,
+            #[cfg(target_os = "android")]
+            graphics,
+        )
+    }
+
+    pub unsafe fn wait_for_all_keys_released_static(
+        input: &mut Input,
+        sdl: &Sdl,
+        vars: &Vars,
+        quit: &Cell<bool>,
+        #[cfg(target_os = "android")] graphics: &mut Graphics,
+    ) {
+        while Self::any_key_is_pressed_r_static(
+            input,
+            sdl,
+            vars,
+            quit,
+            #[cfg(target_os = "android")]
+            graphics,
+        ) {
+            sdl.delay_ms(1);
         }
-        self.reset_mouse_wheel();
+        input.reset_mouse_wheel();
     }
 
     pub unsafe fn any_key_is_pressed_r(&mut self) -> bool {
+        let Self {
+            #[cfg(target_os = "android")]
+            graphics,
+            input,
+            vars,
+            quit,
+            sdl,
+            ..
+        } = self;
+
+        Self::any_key_is_pressed_r_static(
+            input,
+            sdl,
+            vars,
+            quit,
+            #[cfg(target_os = "android")]
+            graphics,
+        )
+    }
+
+    pub unsafe fn any_key_is_pressed_r_static(
+        input: &mut Input,
+        sdl: &Sdl,
+        vars: &Vars,
+        quit: &Cell<bool>,
+        #[cfg(target_os = "android")] graphics: &mut Graphics,
+    ) -> bool {
         #[cfg(target_os = "android")]
-        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
+        assert!(graphics.ne_screen.as_mut().unwrap().flip());
 
         #[cfg(not(target_os = "android"))]
-        self.update_input();
+        Self::update_input_static(sdl, input, vars, quit);
 
-        for state in &mut self.input.input_state {
+        for state in &mut input.input_state {
             if state.pressed || state.fresh {
                 state.set_released();
                 return true;
             }
         }
         false
-    }
-
-    // forget the wheel-counters
-    pub unsafe fn reset_mouse_wheel(&mut self) {
-        self.input.wheel_up_events = 0;
-        self.input.wheel_down_events = 0;
     }
 
     pub unsafe fn mod_is_pressed(&mut self, sdl_mod: SDLMod) -> bool {
@@ -787,5 +979,17 @@ impl Data<'_> {
             /* aktivate Joystick event handling */
             joystick.enable_event_polling();
         }
+    }
+}
+
+impl Input {
+    // forget the wheel-counters
+    pub fn reset_mouse_wheel(&mut self) {
+        self.wheel_up_events = 0;
+        self.wheel_down_events = 0;
+    }
+
+    pub fn release_key(&mut self, key: c_int) {
+        self.input_state[usize::try_from(key).unwrap()].set_released();
     }
 }

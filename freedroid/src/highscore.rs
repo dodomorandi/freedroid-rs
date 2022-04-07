@@ -3,13 +3,12 @@ use crate::{
     b_font::{char_width, font_height},
     defs::{
         self, Criticality, DisplayBannerFlags, Status, Themed, DATE_LEN, GRAPHICS_DIR_C,
-        HS_BACKGROUND_FILE_C, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
+        HS_BACKGROUND_FILE, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
     },
     graphics::Graphics,
     Data,
 };
 
-use cstr::cstr;
 use log::{info, warn};
 use sdl::Rect;
 use std::{
@@ -214,7 +213,7 @@ impl Data<'_> {
                 .ro(&self.font_owner),
         );
         self.display_text(
-            cstr!("Great Score !").as_ptr(),
+            b"Great Score !",
             i32::from(dst.x()) - h,
             i32::from(dst.y()) - h,
             &self.vars.user_rect,
@@ -223,7 +222,7 @@ impl Data<'_> {
         // TODO ARCADEINPUT
         #[cfg(not(target_os = "android"))]
         self.display_text(
-            cstr!("Enter your name: ").as_ptr(),
+            b"Enter your name: ",
             i32::from(dst.x()) - 5 * h,
             i32::from(dst.y()) + i32::from(dst.height()),
             &self.vars.user_rect,
@@ -289,7 +288,7 @@ impl Data<'_> {
         let fpath = Self::find_file_static(
             &self.global,
             &mut self.misc,
-            HS_BACKGROUND_FILE_C,
+            HS_BACKGROUND_FILE,
             Some(GRAPHICS_DIR_C),
             Themed::NoTheme as c_int,
             Criticality::WarnOnly as c_int,

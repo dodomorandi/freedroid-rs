@@ -3,23 +3,25 @@ use crate::defs::{gcw0_ls_pressed_r, gcw0_rs_pressed_r};
 use crate::{
     defs::{
         self, AssembleCombatWindowFlags, Cmds, Criticality, Status, Themed, FD_DATADIR,
-        GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE_C, PROGRESS_METER_FILE_C,
+        GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE, PROGRESS_METER_FILE,
     },
     graphics::{scale_pic, Graphics},
     input::CMD_STRINGS,
     ArrayCString, ArrayIndex, Data, Global,
 };
 
+use bstr::{BStr, ByteSlice};
 use cstr::cstr;
 use defs::MAXBULLETS;
-use log::{error, info, warn};
+use log::{error, info, trace, warn};
+use nom::{Finish, Parser};
 use sdl::Rect;
 use std::{
     borrow::Cow,
     env,
     ffi::{CStr, CString},
     fs::{self, File},
-    os::raw::{c_char, c_float, c_int, c_long, c_void},
+    os::raw::{c_char, c_float, c_int, c_long},
     path::Path,
     ptr::null_mut,
 };
@@ -88,30 +90,73 @@ const VID_SCALE_FACTOR: &str = "Vid_ScaleFactor";
 const HOG_CPU: &str = "Hog_Cpu";
 const EMPTY_LEVEL_SPEEDUP: &str = "EmptyLevelSpeedup";
 
-/// find label in data and read stuff after label into dst using the FormatString
-///
-/// NOTE!!: be sure dst is large enough for data read by FormatString, or
-/// sscanf will crash!!
-pub unsafe fn read_value_from_string(
-    data: *mut c_char,
-    label: *mut c_char,
-    format_string: *mut c_char,
-    dst: *mut c_void,
-) {
-    // Now we locate the label in data and position pointer right after the label
-    // ..will Terminate itself if not found...
-    let pos = locate_string_in_data(data, label).add(CStr::from_ptr(label).to_bytes().len());
+pub fn read_float_from_string(data: &[u8], label: &[u8]) -> f32 {
+    use nom::{character::complete::space0, number::complete::float};
 
-    if libc::sscanf(pos, format_string, dst) == libc::EOF {
-        panic!(
-            "ReadValueFromString(): could not read value {} of label {} with format {}",
-            CStr::from_ptr(pos).to_string_lossy(),
-            CStr::from_ptr(format_string).to_string_lossy(),
-            CStr::from_ptr(label).to_string_lossy(),
-        );
-    } else {
-        info!("ReadValueFromString: value read in successfully.");
-    }
+    let pos = locate_string_in_data(data, label) + label.len();
+    let data = &data[pos..];
+
+    let (_, (_, out)) = space0
+        .and(float)
+        .parse(data)
+        .finish()
+        .unwrap_or_else(|_: ()| {
+            panic!(
+                "ReadValueFromString(): could not read float {} of label {}",
+                <&BStr>::from(data),
+                <&BStr>::from(label),
+            );
+        });
+    out
+}
+
+pub fn read_i32_from_string(data: &[u8], label: &[u8]) -> i32 {
+    use nom::character::complete::{i32, space0};
+
+    let pos = locate_string_in_data(data, label) + label.len();
+    let data = &data[pos..];
+
+    let (_, (_, out)) = space0
+        .and(i32)
+        .parse(data)
+        .finish()
+        .unwrap_or_else(|_: ()| {
+            panic!(
+                "could not read float {} of label {}",
+                <&BStr>::from(data),
+                <&BStr>::from(label),
+            );
+        });
+    out
+}
+
+pub fn read_i16_from_string(data: &[u8], label: &[u8]) -> i16 {
+    use nom::character::complete::{i16, space0};
+
+    let pos = locate_string_in_data(data, label) + label.len();
+    let data = &data[pos..];
+
+    let (_, (_, out)) = space0
+        .and(i16)
+        .parse(data)
+        .finish()
+        .unwrap_or_else(|_: ()| {
+            panic!(
+                "could not read float {} of label {}",
+                <&BStr>::from(data),
+                <&BStr>::from(label),
+            );
+        });
+    out
+}
+
+pub fn read_string_from_string<'a>(data: &'a [u8], label: &[u8]) -> &'a [u8] {
+    let pos = locate_string_in_data(data, label) + label.len();
+    let data = &data[pos..];
+    data.iter()
+        .position(|c| c.is_ascii_whitespace())
+        .map(|pos| &data[..pos])
+        .unwrap_or(data)
 }
 
 /// This function tries to locate a string in some given data string.
@@ -120,16 +165,13 @@ pub unsafe fn read_value_from_string(
 ///
 /// The return value is a pointer to the first instance where the substring
 /// we are searching is found in the main text.
-pub unsafe fn locate_string_in_data(
-    search_begin_pointer: *mut c_char,
-    search_text_pointer: *mut c_char,
-) -> *mut c_char {
-    let temp = libc::strstr(search_begin_pointer, search_text_pointer);
-    let search_text = CStr::from_ptr(search_text_pointer).to_string_lossy();
-
-    if temp.is_null() {
-        panic!(
-            "\n\
+pub fn locate_string_in_data(haystack: &[u8], needle: &[u8]) -> usize {
+    let pos = haystack
+        .windows(needle.len())
+        .position(|s| s == needle)
+        .unwrap_or_else(|| {
+            panic!(
+                "\n\
              \n\
              ----------------------------------------------------------------------\n\
              Freedroid has encountered a problem:\n\
@@ -150,35 +192,25 @@ pub unsafe fn locate_string_in_data(
              not resolve.... Sorry, if that interrupts a major game of yours.....\n\
              ----------------------------------------------------------------------\n\
              \n",
-            search_text
-        );
-    } else {
-        info!(
-            "LocateStringInDate: String {} successfully located within data. ",
-            search_text
-        );
-    }
-    temp
+                <&BStr>::from(needle)
+            );
+        });
+
+    trace!(
+        "LocateStringInDate: String {} successfully located within data. ",
+        <&BStr>::from(needle)
+    );
+    pos
 }
 
 /// This function counts the number of occurences of a string in a given
 /// other string.
-pub unsafe fn count_string_occurences(
-    search_string: *mut c_char,
-    target_string: *mut c_char,
-) -> c_int {
-    let mut counter = 0;
-    let mut count_pointer = search_string;
-
-    loop {
-        count_pointer = libc::strstr(count_pointer, target_string);
-        if count_pointer.is_null() {
-            break;
-        }
-        count_pointer = count_pointer.add(libc::strlen(target_string));
-        counter += 1;
-    }
-    counter
+#[inline]
+pub fn count_string_occurences(search: &[u8], target: &[u8]) -> usize {
+    search
+        .windows(target.len())
+        .filter(|&s| s == target)
+        .count()
 }
 
 /// This function looks for a sting begin indicator and takes the string
@@ -186,15 +218,13 @@ pub unsafe fn count_string_occurences(
 /// it, copys it there and returns it.
 /// The original source string specified should in no way be modified.
 pub fn read_and_malloc_string_from_data(
-    search_string: &CStr,
-    start_indication_string: &CStr,
-    end_indication_string: &CStr,
+    search_string: &[u8],
+    start_indication_string: &[u8],
+    end_indication_string: &[u8],
 ) -> CString {
-    let search_slice = search_string.to_bytes();
-    let start_indication_slice = start_indication_string.to_bytes();
-    let mut search_pos = search_slice
-        .windows(start_indication_slice.len())
-        .position(|s| s == start_indication_slice)
+    let mut search_pos = search_string
+        .windows(start_indication_string.len())
+        .position(|s| s == start_indication_string)
         .unwrap_or_else(|| {
             panic!(
                 "\n\
@@ -217,17 +247,16 @@ pub fn read_and_malloc_string_from_data(
                  not resolve.... Sorry, if that interrupts a major game of yours.....\n\
                  ----------------------------------------------------------------------\n\
                  \n",
-                start_indication_string.to_string_lossy()
+                <&BStr>::from(start_indication_string)
             )
         });
 
     // Now we move to the beginning
-    search_pos += start_indication_slice.len();
-    let end_indication_slice = end_indication_string.to_bytes();
-    let search_slice = &search_slice[search_pos..];
+    search_pos += start_indication_string.len();
+    let search_slice = &search_string[search_pos..];
     let string_length = search_slice
-        .windows(end_indication_slice.len())
-        .position(|s| s == end_indication_slice)
+        .windows(end_indication_string.len())
+        .position(|s| s == end_indication_string)
         .unwrap_or_else(|| {
             panic!(
                 "\n\
@@ -251,7 +280,7 @@ pub fn read_and_malloc_string_from_data(
                  not resolve.... Sorry, if that interrupts a major game of yours.....\n\
                  ----------------------------------------------------------------------\n\
                  \n",
-                end_indication_string.to_string_lossy()
+                <&BStr>::from(end_indication_string)
             )
         });
 
@@ -614,7 +643,7 @@ impl Data<'_> {
     /// or to keep using it after a new call to find_file!
     pub fn find_file<'a>(
         &'a mut self,
-        fname: &CStr,
+        fname: &[u8],
         subdir: Option<&CStr>,
         use_theme: c_int,
         critical: c_int,
@@ -626,7 +655,7 @@ impl Data<'_> {
     pub fn find_file_static<'a>(
         global: &Global,
         misc: &'a mut Misc,
-        fname: &CStr,
+        fname: &[u8],
         subdir: Option<&CStr>,
         use_theme: c_int,
         mut critical: c_int,
@@ -644,6 +673,7 @@ impl Data<'_> {
             critical = Criticality::Critical as c_int;
         }
 
+        let fname: &BStr = fname.into();
         let mut inner = |datadir| {
             let theme_dir = if use_theme == Themed::UseTheme as c_int {
                 Cow::Owned(format!(
@@ -659,7 +689,7 @@ impl Data<'_> {
             if let Some(subdir) = subdir {
                 write!(misc.file_path, "/{}", subdir.to_string_lossy()).unwrap();
             }
-            write!(misc.file_path, "/{theme_dir}/{}", fname.to_string_lossy()).unwrap();
+            write!(misc.file_path, "/{theme_dir}/{}", fname).unwrap();
 
             misc.file_path
                 .to_str()
@@ -682,7 +712,6 @@ impl Data<'_> {
             // how critical is this file for the game:
             match critical {
                 Criticality::WarnOnly => {
-                    let fname = fname.to_string_lossy();
                     if use_theme == Themed::UseTheme as c_int {
                         warn!(
                             "file {} not found in theme-dir: graphics/{}_theme/",
@@ -696,7 +725,6 @@ impl Data<'_> {
                 }
                 Criticality::Ignore => return None,
                 Criticality::Critical => {
-                    let fname = fname.to_string_lossy();
                     if use_theme == Themed::UseTheme as c_int {
                         panic!(
                         "file {} not found in theme-dir: graphics/{}_theme/, cannot run without it!",
@@ -723,7 +751,7 @@ impl Data<'_> {
             let fpath = Self::find_file_static(
                 &self.global,
                 &mut self.misc,
-                PROGRESS_METER_FILE_C,
+                PROGRESS_METER_FILE,
                 Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
@@ -738,7 +766,7 @@ impl Data<'_> {
             let fpath = Self::find_file_static(
                 &self.global,
                 &mut self.misc,
-                PROGRESS_FILLER_FILE_C,
+                PROGRESS_FILLER_FILE,
                 Some(GRAPHICS_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
@@ -1003,7 +1031,6 @@ impl Data<'_> {
 }
 
 fn read_variable<'a>(data: &'a [u8], var_name: &str) -> Option<&'a [u8]> {
-    use bstr::ByteSlice;
     data.lines()
         .filter_map(|line| line.trim_start().strip_prefix(var_name.as_bytes()))
         .filter_map(|line| line.trim_start().strip_prefix(b"="))

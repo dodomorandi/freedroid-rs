@@ -1,6 +1,6 @@
 #[cfg(feature = "gcw0")]
 use crate::input::{key_is_pressed, key_is_pressed_r};
-use crate::{structs::Point, Data};
+use crate::{input::Input, structs::Point, vars::Vars, Data, Sdl};
 
 use bitflags::bitflags;
 use cstr::cstr;
@@ -13,7 +13,7 @@ use sdl_sys::{
     SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LAST, SDLKey_SDLK_RETURN, SDLKey_SDLK_SPACE, SDLMod_KMOD_LALT,
     SDLMod_KMOD_LCTRL, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_RALT, SDLMod_KMOD_RCTRL, SDLMod_KMOD_RSHIFT,
 };
-use std::{ffi::CStr, fmt, os::raw::c_int};
+use std::{cell::Cell, ffi::CStr, fmt, os::raw::c_int};
 
 pub const MAX_THEMES: usize = 100;
 
@@ -257,8 +257,28 @@ impl Data<'_> {
     }
 
     #[inline]
+    pub unsafe fn up_pressed_static(
+        sdl: &Sdl,
+        input: &mut Input,
+        vars: &Vars,
+        quit: &Cell<bool>,
+    ) -> bool {
+        Self::cmd_is_active_static(sdl, input, vars, quit, Cmds::Up)
+    }
+
+    #[inline]
     pub unsafe fn down_pressed(&mut self) -> bool {
         self.cmd_is_active(Cmds::Down)
+    }
+
+    #[inline]
+    pub unsafe fn down_pressed_static(
+        sdl: &Sdl,
+        input: &mut Input,
+        vars: &Vars,
+        quit: &Cell<bool>,
+    ) -> bool {
+        Self::cmd_is_active_static(sdl, input, vars, quit, Cmds::Down)
     }
 
     #[inline]
@@ -279,6 +299,16 @@ impl Data<'_> {
     #[inline]
     pub unsafe fn fire_pressed_r(&mut self) -> bool {
         self.cmd_is_active_r(Cmds::Fire)
+    }
+
+    #[inline]
+    pub unsafe fn fire_pressed_r_static(
+        sdl: &Sdl,
+        input: &mut Input,
+        vars: &Vars,
+        quit: &Cell<bool>,
+    ) -> bool {
+        Self::cmd_is_active_r_static(sdl, input, vars, quit, Cmds::Fire)
     }
 
     #[inline]
@@ -332,7 +362,7 @@ pub const COLLISION_STEPSIZE: f32 = 0.1;
 /* ************************************************************
  * Highscore related defines
  *************************************************************/
-pub const HS_BACKGROUND_FILE_C: &CStr = cstr!("transfer.jpg");
+pub const HS_BACKGROUND_FILE: &[u8] = b"transfer.jpg";
 pub const HS_EMPTY_ENTRY: &str = "--- empty ---";
 pub const MAX_NAME_LEN: usize = 15; /* max len of highscore name entry */
 pub const MAX_HIGHSCORES: usize = 10; /* only keep Top10 */
@@ -457,38 +487,33 @@ pub const GRAPHICS_DIR_C: &CStr = cstr!("graphics/");
 pub const SOUND_DIR_C: &CStr = cstr!("sound/");
 pub const MAP_DIR_C: &CStr = cstr!("map/");
 
-pub const MAP_BLOCK_FILE_C: &CStr = cstr!("map_blocks.png");
-pub const DROID_BLOCK_FILE_C: &CStr = cstr!("droids.png");
-pub const BULLET_BLOCK_FILE_C: &CStr = cstr!("bullet.png");
-pub const BLAST_BLOCK_FILE_C: &CStr = cstr!("blast.png");
-pub const DIGIT_BLOCK_FILE_C: &CStr = cstr!("digits.png");
+pub const MAP_BLOCK_FILE: &[u8] = b"map_blocks.png";
+pub const DROID_BLOCK_FILE: &[u8] = b"droids.png";
+pub const BULLET_BLOCK_FILE: &[u8] = b"bullet.png";
+pub const BLAST_BLOCK_FILE: &[u8] = b"blast.png";
+pub const DIGIT_BLOCK_FILE: &[u8] = b"digits.png";
 
-pub const BANNER_BLOCK_FILE_C: &CStr = cstr!("banner.png");
-pub const TITLE_PIC_FILE_C: &CStr = cstr!("title.jpg");
-pub const CONSOLE_PIC_FILE_C: &CStr = cstr!("console_fg.png");
-pub const CONSOLE_BG_PIC1_FILE_C: &CStr = cstr!("console_bg1.jpg");
-pub const CONSOLE_BG_PIC2_FILE_C: &CStr = cstr!("console_bg2.jpg");
-pub const TAKEOVER_BG_PIC_FILE_C: &CStr = cstr!("takeover_bg.jpg");
-pub const CREDITS_PIC_FILE_C: &CStr = cstr!("credits.jpg");
+pub const BANNER_BLOCK_FILE: &[u8] = b"banner.png";
+pub const TITLE_PIC_FILE: &[u8] = b"title.jpg";
+pub const CONSOLE_PIC_FILE: &[u8] = b"console_fg.png";
+pub const CONSOLE_BG_PIC1_FILE: &[u8] = b"console_bg1.jpg";
+pub const CONSOLE_BG_PIC2_FILE: &[u8] = b"console_bg2.jpg";
+pub const TAKEOVER_BG_PIC_FILE: &[u8] = b"takeover_bg.jpg";
+pub const CREDITS_PIC_FILE: &[u8] = b"credits.jpg";
 
-pub const SHIP_ON_PIC_FILE_C: &CStr = cstr!("ship_on.png");
-pub const SHIP_OFF_PIC_FILE_C: &CStr = cstr!("ship_off.png");
+pub const SHIP_ON_PIC_FILE: &[u8] = b"ship_on.png";
+pub const SHIP_OFF_PIC_FILE: &[u8] = b"ship_off.png";
 
-pub const PROGRESS_METER_FILE_C: &CStr = cstr!("progress_meter.png");
-pub const PROGRESS_FILLER_FILE_C: &CStr = cstr!("progress_filler.png");
+pub const PROGRESS_METER_FILE: &[u8] = b"progress_meter.png";
+pub const PROGRESS_FILLER_FILE: &[u8] = b"progress_filler.png";
 
-pub const STANDARD_MISSION_C: &CStr = cstr!("Paradroid.mission");
+pub const STANDARD_MISSION: &str = "Paradroid.mission";
 
 pub const PARA_FONT_FILE: &str = "parafont.png";
-pub const PARA_FONT_FILE_C: &CStr = cstr!("parafont.png");
 pub const FONT0_FILE: &str = "font05.png";
-pub const FONT0_FILE_C: &CStr = cstr!("font05.png");
 pub const FONT1_FILE: &str = "font05_green.png";
-pub const FONT1_FILE_C: &CStr = cstr!("font05_green.png");
 pub const FONT2_FILE: &str = "font05_red.png";
-pub const FONT2_FILE_C: &CStr = cstr!("font05_red.png");
 pub const ICON_FILE: &str = "paraicon_48x48.png";
-pub const ICON_FILE_C: &CStr = cstr!("paraicon_48x48.png");
 
 // **********************************************************************
 
@@ -547,7 +572,7 @@ pub enum SoundType {
 
 // choose background music by level-color:
 // if filename_raw==BYCOLOR then chose bg_music[color]
-pub const BYCOLOR: &CStr = cstr!("BYCOLOR");
+pub const BYCOLOR: &[u8] = b"BYCOLOR";
 
 // The sounds when the influencers energy is low or when he is in transfer mode
 // occur periodically.  These constants specify which intervals are to be used

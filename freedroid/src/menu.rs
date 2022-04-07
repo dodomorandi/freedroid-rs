@@ -7,7 +7,7 @@ use crate::{
     cur_level,
     defs::{
         AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags, MapTile, MenuAction,
-        Status, Themed, BYCOLOR, CREDITS_PIC_FILE_C, GRAPHICS_DIR_C, MAX_MAP_COLS, MAX_MAP_ROWS,
+        Status, Themed, BYCOLOR, CREDITS_PIC_FILE, GRAPHICS_DIR_C, MAX_MAP_COLS, MAX_MAP_ROWS,
     },
     global::{Global, INFLUENCE_MODE_NAMES},
     graphics::Graphics,
@@ -1409,7 +1409,7 @@ impl<'sdl> Data<'sdl> {
         let image = Self::find_file_static(
             &self.global,
             &mut self.misc,
-            CREDITS_PIC_FILE_C,
+            CREDITS_PIC_FILE,
             Some(GRAPHICS_DIR_C),
             Themed::NoTheme as i32,
             Criticality::Critical as i32,
@@ -1567,7 +1567,7 @@ impl<'sdl> Data<'sdl> {
 
         if action == MenuAction::CLICK {
             self.display_text(
-                cstr!("New level name: ").as_ptr() as *mut c_char,
+                b"New level name: ",
                 i32::from(self.vars.menu_rect.x()) - 2 * self.menu.font_height,
                 i32::from(self.vars.menu_rect.y()) - 3 * self.menu.font_height,
                 &self.vars.full_user_rect,
@@ -1617,7 +1617,7 @@ impl<'sdl> Data<'sdl> {
             self.main.cur_ship.num_levels - 1,
         );
         self.teleport(curlevel, 3, 3);
-        self.switch_background_music_to(BYCOLOR.as_ptr());
+        self.switch_background_music_to(Some(BYCOLOR));
         self.initiate_menu(false);
 
         None
@@ -1639,7 +1639,7 @@ impl<'sdl> Data<'sdl> {
             max_value: c_int::try_from(COLOR_NAMES.len()).unwrap() - 1,
         }
         .run();
-        self.switch_background_music_to(BYCOLOR.as_ptr());
+        self.switch_background_music_to(Some(BYCOLOR));
         self.initiate_menu(false);
 
         None
