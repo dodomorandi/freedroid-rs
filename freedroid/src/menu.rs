@@ -1520,13 +1520,9 @@ impl<'sdl> Data<'sdl> {
         use std::io::Write;
 
         const SHIPNAME: &CStr = cstr!("Testship");
-        libc::snprintf(
-            self.menu.fname.as_mut_ptr() as *mut c_char,
-            self.menu.fname.len() - 1,
-            cstr!("%s%s").as_ptr() as *mut c_char,
-            SHIPNAME.as_ptr() as *mut c_char,
-            SHIP_EXT_C.as_ptr() as *mut c_char,
-        );
+        self.menu.fname.clear();
+        self.menu.fname.push_cstr(SHIPNAME);
+        self.menu.fname.push_cstr(SHIP_EXT_C);
 
         if action == MenuAction::INFO {
             return Some(self.menu.fname.as_ref());
@@ -1603,13 +1599,12 @@ impl<'sdl> Data<'sdl> {
     }
 
     pub unsafe fn handle_le_level_number(&mut self, action: MenuAction) -> Option<&CStr> {
+        use std::fmt::Write;
+
         let cur_level = self.main.cur_level();
         if action == MenuAction::INFO {
-            libc::sprintf(
-                self.menu.le_level_number_buf.as_mut_ptr() as *mut c_char,
-                cstr!("%d").as_ptr() as *mut c_char,
-                cur_level.levelnum,
-            );
+            self.menu.le_level_number_buf.clear();
+            write!(self.menu.le_level_number_buf, "{}", cur_level.levelnum).unwrap();
             return Some(self.menu.le_level_number_buf.as_ref());
         }
 
@@ -1651,13 +1646,12 @@ impl<'sdl> Data<'sdl> {
     }
 
     pub unsafe fn handle_le_size_x(&mut self, action: MenuAction) -> Option<&CStr> {
+        use std::fmt::Write;
+
         let cur_level = cur_level!(mut self.main);
         if action == MenuAction::INFO {
-            libc::sprintf(
-                self.menu.le_size_x_buf.as_mut_ptr() as *mut c_char,
-                cstr!("%d").as_ptr() as *mut c_char,
-                cur_level.xlen,
-            );
+            self.menu.le_size_x_buf.clear();
+            write!(self.menu.le_size_x_buf, "{}", cur_level.xlen).unwrap();
             return Some(self.menu.le_size_x_buf.as_ref());
         }
 
@@ -1698,15 +1692,12 @@ impl<'sdl> Data<'sdl> {
     }
 
     pub unsafe fn handle_le_size_y(&mut self, action: MenuAction) -> Option<&CStr> {
-        use std::cmp::Ordering;
+        use std::{cmp::Ordering, fmt::Write};
 
         let cur_level = cur_level!(mut self.main);
         if action == MenuAction::INFO {
-            libc::sprintf(
-                self.menu.le_size_y_buf.as_mut_ptr() as *mut c_char,
-                cstr!("%d").as_ptr() as *mut c_char,
-                cur_level.ylen,
-            );
+            self.menu.le_size_y_buf.clear();
+            write!(self.menu.le_size_y_buf, "{}", cur_level.ylen).unwrap();
             return Some(self.menu.le_size_y_buf.as_ref());
         }
 
@@ -1889,12 +1880,16 @@ impl<'sdl> Data<'sdl> {
     }
 
     pub unsafe fn handle_empty_level_speedup(&mut self, action: MenuAction) -> Option<&CStr> {
+        use std::fmt::Write;
+
         if action == MenuAction::INFO {
-            libc::sprintf(
-                self.menu.empty_level_speedup_buf.as_mut_ptr() as *mut c_char,
-                cstr!("%3.1f").as_ptr() as *mut c_char,
-                f64::from(self.global.game_config.empty_level_speedup),
-            );
+            self.menu.empty_level_speedup_buf.clear();
+            write!(
+                self.menu.empty_level_speedup_buf,
+                "{:3.1}",
+                f64::from(self.global.game_config.empty_level_speedup)
+            )
+            .unwrap();
             return Some(self.menu.empty_level_speedup_buf.as_ref());
         }
 
@@ -1905,12 +1900,16 @@ impl<'sdl> Data<'sdl> {
     }
 
     pub unsafe fn handle_music_volume(&mut self, action: MenuAction) -> Option<&CStr> {
+        use std::fmt::Write;
+
         if action == MenuAction::INFO {
-            libc::sprintf(
-                self.menu.music_volume_buf.as_mut_ptr() as *mut c_char,
-                cstr!("%4.2f").as_ptr() as *mut c_char,
-                f64::from(self.global.game_config.current_bg_music_volume),
-            );
+            self.menu.music_volume_buf.clear();
+            write!(
+                self.menu.music_volume_buf,
+                "{:4.2}",
+                f64::from(self.global.game_config.current_bg_music_volume)
+            )
+            .unwrap();
             return Some(self.menu.music_volume_buf.as_ref());
         }
 
@@ -1923,12 +1922,16 @@ impl<'sdl> Data<'sdl> {
     }
 
     pub unsafe fn handle_sound_volume(&mut self, action: MenuAction) -> Option<&CStr> {
+        use std::fmt::Write;
+
         if action == MenuAction::INFO {
-            libc::sprintf(
-                self.menu.sound_volume_buf.as_mut_ptr() as *mut c_char,
-                cstr!("%4.2f").as_ptr() as *mut c_char,
-                f64::from(self.global.game_config.current_sound_fx_volume),
-            );
+            self.menu.sound_volume_buf.clear();
+            write!(
+                self.menu.sound_volume_buf,
+                "{:4.2}",
+                f64::from(self.global.game_config.current_sound_fx_volume)
+            )
+            .unwrap();
             return Some(self.menu.sound_volume_buf.as_ref());
         }
 
