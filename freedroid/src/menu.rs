@@ -24,7 +24,6 @@ use sdl_sys::{
     SDLKey_SDLK_RIGHT, SDLKey_SDLK_UP,
 };
 use std::{
-    alloc::{alloc_zeroed, dealloc, realloc, Layout},
     ffi::CStr,
     io::Cursor,
     ops::{AddAssign, Not, SubAssign},
@@ -1670,21 +1669,10 @@ impl<'sdl> Data<'sdl> {
         let newmem = usize::try_from(cur_level.xlen).unwrap();
         // adjust memory sizes for new value
         for row in 0..usize::try_from(cur_level.ylen).unwrap() {
-            cur_level.map[row] = realloc(
-                cur_level.map[row] as *mut u8,
-                Layout::array::<i8>(usize::try_from(oldxlen).unwrap()).unwrap(),
-                newmem,
-            ) as *mut i8;
-            assert!(
-                !cur_level.map[row].is_null(),
-                "Failed to re-allocate to {} bytes in map row {}",
-                newmem,
-                row
-            );
+            cur_level.map[row].resize(newmem, MapTile::Void);
             if cur_level.xlen > oldxlen {
                 // fill new map area with VOID
-                *cur_level.map[row].add(usize::try_from(cur_level.xlen - 1).unwrap()) =
-                    MapTile::Void as i8;
+                cur_level.map[row][usize::try_from(cur_level.xlen - 1).unwrap()] = MapTile::Void;
             }
         }
         self.initiate_menu(false);
@@ -1713,24 +1701,10 @@ impl<'sdl> Data<'sdl> {
             max_value: i32::try_from(MAX_MAP_ROWS - 1).unwrap(),
         }
         .run();
-        let layout = Layout::array::<i8>(usize::try_from(cur_level.xlen).unwrap()).unwrap();
         match oldylen.cmp(&cur_level.ylen) {
-            Ordering::Greater => {
-                dealloc(
-                    cur_level.map[usize::try_from(oldylen - 1).unwrap()] as *mut u8,
-                    layout,
-                );
-                cur_level.map[usize::try_from(oldylen - 1).unwrap()] = null_mut();
-            }
-            Ordering::Less => {
-                cur_level.map[usize::try_from(cur_level.ylen - 1).unwrap()] =
-                    alloc_zeroed(layout) as *mut i8;
-                std::ptr::write_bytes(
-                    cur_level.map[usize::try_from(cur_level.ylen - 1).unwrap()],
-                    MapTile::Void as u8,
-                    usize::try_from(cur_level.xlen).unwrap(),
-                )
-            }
+            Ordering::Greater => cur_level.map[usize::try_from(oldylen - 1).unwrap()].clear(),
+            Ordering::Less => cur_level.map[usize::try_from(cur_level.ylen - 1).unwrap()]
+                .resize(usize::try_from(cur_level.xlen).unwrap(), MapTile::Void),
             Ordering::Equal => {}
         }
 

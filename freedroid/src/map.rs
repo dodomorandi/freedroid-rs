@@ -1,7 +1,7 @@
 use crate::{
     defs::{
         self, Criticality, Direction, MapTile, Status, Themed, DIRECTIONS, MAP_DIR_C, MAXWAYPOINTS,
-        MAX_ALERTS_ON_LEVEL, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_MAP_ROWS, MAX_REFRESHES_ON_LEVEL,
+        MAX_ALERTS_ON_LEVEL, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_REFRESHES_ON_LEVEL,
     },
     find_subslice,
     menu::SHIP_EXT,
@@ -13,18 +13,17 @@ use crate::{
     Data,
 };
 
+use array_init::array_init;
 use bstr::ByteSlice;
 use cstr::cstr;
 use defs::{MAX_DOORS_ON_LEVEL, MAX_WP_CONNECTIONS};
 use log::{error, info, trace, warn};
 use nom::{Finish, Parser};
 use std::{
-    alloc::{alloc_zeroed, dealloc, Layout},
     ffi::CStr,
     ops::Not,
     os::raw::{c_char, c_float, c_int, c_uchar},
     path::Path,
-    ptr::null_mut,
 };
 
 pub const COLOR_NAMES: [&CStr; 7] = [
@@ -70,7 +69,7 @@ pub unsafe fn get_map_brick(deck: &Level, x: c_float, y: c_float) -> c_uchar {
     if yy >= deck.ylen || yy < 0 || xx >= deck.xlen || xx < 0 {
         MapTile::Void as c_uchar
     } else {
-        *deck.map[usize::try_from(yy).unwrap()].offset(isize::try_from(xx).unwrap()) as c_uchar
+        deck.map[usize::try_from(yy).unwrap()][usize::try_from(xx).unwrap()] as c_uchar
     }
 }
 
@@ -84,17 +83,11 @@ pub unsafe fn free_level_memory(level: *mut Level) {
     level.background_song_name = Default::default();
     level.level_enter_comment = Default::default();
 
-    let xlen = level.xlen;
     level
         .map
         .iter_mut()
         .take(level.ylen as usize)
-        .for_each(|&mut map| {
-            dealloc(
-                map as *mut u8,
-                Layout::array::<i8>(usize::try_from(xlen).unwrap()).unwrap(),
-            )
-        });
+        .for_each(|map| map.clear());
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -116,20 +109,13 @@ unsafe fn reset_level_map(level: &mut Level) {
 
     use MapTile::*;
     level.map[0..usize::try_from(level.ylen).unwrap()]
-        .iter()
-        .copied()
-        .flat_map(|row| {
-            std::slice::from_raw_parts_mut(row as *mut u8, usize::try_from(level.xlen).unwrap())
-        })
-        .for_each(|tile| match MapTile::try_from(*tile).unwrap() {
-            VZutuere | VHalbtuere1 | VHalbtuere2 | VHalbtuere3 | VGanztuere => {
-                *tile = VZutuere as u8
-            }
-            HZutuere | HHalbtuere1 | HHalbtuere2 | HHalbtuere3 | HGanztuere => {
-                *tile = HZutuere as u8
-            }
-            Refresh1 | Refresh2 | Refresh3 | Refresh4 => *tile = Refresh1 as u8,
-            AlertGreen | AlertYellow | AlertAmber | AlertRed => *tile = AlertGreen as u8,
+        .iter_mut()
+        .flatten()
+        .for_each(|tile| match tile {
+            VZutuere | VHalbtuere1 | VHalbtuere2 | VHalbtuere3 | VGanztuere => *tile = VZutuere,
+            HZutuere | HHalbtuere1 | HHalbtuere2 | HHalbtuere3 | HGanztuere => *tile = HZutuere,
+            Refresh1 | Refresh2 | Refresh3 | Refresh4 => *tile = Refresh1,
+            AlertGreen | AlertYellow | AlertAmber | AlertRed => *tile = AlertGreen,
             _ => {}
         });
 }
@@ -163,8 +149,8 @@ pub unsafe fn get_doors(level: &mut Level) -> c_int {
     /* now find the doors */
     for line in 0..i8::try_from(ylen).unwrap() {
         for col in 0..i8::try_from(xlen).unwrap() {
-            let brick = *level.map[usize::try_from(line).unwrap()].add(col.try_into().unwrap());
-            if brick == MapTile::VZutuere as i8 || brick == MapTile::HZutuere as i8 {
+            let brick = level.map[usize::try_from(line).unwrap()][usize::try_from(col).unwrap()];
+            if brick == MapTile::VZutuere || brick == MapTile::HZutuere {
                 level.doors[curdoor].x = col;
                 level.doors[curdoor].y = line;
                 curdoor += 1;
@@ -216,7 +202,7 @@ pub unsafe fn get_refreshes(level: &mut Level) -> c_int {
     /* now find all the refreshes */
     for row in 0..u8::try_from(ylen).unwrap() {
         for col in 0..u8::try_from(xlen).unwrap() {
-            if *level.map[usize::from(row)].add(col.into()) == MapTile::Refresh1 as i8 {
+            if level.map[usize::from(row)][usize::from(col)] == MapTile::Refresh1 {
                 level.refreshes[curref].x = col.try_into().unwrap();
                 level.refreshes[curref].y = row.try_into().unwrap();
                 curref += 1;
@@ -266,7 +252,7 @@ pub unsafe fn get_alerts(level: &mut Level) {
     let mut curref = 0;
     for row in 0..u8::try_from(ylen).unwrap() {
         for col in 0..u8::try_from(xlen).unwrap() {
-            if *level.map[usize::from(row)].add(col.into()) == MapTile::AlertGreen as i8 {
+            if level.map[usize::from(row)][usize::from(col)] == MapTile::AlertGreen {
                 level.alerts[curref].x = col.try_into().unwrap();
                 level.alerts[curref].y = row.try_into().unwrap();
                 curref += 1;
@@ -316,7 +302,7 @@ pub unsafe fn level_to_struct(data: &[u8]) -> Option<Level> {
         xlen: 0,
         ylen: 0,
         color: 0,
-        map: [null_mut(); MAX_MAP_ROWS],
+        map: array_init(|_| Default::default()),
         refreshes: [GrobPoint { x: 0, y: 0 }; MAX_REFRESHES_ON_LEVEL],
         doors: [GrobPoint { x: 0, y: 0 }; MAX_DOORS_ON_LEVEL],
         alerts: [GrobPoint { x: 0, y: 0 }; MAX_ALERTS_ON_LEVEL],
@@ -396,9 +382,7 @@ pub unsafe fn level_to_struct(data: &[u8]) -> Option<Level> {
     /* read MapData */
     for i in 0..usize::try_from(loadlevel.ylen).unwrap() {
         let this_line = lines.next()?;
-        loadlevel.map[i] =
-            alloc_zeroed(Layout::array::<i8>(loadlevel.xlen.try_into().unwrap()).unwrap())
-                as *mut c_char;
+        loadlevel.map[i].resize(usize::try_from(loadlevel.xlen).unwrap(), MapTile::Void);
         let mut pos = this_line.trim_start();
 
         for k in 0..usize::try_from(loadlevel.xlen).unwrap() {
@@ -413,8 +397,8 @@ pub unsafe fn level_to_struct(data: &[u8]) -> Option<Level> {
                 .unwrap_or((pos, b""));
             let tmp = std::str::from_utf8(raw_number)
                 .ok()
-                .and_then(|s| s.trim_start().parse().ok())?;
-            *(loadlevel.map[i].add(k)) = tmp;
+                .and_then(|s| s.trim_start().parse::<u8>().ok())?;
+            loadlevel.map[i][k] = tmp.try_into().unwrap();
             pos = pos.trim_start();
         }
     }
@@ -530,19 +514,22 @@ impl Data<'_> {
     pub unsafe fn animate_refresh(&mut self) {
         self.map.inner_wait_counter += self.frame_time() * 10.;
 
-        let cur_level = self.main.cur_level();
+        let cur_level = self.main.cur_level_mut();
         cur_level
             .refreshes
             .iter()
             .take(MAX_REFRESHES_ON_LEVEL)
             .take_while(|refresh| refresh.x != -1 && refresh.y != -1)
             .for_each(|refresh| {
-                let x = isize::try_from(refresh.x).unwrap();
+                let x = usize::try_from(refresh.x).unwrap();
                 let y = usize::try_from(refresh.y).unwrap();
 
-                *cur_level.map[y].offset(x) = (((self.map.inner_wait_counter.round() as c_int) % 4)
-                    + MapTile::Refresh1 as c_int)
-                    as c_char;
+                cur_level.map[y][x] = MapTile::refresh(
+                    (self.map.inner_wait_counter.round() as c_int % 4)
+                        .try_into()
+                        .unwrap(),
+                )
+                .unwrap();
             });
     }
 
@@ -915,7 +902,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         }
         self.global.level_doors_not_moved_time = 0.;
 
-        let cur_level = self.main.cur_level();
+        let cur_level = crate::cur_level!(mut self.main);
         for i in 0..MAX_DOORS_ON_LEVEL {
             let doorx = cur_level.doors[i].x;
             let doory = cur_level.doors[i].y;
@@ -925,8 +912,8 @@ freedroid-discussion@lists.sourceforge.net\n\
                 break;
             }
 
-            let pos =
-                cur_level.map[usize::try_from(doory).unwrap()].add(usize::try_from(doorx).unwrap());
+            let pos = &mut cur_level.map[usize::try_from(doory).unwrap()]
+                [usize::try_from(doorx).unwrap()];
 
             // NORMALISATION doorx = doorx * Block_Rect.w + Block_Rect.w / 2;
             // NORMALISATION doory = doory * Block_Rect.h + Block_Rect.h / 2;
@@ -938,8 +925,8 @@ freedroid-discussion@lists.sourceforge.net\n\
 
             const DOOROPENDIST2: f32 = 1.;
             if dist2 < DOOROPENDIST2 {
-                if *pos != MapTile::HGanztuere as i8 && *pos != MapTile::VGanztuere as i8 {
-                    *pos += 1;
+                if *pos != MapTile::HGanztuere && *pos != MapTile::VGanztuere {
+                    *pos = pos.next().unwrap();
                 }
             } else {
                 /* alle Enemys checken */
@@ -964,10 +951,8 @@ freedroid-discussion@lists.sourceforge.net\n\
                         if ydist < self.vars.block_rect.height().into() {
                             let dist2 = xdist * xdist + ydist * ydist;
                             if dist2 < DOOROPENDIST2 {
-                                if *pos != MapTile::HGanztuere as i8
-                                    && *pos != MapTile::VGanztuere as i8
-                                {
-                                    *pos += 1;
+                                if *pos != MapTile::HGanztuere && *pos != MapTile::VGanztuere {
+                                    *pos = pos.next().unwrap();
                                 }
 
                                 break; /* one druid is enough to open a door */
@@ -980,10 +965,10 @@ freedroid-discussion@lists.sourceforge.net\n\
 
                 /* No druid near: close door if it isnt closed */
                 if j == usize::try_from(self.main.num_enemys).unwrap()
-                    && *pos != MapTile::VZutuere as i8
-                    && *pos != MapTile::HZutuere as i8
+                    && *pos != MapTile::VZutuere
+                    && *pos != MapTile::HZutuere
                 {
-                    *pos -= 1;
+                    *pos = pos.prev().unwrap();
                 }
             }
         }
@@ -1570,7 +1555,7 @@ pub unsafe fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
     for i in 0..usize::try_from(ylen).unwrap() {
         reset_level_map(level); // make sure all doors are closed
         for j in 0..usize::try_from(xlen).unwrap() {
-            write!(level_cursor, "{:02} ", *level.map[i].add(j)).unwrap();
+            write!(level_cursor, "{:02} ", level.map[i][j] as u8).unwrap();
         }
         writeln!(level_cursor).unwrap();
     }

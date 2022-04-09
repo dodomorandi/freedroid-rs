@@ -317,8 +317,8 @@ impl Data<'_> {
                 if special_map_value >= NUM_MAP_BLOCKS.try_into().unwrap() {
                     special_map_value = 0;
                 }
-                *(self.main.cur_level().map[usize::try_from(block_y).unwrap()])
-                    .add(block_x.try_into().unwrap()) = special_map_value.try_into().unwrap();
+                self.main.cur_level_mut().map[usize::try_from(block_y).unwrap()]
+                    [usize::try_from(block_x).unwrap()] = special_map_value.try_into().unwrap();
             }
 
             //If the person using the level editor decides he/she wants a different
@@ -404,100 +404,103 @@ impl Data<'_> {
                 }
             }
 
-            let map_tile = &mut *(self.main.cur_level().map[usize::try_from(block_y).unwrap()]
-                .add(block_x.try_into().unwrap()));
-
             // If the person using the level editor pressed some editing keys, insert the
             // corresponding map tile.  This is done here:
+            let mut map_tile = None;
             if self.key_is_pressed_r(b'f'.into()) {
-                *map_tile = MapTile::FineGrid as i8;
+                map_tile = Some(MapTile::FineGrid);
             }
             if self.key_is_pressed_r(b'1'.into()) {
-                *map_tile = MapTile::Block1 as i8;
+                map_tile = Some(MapTile::Block1);
             }
             if self.key_is_pressed_r(b'2'.into()) {
-                *map_tile = MapTile::Block2 as i8;
+                map_tile = Some(MapTile::Block2);
             }
             if self.key_is_pressed_r(b'3'.into()) {
-                *map_tile = MapTile::Block3 as i8;
+                map_tile = Some(MapTile::Block3);
             }
             if self.key_is_pressed_r(b'4'.into()) {
-                *map_tile = MapTile::Block4 as i8;
+                map_tile = Some(MapTile::Block4);
             }
             if self.key_is_pressed_r(b'5'.into()) {
-                *map_tile = MapTile::Block5 as i8;
+                map_tile = Some(MapTile::Block5);
             }
             if self.key_is_pressed_r(b'l'.into()) {
-                *map_tile = MapTile::Lift as i8;
+                map_tile = Some(MapTile::Lift);
             }
             if self.key_is_pressed_r(SDLKey_SDLK_KP_PLUS as c_int) {
-                *map_tile = MapTile::VWall as i8;
+                map_tile = Some(MapTile::VWall);
             }
             if self.key_is_pressed_r(SDLKey_SDLK_KP0 as c_int) {
-                *map_tile = MapTile::HWall as i8;
+                map_tile = Some(MapTile::HWall);
             }
             if self.key_is_pressed_r(SDLKey_SDLK_KP1 as c_int) {
-                *map_tile = MapTile::EckLu as i8;
+                map_tile = Some(MapTile::EckLu);
             }
             if self.key_is_pressed_r(SDLKey_SDLK_KP2 as c_int) {
                 if !self.shift_pressed() {
-                    *map_tile = MapTile::Tu as i8;
+                    map_tile = Some(MapTile::Tu);
                 } else {
-                    *map_tile = MapTile::KonsoleU as i8;
+                    map_tile = Some(MapTile::KonsoleU);
                 }
             }
             if self.key_is_pressed_r(SDLKey_SDLK_KP3 as c_int) {
-                *map_tile = MapTile::EckRu as i8;
+                map_tile = Some(MapTile::EckRu);
             }
             if self.key_is_pressed_r(SDLKey_SDLK_KP4 as c_int) {
                 if !self.shift_pressed() {
-                    *map_tile = MapTile::Tl as i8;
+                    map_tile = Some(MapTile::Tl);
                 } else {
-                    *map_tile = MapTile::KonsoleL as i8;
+                    map_tile = Some(MapTile::KonsoleL);
                 }
             }
             if self.key_is_pressed_r(SDLKey_SDLK_KP5 as c_int) {
                 if !self.shift_pressed() {
-                    *map_tile = MapTile::Kreuz as i8;
+                    map_tile = Some(MapTile::Kreuz);
                 } else {
-                    *map_tile = MapTile::Void as i8;
+                    map_tile = Some(MapTile::Void);
                 }
             }
             if self.key_is_pressed_r(SDLKey_SDLK_KP6 as c_int) {
                 if !self.shift_pressed() {
-                    *map_tile = MapTile::Tr as i8;
+                    map_tile = Some(MapTile::Tr);
                 } else {
-                    *map_tile = MapTile::KonsoleR as i8;
+                    map_tile = Some(MapTile::KonsoleR);
                 }
             }
             if self.key_is_pressed_r(SDLKey_SDLK_KP7 as c_int) {
-                *map_tile = MapTile::EckLo as i8;
+                map_tile = Some(MapTile::EckLo);
             }
             if self.key_is_pressed_r(SDLKey_SDLK_KP8 as c_int) {
                 if !self.shift_pressed() {
-                    *map_tile = MapTile::To as i8;
+                    map_tile = Some(MapTile::To);
                 } else {
-                    *map_tile = MapTile::KonsoleO as i8;
+                    map_tile = Some(MapTile::KonsoleO);
                 }
             }
             if self.key_is_pressed_r(SDLKey_SDLK_KP9 as c_int) {
-                *map_tile = MapTile::EckRo as i8;
+                map_tile = Some(MapTile::EckRo);
             }
             if self.key_is_pressed_r(b'm'.into()) {
-                *map_tile = MapTile::AlertGreen as i8;
+                map_tile = Some(MapTile::AlertGreen);
             }
             if self.key_is_pressed_r(b'r'.into()) {
-                *map_tile = MapTile::Refresh1 as i8;
+                map_tile = Some(MapTile::Refresh1);
             }
             if self.key_is_pressed_r(b't'.into()) {
                 if self.shift_pressed() {
-                    *map_tile = MapTile::VZutuere as i8;
+                    map_tile = Some(MapTile::VZutuere);
                 } else {
-                    *map_tile = MapTile::HZutuere as i8;
+                    map_tile = Some(MapTile::HZutuere);
                 }
             }
             if self.space_pressed() || self.mouse_left_pressed() {
-                *map_tile = MapTile::Floor as i8;
+                map_tile = Some(MapTile::Floor);
+            }
+
+            if let Some(map_tile) = map_tile {
+                self.main.cur_level_mut().map[usize::try_from(block_y).unwrap()]
+                    [usize::try_from(block_x).unwrap()] = map_tile;
             }
         }
 

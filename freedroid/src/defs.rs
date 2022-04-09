@@ -860,6 +860,120 @@ pub enum MapTile {
     NumMapTiles,
 }
 
+impl MapTile {
+    pub fn refresh(offset: u8) -> Option<Self> {
+        Some(match offset {
+            0 => Self::Refresh1,
+            1 => Self::Refresh2,
+            2 => Self::Refresh3,
+            3 => Self::Refresh4,
+            _ => return None,
+        })
+    }
+
+    pub fn next(self) -> Option<Self> {
+        use MapTile::*;
+
+        Some(match self {
+            Floor => EckLu,
+            EckLu => Tu,
+            Tu => EckRu,
+            EckRu => Tl,
+            Tl => Kreuz,
+            Kreuz => Tr,
+            Tr => EckLo,
+            EckLo => To,
+            To => EckRo,
+            EckRo => HWall,
+            HWall => VWall,
+            VWall => Invisible,
+            Invisible => Block1,
+            Block1 => Block2,
+            Block2 => Block3,
+            Block3 => Block4,
+            Block4 => Block5,
+            Block5 => HZutuere,
+            HZutuere => HHalbtuere1,
+            HHalbtuere1 => HHalbtuere2,
+            HHalbtuere2 => HHalbtuere3,
+            HHalbtuere3 => HGanztuere,
+            HGanztuere => KonsoleL,
+            KonsoleL => KonsoleR,
+            KonsoleR => KonsoleO,
+            KonsoleO => KonsoleU,
+            KonsoleU => VZutuere,
+            VZutuere => VHalbtuere1,
+            VHalbtuere1 => VHalbtuere2,
+            VHalbtuere2 => VHalbtuere3,
+            VHalbtuere3 => VGanztuere,
+            VGanztuere => Lift,
+            Lift => Void,
+            Void => Refresh1,
+            Refresh1 => Refresh2,
+            Refresh2 => Refresh3,
+            Refresh3 => Refresh4,
+            Refresh4 => AlertGreen,
+            AlertGreen => AlertYellow,
+            AlertYellow => AlertAmber,
+            AlertAmber => AlertRed,
+            AlertRed => Unused2,
+            Unused2 => FineGrid,
+            FineGrid | NumMapTiles => return None,
+        })
+    }
+
+    pub fn prev(self) -> Option<Self> {
+        use MapTile::*;
+
+        Some(match self {
+            Floor | NumMapTiles => return None,
+            EckLu => Floor,
+            Tu => EckLu,
+            EckRu => Tu,
+            Tl => EckRu,
+            Kreuz => Tl,
+            Tr => Kreuz,
+            EckLo => Tr,
+            To => EckLo,
+            EckRo => To,
+            HWall => EckRo,
+            VWall => HWall,
+            Invisible => VWall,
+            Block1 => Invisible,
+            Block2 => Block1,
+            Block3 => Block2,
+            Block4 => Block3,
+            Block5 => Block4,
+            HZutuere => Block5,
+            HHalbtuere1 => HZutuere,
+            HHalbtuere2 => HHalbtuere1,
+            HHalbtuere3 => HHalbtuere2,
+            HGanztuere => HHalbtuere3,
+            KonsoleL => HGanztuere,
+            KonsoleR => KonsoleL,
+            KonsoleO => KonsoleR,
+            KonsoleU => KonsoleO,
+            VZutuere => KonsoleU,
+            VHalbtuere1 => VZutuere,
+            VHalbtuere2 => VHalbtuere1,
+            VHalbtuere3 => VHalbtuere2,
+            VGanztuere => VHalbtuere3,
+            Lift => VGanztuere,
+            Void => Lift,
+            Refresh1 => Void,
+            Refresh2 => Refresh1,
+            Refresh3 => Refresh2,
+            Refresh4 => Refresh3,
+            AlertGreen => Refresh4,
+            AlertYellow => AlertGreen,
+            AlertAmber => AlertYellow,
+            AlertRed => AlertAmber,
+            Unused2 => AlertRed,
+            FineGrid => Unused2,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct InvalidMapTile;
 

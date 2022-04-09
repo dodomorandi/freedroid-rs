@@ -270,7 +270,7 @@ pub struct Level {
     pub xlen: i32, /* X dimension */
     pub ylen: i32,
     pub color: i32,
-    pub map: [*mut i8; MAX_MAP_ROWS], /* this is a vector of pointers ! */
+    pub map: [Vec<MapTile>; MAX_MAP_ROWS],
     pub refreshes: [GrobPoint; MAX_REFRESHES_ON_LEVEL],
     pub doors: [GrobPoint; MAX_DOORS_ON_LEVEL],
     pub alerts: [GrobPoint; MAX_ALERTS_ON_LEVEL],

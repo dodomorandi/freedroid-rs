@@ -113,8 +113,8 @@ impl Data<'_> {
                 break;
             }
 
-            *cur_level.map[usize::try_from(posy).unwrap()].add(usize::try_from(posx).unwrap()) =
-                cur_alert as i8;
+            cur_level.map[usize::try_from(posy).unwrap()][usize::try_from(posx).unwrap()] =
+                (cur_alert as i8).try_into().unwrap();
         }
     }
 
