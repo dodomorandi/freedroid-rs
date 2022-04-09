@@ -531,10 +531,10 @@ impl Data<'_> {
                     - ((self.vars.me.pos.y - f32::from(this_wp.y) + 0.5)
                         * f32::from(self.vars.block_rect.height())) as i32;
                 if x < i32::from(self.vars.user_rect.x())
-                    || x > i32::from(self.vars.user_rect.x())
+                    || x >= i32::from(self.vars.user_rect.x())
                         + i32::from(self.vars.user_rect.width())
                     || y < i32::from(self.vars.user_rect.y())
-                    || y > i32::from(self.vars.user_rect.y())
+                    || y >= i32::from(self.vars.user_rect.y())
                         + i32::from(self.vars.user_rect.height())
                 {
                     continue;
@@ -557,10 +557,10 @@ impl Data<'_> {
                         * f32::from(self.vars.block_rect.height())) as i32
                     + 1;
                 if x < i32::from(self.vars.user_rect.x())
-                    || x > i32::from(self.vars.user_rect.x())
+                    || x >= i32::from(self.vars.user_rect.x())
                         + i32::from(self.vars.user_rect.width())
                     || y < i32::from(self.vars.user_rect.y())
-                    || y > i32::from(self.vars.user_rect.y())
+                    || y >= i32::from(self.vars.user_rect.y())
                         + i32::from(self.vars.user_rect.height())
                 {
                     continue;
