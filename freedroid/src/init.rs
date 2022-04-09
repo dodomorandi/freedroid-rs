@@ -31,7 +31,7 @@ use nom::Finish;
 use std::{
     ffi::{CStr, CString},
     ops::Not,
-    os::raw::{c_float, c_int, c_long, c_uint},
+    os::raw::{c_float, c_int, c_long},
     path::Path,
 };
 
@@ -323,12 +323,6 @@ impl Data<'_> {
         // The default should be, that no rescaling of the
         // combat window at all is done.
         self.global.current_combat_scale_factor = 1.;
-
-        /*
-         * Initialise random-number generator in order to make
-         * level-start etc really different at each program start
-         */
-        libc::srand(self.sdl.ticks_ms() as c_uint);
 
         /* initialize/load the highscore list */
         self.init_highscores();

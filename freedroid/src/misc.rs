@@ -14,6 +14,7 @@ use bstr::{BStr, ByteSlice};
 use defs::MAXBULLETS;
 use log::{error, info, trace, warn};
 use nom::{Finish, Parser};
+use rand::{thread_rng, Rng};
 use sdl::Rect;
 use std::{
     borrow::Cow,
@@ -52,20 +53,8 @@ impl Default for Misc {
 
 /// This function is used to generate a random integer in the range
 /// from [0 to upper_bound] (inclusive), distributed uniformly.
-pub unsafe fn my_random(upper_bound: c_int) -> c_int {
-    // random float in [0,upper_bound+1)
-    let tmp = (f64::from(upper_bound) + 1.0)
-        * (f64::from(libc::rand()) / (f64::from(libc::RAND_MAX) + 1.0));
-    let dice_val = tmp as c_int;
-
-    assert!(
-        !(dice_val < 0 || dice_val > upper_bound),
-        "dice_val = {} not in [0, {}]",
-        dice_val,
-        upper_bound
-    );
-
-    dice_val
+pub fn my_random(upper_bound: c_int) -> c_int {
+    thread_rng().gen_range(0..=upper_bound)
 }
 
 const VERSION_STRING: &str = "Freedroid Version";
