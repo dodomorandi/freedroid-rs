@@ -31,9 +31,8 @@ use nom::Finish;
 use std::{
     ffi::{CStr, CString},
     ops::Not,
-    os::raw::{c_char, c_float, c_int, c_long, c_uint},
+    os::raw::{c_float, c_int, c_long, c_uint},
     path::Path,
-    ptr::null_mut,
 };
 
 #[derive(Debug, Default)]
@@ -186,18 +185,14 @@ impl Data<'_> {
 
         self.main.show_score = self.main.real_score as c_long;
         self.vars.me.status = Status::Victory as c_int;
-        self.display_banner(
-            null_mut(),
-            null_mut(),
-            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-        );
+        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
 
         self.wait_for_all_keys_released();
 
         let now = self.sdl.ticks_ms();
 
         while self.sdl.ticks_ms() - now < WAIT_AFTER_KILLED {
-            self.display_banner(null_mut(), null_mut(), 0);
+            self.display_banner(None, None, 0);
             self.explode_blasts();
             self.move_bullets();
             self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
@@ -255,11 +250,7 @@ impl Data<'_> {
         self.global.game_config.draw_death_count = false.into();
         self.global.game_config.draw_position = false.into();
 
-        std::ptr::copy_nonoverlapping(
-            b"classic\0".as_ptr(),
-            self.global.game_config.theme_name.as_mut_ptr() as *mut u8,
-            b"classic\0".len(),
-        );
+        self.global.game_config.theme_name.set_slice("classic");
         self.global.game_config.full_user_rect = true.into();
         self.global.game_config.use_fullscreen = false.into();
         self.global.game_config.takeover_activates = true.into();
@@ -306,7 +297,7 @@ impl Data<'_> {
 
         self.load_fonts(); // we need this for progress-meter!
 
-        self.init_progress(cstr!("Loading Freedroid").as_ptr() as *mut c_char);
+        self.init_progress("Loading Freedroid");
 
         self.find_all_themes(); // put all found themes into a list: AllThemes[]
 
@@ -804,11 +795,7 @@ impl Data<'_> {
 
         /* Den Banner fuer das Spiel anzeigen */
         self.clear_graph_mem();
-        self.display_banner(
-            null_mut(),
-            null_mut(),
-            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-        );
+        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
 
         // Switch_Background_Music_To (COMBAT_BACKGROUND_MUSIC_SOUND);
         Self::switch_background_music_to_static(
@@ -877,11 +864,7 @@ impl Data<'_> {
 
         self.b_font.current_font = self.global.para_b_font.clone();
 
-        self.display_banner(
-            null_mut(),
-            null_mut(),
-            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-        );
+        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
 
         // Next we display all the subsections of the briefing section
         // with scrolling font
@@ -1290,7 +1273,7 @@ impl Data<'_> {
             self.set_time_factor(SLOWMO_FACTOR);
 
             self.start_taking_time_for_fps_calculation();
-            self.display_banner(null_mut(), null_mut(), 0);
+            self.display_banner(None, None, 0);
             self.explode_blasts();
             self.move_bullets();
             self.move_enemys();

@@ -454,8 +454,8 @@ impl Data<'_> {
         drop(rw_ops);
         self.graphics.number_of_screenshot = self.graphics.number_of_screenshot.wrapping_add(1);
         self.display_banner(
-            cstr!("Screenshot").as_ptr(),
-            null_mut(),
+            Some(cstr!("Screenshot")),
+            None,
             (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
                 .bits()
                 .into(),
@@ -468,11 +468,7 @@ impl Data<'_> {
             self.sdl.delay_ms(1);
         }
 
-        self.display_banner(
-            null_mut(),
-            null_mut(),
-            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-        );
+        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
     }
 
     pub unsafe fn free_graphics(&mut self) {
@@ -1169,7 +1165,7 @@ impl Data<'_> {
 
         self.b_font.current_font = self.global.font0_b_font.clone();
 
-        self.init_progress(cstr!("Loading pictures").as_ptr() as *mut c_char);
+        self.init_progress("Loading pictures");
 
         self.load_theme_configuration_file();
 

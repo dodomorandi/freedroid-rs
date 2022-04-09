@@ -1,4 +1,5 @@
 use crate::{
+    array_c_string::ArrayCString,
     defs::{
         self, DisplayBannerFlags, Droid, MenuAction, Status, DROID_ROTATION_TIME, SHOW_WAIT, UPDATE,
     },
@@ -14,8 +15,7 @@ use sdl_sys::SDL_Color;
 use std::{
     convert::Infallible,
     ops::{Deref, DerefMut},
-    os::raw::{c_char, c_int},
-    ptr::null_mut,
+    os::raw::c_int,
 };
 
 #[derive(Debug)]
@@ -1478,20 +1478,21 @@ impl Data<'_> {
         self.countdown_sound();
         let mut finish_takeover = false;
         let your_color = usize::try_from(self.takeover.your_color).unwrap();
+        let mut count_text = ArrayCString::<11>::default();
+
         while !finish_takeover {
             let cur_time = self.sdl.ticks_ms();
 
             let do_update_count = cur_time > prev_count_tick + COUNT_TICK_LEN;
             if do_update_count {
+                use std::fmt::Write;
+
                 /* time to count 1 down */
                 prev_count_tick += COUNT_TICK_LEN; /* set for next countdown tick */
                 countdown -= 1;
-                let count_text = format!("Finish-{}\0", countdown);
-                self.display_banner(
-                    count_text.as_bytes().as_ptr() as *const c_char,
-                    null_mut(),
-                    0,
-                );
+                count_text.clear();
+                write!(count_text, "Finish-{}", countdown).unwrap();
+                self.display_banner(Some(&*count_text), None, 0);
 
                 if countdown != 0 && countdown % 10 == 0 {
                     self.countdown_sound();
@@ -1614,6 +1615,7 @@ impl Data<'_> {
         self.wait_for_all_keys_released();
 
         let mut color_chosen = false;
+        let mut count_text = ArrayCString::<10>::default();
         while !color_chosen {
             let action = self.get_menu_action(110);
             if action.intersects(MenuAction::RIGHT | MenuAction::DOWN_WHEEL) {
@@ -1638,11 +1640,14 @@ impl Data<'_> {
 
             /* wait for next countdown tick */
             if self.sdl.ticks_ms() >= prev_count_tick + COUNT_TICK_LEN {
+                use std::fmt::Write;
+
                 prev_count_tick += COUNT_TICK_LEN; /* set for next tick */
                 countdown -= 1; /* Count down */
-                let count_text = format!("Color-{}\0", countdown);
+                count_text.clear();
+                write!(count_text, "Color-{}", countdown).unwrap();
 
-                self.display_banner(count_text.as_ptr() as *const c_char, null_mut(), 0);
+                self.display_banner(Some(&*count_text), None, 0);
                 self.show_playground();
             }
 
@@ -1668,11 +1673,7 @@ impl Data<'_> {
         let buf = self.vars.user_rect;
         self.vars.user_rect = self.vars.classic_user_rect;
 
-        self.display_banner(
-            null_mut(),
-            null_mut(),
-            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-        );
+        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
 
         const BG_COLOR: SDL_Color = SDL_Color {
             r: 130,
@@ -1733,11 +1734,7 @@ impl Data<'_> {
             .as_mut()
             .unwrap()
             .blit(ne_screen.as_mut().unwrap());
-        self.display_banner(
-            null_mut(),
-            null_mut(),
-            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-        );
+        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
 
         self.wait_for_all_keys_released();
         let mut finish_takeover = false;
@@ -1847,7 +1844,7 @@ impl Data<'_> {
                 message = cstr!("Deadlock");
             }
 
-            self.display_banner(message.as_ptr(), null_mut(), 0);
+            self.display_banner(Some(message), None, 0);
             self.show_playground();
             assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 

@@ -11,7 +11,6 @@ use crate::{
 };
 
 use bstr::{BStr, ByteSlice};
-use cstr::cstr;
 use defs::MAXBULLETS;
 use log::{error, info, trace, warn};
 use nom::{Finish, Parser};
@@ -380,7 +379,7 @@ impl Data<'_> {
                 self.animate_enemys();
             }
 
-            self.display_banner(null_mut(), null_mut(), 0);
+            self.display_banner(None, None, 0);
             self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
 
             self.sdl.delay_ms(1);
@@ -742,11 +741,7 @@ impl Data<'_> {
     }
 
     /// show_progress: display empty progress meter with given text
-    pub unsafe fn init_progress(&mut self, mut text: *mut c_char) {
-        if text.is_null() {
-            text = cstr!("Progress...").as_ptr() as *mut c_char;
-        }
-
+    pub unsafe fn init_progress(&mut self, text: &str) {
         if self.graphics.progress_meter_pic.is_none() {
             let fpath = Self::find_file_static(
                 &self.global,
@@ -814,7 +809,7 @@ impl Data<'_> {
             &mut ne_screen,
             dst.x().into(),
             dst.y().into(),
-            format_args!("{}", CStr::from_ptr(text).to_str().unwrap()),
+            format_args!("{}", text),
         );
 
         assert!(ne_screen.flip());

@@ -19,7 +19,6 @@ use std::{
     mem,
     os::raw::{c_int, c_long},
     path::Path,
-    ptr::null_mut,
     rc::Rc,
 };
 
@@ -297,11 +296,7 @@ impl Data<'_> {
             Self::display_image(self.sdl, &self.global, &mut self.graphics, fpath);
         }
         self.make_grid_on_screen(Some(&self.vars.screen_rect.clone()));
-        self.display_banner(
-            null_mut(),
-            null_mut(),
-            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-        );
+        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
 
         let highscore_font = self.global.highscore_b_font.as_ref().unwrap();
         let prev_font = self.b_font.current_font.replace(Rc::clone(highscore_font));

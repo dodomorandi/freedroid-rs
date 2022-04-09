@@ -473,8 +473,8 @@ impl Data<'_> {
                 .unwrap()
                 .blit(ne_screen.as_mut().unwrap());
             self.display_banner(
-                null_mut(),
-                null_mut(),
+                None,
+                None,
                 (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
                     .bits()
                     .into(),
@@ -709,8 +709,8 @@ impl Data<'_> {
                             2 => {
                                 self.clear_graph_mem();
                                 self.display_banner(
-                                    null_mut(),
-                                    null_mut(),
+                                    None,
+                                    None,
                                     DisplayBannerFlags::FORCE_UPDATE.bits().into(),
                                 );
                                 self.show_deck_map();
@@ -719,8 +719,8 @@ impl Data<'_> {
                             3 => {
                                 self.clear_graph_mem();
                                 self.display_banner(
-                                    null_mut(),
-                                    null_mut(),
+                                    None,
+                                    None,
                                     DisplayBannerFlags::FORCE_UPDATE.bits().into(),
                                 );
                                 self.show_lifts(self.main.cur_level().levelnum, -1);
@@ -994,11 +994,7 @@ impl Data<'_> {
                 .unwrap()
                 .blit(ne_screen.as_mut().unwrap());
 
-            self.display_banner(
-                null_mut(),
-                null_mut(),
-                DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-            );
+            self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
 
             let mut menu_text = ArrayString::<[u8; 200]>::default();
             write!(
@@ -1087,11 +1083,7 @@ impl Data<'_> {
 
         // clear the whole screen
         self.clear_graph_mem();
-        self.display_banner(
-            null_mut(),
-            null_mut(),
-            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-        );
+        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
 
         let wait_move_ticks: u32 = 100;
         let mut finished = false;
@@ -1187,11 +1179,7 @@ impl Data<'_> {
             Some(self.main.cur_level().background_song_name.to_bytes()),
         );
         self.clear_graph_mem();
-        self.display_banner(
-            null_mut(),
-            null_mut(),
-            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-        );
+        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
 
         self.vars.me.status = Status::Mobile as c_int;
         self.vars.me.text_visible_time = 0.;

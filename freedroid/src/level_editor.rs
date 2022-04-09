@@ -9,20 +9,15 @@ use crate::{
     Data,
 };
 
-use cstr::cstr;
 use log::{info, warn};
+use nom::Finish;
 use sdl::Pixel;
 use sdl_sys::{
     SDLKey_SDLK_F1, SDLKey_SDLK_KP0, SDLKey_SDLK_KP1, SDLKey_SDLK_KP2, SDLKey_SDLK_KP3,
     SDLKey_SDLK_KP4, SDLKey_SDLK_KP5, SDLKey_SDLK_KP6, SDLKey_SDLK_KP7, SDLKey_SDLK_KP8,
     SDLKey_SDLK_KP9, SDLKey_SDLK_KP_PLUS,
 };
-use std::{
-    cmp::Ordering,
-    ops::Not,
-    os::raw::{c_char, c_int},
-    ptr::null_mut,
-};
+use std::{cmp::Ordering, ops::Not, os::raw::c_int, ptr::null_mut};
 
 const HIGHLIGHTCOLOR: Pixel = Pixel::from_u8(255);
 const HIGHLIGHTCOLOR2: Pixel = Pixel::from_u8(100);
@@ -308,12 +303,17 @@ impl Data<'_> {
                 assert!(ne_screen.flip());
                 self.graphics.ne_screen = Some(ne_screen);
                 let numeric_input_string = self.get_string(10, 2).unwrap();
-                let mut special_map_value: c_int = 0;
-                libc::sscanf(
-                    numeric_input_string.as_ptr(),
-                    cstr!("%d").as_ptr() as *mut c_char,
-                    &mut special_map_value,
-                );
+
+                use nom::{
+                    character::complete::{i32, space0},
+                    sequence::preceded,
+                };
+
+                let mut special_map_value =
+                    preceded(space0::<_, ()>, i32)(numeric_input_string.as_bytes())
+                        .finish()
+                        .unwrap()
+                        .1;
                 if special_map_value >= NUM_MAP_BLOCKS.try_into().unwrap() {
                     special_map_value = 0;
                 }

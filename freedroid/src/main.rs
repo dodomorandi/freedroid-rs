@@ -54,7 +54,7 @@ use takeover::Takeover;
 use text::Text;
 use vars::Vars;
 
-use std::{cell::Cell, fs::File, ops::Not, os::raw::c_float, path::Path, ptr::null_mut};
+use std::{cell::Cell, fs::File, ops::Not, os::raw::c_float, path::Path};
 
 struct Main<'sdl> {
     last_got_into_blast_sound: c_float,
@@ -269,8 +269,8 @@ fn main() {
 
             data.clear_graph_mem();
             data.display_banner(
-                null_mut(),
-                null_mut(),
+                None,
+                None,
                 (DisplayBannerFlags::FORCE_UPDATE | DisplayBannerFlags::NO_SDL_UPDATE)
                     .bits()
                     .into(),
@@ -307,7 +307,7 @@ fn main() {
 
                 data.alert_level_warning(); // tout tout, blink blink... Alert!!
 
-                data.display_banner(null_mut(), null_mut(), 0);
+                data.display_banner(None, None, 0);
 
                 data.move_bullets(); // leave this in front of graphics output: time_in_frames should start with 1
 
@@ -361,7 +361,6 @@ fn main() {
         data.save_highscores();
 
         // ----- free memory
-        data.free_ship_memory();
         data.free_graphics();
         data.sound = None;
         data.free_menu_data();

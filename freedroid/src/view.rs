@@ -1,4 +1,5 @@
 use crate::{
+    array_c_string::ArrayCString,
     b_font::{font_height, print_string_font, put_string_font},
     defs::{
         AssembleCombatWindowFlags, BulletKind, DisplayBannerFlags, Status, BLINKENERGY,
@@ -19,6 +20,7 @@ use sdl_sys::SDL_Color;
 use std::{
     cell::{Cell, RefCell},
     ffi::CStr,
+    ops::Deref,
     os::raw::{c_char, c_int},
 };
 
@@ -769,14 +771,10 @@ impl Data<'_> {
     /// BANNER_NO_SDL_UPDATE=4: Prevents any SDL_Update calls.
     pub unsafe fn display_banner(
         &mut self,
-        mut left: *const c_char,
-        mut right: *const c_char,
+        left: Option<&CStr>,
+        right: Option<&CStr>,
         flags: c_int,
     ) {
-        use std::io::Write;
-
-        let mut dummy: [u8; 80];
-
         thread_local! {
             static PREVIOUS_LEFT_BOX: RefCell<[u8; LEFT_TEXT_LEN + 10]>={
               let mut data = [0u8; LEFT_TEXT_LEN + 10];
@@ -795,28 +793,39 @@ impl Data<'_> {
         // we will decide whether to display it or not later...
         //
 
-        if left.is_null() {
-            /* Left-DEFAULT: Mode */
-            left = INFLUENCE_MODE_NAMES[self.vars.me.status as usize].as_ptr();
+        let left = left.unwrap_or(INFLUENCE_MODE_NAMES[self.vars.me.status as usize]);
+
+        enum Right<'a, const N: usize> {
+            Owned(ArrayCString<N>),
+            Borrowed(&'a CStr),
         }
 
-        if right.is_null()
-        /* Right-DEFAULT: Score */
-        {
-            dummy = [0u8; 80];
-            write!(dummy.as_mut(), "{}", self.main.show_score).unwrap();
-            right = dummy.as_mut_ptr() as *mut c_char;
+        impl<const N: usize> Deref for Right<'_, N> {
+            type Target = CStr;
+
+            fn deref(&self) -> &Self::Target {
+                match self {
+                    Self::Owned(s) => &**s,
+                    &Self::Borrowed(s) => s,
+                }
+            }
         }
+
+        let right = right.map(Right::Borrowed).unwrap_or_else(|| {
+            use std::fmt::Write;
+
+            let mut buffer = ArrayCString::<80>::default();
+            write!(buffer, "{}", self.main.show_score).unwrap();
+            Right::Owned(buffer)
+        });
 
         // Now fill in the text
-        let left = CStr::from_ptr(left);
         let left_len = left.to_bytes().len();
         assert!(
             left_len <= LEFT_TEXT_LEN,
             "String {} too long for Left Infoline!!",
             left.to_string_lossy()
         );
-        let right = CStr::from_ptr(right);
         let right_len = right.to_bytes().len();
         assert!(
             right_len <= RIGHT_TEXT_LEN,

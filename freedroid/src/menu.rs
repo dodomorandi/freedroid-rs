@@ -18,6 +18,7 @@ use crate::{
 };
 
 use cstr::cstr;
+use nom::Finish;
 use sdl::Surface;
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT,
@@ -264,8 +265,8 @@ impl<'sdl> Data<'sdl> {
         self.vars.me.status = Status::Menu as i32;
         self.clear_graph_mem();
         self.display_banner(
-            null_mut(),
-            null_mut(),
+            None,
+            None,
             (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
                 .bits()
                 .into(),
@@ -447,11 +448,15 @@ impl<'sdl> Data<'sdl> {
                     self.graphics.ne_screen = Some(ne_screen);
                     let input = self.get_string(40, 2).unwrap();
                     ne_screen = self.graphics.ne_screen.take().unwrap();
-                    libc::sscanf(
-                        input.as_ptr(),
-                        cstr!("%f").as_ptr() as *mut c_char,
-                        &mut self.global.current_combat_scale_factor,
-                    );
+                    use nom::{
+                        character::complete::space0, number::complete::float, sequence::preceded,
+                    };
+
+                    self.global.current_combat_scale_factor =
+                        preceded(space0::<_, ()>, float)(input.to_bytes())
+                            .finish()
+                            .unwrap()
+                            .1;
                     self.set_combat_scale_to(self.global.current_combat_scale_factor);
                 }
 
@@ -632,17 +637,21 @@ impl<'sdl> Data<'sdl> {
                     self.graphics.ne_screen = Some(ne_screen);
                     let input = self.get_string(40, 2).unwrap();
                     ne_screen = self.graphics.ne_screen.take().unwrap();
-                    let mut l_num = 0;
-                    let mut x = 0;
-                    let mut y = 0;
 
-                    libc::sscanf(
-                        input.as_ptr(),
-                        cstr!("%d, %d, %d\n").as_ptr() as *mut c_char,
-                        &mut l_num,
-                        &mut x,
-                        &mut y,
-                    );
+                    use nom::{
+                        bytes::complete::tag,
+                        character::complete::{i32, space0},
+                        sequence::{delimited, pair, preceded, tuple},
+                    };
+
+                    let (l_num, x, y) = tuple((
+                        preceded(space0::<_, ()>, i32),
+                        preceded(pair(tag(", "), space0), i32),
+                        delimited(pair(tag(", "), space0), i32, tag("\n")),
+                    ))(input.to_bytes())
+                    .finish()
+                    .unwrap()
+                    .1;
                     self.teleport(l_num, x, y);
                 }
 
@@ -719,12 +728,15 @@ impl<'sdl> Data<'sdl> {
                     self.graphics.ne_screen = Some(ne_screen);
                     let input = self.get_string(40, 2).unwrap();
                     ne_screen = self.graphics.ne_screen.take().unwrap();
-                    let mut num = 0;
-                    libc::sscanf(
-                        input.as_ptr(),
-                        cstr!("%d").as_ptr() as *mut c_char,
-                        &mut num,
-                    );
+
+                    use nom::{
+                        character::complete::{i32, space0},
+                        sequence::preceded,
+                    };
+                    let num = preceded(space0::<_, ()>, i32)(input.to_bytes())
+                        .finish()
+                        .unwrap()
+                        .1;
                     self.vars.me.energy = num as f32;
                     if self.vars.me.energy > self.vars.me.health {
                         self.vars.me.health = self.vars.me.energy;
@@ -744,15 +756,6 @@ impl<'sdl> Data<'sdl> {
                 Some(b'm') => {
                     /* Show deck map in Concept view */
                     self.printf_sdl(&mut ne_screen, -1, -1, format_args!("\nLevelnum: "));
-                    self.graphics.ne_screen = Some(ne_screen);
-                    let input = self.get_string(40, 2).unwrap();
-                    ne_screen = self.graphics.ne_screen.take().unwrap();
-                    let mut l_num = 0;
-                    libc::sscanf(
-                        input.as_ptr(),
-                        cstr!("%d").as_ptr() as *mut c_char,
-                        &mut l_num,
-                    );
                     self.graphics.ne_screen = Some(ne_screen);
                     self.show_deck_map();
                     ne_screen = self.graphics.ne_screen.take().unwrap();
@@ -1746,8 +1749,7 @@ impl<'sdl> Data<'sdl> {
 
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            let toggle = &mut self.global.game_config.full_user_rect as *mut i32;
-            self.flip_toggle(toggle);
+            self.flip_toggle(|data| &mut data.global.game_config.full_user_rect);
             if self.global.game_config.full_user_rect != 0 {
                 self.vars.user_rect = self.vars.full_user_rect;
             } else {
@@ -1797,8 +1799,7 @@ impl<'sdl> Data<'sdl> {
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            let toggle = &mut self.global.game_config.droid_talk as *mut i32;
-            self.flip_toggle(toggle);
+            self.flip_toggle(|data| &mut data.global.game_config.droid_talk);
         }
         None
     }
@@ -1809,8 +1810,7 @@ impl<'sdl> Data<'sdl> {
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            let toggle = &mut self.global.game_config.all_map_visible as *mut i32;
-            self.flip_toggle(toggle);
+            self.flip_toggle(|data| &mut data.global.game_config.all_map_visible);
             self.initiate_menu(false);
         }
         None
@@ -1822,8 +1822,7 @@ impl<'sdl> Data<'sdl> {
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            let toggle = &mut self.global.game_config.show_decals as *mut i32;
-            self.flip_toggle(toggle);
+            self.flip_toggle(|data| &mut data.global.game_config.show_decals);
             self.initiate_menu(false);
         }
         None
@@ -1835,8 +1834,7 @@ impl<'sdl> Data<'sdl> {
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            let toggle = &mut self.global.game_config.takeover_activates as *mut i32;
-            self.flip_toggle(toggle);
+            self.flip_toggle(|data| &mut data.global.game_config.takeover_activates);
         }
         None
     }
@@ -1847,8 +1845,7 @@ impl<'sdl> Data<'sdl> {
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            let toggle = &mut self.global.game_config.fire_hold_takeover as *mut i32;
-            self.flip_toggle(toggle);
+            self.flip_toggle(|data| &mut data.global.game_config.fire_hold_takeover);
         }
         None
     }
@@ -1943,9 +1940,7 @@ impl<'sdl> Data<'sdl> {
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            let mut f = self.global.game_config.draw_position;
-            self.flip_toggle(&mut f);
-            self.global.game_config.draw_position = f;
+            self.flip_toggle(|data| &mut data.global.game_config.draw_position);
             self.initiate_menu(false);
         }
         None
@@ -1957,9 +1952,7 @@ impl<'sdl> Data<'sdl> {
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            let mut f = self.global.game_config.draw_framerate;
-            self.flip_toggle(&mut f);
-            self.global.game_config.draw_framerate = f;
+            self.flip_toggle(|data| &mut data.global.game_config.draw_framerate);
             self.initiate_menu(false);
         }
         None
@@ -1971,9 +1964,7 @@ impl<'sdl> Data<'sdl> {
         }
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
-            let mut f = self.global.game_config.draw_energy;
-            self.flip_toggle(&mut f);
-            self.global.game_config.draw_energy = f;
+            self.flip_toggle(|data| &mut data.global.game_config.draw_energy);
             self.initiate_menu(false);
         }
         None
@@ -2025,11 +2016,13 @@ impl<'sdl> Data<'sdl> {
         self.menu_change(action, val, step, min_value, max_value)
     }
 
-    pub unsafe fn flip_toggle(&self, toggle: *mut c_int) {
-        if toggle.is_null().not() {
-            self.menu_item_selected_sound();
-            *toggle = !*toggle;
-        }
+    pub unsafe fn flip_toggle<F>(&mut self, mut get_toggle: F)
+    where
+        F: for<'a> FnMut(&'a mut Data) -> &'a mut c_int,
+    {
+        self.menu_item_selected_sound();
+        let toggle = get_toggle(self);
+        *toggle = !*toggle;
     }
 
     pub unsafe fn set_theme(&mut self, theme_index: c_int) {

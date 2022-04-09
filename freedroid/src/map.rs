@@ -73,12 +73,7 @@ pub unsafe fn get_map_brick(deck: &Level, x: c_float, y: c_float) -> c_uchar {
     }
 }
 
-pub unsafe fn free_level_memory(level: *mut Level) {
-    if level.is_null() {
-        return;
-    }
-
-    let level = &mut *level;
+pub fn free_level_memory(level: &mut Level) {
     level.levelname = Default::default();
     level.background_song_name = Default::default();
     level.level_enter_comment = Default::default();
@@ -498,7 +493,7 @@ impl Data<'_> {
         true.into()
     }
 
-    pub unsafe fn free_ship_memory(&mut self) {
+    pub fn free_ship_memory(&mut self) {
         self.main
             .cur_ship
             .all_levels
