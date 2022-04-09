@@ -1325,13 +1325,13 @@ impl Data<'_> {
             b"Transmission",
             i32::from(dst.x()) - h,
             i32::from(dst.y()) - h,
-            &self.vars.user_rect,
+            Some(self.vars.user_rect),
         );
         self.display_text(
             b"Terminated",
             i32::from(dst.x()) - h,
             i32::from(dst.y()) + i32::from(dst.height()),
-            &self.vars.user_rect,
+            Some(self.vars.user_rect),
         );
         let mut ne_screen = self.graphics.ne_screen.take().unwrap();
         self.printf_sdl(&mut ne_screen, -1, -1, format_args!("\n"));

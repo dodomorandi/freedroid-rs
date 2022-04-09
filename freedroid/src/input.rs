@@ -19,12 +19,7 @@ use sdl_sys::{
 };
 #[cfg(not(feature = "gcw0"))]
 use sdl_sys::{SDLKey_SDLK_F12, SDLKey_SDLK_PAUSE, SDLKey_SDLK_RSHIFT};
-use std::{
-    cell::Cell,
-    ffi::CStr,
-    fmt,
-    os::raw::{c_char, c_int},
-};
+use std::{cell::Cell, ffi::CStr, fmt, os::raw::c_int};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 struct InputState {
@@ -406,20 +401,20 @@ impl Default for Input {
     }
 }
 
-pub const CMD_STRINGS: [*const c_char; Cmds::Last as usize] = [
-    cstr!("UP").as_ptr(),
-    cstr!("DOWN").as_ptr(),
-    cstr!("LEFT").as_ptr(),
-    cstr!("RIGHT").as_ptr(),
-    cstr!("FIRE").as_ptr(),
-    cstr!("ACTIVATE").as_ptr(),
-    cstr!("TAKEOVER").as_ptr(),
-    cstr!("QUIT").as_ptr(),
-    cstr!("PAUSE").as_ptr(),
-    cstr!("SCREENSHOT").as_ptr(),
-    cstr!("FULLSCREEN").as_ptr(),
-    cstr!("MENU").as_ptr(),
-    cstr!("BACK").as_ptr(),
+pub const CMD_STRINGS: [&str; Cmds::Last as usize] = [
+    "UP",
+    "DOWN",
+    "LEFT",
+    "RIGHT",
+    "FIRE",
+    "ACTIVATE",
+    "TAKEOVER",
+    "QUIT",
+    "PAUSE",
+    "SCREENSHOT",
+    "FULLSCREEN",
+    "MENU",
+    "BACK",
 ];
 
 pub const CURSOR_KEEP_VISIBLE: u32 = 3000; // ticks to keep mouse-cursor visible without mouse-input

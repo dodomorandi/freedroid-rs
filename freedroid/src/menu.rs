@@ -27,9 +27,8 @@ use sdl_sys::{
 use std::{
     ffi::CStr,
     io::Cursor,
-    ops::{AddAssign, Not, SubAssign},
-    os::raw::{c_char, c_float, c_int},
-    ptr::null_mut,
+    ops::{AddAssign, SubAssign},
+    os::raw::{c_float, c_int},
 };
 
 #[derive(Debug, Default)]
@@ -68,45 +67,45 @@ pub const SHIP_EXT: &str = ".shp";
 macro_rules! menu_entry {
     () => {
         MenuEntry {
-            name: null_mut(),
+            name: None,
             handler: None,
-            submenu: null_mut(),
+            submenu: None,
         }
     };
     ($name:tt) => {
         MenuEntry {
-            name: cstr!($name).as_ptr(),
+            name: Some($name),
             handler: None,
-            submenu: null_mut(),
+            submenu: None,
         }
     };
     ($name:tt, $handler:expr) => {
         MenuEntry {
-            name: cstr!($name).as_ptr(),
+            name: Some($name),
             handler: Some($handler),
-            submenu: null_mut(),
+            submenu: None,
         }
     };
     ($name:tt, None, $submenu:expr) => {
         MenuEntry {
-            name: cstr!($name).as_ptr(),
+            name: Some($name),
             handler: None,
-            submenu: $submenu.as_ptr(),
+            submenu: Some(&$submenu),
         }
     };
     ($name:tt, $handler:expr, $submenu:expr) => {
         MenuEntry {
-            name: cstr!($name).as_ptr(),
+            name: Some($name),
             handler: Some($handler),
-            submenu: $submenu.as_ptr(),
+            submenu: Some(&$submenu),
         }
     };
 }
 
 pub struct MenuEntry<'sdl> {
-    name: *const c_char,
+    name: Option<&'static str>,
     handler: Option<for<'a> unsafe fn(&'a mut Data<'sdl>, MenuAction) -> Option<&'a CStr>>,
-    submenu: *const MenuEntry<'sdl>,
+    submenu: Option<&'sdl [MenuEntry<'sdl>]>,
 }
 
 impl<'sdl> Data<'sdl> {
@@ -248,7 +247,7 @@ impl<'sdl> Data<'sdl> {
 
     /// simple wrapper to ShowMenu() to provide the external entry point into the main menu
     pub unsafe fn show_main_menu(&mut self) {
-        self.show_menu(Self::MAIN_MENU.as_ptr());
+        self.show_menu(&Self::MAIN_MENU);
     }
 
     pub fn free_menu_data(&mut self) {
@@ -929,7 +928,7 @@ impl<'sdl> Data<'sdl> {
     }
 
     /// Generic menu handler
-    pub unsafe fn show_menu(&mut self, menu_entries: *const MenuEntry<'sdl>) {
+    pub unsafe fn show_menu(&mut self, menu_entries: &[MenuEntry<'sdl>]) {
         use std::io::Write;
 
         self.initiate_menu(false);
@@ -939,12 +938,13 @@ impl<'sdl> Data<'sdl> {
         let mut num_entries = 0;
         let mut menu_width = None::<i32>;
         loop {
-            let entry = &*menu_entries.add(num_entries);
-            if entry.name.is_null() {
-                break;
-            }
+            let entry = &menu_entries[num_entries];
+            let name = match entry.name.as_ref() {
+                Some(name) => name,
+                None => break,
+            };
 
-            let width = self.text_width(CStr::from_ptr(entry.name).to_bytes());
+            let width = self.text_width(name.as_bytes());
             menu_width = Some(
                 menu_width
                     .map(|menu_width| menu_width.max(width))
@@ -953,7 +953,7 @@ impl<'sdl> Data<'sdl> {
 
             num_entries += 1;
         }
-        let menu_entries = std::slice::from_raw_parts(menu_entries, num_entries);
+        let menu_entries = &menu_entries[..num_entries];
         let menu_width = menu_width.unwrap();
 
         let menu_height = i32::try_from(num_entries).unwrap() * self.menu.font_height;
@@ -992,7 +992,7 @@ impl<'sdl> Data<'sdl> {
                     write!(
                         cursor,
                         "{}{}",
-                        CStr::from_ptr(entry.name).to_str().unwrap(),
+                        entry.name.as_ref().unwrap(),
                         arg.to_str().unwrap()
                     )
                     .unwrap();
@@ -1031,7 +1031,7 @@ impl<'sdl> Data<'sdl> {
                 }
 
                 MenuAction::CLICK => {
-                    if handler.is_none() && submenu.is_null() {
+                    if handler.is_none() && submenu.is_none() {
                         self.menu_item_selected_sound();
                         finished = true;
                     } else {
@@ -1040,7 +1040,7 @@ impl<'sdl> Data<'sdl> {
                             (handler)(self, action);
                         }
 
-                        if submenu.is_null().not() {
+                        if let Some(submenu) = submenu {
                             self.menu_item_selected_sound();
                             self.wait_for_all_keys_released();
                             self.show_menu(submenu);
@@ -1241,7 +1241,7 @@ impl<'sdl> Data<'sdl> {
                 font0_b_font.as_ref().unwrap().rw(&mut self.font_owner),
                 startx,
                 starty + (posy) * lheight,
-                format_args!("{}", CStr::from_ptr(cmd_string).to_str().unwrap()),
+                format_args!("{}", cmd_string),
             );
             print_string_font(
                 ne_screen.as_mut().unwrap(),
@@ -1489,7 +1489,7 @@ impl<'sdl> Data<'sdl> {
     /// simple wrapper to ShowMenu() to provide the external entry point into the Level Editor menu
     pub unsafe fn show_level_editor_menu(&mut self) {
         self.menu.quit_level_editor = false;
-        self.show_menu(Self::LEVEL_EDITOR_MENU.as_ptr());
+        self.show_menu(&Self::LEVEL_EDITOR_MENU);
     }
 
     pub unsafe fn handle_configure_keys(&mut self, action: MenuAction) -> Option<&CStr> {
@@ -1521,9 +1521,9 @@ impl<'sdl> Data<'sdl> {
     pub unsafe fn handle_le_save_ship(&mut self, action: MenuAction) -> Option<&CStr> {
         use std::io::Write;
 
-        const SHIPNAME: &CStr = cstr!("Testship");
+        const SHIPNAME: &str = "Testship";
         self.menu.fname.clear();
-        self.menu.fname.push_cstr(SHIPNAME);
+        self.menu.fname.push_str(SHIPNAME);
         self.menu.fname.push_cstr(SHIP_EXT_C);
 
         if action == MenuAction::INFO {
@@ -1531,7 +1531,7 @@ impl<'sdl> Data<'sdl> {
         }
 
         if action == MenuAction::CLICK {
-            self.save_ship(SHIPNAME.as_ptr());
+            self.save_ship(SHIPNAME);
             let mut output = [0; 255];
             let mut cursor = Cursor::new(output.as_mut());
             write!(
@@ -1572,7 +1572,7 @@ impl<'sdl> Data<'sdl> {
                 b"New level name: ",
                 i32::from(self.vars.menu_rect.x()) - 2 * self.menu.font_height,
                 i32::from(self.vars.menu_rect.y()) - 3 * self.menu.font_height,
-                &self.vars.full_user_rect,
+                Some(self.vars.full_user_rect),
             );
             assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 

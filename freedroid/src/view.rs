@@ -21,8 +21,9 @@ use std::{
     cell::{Cell, RefCell},
     ffi::CStr,
     ops::Deref,
-    os::raw::{c_char, c_int},
+    os::raw::c_int,
 };
+use tinyvec_string::ArrayString;
 
 const BLINK_LEN: f32 = 1.0;
 
@@ -655,7 +656,7 @@ impl Data<'_> {
                     + i32::from(self.vars.block_rect.width() / 3),
                 i32::from(self.vars.user_rect.y()) + i32::from(self.vars.user_rect.height() / 2)
                     - i32::from(self.vars.block_rect.height() / 2),
-                &text_rect,
+                Some(text_rect),
             );
         }
 
@@ -776,15 +777,11 @@ impl Data<'_> {
         flags: c_int,
     ) {
         thread_local! {
-            static PREVIOUS_LEFT_BOX: RefCell<[u8; LEFT_TEXT_LEN + 10]>={
-              let mut data = [0u8; LEFT_TEXT_LEN + 10];
-              data[..6].copy_from_slice(b"NOUGHT");
-              RefCell::new(data)
+            static PREVIOUS_LEFT_BOX: RefCell<ArrayString::<[u8; LEFT_TEXT_LEN]>>={
+              RefCell::new(ArrayString::from("NOUGHT"))
             };
-            static PREVIOUS_RIGHT_BOX: RefCell<[u8; RIGHT_TEXT_LEN + 10]>= {
-              let mut data = [0u8; RIGHT_TEXT_LEN + 10];
-              data[..6].copy_from_slice(b"NOUGHT");
-              RefCell::new(data)
+            static PREVIOUS_RIGHT_BOX: RefCell<ArrayString::<[u8; RIGHT_TEXT_LEN]>>= {
+              RefCell::new(ArrayString::from("NOUGHT"))
             };
         }
 
@@ -834,25 +831,20 @@ impl Data<'_> {
         );
 
         /* Now prepare the left/right text-boxes */
-        let mut left_box = [b' '; LEFT_TEXT_LEN + 10];
-        let mut right_box = [b' '; RIGHT_TEXT_LEN + 10];
-
-        left_box[..left_len].copy_from_slice(&left.to_bytes()[..left_len]);
-        right_box[..right_len].copy_from_slice(&right.to_bytes()[..right_len]);
-
-        left_box[LEFT_TEXT_LEN] = b'\0'; /* that's right, we want padding! */
-        right_box[RIGHT_TEXT_LEN] = b'\0';
-
+        let left_box =
+            ArrayString::<[u8; LEFT_TEXT_LEN]>::from(std::str::from_utf8(left.to_bytes()).unwrap());
+        let right_box = ArrayString::<[u8; RIGHT_TEXT_LEN]>::from(
+            std::str::from_utf8(right.to_bytes()).unwrap(),
+        );
         // --------------------
         // No we see if the screen need an update...
 
         let screen_needs_update = self.graphics.banner_is_destroyed != 0
             || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
             || PREVIOUS_LEFT_BOX
-                .with(|previous_left_box| left_box.as_ref() != previous_left_box.borrow().as_ref())
-            || PREVIOUS_RIGHT_BOX.with(|previous_right_box| {
-                right_box.as_ref() != previous_right_box.borrow().as_ref()
-            });
+                .with(|previous_left_box| left_box != previous_left_box.borrow().as_ref())
+            || PREVIOUS_RIGHT_BOX
+                .with(|previous_right_box| right_box != previous_right_box.borrow().as_ref());
         if screen_needs_update {
             // Redraw the whole background of the top status bar
             let Graphics {
@@ -870,10 +862,9 @@ impl Data<'_> {
             // Now the text should be ready and its
             // time to display it...
             let previous_left_check = PREVIOUS_LEFT_BOX
-                .with(|previous_left_box| left_box.as_ref() != previous_left_box.borrow().as_ref());
-            let previous_right_check = PREVIOUS_RIGHT_BOX.with(|previous_right_box| {
-                right_box.as_ref() != previous_right_box.borrow().as_ref()
-            });
+                .with(|previous_left_box| left_box != previous_left_box.borrow().as_ref());
+            let previous_right_check = PREVIOUS_RIGHT_BOX
+                .with(|previous_right_box| right_box != previous_right_box.borrow().as_ref());
             if previous_left_check
                 || previous_right_check
                 || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
@@ -893,18 +884,11 @@ impl Data<'_> {
                     para_b_font,
                     dst.x().into(),
                     dst.y().into(),
-                    format_args!(
-                        "{}",
-                        CStr::from_ptr(left_box.as_ptr() as *const c_char)
-                            .to_str()
-                            .unwrap()
-                    ),
+                    format_args!("{}", left_box),
                 );
-                let left_box_len = left_box.iter().position(|&c| c == 0).unwrap();
                 PREVIOUS_LEFT_BOX.with(|previous_left_box| {
                     let mut previous_left_box = previous_left_box.borrow_mut();
-                    previous_left_box[..left_box_len].copy_from_slice(&left_box[..left_box_len]);
-                    previous_left_box[left_box_len] = b'\0';
+                    *previous_left_box = left_box;
                 });
 
                 dst.set_x(self.vars.right_info_rect.x());
@@ -917,19 +901,11 @@ impl Data<'_> {
                     para_b_font,
                     dst.x().into(),
                     dst.y().into(),
-                    format_args!(
-                        "{}",
-                        CStr::from_ptr(right_box.as_ptr() as *const c_char)
-                            .to_str()
-                            .unwrap()
-                    ),
+                    format_args!("{}", right_box),
                 );
-                let right_box_len = right_box.iter().position(|&c| c == 0).unwrap();
                 PREVIOUS_RIGHT_BOX.with(|previous_right_box| {
                     let mut previous_right_box = previous_right_box.borrow_mut();
-                    previous_right_box[..right_box_len]
-                        .copy_from_slice(&right_box[..right_box_len]);
-                    previous_right_box[right_box_len] = b'\0';
+                    *previous_right_box = right_box;
                 });
             }
 

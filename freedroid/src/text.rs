@@ -30,11 +30,11 @@ use sdl_sys::{
 };
 use std::{
     cell::Cell,
-    ffi::{CStr, CString},
+    ffi::CString,
     fmt,
     io::Cursor,
     ops::Not,
-    os::raw::{c_char, c_int, c_uchar},
+    os::raw::{c_int, c_uchar},
 };
 
 #[cfg(feature = "arcade-input")]
@@ -134,12 +134,11 @@ impl Data<'_> {
             let mut tmp_rect = store_rect;
             let mut ne_screen = self.graphics.ne_screen.take().unwrap();
             store.blit_to(&mut ne_screen, &mut tmp_rect);
-            self.put_string(
-                &mut ne_screen,
-                x0,
-                y0,
-                CStr::from_ptr(input.as_ptr() as *const c_char).to_bytes(),
-            );
+            let usable_input = {
+                let end = input.iter().copied().position(|c| c == b'\0').unwrap();
+                &input[..end]
+            };
+            self.put_string(&mut ne_screen, x0, y0, usable_input);
             assert!(ne_screen.flip());
             self.graphics.ne_screen = Some(ne_screen);
 
@@ -422,7 +421,7 @@ impl Data<'_> {
         text: &[u8],
         startx: c_int,
         starty: c_int,
-        clip: *const Rect,
+        clip: Option<Rect>,
     ) -> c_int {
         let Self {
             text: data_text,
@@ -447,7 +446,7 @@ impl Data<'_> {
         mut text: &[u8],
         startx: c_int,
         starty: c_int,
-        mut clip: *const Rect,
+        clip: Option<Rect>,
     ) -> c_int {
         if startx != -1 {
             data_text.my_cursor_x = startx;
@@ -456,23 +455,21 @@ impl Data<'_> {
             data_text.my_cursor_y = starty;
         }
 
-        let mut temp_clipping_rect;
-
         // store previous clip-rect
         let store_clip = graphics.ne_screen.as_ref().unwrap().get_clip_rect();
-        if !clip.is_null() {
-            graphics
-                .ne_screen
-                .as_mut()
-                .unwrap()
-                .set_clip_rect(RectRef::from(&*clip));
-        } else {
-            temp_clipping_rect =
-                Rect::new(0, 0, vars.screen_rect.width(), vars.screen_rect.height());
-            clip = &mut temp_clipping_rect;
-        }
+        let clip = match clip {
+            Some(clip) => {
+                graphics
+                    .ne_screen
+                    .as_mut()
+                    .unwrap()
+                    .set_clip_rect(RectRef::from(&clip));
 
-        let clip = &*clip;
+                clip
+            }
+            None => Rect::new(0, 0, vars.screen_rect.width(), vars.screen_rect.height()),
+        };
+
         while let Some((&first, rest)) = text.split_first() {
             if data_text.my_cursor_y >= c_int::from(clip.y()) + c_int::from(clip.height()) {
                 break;
@@ -488,7 +485,7 @@ impl Data<'_> {
             }
 
             text = rest;
-            if Self::is_linebreak_needed(b_font, font_owner, data_text, text, clip) {
+            if Self::is_linebreak_needed(b_font, font_owner, data_text, text, &clip) {
                 text = &text[1..];
                 data_text.my_cursor_x = clip.x().into();
                 data_text.my_cursor_y += (f64::from(font_height(
@@ -745,7 +742,7 @@ impl Data<'_> {
                 text,
                 rect.x().into(),
                 insert_line as c_int,
-                rect,
+                Some(*rect),
             ) == 0
             {
                 ret = 0; /* Text has been scrolled outside Rect */

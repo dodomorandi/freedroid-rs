@@ -19,7 +19,6 @@ use std::{
     ffi::CStr,
     ops::Not,
     os::raw::{c_float, c_int},
-    ptr::null_mut,
 };
 use tinyvec_string::ArrayString;
 
@@ -485,14 +484,14 @@ impl Data<'_> {
             info_text.as_ref(),
             self.vars.cons_text_rect.x().into(),
             self.vars.cons_text_rect.y().into(),
-            &self.vars.cons_text_rect,
+            Some(self.vars.cons_text_rect),
         );
 
         self.display_text(
             droid_name.as_ref(),
             i32::from(self.vars.cons_header_rect.x()) + i32::from(lineskip),
             (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i32,
-            null_mut(),
+            None,
         );
 
         if show_arrows {
@@ -1013,14 +1012,14 @@ impl Data<'_> {
                 menu_text.as_ref(),
                 self.vars.cons_header_rect.x().into(),
                 self.vars.cons_header_rect.y().into(),
-                &self.vars.cons_header_rect,
+                Some(self.vars.cons_header_rect),
             );
 
             self.display_text(
                 b"Logout from console\n\nDroid info\n\nDeck map\n\nShip map",
                 self.vars.cons_text_rect.x().into(),
                 c_int::from(self.vars.cons_text_rect.y()) + 25,
-                &self.vars.cons_text_rect,
+                Some(self.vars.cons_text_rect),
             );
         } // only if not UPDATE_ONLY was required
 

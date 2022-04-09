@@ -22,7 +22,7 @@ use nom::{Finish, Parser};
 use std::{
     ffi::CStr,
     ops::Not,
-    os::raw::{c_char, c_float, c_int, c_uchar},
+    os::raw::{c_float, c_int, c_uchar},
     path::Path,
 };
 
@@ -770,16 +770,12 @@ impl Data<'_> {
     }
 
     /// Saves ship-data to disk
-    pub unsafe fn save_ship(&mut self, shipname: *const c_char) -> c_int {
+    pub unsafe fn save_ship(&mut self, shipname: &str) -> c_int {
         use std::{fs::File, io::Write, path::PathBuf};
 
         trace!("SaveShip(): real function call confirmed.");
 
-        let filename = PathBuf::from(format!(
-            "{}{}",
-            CStr::from_ptr(shipname).to_str().unwrap(),
-            SHIP_EXT
-        ));
+        let filename = PathBuf::from(format!("{}{}", shipname, SHIP_EXT));
 
         /* count the levels */
         let level_anz = self
@@ -851,8 +847,12 @@ freedroid-discussion@lists.sourceforge.net\n\
                 // Now comes the real saving part FOR ONE LEVEL.  First THE LEVEL is packed into a string and
                 // then this string is wirtten to the file.  easy. simple.
                 let level_mem = struct_to_mem(level);
-                ship_file
-                    .write_all(CStr::from_ptr(level_mem.as_ptr() as *const c_char).to_bytes())?;
+                let end = level_mem
+                    .iter()
+                    .copied()
+                    .position(|c| c == b'\0')
+                    .unwrap_or(level_mem.len());
+                ship_file.write_all(&level_mem[..end])?;
             }
 
             //--------------------

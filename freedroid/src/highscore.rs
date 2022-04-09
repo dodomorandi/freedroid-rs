@@ -28,37 +28,11 @@ pub struct Highscore {
     pub num: i32,
 }
 
+#[derive(Debug)]
 pub struct HighscoreEntry {
     name: ArrayCString<{ MAX_NAME_LEN + 5 }>,
     score: c_long,
     date: ArrayCString<{ DATE_LEN + 5 }>,
-}
-
-impl fmt::Debug for HighscoreEntry {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name =
-            unsafe { std::slice::from_raw_parts(self.name.as_ptr() as *const u8, self.name.len()) };
-        let date =
-            unsafe { std::slice::from_raw_parts(self.date.as_ptr() as *const u8, self.date.len()) };
-
-        f.debug_struct("HighscoreEntry")
-            .field(
-                "name",
-                &CStr::from_bytes_with_nul(name)
-                    .ok()
-                    .and_then(|name| name.to_str().ok())
-                    .unwrap_or("[INVALID]"),
-            )
-            .field("score", &self.score)
-            .field(
-                "date",
-                &CStr::from_bytes_with_nul(date)
-                    .ok()
-                    .and_then(|date| date.to_str().ok())
-                    .unwrap_or("[INVALID]"),
-            )
-            .finish()
-    }
 }
 
 impl Default for HighscoreEntry {
@@ -215,7 +189,7 @@ impl Data<'_> {
             b"Great Score !",
             i32::from(dst.x()) - h,
             i32::from(dst.y()) - h,
-            &self.vars.user_rect,
+            Some(self.vars.user_rect),
         );
 
         // TODO ARCADEINPUT
@@ -224,7 +198,7 @@ impl Data<'_> {
             b"Enter your name: ",
             i32::from(dst.x()) - 5 * h,
             i32::from(dst.y()) + i32::from(dst.height()),
-            &self.vars.user_rect,
+            Some(self.vars.user_rect),
         );
 
         #[cfg(target_os = "android")]

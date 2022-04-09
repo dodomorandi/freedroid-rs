@@ -177,7 +177,7 @@ impl<'sdl> Graphics<'sdl> {
         fpath: Option<&CStr>,
         line: c_int,
         col: c_int,
-        block: *const Rect,
+        block: Option<Rect>,
         flags: c_int,
         sdl: &'sdl Sdl,
     ) -> Option<Surface<'sdl>> {
@@ -201,7 +201,7 @@ impl<'sdl> Graphics<'sdl> {
         fpath: Option<&CStr>,
         line: c_int,
         col: c_int,
-        block: *const Rect,
+        block: Option<Rect>,
         flags: c_int,
         sdl: &'sdl Sdl,
     ) -> Option<Surface<'sdl>> {
@@ -225,12 +225,9 @@ impl<'sdl> Graphics<'sdl> {
         }
 
         let pic = pic.as_mut().unwrap();
-        let dim = if block.is_null() {
-            Rect::new(0, 0, pic.width(), pic.height())
-        } else {
-            let block = &*block;
-            block.with_xy(0, 0)
-        };
+        let dim = block
+            .map(|block| block.with_xy(0, 0))
+            .unwrap_or_else(|| Rect::new(0, 0, pic.width(), pic.height()));
 
         let raw_format = pic.raw().format();
         assert!(raw_format.is_null().not());
@@ -517,7 +514,7 @@ impl Data<'_> {
 
         // free Load_Block()-internal buffer
         self.graphics
-            .load_block(None, 0, 0, null_mut(), FREE_ONLY as i32, self.sdl);
+            .load_block(None, 0, 0, None, FREE_ONLY as i32, self.sdl);
 
         // free cursors
         self.graphics.crosshair_cursor = None;
@@ -1181,7 +1178,7 @@ impl Data<'_> {
             Criticality::Critical as c_int,
         );
         self.graphics
-            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as i32, self.sdl); /* init function */
+            .load_block(fpath, 0, 0, None, INIT_ONLY as i32, self.sdl); /* init function */
         let Self {
             graphics:
                 Graphics {
@@ -1213,7 +1210,7 @@ impl Data<'_> {
                     None,
                     color_index.try_into().unwrap(),
                     block_index.try_into().unwrap(),
-                    &ORIG_BLOCK_RECT,
+                    Some(ORIG_BLOCK_RECT),
                     0,
                     self.sdl,
                 )
@@ -1232,7 +1229,7 @@ impl Data<'_> {
             Criticality::Critical as c_int,
         );
         self.graphics
-            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int, self.sdl);
+            .load_block(fpath, 0, 0, None, INIT_ONLY as c_int, self.sdl);
 
         let Self {
             graphics:
@@ -1254,7 +1251,7 @@ impl Data<'_> {
                     None,
                     0,
                     index.try_into().unwrap(),
-                    &ORIG_BLOCK_RECT,
+                    Some(ORIG_BLOCK_RECT),
                     0,
                     self.sdl,
                 );
@@ -1281,7 +1278,7 @@ impl Data<'_> {
                     None,
                     1,
                     index.try_into().unwrap(),
-                    &ORIG_BLOCK_RECT,
+                    Some(ORIG_BLOCK_RECT),
                     0,
                     self.sdl,
                 );
@@ -1308,7 +1305,7 @@ impl Data<'_> {
             Criticality::Critical as c_int,
         );
         self.graphics
-            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int, self.sdl);
+            .load_block(fpath, 0, 0, None, INIT_ONLY as c_int, self.sdl);
         self.vars
             .bulletmap
             .iter_mut()
@@ -1325,7 +1322,7 @@ impl Data<'_> {
                     None,
                     bullet_type_index.try_into().unwrap(),
                     phase_index.try_into().unwrap(),
-                    &ORIG_BLOCK_RECT,
+                    Some(ORIG_BLOCK_RECT),
                     0,
                     self.sdl,
                 );
@@ -1343,7 +1340,7 @@ impl Data<'_> {
             Criticality::Critical as c_int,
         );
         self.graphics
-            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int, self.sdl);
+            .load_block(fpath, 0, 0, None, INIT_ONLY as c_int, self.sdl);
 
         let Self { vars, graphics, .. } = self;
         vars.blastmap
@@ -1361,7 +1358,7 @@ impl Data<'_> {
                     None,
                     blast_type_index.try_into().unwrap(),
                     surface_index.try_into().unwrap(),
-                    &ORIG_BLOCK_RECT,
+                    Some(ORIG_BLOCK_RECT),
                     0,
                     self.sdl,
                 );
@@ -1379,7 +1376,7 @@ impl Data<'_> {
             Criticality::Critical as c_int,
         );
         self.graphics
-            .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int, self.sdl);
+            .load_block(fpath, 0, 0, None, INIT_ONLY as c_int, self.sdl);
         let Self {
             graphics:
                 Graphics {
@@ -1401,7 +1398,7 @@ impl Data<'_> {
                     None,
                     0,
                     index.try_into().unwrap(),
-                    &ORIG_DIGIT_RECT,
+                    Some(ORIG_DIGIT_RECT),
                     0,
                     self.sdl,
                 );
@@ -1416,7 +1413,7 @@ impl Data<'_> {
                     None,
                     0,
                     (index + 10).try_into().unwrap(),
-                    &ORIG_DIGIT_RECT,
+                    Some(ORIG_DIGIT_RECT),
                     0,
                     self.sdl,
                 );
@@ -1433,9 +1430,7 @@ impl Data<'_> {
             Themed::UseTheme as c_int,
             Criticality::Critical as c_int,
         );
-        self.takeover.to_blocks = self
-            .graphics
-            .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
+        self.takeover.to_blocks = self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
 
         self.update_progress(60);
 
@@ -1484,8 +1479,7 @@ impl Data<'_> {
                 Criticality::Critical as c_int,
             );
             self.graphics.takeover_bg_pic =
-                self.graphics
-                    .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
+                self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
             self.set_takeover_rects(); // setup takeover rectangles
 
             // cursor shapes
@@ -1501,9 +1495,7 @@ impl Data<'_> {
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            self.graphics.console_pic =
-                self.graphics
-                    .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
+            self.graphics.console_pic = self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
             let fpath = Self::find_file_static(
                 &self.global,
                 &mut self.misc,
@@ -1513,8 +1505,7 @@ impl Data<'_> {
                 Criticality::Critical as c_int,
             );
             self.graphics.console_bg_pic1 =
-                self.graphics
-                    .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
+                self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
             let fpath = Self::find_file_static(
                 &self.global,
                 &mut self.misc,
@@ -1524,8 +1515,7 @@ impl Data<'_> {
                 Criticality::Critical as c_int,
             );
             self.graphics.console_bg_pic2 =
-                self.graphics
-                    .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
+                self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
 
             self.update_progress(80);
 
@@ -1581,9 +1571,7 @@ impl Data<'_> {
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            self.graphics.banner_pic =
-                self.graphics
-                    .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
+            self.graphics.banner_pic = self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
 
             self.update_progress(90);
             //---------- get Droid images ----------
@@ -1642,9 +1630,7 @@ impl Data<'_> {
                 Themed::NoTheme as c_int,
                 Criticality::Critical as c_int,
             );
-            self.graphics.pic999 = self
-                .graphics
-                .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
+            self.graphics.pic999 = self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
 
             // get the Ashes pics
             let fpath = Self::find_file_static(
@@ -1657,13 +1643,13 @@ impl Data<'_> {
             );
 
             self.graphics
-                .load_block(fpath, 0, 0, null_mut(), INIT_ONLY as c_int, self.sdl);
+                .load_block(fpath, 0, 0, None, INIT_ONLY as c_int, self.sdl);
             self.graphics.decal_pics[0] =
                 self.graphics
-                    .load_block(None, 0, 0, &ORIG_BLOCK_RECT, 0, self.sdl);
+                    .load_block(None, 0, 0, Some(ORIG_BLOCK_RECT), 0, self.sdl);
             self.graphics.decal_pics[1] =
                 self.graphics
-                    .load_block(None, 0, 1, &ORIG_BLOCK_RECT, 0, self.sdl);
+                    .load_block(None, 0, 1, Some(ORIG_BLOCK_RECT), 0, self.sdl);
         });
 
         self.update_progress(96);
@@ -1720,7 +1706,7 @@ impl Data<'_> {
             read_i32_from_string(&*data, BLAST_TWO_NUMBER_OF_PHASES_STRING);
 
         // Next we read in the number of phases that are to be used for each bullet type
-        let mut reader = std::slice::from_raw_parts(data.as_ptr() as *const u8, data.len());
+        let mut reader = &*data;
         while let Some(read_start) = reader.find(b"For Bullettype Nr.=") {
             let read = &reader[read_start..];
             let bullet_index = read_i32_from_string(read, b"For Bullettype Nr.=");

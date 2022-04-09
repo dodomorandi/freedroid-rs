@@ -23,7 +23,6 @@ use std::{
     fs::{self, File},
     os::raw::{c_char, c_float, c_int, c_long},
     path::Path,
-    ptr::null_mut,
 };
 
 #[derive(Debug)]
@@ -545,10 +544,7 @@ impl Data<'_> {
             writeln!(
                 config,
                 "{} \t= {}_{}_{}",
-                CStr::from_ptr(cmd_string).to_str().unwrap(),
-                key_cmd[0],
-                key_cmd[1],
-                key_cmd[2],
+                cmd_string, key_cmd[0], key_cmd[1], key_cmd[2],
             )
             .unwrap();
         }
@@ -741,8 +737,7 @@ impl Data<'_> {
                 Criticality::Critical as c_int,
             );
             self.graphics.progress_meter_pic =
-                self.graphics
-                    .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
+                self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
             scale_pic(
                 self.graphics.progress_meter_pic.as_mut().unwrap(),
                 self.global.game_config.scale,
@@ -756,8 +751,7 @@ impl Data<'_> {
                 Criticality::Critical as c_int,
             );
             self.graphics.progress_filler_pic =
-                self.graphics
-                    .load_block(fpath, 0, 0, null_mut(), 0, self.sdl);
+                self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
             scale_pic(
                 self.graphics.progress_filler_pic.as_mut().unwrap(),
                 self.global.game_config.scale,
@@ -1000,7 +994,7 @@ impl Data<'_> {
 
         // read in keyboard-config
         for (index, &cmd_string) in CMD_STRINGS.iter().enumerate() {
-            let value = read_variable(&data, CStr::from_ptr(cmd_string).to_str().unwrap());
+            let value = read_variable(&data, cmd_string);
             if let Some(value) = value {
                 let value = std::str::from_utf8(value).unwrap();
                 self.input.key_cmds[index]
