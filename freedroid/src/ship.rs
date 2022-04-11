@@ -16,7 +16,6 @@ use log::{error, warn};
 use sdl::{rwops::RwOpsCapability, Rect, Surface};
 use sdl_sys::SDL_Color;
 use std::{
-    ffi::CStr,
     ops::Not,
     os::raw::{c_float, c_int},
 };
@@ -64,7 +63,7 @@ impl Default for ShipData<'_> {
 
 impl Data<'_> {
     /// do all alert-related agitations: alert-sirens and alert-lights
-    pub unsafe fn alert_level_warning(&mut self) {
+    pub fn alert_level_warning(&mut self) {
         const SIREN_WAIT: f32 = 2.5;
 
         use AlertNames::*;
@@ -125,7 +124,7 @@ impl Data<'_> {
     ///
     /// cycle_time is the time in seconds for a full animation-cycle,
     /// if cycle_time == 0 : display static pic, using only first frame
-    pub unsafe fn show_droid_portrait(
+    pub fn show_droid_portrait(
         &mut self,
         mut dst: Rect,
         droid_type: c_int,
@@ -296,7 +295,7 @@ impl Data<'_> {
     ///                           only  update the text-regions
     ///
     ///  does update the screen: all if flags=0, text-rect if flags=UPDATE_ONLY
-    pub unsafe fn show_droid_info(&mut self, droid_type: c_int, page: c_int, flags: c_int) {
+    pub fn show_droid_info(&mut self, droid_type: c_int, page: c_int, flags: c_int) {
         use std::fmt::Write;
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
@@ -342,7 +341,7 @@ impl Data<'_> {
         write!(
             droid_name,
             "  Unit type {} - {}",
-            CStr::from_ptr(droid.druidname.as_ptr()).to_str().unwrap(),
+            droid.druidname.to_str().unwrap(),
             CLASS_NAMES[usize::try_from(droid.class).unwrap()]
                 .to_str()
                 .unwrap()
@@ -552,7 +551,7 @@ impl Data<'_> {
     ///
     /// Note: we no longer wait here for a key-press, but return
     /// immediately
-    pub unsafe fn show_deck_map(&mut self) {
+    pub fn show_deck_map(&mut self) {
         let tmp = self.vars.me.pos;
 
         let cur_level = self.main.cur_level();
@@ -584,7 +583,7 @@ impl Data<'_> {
     /// 3 * Show a side-elevation on the ship
     /// 1 * Give all available data on lower druid types
     /// 0 * Reenter the game without squashing the colortable
-    pub unsafe fn enter_konsole(&mut self) {
+    pub fn enter_konsole(&mut self) {
         // Prevent distortion of framerate by the delay coming from
         // the time spend in the menu.
         self.activate_conservative_frame_computation();
@@ -770,7 +769,7 @@ impl Data<'_> {
 
     /// This function does the robot show when the user has selected robot
     /// show from the console menu.
-    pub unsafe fn great_druid_show(&mut self) {
+    pub fn great_druid_show(&mut self) {
         let mut finished = false;
 
         let mut droidtype = self.vars.me.ty;
@@ -880,7 +879,7 @@ impl Data<'_> {
     }
 
     /// This function should check if the mouse cursor is in the given Rectangle
-    pub unsafe fn cursor_is_on_rect(&self, rect: &Rect) -> c_int {
+    pub fn cursor_is_on_rect(&self, rect: &Rect) -> c_int {
         let user_center = self.vars.get_user_center();
         let cur_pos = Point {
             x: self.input.input_axis.x + (i32::from(user_center.x()) - 16),
@@ -899,7 +898,7 @@ impl Data<'_> {
     ///
     ///  if level==-1: don't highlight any level
     ///  if liftrow==-1: dont' highlight any liftrows
-    pub unsafe fn show_lifts(&mut self, level: c_int, liftrow: c_int) {
+    pub fn show_lifts(&mut self, level: c_int, liftrow: c_int) {
         let lift_bg_color = SDL_Color {
             r: 0,
             g: 0,
@@ -972,7 +971,7 @@ impl Data<'_> {
     ///       to call SDL_Flip() to display the result!
     /// pos  : 0<=pos<=3: which menu-position is currently active?
     /// flag : UPDATE_ONLY  only update the console-menu bar, not text & background
-    pub unsafe fn paint_console_menu(&mut self, pos: c_int, flag: c_int) {
+    pub fn paint_console_menu(&mut self, pos: c_int, flag: c_int) {
         use std::fmt::Write;
 
         if (flag & i32::from(UPDATE_ONLY)) == 0 {
@@ -999,9 +998,7 @@ impl Data<'_> {
             write!(
                 menu_text,
                 "Area : {}\nDeck : {}    Alert: {}",
-                CStr::from_ptr(self.main.cur_ship.area_name.as_ptr())
-                    .to_str()
-                    .unwrap(),
+                self.main.cur_ship.area_name.to_str().unwrap(),
                 self.main.cur_level().levelname.to_str().unwrap(),
                 AlertNames::try_from(self.main.alert_level)
                     .unwrap()
@@ -1049,7 +1046,7 @@ impl Data<'_> {
     }
 
     /// does all the work when we enter a lift
-    pub unsafe fn enter_lift(&mut self) {
+    pub fn enter_lift(&mut self) {
         /* Prevent distortion of framerate by the delay coming from
          * the time spend in the menu. */
         self.activate_conservative_frame_computation();
@@ -1185,7 +1182,7 @@ impl Data<'_> {
         self.vars.me.text_to_be_displayed = TextToBeDisplayed::LevelEnterComment;
     }
 
-    pub unsafe fn level_empty(&self) -> c_int {
+    pub fn level_empty(&self) -> c_int {
         let cur_level = self.main.cur_level();
         if cur_level.empty != 0 {
             return true.into();

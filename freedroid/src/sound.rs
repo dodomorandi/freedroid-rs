@@ -88,16 +88,16 @@ pub struct Sound<'a> {
 }
 
 impl Data<'_> {
-    pub unsafe fn cry_sound(&self) {
+    pub fn cry_sound(&self) {
         self.play_sound(SoundType::Cry as i32);
     }
 
-    pub unsafe fn transfer_sound(&self) {
+    pub fn transfer_sound(&self) {
         self.play_sound(SoundType::Transfer as i32);
     }
 
     #[inline]
-    pub unsafe fn play_sound(&self, tune: c_int) {
+    pub fn play_sound(&self, tune: c_int) {
         Self::play_sound_static(
             self.main.sound_on,
             self.sdl,
@@ -106,7 +106,7 @@ impl Data<'_> {
         )
     }
 
-    pub unsafe fn play_sound_static(sound_on: c_int, sdl: &Sdl, sound: &Sound, tune: c_int) {
+    pub fn play_sound_static(sound_on: c_int, sdl: &Sdl, sound: &Sound, tune: c_int) {
         if sound_on == 0 {
             return;
         }
@@ -120,14 +120,13 @@ impl Data<'_> {
             None,
         );
         if newest_sound_channel.is_none() {
-            sdl::get_error(|err| {
-                warn!(
-                    "Could not play sound-sample: {} Error: {}.\
-This usually just means that too many samples where played at the same time",
-                    SOUND_SAMPLE_FILENAMES[tune],
-                    err.to_string_lossy(),
-                );
-            });
+            let err = sdl.get_error();
+            warn!(
+                "Could not play sound-sample: {} Error: {}.\
+                 This usually just means that too many samples where played at the same time",
+                SOUND_SAMPLE_FILENAMES[tune],
+                err.to_string_lossy(),
+            );
         } else {
             info!(
                 "Successfully playing file {}.",
@@ -136,7 +135,7 @@ This usually just means that too many samples where played at the same time",
         };
     }
 
-    pub unsafe fn takeover_set_capsule_sound(&self) {
+    pub fn takeover_set_capsule_sound(&self) {
         if self.main.sound_on == 0 {
             return;
         }
@@ -144,7 +143,7 @@ This usually just means that too many samples where played at the same time",
         self.play_sound(SoundType::TakeoverSetCapsule as i32);
     }
 
-    pub unsafe fn takeover_game_won_sound(&self) {
+    pub fn takeover_game_won_sound(&self) {
         if self.main.sound_on == 0 {
             return;
         }
@@ -152,7 +151,7 @@ This usually just means that too many samples where played at the same time",
         self.play_sound(SoundType::TakeoverGameWon as i32);
     }
 
-    pub unsafe fn takeover_game_deadlock_sound(&self) {
+    pub fn takeover_game_deadlock_sound(&self) {
         if self.main.sound_on == 0 {
             return;
         }
@@ -160,7 +159,7 @@ This usually just means that too many samples where played at the same time",
         self.play_sound(SoundType::TakeoverGameDeadlock as i32);
     }
 
-    pub unsafe fn takeover_game_lost_sound(&self) {
+    pub fn takeover_game_lost_sound(&self) {
         if self.main.sound_on == 0 {
             return;
         }
@@ -168,7 +167,7 @@ This usually just means that too many samples where played at the same time",
         self.play_sound(SoundType::TakeoverGameLost as i32);
     }
 
-    pub unsafe fn collision_got_damaged_sound(&self) {
+    pub fn collision_got_damaged_sound(&self) {
         if self.main.sound_on == 0 {
             return;
         }
@@ -176,7 +175,7 @@ This usually just means that too many samples where played at the same time",
         self.play_sound(SoundType::CollisionGotDamaged as i32);
     }
 
-    pub unsafe fn collision_damaged_enemy_sound(&self) {
+    pub fn collision_damaged_enemy_sound(&self) {
         if self.main.sound_on == 0 {
             return;
         }
@@ -184,7 +183,7 @@ This usually just means that too many samples where played at the same time",
         self.play_sound(SoundType::CollisionDamagedEnemy as i32);
     }
 
-    pub unsafe fn bounce_sound(&self) {
+    pub fn bounce_sound(&self) {
         if self.main.sound_on == 0 {
             return;
         }
@@ -192,7 +191,7 @@ This usually just means that too many samples where played at the same time",
         self.play_sound(SoundType::Collision as i32);
     }
 
-    pub unsafe fn druid_blast_sound(&self) {
+    pub fn druid_blast_sound(&self) {
         if self.main.sound_on == 0 {
             return;
         }
@@ -200,7 +199,7 @@ This usually just means that too many samples where played at the same time",
         self.play_sound(SoundType::Blast as i32);
     }
 
-    pub unsafe fn got_hit_sound(&self) {
+    pub fn got_hit_sound(&self) {
         if self.main.sound_on == 0 {
             return;
         }
@@ -208,7 +207,7 @@ This usually just means that too many samples where played at the same time",
         self.play_sound(SoundType::GotHit as i32);
     }
 
-    pub unsafe fn got_into_blast_sound(&self) {
+    pub fn got_into_blast_sound(&self) {
         if self.main.sound_on == 0 {
             return;
         }
@@ -216,7 +215,7 @@ This usually just means that too many samples where played at the same time",
         self.play_sound(SoundType::GotIntoBlast as i32);
     }
 
-    pub unsafe fn refresh_sound(&self) {
+    pub fn refresh_sound(&self) {
         if self.main.sound_on == 0 {
             return;
         }
@@ -225,11 +224,11 @@ This usually just means that too many samples where played at the same time",
     }
 
     #[inline]
-    pub unsafe fn move_lift_sound(&self) {
+    pub fn move_lift_sound(&self) {
         Self::move_lift_sound_static(self.main.sound_on, self.sdl, self.sound.as_ref().unwrap())
     }
 
-    pub unsafe fn move_lift_sound_static(sound_on: c_int, sdl: &Sdl, sound: &Sound) {
+    pub fn move_lift_sound_static(sound_on: c_int, sdl: &Sdl, sound: &Sound) {
         if sound_on == 0 {
             return;
         }
@@ -237,7 +236,7 @@ This usually just means that too many samples where played at the same time",
         Self::play_sound_static(sound_on, sdl, sound, SoundType::MoveElevator as i32);
     }
 
-    pub unsafe fn menu_item_selected_sound(&self) {
+    pub fn menu_item_selected_sound(&self) {
         if self.main.sound_on == 0 {
             return;
         }
@@ -245,7 +244,7 @@ This usually just means that too many samples where played at the same time",
         self.play_sound(SoundType::MenuItemSelected as i32);
     }
 
-    pub unsafe fn move_menu_position_sound(&self) {
+    pub fn move_menu_position_sound(&self) {
         if self.main.sound_on == 0 {
             return;
         }
@@ -253,7 +252,7 @@ This usually just means that too many samples where played at the same time",
         self.play_sound(SoundType::MoveMenuPosition as i32);
     }
 
-    pub unsafe fn thou_art_defeated_sound(&self) {
+    pub fn thou_art_defeated_sound(&self) {
         if self.main.sound_on == 0 {
             return;
         }
@@ -261,7 +260,7 @@ This usually just means that too many samples where played at the same time",
         self.play_sound(SoundType::ThouArtDefeated as i32);
     }
 
-    pub unsafe fn enter_lift_sound(&self) {
+    pub fn enter_lift_sound(&self) {
         if self.main.sound_on == 0 {
             return;
         }
@@ -269,7 +268,7 @@ This usually just means that too many samples where played at the same time",
         self.play_sound(SoundType::EnterElevator as i32);
     }
 
-    pub unsafe fn leave_lift_sound(&self) {
+    pub fn leave_lift_sound(&self) {
         if self.main.sound_on == 0 {
             return;
         }
@@ -279,7 +278,7 @@ This usually just means that too many samples where played at the same time",
 }
 
 impl<'sdl> Data<'sdl> {
-    pub unsafe fn fire_bullet_sound(&self, bullet_type: c_int) {
+    pub fn fire_bullet_sound(&self, bullet_type: c_int) {
         if self.main.sound_on == 0 {
             return;
         }
@@ -305,7 +304,7 @@ impl<'sdl> Data<'sdl> {
         }
     }
 
-    pub unsafe fn switch_background_music_to(&mut self, filename_raw: Option<&[u8]>) {
+    pub fn switch_background_music_to(&mut self, filename_raw: Option<&[u8]>) {
         let Self {
             sdl,
             sound,
@@ -319,7 +318,7 @@ impl<'sdl> Data<'sdl> {
         Self::switch_background_music_to_static(sound, main, global, misc, sdl, filename_raw)
     }
 
-    pub unsafe fn switch_background_music_to_static<'a>(
+    pub fn switch_background_music_to_static<'a>(
         sound: &mut Sound<'a>,
         main: &Main,
         global: &Global,
@@ -401,15 +400,15 @@ impl<'sdl> Data<'sdl> {
         ));
     }
 
-    pub unsafe fn countdown_sound(&self) {
+    pub fn countdown_sound(&self) {
         self.play_sound(SoundType::Countdown as i32);
     }
 
-    pub unsafe fn end_countdown_sound(&self) {
+    pub fn end_countdown_sound(&self) {
         self.play_sound(SoundType::Endcountdown as i32);
     }
 
-    pub unsafe fn set_bg_music_volume(&self, new_volume: c_float) {
+    pub fn set_bg_music_volume(&self, new_volume: c_float) {
         if self.main.sound_on == 0 {
             return;
         }
@@ -422,7 +421,7 @@ impl<'sdl> Data<'sdl> {
 }
 
 impl<'a> Sound<'a> {
-    pub(crate) unsafe fn new(
+    pub(crate) fn new(
         main: &mut Main,
         sdl: &'a Sdl,
         global: &Global,

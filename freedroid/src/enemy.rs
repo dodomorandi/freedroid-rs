@@ -20,7 +20,7 @@ const FIREDIST2: f32 = 8.;
 const COL_SPEED: f32 = 3.;
 
 impl Data<'_> {
-    pub unsafe fn class_of_druid(&self, druid_type: c_int) -> c_int {
+    pub fn class_of_druid(&self, druid_type: c_int) -> c_int {
         /* first digit is class */
         let class_char =
             self.vars.droidmap[usize::try_from(druid_type).unwrap()].druidname[0] as u8;
@@ -30,7 +30,7 @@ impl Data<'_> {
         }
     }
 
-    pub unsafe fn animate_enemys(&mut self) {
+    pub fn animate_enemys(&mut self) {
         let Self {
             main,
             misc,
@@ -63,7 +63,7 @@ impl Data<'_> {
 
     /// This is the function, that move each of the enemys according to
     /// their orders and their program
-    pub unsafe fn move_enemys(&mut self) {
+    pub fn move_enemys(&mut self) {
         self.permanent_heal_robots(); // enemy robots heal as time passes...
 
         self.animate_enemys(); // move the "phase" of the rotation of enemys
@@ -90,7 +90,7 @@ impl Data<'_> {
     /// AttackInfluence(): This function sometimes fires a bullet from
     /// enemy number enemynum directly into the direction of the influencer,
     /// but of course only if the odds are good i.e. requirements are met.
-    pub unsafe fn attack_influence(&mut self, enemy_num: c_int) {
+    pub fn attack_influence(&mut self, enemy_num: c_int) {
         let this_robot = &self.main.all_enemys[usize::try_from(enemy_num).unwrap()];
         // At first, we check for a lot of cases in which we do not
         // need to move anything for this reason or for that
@@ -205,7 +205,7 @@ impl Data<'_> {
         cur_bullet.time_in_seconds = 0.;
     }
 
-    pub unsafe fn move_this_enemy(&mut self, enemy_num: c_int) {
+    pub fn move_this_enemy(&mut self, enemy_num: c_int) {
         let this_robot = &mut self.main.all_enemys[usize::try_from(enemy_num).unwrap()];
 
         // Now check if the robot is still alive
@@ -247,7 +247,7 @@ impl Data<'_> {
         self.select_next_waypoint_classical(enemy_num);
     }
 
-    pub unsafe fn check_enemy_enemy_collision(&mut self, enemy_num: c_int) -> c_int {
+    pub fn check_enemy_enemy_collision(&mut self, enemy_num: c_int) -> c_int {
         let Self {
             main, misc, global, ..
         } = self;
@@ -320,7 +320,7 @@ impl Data<'_> {
     /// droids.
     ///
     /// Map tiles are not taken into consideration, only droids.
-    pub unsafe fn select_next_waypoint_classical(&mut self, enemy_num: c_int) {
+    pub fn select_next_waypoint_classical(&mut self, enemy_num: c_int) {
         let this_robot = &mut self.main.all_enemys[usize::try_from(enemy_num).unwrap()];
 
         // We do some definitions to save us some more typing later...
@@ -348,7 +348,7 @@ impl Data<'_> {
         }
     }
 
-    pub unsafe fn shuffle_enemys(&mut self) {
+    pub fn shuffle_enemys(&mut self) {
         let cur_level = cur_level!(self.main);
         let cur_level_num = cur_level.levelnum;
         let mut used_wp: [bool; MAXWAYPOINTS] = [false; MAXWAYPOINTS];
@@ -397,7 +397,7 @@ impl Data<'_> {
 
     /// This function moves one robot thowards his next waypoint.  If already
     /// there, the function does nothing more.
-    pub unsafe fn move_this_robot_thowards_his_waypoint(&mut self, enemy_num: c_int) {
+    pub fn move_this_robot_thowards_his_waypoint(&mut self, enemy_num: c_int) {
         let Self {
             main,
             misc,
@@ -460,7 +460,7 @@ impl Data<'_> {
         self.main.num_enemys = 0;
     }
 
-    pub unsafe fn permanent_heal_robots(&mut self) {
+    pub fn permanent_heal_robots(&mut self) {
         let Self {
             vars,
             misc,

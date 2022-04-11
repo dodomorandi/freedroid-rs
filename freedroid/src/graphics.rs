@@ -133,7 +133,7 @@ impl Default for Graphics<'_> {
     }
 }
 
-pub unsafe fn apply_filter(
+pub fn apply_filter(
     surface: &mut Surface,
     fred: c_float,
     fgreen: c_float,
@@ -172,7 +172,7 @@ impl<'sdl> Graphics<'sdl> {
     /// NOTE: to avoid memory-leaks, use (flags | INIT_ONLY) if you only
     ///       call this function to set up a new pic-file to be read.
     ///       This will avoid copying & mallocing a new pic, NULL will be returned
-    pub unsafe fn load_block(
+    pub fn load_block(
         &mut self,
         fpath: Option<&CStr>,
         line: c_int,
@@ -195,7 +195,7 @@ impl<'sdl> Graphics<'sdl> {
 
     // FIXME: create a better abstraction
     #[allow(clippy::too_many_arguments)]
-    pub unsafe fn load_block_vid_bpp_pic(
+    pub fn load_block_vid_bpp_pic(
         vid_bpp: i32,
         pic: &mut Option<Surface<'sdl>>,
         fpath: Option<&CStr>,
@@ -229,10 +229,7 @@ impl<'sdl> Graphics<'sdl> {
             .map(|block| block.with_xy(0, 0))
             .unwrap_or_else(|| Rect::new(0, 0, pic.width(), pic.height()));
 
-        let raw_format = pic.raw().format();
-        assert!(raw_format.is_null().not());
-        let usealpha = (*raw_format).Amask != 0;
-
+        let usealpha = pic.format().has_alpha();
         if usealpha {
             // clear per-surf alpha for internal blit */
             if pic.set_alpha(ColorKeyFlag::empty(), 0).not() {
@@ -379,7 +376,7 @@ impl Data<'_> {
         trace!("MakeGridOnScreen(...): end of function reached.");
     }
 
-    pub unsafe fn toggle_fullscreen(&mut self) {
+    pub fn toggle_fullscreen(&mut self) {
         let ne_screen = self.graphics.ne_screen.as_mut().unwrap();
         let mut vid_flags = VideoModeFlags::from_bits(ne_screen.flags()).unwrap();
 
@@ -420,7 +417,7 @@ impl Data<'_> {
     /// NOTE:  This function does NOT check for existing screenshots,
     ///        but will silently overwrite them.  No problem in most
     ///        cases I think.
-    pub unsafe fn take_screenshot(&mut self) {
+    pub fn take_screenshot(&mut self) {
         use rwops::{Mode, ReadWriteMode};
 
         self.activate_conservative_frame_computation();
@@ -468,7 +465,7 @@ impl Data<'_> {
         self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
     }
 
-    pub unsafe fn free_graphics(&mut self) {
+    pub fn free_graphics(&mut self) {
         // free RWops structures
         self.graphics.packed_portraits.fill_with(|| None);
 
@@ -522,7 +519,7 @@ impl Data<'_> {
     }
 
     /// scale all "static" rectangles, which are theme-independent
-    pub unsafe fn scale_stat_rects(&mut self, scale: c_float) {
+    pub fn scale_stat_rects(&mut self, scale: c_float) {
         macro_rules! scale {
             ($rect:expr) => {
                 $rect.scale(scale);
@@ -603,7 +600,7 @@ impl Data<'_> {
         scale!(self.takeover.column_rect);
     }
 
-    pub unsafe fn scale_graphics(&mut self, scale: c_float) {
+    pub fn scale_graphics(&mut self, scale: c_float) {
         static INIT: std::sync::Once = std::sync::Once::new();
 
         /* For some reason we need to SetAlpha every time on OS X */
@@ -762,12 +759,7 @@ impl Data<'_> {
     /// Greg Knauss's "xteevee" hack in xscreensavers.
     ///
     /// timeout is in ms
-    pub unsafe fn white_noise(
-        &mut self,
-        frame_buffer: &mut FrameBuffer,
-        rect: &mut Rect,
-        timeout: c_int,
-    ) {
+    pub fn white_noise(&mut self, frame_buffer: &mut FrameBuffer, rect: &mut Rect, timeout: c_int) {
         use rand::{
             seq::{IteratorRandom, SliceRandom},
             Rng,
@@ -942,7 +934,7 @@ impl Data<'_> {
         defs::OK.into()
     }
 
-    pub unsafe fn clear_graph_mem(&mut self) {
+    pub fn clear_graph_mem(&mut self) {
         // One this function is done, the rahmen at the
         // top of the screen surely is destroyed.  We inform the
         // DisplayBanner function of the matter...
@@ -1143,7 +1135,7 @@ impl Data<'_> {
     /// the various structs
     ///
     /// Returns true/false
-    pub unsafe fn init_pictures(&mut self) -> c_int {
+    pub fn init_pictures(&mut self) -> c_int {
         use std::sync::Once;
 
         static DO_ONCE: Once = Once::new();
@@ -1670,7 +1662,7 @@ impl Data<'_> {
         true.into()
     }
 
-    pub unsafe fn load_theme_configuration_file(&mut self) {
+    pub fn load_theme_configuration_file(&mut self) {
         use bstr::ByteSlice;
 
         const END_OF_THEME_DATA_STRING: &[u8] = b"**** End of theme data section ****";
@@ -1773,7 +1765,7 @@ impl Data<'_> {
     ///
     /// in the first call we assume the Block_Rect to be the original game-size
     /// and store this value for future rescalings
-    pub unsafe fn set_combat_scale_to(&mut self, scale: c_float) {
+    pub fn set_combat_scale_to(&mut self, scale: c_float) {
         use once_cell::sync::OnceCell;
 
         self.graphics
@@ -1821,7 +1813,7 @@ impl Data<'_> {
     }
 
     #[inline]
-    pub unsafe fn draw_line_between_tiles(
+    pub fn draw_line_between_tiles(
         &mut self,
         x1: c_float,
         y1: c_float,
@@ -1832,7 +1824,7 @@ impl Data<'_> {
         Self::draw_line_between_tiles_static(&self.vars, &mut self.graphics, x1, y1, x2, y2, color)
     }
 
-    pub unsafe fn draw_line_between_tiles_static(
+    pub fn draw_line_between_tiles_static(
         vars: &Vars,
         graphics: &mut Graphics,
         mut x1: c_float,

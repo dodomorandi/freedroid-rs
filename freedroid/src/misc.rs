@@ -21,7 +21,7 @@ use std::{
     env,
     ffi::{CStr, CString},
     fs::{self, File},
-    os::raw::{c_char, c_float, c_int, c_long},
+    os::raw::{c_float, c_int, c_long},
     path::Path,
 };
 
@@ -282,7 +282,7 @@ pub fn read_and_malloc_string_from_data(
 }
 
 impl Data<'_> {
-    pub unsafe fn update_progress(&mut self, percent: c_int) {
+    pub fn update_progress(&mut self, percent: c_int) {
         let h =
             (f64::from(self.vars.progress_bar_rect.height()) * f64::from(percent) / 100.) as u16;
         let mut dst = Rect::new(
@@ -335,7 +335,7 @@ impl Data<'_> {
     ///
     /// This counter is most conveniently set via the function
     /// Activate_Conservative_Frame_Computation, which can be conveniently called from eveywhere.
-    pub unsafe fn frame_time(&mut self) -> c_float {
+    pub fn frame_time(&mut self) -> c_float {
         let Self {
             global, misc, main, ..
         } = self;
@@ -353,7 +353,7 @@ impl Data<'_> {
     /// can further be toggled from PAUSE to CHEESE, which is
     /// a feature from the original program that should probably
     /// allow for better screenshots.
-    pub unsafe fn pause(&mut self) {
+    pub fn pause(&mut self) {
         self.vars.me.status = Status::Pause as i32;
         self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
 
@@ -397,18 +397,13 @@ impl Data<'_> {
         }
     }
 
-    pub unsafe fn save_game_config(&self) -> c_int {
+    pub fn save_game_config(&self) -> c_int {
         use std::io::Write;
-        if self.main.config_dir[0] == b'\0' as c_char {
+        if self.main.config_dir.is_empty() {
             return defs::ERR.into();
         }
 
-        let config_path = Path::new(
-            &CStr::from_ptr(self.main.config_dir.as_ptr())
-                .to_str()
-                .unwrap(),
-        )
-        .join("config");
+        let config_path = Path::new(self.main.config_dir.to_str().unwrap()).join("config");
         let mut config = match File::create(&config_path) {
             Ok(config) => config,
             Err(_) => {
@@ -480,9 +475,7 @@ impl Data<'_> {
             config,
             "{} = {}",
             THEME_NAME,
-            CStr::from_ptr(self.global.game_config.theme_name.as_ptr())
-                .to_str()
-                .unwrap()
+            self.global.game_config.theme_name.to_str().unwrap()
         )
         .unwrap();
         writeln!(
@@ -555,7 +548,7 @@ impl Data<'_> {
 
     /// This function starts the time-taking process.  Later the results
     /// of this function will be used to calculate the current framerate
-    pub unsafe fn start_taking_time_for_fps_calculation(&mut self) {
+    pub fn start_taking_time_for_fps_calculation(&mut self) {
         /* This ensures, that 0 is never an encountered framenr,
          * therefore count to 100 here
          * Take the time now for calculating the frame rate
@@ -565,7 +558,7 @@ impl Data<'_> {
         self.misc.one_frame_sdl_ticks = self.sdl.ticks_ms();
     }
 
-    pub unsafe fn compute_fps_for_this_frame(&mut self) {
+    pub fn compute_fps_for_this_frame(&mut self) {
         // In the following paragraph the framerate calculation is done.
         // There are basically two ways to do this:
         // The first way is to use self.sdl.ticks_ms(), a function measuring milliseconds
@@ -600,7 +593,7 @@ impl Data<'_> {
         self.main.f_p_sover1 = (1000. / *one_frame_delay as f64) as f32;
     }
 
-    pub unsafe fn activate_conservative_frame_computation(&mut self) {
+    pub fn activate_conservative_frame_computation(&mut self) {
         self.global.skip_a_few_frames = true.into();
 
         // Now we are in some form of pause.  It can't
@@ -726,7 +719,7 @@ impl Data<'_> {
     }
 
     /// show_progress: display empty progress meter with given text
-    pub unsafe fn init_progress(&mut self, text: &str) {
+    pub fn init_progress(&mut self, text: &str) {
         if self.graphics.progress_meter_pic.is_none() {
             let fpath = Self::find_file_static(
                 &self.global,
@@ -801,7 +794,7 @@ impl Data<'_> {
 
     /// This function teleports the influencer to a new position on the
     /// ship.  THIS CAN BE A POSITION ON A DIFFERENT LEVEL.
-    pub unsafe fn teleport(&mut self, level_num: c_int, x: c_int, y: c_int) {
+    pub fn teleport(&mut self, level_num: c_int, x: c_int, y: c_int) {
         let cur_level = level_num;
         let mut array_num = 0;
 
@@ -846,7 +839,7 @@ impl Data<'_> {
 
     /// This function is kills all enemy robots on the whole ship.
     /// It querys the user once for safety.
-    pub unsafe fn armageddon(&mut self) {
+    pub fn armageddon(&mut self) {
         self.main
             .all_enemys
             .iter_mut()
@@ -861,8 +854,8 @@ impl Data<'_> {
     ///
     /// this should be the first of all load/save functions called
     /// as here we read the $HOME-dir and create the config-subdir if neccessary
-    pub unsafe fn load_game_config(&mut self) -> c_int {
-        use std::io::Write;
+    pub fn load_game_config(&mut self) -> c_int {
+        use std::fmt::Write;
 
         // ----------------------------------------------------------------------
         // Game-config maker-strings for config-file:
@@ -901,15 +894,8 @@ impl Data<'_> {
         };
 
         let config_dir = homedir.join(".freedroidClassic");
-        write!(
-            std::slice::from_raw_parts_mut(
-                self.main.config_dir.as_mut_ptr() as *mut u8,
-                self.main.config_dir.len()
-            ),
-            "{}\0",
-            config_dir.display()
-        )
-        .unwrap();
+        self.main.config_dir.clear();
+        write!(self.main.config_dir, "{}", config_dir.display()).unwrap();
 
         if !config_dir.exists() {
             warn!(
@@ -1017,7 +1003,7 @@ fn read_variable<'a>(data: &'a [u8], var_name: &str) -> Option<&'a [u8]> {
 }
 
 impl Misc {
-    pub unsafe fn frame_time(&mut self, global: &Global, f_p_sover1: f32) -> c_float {
+    pub fn frame_time(&mut self, global: &Global, f_p_sover1: f32) -> c_float {
         if global.skip_a_few_frames != 0 {
             return self.previous_time;
         }

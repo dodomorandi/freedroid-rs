@@ -29,7 +29,7 @@ use cstr::cstr;
 use log::{error, info, warn};
 use nom::Finish;
 use std::{
-    ffi::{CStr, CString},
+    ffi::CString,
     ops::Not,
     os::raw::{c_float, c_int, c_long},
     path::Path,
@@ -51,7 +51,7 @@ For more information about these matters, see the file named COPYING.";
 
 /// put some ideology message for our poor friends enslaved by M$-Win32 ;)
 #[cfg(target_os = "windows")]
-pub unsafe fn win32_disclaimer() {
+pub fn win32_disclaimer() {
     self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
     display_image(find_file(
         TITLE_PIC_FILE_C.as_ptr() as *mut c_char,
@@ -111,7 +111,7 @@ struct Opt {
 }
 
 impl Data<'_> {
-    pub unsafe fn free_game_mem(&mut self) {
+    pub fn free_game_mem(&mut self) {
         // free bullet map
         if self.vars.bulletmap.is_empty().not() {
             let bullet_map = &mut *self.vars.bulletmap;
@@ -153,7 +153,7 @@ impl Data<'_> {
 
     /// This function checks, if the influencer has succeeded in his given
     /// mission.  If not it returns, if yes the Debriefing is started.
-    pub(crate) unsafe fn check_if_mission_is_complete(&mut self) {
+    pub(crate) fn check_if_mission_is_complete(&mut self) {
         for enemy in self
             .main
             .all_enemys
@@ -171,7 +171,7 @@ impl Data<'_> {
         self.game_over = true;
     }
 
-    pub unsafe fn thou_art_victorious(&mut self) {
+    pub fn thou_art_victorious(&mut self) {
         Self::switch_background_music_to_static(
             self.sound.as_mut().unwrap(),
             &self.main,
@@ -227,7 +227,7 @@ impl Data<'_> {
     ///
     /// This must not be confused with initnewgame, which
     /// only initializes a new mission for the game.
-    pub unsafe fn init_freedroid(&mut self) {
+    pub fn init_freedroid(&mut self) {
         self.vars.bulletmap.clear(); // That will cause the memory to be allocated later
 
         for bullet in &mut self.main.all_bullets[..MAXBULLETS] {
@@ -281,7 +281,9 @@ impl Data<'_> {
         };
 
         self.vars.screen_rect.scale(self.global.game_config.scale); // make sure we open a window of the right (rescaled) size!
-        self.init_video();
+        unsafe {
+            self.init_video();
+        }
 
         let image = Self::find_file_static(
             &self.global,
@@ -325,7 +327,9 @@ impl Data<'_> {
         self.global.current_combat_scale_factor = 1.;
 
         /* initialize/load the highscore list */
-        self.init_highscores();
+        unsafe {
+            self.init_highscores();
+        }
 
         /* Now fill the pictures correctly to the structs */
         assert!(
@@ -338,7 +342,7 @@ impl Data<'_> {
 
     /// parse command line arguments and set global switches
     /// exit on error, so we don't need to return success status
-    unsafe fn parse_command_line(&mut self) {
+    fn parse_command_line(&mut self) {
         let opt = Opt::parse();
 
         if opt.nosound {
@@ -386,7 +390,7 @@ impl Data<'_> {
     }
 
     /// find all themes and put them in AllThemes
-    pub unsafe fn find_all_themes(&mut self) {
+    pub fn find_all_themes(&mut self) {
         use std::fs;
 
         let mut classic_theme_index: usize = 0; // default: override when we actually find 'classic' theme
@@ -541,11 +545,11 @@ impl Data<'_> {
 
         info!(
             "Game starts using theme: {}",
-            CStr::from_ptr(self.global.game_config.theme_name.as_ptr()).to_string_lossy()
+            self.global.game_config.theme_name.to_str().unwrap()
         );
     }
 
-    pub unsafe fn init_new_mission(&mut self, mission_name: &str) {
+    pub fn init_new_mission(&mut self, mission_name: &str) {
         const END_OF_MISSION_DATA_STRING: &[u8] = b"*** End of Mission File ***";
         const MISSION_BRIEFING_BEGIN_STRING: &[u8] =
             b"** Start of Mission Briefing Text Section **";
@@ -827,7 +831,7 @@ impl Data<'_> {
     ///  that a mission file has already been successfully loaded into
     ///  memory.  The briefing texts will be extracted and displayed in
     ///  scrolling font.
-    pub unsafe fn title(&mut self, mission_briefing_data: &[u8]) {
+    pub fn title(&mut self, mission_briefing_data: &[u8]) {
         const BRIEFING_TITLE_PICTURE_STRING: &[u8] =
             b"The title picture in the graphics subdirectory for this mission is : ";
         const BRIEFING_TITLE_SONG_STRING: &[u8] =
@@ -881,7 +885,7 @@ impl Data<'_> {
 
     /// This function loads all the constant variables of the game from
     /// a dat file, that should be optimally human readable.
-    pub unsafe fn init_game_data(&mut self, data_filename: &[u8]) {
+    pub fn init_game_data(&mut self, data_filename: &[u8]) {
         const END_OF_GAME_DAT_STRING: &[u8] = b"*** End of game.dat File ***";
 
         /* Read the whole game data to memory */
@@ -919,7 +923,7 @@ impl Data<'_> {
 
     /// This function loads all the constant variables of the game from
     /// a dat file, that should be optimally human readable.
-    pub unsafe fn get_robot_data(&mut self, data_slice: &[u8]) {
+    pub fn get_robot_data(&mut self, data_slice: &[u8]) {
         const MAXSPEED_CALIBRATOR_STRING: &[u8] = b"Common factor for all droids maxspeed values: ";
         const ACCELERATION_CALIBRATOR_STRING: &[u8] =
             b"Common factor for all droids acceleration values: ";
@@ -1091,7 +1095,7 @@ impl Data<'_> {
     /// but IT DOES NOT LOAD THE FILE, IT ASSUMES IT IS ALREADY LOADED and
     /// it only receives a pointer to the start of the bullet section from
     /// the calling function.
-    pub unsafe fn get_bullet_data(&mut self, data_slice: &[u8]) {
+    pub fn get_bullet_data(&mut self, data_slice: &[u8]) {
         // const BULLET_SECTION_BEGIN_STRING: &CStr = cstr!("*** Start of Bullet Data Section: ***");
         // const BULLET_SECTION_END_STRING: &CStr = cstr!("*** End of Bullet Data Section: ***");
         const NEW_BULLET_TYPE_BEGIN_STRING: &[u8] =
@@ -1252,7 +1256,7 @@ impl Data<'_> {
     }
 
     /// Show end-screen
-    pub(crate) unsafe fn thou_art_defeated(&mut self) {
+    pub(crate) fn thou_art_defeated(&mut self) {
         self.vars.me.status = Status::Terminated as c_int;
         self.sdl.cursor().hide();
 

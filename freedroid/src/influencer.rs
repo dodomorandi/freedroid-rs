@@ -47,7 +47,7 @@ impl Data<'_> {
     /// loss of health in PermanentLoseEnergy.
     ///
     /// This function now takes into account the framerates.
-    pub unsafe fn refresh_influencer(&mut self) {
+    pub fn refresh_influencer(&mut self) {
         let time_counter = &mut self.influencer.time_counter;
         *time_counter -= 1;
         if *time_counter != 0 {
@@ -89,7 +89,7 @@ impl Data<'_> {
         }
     }
 
-    pub unsafe fn check_influence_enemy_collision(&mut self) {
+    pub fn check_influence_enemy_collision(&mut self) {
         for enemy_index in 0..usize::try_from(self.main.num_enemys).unwrap() {
             let Self {
                 vars,
@@ -180,7 +180,7 @@ impl Data<'_> {
         }
     }
 
-    pub unsafe fn influ_enemy_collision_lose_energy(&mut self, enemy_num: c_int) {
+    pub fn influ_enemy_collision_lose_energy(&mut self, enemy_num: c_int) {
         let enemy_type = self.main.all_enemys[usize::try_from(enemy_num).unwrap()].ty;
 
         let damage = (self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].class
@@ -204,7 +204,7 @@ impl Data<'_> {
         }
     }
 
-    pub unsafe fn explode_influencer(&mut self) {
+    pub fn explode_influencer(&mut self) {
         self.vars.me.status = Status::Terminated as c_int;
 
         for i in 0..10 {
@@ -239,7 +239,7 @@ impl Data<'_> {
     /// In case of a collision, the position and speed of the influencer are
     /// adapted accordingly.
     /// NOTE: Of course this functions HAS to take into account the current framerate!
-    pub unsafe fn check_influence_wall_collisions(&mut self) {
+    pub fn check_influence_wall_collisions(&mut self) {
         let sx = self.vars.me.speed.x * self.frame_time();
         let sy = self.vars.me.speed.y * self.frame_time();
         let mut h_door_sliding_active = false;
@@ -390,7 +390,7 @@ impl Data<'_> {
         }
     }
 
-    pub unsafe fn animate_influence(&mut self) {
+    pub fn animate_influence(&mut self) {
         if self.vars.me.ty != Droid::Droid001 as c_int {
             self.vars.me.phase += (self.vars.me.energy
                 / (self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxenergy
@@ -413,7 +413,7 @@ impl Data<'_> {
 
     /// This function moves the influencer, adjusts his speed according to
     /// keys pressed and also adjusts his status and current "phase" of his rotation.
-    pub(crate) unsafe fn move_influence(&mut self) {
+    pub(crate) fn move_influence(&mut self) {
         let accel =
             self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].accel * self.frame_time();
 
@@ -550,7 +550,7 @@ impl Data<'_> {
         self.animate_influence(); // move the "phase" of influencers rotation
     }
 
-    pub unsafe fn permanent_lose_energy(&mut self) {
+    pub fn permanent_lose_energy(&mut self) {
         // Of course if in invincible mode, no energy will ever be lost...
         if self.main.invincible_mode != 0 {
             return;
@@ -568,7 +568,7 @@ impl Data<'_> {
     }
 
     /// Fire-Routine for the Influencer only !! (should be changed)
-    pub unsafe fn fire_bullet(&mut self) {
+    pub fn fire_bullet(&mut self) {
         let guntype = self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].gun; /* which gun do we have ? */
         let bullet_speed = self.vars.bulletmap[usize::try_from(guntype).unwrap()].speed;
 
@@ -642,7 +642,7 @@ impl Data<'_> {
         cur_bullet.time_in_seconds = 0.;
     }
 
-    pub unsafe fn influence_friction_with_air(&mut self) {
+    pub fn influence_friction_with_air(&mut self) {
         const DECELERATION: f32 = 7.0;
 
         if !self.right_pressed() && !self.left_pressed() {
@@ -670,13 +670,13 @@ impl Data<'_> {
         }
     }
 
-    pub unsafe fn adjust_speed(&mut self) {
+    pub fn adjust_speed(&mut self) {
         let maxspeed = self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed;
         self.vars.me.speed.x = self.vars.me.speed.x.clamp(-maxspeed, maxspeed);
         self.vars.me.speed.y = self.vars.me.speed.y.clamp(-maxspeed, maxspeed);
     }
 
-    pub unsafe fn get_position_history(&self, how_long_past: c_int) -> &Gps {
+    pub fn get_position_history(&self, how_long_past: c_int) -> &Gps {
         let ring_position = self.influencer.current_zero_ring_index + MAX_INFLU_POSITION_HISTORY
             - usize::try_from(how_long_past).unwrap();
 
@@ -685,15 +685,15 @@ impl Data<'_> {
         &self.vars.me.position_history_ring_buffer[ring_position]
     }
 
-    pub unsafe fn get_influ_position_history_x(&self, how_long_past: c_int) -> c_float {
+    pub fn get_influ_position_history_x(&self, how_long_past: c_int) -> c_float {
         self.get_position_history(how_long_past).x
     }
 
-    pub unsafe fn get_influ_position_history_y(&self, how_long_past: c_int) -> c_float {
+    pub fn get_influ_position_history_y(&self, how_long_past: c_int) -> c_float {
         self.get_position_history(how_long_past).y
     }
 
-    pub unsafe fn init_influ_position_history(&mut self) {
+    pub fn init_influ_position_history(&mut self) {
         self.vars.me.position_history_ring_buffer.fill(Gps {
             x: self.vars.me.pos.x,
             y: self.vars.me.pos.y,

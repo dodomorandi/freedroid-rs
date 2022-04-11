@@ -90,55 +90,55 @@ pub enum Cmds {
 
 #[cfg(feature = "gcw0")]
 #[inline]
-pub unsafe fn gcw0_a_pressed() -> bool {
+pub fn gcw0_a_pressed() -> bool {
     KeyIsPressed(SDLKey_SDLK_LCTRL as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
-pub unsafe fn gcw0_b_pressed() -> bool {
+pub fn gcw0_b_pressed() -> bool {
     KeyIsPressed(SDLKey_SDLK_LALT as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
-pub unsafe fn gcw0_x_pressed() -> bool {
+pub fn gcw0_x_pressed() -> bool {
     KeyIsPressed(SDLKey_SDLK_LSHIFT as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
-pub unsafe fn gcw0_y_pressed() -> bool {
+pub fn gcw0_y_pressed() -> bool {
     KeyIsPressed(SDLKey_SDLK_SPACE as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
-pub unsafe fn gcw0_rs_pressed() -> bool {
+pub fn gcw0_rs_pressed() -> bool {
     KeyIsPressed(SDLKey_SDLK_BACKSPACE as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
-pub unsafe fn gcw0_ls_pressed() -> bool {
+pub fn gcw0_ls_pressed() -> bool {
     KeyIsPressed(SDLKey_SDLK_TAB as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
-pub unsafe fn gcw0_start_pressed() -> bool {
+pub fn gcw0_start_pressed() -> bool {
     KeyIsPressed(SDLKey_SDLK_RETURN as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
-pub unsafe fn gcw0_select_pressed() -> bool {
+pub fn gcw0_select_pressed() -> bool {
     KeyIsPressed(SDLKey_SDLK_ESCAPE as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
-pub unsafe fn gcw0_any_button_pressed() -> bool {
+pub fn gcw0_any_button_pressed() -> bool {
     gcw0_a_pressed()
         || gcw0_b_pressed()
         || gcw0_x_pressed()
@@ -151,55 +151,55 @@ pub unsafe fn gcw0_any_button_pressed() -> bool {
 
 #[cfg(feature = "gcw0")]
 #[inline]
-pub unsafe fn gcw0_a_pressed_r() -> bool {
+pub fn gcw0_a_pressed_r() -> bool {
     KeyIsPressedR(SDLKey_SDLK_LCTRL as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
-pub unsafe fn gcw0_b_pressed_r() -> bool {
+pub fn gcw0_b_pressed_r() -> bool {
     KeyIsPressedR(SDLKey_SDLK_LALT as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
-pub unsafe fn gcw0_x_pressed_r() -> bool {
+pub fn gcw0_x_pressed_r() -> bool {
     KeyIsPressedR(SDLKey_SDLK_LSHIFT as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
-pub unsafe fn gcw0_y_pressed_r() -> bool {
+pub fn gcw0_y_pressed_r() -> bool {
     KeyIsPressedR(SDLKey_SDLK_SPACE as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
-pub unsafe fn gcw0_rs_pressed_r() -> bool {
+pub fn gcw0_rs_pressed_r() -> bool {
     KeyIsPressed(SDLKey_SDLK_BACKSPACE as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
-pub unsafe fn gcw0_ls_pressed_r() -> bool {
+pub fn gcw0_ls_pressed_r() -> bool {
     KeyIsPressed(SDLKey_SDLK_TAB as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
-pub unsafe fn gcw0_start_pressed_r() -> bool {
+pub fn gcw0_start_pressed_r() -> bool {
     KeyIsPressed(SDLKey_SDLK_RETURN as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
-pub unsafe fn gcw0_select_pressed_r() -> bool {
+pub fn gcw0_select_pressed_r() -> bool {
     KeyIsPressed(SDLKey_SDLK_ESCAPE as c_int)
 }
 
 #[cfg(feature = "gcw0")]
 #[inline]
-pub unsafe fn gcw0_any_button_pressed_r() -> bool {
+pub fn gcw0_any_button_pressed_r() -> bool {
     gcw0_a_pressed_r()
         || gcw0_b_pressed_r()
         || gcw0_x_pressed_r()
@@ -212,52 +212,52 @@ pub unsafe fn gcw0_any_button_pressed_r() -> bool {
 
 impl Data<'_> {
     #[inline]
-    pub unsafe fn return_pressed_r(&mut self) -> bool {
+    pub fn return_pressed_r(&mut self) -> bool {
         self.key_is_pressed_r(SDLKey_SDLK_RETURN as i32)
     }
 
     #[inline]
-    pub unsafe fn shift_pressed(&mut self) -> bool {
+    pub fn shift_pressed(&mut self) -> bool {
         self.mod_is_pressed(SDLMod_KMOD_LSHIFT as u32 | SDLMod_KMOD_RSHIFT as u32)
     }
 
     #[inline]
-    pub unsafe fn alt_pressed(&mut self) -> bool {
+    pub fn alt_pressed(&mut self) -> bool {
         self.mod_is_pressed(SDLMod_KMOD_LALT as u32 | SDLMod_KMOD_RALT as u32)
     }
 
     #[inline]
-    pub unsafe fn ctrl_pressed(&mut self) -> bool {
+    pub fn ctrl_pressed(&mut self) -> bool {
         self.mod_is_pressed(SDLMod_KMOD_LCTRL as u32 | SDLMod_KMOD_RCTRL as u32)
     }
 
     #[inline]
-    pub unsafe fn mouse_left_pressed(&mut self) -> bool {
+    pub fn mouse_left_pressed(&mut self) -> bool {
         self.key_is_pressed(PointerStates::MouseButton1 as c_int)
     }
 
     #[inline]
-    pub unsafe fn mouse_left_pressed_r(&mut self) -> bool {
+    pub fn mouse_left_pressed_r(&mut self) -> bool {
         self.key_is_pressed_r(PointerStates::MouseButton1 as c_int)
     }
 
     #[inline]
-    pub unsafe fn space_pressed(&mut self) -> bool {
+    pub fn space_pressed(&mut self) -> bool {
         self.key_is_pressed(SDLKey_SDLK_SPACE as c_int)
     }
 
     #[inline]
-    pub unsafe fn escape_pressed_r(&mut self) -> bool {
+    pub fn escape_pressed_r(&mut self) -> bool {
         self.key_is_pressed_r(SDLKey_SDLK_ESCAPE as c_int)
     }
 
     #[inline]
-    pub unsafe fn up_pressed(&mut self) -> bool {
+    pub fn up_pressed(&mut self) -> bool {
         self.cmd_is_active(Cmds::Up)
     }
 
     #[inline]
-    pub unsafe fn up_pressed_static(
+    pub fn up_pressed_static(
         sdl: &Sdl,
         input: &mut Input,
         vars: &Vars,
@@ -267,12 +267,12 @@ impl Data<'_> {
     }
 
     #[inline]
-    pub unsafe fn down_pressed(&mut self) -> bool {
+    pub fn down_pressed(&mut self) -> bool {
         self.cmd_is_active(Cmds::Down)
     }
 
     #[inline]
-    pub unsafe fn down_pressed_static(
+    pub fn down_pressed_static(
         sdl: &Sdl,
         input: &mut Input,
         vars: &Vars,
@@ -282,27 +282,27 @@ impl Data<'_> {
     }
 
     #[inline]
-    pub unsafe fn left_pressed(&mut self) -> bool {
+    pub fn left_pressed(&mut self) -> bool {
         self.cmd_is_active(Cmds::Left)
     }
 
     #[inline]
-    pub unsafe fn right_pressed(&mut self) -> bool {
+    pub fn right_pressed(&mut self) -> bool {
         self.cmd_is_active(Cmds::Right)
     }
 
     #[inline]
-    pub unsafe fn fire_pressed(&mut self) -> bool {
+    pub fn fire_pressed(&mut self) -> bool {
         self.cmd_is_active(Cmds::Fire)
     }
 
     #[inline]
-    pub unsafe fn fire_pressed_r(&mut self) -> bool {
+    pub fn fire_pressed_r(&mut self) -> bool {
         self.cmd_is_active_r(Cmds::Fire)
     }
 
     #[inline]
-    pub unsafe fn fire_pressed_r_static(
+    pub fn fire_pressed_r_static(
         sdl: &Sdl,
         input: &mut Input,
         vars: &Vars,
@@ -312,27 +312,27 @@ impl Data<'_> {
     }
 
     #[inline]
-    pub unsafe fn up_pressed_r(&mut self) -> bool {
+    pub fn up_pressed_r(&mut self) -> bool {
         self.cmd_is_active_r(Cmds::Up)
     }
 
     #[inline]
-    pub unsafe fn down_pressed_r(&mut self) -> bool {
+    pub fn down_pressed_r(&mut self) -> bool {
         self.cmd_is_active_r(Cmds::Down)
     }
 
     #[inline]
-    pub unsafe fn left_pressed_r(&mut self) -> bool {
+    pub fn left_pressed_r(&mut self) -> bool {
         self.cmd_is_active_r(Cmds::Left)
     }
 
     #[inline]
-    pub unsafe fn right_pressed_r(&mut self) -> bool {
+    pub fn right_pressed_r(&mut self) -> bool {
         self.cmd_is_active_r(Cmds::Right)
     }
 
     #[inline]
-    pub unsafe fn any_cmd_active(&mut self) -> bool {
+    pub fn any_cmd_active(&mut self) -> bool {
         self.cmd_is_active(Cmds::Fire)
             || self.cmd_is_active(Cmds::Activate)
             || self.cmd_is_active(Cmds::Takeover)

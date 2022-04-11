@@ -48,7 +48,7 @@ const FLASH_DARK: SDL_Color = SDL_Color {
 };
 
 impl Data<'_> {
-    pub unsafe fn fill_rect(&mut self, rect: Rect, color: SDL_Color) {
+    pub fn fill_rect(&mut self, rect: Rect, color: SDL_Color) {
         let pixcolor = self
             .graphics
             .ne_screen
@@ -78,7 +78,7 @@ impl Data<'_> {
     ///     that has been modified
     ///
     /// (*) SHOW_FULL_MAP = 0x04: show complete map, disregard visibility
-    pub unsafe fn assemble_combat_picture(&mut self, mask: c_int) {
+    pub fn assemble_combat_picture(&mut self, mask: c_int) {
         thread_local! {
             static TIME_SINCE_LAST_FPS_UPDATE: Cell<f32> = Cell::new(10.);
             static FPS_DISPLAYED: Cell<i32>=Cell::new(1);
@@ -353,7 +353,7 @@ impl Data<'_> {
     }
 
     /// put some ashes at (x,y)
-    pub unsafe fn put_ashes(&mut self, x: f32, y: f32) {
+    pub fn put_ashes(&mut self, x: f32, y: f32) {
         if self.global.game_config.show_decals == 0 {
             return;
         }
@@ -381,7 +381,7 @@ impl Data<'_> {
             .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
     }
 
-    pub unsafe fn put_enemy(&mut self, enemy_index: c_int, x: c_int, y: c_int) {
+    pub fn put_enemy(&mut self, enemy_index: c_int, x: c_int, y: c_int) {
         let droid = &self.main.all_enemys[usize::try_from(enemy_index).unwrap()];
         let ty = droid.ty;
         let phase = droid.phase;
@@ -507,7 +507,7 @@ impl Data<'_> {
     /// to the center of the combat window if (-1,-1) was specified, or
     /// to the specified coordinates anywhere on the screen, useful e.g.
     /// for using the influencer as a cursor in the menus.
-    pub unsafe fn put_influence(&mut self, x: c_int, y: c_int) {
+    pub fn put_influence(&mut self, x: c_int, y: c_int) {
         let text_rect = Rect::new(
             self.vars.user_rect.x()
                 + (self.vars.user_rect.width() / 2) as i16
@@ -666,7 +666,7 @@ impl Data<'_> {
     /// PutBullet: draws a Bullet into the combat window.  The only
     /// parameter given is the number of the bullet in the AllBullets
     /// array. Everything else is computed in here.
-    pub unsafe fn put_bullet(&mut self, bullet_number: c_int) {
+    pub fn put_bullet(&mut self, bullet_number: c_int) {
         let cur_bullet = &mut self.main.all_bullets[usize::try_from(bullet_number).unwrap()];
 
         trace!("PutBullet: real function call confirmed.");
@@ -770,7 +770,7 @@ impl Data<'_> {
     /// text.
     ///
     /// BANNER_NO_SDL_UPDATE=4: Prevents any SDL_Update calls.
-    pub unsafe fn display_banner(
+    pub fn display_banner(
         &mut self,
         left: Option<&CStr>,
         right: Option<&CStr>,
@@ -923,7 +923,7 @@ impl Data<'_> {
     }
 }
 
-pub unsafe fn put_blast(blast: &Blast, vars: &mut Vars, graphics: &mut Graphics) {
+pub fn put_blast(blast: &Blast, vars: &mut Vars, graphics: &mut Graphics) {
     trace!("PutBlast: real function call confirmed.");
 
     // If the blast is already long deat, we need not do anything else here

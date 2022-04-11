@@ -21,7 +21,7 @@ impl Data<'_> {
         (0.3 + 4. / 64.) * (self.global.droid_radius + 4. / 64.)
     }
 
-    pub unsafe fn check_bullet_collisions(&mut self, num: c_int) {
+    pub fn check_bullet_collisions(&mut self, num: c_int) {
         let level = self.main.cur_level().levelnum;
         let cur_bullet = &mut self.main.all_bullets[usize::try_from(num).unwrap()];
 
@@ -222,7 +222,7 @@ impl Data<'_> {
         self.main.all_blasts[usize::try_from(num).unwrap()].ty = Status::Out as c_int;
     }
 
-    pub unsafe fn explode_blasts(&mut self) {
+    pub fn explode_blasts(&mut self) {
         for blast_index in 0..MAXBLASTS {
             let cur_blast = &self.main.all_blasts[blast_index];
             if cur_blast.ty != Status::Out as c_int {
@@ -250,7 +250,7 @@ impl Data<'_> {
         }
     }
 
-    pub unsafe fn check_blast_collisions(&mut self, num: c_int) {
+    pub fn check_blast_collisions(&mut self, num: c_int) {
         let level = self.main.cur_level().levelnum;
         /* check Blast-Bullet Collisions and kill hit Bullets */
         for bullet_index in 0..MAXBULLETS {
@@ -332,7 +332,7 @@ impl Data<'_> {
         }
     }
 
-    pub unsafe fn start_blast(&mut self, x: c_float, y: c_float, mut ty: c_int) {
+    pub fn start_blast(&mut self, x: c_float, y: c_float, mut ty: c_int) {
         let mut i = 0;
         while i < MAXBLASTS {
             if self.main.all_blasts[i].ty == Status::Out as c_int {
@@ -371,7 +371,7 @@ impl Data<'_> {
 
     /// delete bullet of given number, set it type=OUT, put it at x/y=-1/-1
     /// and create a Bullet-blast if with_blast==TRUE
-    pub unsafe fn delete_bullet(&mut self, bullet_number: c_int) {
+    pub fn delete_bullet(&mut self, bullet_number: c_int) {
         let cur_bullet = &mut self.main.all_bullets[usize::try_from(bullet_number).unwrap()];
 
         if cur_bullet.ty == Status::Out as u8 {
@@ -418,7 +418,7 @@ impl Data<'_> {
     /// This function moves all the bullets according to their speeds.
     ///
     /// NEW: this function also takes into accoung the current framerate.
-    pub unsafe fn move_bullets(&mut self) {
+    pub fn move_bullets(&mut self) {
         let Self {
             main, misc, global, ..
         } = self;

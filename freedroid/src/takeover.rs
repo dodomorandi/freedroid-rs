@@ -558,7 +558,7 @@ impl From<Block> for usize {
 }
 
 impl Takeover<'_> {
-    unsafe fn process_playground(&mut self) {
+    fn process_playground(&mut self) {
         let Self {
             activation_map,
             playground,
@@ -661,7 +661,7 @@ fn process_playground_row(
 
 /// Define all the Rects for the takeover-game
 impl Data<'_> {
-    pub unsafe fn set_takeover_rects(&mut self) -> c_int {
+    pub fn set_takeover_rects(&mut self) -> c_int {
         let Self {
             takeover:
                 Takeover {
@@ -755,7 +755,7 @@ impl Data<'_> {
         defs::OK.into()
     }
 
-    unsafe fn enemy_movements(&mut self) {
+    fn enemy_movements(&mut self) {
         const ACTIONS: i32 = 3;
         const MOVE_PROBABILITY: i32 = 100;
         const TURN_PROBABILITY: i32 = 10;
@@ -823,7 +823,7 @@ impl Data<'_> {
     /// Animate the active cables: this is done by cycling over
     /// the active phases ACTIVE1-ACTIVE3, which are represented by
     /// different pictures in the playground
-    unsafe fn animate_currents(&mut self) {
+    fn animate_currents(&mut self) {
         self.takeover
             .activation_map
             .iter_mut()
@@ -834,7 +834,7 @@ impl Data<'_> {
     }
 
     /// does the countdown of the capsules and kills them if too old
-    unsafe fn process_capsules(&mut self) {
+    fn process_capsules(&mut self) {
         self.takeover
             .capsules_countdown
             .iter_mut()
@@ -867,7 +867,7 @@ impl Data<'_> {
             });
     }
 
-    unsafe fn process_display_column(&mut self) {
+    fn process_display_column(&mut self) {
         const CONNECTION_LAYER: usize = 3;
 
         self.takeover.flicker_color = !self.takeover.flicker_color;
@@ -946,12 +946,12 @@ impl Data<'_> {
     }
 
     /// process the playground following its intrinsic logic
-    unsafe fn process_playground(&mut self) {
+    fn process_playground(&mut self) {
         self.takeover.process_playground();
     }
 
     /// generate a random Playground
-    unsafe fn invent_playground(&mut self) {
+    fn invent_playground(&mut self) {
         use std::ops::Not;
 
         const MAX_PROB: i32 = 100;
@@ -1089,7 +1089,7 @@ impl Data<'_> {
     }
 
     /// Clears Playground (and self.takeover.activation_map) to default start-values
-    unsafe fn clear_playground(&mut self) {
+    fn clear_playground(&mut self) {
         self.takeover
             .activation_map
             .iter_mut()
@@ -1115,7 +1115,7 @@ impl Data<'_> {
     ///
     /// NOTE: this function should only change the USERFENSTER part
     ///       so that we can do Infoline-setting before this
-    unsafe fn show_playground(&mut self) {
+    fn show_playground(&mut self) {
         let your_color: usize = self.takeover.your_color.into();
         let opponent_color: usize = self.takeover.opponent_color.into();
 
@@ -1464,7 +1464,7 @@ impl Data<'_> {
     }
 
     /// the acutal Takeover game-playing is done here
-    unsafe fn play_game(&mut self) {
+    fn play_game(&mut self) {
         let mut countdown = 100;
 
         const COUNT_TICK_LEN: u32 = 100;
@@ -1605,7 +1605,7 @@ impl Data<'_> {
         self.wait_for_all_keys_released();
     }
 
-    unsafe fn choose_color(&mut self) {
+    fn choose_color(&mut self) {
         let mut countdown = 100; /* duration in 1/10 seconds given for color choosing */
 
         const COUNT_TICK_LEN: u32 = 100; /* countdown in 1/10 second steps */
@@ -1663,7 +1663,7 @@ impl Data<'_> {
     /// play takeover-game against a druid
     ///
     /// Returns true if the user won, false otherwise
-    pub unsafe fn takeover(&mut self, enemynum: c_int) -> c_int {
+    pub fn takeover(&mut self, enemynum: c_int) -> c_int {
         /* Prevent distortion of framerate by the delay coming from
          * the time spend in the menu.
          */

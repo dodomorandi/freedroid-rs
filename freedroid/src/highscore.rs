@@ -12,7 +12,6 @@ use crate::{
 use log::{info, warn};
 use sdl::Rect;
 use std::{
-    ffi::CStr,
     fmt,
     fs::File,
     io::{Read, Write},
@@ -61,7 +60,7 @@ impl HighscoreEntry {
     }
 }
 
-impl Data<'_> {
+impl Highscore {
     /// Set up a new highscore list: load from disk if found
     unsafe fn init_highscores_inner(&mut self, config_dir: Option<&Path>) {
         let file = config_dir.and_then(|config_dir| {
@@ -74,7 +73,7 @@ impl Data<'_> {
             file
         });
 
-        self.highscore.num = MAX_HIGHSCORES as _;
+        self.num = MAX_HIGHSCORES as _;
         let highscores = match file {
             Some(mut file) => (0..MAX_HIGHSCORES)
                 .map(|_| {
@@ -91,7 +90,7 @@ impl Data<'_> {
                 .take(MAX_HIGHSCORES)
                 .collect(),
         };
-        self.highscore.entries = Some(highscores);
+        self.entries = Some(highscores);
     }
 
     unsafe fn save_highscores_inner(&mut self, config_dir: Option<&Path>) -> Result<(), ()> {
@@ -106,7 +105,7 @@ impl Data<'_> {
                     }
                 };
 
-                for entry in self.highscore.entries.as_mut().unwrap().iter_mut() {
+                for entry in self.entries.as_mut().unwrap().iter_mut() {
                     let as_slice = std::slice::from_raw_parts(
                         entry as *mut HighscoreEntry as *const u8,
                         mem::size_of::<HighscoreEntry>(),
@@ -124,8 +123,10 @@ impl Data<'_> {
             }
         }
     }
+}
 
-    pub unsafe fn update_highscores(&mut self) {
+impl Data<'_> {
+    pub fn update_highscores(&mut self) {
         let score = self.main.real_score;
         self.main.real_score = 0.;
         self.main.show_score = 0;
@@ -234,22 +235,16 @@ impl Data<'_> {
         self.b_font.current_font = prev_font;
     }
 
-    unsafe fn get_config_dir(&self) -> Option<&'static Path> {
-        if self.main.config_dir[0] == 0 {
-            None
-        } else {
-            let config_dir = CStr::from_ptr(self.main.config_dir.as_ptr());
-            let config_dir = Path::new(config_dir.to_str().unwrap());
-            Some(config_dir)
-        }
-    }
-
     pub unsafe fn init_highscores(&mut self) {
-        self.init_highscores_inner(self.get_config_dir());
+        self.highscore
+            .init_highscores_inner(self.main.get_config_dir());
     }
 
     pub unsafe fn save_highscores(&mut self) -> c_int {
-        match self.save_highscores_inner(self.get_config_dir()) {
+        match self
+            .highscore
+            .save_highscores_inner(self.main.get_config_dir())
+        {
             Ok(()) => defs::OK.into(),
             Err(()) => defs::ERR.into(),
         }
@@ -257,7 +252,7 @@ impl Data<'_> {
 
     /// Display the high scores of the single player game.
     /// This function is actually a submenu of the MainMenu.
-    pub unsafe fn show_highscores(&mut self) {
+    pub fn show_highscores(&mut self) {
         let fpath = Self::find_file_static(
             &self.global,
             &mut self.misc,
@@ -310,20 +305,14 @@ impl Data<'_> {
                     &mut ne_screen,
                     x1,
                     y0 + (i + 2) * height,
-                    format_args!(
-                        "{}",
-                        CStr::from_ptr(highscore.date.as_ptr()).to_str().unwrap()
-                    ),
+                    format_args!("{}", highscore.date.to_str().unwrap()),
                 );
             }
             self.print_string(
                 &mut ne_screen,
                 x2,
                 y0 + (i + 2) * height,
-                format_args!(
-                    "{}",
-                    CStr::from_ptr(highscore.name.as_ptr()).to_str().unwrap()
-                ),
+                format_args!("{}", highscore.name.to_str().unwrap()),
             );
             if highscore.score >= 0 {
                 self.print_string(

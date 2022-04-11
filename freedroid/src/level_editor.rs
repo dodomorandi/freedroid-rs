@@ -17,7 +17,7 @@ use sdl_sys::{
     SDLKey_SDLK_KP4, SDLKey_SDLK_KP5, SDLKey_SDLK_KP6, SDLKey_SDLK_KP7, SDLKey_SDLK_KP8,
     SDLKey_SDLK_KP9, SDLKey_SDLK_KP_PLUS,
 };
-use std::{cmp::Ordering, ops::Not, os::raw::c_int, ptr::null_mut};
+use std::{cmp::Ordering, ops::Not, os::raw::c_int};
 
 const HIGHLIGHTCOLOR: Pixel = Pixel::from_u8(255);
 const HIGHLIGHTCOLOR2: Pixel = Pixel::from_u8(100);
@@ -95,7 +95,7 @@ impl Data<'_> {
     /// Escape Menu.  In here you can edit the level and upon pressing
     /// escape enter a further submenu where you can save the level,
     /// change level name and quit from level editing.
-    pub unsafe fn level_editor(&mut self) {
+    pub fn level_editor(&mut self) {
         let mut done = false;
         let mut origin_waypoint: c_int = -1;
 
@@ -103,7 +103,7 @@ impl Data<'_> {
 
         let rect = self.vars.user_rect;
         self.vars.user_rect = self.vars.screen_rect; // level editor can use the full screen!
-        let mut src_wp = null_mut();
+        let mut src_wp_index = None;
 
         while done.not() {
             if self.cmd_is_active_r(Cmds::Menu) {
@@ -378,29 +378,31 @@ impl Data<'_> {
                     warn!("Sorry, no waypoint here to connect.");
                 } else if origin_waypoint == -1 {
                     origin_waypoint = i.try_into().unwrap();
-                    src_wp = &mut cur_level!(mut self.main).all_waypoints[i];
-                    if (*src_wp).num_connections < c_int::try_from(MAX_WP_CONNECTIONS).unwrap() {
+                    let waypoint = &mut cur_level!(mut self.main).all_waypoints[i];
+                    if waypoint.num_connections < c_int::try_from(MAX_WP_CONNECTIONS).unwrap() {
                         info!("Waypoint nr. {}. selected as origin", i);
+                        src_wp_index = Some(i);
                     } else {
                         warn!(
-                        "Sorry, maximal number of waypoint-connections ({}) reached! Operation \
-                         not possible.",
-                        MAX_WP_CONNECTIONS,
-                    );
+                            "Sorry, maximal number of waypoint-connections ({}) reached! Operation \
+                             not possible.",
+                            MAX_WP_CONNECTIONS,
+                        );
                         origin_waypoint = -1;
-                        src_wp = null_mut();
+                        src_wp_index = None;
                     }
                 } else if origin_waypoint == c_int::try_from(i).unwrap() {
                     info!("Origin==Target --> Connection Operation cancelled.");
                     origin_waypoint = -1;
-                    src_wp = null_mut();
+                    src_wp_index = None;
                 } else {
                     info!("Target-waypoint {} selected. Connection established!", i);
-                    (*src_wp).connections[usize::try_from((*src_wp).num_connections).unwrap()] =
+                    let waypoint_index = src_wp_index.take().unwrap();
+                    let waypoint = &mut cur_level!(mut self.main).all_waypoints[waypoint_index];
+                    waypoint.connections[usize::try_from(waypoint.num_connections).unwrap()] =
                         i.try_into().unwrap();
-                    (*src_wp).num_connections += 1;
+                    waypoint.num_connections += 1;
                     origin_waypoint = -1;
-                    src_wp = null_mut();
                 }
             }
 
@@ -513,7 +515,7 @@ impl Data<'_> {
 
     /// This function is used by the Level Editor integrated into
     /// freedroid.  It marks all waypoints with a cross.
-    unsafe fn show_waypoints(&mut self) {
+    fn show_waypoints(&mut self) {
         let block_x = self.vars.me.pos.x.round();
         let block_y = self.vars.me.pos.y.round();
 
@@ -648,7 +650,7 @@ impl Data<'_> {
     /// freedroid.  It highlights the map position that is currently
     /// edited or would be edited, if the user pressed something.  I.e.
     /// it provides a "cursor" for the Level Editor.
-    unsafe fn highlight_current_block(&mut self) {
+    fn highlight_current_block(&mut self) {
         let mut ne_screen = self.graphics.ne_screen.as_mut().unwrap().lock().unwrap();
         let mut pixels = ne_screen.pixels();
 

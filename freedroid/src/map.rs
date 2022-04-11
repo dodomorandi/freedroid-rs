@@ -62,7 +62,7 @@ pub struct Map {
     inner_wait_counter: f32,
 }
 
-pub unsafe fn get_map_brick(deck: &Level, x: c_float, y: c_float) -> c_uchar {
+pub fn get_map_brick(deck: &Level, x: c_float, y: c_float) -> c_uchar {
     let xx = x.round() as c_int;
     let yy = y.round() as c_int;
 
@@ -97,7 +97,7 @@ pub enum ColorNames {
     Dark,
 }
 
-unsafe fn reset_level_map(level: &mut Level) {
+fn reset_level_map(level: &mut Level) {
     // Now in the game and in the level editor, it might have happend that some open
     // doors occur.  The make life easier for the saving routine, these doors should
     // be closed first.
@@ -116,7 +116,7 @@ unsafe fn reset_level_map(level: &mut Level) {
 }
 
 /// initialize doors, refreshes and lifts for the given level-data
-pub unsafe fn interpret_map(level: &mut Level) -> c_int {
+pub fn interpret_map(level: &mut Level) -> c_int {
     /* Get Doors Array */
     get_doors(level);
 
@@ -132,7 +132,7 @@ pub unsafe fn interpret_map(level: &mut Level) -> c_int {
 /// initializes the Doors array of the given level structure
 /// Of course the level data must be in the structure already!!
 /// Returns the number of doors found or ERR
-pub unsafe fn get_doors(level: &mut Level) -> c_int {
+pub fn get_doors(level: &mut Level) -> c_int {
     let mut curdoor = 0;
 
     let xlen = level.xlen;
@@ -186,7 +186,7 @@ Sorry...\n\
 /// This function initialized the array of Refreshes for animation
 /// within the level
 /// Returns the number of refreshes found or ERR
-pub unsafe fn get_refreshes(level: &mut Level) -> c_int {
+pub fn get_refreshes(level: &mut Level) -> c_int {
     let xlen = level.xlen;
     let ylen = level.ylen;
 
@@ -236,7 +236,7 @@ Sorry...\n\
 }
 
 /// Find all alerts on this level and initialize their position-array
-pub unsafe fn get_alerts(level: &mut Level) {
+pub fn get_alerts(level: &mut Level) {
     let xlen = level.xlen;
     let ylen = level.ylen;
 
@@ -283,7 +283,7 @@ where
 /// into a Level-struct:
 ///
 /// Doors and Waypoints Arrays are initialized too
-pub unsafe fn level_to_struct(data: &[u8]) -> Option<Level> {
+pub fn level_to_struct(data: &[u8]) -> Option<Level> {
     use nom::{bytes::complete::tag, character::complete::i32, sequence::tuple};
 
     /* Get the memory for one level */
@@ -458,7 +458,7 @@ pub unsafe fn level_to_struct(data: &[u8]) -> Option<Level> {
 
 impl Data<'_> {
     /// Determines wether object on x/y is visible to the 001 or not
-    pub unsafe fn is_visible(&self, objpos: &Finepoint) -> c_int {
+    pub fn is_visible(&self, objpos: &Finepoint) -> c_int {
         let influ_x = self.vars.me.pos.x;
         let influ_y = self.vars.me.pos.y;
 
@@ -506,7 +506,7 @@ impl Data<'_> {
             });
     }
 
-    pub unsafe fn animate_refresh(&mut self) {
+    pub fn animate_refresh(&mut self) {
         self.map.inner_wait_counter += self.frame_time() * 10.;
 
         let cur_level = self.main.cur_level_mut();
@@ -528,7 +528,7 @@ impl Data<'_> {
             });
     }
 
-    pub unsafe fn is_passable(&self, x: c_float, y: c_float, check_pos: c_int) -> c_int {
+    pub fn is_passable(&self, x: c_float, y: c_float, check_pos: c_int) -> c_int {
         let map_brick = get_map_brick(&*self.main.cur_level(), x, y);
 
         let fx = (x - 0.5) - (x - 0.5).floor();
@@ -770,7 +770,7 @@ impl Data<'_> {
     }
 
     /// Saves ship-data to disk
-    pub unsafe fn save_ship(&mut self, shipname: &str) -> c_int {
+    pub fn save_ship(&mut self, shipname: &str) -> c_int {
         use std::{fs::File, io::Write, path::PathBuf};
 
         trace!("SaveShip(): real function call confirmed.");
@@ -817,8 +817,7 @@ freedroid-discussion@lists.sourceforge.net\n\
 
             const AREA_NAME_STRING: &str = "Area name=\"";
             ship_file.write_all(AREA_NAME_STRING.as_bytes())?;
-            ship_file
-                .write_all(CStr::from_ptr(self.main.cur_ship.area_name.as_ptr()).to_bytes())?;
+            ship_file.write_all(self.main.cur_ship.area_name.to_bytes())?;
             ship_file.write_all(b"\"\n\n  ")?;
 
             /* Save all Levels */
@@ -887,7 +886,7 @@ freedroid-discussion@lists.sourceforge.net\n\
     /// DOES THE ANIMATION TOO QUICKLY.  So, the most reasonable way out seems
     /// to be to operate this function only from time to time, e.g. after a
     /// specified delay has passed.
-    pub unsafe fn move_level_doors(&mut self) {
+    pub fn move_level_doors(&mut self) {
         // This prevents animation going too quick.
         // The constant should be replaced by a variable, that can be
         // set from within the theme, but that may be done later...
@@ -969,7 +968,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         }
     }
 
-    pub unsafe fn druid_passable(&self, x: c_float, y: c_float) -> c_int {
+    pub fn druid_passable(&self, x: c_float, y: c_float) -> c_int {
         let testpos: [Finepoint; DIRECTIONS] = [
             Finepoint {
                 x,
@@ -1023,7 +1022,7 @@ freedroid-discussion@lists.sourceforge.net\n\
     /// in a already read in droids file and decodes all the contents of that
     /// droid section to fill the AllEnemys array with droid types accoriding
     /// to the specifications made in the file.
-    pub unsafe fn get_this_levels_droids(&mut self, section_data: &[u8]) {
+    pub fn get_this_levels_droids(&mut self, section_data: &[u8]) {
         const DROIDS_LEVEL_INDICATION_STRING: &[u8] = b"Level=";
         const DROIDS_LEVEL_END_INDICATION_STRING: &[u8] = b"** End of this levels droid data **";
         const DROIDS_MAXRAND_INDICATION_STRING: &[u8] = b"Maximum number of Random Droids=";
@@ -1121,7 +1120,7 @@ freedroid-discussion@lists.sourceforge.net\n\
     }
 
     /// This function initializes all enemys
-    pub unsafe fn get_crew(&mut self, filename: &[u8]) -> c_int {
+    pub fn get_crew(&mut self, filename: &[u8]) -> c_int {
         const END_OF_DROID_DATA_STRING: &[u8] = b"*** End of Droid Data ***";
         const DROIDS_LEVEL_DESCRIPTION_START_STRING: &[u8] = b"** Beginning of new Level **";
         const DROIDS_LEVEL_DESCRIPTION_END_STRING: &[u8] = b"** End of this levels droid data **";
@@ -1190,7 +1189,7 @@ freedroid-discussion@lists.sourceforge.net\n\
     }
 
     /// loads lift-connctions to cur-ship struct
-    pub unsafe fn get_lift_connections(&mut self, filename: &[u8]) -> c_int {
+    pub fn get_lift_connections(&mut self, filename: &[u8]) -> c_int {
         const END_OF_LIFT_DATA_STRING: &[u8] = b"*** End of elevator specification file ***";
         const START_OF_LIFT_DATA_STRING: &[u8] = b"*** Beginning of Lift Data ***";
         const START_OF_LIFT_RECTANGLE_DATA_STRING: &[u8] =
@@ -1318,7 +1317,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         defs::OK.into()
     }
 
-    pub unsafe fn load_ship(&mut self, filename: &[u8]) -> c_int {
+    pub fn load_ship(&mut self, filename: &[u8]) -> c_int {
         let mut level_start: [Option<&[u8]>; MAX_LEVELS] = [None; MAX_LEVELS];
         self.free_ship_memory(); // clear vestiges of previous ship data, if any
 
@@ -1398,7 +1397,7 @@ freedroid-discussion@lists.sourceforge.net\n\
 
     /// ActSpecialField: checks Influencer on SpecialFields like
     /// Lifts and Konsoles and acts on it
-    pub unsafe fn act_special_field(&mut self, x: c_float, y: c_float) {
+    pub fn act_special_field(&mut self, x: c_float, y: c_float) {
         let map_tile = get_map_brick(self.main.cur_level(), x, y);
 
         let myspeed2 = self.vars.me.speed.x * self.vars.me.speed.x
@@ -1437,7 +1436,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         }
     }
 
-    pub unsafe fn get_current_lift(&self) -> c_int {
+    pub fn get_current_lift(&self) -> c_int {
         let curlev = self.main.cur_level().levelnum;
 
         let gx = self.vars.me.pos.x.round() as c_int;
@@ -1498,7 +1497,7 @@ fn read_tagged_i32(s: &[u8], tag: &str) -> i32 {
 }
 
 /// Returns a pointer to Map in a memory field
-pub unsafe fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
+pub fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
     use std::io::Write;
 
     let xlen = level.xlen;

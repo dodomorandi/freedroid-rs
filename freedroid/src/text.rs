@@ -77,7 +77,7 @@ impl Data<'_> {
     /// * echo=2    print using graphics-text
     ///
     /// values of echo > 2 are ignored and treated like echo=0
-    pub unsafe fn get_string(&mut self, max_len: c_int, echo: c_int) -> Option<CString> {
+    pub fn get_string(&mut self, max_len: c_int, echo: c_int) -> Option<CString> {
         let max_len: usize = max_len.try_into().unwrap();
 
         if echo == 1 {
@@ -237,7 +237,7 @@ impl Data<'_> {
     /// Should do roughly what getchar() does, but in raw (SLD) keyboard mode.
     ///
     /// Return the (SDLKey) of the next key-pressed event cast to
-    pub unsafe fn getchar_raw(&mut self) -> c_int {
+    pub fn getchar_raw(&mut self) -> c_int {
         let mut return_key = 0;
 
         loop {
@@ -332,7 +332,7 @@ impl Data<'_> {
     ///  o) passing -1 as coord uses previous x and next-line y for printing
     ///  o) Screen is updated immediatly after print, using SDL_flip()
     #[inline]
-    pub unsafe fn printf_sdl<const F: bool>(
+    pub fn printf_sdl<const F: bool>(
         &mut self,
         screen: &mut sdl::GenericSurface<F>,
         x: c_int,
@@ -350,7 +350,7 @@ impl Data<'_> {
         )
     }
 
-    pub unsafe fn printf_sdl_static<const F: bool>(
+    pub fn printf_sdl_static<const F: bool>(
         text: &mut Text,
         b_font: &BFont,
         font_owner: &mut FontCellOwner,
@@ -416,7 +416,7 @@ impl Data<'_> {
     /// Return TRUE if some characters where written inside the clip rectangle,
     /// FALSE if not (used by ScrollText to know if Text has been scrolled
     /// out of clip-rect completely)
-    pub unsafe fn display_text(
+    pub fn display_text(
         &mut self,
         text: &[u8],
         startx: c_int,
@@ -437,7 +437,7 @@ impl Data<'_> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub unsafe fn display_text_static(
+    pub fn display_text_static(
         data_text: &mut Text,
         graphics: &mut Graphics,
         vars: &Vars,
@@ -515,7 +515,7 @@ impl Data<'_> {
 
     /// This function displays a char. It uses Menu_BFont now
     /// to do this.  MyCursorX is  updated to new position.
-    pub unsafe fn display_char(
+    pub fn display_char(
         graphics: &mut Graphics,
         text: &mut Text,
         b_font: &BFont,
@@ -555,7 +555,7 @@ impl Data<'_> {
     ///
     ///  rp: added argument clip, which contains the text-window we're writing in
     ///  (formerly known as "TextBorder")
-    pub unsafe fn is_linebreak_needed(
+    pub fn is_linebreak_needed(
         b_font: &BFont,
         font_owner: &FontCellOwner,
         text: &Text,
@@ -587,7 +587,7 @@ impl Data<'_> {
         false
     }
 
-    pub unsafe fn enemy_hit_by_bullet_text(&mut self, enemy: c_int) {
+    pub fn enemy_hit_by_bullet_text(&mut self, enemy: c_int) {
         let robot = &mut self.main.all_enemys[usize::try_from(enemy).unwrap()];
 
         if self.global.game_config.droid_talk == 0 {
@@ -606,7 +606,7 @@ impl Data<'_> {
         robot.text_to_be_displayed = text;
     }
 
-    pub unsafe fn enemy_influ_collision_text(&mut self, enemy: c_int) {
+    pub fn enemy_influ_collision_text(&mut self, enemy: c_int) {
         let robot = &mut self.main.all_enemys[usize::try_from(enemy).unwrap()];
 
         if self.global.game_config.droid_talk == 0 {
@@ -622,7 +622,7 @@ impl Data<'_> {
         robot.text_to_be_displayed = text;
     }
 
-    pub unsafe fn add_influ_burnt_text(&mut self) {
+    pub fn add_influ_burnt_text(&mut self) {
         if self.global.game_config.droid_talk == 0 {
             return;
         }
@@ -659,7 +659,7 @@ impl Data<'_> {
     /// Scrolls a given text down inside the given rect
     ///
     /// returns 0 if end of text was scolled out, 1 if user pressed fire
-    pub unsafe fn scroll_text(
+    pub fn scroll_text(
         &mut self,
         text: &[u8],
         rect: &mut Rect,
@@ -695,7 +695,7 @@ impl Data<'_> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub unsafe fn scroll_text_static(
+    pub fn scroll_text_static(
         graphics: &mut Graphics,
         input: &mut Input,
         sdl: &Sdl,

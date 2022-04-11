@@ -421,7 +421,7 @@ pub const CURSOR_KEEP_VISIBLE: u32 = 3000; // ticks to keep mouse-cursor visible
 
 impl Data<'_> {
     /// Check if any keys have been 'freshly' pressed. If yes, return key-code, otherwise 0.
-    pub unsafe fn wait_for_key_pressed(&mut self) -> c_int {
+    pub fn wait_for_key_pressed(&mut self) -> c_int {
         loop {
             match self.any_key_just_pressed() {
                 0 => self.sdl.delay_ms(1),
@@ -430,7 +430,7 @@ impl Data<'_> {
         }
     }
 
-    pub unsafe fn any_key_just_pressed(&mut self) -> c_int {
+    pub fn any_key_just_pressed(&mut self) -> c_int {
         let Self {
             sdl,
             input,
@@ -451,7 +451,7 @@ impl Data<'_> {
         )
     }
 
-    pub unsafe fn any_key_just_pressed_static(
+    pub fn any_key_just_pressed_static(
         sdl: &Sdl,
         input: &mut Input,
         vars: &Vars,
@@ -474,7 +474,7 @@ impl Data<'_> {
         }
     }
 
-    pub unsafe fn update_input(&mut self) -> c_int {
+    pub fn update_input(&mut self) -> c_int {
         let Self {
             sdl,
             input,
@@ -485,7 +485,7 @@ impl Data<'_> {
         Self::update_input_static(sdl, input, vars, quit)
     }
 
-    pub unsafe fn update_input_static(
+    pub fn update_input_static(
         sdl: &Sdl,
         input: &mut Input,
         vars: &Vars,
@@ -661,7 +661,7 @@ impl Data<'_> {
         0
     }
 
-    pub unsafe fn key_is_pressed(&mut self, key: c_int) -> bool {
+    pub fn key_is_pressed(&mut self, key: c_int) -> bool {
         let Self {
             sdl,
             input,
@@ -673,7 +673,7 @@ impl Data<'_> {
         Self::key_is_pressed_static(sdl, input, vars, quit, key)
     }
 
-    pub unsafe fn key_is_pressed_static(
+    pub fn key_is_pressed_static(
         sdl: &Sdl,
         input: &mut Input,
         vars: &Vars,
@@ -686,7 +686,7 @@ impl Data<'_> {
     }
 
     /// Does the same as KeyIsPressed, but automatically releases the key as well..
-    pub unsafe fn key_is_pressed_r(&mut self, key: c_int) -> bool {
+    pub fn key_is_pressed_r(&mut self, key: c_int) -> bool {
         let Self {
             sdl,
             input,
@@ -698,7 +698,7 @@ impl Data<'_> {
         Self::key_is_pressed_r_static(sdl, input, vars, quit, key)
     }
 
-    pub unsafe fn key_is_pressed_r_static(
+    pub fn key_is_pressed_r_static(
         sdl: &Sdl,
         input: &mut Input,
         vars: &Vars,
@@ -711,7 +711,7 @@ impl Data<'_> {
         ret
     }
 
-    pub unsafe fn wheel_up_pressed(&mut self) -> bool {
+    pub fn wheel_up_pressed(&mut self) -> bool {
         let Self {
             sdl,
             input,
@@ -722,7 +722,7 @@ impl Data<'_> {
         Self::wheel_up_pressed_static(sdl, input, vars, quit)
     }
 
-    pub unsafe fn wheel_up_pressed_static(
+    pub fn wheel_up_pressed_static(
         sdl: &Sdl,
         input: &mut Input,
         vars: &Vars,
@@ -737,7 +737,7 @@ impl Data<'_> {
         }
     }
 
-    pub unsafe fn wheel_down_pressed(&mut self) -> bool {
+    pub fn wheel_down_pressed(&mut self) -> bool {
         let Self {
             sdl,
             input,
@@ -748,7 +748,7 @@ impl Data<'_> {
         Self::wheel_down_pressed_static(sdl, input, vars, quit)
     }
 
-    pub unsafe fn wheel_down_pressed_static(
+    pub fn wheel_down_pressed_static(
         sdl: &Sdl,
         input: &mut Input,
         vars: &Vars,
@@ -763,7 +763,7 @@ impl Data<'_> {
         }
     }
 
-    pub unsafe fn cmd_is_active(&mut self, cmd: Cmds) -> bool {
+    pub fn cmd_is_active(&mut self, cmd: Cmds) -> bool {
         let Self {
             sdl,
             input,
@@ -775,7 +775,7 @@ impl Data<'_> {
         Self::cmd_is_active_static(sdl, input, vars, quit, cmd)
     }
 
-    pub unsafe fn cmd_is_active_static(
+    pub fn cmd_is_active_static(
         sdl: &Sdl,
         input: &mut Input,
         vars: &Vars,
@@ -789,7 +789,7 @@ impl Data<'_> {
     }
 
     /// the same but release the keys: use only for menus!
-    pub unsafe fn cmd_is_active_r(&mut self, cmd: Cmds) -> bool {
+    pub fn cmd_is_active_r(&mut self, cmd: Cmds) -> bool {
         let Self {
             sdl,
             input,
@@ -801,7 +801,7 @@ impl Data<'_> {
     }
 
     /// the same but release the keys: use only for menus!
-    pub unsafe fn cmd_is_active_r_static(
+    pub fn cmd_is_active_r_static(
         sdl: &Sdl,
         input: &mut Input,
         vars: &Vars,
@@ -817,7 +817,7 @@ impl Data<'_> {
         c1 || c2 || c3
     }
 
-    pub unsafe fn wait_for_all_keys_released(&mut self) {
+    pub fn wait_for_all_keys_released(&mut self) {
         let Self {
             input,
             sdl,
@@ -838,7 +838,7 @@ impl Data<'_> {
         )
     }
 
-    pub unsafe fn wait_for_all_keys_released_static(
+    pub fn wait_for_all_keys_released_static(
         input: &mut Input,
         sdl: &Sdl,
         vars: &Vars,
@@ -858,7 +858,7 @@ impl Data<'_> {
         input.reset_mouse_wheel();
     }
 
-    pub unsafe fn any_key_is_pressed_r(&mut self) -> bool {
+    pub fn any_key_is_pressed_r(&mut self) -> bool {
         let Self {
             #[cfg(target_os = "android")]
             graphics,
@@ -879,7 +879,7 @@ impl Data<'_> {
         )
     }
 
-    pub unsafe fn any_key_is_pressed_r_static(
+    pub fn any_key_is_pressed_r_static(
         input: &mut Input,
         sdl: &Sdl,
         vars: &Vars,
@@ -901,12 +901,12 @@ impl Data<'_> {
         false
     }
 
-    pub unsafe fn mod_is_pressed(&mut self, sdl_mod: SDLMod) -> bool {
+    pub fn mod_is_pressed(&mut self, sdl_mod: SDLMod) -> bool {
         self.update_input();
         (self.input.current_modifiers & sdl_mod) != 0
     }
 
-    pub unsafe fn no_direction_pressed(&mut self) -> bool {
+    pub fn no_direction_pressed(&mut self) -> bool {
         !((self.input.axis_is_active != 0
             && (self.input.input_axis.x != 0 || self.input.input_axis.y != 0))
             || self.down_pressed()
@@ -915,7 +915,7 @@ impl Data<'_> {
             || self.right_pressed())
     }
 
-    pub unsafe fn react_to_special_keys(&mut self) {
+    pub fn react_to_special_keys(&mut self) {
         if self.cmd_is_active_r(Cmds::Quit) {
             self.handle_quit_game(MenuAction::CLICK);
         }
@@ -946,7 +946,7 @@ impl Data<'_> {
         }
     }
 
-    pub unsafe fn init_joy(&mut self) {
+    pub fn init_joy(&mut self) {
         let joystick = self.sdl.init_joystick().unwrap_or_else(|| {
             panic!(
                 "Couldn't initialize SDL-Joystick: {}",

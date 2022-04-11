@@ -46,6 +46,11 @@ impl PixelFormatRef<'_> {
         let result = unsafe { SDL_MapRGBA(self.inner.as_ptr(), red, green, blue, alpha) };
         Pixel(result)
     }
+
+    pub fn has_alpha(&self) -> bool {
+        let format = unsafe { self.inner.as_ref() };
+        format.Amask != 0
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

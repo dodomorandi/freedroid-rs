@@ -136,6 +136,11 @@ impl<const N: usize> ArrayCString<N> {
 
         len == other.len()
     }
+
+    #[inline]
+    pub const fn is_empty(&self) -> bool {
+        self.0[0] == 0
+    }
 }
 
 impl<const N: usize> TryFrom<&str> for ArrayCString<N> {
