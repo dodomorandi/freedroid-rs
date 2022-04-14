@@ -327,9 +327,7 @@ impl Data<'_> {
         self.global.current_combat_scale_factor = 1.;
 
         /* initialize/load the highscore list */
-        unsafe {
-            self.init_highscores();
-        }
+        self.init_highscores();
 
         /* Now fill the pictures correctly to the structs */
         assert!(

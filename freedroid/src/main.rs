@@ -352,9 +352,7 @@ fn main() {
     info!("Writing config file");
     data.save_game_config();
     info!("Writing highscores to disk");
-    unsafe {
-        data.save_highscores();
-    }
+    data.save_highscores();
 
     // ----- free memory
     data.free_graphics();

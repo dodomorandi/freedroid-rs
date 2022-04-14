@@ -1,7 +1,7 @@
 use std::{
     ffi::CStr,
     fmt,
-    ops::{Deref, Index},
+    ops::{Deref, Index, Not},
 };
 
 #[derive(Debug, Clone, Copy, Eq)]
@@ -12,6 +12,10 @@ impl<const N: usize> ArrayCString<N> {
     pub const fn new() -> Self {
         assert!(N > 0);
         Self([0; N])
+    }
+
+    pub const fn buffer_len(&self) -> usize {
+        N
     }
 
     pub fn len(&self) -> usize {
@@ -140,6 +144,21 @@ impl<const N: usize> ArrayCString<N> {
     #[inline]
     pub const fn is_empty(&self) -> bool {
         self.0[0] == 0
+    }
+
+    pub fn use_slice_mut<F, O>(&mut self, f: F) -> O
+    where
+        F: FnOnce(&mut [u8; N]) -> O,
+    {
+        let output = f(&mut self.0);
+        if self.0.iter().copied().any(|c| c == 0).not() {
+            panic!("ArrayCString::use_slice_mut removed null terminator");
+        }
+        output
+    }
+
+    pub fn as_buffer_bytes(&self) -> &[u8] {
+        &self.0
     }
 }
 

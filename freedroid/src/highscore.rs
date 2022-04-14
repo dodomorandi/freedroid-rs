@@ -14,8 +14,8 @@ use sdl::Rect;
 use std::{
     fmt,
     fs::File,
-    io::{Read, Write},
-    mem,
+    io::{BufReader, BufWriter, Read, Write},
+    mem::{self, align_of, size_of},
     os::raw::{c_int, c_long},
     path::Path,
     rc::Rc,
@@ -30,7 +30,7 @@ pub struct Highscore {
 #[derive(Debug)]
 pub struct HighscoreEntry {
     name: ArrayCString<{ MAX_NAME_LEN + 5 }>,
-    score: c_long,
+    score: i64,
     date: ArrayCString<{ DATE_LEN + 5 }>,
 }
 
@@ -58,14 +58,32 @@ impl HighscoreEntry {
             score,
         }
     }
+
+    pub const fn score_padding() -> usize {
+        let used_bytes = (MAX_NAME_LEN + 5) % align_of::<i64>();
+        if used_bytes == 0 {
+            0
+        } else {
+            align_of::<i64>() - used_bytes
+        }
+    }
+
+    pub const fn end_padding() -> usize {
+        let used_bytes = (DATE_LEN + 5) % align_of::<i64>();
+        if used_bytes == 0 {
+            0
+        } else {
+            align_of::<i64>() - used_bytes
+        }
+    }
 }
 
 impl Highscore {
     /// Set up a new highscore list: load from disk if found
-    unsafe fn init_highscores_inner(&mut self, config_dir: Option<&Path>) {
+    fn init_highscores_inner(&mut self, config_dir: Option<&Path>) {
         let file = config_dir.and_then(|config_dir| {
             let path = config_dir.join("highscores");
-            let file = File::open(&path).ok();
+            let file = File::open(&path).ok().map(BufReader::new);
             match file.as_ref() {
                 Some(_) => info!("Found highscore file {}", path.display()),
                 None => warn!("No highscore file found..."),
@@ -77,13 +95,37 @@ impl Highscore {
         let highscores = match file {
             Some(mut file) => (0..MAX_HIGHSCORES)
                 .map(|_| {
-                    let mut entry = mem::MaybeUninit::uninit();
-                    let as_slice = std::slice::from_raw_parts_mut(
-                        entry.as_mut_ptr() as *mut u8,
-                        mem::size_of::<HighscoreEntry>(),
-                    );
-                    file.read_exact(as_slice).unwrap();
-                    entry.assume_init()
+                    let mut name = ArrayCString::new();
+                    name.use_slice_mut(|name| {
+                        file.read_exact(name)
+                            .expect("cannot read name from highscore file");
+                    });
+
+                    const SCORE_PADDING: usize = HighscoreEntry::score_padding();
+                    if SCORE_PADDING != 0 {
+                        file.seek_relative(SCORE_PADDING.try_into().unwrap())
+                            .expect("cannot skip padding bytes from highscore file");
+                    }
+                    let score = {
+                        let mut raw_score = [0u8; size_of::<i64>()];
+                        file.read_exact(&mut raw_score)
+                            .expect("unable to read score from highscore file");
+
+                        i64::from_le_bytes(raw_score)
+                    };
+
+                    let mut get_rest = || {
+                        let mut date = ArrayCString::new();
+                        date.use_slice_mut(|date| file.read_exact(date).ok())?;
+
+                        const END_PADDING: usize = HighscoreEntry::end_padding();
+                        if END_PADDING != 0 {
+                            file.seek_relative(END_PADDING.try_into().unwrap()).ok()?;
+                        }
+
+                        Some(HighscoreEntry { name, score, date })
+                    };
+                    get_rest().unwrap_or_default()
                 })
                 .collect(),
             None => std::iter::repeat_with(HighscoreEntry::default)
@@ -93,12 +135,12 @@ impl Highscore {
         self.entries = Some(highscores);
     }
 
-    unsafe fn save_highscores_inner(&mut self, config_dir: Option<&Path>) -> Result<(), ()> {
+    fn save_highscores_inner(&mut self, config_dir: Option<&Path>) -> Result<(), ()> {
         match config_dir {
             Some(config_dir) => {
                 let path = config_dir.join("highscores");
                 let mut file = match File::create(&path) {
-                    Ok(file) => file,
+                    Ok(file) => BufWriter::new(file),
                     Err(_) => {
                         warn!("Failed to create highscores file. Giving up...");
                         return Err(());
@@ -106,13 +148,20 @@ impl Highscore {
                 };
 
                 for entry in self.entries.as_mut().unwrap().iter_mut() {
-                    let as_slice = std::slice::from_raw_parts(
-                        entry as *mut HighscoreEntry as *const u8,
-                        mem::size_of::<HighscoreEntry>(),
-                    );
-                    file.write_all(as_slice).unwrap();
+                    file.write_all(entry.name.as_buffer_bytes()).unwrap();
+                    const SCORE_PADDING: usize = HighscoreEntry::score_padding();
+                    if SCORE_PADDING != 0 {
+                        file.write_all(&[0; SCORE_PADDING]).unwrap();
+                    }
+                    file.write_all(&entry.score.to_le_bytes()).unwrap();
+                    file.write_all(entry.date.as_buffer_bytes()).unwrap();
+
+                    const END_PADDING: usize = HighscoreEntry::end_padding();
+                    if END_PADDING != 0 {
+                        file.write_all(&[0; END_PADDING]).unwrap();
+                    }
                 }
-                file.sync_all().unwrap();
+                file.flush().unwrap();
                 info!("Successfully updated highscores file '{}'", path.display());
 
                 Ok(())
@@ -235,12 +284,12 @@ impl Data<'_> {
         self.b_font.current_font = prev_font;
     }
 
-    pub unsafe fn init_highscores(&mut self) {
+    pub fn init_highscores(&mut self) {
         self.highscore
             .init_highscores_inner(self.main.get_config_dir());
     }
 
-    pub unsafe fn save_highscores(&mut self) -> c_int {
+    pub fn save_highscores(&mut self) -> c_int {
         match self
             .highscore
             .save_highscores_inner(self.main.get_config_dir())
