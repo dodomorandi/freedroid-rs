@@ -260,7 +260,7 @@ impl Data<'_> {
         assert!(ne_screen.flip());
         ne_screen.clear_clip_rect();
 
-        let date = format!("{}", chrono::Local::today().format("%Y/%m/%d"));
+        let date = format!("{}", chrono::Local::now().format("%Y/%m/%d"));
 
         #[cfg(target_os = "android")]
         let new_entry = HighscoreEntry::new("Player", score as i64, &date);
