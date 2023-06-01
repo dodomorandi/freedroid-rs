@@ -770,12 +770,7 @@ impl Data<'_> {
     /// text.
     ///
     /// BANNER_NO_SDL_UPDATE=4: Prevents any SDL_Update calls.
-    pub fn display_banner(
-        &mut self,
-        left: Option<&CStr>,
-        right: Option<&CStr>,
-        flags: c_int,
-    ) {
+    pub fn display_banner(&mut self, left: Option<&CStr>, right: Option<&CStr>, flags: c_int) {
         thread_local! {
             static PREVIOUS_LEFT_BOX: RefCell<ArrayString::<[u8; LEFT_TEXT_LEN]>>={
               RefCell::new(ArrayString::from("NOUGHT"))

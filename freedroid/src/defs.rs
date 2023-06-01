@@ -257,12 +257,7 @@ impl Data<'_> {
     }
 
     #[inline]
-    pub fn up_pressed_static(
-        sdl: &Sdl,
-        input: &mut Input,
-        vars: &Vars,
-        quit: &Cell<bool>,
-    ) -> bool {
+    pub fn up_pressed_static(sdl: &Sdl, input: &mut Input, vars: &Vars, quit: &Cell<bool>) -> bool {
         Self::cmd_is_active_static(sdl, input, vars, quit, Cmds::Up)
     }
 
