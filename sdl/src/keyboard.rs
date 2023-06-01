@@ -585,6 +585,7 @@ impl Key {
 pub struct InvalidKey;
 
 bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct Mod: u32 {
         const LEFT_SHIFT = SDLMod_KMOD_LSHIFT;
         const RIGHT_SHIFT = SDLMod_KMOD_RSHIFT;

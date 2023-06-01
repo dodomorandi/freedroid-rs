@@ -302,7 +302,7 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
 }
 
 bitflags! {
-    #[derive(Default)]
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct ColorKeyFlag: u32 {
         const HW_ACCEL = SDL_HWACCEL as u32;
         const SRC_COLOR_KEY = SDL_SRCCOLORKEY as u32;

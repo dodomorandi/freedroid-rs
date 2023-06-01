@@ -337,6 +337,7 @@ impl Data<'_> {
 // ----------------------------------------
 
 bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct MenuAction: i32 {
         const INFO = 0b0000_0000_0001;
         const BACK = 0b0000_0000_0010;
@@ -397,6 +398,7 @@ impl TryFrom<i32> for Criticality {
 
 // The flags for DisplayBanner are:
 bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct DisplayBannerFlags: u8 {
         const FORCE_UPDATE=1;
         const DONT_TOUCH_TEXT=2;
@@ -406,6 +408,7 @@ bitflags! {
 
 // The flags for AssembleCombatWindow are:
 bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct AssembleCombatWindowFlags: u8 {
         const ONLY_SHOW_MAP = 0x01;
         const DO_SCREEN_UPDATE = 0x02;

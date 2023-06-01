@@ -24,7 +24,7 @@ use crate::{
 use crate::input::wait_for_key_pressed;
 
 use bstr::ByteSlice;
-use clap::{crate_version, Parser};
+use clap::{crate_version, ArgAction, Parser};
 use cstr::cstr;
 use log::{error, info, warn};
 use nom::Finish;
@@ -85,16 +85,13 @@ pub fn win32_disclaimer() {
 #[derive(Parser)]
 #[clap(version = crate_version!(), long_version = COPYRIGHT)]
 struct Opt {
-    #[clap(short, long)]
-    _version: bool,
-
     #[clap(short, long, conflicts_with = "nosound")]
     sound: bool,
 
     #[clap(short = 'q', long, conflicts_with = "sound")]
     nosound: bool,
 
-    #[clap(short, long, parse(from_occurrences))]
+    #[clap(short, long, action = ArgAction::Count)]
     debug: u8,
 
     #[clap(short, long, conflicts_with = "fullscreen")]

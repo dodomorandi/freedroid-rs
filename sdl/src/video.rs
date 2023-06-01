@@ -97,6 +97,7 @@ impl WindowManager<'_> {
 }
 
 bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct VideoModeFlags: u32 {
         const SOFTWARE_SURFACE = SDL_HWSURFACE as u32;
         const HARDWARE_SURFACE = SDL_HWSURFACE as u32;
