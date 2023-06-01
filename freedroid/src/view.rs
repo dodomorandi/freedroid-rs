@@ -250,7 +250,7 @@ impl Data<'_> {
                         self.vars.full_user_rect.x().into(),
                         self.vars.full_user_rect.y() as i32
                             + self.vars.full_user_rect.height() as i32
-                            - font_height(font0_b_font) as i32,
+                            - font_height(font0_b_font),
                         format_args!("FPS: {} ", fps_displayed.get()),
                     );
                 });
@@ -797,7 +797,7 @@ impl Data<'_> {
 
             fn deref(&self) -> &Self::Target {
                 match self {
-                    Self::Owned(s) => &**s,
+                    Self::Owned(s) => s,
                     &Self::Borrowed(s) => s,
                 }
             }

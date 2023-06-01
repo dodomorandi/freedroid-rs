@@ -529,7 +529,7 @@ impl Data<'_> {
     }
 
     pub fn is_passable(&self, x: c_float, y: c_float, check_pos: c_int) -> c_int {
-        let map_brick = get_map_brick(&*self.main.cur_level(), x, y);
+        let map_brick = get_map_brick(self.main.cur_level(), x, y);
 
         let fx = (x - 0.5) - (x - 0.5).floor();
         let fy = (y - 0.5) - (y - 0.5).floor();
@@ -713,8 +713,7 @@ impl Data<'_> {
                     }
                 } else if map_tile == HGanztuere
                     || map_tile == HHalbtuere3
-                    || fy < TUERBREITE
-                    || fy > 1. - TUERBREITE
+                    || !(TUERBREITE..=1. - TUERBREITE).contains(&fy)
                 {
                     Center as c_int
                 } else {
@@ -757,8 +756,7 @@ impl Data<'_> {
                     }
                 } else if map_tile == VGanztuere
                     || map_tile == VHalbtuere3
-                    || fx < TUERBREITE
-                    || fx > 1. - TUERBREITE
+                    || !(TUERBREITE..=1. - TUERBREITE).contains(&fx)
                 {
                     Center as c_int
                 } else {
@@ -1152,7 +1150,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         // It's now time to decode the file and to fill the array of enemys with
         // new droids of the given types.
         let mut droid_section_slice_opt = split_at_subslice_mut(
-            &mut *main_droids_file,
+            &mut main_droids_file,
             DROIDS_LEVEL_DESCRIPTION_START_STRING,
         )
         .map(|(_, s)| s);
@@ -1216,7 +1214,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         // lift are, so that we can highlight them later.
         self.main.cur_ship.num_lift_rows = 0;
         let mut entry_slice =
-            &data[find_subslice(&*data, START_OF_LIFT_RECTANGLE_DATA_STRING).unwrap()..];
+            &data[find_subslice(&data, START_OF_LIFT_RECTANGLE_DATA_STRING).unwrap()..];
         loop {
             let next_entry_slice =
                 split_at_subslice(entry_slice, b"Elevator Number=").map(|(_, s)| s);
@@ -1285,7 +1283,7 @@ freedroid-discussion@lists.sourceforge.net\n\
             rect.set_height(h.try_into().unwrap());
         }
 
-        let mut entry_slice = &data[find_subslice(&*data, START_OF_LIFT_DATA_STRING)
+        let mut entry_slice = &data[find_subslice(&data, START_OF_LIFT_DATA_STRING)
             .expect("START OF LIFT DATA STRING NOT FOUND!  Terminating...")..];
 
         let mut label: c_int = 0;
@@ -1340,7 +1338,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         let ship_data = read_and_malloc_and_terminate_file(fpath, END_OF_SHIP_DATA_STRING);
 
         // Now we read the Area-name from the loaded data
-        let buffer = read_and_malloc_string_from_data(&*ship_data, AREA_NAME_STRING, b"\"");
+        let buffer = read_and_malloc_string_from_data(&ship_data, AREA_NAME_STRING, b"\"");
         self.main.cur_ship.area_name.set_slice(buffer.to_bytes());
         drop(buffer);
 

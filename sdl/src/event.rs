@@ -488,7 +488,7 @@ impl Event {
                 data2,
             }) => SDL_Event {
                 user: SDL_UserEvent {
-                    type_: ty as u8,
+                    type_: ty,
                     code,
                     data1,
                     data2,

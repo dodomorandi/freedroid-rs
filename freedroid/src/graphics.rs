@@ -653,7 +653,7 @@ impl Data<'_> {
             )
             .for_each(|(orig_surface, map_surface)| {
                 let orig_surface = orig_surface.as_mut().unwrap();
-                scale_pic(&mut *orig_surface.borrow_mut(), scale);
+                scale_pic(&mut orig_surface.borrow_mut(), scale);
                 *map_surface = Some(Rc::clone(orig_surface));
             });
 
@@ -1120,7 +1120,7 @@ impl Data<'_> {
         let len = metadata.len().try_into().unwrap();
         let mut buf: Pin<Box<[u8]>> = vec![0; len].into_boxed_slice().into();
         assert!(
-            file.read_exact(&mut *buf).is_ok(),
+            file.read_exact(&mut buf).is_ok(),
             "cannot reading file {}. Giving up...",
             fpath.display()
         );
@@ -1692,10 +1692,10 @@ impl Data<'_> {
         const BLAST_TWO_NUMBER_OF_PHASES_STRING: &[u8] = b"How many phases in Blast two :";
 
         self.vars.blastmap[0].phases =
-            read_i32_from_string(&*data, BLAST_ONE_NUMBER_OF_PHASES_STRING);
+            read_i32_from_string(&data, BLAST_ONE_NUMBER_OF_PHASES_STRING);
 
         self.vars.blastmap[1].phases =
-            read_i32_from_string(&*data, BLAST_TWO_NUMBER_OF_PHASES_STRING);
+            read_i32_from_string(&data, BLAST_TWO_NUMBER_OF_PHASES_STRING);
 
         // Next we read in the number of phases that are to be used for each bullet type
         let mut reader = &*data;
@@ -1744,19 +1744,19 @@ impl Data<'_> {
         const DIGIT_THREE_POSITION_Y_STRING: &[u8] = b"Third digit y :";
 
         self.main.first_digit_rect.as_mut().x =
-            read_i16_from_string(&*data, DIGIT_ONE_POSITION_X_STRING);
+            read_i16_from_string(&data, DIGIT_ONE_POSITION_X_STRING);
         self.main.first_digit_rect.as_mut().y =
-            read_i16_from_string(&*data, DIGIT_ONE_POSITION_Y_STRING);
+            read_i16_from_string(&data, DIGIT_ONE_POSITION_Y_STRING);
 
         self.main.second_digit_rect.as_mut().x =
-            read_i16_from_string(&*data, DIGIT_TWO_POSITION_X_STRING);
+            read_i16_from_string(&data, DIGIT_TWO_POSITION_X_STRING);
         self.main.second_digit_rect.as_mut().y =
-            read_i16_from_string(&*data, DIGIT_TWO_POSITION_Y_STRING);
+            read_i16_from_string(&data, DIGIT_TWO_POSITION_Y_STRING);
 
         self.main.third_digit_rect.as_mut().x =
-            read_i16_from_string(&*data, DIGIT_THREE_POSITION_X_STRING);
+            read_i16_from_string(&data, DIGIT_THREE_POSITION_X_STRING);
         self.main.third_digit_rect.as_mut().y =
-            read_i16_from_string(&*data, DIGIT_THREE_POSITION_Y_STRING);
+            read_i16_from_string(&data, DIGIT_THREE_POSITION_Y_STRING);
     }
 
     /// This function resizes all blocks and structures involved in assembling

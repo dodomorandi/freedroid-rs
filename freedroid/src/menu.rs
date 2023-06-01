@@ -1127,10 +1127,10 @@ impl<'sdl> Data<'sdl> {
             .ro(&self.font_owner);
         let startx = i32::from(self.vars.full_user_rect.x())
             + (1.2 * f32::from(self.vars.block_rect.width())) as i32;
-        let starty = i32::from(self.vars.full_user_rect.y()) + font_height(&*current_font);
-        let col1 = startx + (7.5 * f64::from(char_width(&*current_font, b'O'))) as i32;
-        let col2 = col1 + (6.5 * f64::from(char_width(&*current_font, b'O'))) as i32;
-        let col3 = col2 + (6.5 * f64::from(char_width(&*current_font, b'O'))) as i32;
+        let starty = i32::from(self.vars.full_user_rect.y()) + font_height(current_font);
+        let col1 = startx + (7.5 * f64::from(char_width(current_font, b'O'))) as i32;
+        let col2 = col1 + (6.5 * f64::from(char_width(current_font, b'O'))) as i32;
+        let col3 = col2 + (6.5 * f64::from(char_width(current_font, b'O'))) as i32;
         let lheight = font_height(
             self.global
                 .font0_b_font

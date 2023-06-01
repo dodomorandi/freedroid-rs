@@ -351,7 +351,7 @@ where
         } = self;
 
         let ret = unsafe { sdl_sys::SDL_Init(value) };
-        (ret == 0).then(|| Sdl {
+        (ret == 0).then_some(Sdl {
             video,
             timer,
             joystick,

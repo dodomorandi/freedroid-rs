@@ -23,7 +23,7 @@ impl Data<'_> {
     pub fn class_of_druid(&self, druid_type: c_int) -> c_int {
         /* first digit is class */
         let class_char =
-            self.vars.droidmap[usize::try_from(druid_type).unwrap()].druidname[0] as u8;
+            self.vars.droidmap[usize::try_from(druid_type).unwrap()].druidname[0];
         match class_char {
             b'0'..=b'9' => (class_char - b'0').into(),
             _ => 0,

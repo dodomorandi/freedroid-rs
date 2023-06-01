@@ -492,11 +492,7 @@ impl Data<'_> {
         quit: &Cell<bool>,
     ) -> c_int {
         // switch mouse-cursor visibility as a function of time of last activity
-        if sdl.ticks_ms() - input.last_mouse_event > CURSOR_KEEP_VISIBLE {
-            input.show_cursor = false;
-        } else {
-            input.show_cursor = true;
-        }
+        input.show_cursor = sdl.ticks_ms() - input.last_mouse_event <= CURSOR_KEEP_VISIBLE;
 
         loop {
             input.event = sdl.next_event();

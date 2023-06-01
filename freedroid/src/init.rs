@@ -634,7 +634,7 @@ impl Data<'_> {
         // mission file and load the game data.
         //
         let indication =
-            read_string_from_string(&*main_mission_data, GAMEDATANAME_INDICATION_STRING);
+            read_string_from_string(&main_mission_data, GAMEDATANAME_INDICATION_STRING);
 
         self.init_game_data(indication);
 
@@ -642,7 +642,7 @@ impl Data<'_> {
         // Now its time to get the shipname from the mission file and
         // read the ship file into the right memory structures
         //
-        let indication = read_string_from_string(&*main_mission_data, SHIPNAME_INDICATION_STRING);
+        let indication = read_string_from_string(&main_mission_data, SHIPNAME_INDICATION_STRING);
 
         assert!(
             self.load_ship(indication) != defs::ERR.into(),
@@ -653,7 +653,7 @@ impl Data<'_> {
         // read the elevator file into the right memory structures
         //
         let indication =
-            read_string_from_string(&*main_mission_data, ELEVATORNAME_INDICATION_STRING);
+            read_string_from_string(&main_mission_data, ELEVATORNAME_INDICATION_STRING);
 
         assert!(
             self.get_lift_connections(indication) != defs::ERR.into(),
@@ -675,7 +675,7 @@ impl Data<'_> {
         // Now its time to get the crew file name from the mission file and
         // assemble an appropriate crew out of it
         //
-        let indication = read_string_from_string(&*main_mission_data, CREWNAME_INDICATION_STRING);
+        let indication = read_string_from_string(&main_mission_data, CREWNAME_INDICATION_STRING);
 
         /* initialize enemys according to crew file */
         // WARNING!! THIS REQUIRES THE freedroid.ruleset FILE TO BE READ ALREADY, BECAUSE
@@ -690,11 +690,11 @@ impl Data<'_> {
         // can be used, if the mission is completed and also the end title music name
         // must be read in as well
         let song_name =
-            read_string_from_string(&*main_mission_data, MISSION_ENDTITLE_SONG_NAME_STRING);
+            read_string_from_string(&main_mission_data, MISSION_ENDTITLE_SONG_NAME_STRING);
         self.init.debriefing_song.set_slice(song_name);
 
         self.init.debriefing_text = read_and_malloc_string_from_data(
-            &*main_mission_data,
+            &main_mission_data,
             MISSION_ENDTITLE_BEGIN_STRING,
             MISSION_ENDTITLE_END_STRING,
         );
@@ -705,7 +705,7 @@ impl Data<'_> {
         // influencer at the beginning of the mission.
 
         let number_of_start_points =
-            count_string_occurences(&*main_mission_data, MISSION_START_POINT_STRING);
+            count_string_occurences(&main_mission_data, MISSION_START_POINT_STRING);
 
         assert!(
             number_of_start_points != 0,
@@ -779,7 +779,7 @@ impl Data<'_> {
         // Now we search for the beginning of the mission briefing big section NOT subsection.
         // We display the title and explanation of controls and such...
         let briefing_section_pos =
-            locate_string_in_data(&*main_mission_data, MISSION_BRIEFING_BEGIN_STRING);
+            locate_string_in_data(&main_mission_data, MISSION_BRIEFING_BEGIN_STRING);
         self.title(&main_mission_data[briefing_section_pos..]);
 
         if self.quit.get() {
@@ -900,9 +900,9 @@ impl Data<'_> {
 
         let data = read_and_malloc_and_terminate_file(fpath, END_OF_GAME_DAT_STRING);
 
-        self.get_general_game_constants(&*data);
-        self.get_robot_data(&*data);
-        self.get_bullet_data(&*data);
+        self.get_general_game_constants(&data);
+        self.get_robot_data(&data);
+        self.get_bullet_data(&data);
 
         // Now we read in the total time amount for the blast animations
         const BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING: &[u8] =
@@ -911,9 +911,9 @@ impl Data<'_> {
             b"Time in seconds for the animation of blast one :";
 
         self.vars.blastmap[0].total_animation_time =
-            read_float_from_string(&*data, BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING);
+            read_float_from_string(&data, BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING);
         self.vars.blastmap[1].total_animation_time =
-            read_float_from_string(&*data, BLAST_TWO_TOTAL_AMOUNT_OF_TIME_STRING);
+            read_float_from_string(&data, BLAST_TWO_TOTAL_AMOUNT_OF_TIME_STRING);
     }
 
     /// This function loads all the constant variables of the game from

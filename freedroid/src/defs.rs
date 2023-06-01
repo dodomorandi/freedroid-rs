@@ -218,17 +218,17 @@ impl Data<'_> {
 
     #[inline]
     pub fn shift_pressed(&mut self) -> bool {
-        self.mod_is_pressed(SDLMod_KMOD_LSHIFT as u32 | SDLMod_KMOD_RSHIFT as u32)
+        self.mod_is_pressed(SDLMod_KMOD_LSHIFT | SDLMod_KMOD_RSHIFT)
     }
 
     #[inline]
     pub fn alt_pressed(&mut self) -> bool {
-        self.mod_is_pressed(SDLMod_KMOD_LALT as u32 | SDLMod_KMOD_RALT as u32)
+        self.mod_is_pressed(SDLMod_KMOD_LALT | SDLMod_KMOD_RALT)
     }
 
     #[inline]
     pub fn ctrl_pressed(&mut self) -> bool {
-        self.mod_is_pressed(SDLMod_KMOD_LCTRL as u32 | SDLMod_KMOD_RCTRL as u32)
+        self.mod_is_pressed(SDLMod_KMOD_LCTRL | SDLMod_KMOD_RCTRL)
     }
 
     #[inline]

@@ -214,9 +214,7 @@ impl Data<'_> {
                     input[curpos] = key.try_into().unwrap();
                     curpos += 1;
                 } else if key == SDLKey_SDLK_BACKSPACE.try_into().unwrap() {
-                    if curpos > 0 {
-                        curpos -= 1
-                    };
+                    curpos = curpos.saturating_sub(1);
                     input[curpos] = b'.';
                 }
             }
@@ -760,7 +758,7 @@ impl Data<'_> {
                 let mut key;
                 loop {
                     key = Self::any_key_just_pressed_static(sdl, input, vars, quit);
-                    if key == 0 && (sdl.ticks_ms() - now < SHOW_WAIT as u32) {
+                    if key == 0 && (sdl.ticks_ms() - now < SHOW_WAIT) {
                         sdl.delay_ms(1); // wait before starting auto-scroll
                     } else {
                         break;
