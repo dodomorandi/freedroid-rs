@@ -228,8 +228,7 @@ impl Data<'_> {
             .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
 
         let h = font_height(
-            self
-                .global
+            self.global
                 .para_b_font
                 .as_ref()
                 .unwrap()

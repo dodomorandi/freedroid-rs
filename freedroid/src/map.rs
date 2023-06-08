@@ -1149,11 +1149,9 @@ freedroid-discussion@lists.sourceforge.net\n\
         // The Droid crew file for this map is now completely read into memory
         // It's now time to decode the file and to fill the array of enemys with
         // new droids of the given types.
-        let mut droid_section_slice_opt = split_at_subslice_mut(
-            &mut main_droids_file,
-            DROIDS_LEVEL_DESCRIPTION_START_STRING,
-        )
-        .map(|(_, s)| s);
+        let mut droid_section_slice_opt =
+            split_at_subslice_mut(&mut main_droids_file, DROIDS_LEVEL_DESCRIPTION_START_STRING)
+                .map(|(_, s)| s);
         while let Some(droid_section_slice) = droid_section_slice_opt {
             info!("Found another levels droids description starting point entry!");
             let end_of_this_droid_section_index =
