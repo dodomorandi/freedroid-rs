@@ -838,21 +838,18 @@ impl Data<'_> {
         self.takeover
             .capsules_countdown
             .iter_mut()
-            .flat_map(|color_countdown| color_countdown.iter_mut())
-            .map(|countdown| &mut countdown[0])
+            .flat_map(|color_countdown| color_countdown[0].iter_mut())
             .zip(
                 self.takeover
                     .activation_map
                     .iter_mut()
-                    .flat_map(|color_activation| color_activation.iter_mut())
-                    .map(|activation| &mut activation[0]),
+                    .flat_map(|color_activation| color_activation[0].iter_mut()),
             )
             .zip(
                 self.takeover
                     .playground
                     .iter_mut()
-                    .flat_map(|color_playground| color_playground.iter_mut())
-                    .map(|playground| &mut playground[0]),
+                    .flat_map(|color_playground| color_playground[0].iter_mut()),
             )
             .for_each(|((countdown, activation), playground)| {
                 if let Some(count) = countdown.as_mut() {
