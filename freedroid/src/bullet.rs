@@ -164,8 +164,7 @@ impl Data<'_> {
                         if (xdist * xdist + ydist * ydist) < self.get_druid_hit_dist_squared() {
                             // The enemy who was hit, loses some energy, depending on the bullet
                             self.main.all_enemys[enemy_index].energy -=
-                                self.vars.bulletmap[usize::try_from(cur_bullet.ty).unwrap()].damage
-                                    as f32;
+                                self.vars.bulletmap[usize::from(cur_bullet.ty)].damage as f32;
 
                             self.delete_bullet(num);
                             self.got_hit_sound();

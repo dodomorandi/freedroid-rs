@@ -1051,7 +1051,7 @@ freedroid-discussion@lists.sourceforge.net\n\
             // into a number corresponding to that droid in the droid list
             let mut list_index = 0;
             while list_index < self.main.number_of_droid_types {
-                if self.vars.droidmap[usize::try_from(list_index).unwrap()].druidname
+                if self.vars.droidmap[usize::from(list_index)].druidname
                     == std::str::from_utf8(type_indication_string).unwrap()
                 {
                     break;

@@ -686,7 +686,7 @@ impl Data<'_> {
             * (i16::try_from(self.takeover.fill_block.width()).unwrap() + 2);
         capsule_blocks
             .iter_mut()
-            .zip((start_x..).step_by(usize::try_from(capsule_rect.width()).unwrap() + 2))
+            .zip((start_x..).step_by(usize::from(capsule_rect.width()) + 2))
             .for_each(|(rect, cur_x)| {
                 *rect = Rect::new(cur_x, 0, capsule_rect.width(), capsule_rect.height() - 2)
             });
@@ -708,10 +708,10 @@ impl Data<'_> {
             .iter_mut()
             .zip(
                 ((fill_block.height() + 2)..)
-                    .step_by(usize::try_from(element_rect.height()).unwrap() + 2)
+                    .step_by(usize::from(element_rect.height()) + 2)
                     .flat_map(|cur_y| {
                         (0..)
-                            .step_by(usize::try_from(element_rect.width()).unwrap() + 2)
+                            .step_by(usize::from(element_rect.width()) + 2)
                             .take(TO_BLOCKS_N)
                             .map(move |cur_x| (cur_x, cur_y))
                     }),
@@ -730,7 +730,7 @@ impl Data<'_> {
         /* Get the ground, column and leader blocks */
         to_ground_blocks
             .iter_mut()
-            .zip((0..).step_by(usize::try_from(ground_rect.width()).unwrap() + 2))
+            .zip((0..).step_by(usize::from(ground_rect.width()) + 2))
             .for_each(|(rect, cur_x)| {
                 *rect = Rect::new(
                     cur_x,
@@ -1251,7 +1251,7 @@ impl Data<'_> {
         );
 
         /* Fill the Leader-LED with its color */
-        let leader_color = usize::try_from(self.takeover.leader_color).unwrap();
+        let leader_color = usize::from(self.takeover.leader_color);
         dst = Rect::new(
             xoffs + self.takeover.leader_led.x(),
             yoffs + self.takeover.leader_led.y(),
@@ -1310,7 +1310,7 @@ impl Data<'_> {
                     0,
                 );
                 to_blocks.as_mut().unwrap().blit_from_to(
-                    &fill_blocks[usize::try_from(display_column).unwrap()],
+                    &fill_blocks[usize::from(display_column)],
                     ne_screen.as_mut().unwrap(),
                     &mut dst,
                 );
@@ -1385,8 +1385,8 @@ impl Data<'_> {
                         (
                             layer_index,
                             i16::try_from(line_index).unwrap(),
-                            usize::try_from(playground_line).unwrap(),
-                            usize::try_from(activation_line).unwrap(),
+                            usize::from(playground_line),
+                            usize::from(activation_line),
                         )
                     })
             })
@@ -1474,7 +1474,7 @@ impl Data<'_> {
 
         self.countdown_sound();
         let mut finish_takeover = false;
-        let your_color = usize::try_from(self.takeover.your_color).unwrap();
+        let your_color = usize::from(self.takeover.your_color);
         let mut count_text = ArrayCString::<11>::default();
 
         while !finish_takeover {

@@ -669,14 +669,14 @@ impl<'sdl> Data<'sdl> {
                     let input = self.get_string(40, 2).unwrap();
                     ne_screen = self.graphics.ne_screen.take().unwrap();
                     let mut i = 0;
-                    for _ in 0..u32::try_from(self.main.number_of_droid_types).unwrap() {
+                    for _ in 0..u32::from(self.main.number_of_droid_types) {
                         if self.vars.droidmap[i].druidname != *input {
                             break;
                         }
                         i += 1;
                     }
 
-                    if i == usize::try_from(self.main.number_of_droid_types).unwrap() {
+                    if i == usize::from(self.main.number_of_droid_types) {
                         self.printf_sdl(
                             &mut ne_screen,
                             X0,

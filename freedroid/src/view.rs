@@ -430,19 +430,19 @@ impl Data<'_> {
             ne_screen,
             ..
         } = &mut self.graphics;
-        enemy_digit_surface_pointer[usize::try_from(name[0] + 1 - b'1').unwrap()]
+        enemy_digit_surface_pointer[usize::from(name[0] + 1 - b'1')]
             .as_mut()
             .unwrap()
             .blit_to(build_block.as_mut().unwrap(), &mut dst);
 
         dst = self.main.second_digit_rect;
-        enemy_digit_surface_pointer[usize::try_from(name[1] + 1 - b'1').unwrap()]
+        enemy_digit_surface_pointer[usize::from(name[1] + 1 - b'1')]
             .as_mut()
             .unwrap()
             .blit_to(build_block.as_mut().unwrap(), &mut dst);
 
         dst = self.main.third_digit_rect;
-        enemy_digit_surface_pointer[usize::try_from(name[2] + 1 - b'1').unwrap()]
+        enemy_digit_surface_pointer[usize::from(name[2] + 1 - b'1')]
             .as_mut()
             .unwrap()
             .blit_to(build_block.as_mut().unwrap(), &mut dst);
@@ -539,20 +539,18 @@ impl Data<'_> {
 
         // Now we draw the first digit of the influencers current number.
         let mut dst = self.main.first_digit_rect;
-        influ_digit_surface_pointer[usize::try_from(
+        influ_digit_surface_pointer[usize::from(
             vars.droidmap[usize::try_from(vars.me.ty).unwrap()].druidname[0] + 1 - b'1',
-        )
-        .unwrap()]
+        )]
         .as_mut()
         .unwrap()
         .blit_to(build_block.as_mut().unwrap(), &mut dst);
 
         // Now we draw the second digit of the influencers current number.
         dst = self.main.second_digit_rect;
-        influ_digit_surface_pointer[usize::try_from(
+        influ_digit_surface_pointer[usize::from(
             vars.droidmap[usize::try_from(vars.me.ty).unwrap()].druidname[1] + 1 - b'1',
-        )
-        .unwrap()]
+        )]
         .as_mut()
         .unwrap()
         .blit_to(build_block.as_mut().unwrap(), &mut dst);
@@ -560,10 +558,9 @@ impl Data<'_> {
         // Now we draw the third digit of the influencers current number.
         dst = self.main.third_digit_rect;
 
-        influ_digit_surface_pointer[usize::try_from(
+        influ_digit_surface_pointer[usize::from(
             vars.droidmap[usize::try_from(vars.me.ty).unwrap()].druidname[2] + 1 - b'1',
-        )
-        .unwrap()]
+        )]
         .as_mut()
         .unwrap()
         .blit_to(build_block.as_mut().unwrap(), &mut dst);
@@ -693,7 +690,7 @@ impl Data<'_> {
             return;
         }
 
-        let bullet = &mut self.vars.bulletmap[usize::try_from(cur_bullet.ty).unwrap()];
+        let bullet = &mut self.vars.bulletmap[usize::from(cur_bullet.ty)];
         let mut phase_of_bullet =
             (cur_bullet.time_in_seconds * bullet.phase_changes_per_second) as usize;
 

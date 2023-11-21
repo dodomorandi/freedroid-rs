@@ -522,8 +522,8 @@ impl Data<'_> {
         for wp in 0..usize::try_from(self.main.cur_level().num_waypoints).unwrap() {
             let this_wp = &cur_level!(self.main).all_waypoints[wp];
             // Draw the cross in the middle of the middle of the tile
-            for i in i32::try_from(self.vars.block_rect.width() / 4).unwrap()
-                ..i32::try_from(3 * self.vars.block_rect.width() / 4).unwrap()
+            for i in i32::from(self.vars.block_rect.width() / 4)
+                ..i32::from(3 * self.vars.block_rect.width() / 4)
             {
                 // This draws a (double) line at the upper border of the current block
                 let mut x = i
