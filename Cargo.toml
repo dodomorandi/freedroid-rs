@@ -5,3 +5,13 @@ members = [
     "sdl-sys",
     "sdl",
 ]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Edoardo Morandi <morandidodo@gmail.com>"]
+
+[workspace.dependencies]
+bitflags = "2.3.1"
+cstr = "0.2.9"
+log = "0.4.14"

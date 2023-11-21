@@ -1,7 +1,8 @@
 [package]
 name = "sdl-sys"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
 build = "build/main.rs"
 
 [build-dependencies]
