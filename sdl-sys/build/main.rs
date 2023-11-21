@@ -29,7 +29,7 @@ fn main() {
 
     let bindings = bindgen::Builder::default()
         .header("build/wrapper.h")
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .clang_args(
             sdl.include_paths
                 .iter()
