@@ -1,4 +1,9 @@
-use std::{fmt, marker::PhantomData, ops::Not, ptr::NonNull};
+use std::{
+    fmt::{self, Display, Write},
+    marker::PhantomData,
+    ops::Not,
+    ptr::NonNull,
+};
 
 use sdl_sys::{SDL_MapRGB, SDL_MapRGBA, SDL_PixelFormat};
 
@@ -51,6 +56,18 @@ impl PixelFormatRef<'_> {
         let format = unsafe { self.inner.as_ref() };
         format.Amask != 0
     }
+
+    pub fn bits_per_pixel(&self) -> BitsPerPixel {
+        let bpp = unsafe { self.inner.as_ref().BitsPerPixel };
+        match bpp {
+            8 => BitsPerPixel::Eight,
+            15 => BitsPerPixel::Fifteen,
+            16 => BitsPerPixel::Sixteen,
+            24 => BitsPerPixel::Twentyfour,
+            32 => BitsPerPixel::Thirtytwo,
+            _ => panic!("SDL returned an invalid BitsPerPixel value"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -89,6 +106,38 @@ impl From<BytesPerPixel> for u8 {
             Two => 2,
             Three => 3,
             Four => 4,
+        }
+    }
+}
+
+impl Display for BytesPerPixel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            BytesPerPixel::One => f.write_char('1'),
+            BytesPerPixel::Two => f.write_char('2'),
+            BytesPerPixel::Three => f.write_char('3'),
+            BytesPerPixel::Four => f.write_char('4'),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum BitsPerPixel {
+    Eight,
+    Fifteen,
+    Sixteen,
+    Twentyfour,
+    Thirtytwo,
+}
+
+impl From<BitsPerPixel> for u8 {
+    fn from(bpp: BitsPerPixel) -> Self {
+        match bpp {
+            BitsPerPixel::Eight => 8,
+            BitsPerPixel::Fifteen => 15,
+            BitsPerPixel::Sixteen => 16,
+            BitsPerPixel::Twentyfour => 24,
+            BitsPerPixel::Thirtytwo => 32,
         }
     }
 }

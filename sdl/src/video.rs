@@ -1,6 +1,7 @@
 use std::{
     cell::Cell,
     ffi::CStr,
+    marker::PhantomData,
     num::NonZeroU8,
     ops::Not,
     os::raw::{c_char, c_int},
@@ -9,22 +10,22 @@ use std::{
 
 use bitflags::bitflags;
 use sdl_sys::{
-    SDL_SetGamma, SDL_SetVideoMode, SDL_VideoDriverName, SDL_WM_SetCaption, SDL_WM_SetIcon,
-    SDL_ANYFORMAT, SDL_ASYNCBLIT, SDL_DOUBLEBUF, SDL_FULLSCREEN, SDL_HWPALETTE, SDL_HWSURFACE,
-    SDL_NOFRAME, SDL_OPENGL, SDL_OPENGLBLIT, SDL_RESIZABLE,
+    SDL_GetVideoInfo, SDL_SetGamma, SDL_SetVideoMode, SDL_VideoDriverName, SDL_VideoInfo,
+    SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_ANYFORMAT, SDL_ASYNCBLIT, SDL_DOUBLEBUF, SDL_FULLSCREEN,
+    SDL_HWPALETTE, SDL_HWSURFACE, SDL_NOFRAME, SDL_OPENGL, SDL_OPENGLBLIT, SDL_RESIZABLE,
 };
 
-use crate::{FrameBuffer, Surface};
+use crate::{pixel::PixelFormatRef, FrameBuffer, Surface};
 
 #[derive(Debug)]
 pub struct Video {
-    set_video_mode_called: Cell<bool>,
+    refs_to_frame_buffer: Cell<u8>,
 }
 
 impl Video {
     pub(crate) const fn new() -> Self {
         Self {
-            set_video_mode_called: Cell::new(false),
+            refs_to_frame_buffer: Cell::new(0),
         }
     }
 
@@ -35,7 +36,9 @@ impl Video {
         bits_per_pixel: Option<NonZeroU8>,
         flags: VideoModeFlags,
     ) -> Option<FrameBuffer> {
-        self.set_video_mode_called.set(true);
+        if self.refs_to_frame_buffer.get() != 0 {
+            panic!("Video::set_video_mode is called when references to video mode are alive");
+        }
         unsafe {
             let surface_ptr = SDL_SetVideoMode(
                 width,
@@ -43,8 +46,23 @@ impl Video {
                 bits_per_pixel.map(|bpp| bpp.get()).unwrap_or(0).into(),
                 flags.bits(),
             );
-            NonNull::new(surface_ptr).map(|surface_ptr| FrameBuffer::from_ptr(surface_ptr))
+            NonNull::new(surface_ptr).map(|surface_ptr| {
+                self.refs_to_frame_buffer.set(1);
+                FrameBuffer::from_ptr_and_refcount(surface_ptr, &self.refs_to_frame_buffer)
+            })
         }
+    }
+
+    pub fn get_video_info(&self) -> Option<InfoRef<'_>> {
+        // Safety: `SDL_GetVideoInfo` is not thread safe because it gets the info from a static
+        // variable, but `Video` is `!Sync` and `Info` holds a reference to `Video`, so it is not
+        // possible to trigger a data race from multiple threads or to change the value because
+        // `set_video_mode` can only be called once.
+        let video_info = unsafe { SDL_GetVideoInfo() };
+        NonNull::new(video_info.cast_mut()).map(|inner| InfoRef {
+            inner,
+            _marker: PhantomData,
+        })
     }
 
     #[must_use = "success/failure is given as true/false"]
@@ -79,7 +97,7 @@ impl WindowManager<'_> {
     }
 
     pub fn set_icon(&self, icon: &mut Surface, mask: Option<&mut [u8]>) {
-        if self.0.set_video_mode_called.get() {
+        if self.0.refs_to_frame_buffer.get() > 0 {
             panic!("SDL video wm set_icon must be called before set_video_mode");
         }
 
@@ -110,5 +128,69 @@ bitflags! {
         const OPENGL_BLIT = SDL_OPENGLBLIT as u32;
         const RESIZABLE = SDL_RESIZABLE as u32;
         const NO_FRAME = SDL_NOFRAME as u32;
+    }
+}
+
+#[derive(Debug)]
+pub struct InfoRef<'a> {
+    inner: NonNull<SDL_VideoInfo>,
+    _marker: PhantomData<&'a ()>,
+}
+
+macro_rules! impl_flag {
+    ($(
+        $flag:ident
+    ),* $(,)?) => {
+        $(
+            #[inline]
+            pub fn $flag(&self) -> bool {
+                self.inner().$flag() != 0
+            }
+        )*
+    };
+}
+
+impl<'a> InfoRef<'a> {
+    #[inline]
+    fn inner(&self) -> &'a SDL_VideoInfo {
+        // Safety: the pointer is returned by `SDL_GetVideoInfo`.
+        unsafe { self.inner.as_ref() }
+    }
+
+    #[inline]
+    pub fn format(&self) -> PixelFormatRef<'a> {
+        // Safety: the `vfmt` is set to point to an sdl surface by `SDL_SetVideoMode`.
+        let vfmt = unsafe { NonNull::new_unchecked(self.inner().vfmt) };
+
+        // Safety: there should not be possible to have a mutable reference to this pointed pixel
+        // format.
+        unsafe { PixelFormatRef::from_raw(vfmt) }
+    }
+
+    impl_flag!(hw_available, wm_available, blit_hw, blit_sw, blit_fill);
+
+    #[inline]
+    pub fn blit_hw_colorkey(&self) -> bool {
+        self.inner().blit_hw_CC() != 0
+    }
+
+    #[inline]
+    pub fn blit_hw_alpha(&self) -> bool {
+        self.inner().blit_hw_A() != 0
+    }
+
+    #[inline]
+    pub fn blit_sw_colorkey(&self) -> bool {
+        self.inner().blit_sw_CC() != 0
+    }
+
+    #[inline]
+    pub fn blit_sw_alpha(&self) -> bool {
+        self.inner().blit_sw_A() != 0
+    }
+
+    #[inline]
+    pub fn video_mem(&self) -> u32 {
+        self.inner().video_mem
     }
 }

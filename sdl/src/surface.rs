@@ -1,8 +1,10 @@
 mod lock;
 
 use std::{
+    cell::Cell,
     ffi::c_void,
     marker::PhantomData,
+    ops::{Deref, DerefMut},
     os::raw::c_int,
     ptr::{self, null_mut, NonNull},
 };
@@ -350,7 +352,67 @@ impl<const FREEABLE: bool> Drop for GenericSurface<'_, FREEABLE> {
 pub type Surface<'sdl> = GenericSurface<'sdl, true>;
 
 /// A [GenericSurface] that must not be freed on drop.
-pub type FrameBuffer<'sdl> = GenericSurface<'sdl, false>;
+#[derive(Debug)]
+pub struct FrameBuffer<'sdl> {
+    inner: GenericSurface<'sdl, false>,
+    refcount: &'sdl Cell<u8>,
+}
+
+impl<'sdl> FrameBuffer<'sdl> {
+    /// # Safety
+    /// * An [Sdl] instance must be alive.
+    /// * `pointer` must point to a valid [SDL_Surface].
+    /// * No live references to pointed data must exist.
+    /// * The ownership of the pointed [SDL_Surface] is transferred to `GenericSurface`, therefore
+    ///   the structure **must not** be freed.
+    /// * `refcount` must be in the [`Video`] struct which holds the count of the references for
+    ///   the SDL framebuffer pointed by `pointer`.
+    pub unsafe fn from_ptr_and_refcount(
+        pointer: NonNull<SDL_Surface>,
+        refcount: &'sdl Cell<u8>,
+    ) -> Self {
+        // Safety: the invariants of the function include the invariants of this call.
+        let inner = unsafe { GenericSurface::from_ptr(pointer) };
+        Self { inner, refcount }
+    }
+}
+
+impl Drop for FrameBuffer<'_> {
+    fn drop(&mut self) {
+        let refcount = self.refcount.get().saturating_sub(1);
+        self.refcount.set(refcount);
+    }
+}
+
+impl<'sdl> Deref for FrameBuffer<'sdl> {
+    type Target = GenericSurface<'sdl, false>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl DerefMut for FrameBuffer<'_> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
+impl<'sdl> AsRef<GenericSurface<'sdl, false>> for FrameBuffer<'sdl> {
+    #[inline]
+    fn as_ref(&self) -> &GenericSurface<'sdl, false> {
+        &self.inner
+    }
+}
+
+impl<'sdl> AsMut<GenericSurface<'sdl, false>> for FrameBuffer<'sdl> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut GenericSurface<'sdl, false> {
+        &mut self.inner
+    }
+}
 
 #[derive(Debug)]
 pub struct UsableSurface<'a, 'sdl, const FREEABLE: bool>(&'a mut GenericSurface<'sdl, FREEABLE>);
