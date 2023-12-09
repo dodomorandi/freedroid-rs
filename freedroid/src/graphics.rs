@@ -25,7 +25,6 @@ use sdl::{
     ColorKeyFlag, Cursor, CursorData, FrameBuffer, Pixel, Rect, RwOpsOwned, Surface,
     VideoModeFlags,
 };
-use sdl_sys::{SDL_GetVideoInfo, SDL_VideoInfo};
 use std::{
     borrow::Cow,
     cell::RefCell,
@@ -34,14 +33,12 @@ use std::{
     os::raw::{c_char, c_float, c_int},
     path::Path,
     pin::Pin,
-    ptr::null_mut,
     rc::Rc,
 };
 use tinyvec_string::ArrayString;
 
 #[derive(Debug)]
 pub struct Graphics<'sdl> {
-    vid_info: *const SDL_VideoInfo,
     pub vid_bpp: c_int,
     fonts_loaded: c_int,
     // A pointer to the surfaces containing the map-pics, which may be rescaled with respect to
@@ -90,7 +87,6 @@ pub struct Graphics<'sdl> {
 impl Default for Graphics<'_> {
     fn default() -> Self {
         Self {
-            vid_info: null_mut(),
             vid_bpp: 0,
             fonts_loaded: 0,
             map_block_surface_pointer: array_init(|_| array_init(|_| None)),
@@ -949,23 +945,26 @@ impl Data<'_> {
     }
 
     /// Initialise the Video display and graphics engine
-    pub unsafe fn init_video(&mut self) {
+    pub fn init_video(&mut self) {
         const YN: [&str; 2] = ["no", "yes"];
 
-        self.graphics.vid_info = SDL_GetVideoInfo(); /* just curious */
+        let vid_info = self
+            .sdl
+            .video
+            .get_video_info()
+            .expect("SDL_SetVideoMode should have been called");
         let mut vid_driver = [0; 81];
         let vid_driver = self.sdl.video.get_driver_name(&mut vid_driver);
 
-        let vid_info_ref = *self.graphics.vid_info;
         if cfg!(os_target = "android") {
             self.graphics.vid_bpp = 16; // Hardcoded Android default
         } else {
-            self.graphics.vid_bpp = (*vid_info_ref.vfmt).BitsPerPixel.into();
+            self.graphics.vid_bpp = u8::from(vid_info.format().bits_per_pixel()).into();
         }
 
         macro_rules! flag {
             ($flag:ident) => {
-                (vid_info_ref.$flag()) != 0
+                (vid_info.$flag())
             };
         }
         macro_rules! flag_yn {
@@ -990,11 +989,11 @@ impl Data<'_> {
         );
         info!(
             "Are hardware to hardware colorkey blits accelerated: {}",
-            flag_yn!(blit_hw_CC)
+            flag_yn!(blit_hw_colorkey)
         );
         info!(
             "Are hardware to hardware alpha blits accelerated: {}",
-            flag_yn!(blit_hw_A)
+            flag_yn!(blit_hw_alpha)
         );
         info!(
             "Are software to hardware blits accelerated: {}",
@@ -1002,21 +1001,21 @@ impl Data<'_> {
         );
         info!(
             "Are software to hardware colorkey blits accelerated: {}",
-            flag_yn!(blit_sw_CC)
+            flag_yn!(blit_sw_colorkey)
         );
         info!(
             "Are software to hardware alpha blits accelerated: {}",
-            flag_yn!(blit_sw_A)
+            flag_yn!(blit_sw_alpha)
         );
         info!("Are color fills accelerated: {}", flag_yn!(blit_fill));
         info!(
             "Total amount of video memory in Kilobytes: {}",
-            vid_info_ref.video_mem
+            vid_info.video_mem()
         );
         info!(
             "Pixel format of the video device: bpp = {}, bytes/pixel = {}",
             self.graphics.vid_bpp,
-            (*vid_info_ref.vfmt).BytesPerPixel
+            vid_info.format().bytes_per_pixel()
         );
         info!(
             "Video Driver Name: {}",
@@ -1082,8 +1081,6 @@ impl Data<'_> {
             }
         };
         self.graphics.ne_screen = Some(ne_screen);
-
-        self.graphics.vid_info = SDL_GetVideoInfo(); /* info about current video mode */
 
         info!("Got video mode: ");
 

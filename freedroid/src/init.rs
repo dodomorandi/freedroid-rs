@@ -278,9 +278,7 @@ impl Data<'_> {
         };
 
         self.vars.screen_rect.scale(self.global.game_config.scale); // make sure we open a window of the right (rescaled) size!
-        unsafe {
-            self.init_video();
-        }
+        self.init_video();
 
         let image = Self::find_file_static(
             &self.global,
