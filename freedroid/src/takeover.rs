@@ -141,7 +141,8 @@ mod map {
         }
 
         pub fn layers_mut(&mut self) -> [&mut Layer<T>; NUM_LAYERS] {
-            self.0.each_mut()
+            let [a, b, c, d] = &mut self.0;
+            [a, b, c, d]
         }
     }
 

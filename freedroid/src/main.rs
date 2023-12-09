@@ -1,5 +1,3 @@
-#![feature(array_methods)]
-
 mod array_c_string;
 mod array_index;
 mod b_font;
