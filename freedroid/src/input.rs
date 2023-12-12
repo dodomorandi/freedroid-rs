@@ -513,8 +513,8 @@ impl Data<'_> {
                                         [usize::try_from(event.keysym.symbol as isize).unwrap()]
                                     .set_just_pressed();
                                     #[cfg(feature = "gcw0")]
-                                    if input_axis.x != 0 || input_axis.y != 0 {
-                                        axis_is_active = true.into(); // 4 GCW-0 ; breaks cursor keys after axis has been active...
+                                    if input.input_axis.x != 0 || input.input_axis.y != 0 {
+                                        input.axis_is_active = true.into(); // 4 GCW-0 ; breaks cursor keys after axis has been active...
                                     }
                                 }
                                 KeyboardEventType::KeyUp => {
@@ -523,7 +523,7 @@ impl Data<'_> {
                                     .set_just_released();
                                     #[cfg(feature = "gcw0")]
                                     {
-                                        axis_is_active = false.into();
+                                        input.axis_is_active = false.into();
                                     }
                                 }
                             }

@@ -1,6 +1,3 @@
-#[cfg(feature = "gcw0")]
-use crate::defs::{gcw0_a_pressed, gcw0_any_button_pressed, gcw0_any_button_pressed_r};
-
 use crate::{
     array_c_string::ArrayCString,
     b_font::{char_width, font_height, print_string_font},
@@ -199,33 +196,33 @@ impl<'sdl> Data<'sdl> {
         self.initiate_menu(false);
 
         #[cfg(feature = "gcw0")]
-        const QUIT_STRING: &CStr = cstr!("Press A to quit");
+        const QUIT_STRING: &str = "Press A to quit";
 
         #[cfg(not(feature = "gcw0"))]
         const QUIT_STRING: &[u8] = b"Hit 'y' or press Fire to quit";
 
-        let text_width = self.text_width(QUIT_STRING);
+        let text_width = self.text_width(QUIT_STRING.as_bytes());
         let text_x = i32::from(self.vars.user_rect.x())
             + (i32::from(self.vars.user_rect.width()) - text_width) / 2;
         let text_y = i32::from(self.vars.user_rect.y())
             + (i32::from(self.vars.user_rect.height()) - self.menu.font_height) / 2;
         let mut ne_screen = self.graphics.ne_screen.take().unwrap();
-        self.put_string(&mut ne_screen, text_x, text_y, QUIT_STRING);
+        self.put_string(&mut ne_screen, text_x, text_y, QUIT_STRING.as_bytes());
         assert!(ne_screen.flip());
         self.graphics.ne_screen = Some(ne_screen);
 
         #[cfg(feature = "gcw0")]
         {
-            while !gcw0_any_button_pressed() {
+            while !self.gcw0_any_button_pressed() {
                 self.sdl.delay_ms(1);
             }
 
-            if gcw0_a_pressed() {
-                while !gcw0_any_button_pressed_r() {
+            if self.gcw0_a_pressed() {
+                while !self.gcw0_any_button_pressed_r() {
                     // In case FirePressed && !Gcw0APressed() -> would cause a loop otherwise in the menu...
                     self.sdl.delay_ms(1);
                 }
-                Terminate(defs::OK.into());
+                self.quit.set(true);
             }
         }
 
@@ -1145,21 +1142,22 @@ impl<'sdl> Data<'sdl> {
             .unwrap()
             .blit(graphics.ne_screen.as_mut().unwrap());
 
-        #[cfg(feature = "gcw0")]
-        PrintStringFont(
-            self.graphics.ne_screen,
-            Font0_BFont,
-            col1,
-            starty,
-            format_args!("(RShldr to clear an entry)"),
-        );
-
         let font0_b_font = self
             .global
             .font0_b_font
             .as_ref()
             .unwrap()
             .rw(&mut self.font_owner);
+
+        #[cfg(feature = "gcw0")]
+        print_string_font(
+            self.graphics.ne_screen.as_mut().unwrap(),
+            font0_b_font,
+            col1,
+            starty,
+            format_args!("(RShldr to clear an entry)"),
+        );
+
         #[cfg(not(feature = "gcw0"))]
         {
             print_string_font(

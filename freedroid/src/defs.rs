@@ -1,13 +1,10 @@
-#[cfg(feature = "gcw0")]
-use crate::input::{key_is_pressed, key_is_pressed_r};
 use crate::{input::Input, structs::Point, vars::Vars, Data, Sdl};
 
 use bitflags::bitflags;
 use cstr::cstr;
 #[cfg(feature = "gcw0")]
-use sdl::keysym::{
-    SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_LALT, SDLKey_SDLK_LCTRL, SDLKey_SDLK_LSHIFT,
-    SDLKey_SDLK_RETURN, SDLKey_SDLK_TAB,
+use sdl_sys::{
+    SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_LALT, SDLKey_SDLK_LCTRL, SDLKey_SDLK_LSHIFT, SDLKey_SDLK_TAB,
 };
 use sdl_sys::{
     SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LAST, SDLKey_SDLK_RETURN, SDLKey_SDLK_SPACE, SDLMod_KMOD_LALT,
@@ -87,128 +84,6 @@ pub enum Cmds {
 }
 
 //--------------------------------------------------
-
-#[cfg(feature = "gcw0")]
-#[inline]
-pub fn gcw0_a_pressed() -> bool {
-    KeyIsPressed(SDLKey_SDLK_LCTRL as c_int)
-}
-
-#[cfg(feature = "gcw0")]
-#[inline]
-pub fn gcw0_b_pressed() -> bool {
-    KeyIsPressed(SDLKey_SDLK_LALT as c_int)
-}
-
-#[cfg(feature = "gcw0")]
-#[inline]
-pub fn gcw0_x_pressed() -> bool {
-    KeyIsPressed(SDLKey_SDLK_LSHIFT as c_int)
-}
-
-#[cfg(feature = "gcw0")]
-#[inline]
-pub fn gcw0_y_pressed() -> bool {
-    KeyIsPressed(SDLKey_SDLK_SPACE as c_int)
-}
-
-#[cfg(feature = "gcw0")]
-#[inline]
-pub fn gcw0_rs_pressed() -> bool {
-    KeyIsPressed(SDLKey_SDLK_BACKSPACE as c_int)
-}
-
-#[cfg(feature = "gcw0")]
-#[inline]
-pub fn gcw0_ls_pressed() -> bool {
-    KeyIsPressed(SDLKey_SDLK_TAB as c_int)
-}
-
-#[cfg(feature = "gcw0")]
-#[inline]
-pub fn gcw0_start_pressed() -> bool {
-    KeyIsPressed(SDLKey_SDLK_RETURN as c_int)
-}
-
-#[cfg(feature = "gcw0")]
-#[inline]
-pub fn gcw0_select_pressed() -> bool {
-    KeyIsPressed(SDLKey_SDLK_ESCAPE as c_int)
-}
-
-#[cfg(feature = "gcw0")]
-#[inline]
-pub fn gcw0_any_button_pressed() -> bool {
-    gcw0_a_pressed()
-        || gcw0_b_pressed()
-        || gcw0_x_pressed()
-        || gcw0_y_pressed()
-        || gcw0_ls_pressed()
-        || gcw0_rs_pressed()
-        || gcw0_start_pressed()
-        || gcw0_select_pressed()
-}
-
-#[cfg(feature = "gcw0")]
-#[inline]
-pub fn gcw0_a_pressed_r() -> bool {
-    KeyIsPressedR(SDLKey_SDLK_LCTRL as c_int)
-}
-
-#[cfg(feature = "gcw0")]
-#[inline]
-pub fn gcw0_b_pressed_r() -> bool {
-    KeyIsPressedR(SDLKey_SDLK_LALT as c_int)
-}
-
-#[cfg(feature = "gcw0")]
-#[inline]
-pub fn gcw0_x_pressed_r() -> bool {
-    KeyIsPressedR(SDLKey_SDLK_LSHIFT as c_int)
-}
-
-#[cfg(feature = "gcw0")]
-#[inline]
-pub fn gcw0_y_pressed_r() -> bool {
-    KeyIsPressedR(SDLKey_SDLK_SPACE as c_int)
-}
-
-#[cfg(feature = "gcw0")]
-#[inline]
-pub fn gcw0_rs_pressed_r() -> bool {
-    KeyIsPressed(SDLKey_SDLK_BACKSPACE as c_int)
-}
-
-#[cfg(feature = "gcw0")]
-#[inline]
-pub fn gcw0_ls_pressed_r() -> bool {
-    KeyIsPressed(SDLKey_SDLK_TAB as c_int)
-}
-
-#[cfg(feature = "gcw0")]
-#[inline]
-pub fn gcw0_start_pressed_r() -> bool {
-    KeyIsPressed(SDLKey_SDLK_RETURN as c_int)
-}
-
-#[cfg(feature = "gcw0")]
-#[inline]
-pub fn gcw0_select_pressed_r() -> bool {
-    KeyIsPressed(SDLKey_SDLK_ESCAPE as c_int)
-}
-
-#[cfg(feature = "gcw0")]
-#[inline]
-pub fn gcw0_any_button_pressed_r() -> bool {
-    gcw0_a_pressed_r()
-        || gcw0_b_pressed_r()
-        || gcw0_x_pressed_r()
-        || gcw0_y_pressed_r()
-        || gcw0_ls_pressed_r()
-        || gcw0_rs_pressed_r()
-        || gcw0_start_pressed_r()
-        || gcw0_select_pressed_r()
-}
 
 impl Data<'_> {
     #[inline]
@@ -331,6 +206,128 @@ impl Data<'_> {
         self.cmd_is_active(Cmds::Fire)
             || self.cmd_is_active(Cmds::Activate)
             || self.cmd_is_active(Cmds::Takeover)
+    }
+
+    #[cfg(feature = "gcw0")]
+    #[inline]
+    pub fn gcw0_a_pressed(&mut self) -> bool {
+        self.key_is_pressed(SDLKey_SDLK_LCTRL as c_int)
+    }
+
+    #[cfg(feature = "gcw0")]
+    #[inline]
+    pub fn gcw0_b_pressed(&mut self) -> bool {
+        self.key_is_pressed(SDLKey_SDLK_LALT as c_int)
+    }
+
+    #[cfg(feature = "gcw0")]
+    #[inline]
+    pub fn gcw0_x_pressed(&mut self) -> bool {
+        self.key_is_pressed(SDLKey_SDLK_LSHIFT as c_int)
+    }
+
+    #[cfg(feature = "gcw0")]
+    #[inline]
+    pub fn gcw0_y_pressed(&mut self) -> bool {
+        self.key_is_pressed(SDLKey_SDLK_SPACE as c_int)
+    }
+
+    #[cfg(feature = "gcw0")]
+    #[inline]
+    pub fn gcw0_rs_pressed(&mut self) -> bool {
+        self.key_is_pressed(SDLKey_SDLK_BACKSPACE as c_int)
+    }
+
+    #[cfg(feature = "gcw0")]
+    #[inline]
+    pub fn gcw0_ls_pressed(&mut self) -> bool {
+        self.key_is_pressed(SDLKey_SDLK_TAB as c_int)
+    }
+
+    #[cfg(feature = "gcw0")]
+    #[inline]
+    pub fn gcw0_start_pressed(&mut self) -> bool {
+        self.key_is_pressed(SDLKey_SDLK_RETURN as c_int)
+    }
+
+    #[cfg(feature = "gcw0")]
+    #[inline]
+    pub fn gcw0_select_pressed(&mut self) -> bool {
+        self.key_is_pressed(SDLKey_SDLK_ESCAPE as c_int)
+    }
+
+    #[cfg(feature = "gcw0")]
+    #[inline]
+    pub fn gcw0_any_button_pressed(&mut self) -> bool {
+        self.gcw0_a_pressed()
+            || self.gcw0_b_pressed()
+            || self.gcw0_x_pressed()
+            || self.gcw0_y_pressed()
+            || self.gcw0_ls_pressed()
+            || self.gcw0_rs_pressed()
+            || self.gcw0_start_pressed()
+            || self.gcw0_select_pressed()
+    }
+
+    #[cfg(feature = "gcw0")]
+    #[inline]
+    pub fn gcw0_a_pressed_r(&mut self) -> bool {
+        self.key_is_pressed_r(SDLKey_SDLK_LCTRL as c_int)
+    }
+
+    #[cfg(feature = "gcw0")]
+    #[inline]
+    pub fn gcw0_b_pressed_r(&mut self) -> bool {
+        self.key_is_pressed_r(SDLKey_SDLK_LALT as c_int)
+    }
+
+    #[cfg(feature = "gcw0")]
+    #[inline]
+    pub fn gcw0_x_pressed_r(&mut self) -> bool {
+        self.key_is_pressed_r(SDLKey_SDLK_LSHIFT as c_int)
+    }
+
+    #[cfg(feature = "gcw0")]
+    #[inline]
+    pub fn gcw0_y_pressed_r(&mut self) -> bool {
+        self.key_is_pressed_r(SDLKey_SDLK_SPACE as c_int)
+    }
+
+    #[cfg(feature = "gcw0")]
+    #[inline]
+    pub fn gcw0_rs_pressed_r(&mut self) -> bool {
+        self.key_is_pressed(SDLKey_SDLK_BACKSPACE as c_int)
+    }
+
+    #[cfg(feature = "gcw0")]
+    #[inline]
+    pub fn gcw0_ls_pressed_r(&mut self) -> bool {
+        self.key_is_pressed(SDLKey_SDLK_TAB as c_int)
+    }
+
+    #[cfg(feature = "gcw0")]
+    #[inline]
+    pub fn gcw0_start_pressed_r(&mut self) -> bool {
+        self.key_is_pressed(SDLKey_SDLK_RETURN as c_int)
+    }
+
+    #[cfg(feature = "gcw0")]
+    #[inline]
+    pub fn gcw0_select_pressed_r(&mut self) -> bool {
+        self.key_is_pressed(SDLKey_SDLK_ESCAPE as c_int)
+    }
+
+    #[cfg(feature = "gcw0")]
+    #[inline]
+    pub fn gcw0_any_button_pressed_r(&mut self) -> bool {
+        self.gcw0_a_pressed_r()
+            || self.gcw0_b_pressed_r()
+            || self.gcw0_x_pressed_r()
+            || self.gcw0_y_pressed_r()
+            || self.gcw0_ls_pressed_r()
+            || self.gcw0_rs_pressed_r()
+            || self.gcw0_start_pressed_r()
+            || self.gcw0_select_pressed_r()
     }
 }
 

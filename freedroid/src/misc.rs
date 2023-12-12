@@ -1,5 +1,3 @@
-#[cfg(feature = "gcw0")]
-use crate::defs::{gcw0_ls_pressed_r, gcw0_rs_pressed_r};
 use crate::{
     defs::{
         self, AssembleCombatWindowFlags, Cmds, Criticality, Status, Themed, FD_DATADIR,
@@ -375,7 +373,7 @@ impl Data<'_> {
             self.compute_fps_for_this_frame();
 
             #[cfg(feature = "gcw0")]
-            let cond = gcw0_ls_pressed_r() || gcw0_rs_pressed_r();
+            let cond = self.gcw0_ls_pressed_r() || self.gcw0_rs_pressed_r();
             #[cfg(not(feature = "gcw0"))]
             let cond = self.key_is_pressed_r(b'c'.into());
 
