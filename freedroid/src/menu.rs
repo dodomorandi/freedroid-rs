@@ -199,7 +199,7 @@ impl<'sdl> Data<'sdl> {
         const QUIT_STRING: &str = "Press A to quit";
 
         #[cfg(not(feature = "gcw0"))]
-        const QUIT_STRING: &[u8] = b"Hit 'y' or press Fire to quit";
+        const QUIT_STRING: &str = "Hit 'y' or press Fire to quit";
 
         let text_width = self.text_width(QUIT_STRING.as_bytes());
         let text_x = i32::from(self.vars.user_rect.x())
