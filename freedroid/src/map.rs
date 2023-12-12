@@ -1,10 +1,11 @@
+#[cfg(not(target_os = "android"))]
+use crate::menu::SHIP_EXT;
 use crate::{
     defs::{
         self, Criticality, Direction, MapTile, Status, Themed, DIRECTIONS, MAP_DIR_C, MAXWAYPOINTS,
         MAX_ALERTS_ON_LEVEL, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_REFRESHES_ON_LEVEL,
     },
     find_subslice,
-    menu::SHIP_EXT,
     misc::{
         locate_string_in_data, my_random, read_and_malloc_string_from_data, read_i32_from_string,
     },
@@ -15,17 +16,22 @@ use crate::{
 
 use array_init::array_init;
 use bstr::ByteSlice;
+#[cfg(not(target_os = "android"))]
 use cstr::cstr;
 use defs::{MAX_DOORS_ON_LEVEL, MAX_WP_CONNECTIONS};
-use log::{error, info, trace, warn};
+#[cfg(not(target_os = "android"))]
+use log::trace;
+use log::{error, info, warn};
 use nom::{Finish, Parser};
+#[cfg(not(target_os = "android"))]
+use std::ffi::CStr;
 use std::{
-    ffi::CStr,
     ops::Not,
     os::raw::{c_float, c_int, c_uchar},
     path::Path,
 };
 
+#[cfg(not(target_os = "android"))]
 pub const COLOR_NAMES: [&CStr; 7] = [
     cstr!("Red"),
     cstr!("Yellow"),
@@ -97,6 +103,7 @@ pub enum ColorNames {
     Dark,
 }
 
+#[cfg(not(target_os = "android"))]
 fn reset_level_map(level: &mut Level) {
     // Now in the game and in the level editor, it might have happend that some open
     // doors occur.  The make life easier for the saving routine, these doors should
@@ -768,6 +775,7 @@ impl Data<'_> {
     }
 
     /// Saves ship-data to disk
+    #[cfg(not(target_os = "android"))]
     pub fn save_ship(&mut self, shipname: &str) -> c_int {
         use std::{fs::File, io::Write, path::PathBuf};
 
@@ -1493,6 +1501,7 @@ fn read_tagged_i32(s: &[u8], tag: &str) -> i32 {
 }
 
 /// Returns a pointer to Map in a memory field
+#[cfg(not(target_os = "android"))]
 pub fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
     use std::io::Write;
 

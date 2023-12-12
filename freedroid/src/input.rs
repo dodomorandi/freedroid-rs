@@ -1,5 +1,5 @@
 #[cfg(target_os = "android")]
-use crate::graphics::{Graphics, NE_SCREEN};
+use crate::graphics::Graphics;
 use crate::{
     defs::{Cmds, MenuAction, PointerStates},
     structs::Point,
@@ -7,6 +7,7 @@ use crate::{
     Data, Sdl,
 };
 
+#[cfg(not(target_os = "android"))]
 use cstr::cstr;
 use log::info;
 use sdl::{event::KeyboardEventType, Event, Joystick};
@@ -19,7 +20,9 @@ use sdl_sys::{
 };
 #[cfg(not(feature = "gcw0"))]
 use sdl_sys::{SDLKey_SDLK_F12, SDLKey_SDLK_PAUSE, SDLKey_SDLK_RSHIFT};
-use std::{cell::Cell, ffi::CStr, fmt, os::raw::c_int};
+#[cfg(not(target_os = "android"))]
+use std::ffi::CStr;
+use std::{cell::Cell, fmt, os::raw::c_int};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 struct InputState {
@@ -67,8 +70,10 @@ pub struct Input {
     pub key_cmds: [[c_int; 3]; Cmds::Last as usize],
 }
 
+#[cfg(not(target_os = "android"))]
 pub const KEY_STRINGS: [Option<&'static CStr>; PointerStates::Last as usize] = create_key_strings();
 
+#[cfg(not(target_os = "android"))]
 const fn create_key_strings() -> [Option<&'static CStr>; PointerStates::Last as usize] {
     let mut out = [None; PointerStates::Last as usize];
 
@@ -456,9 +461,10 @@ impl Data<'_> {
         input: &mut Input,
         vars: &Vars,
         quit: &Cell<bool>,
+        #[cfg(target_os = "android")] graphics: &mut Graphics<'_>,
     ) -> c_int {
         #[cfg(target_os = "android")]
-        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
+        assert!(graphics.ne_screen.as_mut().unwrap().flip());
 
         Self::update_input_static(sdl, input, vars, quit);
 
@@ -813,27 +819,32 @@ impl Data<'_> {
         c1 || c2 || c3
     }
 
+    #[cfg(not(target_os = "android"))]
     pub fn wait_for_all_keys_released(&mut self) {
         let Self {
             input,
             sdl,
             vars,
             quit,
-            #[cfg(target_os = "android")]
+            ..
+        } = self;
+
+        Self::wait_for_all_keys_released_static(input, sdl, vars, quit)
+    }
+
+    #[cfg(target_os = "android")]
+    pub fn wait_for_all_keys_released(&mut self) {
+        let Self {
+            input,
+            sdl,
             graphics,
             ..
         } = self;
 
-        Self::wait_for_all_keys_released_static(
-            input,
-            sdl,
-            vars,
-            quit,
-            #[cfg(target_os = "android")]
-            graphics,
-        )
+        Self::wait_for_all_keys_released_static(input, sdl, graphics)
     }
 
+    #[cfg(not(target_os = "android"))]
     pub fn wait_for_all_keys_released_static(
         input: &mut Input,
         sdl: &Sdl,
@@ -843,8 +854,11 @@ impl Data<'_> {
     ) {
         while Self::any_key_is_pressed_r_static(
             input,
+            #[cfg(not(target_os = "android"))]
             sdl,
+            #[cfg(not(target_os = "android"))]
             vars,
+            #[cfg(not(target_os = "android"))]
             quit,
             #[cfg(target_os = "android")]
             graphics,
@@ -854,10 +868,21 @@ impl Data<'_> {
         input.reset_mouse_wheel();
     }
 
+    #[cfg(target_os = "android")]
+    pub fn wait_for_all_keys_released_static(
+        input: &mut Input,
+        sdl: &Sdl,
+        graphics: &mut Graphics,
+    ) {
+        while Self::any_key_is_pressed_r_static(input, graphics) {
+            sdl.delay_ms(1);
+        }
+        input.reset_mouse_wheel();
+    }
+
+    #[cfg(not(target_os = "android"))]
     pub fn any_key_is_pressed_r(&mut self) -> bool {
         let Self {
-            #[cfg(target_os = "android")]
-            graphics,
             input,
             vars,
             quit,
@@ -865,21 +890,19 @@ impl Data<'_> {
             ..
         } = self;
 
-        Self::any_key_is_pressed_r_static(
-            input,
-            sdl,
-            vars,
-            quit,
-            #[cfg(target_os = "android")]
-            graphics,
-        )
+        Self::any_key_is_pressed_r_static(input, sdl, vars, quit)
+    }
+
+    #[cfg(target_os = "android")]
+    pub fn any_key_is_pressed_r(&mut self) -> bool {
+        Self::any_key_is_pressed_r_static(&mut self.input, &mut self.graphics)
     }
 
     pub fn any_key_is_pressed_r_static(
         input: &mut Input,
-        sdl: &Sdl,
-        vars: &Vars,
-        quit: &Cell<bool>,
+        #[cfg(not(target_os = "android"))] sdl: &Sdl,
+        #[cfg(not(target_os = "android"))] vars: &Vars,
+        #[cfg(not(target_os = "android"))] quit: &Cell<bool>,
         #[cfg(target_os = "android")] graphics: &mut Graphics,
     ) -> bool {
         #[cfg(target_os = "android")]

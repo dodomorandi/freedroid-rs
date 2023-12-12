@@ -251,7 +251,7 @@ impl Data<'_> {
         );
 
         #[cfg(target_os = "android")]
-        wait_for_key_pressed();
+        self.wait_for_key_pressed();
 
         // TODO More ARCADEINPUT
 
@@ -262,7 +262,7 @@ impl Data<'_> {
         let date = format!("{}", chrono::Local::now().format("%Y/%m/%d"));
 
         #[cfg(target_os = "android")]
-        let new_entry = HighscoreEntry::new("Player", score as i64, &date);
+        let new_entry = HighscoreEntry::new("Player", score as i64, &*date);
         #[cfg(not(target_os = "android"))]
         let new_entry = HighscoreEntry::new(
             &*self.get_string(MAX_NAME_LEN as c_int, 2).unwrap(),

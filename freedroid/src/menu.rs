@@ -1,17 +1,23 @@
 use crate::{
     array_c_string::ArrayCString,
-    b_font::{char_width, font_height, print_string_font},
+    b_font::{char_width, font_height},
     cur_level,
     defs::{
-        AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags, MapTile, MenuAction,
-        Status, Themed, BYCOLOR, CREDITS_PIC_FILE, GRAPHICS_DIR_C, MAX_MAP_COLS, MAX_MAP_ROWS,
+        AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags, MenuAction, Status,
+        Themed, CREDITS_PIC_FILE, GRAPHICS_DIR_C,
     },
-    global::{Global, INFLUENCE_MODE_NAMES},
+    global::INFLUENCE_MODE_NAMES,
+    sound::Sound,
+    Data, Sdl,
+};
+#[cfg(not(target_os = "android"))]
+use crate::{
+    b_font::print_string_font,
+    defs::{MapTile, BYCOLOR, MAX_MAP_COLS, MAX_MAP_ROWS},
+    global::Global,
     graphics::Graphics,
     input::{CMD_STRINGS, KEY_STRINGS},
     map::COLOR_NAMES,
-    sound::Sound,
-    Data, Sdl,
 };
 
 use cstr::cstr;
@@ -37,10 +43,15 @@ pub struct Menu<'sdl> {
     last_movekey_time: u32,
     menu_action_directions: MenuActionDirections,
     show_menu_last_move_tick: u32,
+    #[cfg(not(target_os = "android"))]
     key_config_menu_last_move_tick: u32,
+    #[cfg(not(target_os = "android"))]
     fname: ArrayCString<256>,
+    #[cfg(not(target_os = "android"))]
     le_level_number_buf: ArrayCString<256>,
+    #[cfg(not(target_os = "android"))]
     le_size_x_buf: ArrayCString<256>,
+    #[cfg(not(target_os = "android"))]
     le_size_y_buf: ArrayCString<256>,
     empty_level_speedup_buf: ArrayCString<256>,
     music_volume_buf: ArrayCString<256>,
@@ -56,7 +67,9 @@ struct MenuActionDirections {
 }
 
 // const FILENAME_LEN: u8 = 128;
+#[cfg(not(target_os = "android"))]
 const SHIP_EXT_C: &CStr = cstr!(".shp");
+#[cfg(not(target_os = "android"))]
 pub const SHIP_EXT: &str = ".shp";
 // const ELEVEXT: &CStr = cstr!(".elv");
 // const CREWEXT: &CStr = cstr!(".crw");
@@ -150,6 +163,7 @@ impl<'sdl> Data<'sdl> {
         menu_entry! {},
     ];
 
+    #[cfg(not(target_os = "android"))]
     const LEVEL_EDITOR_MENU: [MenuEntry<'sdl>; 8] = [
         menu_entry! { "Exit Level Editor", 	Data::handle_le_exit},
         menu_entry! { "Current Level: ", Data::handle_le_level_number},
@@ -1115,6 +1129,7 @@ impl<'sdl> Data<'sdl> {
     }
 
     /// subroutine to display the current key-config and highlight current selection
+    #[cfg(not(target_os = "android"))]
     pub fn display_key_config(&mut self, selx: c_int, sely: c_int) {
         let current_font = self
             .b_font
@@ -1295,6 +1310,7 @@ impl<'sdl> Data<'sdl> {
         assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
     }
 
+    #[cfg(not(target_os = "android"))]
     pub fn key_config_menu(&mut self) {
         let mut selx = 1;
         let mut sely = 1; // currently selected menu-position
@@ -1485,11 +1501,13 @@ impl<'sdl> Data<'sdl> {
     }
 
     /// simple wrapper to ShowMenu() to provide the external entry point into the Level Editor menu
+    #[cfg(not(target_os = "android"))]
     pub fn show_level_editor_menu(&mut self) {
         self.menu.quit_level_editor = false;
         self.show_menu(&Self::LEVEL_EDITOR_MENU);
     }
 
+    #[cfg(not(target_os = "android"))]
     pub fn handle_configure_keys(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::CLICK {
             self.menu_item_selected_sound();
@@ -1516,6 +1534,7 @@ impl<'sdl> Data<'sdl> {
         None
     }
 
+    #[cfg(not(target_os = "android"))]
     pub fn handle_le_save_ship(&mut self, action: MenuAction) -> Option<&CStr> {
         use std::io::Write;
 
@@ -1560,6 +1579,7 @@ impl<'sdl> Data<'sdl> {
         None
     }
 
+    #[cfg(not(target_os = "android"))]
     pub fn handle_le_name(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
             return Some(&cur_level!(self.main).levelname);
@@ -1581,6 +1601,7 @@ impl<'sdl> Data<'sdl> {
         None
     }
 
+    #[cfg(not(target_os = "android"))]
     pub fn handle_open_level_editor(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::CLICK {
             self.menu_item_selected_sound();
@@ -1589,6 +1610,7 @@ impl<'sdl> Data<'sdl> {
         None
     }
 
+    #[cfg(not(target_os = "android"))]
     pub fn handle_le_exit(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::CLICK {
             self.menu_item_selected_sound();
@@ -1598,6 +1620,7 @@ impl<'sdl> Data<'sdl> {
         None
     }
 
+    #[cfg(not(target_os = "android"))]
     pub fn handle_le_level_number(&mut self, action: MenuAction) -> Option<&CStr> {
         use std::fmt::Write;
 
@@ -1623,6 +1646,7 @@ impl<'sdl> Data<'sdl> {
         None
     }
 
+    #[cfg(not(target_os = "android"))]
     pub fn handle_le_color(&mut self, action: MenuAction) -> Option<&CStr> {
         let cur_level = cur_level!(mut self.main);
         if action == MenuAction::INFO {
@@ -1645,6 +1669,7 @@ impl<'sdl> Data<'sdl> {
         None
     }
 
+    #[cfg(not(target_os = "android"))]
     pub fn handle_le_size_x(&mut self, action: MenuAction) -> Option<&CStr> {
         use std::fmt::Write;
 
@@ -1680,6 +1705,7 @@ impl<'sdl> Data<'sdl> {
         None
     }
 
+    #[cfg(not(target_os = "android"))]
     pub fn handle_le_size_y(&mut self, action: MenuAction) -> Option<&CStr> {
         use std::{cmp::Ordering, fmt::Write};
 
@@ -1826,6 +1852,7 @@ impl<'sdl> Data<'sdl> {
         None
     }
 
+    #[cfg(not(target_os = "android"))]
     pub fn handle_transfer_is_activate(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
             return Some(is_toggle_on(self.global.game_config.takeover_activates));
@@ -1837,6 +1864,7 @@ impl<'sdl> Data<'sdl> {
         None
     }
 
+    #[cfg(not(target_os = "android"))]
     pub fn handle_fire_is_transfer(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
             return Some(is_toggle_on(self.global.game_config.fire_hold_takeover));
@@ -1997,6 +2025,7 @@ impl<'sdl> Data<'sdl> {
         self.menu_change(action, val, step, min_value, max_value)
     }
 
+    #[cfg(not(target_os = "android"))]
     pub fn menu_change_int(
         &self,
         action: MenuAction,

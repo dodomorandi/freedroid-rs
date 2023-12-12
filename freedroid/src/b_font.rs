@@ -273,6 +273,7 @@ impl<'sdl> Data<'sdl> {
         );
     }
 
+    #[cfg(not(target_os = "android"))]
     pub fn centered_put_string<const F: bool>(
         &mut self,
         surface: &mut sdl::GenericSurface<F>,

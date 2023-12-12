@@ -722,7 +722,9 @@ impl Data<'_> {
         Self::wait_for_all_keys_released_static(
             input,
             sdl,
+            #[cfg(not(target_os = "android"))]
             vars,
+            #[cfg(not(target_os = "android"))]
             quit,
             #[cfg(target_os = "android")]
             graphics,
@@ -757,7 +759,14 @@ impl Data<'_> {
                 let now = sdl.ticks_ms();
                 let mut key;
                 loop {
-                    key = Self::any_key_just_pressed_static(sdl, input, vars, quit);
+                    key = Self::any_key_just_pressed_static(
+                        sdl,
+                        input,
+                        vars,
+                        quit,
+                        #[cfg(target_os = "android")]
+                        graphics,
+                    );
                     if key == 0 && (sdl.ticks_ms() - now < SHOW_WAIT) {
                         sdl.delay_ms(1); // wait before starting auto-scroll
                     } else {

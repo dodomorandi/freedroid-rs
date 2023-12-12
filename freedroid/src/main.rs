@@ -10,6 +10,7 @@ mod highscore;
 mod influencer;
 mod init;
 mod input;
+#[cfg(not(target_os = "android"))]
 mod level_editor;
 mod map;
 mod menu;

@@ -6,9 +6,11 @@ use cstr::cstr;
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_LALT, SDLKey_SDLK_LCTRL, SDLKey_SDLK_LSHIFT, SDLKey_SDLK_TAB,
 };
+#[cfg(not(target_os = "android"))]
+use sdl_sys::{SDLKey_SDLK_ESCAPE, SDLKey_SDLK_SPACE};
 use sdl_sys::{
-    SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LAST, SDLKey_SDLK_RETURN, SDLKey_SDLK_SPACE, SDLMod_KMOD_LALT,
-    SDLMod_KMOD_LCTRL, SDLMod_KMOD_LSHIFT, SDLMod_KMOD_RALT, SDLMod_KMOD_RCTRL, SDLMod_KMOD_RSHIFT,
+    SDLKey_SDLK_LAST, SDLKey_SDLK_RETURN, SDLMod_KMOD_LALT, SDLMod_KMOD_LCTRL, SDLMod_KMOD_LSHIFT,
+    SDLMod_KMOD_RALT, SDLMod_KMOD_RCTRL, SDLMod_KMOD_RSHIFT,
 };
 use std::{cell::Cell, ffi::CStr, fmt, os::raw::c_int};
 
@@ -106,6 +108,7 @@ impl Data<'_> {
         self.mod_is_pressed(SDLMod_KMOD_LCTRL | SDLMod_KMOD_RCTRL)
     }
 
+    #[cfg(not(target_os = "android"))]
     #[inline]
     pub fn mouse_left_pressed(&mut self) -> bool {
         self.key_is_pressed(PointerStates::MouseButton1 as c_int)
@@ -116,11 +119,13 @@ impl Data<'_> {
         self.key_is_pressed_r(PointerStates::MouseButton1 as c_int)
     }
 
+    #[cfg(not(target_os = "android"))]
     #[inline]
     pub fn space_pressed(&mut self) -> bool {
         self.key_is_pressed(SDLKey_SDLK_SPACE as c_int)
     }
 
+    #[cfg(not(target_os = "android"))]
     #[inline]
     pub fn escape_pressed_r(&mut self) -> bool {
         self.key_is_pressed_r(SDLKey_SDLK_ESCAPE as c_int)
@@ -181,21 +186,25 @@ impl Data<'_> {
         Self::cmd_is_active_r_static(sdl, input, vars, quit, Cmds::Fire)
     }
 
+    #[cfg(not(target_os = "android"))]
     #[inline]
     pub fn up_pressed_r(&mut self) -> bool {
         self.cmd_is_active_r(Cmds::Up)
     }
 
+    #[cfg(not(target_os = "android"))]
     #[inline]
     pub fn down_pressed_r(&mut self) -> bool {
         self.cmd_is_active_r(Cmds::Down)
     }
 
+    #[cfg(not(target_os = "android"))]
     #[inline]
     pub fn left_pressed_r(&mut self) -> bool {
         self.cmd_is_active_r(Cmds::Left)
     }
 
+    #[cfg(not(target_os = "android"))]
     #[inline]
     pub fn right_pressed_r(&mut self) -> bool {
         self.cmd_is_active_r(Cmds::Right)
@@ -670,6 +679,7 @@ pub const ROBOT_MAX_WAIT_BETWEEN_SHOTS: f32 = 5.; // how long shoud each droid w
 */
 pub const MAX_WP_CONNECTIONS: usize = 12;
 pub const MAX_MAP_ROWS: usize = 255;
+#[cfg(not(target_os = "android"))]
 pub const MAX_MAP_COLS: usize = 255;
 pub const MAX_ENEMYS_ON_SHIP: usize = 300;
 pub const MAX_INFLU_POSITION_HISTORY: usize = 100;

@@ -1,3 +1,5 @@
+#[cfg(not(target_os = "android"))]
+use crate::vars::Vars;
 use crate::{
     defs::{
         self, scale_point, Cmds, Criticality, DisplayBannerFlags, Droid, SoundType, Themed,
@@ -12,7 +14,7 @@ use crate::{
     read_and_malloc_and_terminate_file,
     structs::ThemeList,
     takeover::TO_BLOCK_FILE,
-    vars::{Vars, ORIG_BLOCK_RECT, ORIG_DIGIT_RECT},
+    vars::{ORIG_BLOCK_RECT, ORIG_DIGIT_RECT},
     Data, Sdl,
 };
 
@@ -1809,6 +1811,7 @@ impl Data<'_> {
         image.blit(graphics.ne_screen.as_mut().unwrap());
     }
 
+    #[cfg(not(target_os = "android"))]
     #[inline]
     pub fn draw_line_between_tiles(
         &mut self,
@@ -1821,6 +1824,7 @@ impl Data<'_> {
         Self::draw_line_between_tiles_static(&self.vars, &mut self.graphics, x1, y1, x2, y2, color)
     }
 
+    #[cfg(not(target_os = "android"))]
     pub fn draw_line_between_tiles_static(
         vars: &Vars,
         graphics: &mut Graphics,
