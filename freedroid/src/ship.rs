@@ -13,7 +13,7 @@ use crate::{
 };
 
 use log::{error, warn};
-use sdl::{rwops::RwOpsCapability, Rect, Surface};
+use sdl::{rwops::RwOpsCapability, Rect, Rgba, Surface};
 use sdl_sys::SDL_Color;
 use std::{
     ops::Not,
@@ -66,10 +66,15 @@ impl Data<'_> {
     pub fn alert_level_warning(&mut self) {
         const SIREN_WAIT: f32 = 2.5;
 
-        use AlertNames::*;
+        use AlertNames as A;
         match AlertNames::try_from(self.main.alert_level).ok() {
-            Some(Green) => {}
-            Some(Yellow) | Some(Amber) | Some(Red) => {
+            Some(A::Green) => {}
+            Some(A::Yellow | A::Amber | A::Red) => {
+                #[allow(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    clippy::cast_precision_loss
+                )]
                 if self.sdl.ticks_ms() - self.ship.last_siren
                     > (SIREN_WAIT * 1000.0 / (self.main.alert_level as f32)) as u32
                 {
@@ -78,7 +83,7 @@ impl Data<'_> {
                     self.ship.last_siren = self.sdl.ticks_ms();
                 }
             }
-            Some(Last) | None => {
+            Some(A::Last) | None => {
                 warn!(
                     "illegal AlertLevel = {} > {}.. something's gone wrong!!\n",
                     self.main.alert_level,
@@ -89,9 +94,9 @@ impl Data<'_> {
 
         // so much to the sirens, now make sure the alert-tiles are updated correctly:
         let cur_level = cur_level!(mut self.main);
-        let posx = cur_level.alerts[0].x;
-        let posy = cur_level.alerts[0].y;
-        if posx == -1 {
+        let pos_x = cur_level.alerts[0].x;
+        let pos_y = cur_level.alerts[0].y;
+        if pos_x == -1 {
             // no alerts here...
             return;
         }
@@ -99,19 +104,19 @@ impl Data<'_> {
         let cur_alert = AlertNames::try_from(self.main.alert_level).unwrap();
 
         // check if alert-tiles are up-to-date
-        if get_map_brick(cur_level, posx.into(), posy.into()) == cur_alert as u8 {
+        if get_map_brick(cur_level, pos_x.into(), pos_y.into()) == cur_alert as u8 {
             // ok
             return;
         }
 
         for alert in &mut cur_level.alerts {
-            let posx = alert.x;
-            let posy = alert.y;
-            if posx == -1 {
+            let pos_x = alert.x;
+            let pos_y = alert.y;
+            if pos_x == -1 {
                 break;
             }
 
-            cur_level.map[usize::try_from(posy).unwrap()][usize::try_from(posx).unwrap()] =
+            cur_level.map[usize::try_from(pos_y).unwrap()][usize::try_from(pos_x).unwrap()] =
                 (cur_alert as i8).try_into().unwrap();
         }
     }
@@ -122,8 +127,8 @@ impl Data<'_> {
     /// if flags & RESET: to restart a fresh animation at frame 0
     /// if flags & UPDATE: force a blit of droid-pic
     ///
-    /// cycle_time is the time in seconds for a full animation-cycle,
-    /// if cycle_time == 0 : display static pic, using only first frame
+    /// `cycle_time` is the time in seconds for a full animation-cycle,
+    /// if `cycle_time` == 0 : display static pic, using only first frame
     pub fn show_droid_portrait(
         &mut self,
         mut dst: Rect,
@@ -156,7 +161,7 @@ impl Data<'_> {
                 dst.width().into(),
                 dst.height().into(),
                 graphics.vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
-                Default::default(),
+                Rgba::default(),
             )
             .unwrap()
             .display_format()
@@ -192,15 +197,12 @@ impl Data<'_> {
             packed_portrait
                 .seek(0, sdl::rwops::Whence::Set)
                 .expect("unable to seek rw_ops");
-            let mut tmp = match tmp {
-                Some(tmp) => tmp,
-                None => {
-                    error!(
-                        "failed to unpack droid-portraits of droid-type {}",
-                        droid_type,
-                    );
-                    return; // ok, so no pic but we continue ;)
-                }
+            let Some(mut tmp) = tmp else {
+                error!(
+                    "failed to unpack droid-portraits of droid-type {}",
+                    droid_type,
+                );
+                return; // ok, so no pic but we continue ;)
             };
             // now see if its a jpg, then we add some transparency by color-keying:
             let droid_pics = if packed_portrait.is_jpg() {
@@ -242,7 +244,9 @@ impl Data<'_> {
 
         let frame_duration = self.sdl.ticks_ms() - self.ship.last_frame_time;
 
-        if cycle_time != 0. && (frame_duration as f32 > 1000.0 * cycle_time / num_frames as f32) {
+        #[allow(clippy::cast_precision_loss)]
+        if cycle_time != 0. && (frame_duration as f32 > 1000.0 * cycle_time / f32::from(num_frames))
+        {
             need_new_frame = true;
             self.ship.frame_num += 1;
         }
@@ -291,16 +295,17 @@ impl Data<'_> {
 
     /// display infopage page of droidtype
     ///
-    /// if flags == UPDATE_ONLY : don't blit a new background&banner,
+    /// if flags == `UPDATE_ONLY` : don't blit a new background&banner,
     ///                           only  update the text-regions
     ///
-    ///  does update the screen: all if flags=0, text-rect if flags=UPDATE_ONLY
+    ///  does update the screen: all if flags=0, text-rect if `flags=UPDATE_ONLY`
     pub fn show_droid_info(&mut self, droid_type: c_int, page: c_int, flags: c_int) {
         use std::fmt::Write;
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
         self.b_font.current_font = self.global.para_b_font.clone();
 
+        #[allow(clippy::cast_possible_truncation)]
         let lineskip = ((f64::from(font_height(
             self.b_font
                 .current_font
@@ -311,30 +316,33 @@ impl Data<'_> {
         let lastline = self.vars.cons_header_rect.y()
             + i16::try_from(self.vars.cons_header_rect.height()).unwrap();
         self.ship.up_rect = Rect::new(self.vars.cons_header_rect.x(), lastline - lineskip, 25, 13);
-        self.ship.down_rect = Rect::new(
-            self.vars.cons_header_rect.x(),
-            (f32::from(lastline) - 0.5 * f32::from(lineskip)) as i16,
-            25,
-            13,
-        );
-        self.ship.left_rect = Rect::new(
-            (f32::from(
-                self.vars.cons_header_rect.x()
-                    + i16::try_from(self.vars.cons_header_rect.width()).unwrap(),
-            ) - 1.5 * f32::from(lineskip)) as i16,
-            (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
-            13,
-            25,
-        );
-        self.ship.right_rect = Rect::new(
-            (f32::from(
-                self.vars.cons_header_rect.x()
-                    + i16::try_from(self.vars.cons_header_rect.width()).unwrap(),
-            ) - 1.0 * f32::from(lineskip)) as i16,
-            (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
-            13,
-            25,
-        );
+        #[allow(clippy::cast_possible_truncation)]
+        {
+            self.ship.down_rect = Rect::new(
+                self.vars.cons_header_rect.x(),
+                (f32::from(lastline) - 0.5 * f32::from(lineskip)) as i16,
+                25,
+                13,
+            );
+            self.ship.left_rect = Rect::new(
+                (f32::from(
+                    self.vars.cons_header_rect.x()
+                        + i16::try_from(self.vars.cons_header_rect.width()).unwrap(),
+                ) - 1.5 * f32::from(lineskip)) as i16,
+                (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
+                13,
+                25,
+            );
+            self.ship.right_rect = Rect::new(
+                (f32::from(
+                    self.vars.cons_header_rect.x()
+                        + i16::try_from(self.vars.cons_header_rect.width()).unwrap(),
+                ) - 1.0 * f32::from(lineskip)) as i16,
+                (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
+                13,
+                25,
+            );
+        }
 
         let mut droid_name = ArrayString::<[u8; 80]>::default();
         let droid = &self.vars.droidmap[usize::try_from(droid_type).unwrap()];
@@ -446,7 +454,20 @@ impl Data<'_> {
 
         // if UPDATE_ONLY then the background has not been cleared, so we have do it
         // it for each menu-rect:
-        if flags & i32::from(UPDATE_ONLY) != 0 {
+        if flags & i32::from(UPDATE_ONLY) == 0 {
+            // otherwise we just redraw the whole screen
+            console_bg_pic2
+                .as_mut()
+                .unwrap()
+                .blit(ne_screen.as_mut().unwrap());
+            self.display_banner(
+                None,
+                None,
+                (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
+                    .bits()
+                    .into(),
+            );
+        } else {
             ne_screen
                 .as_mut()
                 .unwrap()
@@ -464,19 +485,6 @@ impl Data<'_> {
                 .unwrap()
                 .blit(ne_screen.as_mut().unwrap());
             ne_screen.as_mut().unwrap().clear_clip_rect();
-        } else {
-            // otherwise we just redraw the whole screen
-            console_bg_pic2
-                .as_mut()
-                .unwrap()
-                .blit(ne_screen.as_mut().unwrap());
-            self.display_banner(
-                None,
-                None,
-                (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
-                    .bits()
-                    .into(),
-            );
         }
 
         self.display_text(
@@ -486,6 +494,7 @@ impl Data<'_> {
             Some(self.vars.cons_text_rect),
         );
 
+        #[allow(clippy::cast_possible_truncation)]
         self.display_text(
             droid_name.as_ref(),
             i32::from(self.vars.cons_header_rect.x()) + i32::from(lineskip),
@@ -538,12 +547,12 @@ impl Data<'_> {
             }
         }
 
-        if flags & i32::from(UPDATE_ONLY) != 0 {
+        if flags & i32::from(UPDATE_ONLY) == 0 {
+            assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
+        } else {
             let screen = self.graphics.ne_screen.as_mut().unwrap();
             screen.update_rects(&[self.vars.cons_header_rect]);
             screen.update_rects(&[self.vars.cons_text_rect]);
-        } else {
-            assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
         }
     }
 
@@ -555,8 +564,11 @@ impl Data<'_> {
         let tmp = self.vars.me.pos;
 
         let cur_level = self.main.cur_level();
-        self.vars.me.pos.x = (cur_level.xlen / 2) as f32;
-        self.vars.me.pos.y = (cur_level.ylen / 2) as f32;
+        #[allow(clippy::cast_precision_loss)]
+        {
+            self.vars.me.pos.x = (cur_level.xlen / 2) as f32;
+            self.vars.me.pos.y = (cur_level.ylen / 2) as f32;
+        }
 
         self.sdl.cursor().hide();
 
@@ -618,7 +630,7 @@ impl Data<'_> {
 
             // check if the mouse-cursor is on any of the console-menu points
             for (i, rect) in self.vars.cons_menu_rects.iter().enumerate() {
-                if self.input.show_cursor && pos != i && self.cursor_is_on_rect(rect) != 0 {
+                if self.input.show_cursor && pos != i && self.cursor_is_on_rect(*rect) != 0 {
                     self.move_menu_position_sound();
                     pos = i;
                     need_update = true;
@@ -799,13 +811,13 @@ impl Data<'_> {
             let mut action = MenuAction::empty();
             // special handling of mouse-clicks: check if move-arrows were clicked on
             if self.mouse_left_pressed_r() {
-                if self.cursor_is_on_rect(&self.ship.left_rect) != 0 {
+                if self.cursor_is_on_rect(self.ship.left_rect) != 0 {
                     action = MenuAction::LEFT;
-                } else if self.cursor_is_on_rect(&self.ship.right_rect) != 0 {
+                } else if self.cursor_is_on_rect(self.ship.right_rect) != 0 {
                     action = MenuAction::RIGHT;
-                } else if self.cursor_is_on_rect(&self.ship.up_rect) != 0 {
+                } else if self.cursor_is_on_rect(self.ship.up_rect) != 0 {
                     action = MenuAction::UP;
-                } else if self.cursor_is_on_rect(&self.ship.down_rect) != 0 {
+                } else if self.cursor_is_on_rect(self.ship.down_rect) != 0 {
                     action = MenuAction::DOWN;
                 }
             } else {
@@ -879,7 +891,7 @@ impl Data<'_> {
     }
 
     /// This function should check if the mouse cursor is in the given Rectangle
-    pub fn cursor_is_on_rect(&self, rect: &Rect) -> c_int {
+    pub fn cursor_is_on_rect(&self, rect: Rect) -> c_int {
         let user_center = self.vars.get_user_center();
         let cur_pos = Point {
             x: self.input.input_axis.x + (i32::from(user_center.x()) - 16),
@@ -905,8 +917,8 @@ impl Data<'_> {
             b: 0,
             unused: 0,
         }; /* black... */
-        let xoffs: i16 = (self.vars.user_rect.width() / 20).try_into().unwrap();
-        let yoffs: i16 = (self.vars.user_rect.height() / 5).try_into().unwrap();
+        let x_offs: i16 = (self.vars.user_rect.width() / 20).try_into().unwrap();
+        let y_offs: i16 = (self.vars.user_rect.height() / 5).try_into().unwrap();
 
         self.sdl.cursor().hide();
         // fill the user fenster with some color
@@ -920,8 +932,8 @@ impl Data<'_> {
             .unwrap()
             .set_clip_rect(&dst);
         dst = self.vars.user_rect;
-        dst.inc_x(xoffs);
-        dst.inc_y(yoffs);
+        dst.inc_x(x_offs);
+        dst.inc_y(y_offs);
 
         let Graphics {
             ship_off_pic,
@@ -939,8 +951,8 @@ impl Data<'_> {
                 let src = self.main.cur_ship.level_rects[usize::try_from(level).unwrap()]
                     [usize::try_from(i).unwrap()];
                 dst = src;
-                dst.inc_x(self.vars.user_rect.x() + xoffs); /* offset respective to User-Rectangle */
-                dst.inc_y(self.vars.user_rect.y() + yoffs);
+                dst.inc_x(self.vars.user_rect.x() + x_offs); /* offset respective to User-Rectangle */
+                dst.inc_y(self.vars.user_rect.y() + y_offs);
                 ship_on_pic.as_mut().unwrap().blit_from_to(
                     &src,
                     ne_screen.as_mut().unwrap(),
@@ -952,8 +964,8 @@ impl Data<'_> {
         if liftrow >= 0 {
             let src = self.main.cur_ship.lift_row_rect[usize::try_from(liftrow).unwrap()];
             dst = src;
-            dst.inc_x(self.vars.user_rect.x() + xoffs); /* offset respective to User-Rectangle */
-            dst.inc_y(self.vars.user_rect.y() + yoffs);
+            dst.inc_x(self.vars.user_rect.x() + x_offs); /* offset respective to User-Rectangle */
+            dst.inc_y(self.vars.user_rect.y() + y_offs);
             ship_on_pic
                 .as_mut()
                 .unwrap()
@@ -968,9 +980,9 @@ impl Data<'_> {
     ///
     /// NOTE: this function does not actually _display_ anything yet,
     ///       it just prepares the display, so you need
-    ///       to call SDL_Flip() to display the result!
+    ///       to call `SDL_Flip`() to display the result!
     /// pos  : 0<=pos<=3: which menu-position is currently active?
-    /// flag : UPDATE_ONLY  only update the console-menu bar, not text & background
+    /// flag : `UPDATE_ONLY`  only update the console-menu bar, not text & background
     pub fn paint_console_menu(&mut self, pos: c_int, flag: c_int) {
         use std::fmt::Write;
 
@@ -1020,6 +1032,7 @@ impl Data<'_> {
             );
         } // only if not UPDATE_ONLY was required
 
+        #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
         let src = Rect::new(
             i16::try_from(self.vars.cons_menu_rects[0].width()).unwrap()
                 * i16::try_from(pos).unwrap()
@@ -1146,16 +1159,19 @@ impl Data<'_> {
             while let Some(level) = &self.main.cur_ship.all_levels[array_num] {
                 if level.levelnum == cur_level {
                     break;
-                } else {
-                    array_num += 1;
                 }
+
+                array_num += 1;
             }
 
             self.main.cur_level_index = Some(ArrayIndex::new(array_num));
 
             // set the position of the influencer to the correct locatiohn
-            self.vars.me.pos.x = self.main.cur_ship.all_lifts[cur_lift].x as f32;
-            self.vars.me.pos.y = self.main.cur_ship.all_lifts[cur_lift].y as f32;
+            #[allow(clippy::cast_precision_loss)]
+            {
+                self.vars.me.pos.x = self.main.cur_ship.all_lifts[cur_lift].x as f32;
+                self.vars.me.pos.y = self.main.cur_ship.all_lifts[cur_lift].y as f32;
+            }
 
             for i in 0..c_int::try_from(MAXBLASTS).unwrap() {
                 self.delete_blast(i);

@@ -7,6 +7,7 @@ pub struct Rect(pub(crate) SDL_Rect);
 
 impl Rect {
     #[inline]
+    #[must_use]
     pub const fn new(x: i16, y: i16, width: u16, height: u16) -> Self {
         Self(SDL_Rect {
             x,
@@ -17,6 +18,7 @@ impl Rect {
     }
 
     #[inline]
+    #[must_use]
     pub fn as_ptr(&self) -> *const SDL_Rect {
         &self.0
     }
@@ -27,26 +29,31 @@ impl Rect {
     }
 
     #[inline]
+    #[must_use]
     pub fn as_rect_ref(&self) -> RectRef {
         RectRef(&self.0)
     }
 
     #[inline]
+    #[must_use]
     pub fn width(&self) -> u16 {
         self.0.w
     }
 
     #[inline]
+    #[must_use]
     pub fn height(&self) -> u16 {
         self.0.h
     }
 
     #[inline]
+    #[must_use]
     pub fn x(&self) -> i16 {
         self.0.x
     }
 
     #[inline]
+    #[must_use]
     pub fn y(&self) -> i16 {
         self.0.y
     }
@@ -90,6 +97,7 @@ impl Rect {
     }
 
     #[inline]
+    #[must_use]
     pub fn center(&self) -> [i16; 2] {
         [
             self.0.x + i16::try_from(self.0.w / 2).unwrap(),
@@ -138,6 +146,7 @@ impl AsMut<SDL_Rect> for Rect {
 pub struct RectRef<'a>(&'a SDL_Rect);
 
 impl RectRef<'_> {
+    #[must_use]
     pub fn as_ptr(&self) -> *const SDL_Rect {
         self.0
     }
@@ -165,6 +174,7 @@ impl<'a> AsRef<SDL_Rect> for RectRef<'a> {
 pub struct RectMut<'a>(&'a mut SDL_Rect);
 
 impl RectMut<'_> {
+    #[must_use]
     pub fn as_ptr(&self) -> *const SDL_Rect {
         self.0
     }

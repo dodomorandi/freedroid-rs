@@ -51,10 +51,10 @@ impl Data<'_> {
             enemy.phase += (enemy.energy
                 / vars.droidmap[usize::try_from(enemy.ty).unwrap()].maxenergy)
                 * misc.frame_time(global, main.f_p_sover1)
-                * ENEMYPHASES as f32
+                * f32::from(ENEMYPHASES)
                 * 2.5;
 
-            if enemy.phase >= ENEMYPHASES as f32 {
+            if enemy.phase >= f32::from(ENEMYPHASES) {
                 enemy.phase = 0.;
             }
         }
@@ -105,21 +105,21 @@ impl Data<'_> {
             return;
         }
 
-        let mut xdist = self.vars.me.pos.x - this_robot.pos.x;
-        let mut ydist = self.vars.me.pos.y - this_robot.pos.y;
+        let mut x_dist = self.vars.me.pos.x - this_robot.pos.x;
+        let mut y_dist = self.vars.me.pos.y - this_robot.pos.y;
 
         // Add some security against division by zero
-        if xdist == 0. {
-            xdist = 0.01;
+        if x_dist == 0. {
+            x_dist = 0.01;
         }
-        if ydist == 0. {
-            ydist = 0.01;
+        if y_dist == 0. {
+            y_dist = 0.01;
         }
 
         // if odds are good, make a shot at your target
         let guntype = self.vars.droidmap[usize::try_from(this_robot.ty).unwrap()].gun;
 
-        let dist2 = (xdist * xdist + ydist * ydist).sqrt();
+        let dist2 = (x_dist * x_dist + y_dist * y_dist).sqrt();
 
         //--------------------
         //
@@ -127,11 +127,11 @@ impl Data<'_> {
         //
 
         // distance limitation only for MS mechs
-        if dist2 >= FIREDIST2 || this_robot.firewait != 0. || self.is_visible(&this_robot.pos) == 0
-        {
+        if dist2 >= FIREDIST2 || this_robot.firewait != 0. || self.is_visible(this_robot.pos) == 0 {
             return;
         }
 
+        #[allow(clippy::cast_precision_loss)]
         if my_random(AGGRESSIONMAX)
             >= self.vars.droidmap[usize::try_from(this_robot.ty).unwrap()].aggression
         {
@@ -162,19 +162,19 @@ impl Data<'_> {
         // determine the direction of the shot, so that it will go into the direction of
         // the target
 
-        if xdist.abs() > ydist.abs() {
+        if x_dist.abs() > y_dist.abs() {
             cur_bullet.speed.x = self.vars.bulletmap[usize::try_from(guntype).unwrap()].speed;
-            cur_bullet.speed.y = ydist * cur_bullet.speed.x / xdist;
-            if xdist < 0. {
+            cur_bullet.speed.y = y_dist * cur_bullet.speed.x / x_dist;
+            if x_dist < 0. {
                 cur_bullet.speed.x = -cur_bullet.speed.x;
                 cur_bullet.speed.y = -cur_bullet.speed.y;
             }
         }
 
-        if xdist.abs() < ydist.abs() {
+        if x_dist.abs() < y_dist.abs() {
             cur_bullet.speed.y = self.vars.bulletmap[usize::try_from(guntype).unwrap()].speed;
-            cur_bullet.speed.x = xdist * cur_bullet.speed.y / ydist;
-            if ydist < 0. {
+            cur_bullet.speed.x = x_dist * cur_bullet.speed.y / y_dist;
+            if y_dist < 0. {
                 cur_bullet.speed.x = -cur_bullet.speed.x;
                 cur_bullet.speed.y = -cur_bullet.speed.y;
             }
@@ -210,6 +210,7 @@ impl Data<'_> {
         // Now check if the robot is still alive
         // if the robot just got killed, initiate the
         // explosion and all that...
+        #[allow(clippy::cast_precision_loss)]
         if this_robot.energy <= 0. && (this_robot.status != Status::Terminated as c_int) {
             this_robot.status = Status::Terminated as c_int;
             self.main.real_score +=
@@ -270,26 +271,31 @@ impl Data<'_> {
             }
 
             /* get distance between enemy and cur_enemy */
-            let xdist = check_x - enemy.pos.x;
-            let ydist = check_y - enemy.pos.y;
+            let x_dist = check_x - enemy.pos.x;
+            let y_dist = check_y - enemy.pos.y;
 
-            let dist = (xdist * xdist + ydist * ydist).sqrt();
+            let dist = (x_dist * x_dist + y_dist * y_dist).sqrt();
 
             // Is there a Collision?
             if dist <= (2. * global.droid_radius) {
                 // am I waiting already?  If so, keep waiting...
+                #[allow(clippy::cast_precision_loss)]
                 if cur_enemy.warten != 0. {
-                    cur_enemy.warten = my_random(2 * WAIT_COLLISION) as f32;
+                    cur_enemy.warten = my_random(2 * i32::from(WAIT_COLLISION)) as f32;
                     continue;
                 }
 
-                enemy.warten = my_random(2 * WAIT_COLLISION) as f32;
+                enemy.warten = {
+                    #[allow(clippy::cast_precision_loss)]
+                    let warten = my_random(2 * i32::from(WAIT_COLLISION)) as f32;
+                    warten
+                };
 
-                if xdist != 0. {
-                    enemy.pos.x -= xdist / xdist.abs() * misc.frame_time(global, main.f_p_sover1);
+                if x_dist != 0. {
+                    enemy.pos.x -= x_dist / x_dist.abs() * misc.frame_time(global, main.f_p_sover1);
                 }
-                if ydist != 0. {
-                    enemy.pos.y -= ydist / ydist.abs() * misc.frame_time(global, main.f_p_sover1);
+                if y_dist != 0. {
+                    enemy.pos.y -= y_dist / y_dist.abs() * misc.frame_time(global, main.f_p_sover1);
                 }
 
                 std::mem::swap(&mut cur_enemy.nextwaypoint, &mut cur_enemy.lastwaypoint);
@@ -337,7 +343,11 @@ impl Data<'_> {
         //
         if restweg.x == 0. && restweg.y == 0. {
             this_robot.lastwaypoint = this_robot.nextwaypoint;
-            this_robot.warten = my_random(ENEMYMAXWAIT) as f32;
+            this_robot.warten = {
+                #[allow(clippy::cast_precision_loss)]
+                let warten = my_random(ENEMYMAXWAIT) as f32;
+                warten
+            };
 
             let num_con = wp_list[nextwp].num_connections;
             if num_con > 0 {

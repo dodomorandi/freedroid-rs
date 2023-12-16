@@ -15,7 +15,7 @@ use sdl_sys::{
     SDL_HWPALETTE, SDL_HWSURFACE, SDL_NOFRAME, SDL_OPENGL, SDL_OPENGLBLIT, SDL_RESIZABLE,
 };
 
-use crate::{pixel::PixelFormatRef, FrameBuffer, Surface};
+use crate::{convert, pixel::PixelFormatRef, FrameBuffer, Surface};
 
 #[derive(Debug)]
 pub struct Video {
@@ -36,14 +36,15 @@ impl Video {
         bits_per_pixel: Option<NonZeroU8>,
         flags: VideoModeFlags,
     ) -> Option<FrameBuffer> {
-        if self.refs_to_frame_buffer.get() != 0 {
-            panic!("Video::set_video_mode is called when references to video mode are alive");
-        }
+        assert!(
+            self.refs_to_frame_buffer.get() == 0,
+            "Video::set_video_mode is called when references to video mode are alive"
+        );
         unsafe {
             let surface_ptr = SDL_SetVideoMode(
                 width,
                 height,
-                bits_per_pixel.map(|bpp| bpp.get()).unwrap_or(0).into(),
+                bits_per_pixel.map_or(0, std::num::NonZeroU8::get).into(),
                 flags.bits(),
             );
             NonNull::new(surface_ptr).map(|surface_ptr| {
@@ -76,11 +77,11 @@ impl Video {
         }
 
         let len = buffer.len().try_into().unwrap_or(c_int::MAX);
-        let pointer = unsafe { SDL_VideoDriverName(buffer.as_mut_ptr() as *mut c_char, len) };
+        let pointer = unsafe { SDL_VideoDriverName(buffer.as_mut_ptr().cast::<c_char>(), len) };
         pointer
             .is_null()
             .not()
-            .then(|| unsafe { CStr::from_ptr(buffer.as_ptr() as *const c_char) })
+            .then(|| unsafe { CStr::from_ptr(buffer.as_ptr().cast::<c_char>()) })
     }
 
     pub fn window_manager(&self) -> WindowManager<'_> {
@@ -92,14 +93,16 @@ impl Video {
 pub struct WindowManager<'a>(&'a Video);
 
 impl WindowManager<'_> {
+    #[allow(clippy::unused_self)]
     pub fn set_caption(&self, title: &CStr, icon: &CStr) {
         unsafe { SDL_WM_SetCaption(title.as_ptr(), icon.as_ptr()) }
     }
 
     pub fn set_icon(&self, icon: &mut Surface, mask: Option<&mut [u8]>) {
-        if self.0.refs_to_frame_buffer.get() > 0 {
-            panic!("SDL video wm set_icon must be called before set_video_mode");
-        }
+        assert!(
+            self.0.refs_to_frame_buffer.get() == 0,
+            "SDL video wm set_icon must be called before set_video_mode"
+        );
 
         if let Some(mask) = mask.as_ref() {
             assert_eq!(mask.len(), (icon.height() * (icon.width() / 8)).into());
@@ -108,8 +111,8 @@ impl WindowManager<'_> {
         unsafe {
             SDL_WM_SetIcon(
                 icon.as_mut_ptr(),
-                mask.map(|mask| mask.as_mut_ptr()).unwrap_or(null_mut()),
-            )
+                mask.map_or(null_mut(), <[u8]>::as_mut_ptr),
+            );
         }
     }
 }
@@ -123,7 +126,7 @@ bitflags! {
         const ANY_FORMAT = SDL_ANYFORMAT as u32;
         const HARDWARE_PALETTE = SDL_HWPALETTE as u32;
         const DOUBLE_BUFFER = SDL_DOUBLEBUF as u32;
-        const FULLSCREEN = SDL_FULLSCREEN as u32;
+        const FULLSCREEN = convert::i64_to_u32(SDL_FULLSCREEN);
         const OPENGL = SDL_OPENGL as u32;
         const OPENGL_BLIT = SDL_OPENGLBLIT as u32;
         const RESIZABLE = SDL_RESIZABLE as u32;

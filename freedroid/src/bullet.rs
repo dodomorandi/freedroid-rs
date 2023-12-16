@@ -59,7 +59,8 @@ impl Data<'_> {
                         continue;
                     }
 
-                    if self.is_visible(&enemy.pos) != 0
+                    #[allow(clippy::cast_precision_loss)]
+                    if self.is_visible(enemy.pos) != 0
                         && self.vars.droidmap[usize::try_from(enemy.ty).unwrap()].flashimmune == 0
                     {
                         let enemy = &mut self.main.all_enemys[enemy_index];
@@ -73,6 +74,7 @@ impl Data<'_> {
 
                 // droids with flash are always flash-immune!
                 // -> we don't get hurt by our own flashes!
+                #[allow(clippy::cast_precision_loss)]
                 if self.main.invincible_mode == 0
                     && self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].flashimmune
                         == 0
@@ -107,6 +109,7 @@ impl Data<'_> {
                 cur_bullet.pos.x = cur_bullet.prev_pos.x;
                 cur_bullet.pos.y = cur_bullet.prev_pos.y;
 
+                #[allow(clippy::cast_possible_truncation)]
                 for _ in 0..(num_check_steps as i32) {
                     let cur_bullet = &mut self.main.all_bullets[usize::try_from(num).unwrap()];
                     cur_bullet.pos.x += step.x;
@@ -128,12 +131,13 @@ impl Data<'_> {
 
                     // check for collision with influencer
                     if !cur_bullet.mine {
-                        let xdist = self.vars.me.pos.x - cur_bullet.pos.x;
-                        let ydist = self.vars.me.pos.y - cur_bullet.pos.y;
+                        let x_dist = self.vars.me.pos.x - cur_bullet.pos.x;
+                        let y_dist = self.vars.me.pos.y - cur_bullet.pos.y;
                         // FIXME: don't use DRUIDHITDIST2!!
-                        if (xdist * xdist + ydist * ydist) < self.get_druid_hit_dist_squared() {
+                        if (x_dist * x_dist + y_dist * y_dist) < self.get_druid_hit_dist_squared() {
                             self.got_hit_sound();
 
+                            #[allow(clippy::cast_precision_loss)]
                             if self.main.invincible_mode == 0 {
                                 self.vars.me.energy -=
                                     self.vars.bulletmap[usize::from(cur_bullet.ty)].damage as f32;
@@ -157,11 +161,12 @@ impl Data<'_> {
                             continue;
                         }
 
-                        let xdist = cur_bullet.pos.x - enemy.pos.x;
-                        let ydist = cur_bullet.pos.y - enemy.pos.y;
+                        let x_dist = cur_bullet.pos.x - enemy.pos.x;
+                        let y_dist = cur_bullet.pos.y - enemy.pos.y;
 
                         // FIXME
-                        if (xdist * xdist + ydist * ydist) < self.get_druid_hit_dist_squared() {
+                        #[allow(clippy::cast_precision_loss)]
+                        if (x_dist * x_dist + y_dist * y_dist) < self.get_druid_hit_dist_squared() {
                             // The enemy who was hit, loses some energy, depending on the bullet
                             self.main.all_enemys[enemy_index].energy -=
                                 self.vars.bulletmap[usize::from(cur_bullet.ty)].damage as f32;
@@ -195,9 +200,9 @@ impl Data<'_> {
                         } // never check for collisions with flashes bullets..
 
                         let cur_bullet = &self.main.all_bullets[usize::try_from(num).unwrap()];
-                        let xdist = bullet.pos.x - cur_bullet.pos.x;
-                        let ydist = bullet.pos.y - cur_bullet.pos.y;
-                        if xdist * xdist + ydist * ydist > BULLET_COLL_DIST2 {
+                        let x_dist = bullet.pos.x - cur_bullet.pos.x;
+                        let y_dist = bullet.pos.y - cur_bullet.pos.y;
+                        if x_dist * x_dist + y_dist * y_dist > BULLET_COLL_DIST2 {
                             continue;
                         }
 
@@ -224,6 +229,7 @@ impl Data<'_> {
     pub fn explode_blasts(&mut self) {
         for blast_index in 0..MAXBLASTS {
             let cur_blast = &self.main.all_blasts[blast_index];
+            #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
             if cur_blast.ty != Status::Out as c_int {
                 if cur_blast.ty == Explosion::Druidblast as c_int {
                     self.check_blast_collisions(blast_index.try_into().unwrap());
@@ -259,11 +265,11 @@ impl Data<'_> {
                 continue;
             }
 
-            let vdist = Vect {
+            let v_dist = Vect {
                 x: cur_bullet.pos.x - cur_blast.px,
                 y: cur_bullet.pos.y - cur_blast.py,
             };
-            let dist = (vdist.x * vdist.x + vdist.y * vdist.y).sqrt();
+            let dist = (v_dist.x * v_dist.x + v_dist.y * v_dist.y).sqrt();
             if dist < self.global.blast_radius {
                 let pos_x = cur_bullet.pos.x;
                 let pos_y = cur_bullet.pos.y;
@@ -282,11 +288,11 @@ impl Data<'_> {
                 continue;
             }
 
-            let vdist = Vect {
+            let v_dist = Vect {
                 x: enemy.pos.x - cur_blast.px,
                 y: enemy.pos.y - cur_blast.py,
             };
-            let dist = (vdist.x * vdist.x + vdist.y * vdist.y).sqrt();
+            let dist = (v_dist.x * v_dist.x + v_dist.y * v_dist.y).sqrt();
 
             if dist < global.blast_radius + global.droid_radius {
                 /* drag energy of enemy */
@@ -300,11 +306,11 @@ impl Data<'_> {
         }
 
         /* Check influence-Blast collisions */
-        let vdist = Vect {
+        let v_dist = Vect {
             x: self.vars.me.pos.x - cur_blast.px,
             y: self.vars.me.pos.y - cur_blast.py,
         };
-        let dist = (vdist.x * vdist.x + vdist.y * vdist.y).sqrt();
+        let dist = (v_dist.x * v_dist.x + v_dist.y * v_dist.y).sqrt();
 
         if self.vars.me.status != Status::Out as c_int
             && !cur_blast.mine
@@ -369,7 +375,7 @@ impl Data<'_> {
     }
 
     /// delete bullet of given number, set it type=OUT, put it at x/y=-1/-1
-    /// and create a Bullet-blast if with_blast==TRUE
+    /// and create a Bullet-blast if `with_blast==TRUE`
     pub fn delete_bullet(&mut self, bullet_number: c_int) {
         let cur_bullet = &mut self.main.all_bullets[usize::try_from(bullet_number).unwrap()];
 

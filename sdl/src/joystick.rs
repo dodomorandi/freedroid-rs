@@ -19,11 +19,13 @@ pub struct Joystick {
 }
 
 impl JoystickSystem {
+    #[must_use]
     pub fn num_joysticks(&self) -> Option<u32> {
         let num = unsafe { SDL_NumJoysticks() };
         num.try_into().ok()
     }
 
+    #[must_use]
     pub fn open(&self, index: u32) -> Option<Joystick> {
         let index = index.try_into().expect("invalid joystick index");
         let joystick = unsafe { SDL_JoystickOpen(index) };
@@ -51,6 +53,7 @@ impl JoystickSystem {
 }
 
 impl Joystick {
+    #[must_use]
     pub fn name(&self) -> Option<&CStr> {
         unsafe {
             let ptr = SDL_JoystickName(self.index);
@@ -58,11 +61,13 @@ impl Joystick {
         }
     }
 
+    #[must_use]
     pub fn axes(&self) -> u16 {
         let axes = unsafe { SDL_JoystickNumAxes(self.inner.as_ptr()) };
         axes.try_into().unwrap()
     }
 
+    #[must_use]
     pub fn buttons(&self) -> u16 {
         let buttons = unsafe { SDL_JoystickNumButtons(self.inner.as_ptr()) };
         buttons.try_into().unwrap()

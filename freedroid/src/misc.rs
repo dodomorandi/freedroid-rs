@@ -39,7 +39,7 @@ impl Default for Misc {
         Self {
             previous_time: 0.1,
             current_time_factor: 1.,
-            file_path: Default::default(),
+            file_path: ArrayCString::default(),
             frame_nr: 0,
             one_frame_sdl_ticks: 0,
             now_sdl_ticks: 0,
@@ -49,7 +49,7 @@ impl Default for Misc {
 }
 
 /// This function is used to generate a random integer in the range
-/// from [0 to upper_bound] (inclusive), distributed uniformly.
+/// from [0 to `upper_bound`] (inclusive), distributed uniformly.
 pub fn my_random(upper_bound: c_int) -> c_int {
     thread_rng().gen_range(0..=upper_bound)
 }
@@ -81,17 +81,13 @@ pub fn read_float_from_string(data: &[u8], label: &[u8]) -> f32 {
     let pos = locate_string_in_data(data, label) + label.len();
     let data = &data[pos..];
 
-    let (_, (_, out)) = space0
-        .and(float)
-        .parse(data)
-        .finish()
-        .unwrap_or_else(|_: ()| {
-            panic!(
-                "ReadValueFromString(): could not read float {} of label {}",
-                <&BStr>::from(data),
-                <&BStr>::from(label),
-            );
-        });
+    let Ok((_, (_, out))) = space0::<_, ()>.and(float).parse(data).finish() else {
+        panic!(
+            "ReadValueFromString(): could not read float {} of label {}",
+            <&BStr>::from(data),
+            <&BStr>::from(label),
+        );
+    };
     out
 }
 
@@ -101,17 +97,13 @@ pub fn read_i32_from_string(data: &[u8], label: &[u8]) -> i32 {
     let pos = locate_string_in_data(data, label) + label.len();
     let data = &data[pos..];
 
-    let (_, (_, out)) = space0
-        .and(i32)
-        .parse(data)
-        .finish()
-        .unwrap_or_else(|_: ()| {
-            panic!(
-                "could not read float {} of label {}",
-                <&BStr>::from(data),
-                <&BStr>::from(label),
-            );
-        });
+    let Ok((_, (_, out))) = space0::<_, ()>.and(i32).parse(data).finish() else {
+        panic!(
+            "could not read float {} of label {}",
+            <&BStr>::from(data),
+            <&BStr>::from(label),
+        );
+    };
     out
 }
 
@@ -121,17 +113,13 @@ pub fn read_i16_from_string(data: &[u8], label: &[u8]) -> i16 {
     let pos = locate_string_in_data(data, label) + label.len();
     let data = &data[pos..];
 
-    let (_, (_, out)) = space0
-        .and(i16)
-        .parse(data)
-        .finish()
-        .unwrap_or_else(|_: ()| {
-            panic!(
-                "could not read float {} of label {}",
-                <&BStr>::from(data),
-                <&BStr>::from(label),
-            );
-        });
+    let Ok((_, (_, out))) = space0::<_, ()>.and(i16).parse(data).finish() else {
+        panic!(
+            "could not read float {} of label {}",
+            <&BStr>::from(data),
+            <&BStr>::from(label),
+        );
+    };
     out
 }
 
@@ -139,9 +127,8 @@ pub fn read_string_from_string<'a>(data: &'a [u8], label: &[u8]) -> &'a [u8] {
     let pos = locate_string_in_data(data, label) + label.len();
     let data = &data[pos..];
     data.iter()
-        .position(|c| c.is_ascii_whitespace())
-        .map(|pos| &data[..pos])
-        .unwrap_or(data)
+        .position(u8::is_ascii_whitespace)
+        .map_or(data, |pos| &data[..pos])
 }
 
 /// This function tries to locate a string in some given data string.
@@ -281,21 +268,23 @@ pub fn read_and_malloc_string_from_data(
 
 impl Data<'_> {
     pub fn update_progress(&mut self, percent: c_int) {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let h =
             (f64::from(self.vars.progress_bar_rect.height()) * f64::from(percent) / 100.) as u16;
         let mut dst = Rect::new(
             self.vars.progress_bar_rect.x() + self.vars.progress_meter_rect.x(),
             self.vars.progress_bar_rect.y()
                 + self.vars.progress_meter_rect.y()
-                + self.vars.progress_bar_rect.height() as i16
-                - h as i16,
+                + i16::try_from(self.vars.progress_bar_rect.height()).unwrap()
+                - i16::try_from(h).unwrap(),
             self.vars.progress_bar_rect.width(),
             h,
         );
 
         let src = Rect::new(
             0,
-            self.vars.progress_bar_rect.height() as i16 - dst.height() as i16,
+            i16::try_from(self.vars.progress_bar_rect.height()).unwrap()
+                - i16::try_from(dst.height()).unwrap(),
             dst.height(),
             0,
         );
@@ -326,13 +315,13 @@ impl Data<'_> {
     /// is entered or a takeover game takes place.  This might cause HUGE framerates, that could
     /// box the influencer out of the ship if used to calculate the new position.
     ///
-    /// To counter unwanted effects after such events we have the SkipAFewFramerates counter,
-    /// which instructs Rate_To_Be_Returned to return only the overall default framerate since
+    /// To counter unwanted effects after such events we have the `SkipAFewFramerates` counter,
+    /// which instructs `Rate_To_Be_Returned` to return only the overall default framerate since
     /// no better substitute exists at this moment.  But on the other hand, this seems to
     /// work REALLY well this way.
     ///
     /// This counter is most conveniently set via the function
-    /// Activate_Conservative_Frame_Computation, which can be conveniently called from eveywhere.
+    /// `Activate_Conservative_Frame_Computation`, which can be conveniently called from eveywhere.
     pub fn frame_time(&mut self) -> c_float {
         let Self {
             global, misc, main, ..
@@ -378,10 +367,10 @@ impl Data<'_> {
             let cond = self.key_is_pressed_r(b'c'.into());
 
             if cond {
-                if self.vars.me.status != Status::Cheese as i32 {
-                    self.vars.me.status = Status::Cheese as i32;
-                } else {
+                if self.vars.me.status == Status::Cheese as i32 {
                     self.vars.me.status = Status::Pause as i32;
+                } else {
+                    self.vars.me.status = Status::Cheese as i32;
                 }
                 cheese = !cheese;
             }
@@ -402,15 +391,12 @@ impl Data<'_> {
         }
 
         let config_path = Path::new(self.main.config_dir.to_str().unwrap()).join("config");
-        let mut config = match File::create(&config_path) {
-            Ok(config) => config,
-            Err(_) => {
-                warn!(
-                    "WARNING: failed to create config-file: {}",
-                    config_path.display()
-                );
-                return defs::ERR.into();
-            }
+        let Ok(mut config) = File::create(&config_path) else {
+            warn!(
+                "WARNING: failed to create config-file: {}",
+                config_path.display()
+            );
+            return defs::ERR.into();
         };
 
         // Now write the actual data, line by line
@@ -588,7 +574,10 @@ impl Data<'_> {
         } else {
             1
         }; // avoid division by zero
-        self.main.f_p_sover1 = (1000. / *one_frame_delay as f64) as f32;
+        #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
+        {
+            self.main.f_p_sover1 = (1000. / *one_frame_delay as f64) as f32;
+        }
     }
 
     pub fn activate_conservative_frame_computation(&mut self) {
@@ -600,22 +589,22 @@ impl Data<'_> {
         self.graphics.banner_is_destroyed = true.into();
     }
 
-    /// Find a given filename in subdir relative to FD_DATADIR,
+    /// Find a given filename in subdir relative to `FD_DATADIR`,
     ///
     /// if you pass NULL as "subdir", it will be ignored
     ///
-    /// use current-theme subdir if "use_theme" == USE_THEME, otherwise NO_THEME
+    /// use current-theme subdir if "`use_theme`" =`USE_THEME`ME, otherw`NO_THEME`HEME
     ///
     /// behavior on file-not-found depends on parameter "critical"
     ///  IGNORE: just return NULL
     ///  WARNONLY: warn and return NULL
     ///  CRITICAL: Error-message and Terminate
     ///
-    /// returns pointer to _static_ string array File_Path, which
+    /// returns pointer to _static_ string array `File_Path`, which
     /// contains the full pathname of the file.
     ///
     /// !! do never try to free the returned string !!
-    /// or to keep using it after a new call to find_file!
+    /// or to keep using it after a new call to `find_file`!
     pub fn find_file<'a>(
         &'a mut self,
         fname: &[u8],
@@ -664,7 +653,7 @@ impl Data<'_> {
             if let Some(subdir) = subdir {
                 write!(misc.file_path, "/{}", subdir.to_string_lossy()).unwrap();
             }
-            write!(misc.file_path, "/{theme_dir}/{}", fname).unwrap();
+            write!(misc.file_path, "/{theme_dir}/{fname}").unwrap();
 
             misc.file_path
                 .to_str()
@@ -678,11 +667,8 @@ impl Data<'_> {
         }
 
         if !found {
-            let critical = match critical.try_into() {
-                Ok(critical) => critical,
-                Err(_) => {
-                    panic!("ERROR in find_file(): Code should never reach this line!! Harakiri",);
-                }
+            let Ok(critical) = critical.try_into() else {
+                panic!("ERROR in find_file(): Code should never reach this line!! Harakiri");
             };
             // how critical is this file for the game:
             match critical {
@@ -707,7 +693,7 @@ impl Data<'_> {
                         global.game_config.theme_name.to_string_lossy(),
                     );
                     } else {
-                        panic!("file {} not found, cannot run without it!", fname);
+                        panic!("file {fname} not found, cannot run without it!");
                     }
                 }
             }
@@ -716,7 +702,7 @@ impl Data<'_> {
         Some(&*misc.file_path)
     }
 
-    /// show_progress: display empty progress meter with given text
+    /// `show_progress`: display empty progress meter with given text
     pub fn init_progress(&mut self, text: &str) {
         if self.graphics.progress_meter_pic.is_none() {
             let fpath = Self::find_file_static(
@@ -783,7 +769,7 @@ impl Data<'_> {
             &mut ne_screen,
             dst.x().into(),
             dst.y().into(),
-            format_args!("{}", text),
+            format_args!("{text}"),
         );
 
         assert!(ne_screen.flip());
@@ -796,7 +782,15 @@ impl Data<'_> {
         let cur_level = level_num;
         let mut array_num = 0;
 
-        if cur_level != self.main.cur_level().levelnum {
+        #[allow(clippy::cast_precision_loss)]
+        if cur_level == self.main.cur_level().levelnum {
+            //--------------------
+            // If no real level change has occured, everything
+            // is simple and we just need to set the new coordinates, haha
+            //
+            self.vars.me.pos.x = x as f32;
+            self.vars.me.pos.y = y as f32;
+        } else {
             //--------------------
             // In case a real level change has happend,
             // we need to do a lot of work:
@@ -804,9 +798,8 @@ impl Data<'_> {
             while let Some(level) = &self.main.cur_ship.all_levels[array_num] {
                 if level.levelnum == cur_level {
                     break;
-                } else {
-                    array_num += 1;
                 }
+                array_num += 1;
             }
 
             self.main.cur_level_index = Some(ArrayIndex::new(array_num));
@@ -823,13 +816,6 @@ impl Data<'_> {
                 .take(MAXBLASTS)
                 .for_each(|blast| blast.ty = Status::Out as i32);
             (0..MAXBULLETS).for_each(|bullet| self.delete_bullet(bullet.try_into().unwrap()));
-        } else {
-            //--------------------
-            // If no real level change has occured, everything
-            // is simple and we just need to set the new coordinates, haha
-            //
-            self.vars.me.pos.x = x as f32;
-            self.vars.me.pos.y = y as f32;
         }
 
         self.leave_lift_sound();
@@ -900,32 +886,26 @@ impl Data<'_> {
                 "Couldn't stat Config-dir {}, I'll try to create it...",
                 config_dir.display()
             );
-            match fs::create_dir(&config_dir) {
-                Ok(()) => {
-                    info!("Successfully created config-dir '{}'", config_dir.display());
-                    return defs::OK.into();
-                }
-                Err(_) => {
-                    error!(
-                        "Failed to create config-dir: {}. Giving up...",
-                        config_dir.display()
-                    );
-                    return defs::ERR.into();
-                }
-            }
+            let retval = if fs::create_dir(&config_dir).is_ok() {
+                info!("Successfully created config-dir '{}'", config_dir.display());
+                defs::OK.into()
+            } else {
+                error!(
+                    "Failed to create config-dir: {}. Giving up...",
+                    config_dir.display()
+                );
+                defs::ERR.into()
+            };
+
+            return retval;
         }
 
         let config_path = config_dir.join("config");
-        let data = match fs::read(&config_path) {
-            Ok(data) => {
-                info!("Successfully read config-file '{}'", config_path.display());
-                data
-            }
-            Err(_) => {
-                error!("failed to open config-file: {}", config_path.display());
-                return defs::ERR.into();
-            }
+        let Ok(data) = fs::read(&config_path) else {
+            error!("failed to open config-file: {}", config_path.display());
+            return defs::ERR.into();
         };
+        info!("Successfully read config-file '{}'", config_path.display());
 
         if read_variable(&data, VERSION_STRING).is_none() {
             error!("Version string could not be read in config-file...");
@@ -996,7 +976,7 @@ fn read_variable<'a>(data: &'a [u8], var_name: &str) -> Option<&'a [u8]> {
     data.lines()
         .filter_map(|line| line.trim_start().strip_prefix(var_name.as_bytes()))
         .filter_map(|line| line.trim_start().strip_prefix(b"="))
-        .map(|line| line.trim())
+        .map(ByteSlice::trim)
         .next()
 }
 

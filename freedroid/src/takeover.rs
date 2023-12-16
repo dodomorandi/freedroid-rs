@@ -27,7 +27,7 @@ mod map {
         ops::{Deref, DerefMut, Index, IndexMut},
     };
 
-    use super::*;
+    use super::{NUM_LAYERS, NUM_LINES};
 
     macro_rules! impl_traits {
         ($ty:ident, $inner:ident) => {
@@ -392,10 +392,10 @@ enum Condition {
 
 impl Condition {
     const fn is_active(self) -> bool {
-        use Condition::*;
+        use Condition as C;
         match self {
-            Inactive => false,
-            Active1 | Active2 | Active3 | Active4 => true,
+            C::Inactive => false,
+            C::Active1 | C::Active2 | C::Active3 | C::Active4 => true,
         }
     }
 
@@ -404,27 +404,27 @@ impl Condition {
     }
 
     fn next_active(self) -> Condition {
-        use Condition::*;
+        use Condition as C;
 
         match self {
-            Active1 => Active2,
-            Active2 => Active3,
-            Active3 => Active4,
-            Active4 => Active1,
-            Inactive => panic!("next_active called on inactive condition"),
+            C::Active1 => C::Active2,
+            C::Active2 => C::Active3,
+            C::Active3 => C::Active4,
+            C::Active4 => C::Active1,
+            C::Inactive => panic!("next_active called on inactive condition"),
         }
     }
 }
 
 impl From<Condition> for usize {
     fn from(condition: Condition) -> Self {
-        use Condition::*;
+        use Condition as C;
         match condition {
-            Inactive => 0,
-            Active1 => 1,
-            Active2 => 2,
-            Active3 => 3,
-            Active4 => 4,
+            C::Inactive => 0,
+            C::Active1 => 1,
+            C::Active2 => 2,
+            C::Active3 => 3,
+            C::Active4 => 4,
         }
     }
 }
@@ -453,11 +453,10 @@ macro_rules! impl_try_from_to_color {
                 type Error = Infallible;
 
                 fn try_from(value: $ty) -> Result<Self, Self::Error> {
-                    use Color::*;
                     Ok(match value {
-                        0 => Yellow,
-                        1 => Violet,
-                        2 => Draw,
+                        0 => Color::Yellow,
+                        1 => Color::Violet,
+                        2 => Color::Draw,
                         _ => panic!("invalid raw color value"),
                     })
                 }
@@ -469,11 +468,10 @@ impl_try_from_to_color!(u8, i8, u16, i16, u32, i32, u64, i64, usize, isize);
 
 impl From<Color> for usize {
     fn from(color: Color) -> Self {
-        use Color::*;
         match color {
-            Yellow => 0,
-            Violet => 1,
-            Draw => 2,
+            Color::Yellow => 0,
+            Color::Violet => 1,
+            Color::Draw => 2,
         }
     }
 }
@@ -493,14 +491,14 @@ impl TryFrom<u8> for ToElement {
     type Error = Infallible;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
-        use ToElement::*;
+        use ToElement as T;
         Ok(match value {
-            0 => Cable,
-            1 => CableEnd,
-            2 => Repeater,
-            3 => ColorSwapper,
-            4 => Branch,
-            5 => Gate,
+            0 => T::Cable,
+            1 => T::CableEnd,
+            2 => T::Repeater,
+            3 => T::ColorSwapper,
+            4 => T::Branch,
+            5 => T::Gate,
             _ => panic!("invalid raw ToElement value"),
         })
     }
@@ -523,19 +521,16 @@ enum Block {
 
 impl Block {
     const fn is_connector(self) -> bool {
-        use Block::*;
+        use Block as B;
         match self {
-            Cable => true,
-            CableEnd => false,
-            Repeater => true,
-            ColorSwapper => true,
-            BranchAbove => true,
-            BranchMiddle => false,
-            BranchBelow => true,
-            GateAbove => false,
-            GateMiddle => true,
-            GateBelow => false,
-            Empty => false,
+            B::Cable
+            | B::Repeater
+            | B::ColorSwapper
+            | B::BranchAbove
+            | B::BranchBelow
+            | B::GateMiddle => true,
+
+            B::CableEnd | B::BranchMiddle | B::GateAbove | B::GateBelow | B::Empty => false,
         }
     }
 }
@@ -581,13 +576,13 @@ impl Takeover<'_> {
                         playground_layer
                             .iter()
                             .enumerate()
-                            .for_each(|(row, playground_block)| {
+                            .for_each(|(row, &playground_block)| {
                                 process_playground_row(
                                     row,
                                     playground_block,
                                     &**activation_layer_last,
                                     &mut **activation_layer,
-                                )
+                                );
                             });
                     });
 
@@ -613,42 +608,30 @@ impl Takeover<'_> {
 #[inline]
 fn process_playground_row(
     row: usize,
-    playground: &Block,
+    playground: Block,
     activation_layer_last: &[Condition],
     activation_layer: &mut [Condition],
 ) {
+    use Block as B;
+
     let activation_last_layer = activation_layer_last[row];
     let (activation_last, activation_layer) = activation_layer.split_at_mut(row);
     let activation_last = activation_last.last().copied();
     let (activation, activation_layer) = activation_layer.split_first_mut().unwrap();
     let activation_next = activation_layer.first().copied();
 
-    use Block::*;
     let turn_active = match playground {
-        ColorSwapper | BranchMiddle | GateAbove | GateBelow | Cable => {
+        B::ColorSwapper | B::BranchMiddle | B::GateAbove | B::GateBelow | B::Cable => {
             activation_last_layer.is_active()
         }
-
-        Repeater => activation_last_layer.is_active() || activation.is_active(),
-
-        BranchAbove => activation_next
-            .map(|condition| condition.is_active())
-            .unwrap_or(false),
-
-        BranchBelow => activation_last
-            .map(|condition| condition.is_active())
-            .unwrap_or(false),
-
-        GateMiddle => {
-            activation_last
-                .map(|condition| condition.is_active())
-                .unwrap_or(false)
-                && activation_next
-                    .map(|condition| condition.is_active())
-                    .unwrap_or(false)
+        B::Repeater => activation_last_layer.is_active() || activation.is_active(),
+        B::BranchAbove => activation_next.is_some_and(Condition::is_active),
+        B::BranchBelow => activation_last.is_some_and(Condition::is_active),
+        B::GateMiddle => {
+            activation_last.is_some_and(Condition::is_active)
+                && activation_next.is_some_and(Condition::is_active)
         }
-
-        CableEnd | Empty => false,
+        B::CableEnd | B::Empty => false,
     };
 
     if turn_active {
@@ -679,7 +662,7 @@ impl Data<'_> {
             .iter_mut()
             .zip((0..).step_by(usize::from(fill_block.width()) + 2))
             .for_each(|(rect, cur_x)| {
-                *rect = Rect::new(cur_x, 0, fill_block.width(), fill_block.height())
+                *rect = Rect::new(cur_x, 0, fill_block.width(), fill_block.height());
             });
 
         /* Set the capsule Blocks */
@@ -689,7 +672,7 @@ impl Data<'_> {
             .iter_mut()
             .zip((start_x..).step_by(usize::from(capsule_rect.width()) + 2))
             .for_each(|(rect, cur_x)| {
-                *rect = Rect::new(cur_x, 0, capsule_rect.width(), capsule_rect.height() - 2)
+                *rect = Rect::new(cur_x, 0, capsule_rect.width(), capsule_rect.height() - 2);
             });
 
         /* get the game-blocks */
@@ -723,7 +706,7 @@ impl Data<'_> {
                     cur_y.try_into().unwrap(),
                     element_rect.width(),
                     element_rect.height(),
-                )
+                );
             });
         let mut cur_y = (self.takeover.fill_block.height() + 2)
             + (self.takeover.element_rect.height() + 2) * u16::try_from(NUM_PHASES).unwrap() * 2;
@@ -738,7 +721,7 @@ impl Data<'_> {
                     cur_y.try_into().unwrap(),
                     ground_rect.width(),
                     ground_rect.height(),
-                )
+                );
             });
         cur_y += self.takeover.ground_rect.height() + 2;
         self.takeover.column_block = Rect::new(
@@ -828,8 +811,8 @@ impl Data<'_> {
         self.takeover
             .activation_map
             .iter_mut()
-            .flat_map(|color_map| color_map.iter_mut())
-            .flat_map(|layer_map| layer_map.iter_mut())
+            .flat_map(map::Line::iter_mut)
+            .flat_map(map::Layer::iter_mut)
             .filter(|condition| condition.is_active())
             .for_each(|condition| *condition = condition.next_active());
     }
@@ -866,6 +849,8 @@ impl Data<'_> {
     }
 
     fn process_display_column(&mut self) {
+        use std::cmp::Ordering;
+
         const CONNECTION_LAYER: usize = 3;
 
         self.takeover.flicker_color = !self.takeover.flicker_color;
@@ -935,7 +920,6 @@ impl Data<'_> {
             }
         }
 
-        use std::cmp::Ordering;
         match violet_counter.cmp(&yellow_counter) {
             Ordering::Less => self.takeover.leader_color = Color::Yellow,
             Ordering::Greater => self.takeover.leader_color = Color::Violet,
@@ -1086,7 +1070,7 @@ impl Data<'_> {
             });
     }
 
-    /// Clears Playground (and self.takeover.activation_map) to default start-values
+    /// Clears Playground (and `self.takeover.activation_map`) to default start-values
     fn clear_playground(&mut self) {
         self.takeover
             .activation_map
@@ -1117,8 +1101,8 @@ impl Data<'_> {
         let your_color: usize = self.takeover.your_color.into();
         let opponent_color: usize = self.takeover.opponent_color.into();
 
-        let xoffs = self.vars.classic_user_rect.x();
-        let yoffs = self.vars.classic_user_rect.y();
+        let x_offs = self.vars.classic_user_rect.x();
+        let y_offs = self.vars.classic_user_rect.y();
 
         let Data {
             graphics:
@@ -1141,8 +1125,8 @@ impl Data<'_> {
         vars.user_rect = user_rect;
 
         self.put_influence(
-            i32::from(xoffs) + self.takeover.droid_starts[your_color].x,
-            i32::from(yoffs) + self.takeover.droid_starts[your_color].y,
+            i32::from(x_offs) + self.takeover.droid_starts[your_color].x,
+            i32::from(y_offs) + self.takeover.droid_starts[your_color].y,
         );
 
         if self.main.all_enemys[usize::try_from(self.takeover.droid_num).unwrap()].status
@@ -1150,14 +1134,14 @@ impl Data<'_> {
         {
             self.put_enemy(
                 self.takeover.droid_num,
-                i32::from(xoffs) + self.takeover.droid_starts[opponent_color].x,
-                i32::from(yoffs) + self.takeover.droid_starts[opponent_color].y,
+                i32::from(x_offs) + self.takeover.droid_starts[opponent_color].x,
+                i32::from(y_offs) + self.takeover.droid_starts[opponent_color].y,
             );
         }
 
         let mut dst = Rect::new(
-            xoffs + i16::try_from(self.takeover.left_ground_start.x).unwrap(),
-            yoffs + i16::try_from(self.takeover.left_ground_start.y).unwrap(),
+            x_offs + i16::try_from(self.takeover.left_ground_start.x).unwrap(),
+            y_offs + i16::try_from(self.takeover.left_ground_start.y).unwrap(),
             self.vars.user_rect.width(),
             self.vars.user_rect.height(),
         );
@@ -1200,8 +1184,8 @@ impl Data<'_> {
         );
 
         dst = Rect::new(
-            xoffs + i16::try_from(self.takeover.leader_block_start.x).unwrap(),
-            yoffs + i16::try_from(self.takeover.leader_block_start.y).unwrap(),
+            x_offs + i16::try_from(self.takeover.leader_block_start.x).unwrap(),
+            y_offs + i16::try_from(self.takeover.leader_block_start.y).unwrap(),
             0,
             0,
         );
@@ -1223,8 +1207,8 @@ impl Data<'_> {
 
         /* rechte Saeule */
         dst = Rect::new(
-            xoffs + i16::try_from(self.takeover.right_ground_start.x).unwrap(),
-            yoffs + i16::try_from(self.takeover.right_ground_start.y).unwrap(),
+            x_offs + i16::try_from(self.takeover.right_ground_start.x).unwrap(),
+            y_offs + i16::try_from(self.takeover.right_ground_start.y).unwrap(),
             0,
             0,
         );
@@ -1254,8 +1238,8 @@ impl Data<'_> {
         /* Fill the Leader-LED with its color */
         let leader_color = usize::from(self.takeover.leader_color);
         dst = Rect::new(
-            xoffs + self.takeover.leader_led.x(),
-            yoffs + self.takeover.leader_led.y(),
+            x_offs + self.takeover.leader_led.x(),
+            y_offs + self.takeover.leader_led.y(),
             0,
             0,
         );
@@ -1302,8 +1286,8 @@ impl Data<'_> {
             .enumerate()
             .for_each(|(line, display_column)| {
                 dst = Rect::new(
-                    xoffs + i16::try_from(column_start.x).unwrap(),
-                    yoffs
+                    x_offs + i16::try_from(column_start.x).unwrap(),
+                    y_offs
                         + i16::try_from(column_start.y).unwrap()
                         + i16::try_from(line).unwrap()
                             * i16::try_from(column_rect.height()).unwrap(),
@@ -1346,10 +1330,10 @@ impl Data<'_> {
             .for_each(
                 |(layer_index, line_index, playground_line, activation_line)| {
                     dst = Rect::new(
-                        xoffs
+                        x_offs
                             + i16::try_from(playground_starts[Color::Yellow as usize].x).unwrap()
                             + layer_index * i16::try_from(element_rect.width()).unwrap(),
-                        yoffs
+                        y_offs
                             + i16::try_from(playground_starts[Color::Yellow as usize].y).unwrap()
                             + line_index * i16::try_from(element_rect.height()).unwrap(),
                         0,
@@ -1394,11 +1378,11 @@ impl Data<'_> {
             .for_each(
                 |(layer_index, line_index, playground_line, activation_line)| {
                     dst = Rect::new(
-                        xoffs
+                        x_offs
                             + i16::try_from(playground_starts[Color::Violet as usize].x).unwrap()
                             + (i16::try_from(NUM_LAYERS).unwrap() - layer_index - 2)
                                 * i16::try_from(element_rect.width()).unwrap(),
-                        yoffs
+                        y_offs
                             + i16::try_from(playground_starts[Color::Violet as usize].y).unwrap()
                             + line_index * i16::try_from(element_rect.height()).unwrap(),
                         0,
@@ -1426,8 +1410,8 @@ impl Data<'_> {
                 };
 
                 dst = Rect::new(
-                    xoffs + i16::try_from(cur_capsule_starts[color].x).unwrap(),
-                    yoffs
+                    x_offs + i16::try_from(cur_capsule_starts[color].x).unwrap(),
+                    y_offs
                         + i16::try_from(cur_capsule_starts[color].y).unwrap()
                         + i16::try_from(capsule_cur_row[color]).unwrap()
                             * i16::try_from(capsule_rect.height()).unwrap(),
@@ -1444,8 +1428,8 @@ impl Data<'_> {
 
                 for capsule in 0..capsules.saturating_sub(1) {
                     dst = Rect::new(
-                        xoffs + i16::try_from(left_capsule_starts[color].x).unwrap(),
-                        yoffs
+                        x_offs + i16::try_from(left_capsule_starts[color].x).unwrap(),
+                        y_offs
                             + i16::try_from(left_capsule_starts[color].y).unwrap()
                             + i16::try_from(capsule).unwrap()
                                 * i16::try_from(capsule_rect.height()).unwrap(),
@@ -1463,10 +1447,10 @@ impl Data<'_> {
 
     /// the acutal Takeover game-playing is done here
     fn play_game(&mut self) {
-        let mut countdown = 100;
-
         const COUNT_TICK_LEN: u32 = 100;
         const MOVE_TICK_LEN: u32 = 60;
+
+        let mut countdown = 100;
 
         let mut prev_count_tick = self.sdl.ticks_ms();
         let mut prev_move_tick = prev_count_tick;
@@ -1489,7 +1473,7 @@ impl Data<'_> {
                 prev_count_tick += COUNT_TICK_LEN; /* set for next countdown tick */
                 countdown -= 1;
                 count_text.clear();
-                write!(count_text, "Finish-{}", countdown).unwrap();
+                write!(count_text, "Finish-{countdown}").unwrap();
                 self.display_banner(Some(&*count_text), None, 0);
 
                 if countdown != 0 && countdown % 10 == 0 {
@@ -1604,9 +1588,9 @@ impl Data<'_> {
     }
 
     fn choose_color(&mut self) {
-        let mut countdown = 100; /* duration in 1/10 seconds given for color choosing */
-
         const COUNT_TICK_LEN: u32 = 100; /* countdown in 1/10 second steps */
+
+        let mut countdown = 100; /* duration in 1/10 seconds given for color choosing */
 
         let mut prev_count_tick = self.sdl.ticks_ms();
 
@@ -1643,7 +1627,7 @@ impl Data<'_> {
                 prev_count_tick += COUNT_TICK_LEN; /* set for next tick */
                 countdown -= 1; /* Count down */
                 count_text.clear();
-                write!(count_text, "Color-{}", countdown).unwrap();
+                write!(count_text, "Color-{countdown}").unwrap();
 
                 self.display_banner(Some(&*count_text), None, 0);
                 self.show_playground();
@@ -1662,6 +1646,13 @@ impl Data<'_> {
     ///
     /// Returns true if the user won, false otherwise
     pub fn takeover(&mut self, enemynum: c_int) -> c_int {
+        const BG_COLOR: SDL_Color = SDL_Color {
+            r: 130,
+            g: 130,
+            b: 130,
+            unused: 0,
+        };
+
         /* Prevent distortion of framerate by the delay coming from
          * the time spend in the menu.
          */
@@ -1673,12 +1664,6 @@ impl Data<'_> {
 
         self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
 
-        const BG_COLOR: SDL_Color = SDL_Color {
-            r: 130,
-            g: 130,
-            b: 130,
-            unused: 0,
-        };
         self.fill_rect(self.vars.user_rect, BG_COLOR);
 
         self.vars.me.status = Status::Mobile as i32; /* the new status _after_ the takeover game */
@@ -1779,6 +1764,7 @@ impl Data<'_> {
                 || self.takeover.leader_color == self.takeover.your_color
             {
                 self.takeover_game_won_sound();
+                #[allow(clippy::cast_possible_truncation)]
                 if self.vars.me.ty == Droid::Droid001 as c_int {
                     self.takeover.reject_energy = self.vars.me.energy as c_int;
                     self.main.pre_take_energy = self.vars.me.energy as c_int;
@@ -1803,20 +1789,25 @@ impl Data<'_> {
 
                 self.vars.me.ty = self.main.all_enemys[enemy_index].ty;
 
-                self.main.real_score +=
-                    droid_map[usize::try_from(self.takeover.opponent_type).unwrap()].score as f32;
+                #[allow(clippy::cast_precision_loss)]
+                {
+                    self.main.real_score += droid_map
+                        [usize::try_from(self.takeover.opponent_type).unwrap()]
+                    .score as f32;
 
-                self.main.death_count +=
-                    (self.takeover.opponent_type * self.takeover.opponent_type) as f32; // quadratic "importance", max=529
+                    self.main.death_count +=
+                        (self.takeover.opponent_type * self.takeover.opponent_type) as f32;
+                    // quadratic "importance", max=529
+                }
 
                 self.main.all_enemys[enemy_index].status = Status::Out as c_int; // removed droid silently (no blast!)
 
-                if self.takeover.leader_color != self.takeover.your_color {
-                    /* only won because of InvincibleMode */
-                    message = cstr!("You cheat")
-                } else {
+                if self.takeover.leader_color == self.takeover.your_color {
                     /* won the proper way */
-                    message = cstr!("Complete")
+                    message = cstr!("Complete");
+                } else {
+                    /* only won because of InvincibleMode */
+                    message = cstr!("You cheat");
                 };
 
                 finish_takeover = true;
@@ -1826,13 +1817,14 @@ impl Data<'_> {
                 self.main.all_enemys[enemy_index].energy = -1.0; /* to be sure */
 
                 self.takeover_game_lost_sound();
-                if self.vars.me.ty != Droid::Droid001 as c_int {
+                #[allow(clippy::cast_precision_loss)]
+                if self.vars.me.ty == Droid::Droid001 as c_int {
+                    message = cstr!("Burnt Out");
+                    self.vars.me.energy = 0.;
+                } else {
                     message = cstr!("Rejected");
                     self.vars.me.ty = Droid::Droid001 as c_int;
                     self.vars.me.energy = self.takeover.reject_energy as f32;
-                } else {
-                    message = cstr!("Burnt Out");
-                    self.vars.me.energy = 0.;
                 }
                 finish_takeover = true;
             } else {

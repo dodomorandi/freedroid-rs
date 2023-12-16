@@ -1,5 +1,13 @@
 #![deny(unsafe_op_in_unsafe_fn)]
+#![allow(
+    clippy::missing_panics_doc,
+    clippy::missing_errors_doc,
+    clippy::module_name_repetitions,
+    clippy::too_many_lines,
+    clippy::too_many_arguments
+)]
 
+pub mod convert;
 pub mod cursor;
 pub mod event;
 mod joystick;
@@ -263,6 +271,7 @@ pub struct Builder<V, T, J, M> {
 
 static INITIALIZED: AtomicBool = AtomicBool::new(false);
 
+#[must_use]
 pub fn init() -> Builder<OnceCell<Video>, OnceCell<Timer>, OnceCell<JoystickSystem>, OnceCell<Mixer>>
 {
     Builder {
@@ -384,6 +393,7 @@ pub struct Version {
 }
 
 impl Version {
+    #[must_use]
     pub fn to_raw(&self) -> SDL_version {
         let &Self {
             major,
@@ -440,9 +450,7 @@ mod tests {
         let _sdl_lock = SDL_MUTEX.lock().unwrap();
 
         let _sdl = init().build().unwrap();
-        if init().build().is_some() {
-            panic!("only one SDL instance is allowed");
-        };
+        assert!(init().build().is_none(), "only one SDL instance is allowed");
     }
 
     #[test]

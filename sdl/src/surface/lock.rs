@@ -71,6 +71,7 @@ pub enum ResultMaybeLockedSurface<'a, 'sdl, const FREEABLE: bool> {
 }
 
 impl<'a, 'sdl, const FREEABLE: bool> ResultMaybeLockedSurface<'a, 'sdl, FREEABLE> {
+    #[must_use]
     pub fn unwrap(self) -> MaybeLockedSurface<'a, 'sdl, FREEABLE> {
         match self {
             Self::Locked(result) => MaybeLockedSurface::Locked(result.unwrap()),

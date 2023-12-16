@@ -53,28 +53,27 @@ impl Mixer {
         unsafe { Mix_ResumeMusic() }
     }
 
+    #[allow(clippy::must_use_candidate)]
     pub fn play_music(&self, music: &Music, loops: Option<u32>) -> bool {
         let ret = unsafe {
             Mix_PlayMusic(
                 music.inner.as_ptr(),
-                loops.map(|loops| loops.try_into().unwrap()).unwrap_or(-1),
+                loops.map_or(-1, |loops| loops.try_into().unwrap()),
             )
         };
         ret == 0
     }
 
+    #[allow(clippy::must_use_candidate)]
     pub fn replace_music_volume(&self, volume: Option<u32>) -> Option<u32> {
-        let volume = volume
-            .map(|volume| volume.try_into().unwrap())
-            .unwrap_or(-1);
+        let volume = volume.map_or(-1, |volume| volume.try_into().unwrap());
         let old_volume = unsafe { Mix_VolumeMusic(volume) };
         old_volume.try_into().ok()
     }
 
+    #[allow(clippy::must_use_candidate)]
     pub fn replace_chunk_volume(&self, chunk: &Chunk, volume: Option<u32>) -> Option<u32> {
-        let volume = volume
-            .map(|volume| volume.try_into().unwrap())
-            .unwrap_or(-1);
+        let volume = volume.map_or(-1, |volume| volume.try_into().unwrap());
         let old_volume = unsafe { Mix_VolumeChunk(chunk.inner.as_ptr(), volume) };
         old_volume.try_into().ok()
     }
@@ -86,9 +85,9 @@ impl Mixer {
         loops: Option<u32>,
         ticks: Option<u32>,
     ) -> Option<u32> {
-        let channel = channel.map(i32::from).unwrap_or(-1);
-        let loops = loops.map(|loops| loops.try_into().unwrap()).unwrap_or(-1);
-        let ticks = ticks.map(|ticks| ticks.try_into().unwrap()).unwrap_or(-1);
+        let channel = channel.map_or(-1, i32::from);
+        let loops = loops.map_or(-1, |loops| loops.try_into().unwrap());
+        let ticks = ticks.map_or(-1, |ticks| ticks.try_into().unwrap());
         let channel = unsafe { Mix_PlayChannelTimed(channel, chunk.inner.as_ptr(), loops, ticks) };
 
         channel.try_into().ok()

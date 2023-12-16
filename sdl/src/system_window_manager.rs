@@ -20,7 +20,9 @@ mod x11 {
         XSelectionRequestEvent, XUnmapEvent, XVisibilityEvent,
     };
 
-    use super::*;
+    use crate::convert;
+
+    use super::{SDL_SysWMmsg, Version};
 
     #[derive(Clone)]
     pub struct XEvent(pub sdl_sys::XEvent);
@@ -33,6 +35,7 @@ mod x11 {
     }
 
     impl Message {
+        #[must_use]
         pub fn to_raw(&self) -> SDL_SysWMmsg {
             let &Self {
                 version,
@@ -52,7 +55,7 @@ mod x11 {
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub enum Subsystem {
-        X11 = sdl_sys::SDL_SYSWM_TYPE_SDL_SYSWM_X11 as isize,
+        X11 = convert::u32_to_isize(sdl_sys::SDL_SYSWM_TYPE_SDL_SYSWM_X11),
     }
 
     #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, thiserror::Error)]
@@ -114,40 +117,41 @@ mod x11 {
 
     impl fmt::Debug for XEvent {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            use XEventVariantRef as E;
+
             let mut dbg = f.debug_struct("XEvent");
 
-            use XEventVariantRef::*;
             match self.to_event_variant_ref() {
-                Key(event) => dbg.field("XKeyEvent", event),
-                Button(event) => dbg.field("XButtonEvent", event),
-                Motion(event) => dbg.field("XMotionEvent", event),
-                Crossing(event) => dbg.field("XCrossingEvent", event),
-                Focus(event) => dbg.field("XFocusEvent", event),
-                Expose(event) => dbg.field("XExposeEvent", event),
-                GraphicExpose(event) => dbg.field("XGraphicExposeEvent", event),
-                NoExpose(event) => dbg.field("XNoExposeEvent", event),
-                Visibility(event) => dbg.field("XVisibilityEvent", event),
-                Createwindow(event) => dbg.field("XCreatewindowEvent", event),
-                DestroyWindow(event) => dbg.field("XDestroyWindowEvent", event),
-                Unmap(event) => dbg.field("XUnmapEvent", event),
-                Map(event) => dbg.field("XMapEvent", event),
-                MapRequest(event) => dbg.field("XMapRequestEvent", event),
-                Reparent(event) => dbg.field("XReparentEvent", event),
-                Configure(event) => dbg.field("XConfigureEvent", event),
-                Gravity(event) => dbg.field("XGravityEvent", event),
-                ResizeRequest(event) => dbg.field("XResizeRequestEvent", event),
-                ConfigureRequest(event) => dbg.field("XConfigureRequestEvent", event),
-                Circulate(event) => dbg.field("XCirculateEvent", event),
-                CirculateRequest(event) => dbg.field("XCirculateRequestEvent", event),
-                Property(event) => dbg.field("XPropertyEvent", event),
-                SelectionClear(event) => dbg.field("XSelectionClearEvent", event),
-                SelectionRequest(event) => dbg.field("XSelectionRequestEvent", event),
-                Selection(event) => dbg.field("XSelectionEvent", event),
-                Colormap(event) => dbg.field("XColormapEvent", event),
-                Client(event) => dbg.field("XClientEvent", &XClientMessageEventRef(event)),
-                Mapping(event) => dbg.field("XMappingEvent", event),
-                Keymap(event) => dbg.field("XKeymapEvent", event),
-                Generic(event) => dbg.field("XGenericEvent", event),
+                E::Key(event) => dbg.field("XKeyEvent", event),
+                E::Button(event) => dbg.field("XButtonEvent", event),
+                E::Motion(event) => dbg.field("XMotionEvent", event),
+                E::Crossing(event) => dbg.field("XCrossingEvent", event),
+                E::Focus(event) => dbg.field("XFocusEvent", event),
+                E::Expose(event) => dbg.field("XExposeEvent", event),
+                E::GraphicExpose(event) => dbg.field("XGraphicExposeEvent", event),
+                E::NoExpose(event) => dbg.field("XNoExposeEvent", event),
+                E::Visibility(event) => dbg.field("XVisibilityEvent", event),
+                E::Createwindow(event) => dbg.field("XCreatewindowEvent", event),
+                E::DestroyWindow(event) => dbg.field("XDestroyWindowEvent", event),
+                E::Unmap(event) => dbg.field("XUnmapEvent", event),
+                E::Map(event) => dbg.field("XMapEvent", event),
+                E::MapRequest(event) => dbg.field("XMapRequestEvent", event),
+                E::Reparent(event) => dbg.field("XReparentEvent", event),
+                E::Configure(event) => dbg.field("XConfigureEvent", event),
+                E::Gravity(event) => dbg.field("XGravityEvent", event),
+                E::ResizeRequest(event) => dbg.field("XResizeRequestEvent", event),
+                E::ConfigureRequest(event) => dbg.field("XConfigureRequestEvent", event),
+                E::Circulate(event) => dbg.field("XCirculateEvent", event),
+                E::CirculateRequest(event) => dbg.field("XCirculateRequestEvent", event),
+                E::Property(event) => dbg.field("XPropertyEvent", event),
+                E::SelectionClear(event) => dbg.field("XSelectionClearEvent", event),
+                E::SelectionRequest(event) => dbg.field("XSelectionRequestEvent", event),
+                E::Selection(event) => dbg.field("XSelectionEvent", event),
+                E::Colormap(event) => dbg.field("XColormapEvent", event),
+                E::Client(event) => dbg.field("XClientEvent", &XClientMessageEventRef(event)),
+                E::Mapping(event) => dbg.field("XMappingEvent", event),
+                E::Keymap(event) => dbg.field("XKeymapEvent", event),
+                E::Generic(event) => dbg.field("XGenericEvent", event),
             };
 
             dbg.finish()
@@ -190,7 +194,13 @@ mod x11 {
 
     impl<'a> PartialEq for XEventVariantRef<'a> {
         fn eq(&self, other: &Self) -> bool {
-            use XEventVariantRef::*;
+            use XEventVariantRef::{
+                Button, Circulate, CirculateRequest, Client, Colormap, Configure, ConfigureRequest,
+                Createwindow, Crossing, DestroyWindow, Expose, Focus, Generic, GraphicExpose,
+                Gravity, Key, Keymap, Map, MapRequest, Mapping, Motion, NoExpose, Property,
+                Reparent, ResizeRequest, Selection, SelectionClear, SelectionRequest, Unmap,
+                Visibility,
+            };
             match (*self, *other) {
                 (Key(a), Key(b)) => a.eq(b),
                 (Button(a), Button(b)) => a.eq(b),
@@ -279,7 +289,13 @@ mod x11 {
             const MAPPING_NOTIFY: i32 = 34;
             const GENERIC_EVENT: i32 = 35;
 
-            use XEventVariantRef::*;
+            use XEventVariantRef::{
+                Button, Circulate, CirculateRequest, Client, Colormap, Configure, ConfigureRequest,
+                Createwindow, Crossing, DestroyWindow, Expose, Focus, Generic, GraphicExpose,
+                Gravity, Key, Keymap, Map, MapRequest, Mapping, Motion, NoExpose, Property,
+                Reparent, ResizeRequest, Selection, SelectionClear, SelectionRequest, Unmap,
+                Visibility,
+            };
             Ok(match unsafe { event.type_ } {
                 KEY_PRESS | KEY_RELEASE => Key(unsafe { &event.xkey }),
                 BUTTON_PRESS | BUTTON_RELEASE => Button(unsafe { &event.xbutton }),

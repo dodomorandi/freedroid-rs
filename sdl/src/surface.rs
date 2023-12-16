@@ -35,11 +35,14 @@ pub struct GenericSurface<'sdl, const FREEABLE: bool> {
 
 impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
     /// # Safety
-    /// * An [Sdl] instance must be alive.
-    /// * `pointer` must point to a valid [SDL_Surface].
+    /// * A [`Sdl`] instance must be alive.
+    /// * `pointer` must point to a valid [`SDL_Surface`].
     /// * No live references to pointed data must exist.
-    /// * The ownership of the pointed [SDL_Surface] is transferred to `GenericSurface`, therefore
+    /// * The ownership of the pointed [`SDL_Surface`] is transferred to `GenericSurface`, therefore
     ///   the structure **must not** be freed.
+    ///
+    /// [`Sdl`]: crate::Sdl
+    #[must_use]
     pub unsafe fn from_ptr(pointer: NonNull<SDL_Surface>) -> Self {
         Self {
             pointer,
@@ -47,6 +50,7 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
         }
     }
 
+    #[must_use]
     pub fn must_lock(&self) -> bool {
         let surface = unsafe { self.pointer.as_ref() };
         surface.offset != 0
@@ -62,6 +66,7 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
         }
     }
 
+    #[must_use]
     pub fn format(&self) -> PixelFormatRef {
         // SAFETY: format becomes null once SDL_FreeSurface is called, which is performed only on
         // drop.
@@ -71,10 +76,12 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
         }
     }
 
+    #[must_use]
     pub fn raw(&self) -> UsableSurfaceRaw<'_, '_, FREEABLE> {
         UsableSurfaceRaw(self)
     }
 
+    #[must_use]
     pub fn height(&self) -> u16 {
         self.raw()
             .height()
@@ -83,6 +90,7 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
             .expect("invalid SDL surface height for architecture")
     }
 
+    #[must_use]
     pub fn width(&self) -> u16 {
         self.raw()
             .width()
@@ -91,10 +99,12 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
             .expect("invalid SDL surface width for architecture")
     }
 
+    #[must_use]
     pub fn flags(&self) -> u32 {
         self.raw().flags()
     }
 
+    #[must_use]
     pub fn as_ptr(&self) -> *const SDL_Surface {
         self.pointer.as_ptr()
     }
@@ -104,7 +114,7 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
     }
 
     pub fn blit<const TO_FREEABLE: bool>(&mut self, to_surface: &mut GenericSurface<TO_FREEABLE>) {
-        self.blit_inner(None::<&Rect>, to_surface, None::<&mut Rect>)
+        self.blit_inner(None::<&Rect>, to_surface, None::<&mut Rect>);
     }
 
     pub fn blit_to<'to, ToRect, const TO_FREEABLE: bool>(
@@ -114,7 +124,7 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
     ) where
         ToRect: Into<RectMut<'to>>,
     {
-        self.blit_inner(None::<&Rect>, to_surface, Some(to))
+        self.blit_inner(None::<&Rect>, to_surface, Some(to));
     }
 
     pub fn blit_from<'from, FromRect, const TO_FREEABLE: bool>(
@@ -124,7 +134,7 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
     ) where
         FromRect: Into<RectRef<'from>>,
     {
-        self.blit_inner(Some(from), to_surface, None::<&mut Rect>)
+        self.blit_inner(Some(from), to_surface, None::<&mut Rect>);
     }
 
     pub fn blit_from_to<'from, 'to, FromRect, ToRect, const TO_FREEABLE: bool>(
@@ -136,7 +146,7 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
         FromRect: Into<RectRef<'from>>,
         ToRect: Into<RectMut<'to>>,
     {
-        self.blit_inner(Some(from), to_surface, Some(to))
+        self.blit_inner(Some(from), to_surface, Some(to));
     }
 
     fn blit_inner<'from, 'to, FromRect, ToRect, const TO_FREEABLE: bool>(
@@ -160,11 +170,9 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
         let result = unsafe {
             SDL_UpperBlit(
                 self.pointer.as_mut(),
-                from.map(|rect| rect.into().as_ptr() as *mut _)
-                    .unwrap_or(null_mut()),
+                from.map_or(null_mut(), |rect| rect.into().as_ptr().cast_mut()),
                 to_surface.pointer.as_mut(),
-                to.map(|rect| rect.into().as_mut_ptr())
-                    .unwrap_or(null_mut()),
+                to.map_or(null_mut(), |rect| rect.into().as_mut_ptr()),
             )
         };
 
@@ -197,7 +205,7 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
     where
         R: Into<RectRef<'a>>,
     {
-        let rect = rect.map(|rect| rect.into().as_ptr()).unwrap_or(ptr::null());
+        let rect = rect.map_or(ptr::null(), |rect| rect.into().as_ptr());
         let result = unsafe { SDL_SetClipRect(self.pointer.as_ptr(), rect) };
         result == SDL_bool_SDL_TRUE
     }
@@ -235,8 +243,9 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
         let result = unsafe {
             SDL_FillRect(
                 self.pointer.as_ptr(),
-                rect.map(|rect| rect.as_ref() as *const SDL_Rect as *mut SDL_Rect)
-                    .unwrap_or(null_mut()),
+                rect.map_or(null_mut(), |rect| {
+                    (rect.as_ref() as *const SDL_Rect).cast_mut()
+                }),
                 color.0,
             )
         };
@@ -259,7 +268,7 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
                 rect.y.into(),
                 rect.w.into(),
                 rect.h.into(),
-            )
+            );
         }
     }
 
@@ -275,8 +284,8 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
             SDL_UpdateRects(
                 self.pointer.as_ptr(),
                 rects.len().try_into().expect("too many rectangles"),
-                rects.as_ptr() as *const SDL_Rect as *mut SDL_Rect,
-            )
+                rects.as_ptr().cast::<SDL_Rect>().cast_mut(),
+            );
         }
     }
 
@@ -285,6 +294,7 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
         unsafe { SDL_SetColorKey(self.pointer.as_ptr(), flag.bits(), key.0) == 0 }
     }
 
+    #[must_use]
     pub fn get_clip_rect(&self) -> Rect {
         let mut rect = Rect::default();
         unsafe { SDL_GetClipRect(self.pointer.as_ptr(), rect.as_mut_ptr()) };
@@ -348,10 +358,10 @@ impl<const FREEABLE: bool> Drop for GenericSurface<'_, FREEABLE> {
     }
 }
 
-/// A [GenericSurface] that must be freed on drop.
+/// A [`GenericSurface`] that must be freed on drop.
 pub type Surface<'sdl> = GenericSurface<'sdl, true>;
 
-/// A [GenericSurface] that must not be freed on drop.
+/// A [`GenericSurface`] that must not be freed on drop.
 #[derive(Debug)]
 pub struct FrameBuffer<'sdl> {
     inner: GenericSurface<'sdl, false>,
@@ -360,13 +370,16 @@ pub struct FrameBuffer<'sdl> {
 
 impl<'sdl> FrameBuffer<'sdl> {
     /// # Safety
-    /// * An [Sdl] instance must be alive.
-    /// * `pointer` must point to a valid [SDL_Surface].
+    /// * An [`Sdl`] instance must be alive.
+    /// * `pointer` must point to a valid [`SDL_Surface`].
     /// * No live references to pointed data must exist.
-    /// * The ownership of the pointed [SDL_Surface] is transferred to `GenericSurface`, therefore
+    /// * The ownership of the pointed [`SDL_Surface`] is transferred to `GenericSurface`, therefore
     ///   the structure **must not** be freed.
     /// * `refcount` must be in the [`Video`] struct which holds the count of the references for
     ///   the SDL framebuffer pointed by `pointer`.
+    ///
+    /// [`Sdl`]: crate::Sdl
+    /// [`Video`]: crate::video::Video
     pub unsafe fn from_ptr_and_refcount(
         pointer: NonNull<SDL_Surface>,
         refcount: &'sdl Cell<u8>,
@@ -418,6 +431,7 @@ impl<'sdl> AsMut<GenericSurface<'sdl, false>> for FrameBuffer<'sdl> {
 pub struct UsableSurface<'a, 'sdl, const FREEABLE: bool>(&'a mut GenericSurface<'sdl, FREEABLE>);
 
 impl<'a, 'sdl, const FREEABLE: bool> UsableSurface<'a, 'sdl, FREEABLE> {
+    #[must_use]
     pub fn format(&self) -> PixelFormatRef {
         self.0.format()
     }
@@ -426,18 +440,22 @@ impl<'a, 'sdl, const FREEABLE: bool> UsableSurface<'a, 'sdl, FREEABLE> {
         Pixels::new(self)
     }
 
+    #[must_use]
     pub fn raw(&self) -> UsableSurfaceRaw<'_, '_, FREEABLE> {
         UsableSurfaceRaw(self.0)
     }
 
+    #[must_use]
     pub fn height(&self) -> u16 {
         self.0.height()
     }
 
+    #[must_use]
     pub fn width(&self) -> u16 {
         self.0.width()
     }
 
+    #[must_use]
     pub fn buffer_size(&self) -> usize {
         let height: usize = self.height().into();
         let pitch = usize::from(self.raw().pitch());
@@ -452,34 +470,42 @@ impl<'a, 'sdl, const FREEABLE: bool> UsableSurface<'a, 'sdl, FREEABLE> {
 pub struct UsableSurfaceRaw<'a, 'sdl, const FREEABLE: bool>(&'a GenericSurface<'sdl, FREEABLE>);
 
 impl<'a, 'sdl, const FREEABLE: bool> UsableSurfaceRaw<'a, 'sdl, FREEABLE> {
+    #[must_use]
     pub fn flags(&self) -> u32 {
         unsafe { self.0.pointer.as_ref().flags }
     }
 
+    #[must_use]
     pub fn format(&self) -> *const SDL_PixelFormat {
         unsafe { self.0.pointer.as_ref().format }
     }
 
+    #[must_use]
     pub fn width(&self) -> c_int {
         unsafe { self.0.pointer.as_ref().w }
     }
 
+    #[must_use]
     pub fn height(&self) -> c_int {
         unsafe { self.0.pointer.as_ref().h }
     }
 
+    #[must_use]
     pub fn pitch(&self) -> u16 {
         unsafe { self.0.pointer.as_ref().pitch }
     }
 
+    #[must_use]
     pub fn pixels(&self) -> *const c_void {
         unsafe { self.0.pointer.as_ref().pixels }
     }
 
+    #[must_use]
     pub fn clip_rect(&self) -> &SDL_Rect {
         unsafe { &self.0.pointer.as_ref().clip_rect }
     }
 
+    #[must_use]
     pub fn refcount(&self) -> c_int {
         unsafe { self.0.pointer.as_ref().refcount }
     }

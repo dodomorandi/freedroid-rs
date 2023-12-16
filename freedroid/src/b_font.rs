@@ -112,7 +112,9 @@ pub fn init_font(font: &mut BFontInfo) {
 
     let mut x = 0;
     while x < (surface_width - 1) {
-        if pixels.get(x, 0).unwrap().get() != sentry {
+        if pixels.get(x, 0).unwrap().get() == sentry {
+            x += 1;
+        } else {
             font.chars[i].set_x(x.try_into().unwrap());
             font.chars[i].set_y(1);
             font.chars[i].set_height(surface_height);
@@ -125,8 +127,6 @@ pub fn init_font(font: &mut BFontInfo) {
                     .unwrap(),
             );
             i += 1;
-        } else {
-            x += 1;
         }
     }
     font.chars[b' ' as usize].set_x(0);
@@ -207,7 +207,7 @@ impl<'sdl> Data<'sdl> {
         )
     }
 
-    /// Load the font and stores it in the BFont_Info structure
+    /// Load the font and stores it in the `BFont_Info` structure
     pub fn load_font(
         sdl: &'sdl Sdl,
         b_font: &mut BFont<'sdl>,

@@ -30,6 +30,7 @@ pub struct CursorData<const HEIGHT: usize> {
 }
 
 impl<const HEIGHT: usize> CursorData<HEIGHT> {
+    #[must_use]
     pub fn from_draw(draw: &[[u8; WIDTH * 8]; HEIGHT]) -> Self {
         let mut data = [[0; WIDTH]; HEIGHT];
         let mut mask = [[0; WIDTH]; HEIGHT];
@@ -99,8 +100,8 @@ impl<'sdl> CursorHelper<'sdl> {
         //   pointed data is never changed.
         let pointer = unsafe {
             SDL_CreateCursor(
-                data.data[0].as_ptr() as *mut u8,
-                data.mask[0].as_ptr() as *mut u8,
+                data.data[0].as_ptr().cast_mut(),
+                data.mask[0].as_ptr().cast_mut(),
                 (WIDTH * 8).try_into().unwrap(),
                 height,
                 data.upper_left_corner[0],
@@ -115,10 +116,12 @@ impl<'sdl> CursorHelper<'sdl> {
         })
     }
 
+    #[allow(clippy::must_use_candidate)]
     pub fn show(&self) -> bool {
         unsafe { show_cursor(SDL_ENABLE) }
     }
 
+    #[allow(clippy::must_use_candidate)]
     pub fn hide(&self) -> bool {
         unsafe { show_cursor(SDL_DISABLE) }
     }

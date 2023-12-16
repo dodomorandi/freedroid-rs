@@ -1,7 +1,7 @@
 use std::{
     ffi::CStr,
     fmt,
-    ops::{Deref, Index, Not},
+    ops::{Deref, Index},
 };
 
 #[derive(Debug, Clone, Copy, Eq)]
@@ -12,10 +12,6 @@ impl<const N: usize> ArrayCString<N> {
     pub const fn new() -> Self {
         assert!(N > 0);
         Self([0; N])
-    }
-
-    pub const fn buffer_len(&self) -> usize {
-        N
     }
 
     pub fn len(&self) -> usize {
@@ -83,27 +79,27 @@ impl<const N: usize> ArrayCString<N> {
 
     #[inline]
     pub fn push_cstr(&mut self, s: impl AsRef<CStr>) {
-        self.try_push_cstr(s).expect("reached end of array buffer")
+        self.try_push_cstr(s).expect("reached end of array buffer");
     }
 
     #[inline]
     pub fn set(&mut self, s: impl AsRef<CStr>) {
-        self.try_set(s).expect("reached end of array buffer")
+        self.try_set(s).expect("reached end of array buffer");
     }
 
     #[inline]
     pub fn set_slice(&mut self, s: impl AsRef<[u8]>) {
-        self.try_set_slice(s).expect("reached end of array buffer")
+        self.try_set_slice(s).expect("reached end of array buffer");
     }
 
     #[inline]
     pub fn push_str(&mut self, s: impl AsRef<str>) {
-        self.try_push_str(s).expect("reached end of array buffer")
+        self.try_push_str(s).expect("reached end of array buffer");
     }
 
     #[inline]
     pub fn push_bytes(&mut self, s: impl AsRef<[u8]>) {
-        self.try_push_bytes(s).expect("reached end of array buffer")
+        self.try_push_bytes(s).expect("reached end of array buffer");
     }
 
     pub fn truncate(&mut self, new_len: usize) {
@@ -151,9 +147,10 @@ impl<const N: usize> ArrayCString<N> {
         F: FnOnce(&mut [u8; N]) -> O,
     {
         let output = f(&mut self.0);
-        if self.0.iter().copied().any(|c| c == 0).not() {
-            panic!("ArrayCString::use_slice_mut removed null terminator");
-        }
+        assert!(
+            self.0.iter().copied().any(|c| c == 0),
+            "ArrayCString::use_slice_mut removed null terminator"
+        );
         output
     }
 
@@ -187,9 +184,10 @@ impl<const N: usize> Index<usize> for ArrayCString<N> {
 
     fn index(&self, index: usize) -> &Self::Output {
         let len = self.len();
-        if index >= len {
-            panic!("index {index} out of bound on an ArrayCString<{N}> of len {len}");
-        }
+        assert!(
+            index < len,
+            "index {index} out of bound on an ArrayCString<{N}> of len {len}"
+        );
         &self.0[index]
     }
 }

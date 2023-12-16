@@ -6,25 +6,25 @@ fn main() {
 
     let sdl = pkg_config::probe_library("sdl").expect("cannot find SDL library using pkg-config");
     for lib in &sdl.libs {
-        println!("cargo:rustc-link-lib={}", lib);
+        println!("cargo:rustc-link-lib={lib}");
     }
 
     let sdl_mixer = pkg_config::probe_library("SDL_mixer")
         .expect("cannot find SDL Mixer library using pkg-config");
     for lib in &sdl_mixer.libs {
-        println!("cargo:rustc-link-lib={}", lib);
+        println!("cargo:rustc-link-lib={lib}");
     }
 
     let sdl_image = pkg_config::probe_library("SDL_image")
         .expect("cannot find SDL Image library using pkg-config");
     for lib in &sdl_image.libs {
-        println!("cargo:rustc-link-lib={}", lib);
+        println!("cargo:rustc-link-lib={lib}");
     }
 
     let sdl_gfx =
         pkg_config::probe_library("SDL_gfx").expect("cannot find SDL Gfx library using pkg-config");
     for lib in &sdl_gfx.libs {
-        println!("cargo:rustc-link-lib={}", lib);
+        println!("cargo:rustc-link-lib={lib}");
     }
 
     let bindings = bindgen::Builder::default()
@@ -36,8 +36,8 @@ fn main() {
                 .map(|path| format!("-I{}", path.display())),
         )
         .clang_args(sdl.defines.iter().map(|(name, value)| match value {
-            Some(value) => format!("-D{}={}", name, value),
-            None => format!("-D{}", name),
+            Some(value) => format!("-D{name}={value}"),
+            None => format!("-D{name}"),
         }))
         .allowlist_var("SDL_.*")
         .allowlist_type("SDL_.*")

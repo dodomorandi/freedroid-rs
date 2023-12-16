@@ -1,4 +1,4 @@
-use crate::{structs::Config, FontCell};
+use crate::{array_c_string::ArrayCString, structs::Config, FontCell};
 
 use cstr::cstr;
 use std::{ffi::CStr, fmt, rc::Rc};
@@ -88,12 +88,12 @@ impl fmt::Debug for Global<'_> {
 impl Default for Global<'_> {
     fn default() -> Self {
         Self {
-            menu_b_font: Default::default(),
-            para_b_font: Default::default(),
-            highscore_b_font: Default::default(),
-            font0_b_font: Default::default(),
-            font1_b_font: Default::default(),
-            font2_b_font: Default::default(),
+            menu_b_font: Option::default(),
+            para_b_font: Option::default(),
+            highscore_b_font: Option::default(),
+            font0_b_font: Option::default(),
+            font1_b_font: Option::default(),
+            font2_b_font: Option::default(),
             skip_a_few_frames: 0,
             level_doors_not_moved_time: 0.,
             droid_radius: 0.,
@@ -112,7 +112,7 @@ impl Default for Global<'_> {
                 current_bg_music_volume: 0.,
                 current_sound_fx_volume: 0.,
                 current_gamma_correction: 0.,
-                theme_name: Default::default(),
+                theme_name: ArrayCString::default(),
                 full_user_rect: 0,
                 use_fullscreen: 0,
                 takeover_activates: 0,

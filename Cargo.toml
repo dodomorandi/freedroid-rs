@@ -15,3 +15,6 @@ authors = ["Edoardo Morandi <morandidodo@gmail.com>"]
 bitflags = "2.3.1"
 cstr = "0.2.9"
 log = "0.4.14"
+
+[workspace.lints.clippy]
+pedantic = "warn"

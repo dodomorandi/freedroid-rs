@@ -90,8 +90,8 @@ impl Default for Vars<'_> {
                 position_history_ring_buffer: [Gps { x: 0., y: 0., z: 0 };
                     MAX_INFLU_POSITION_HISTORY],
             },
-            droidmap: Default::default(),
-            bulletmap: Default::default(),
+            droidmap: Vec::default(),
+            bulletmap: Vec::default(),
             blastmap: array_init(|_| BlastSpec::default_const()),
         }
     }

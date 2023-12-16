@@ -23,6 +23,7 @@ pub struct RwOps<'a> {
 
 impl<'a> RwOps<'a> {
     #[cfg(unix)]
+    #[must_use]
     pub fn from_pathbuf(path: PathBuf, mode: Mode) -> Option<Self> {
         use std::os::unix::ffi::OsStringExt;
 
@@ -37,6 +38,7 @@ impl<'a> RwOps<'a> {
         Self::from_path(&path, mode)
     }
 
+    #[must_use]
     pub fn from_path(path: &Path, mode: Mode) -> Option<Self> {
         let mut path = path.to_string_lossy().into_owned().into_bytes();
         path.push(0);
@@ -44,6 +46,7 @@ impl<'a> RwOps<'a> {
         Self::from_c_str_path(c_path, mode)
     }
 
+    #[must_use]
     pub fn from_c_str_path(path: &CStr, mode: Mode) -> Option<Self> {
         let ret = unsafe { SDL_RWFromFile(path.as_ptr(), mode.to_c_str().as_ptr()) };
         NonNull::new(ret).map(|inner| Self {
@@ -65,6 +68,7 @@ impl<'a> RwOps<'a> {
         }
     }
 
+    #[must_use]
     pub fn image_load(&self) -> Option<Surface<'a>> {
         unsafe { image_load(self.inner) }
     }
@@ -89,25 +93,26 @@ unsafe fn image_load<'a>(rw_ops: NonNull<SDL_RWops>) -> Option<Surface<'a>> {
         .map(|ptr| unsafe { Surface::from_ptr(ptr) })
 }
 
-const RW_SEEK_SET: isize = 0;
-const RW_SEEK_CUR: isize = 1;
-const RW_SEEK_END: isize = 2;
+const RW_SEEK_SET: u8 = 0;
+const RW_SEEK_CUR: u8 = 1;
+const RW_SEEK_END: u8 = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Whence {
-    Set = RW_SEEK_SET,
-    Cur = RW_SEEK_CUR,
-    End = RW_SEEK_END,
+    Set = RW_SEEK_SET as isize,
+    Cur = RW_SEEK_CUR as isize,
+    End = RW_SEEK_END as isize,
 }
 
 impl From<Whence> for c_int {
     fn from(whence: Whence) -> Self {
-        use Whence::*;
+        use Whence::{Cur, End, Set};
         (match whence {
             Set => RW_SEEK_SET,
             Cur => RW_SEEK_CUR,
             End => RW_SEEK_END,
-        }) as c_int
+        })
+        .into()
     }
 }
 
@@ -126,14 +131,13 @@ pub enum RwSeekError {
 // - This should only be called on drop.
 #[must_use = "returns whether the closing has been successful"]
 unsafe fn close_rw_ops_on_drop(rw_ops: NonNull<SDL_RWops>) -> bool {
-    match unsafe { rw_ops.as_ref().close } {
-        Some(close_fn) => unsafe { close_fn(rw_ops.as_ptr()) == 0 },
-        None => {
-            unsafe {
-                SDL_FreeRW(rw_ops.as_ptr());
-            }
-            true
+    if let Some(close_fn) = unsafe { rw_ops.as_ref().close } {
+        unsafe { close_fn(rw_ops.as_ptr()) == 0 }
+    } else {
+        unsafe {
+            SDL_FreeRW(rw_ops.as_ptr());
         }
+        true
     }
 }
 
@@ -162,11 +166,10 @@ impl RwOpsOwned {
         // - SDL_RWFromMem expects a memory buffer, using a pointer to u8 is safe.
         // - rw_ops is closed on drop
         let ptr = unsafe {
-            let len = match buffer.len().try_into() {
-                Ok(len) => len,
-                Err(_) => return Err((RwOpsOwnedError::BufferTooBig, buffer)),
+            let Ok(len) = buffer.len().try_into() else {
+                return Err((RwOpsOwnedError::BufferTooBig, buffer));
             };
-            SDL_RWFromMem(buffer.as_mut_ptr() as *mut c_void, len)
+            SDL_RWFromMem(buffer.as_mut_ptr().cast::<c_void>(), len)
         };
 
         match NonNull::new(ptr) {
@@ -178,6 +181,7 @@ impl RwOpsOwned {
         }
     }
 
+    #[must_use]
     pub fn image_load(&self) -> Option<Surface<'static>> {
         unsafe { image_load(self.rw_ops) }
     }
@@ -277,8 +281,9 @@ impl Mode {
         }
     }
 
+    #[must_use]
     pub fn to_c_str(self) -> &'static CStr {
-        use ReadWriteMode::*;
+        use ReadWriteMode::{Append, AppendRead, Read, ReadWrite, Truncate, Write};
 
         match (self.rw_mode, self.binary) {
             (Read, false) => cstr!("r"),

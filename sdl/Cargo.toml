@@ -17,3 +17,6 @@ thiserror = "1.0.30"
 [build-dependencies]
 cc = "1.0.72"
 pkg-config = "0.3.24"
+
+[lints]
+workspace = true

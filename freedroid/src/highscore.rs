@@ -10,11 +10,11 @@ use crate::{
 };
 
 use log::{info, warn};
-use sdl::Rect;
+use sdl::{convert::u8_to_usize, Rect};
 use std::{
     fmt,
     fs::File,
-    io::{BufReader, BufWriter, Read, Write},
+    io::{BufReader, Read, Write},
     mem::{self, align_of, size_of},
     os::raw::{c_int, c_long},
     path::Path,
@@ -29,9 +29,9 @@ pub struct Highscore {
 
 #[derive(Debug)]
 pub struct HighscoreEntry {
-    name: ArrayCString<{ MAX_NAME_LEN + 5 }>,
+    name: ArrayCString<{ u8_to_usize(MAX_NAME_LEN) + 5 }>,
     score: i64,
-    date: ArrayCString<{ DATE_LEN + 5 }>,
+    date: ArrayCString<{ u8_to_usize(DATE_LEN) + 5 }>,
 }
 
 impl Default for HighscoreEntry {
@@ -47,8 +47,8 @@ impl Default for HighscoreEntry {
 impl HighscoreEntry {
     fn new<Name, Date>(name: Name, score: i64, date: Date) -> Self
     where
-        Name: TryInto<ArrayCString<{ MAX_NAME_LEN + 5 }>>,
-        Date: TryInto<ArrayCString<{ DATE_LEN + 5 }>>,
+        Name: TryInto<ArrayCString<{ u8_to_usize(MAX_NAME_LEN) + 5 }>>,
+        Date: TryInto<ArrayCString<{ u8_to_usize(DATE_LEN) + 5 }>>,
         Name::Error: fmt::Debug,
         Date::Error: fmt::Debug,
     {
@@ -60,7 +60,7 @@ impl HighscoreEntry {
     }
 
     pub const fn score_padding() -> usize {
-        let used_bytes = (MAX_NAME_LEN + 5) % align_of::<i64>();
+        let used_bytes = (u8_to_usize(MAX_NAME_LEN) + 5) % align_of::<i64>();
         if used_bytes == 0 {
             0
         } else {
@@ -69,7 +69,7 @@ impl HighscoreEntry {
     }
 
     pub const fn end_padding() -> usize {
-        let used_bytes = (DATE_LEN + 5) % align_of::<i64>();
+        let used_bytes = (u8_to_usize(DATE_LEN) + 5) % align_of::<i64>();
         if used_bytes == 0 {
             0
         } else {
@@ -84,24 +84,27 @@ impl Highscore {
         let file = config_dir.and_then(|config_dir| {
             let path = config_dir.join("highscores");
             let file = File::open(&path).ok().map(BufReader::new);
-            match file.as_ref() {
-                Some(_) => info!("Found highscore file {}", path.display()),
-                None => warn!("No highscore file found..."),
+            if file.as_ref().is_some() {
+                info!("Found highscore file {}", path.display());
+            } else {
+                warn!("No highscore file found...");
             }
             file
         });
 
-        self.num = MAX_HIGHSCORES as _;
+        self.num = MAX_HIGHSCORES.into();
         let highscores = match file {
             Some(mut file) => (0..MAX_HIGHSCORES)
                 .map(|_| {
+                    const SCORE_PADDING: usize = HighscoreEntry::score_padding();
+                    const END_PADDING: usize = HighscoreEntry::end_padding();
+
                     let mut name = ArrayCString::new();
                     name.use_slice_mut(|name| {
                         file.read_exact(name)
                             .expect("cannot read name from highscore file");
                     });
 
-                    const SCORE_PADDING: usize = HighscoreEntry::score_padding();
                     if SCORE_PADDING != 0 {
                         file.seek_relative(SCORE_PADDING.try_into().unwrap())
                             .expect("cannot skip padding bytes from highscore file");
@@ -118,7 +121,6 @@ impl Highscore {
                         let mut date = ArrayCString::new();
                         date.use_slice_mut(|date| file.read_exact(date).ok())?;
 
-                        const END_PADDING: usize = HighscoreEntry::end_padding();
                         if END_PADDING != 0 {
                             file.seek_relative(END_PADDING.try_into().unwrap()).ok()?;
                         }
@@ -129,47 +131,42 @@ impl Highscore {
                 })
                 .collect(),
             None => std::iter::repeat_with(HighscoreEntry::default)
-                .take(MAX_HIGHSCORES)
+                .take(MAX_HIGHSCORES.into())
                 .collect(),
         };
         self.entries = Some(highscores);
     }
 
     fn save_highscores_inner(&mut self, config_dir: Option<&Path>) -> Result<(), ()> {
-        match config_dir {
-            Some(config_dir) => {
-                let path = config_dir.join("highscores");
-                let mut file = match File::create(&path) {
-                    Ok(file) => BufWriter::new(file),
-                    Err(_) => {
-                        warn!("Failed to create highscores file. Giving up...");
-                        return Err(());
-                    }
-                };
+        if let Some(config_dir) = config_dir {
+            let path = config_dir.join("highscores");
+            let Ok(mut file) = File::create(&path) else {
+                warn!("Failed to create highscores file. Giving up...");
+                return Err(());
+            };
 
-                for entry in self.entries.as_mut().unwrap().iter_mut() {
-                    file.write_all(entry.name.as_buffer_bytes()).unwrap();
-                    const SCORE_PADDING: usize = HighscoreEntry::score_padding();
-                    if SCORE_PADDING != 0 {
-                        file.write_all(&[0; SCORE_PADDING]).unwrap();
-                    }
-                    file.write_all(&entry.score.to_le_bytes()).unwrap();
-                    file.write_all(entry.date.as_buffer_bytes()).unwrap();
+            for entry in self.entries.as_mut().unwrap().iter_mut() {
+                const SCORE_PADDING: usize = HighscoreEntry::score_padding();
+                const END_PADDING: usize = HighscoreEntry::end_padding();
 
-                    const END_PADDING: usize = HighscoreEntry::end_padding();
-                    if END_PADDING != 0 {
-                        file.write_all(&[0; END_PADDING]).unwrap();
-                    }
+                file.write_all(entry.name.as_buffer_bytes()).unwrap();
+                if SCORE_PADDING != 0 {
+                    file.write_all(&[0; SCORE_PADDING]).unwrap();
                 }
-                file.flush().unwrap();
-                info!("Successfully updated highscores file '{}'", path.display());
+                file.write_all(&entry.score.to_le_bytes()).unwrap();
+                file.write_all(entry.date.as_buffer_bytes()).unwrap();
 
-                Ok(())
+                if END_PADDING != 0 {
+                    file.write_all(&[0; END_PADDING]).unwrap();
+                }
             }
-            None => {
-                warn!("No config-dir found, cannot save highscores!");
-                Err(())
-            }
+            file.flush().unwrap();
+            info!("Successfully updated highscores file '{}'", path.display());
+
+            Ok(())
+        } else {
+            warn!("No config-dir found, cannot save highscores!");
+            Err(())
         }
     }
 }
@@ -186,16 +183,16 @@ impl Data<'_> {
 
         self.vars.me.status = Status::Debriefing as c_int;
 
-        let entry_pos = match self
+        #[allow(clippy::cast_possible_truncation)]
+        let Some(entry_pos) = self
             .highscore
             .entries
             .as_ref()
             .unwrap()
             .iter()
             .position(|entry| entry.score < score as c_long)
-        {
-            Some(entry_pos) => entry_pos,
-            None => return,
+        else {
+            return;
         };
 
         let prev_font = std::mem::replace(
@@ -203,12 +200,15 @@ impl Data<'_> {
             self.global.highscore_b_font.clone(),
         );
 
+        #[allow(clippy::cast_possible_wrap)]
         let user_center_x: i16 = self.vars.user_rect.x() + (self.vars.user_rect.width() / 2) as i16;
+        #[allow(clippy::cast_possible_wrap)]
         let user_center_y: i16 =
             self.vars.user_rect.y() + (self.vars.user_rect.height() / 2) as i16;
 
         self.assemble_combat_picture(0);
         self.make_grid_on_screen(Some(&self.vars.user_rect.clone()));
+        #[allow(clippy::cast_possible_wrap)]
         let mut dst = Rect::new(
             user_center_x - (self.vars.portrait_rect.width() / 2) as i16,
             user_center_y - (self.vars.portrait_rect.height() / 2) as i16,
@@ -264,8 +264,9 @@ impl Data<'_> {
         #[cfg(target_os = "android")]
         let new_entry = HighscoreEntry::new("Player", score as i64, &*date);
         #[cfg(not(target_os = "android"))]
+        #[allow(clippy::cast_possible_truncation)]
         let new_entry = HighscoreEntry::new(
-            &*self.get_string(MAX_NAME_LEN as c_int, 2).unwrap(),
+            &*self.get_string(MAX_NAME_LEN.into(), 2).unwrap(),
             score as i64,
             &*date,
         );
@@ -299,7 +300,7 @@ impl Data<'_> {
     }
 
     /// Display the high scores of the single player game.
-    /// This function is actually a submenu of the MainMenu.
+    /// This function is actually a submenu of the `MainMenu`.
     pub fn show_highscores(&mut self) {
         let fpath = Self::find_file_static(
             &self.global,

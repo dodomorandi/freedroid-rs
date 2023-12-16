@@ -103,7 +103,7 @@ impl Data<'_> {
             self.sdl,
             self.sound.as_ref().unwrap(),
             tune,
-        )
+        );
     }
 
     pub fn play_sound_static(sound_on: c_int, sdl: &Sdl, sound: &Sound, tune: c_int) {
@@ -225,7 +225,7 @@ impl Data<'_> {
 
     #[inline]
     pub fn move_lift_sound(&self) {
-        Self::move_lift_sound_static(self.main.sound_on, self.sdl, self.sound.as_ref().unwrap())
+        Self::move_lift_sound_static(self.main.sound_on, self.sdl, self.sound.as_ref().unwrap());
     }
 
     pub fn move_lift_sound_static(sound_on: c_int, sdl: &Sdl, sound: &Sound) {
@@ -279,28 +279,29 @@ impl Data<'_> {
 
 impl<'sdl> Data<'sdl> {
     pub fn fire_bullet_sound(&self, bullet_type: c_int) {
+        use BulletKind as K;
+
         if self.main.sound_on == 0 {
             return;
         }
 
-        use BulletKind::*;
         let bullet_type = match bullet_type {
-            0 => Pulse,
-            1 => SinglePulse,
-            2 => Military,
-            3 => Flash,
-            4 => Exterminator,
-            5 => LaserRifle,
-            _ => panic!("invalid bullet type {}", bullet_type),
+            0 => K::Pulse,
+            1 => K::SinglePulse,
+            2 => K::Military,
+            3 => K::Flash,
+            4 => K::Exterminator,
+            5 => K::LaserRifle,
+            _ => panic!("invalid bullet type {bullet_type}"),
         };
 
         match bullet_type {
-            Pulse => self.play_sound(SoundType::FireBulletPulse as i32),
-            SinglePulse => self.play_sound(SoundType::FireBulletSinglePulse as i32),
-            Military => self.play_sound(SoundType::FireBulletMilitary as i32),
-            Flash => self.play_sound(SoundType::FireBulletFlash as i32),
-            Exterminator => self.play_sound(SoundType::FireBulletExterminator as i32),
-            LaserRifle => self.play_sound(SoundType::FireBulletLaserRifle as i32),
+            K::Pulse => self.play_sound(SoundType::FireBulletPulse as i32),
+            K::SinglePulse => self.play_sound(SoundType::FireBulletSinglePulse as i32),
+            K::Military => self.play_sound(SoundType::FireBulletMilitary as i32),
+            K::Flash => self.play_sound(SoundType::FireBulletFlash as i32),
+            K::Exterminator => self.play_sound(SoundType::FireBulletExterminator as i32),
+            K::LaserRifle => self.play_sound(SoundType::FireBulletLaserRifle as i32),
         }
     }
 
@@ -315,7 +316,7 @@ impl<'sdl> Data<'sdl> {
         } = self;
 
         let sound = sound.as_mut().unwrap();
-        Self::switch_background_music_to_static(sound, main, global, misc, sdl, filename_raw)
+        Self::switch_background_music_to_static(sound, main, global, misc, sdl, filename_raw);
     }
 
     pub fn switch_background_music_to_static<'a>(
@@ -331,13 +332,10 @@ impl<'sdl> Data<'sdl> {
         }
 
         let mixer = sdl.mixer.get().unwrap();
-        let filename_raw = match filename_raw {
-            Some(x) => x,
-            None => {
-                mixer.pause_music();
-                sound.paused = true;
-                return;
-            }
+        let Some(filename_raw) = filename_raw else {
+            mixer.pause_music();
+            sound.paused = true;
+            return;
         };
 
         // New feature: choose background music by level-color:
@@ -360,44 +358,40 @@ impl<'sdl> Data<'sdl> {
             }
         } else {
             // not using BYCOLOR mechanism: just play specified song
-            let fpath = match Self::find_file_static(
+            let Some(fpath) = Self::find_file_static(
                 global,
                 misc,
                 filename_raw,
                 Some(SOUND_DIR_C),
                 Themed::NoTheme as c_int,
                 Criticality::WarnOnly as c_int,
-            ) {
-                Some(x) => x,
-                None => {
-                    error!(
-                        "Error loading sound-file: {}",
-                        String::from_utf8_lossy(filename_raw)
-                    );
-                    return;
-                }
+            ) else {
+                error!(
+                    "Error loading sound-file: {}",
+                    String::from_utf8_lossy(filename_raw)
+                );
+                return;
             };
 
             let mixer = sdl.mixer.get().unwrap();
 
             sound.tmp_mod_file = mixer.load_music_from_c_str_path(fpath);
-            match sound.tmp_mod_file.as_ref() {
-                Some(music) => {
-                    mixer.play_music(music, None);
-                }
-                None => {
-                    error!(
-                        "SDL Mixer Error: {}. Continuing with sound disabled",
-                        sdl.get_error().to_string_lossy(),
-                    );
-                    return;
-                }
+            let Some(music) = sound.tmp_mod_file.as_ref() else {
+                error!(
+                    "SDL Mixer Error: {}. Continuing with sound disabled",
+                    sdl.get_error().to_string_lossy(),
+                );
+                return;
             };
+            mixer.play_music(music, None);
         }
 
-        sdl.mixer.get().unwrap().replace_music_volume(Some(
-            (global.game_config.current_bg_music_volume * f32::from(MIX_MAX_VOLUME)) as u32,
-        ));
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        {
+            sdl.mixer.get().unwrap().replace_music_volume(Some(
+                (global.game_config.current_bg_music_volume * f32::from(MIX_MAX_VOLUME)) as u32,
+            ));
+        }
     }
 
     pub fn countdown_sound(&self) {
@@ -414,8 +408,10 @@ impl<'sdl> Data<'sdl> {
         }
 
         let mixer = self.sdl.mixer.get().unwrap();
-        let new_volume =
-            (new_volume >= 0.).then(|| (new_volume * f32::from(MIX_MAX_VOLUME)) as u32);
+        let new_volume = (new_volume >= 0.).then(
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            || (new_volume * f32::from(MIX_MAX_VOLUME)) as u32,
+        );
         mixer.replace_music_volume(new_volume);
     }
 }
@@ -435,32 +431,26 @@ impl<'a> Sound<'a> {
 
         // Now SDL_AUDIO is initialized here:
 
-        let mixer = match sdl.init_audio() {
-            Some(audio) => audio,
-            None => {
-                warn!(
-                    "SDL Sound subsystem could not be initialized. \
-Continuing with sound disabled",
-                );
-                main.sound_on = false.into();
-                return None;
-            }
+        let Some(mixer) = sdl.init_audio() else {
+            warn!(
+                "SDL Sound subsystem could not be initialized. \
+                Continuing with sound disabled",
+            );
+            main.sound_on = false.into();
+            return None;
         };
         info!("SDL Audio initialisation successful.");
 
         // Now that we have initialized the audio SubSystem, we must open
         // an audio channel.  This will be done here (see code from Mixer-Tutorial):
-        let opened_audio = match mixer.open_audio().channels(2).open(100) {
-            Some(open_audio) => open_audio,
-            None => {
-                error!("SDL audio channel could not be opened.");
-                warn!(
-                    "SDL Mixer Error: {}. Continuing with sound disabled",
-                    sdl.get_error().to_string_lossy(),
-                );
-                main.sound_on = false.into();
-                return None;
-            }
+        let Some(opened_audio) = mixer.open_audio().channels(2).open(100) else {
+            error!("SDL audio channel could not be opened.");
+            warn!(
+                "SDL Mixer Error: {}. Continuing with sound disabled",
+                sdl.get_error().to_string_lossy(),
+            );
+            main.sound_on = false.into();
+            return None;
         };
         info!("Successfully opened SDL audio channel.");
 
@@ -499,9 +489,9 @@ Continuing with sound disabled",
                 );
                 main.sound_on = false.into();
                 return None;
-            } else {
-                info!("Successfully loaded file {}.", sample_filename);
             }
+
+            info!("Successfully loaded file {}.", sample_filename);
         }
 
         let mut music_songs: [_; NUM_COLORS] = array_init(|_| None);
@@ -530,12 +520,12 @@ Continuing with sound disabled",
                 );
                 main.sound_on = false.into();
                 return None;
-            } else {
-                info!(
-                    "Successfully loaded file {}.",
-                    String::from_utf8_lossy(music_file)
-                );
             }
+
+            info!(
+                "Successfully loaded file {}.",
+                String::from_utf8_lossy(music_file)
+            );
         }
 
         let sound = Self {
@@ -569,6 +559,7 @@ Continuing with sound disabled",
         self.loaded_wav_files.iter().skip(1).for_each(|file| {
             mixer.replace_chunk_volume(
                 file.as_ref().unwrap(),
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                 Some((new_volume * f32::from(MIX_MAX_VOLUME)) as u32),
             );
         });

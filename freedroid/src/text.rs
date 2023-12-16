@@ -19,8 +19,9 @@ use crate::{
 use cstr::cstr;
 use log::{error, info, trace};
 use sdl::{
+    convert::i32_to_u8,
     event::{JoyButtonEventType, KeyboardEventType, MouseButtonEventType},
-    Event, Rect, RectRef, Surface,
+    Event, Rect, RectRef, Rgba, Surface,
 };
 #[cfg(not(feature = "arcade-input"))]
 use sdl_sys::SDLKey_SDLK_DELETE;
@@ -69,7 +70,7 @@ impl Default for Text {
 }
 
 impl Data<'_> {
-    /// Reads a string of "MaxLen" from User-input, and echos it
+    /// Reads a string of "`MaxLen`" from User-input, and echos it
     /// either to stdout or using graphics-text, depending on the
     /// parameter "echo":
     /// * echo=0    no echo
@@ -99,7 +100,7 @@ impl Data<'_> {
             self.vars.screen_rect.width().into(),
             height.try_into().unwrap(),
             self.graphics.vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
-            Default::default(),
+            Rgba::default(),
         )
         .unwrap();
         let store_rect = Rect::new(
@@ -203,11 +204,13 @@ impl Data<'_> {
             {
                 let key = self.getchar_raw();
 
+                #[allow(clippy::cast_sign_loss)]
                 if key == SDLKey_SDLK_RETURN.try_into().unwrap() {
                     input[curpos] = 0;
                     finished = true;
                 } else if key < SDLKey_SDLK_DELETE.try_into().unwrap()
-                    && ((key as u8).is_ascii_graphic() || (key as u8).is_ascii_whitespace())
+                    && (u8::try_from(key).map_or(false, |key| key.is_ascii_graphic())
+                        || (u8::try_from(key).map_or(false, |key| key.is_ascii_whitespace())))
                     && curpos < max_len
                 {
                     /* printable characters are entered in string */
@@ -234,7 +237,7 @@ impl Data<'_> {
 
     /// Should do roughly what getchar() does, but in raw (SLD) keyboard mode.
     ///
-    /// Return the (SDLKey) of the next key-pressed event cast to
+    /// Return the `SDLKey` of the next key-pressed event cast to
     pub fn getchar_raw(&mut self) -> c_int {
         let mut return_key = 0;
 
@@ -291,15 +294,15 @@ impl Data<'_> {
                 }
 
                 Event::MouseButton(event) if matches!(event.ty, MouseButtonEventType::Down) => {
-                    if event.button == SDL_BUTTON_LEFT as u8 {
+                    if event.button == i32_to_u8(SDL_BUTTON_LEFT) {
                         return_key = PointerStates::MouseButton1 as c_int;
-                    } else if event.button == SDL_BUTTON_RIGHT as u8 {
+                    } else if event.button == i32_to_u8(SDL_BUTTON_RIGHT) {
                         return_key = PointerStates::MouseButton2 as c_int;
-                    } else if event.button == SDL_BUTTON_MIDDLE as u8 {
+                    } else if event.button == i32_to_u8(SDL_BUTTON_MIDDLE) {
                         return_key = PointerStates::MouseButton3 as c_int;
-                    } else if event.button == SDL_BUTTON_WHEELUP as u8 {
+                    } else if event.button == i32_to_u8(SDL_BUTTON_WHEELUP) {
                         return_key = PointerStates::MouseWheelup as c_int;
-                    } else if event.button == SDL_BUTTON_WHEELDOWN as u8 {
+                    } else if event.button == i32_to_u8(SDL_BUTTON_WHEELDOWN) {
                         return_key = PointerStates::MouseWheeldown as c_int;
                     }
                 }
@@ -319,16 +322,18 @@ impl Data<'_> {
         }
     }
 
-    /// Behaves similarly as gl_printf() of svgalib, using the BFont
-    /// print function PrintString().
+    /// Behaves similarly as `gl_printf`() of svgalib, using the [`BFont`]
+    /// print function [`print_string`].
     ///
-    ///  sets current position of MyCursor[XY],
+    ///  sets current position of `MyCursor[XY]`,
     ///     if last char is '\n': to same x, next line y
     ///     to end of string otherwise
     ///
-    /// Added functionality to PrintString() is:
+    /// Added functionality to [`print_string`] is:
     ///  o) passing -1 as coord uses previous x and next-line y for printing
-    ///  o) Screen is updated immediatly after print, using SDL_flip()
+    ///  o) Screen is updated immediatly after print, using `SDL_flip`()
+    ///
+    /// [`print_string`]: Data::print_string
     #[inline]
     pub fn printf_sdl<const F: bool>(
         &mut self,
@@ -345,7 +350,7 @@ impl Data<'_> {
             x,
             y,
             format_args,
-        )
+        );
     }
 
     pub fn printf_sdl_static<const F: bool>(
@@ -391,6 +396,7 @@ impl Data<'_> {
             h.try_into().unwrap(),
         ));
 
+        #[allow(clippy::cast_possible_truncation)]
         if *text_buffer.last().unwrap() == b'\n' {
             text.my_cursor_x = x;
             text.my_cursor_y = (f64::from(y) + 1.1 * f64::from(h)) as c_int;
@@ -401,24 +407,24 @@ impl Data<'_> {
     }
 
     /// Prints *Text beginning at positions startx/starty,
-    /// and respecting the text-borders set by clip_rect
+    /// and respecting the text-borders set by `clip_rect`
     /// -> this includes clipping but also automatic line-breaks
     /// when end-of-line is reached
     ///
     /// if startx/y == -1, write at current position, given by MyCursorX/Y.
-    /// if clip_rect==NULL, no clipping is performed
+    /// if `clip_rect==NULL`, no clipping is performed
     ///
     /// NOTE: the previous clip-rectange is restored before the function returns!
     /// NOTE2: this function _does not_ update the screen
     ///
     /// Return TRUE if some characters where written inside the clip rectangle,
-    /// FALSE if not (used by ScrollText to know if Text has been scrolled
+    /// FALSE if not (used by `ScrollText` to know if Text has been scrolled
     /// out of clip-rect completely)
     pub fn display_text(
         &mut self,
         text: &[u8],
-        startx: c_int,
-        starty: c_int,
+        start_x: c_int,
+        start_y: c_int,
         clip: Option<Rect>,
     ) -> c_int {
         let Self {
@@ -430,7 +436,7 @@ impl Data<'_> {
             ..
         } = self;
         Self::display_text_static(
-            data_text, graphics, vars, b_font, font_owner, text, startx, starty, clip,
+            data_text, graphics, vars, b_font, font_owner, text, start_x, start_y, clip,
         )
     }
 
@@ -442,15 +448,15 @@ impl Data<'_> {
         b_font: &BFont,
         font_owner: &mut FontCellOwner,
         mut text: &[u8],
-        startx: c_int,
-        starty: c_int,
+        start_x: c_int,
+        start_y: c_int,
         clip: Option<Rect>,
     ) -> c_int {
-        if startx != -1 {
-            data_text.my_cursor_x = startx;
+        if start_x != -1 {
+            data_text.my_cursor_x = start_x;
         }
-        if starty != -1 {
-            data_text.my_cursor_y = starty;
+        if start_y != -1 {
+            data_text.my_cursor_y = start_y;
         }
 
         // store previous clip-rect
@@ -473,6 +479,7 @@ impl Data<'_> {
                 break;
             }
 
+            #[allow(clippy::cast_possible_truncation)]
             if first == b'\n' {
                 data_text.my_cursor_x = clip.x().into();
                 data_text.my_cursor_y += (f64::from(font_height(
@@ -483,7 +490,8 @@ impl Data<'_> {
             }
 
             text = rest;
-            if Self::is_linebreak_needed(b_font, font_owner, data_text, text, &clip) {
+            #[allow(clippy::cast_possible_truncation)]
+            if Self::is_linebreak_needed(b_font, font_owner, data_text, text, clip) {
                 text = &text[1..];
                 data_text.my_cursor_x = clip.x().into();
                 data_text.my_cursor_y += (f64::from(font_height(
@@ -503,16 +511,16 @@ impl Data<'_> {
          * clip-rectangle, of if the Text has been scrolled out
          */
         if data_text.my_cursor_y < clip.y().into()
-            || starty > c_int::from(clip.y()) + c_int::from(clip.height())
+            || start_y > c_int::from(clip.y()) + c_int::from(clip.height())
         {
-            false as c_int
+            i32::from(false)
         } else {
-            true as c_int
+            i32::from(true)
         }
     }
 
-    /// This function displays a char. It uses Menu_BFont now
-    /// to do this.  MyCursorX is  updated to new position.
+    /// This function displays a char. It uses `Menu_BFont` now
+    /// to do this.  `MyCursorX` is  updated to new position.
     pub fn display_char(
         graphics: &mut Graphics,
         text: &mut Text,
@@ -522,9 +530,8 @@ impl Data<'_> {
     ) {
         // don't accept non-printable characters
         assert!(
-            (c.is_ascii_graphic() || c.is_ascii_whitespace()),
-            "Illegal char passed to DisplayChar(): {}",
-            c
+            c.is_ascii_graphic() || c.is_ascii_whitespace(),
+            "Illegal char passed to DisplayChar(): {c}"
         );
 
         let mut ne_screen = graphics.ne_screen.take().unwrap();
@@ -552,13 +559,13 @@ impl Data<'_> {
     ///  i.e. a word-beginning, otherwise it just returns TRUE
     ///
     ///  rp: added argument clip, which contains the text-window we're writing in
-    ///  (formerly known as "TextBorder")
+    ///  (formerly known as `TextBorder`)
     pub fn is_linebreak_needed(
         b_font: &BFont,
         font_owner: &FontCellOwner,
         text: &Text,
         textpos: &[u8],
-        clip: &Rect,
+        clip: Rect,
     ) -> bool {
         // only relevant if we're at the beginning of a word
         let textpos = match textpos.split_first() {
@@ -707,9 +714,10 @@ impl Data<'_> {
         rect: &mut Rect,
         _seconds_minimum_duration: c_int,
     ) -> c_int {
+        const MAX_SPEED: c_int = 150;
+
         let mut insert_line: f32 = rect.y().into();
         let mut speed = 30; // in pixel / sec
-        const MAX_SPEED: c_int = 150;
         let mut just_started = true;
 
         let mut background = graphics
@@ -729,10 +737,11 @@ impl Data<'_> {
             #[cfg(target_os = "android")]
             graphics,
         );
-        let ret;
+        let ret_val;
         loop {
             let mut prev_tick = sdl.ticks_ms();
             background.blit(graphics.ne_screen.as_mut().unwrap());
+            #[allow(clippy::cast_possible_truncation)]
             if Self::display_text_static(
                 data_text,
                 graphics,
@@ -745,7 +754,7 @@ impl Data<'_> {
                 Some(*rect),
             ) == 0
             {
-                ret = 0; /* Text has been scrolled outside Rect */
+                ret_val = 0; /* Text has been scrolled outside Rect */
                 break;
             }
             assert!(graphics.ne_screen.as_mut().unwrap().flip());
@@ -779,7 +788,7 @@ impl Data<'_> {
                     || (key == input.key_cmds[Cmds::Fire as usize][2])
                 {
                     trace!("in just_started: Fire registered");
-                    ret = 1;
+                    ret_val = 1;
                     break;
                 }
                 prev_tick = sdl.ticks_ms();
@@ -787,7 +796,7 @@ impl Data<'_> {
 
             if Self::fire_pressed_r_static(sdl, input, vars, quit) {
                 trace!("outside just_started: Fire registered");
-                ret = 1;
+                ret_val = 1;
                 break;
             }
 
@@ -812,8 +821,11 @@ impl Data<'_> {
                 }
             }
 
-            insert_line -=
-                (f64::from(sdl.ticks_ms() - prev_tick) * f64::from(speed) / 1000.0) as f32;
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                insert_line -=
+                    (f64::from(sdl.ticks_ms() - prev_tick) * f64::from(speed) / 1000.0) as f32;
+            }
 
             if insert_line > f32::from(rect.y()) + f32::from(rect.height()) {
                 insert_line = f32::from(rect.y()) + f32::from(rect.height());
@@ -826,6 +838,6 @@ impl Data<'_> {
         background.blit(graphics.ne_screen.as_mut().unwrap());
         assert!(graphics.ne_screen.as_mut().unwrap().flip());
 
-        ret
+        ret_val
     }
 }

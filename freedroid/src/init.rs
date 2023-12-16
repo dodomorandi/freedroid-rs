@@ -31,7 +31,7 @@ use nom::Finish;
 use std::{
     ffi::CString,
     ops::Not,
-    os::raw::{c_float, c_int, c_long},
+    os::raw::{c_float, c_int},
     path::Path,
 };
 
@@ -84,6 +84,7 @@ pub fn win32_disclaimer() {
 
 #[derive(Parser)]
 #[clap(version = crate_version!(), long_version = COPYRIGHT)]
+#[allow(clippy::struct_excessive_bools)]
 struct Opt {
     #[clap(short, long, conflicts_with = "nosound")]
     sound: bool,
@@ -134,7 +135,7 @@ impl Data<'_> {
         drop(self.highscore.entries.take());
 
         // free constant text blobs
-        self.init.debriefing_text = Default::default();
+        self.init.debriefing_text = CString::default();
     }
 
     pub fn free_druidmap(&mut self) {
@@ -142,7 +143,7 @@ impl Data<'_> {
             return;
         }
         for droid in &mut self.vars.droidmap {
-            droid.notes = Default::default();
+            droid.notes = CString::default();
         }
 
         self.vars.droidmap.clear();
@@ -180,7 +181,10 @@ impl Data<'_> {
 
         self.sdl.cursor().hide();
 
-        self.main.show_score = self.main.real_score as c_long;
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        {
+            self.main.show_score = self.main.real_score.max(0.) as u32;
+        }
         self.vars.me.status = Status::Victory as c_int;
         self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
 
@@ -271,10 +275,10 @@ impl Data<'_> {
         // call this _after_ default settings and LoadGameConfig() ==> cmdline has highest priority!
         self.parse_command_line();
 
-        self.vars.user_rect = if self.global.game_config.full_user_rect != 0 {
-            self.vars.full_user_rect
-        } else {
+        self.vars.user_rect = if self.global.game_config.full_user_rect == 0 {
             self.vars.classic_user_rect
+        } else {
+            self.vars.full_user_rect
         };
 
         self.vars.screen_rect.scale(self.global.game_config.scale); // make sure we open a window of the right (rescaled) size!
@@ -366,11 +370,7 @@ impl Data<'_> {
         }
 
         if let Some(scale) = opt.scale {
-            assert!(
-                scale > 0.,
-                "illegal scale entered, needs to be >0: {}",
-                scale
-            );
+            assert!(scale > 0., "illegal scale entered, needs to be >0: {scale}");
             self.global.game_config.scale = scale;
             info!("Graphics scale set to {}", scale);
         }
@@ -382,7 +382,7 @@ impl Data<'_> {
         }
     }
 
-    /// find all themes and put them in AllThemes
+    /// find all themes and put them in `AllThemes`
     pub fn find_all_themes(&mut self) {
         use std::fs;
 
@@ -390,7 +390,7 @@ impl Data<'_> {
 
         // just to make sure...
         self.graphics.all_themes.num_themes = 0;
-        self.graphics.all_themes.theme_name.fill(Default::default());
+        self.graphics.all_themes.theme_name.fill(CString::default());
 
         let mut add_theme_from_dir = |dir_name: &Path| {
             let dir_name = dir_name.join("graphics");
@@ -433,12 +433,11 @@ impl Data<'_> {
                     }
 
                     let theme_name = entry.file_name();
-                    let theme_name = match theme_name
+                    let Some(theme_name) = theme_name
                         .to_str()
                         .and_then(|name| name.strip_suffix("_theme"))
-                    {
-                        Some(theme_name) => theme_name,
-                        None => continue,
+                    else {
+                        continue;
                     };
 
                     let theme_path = entry.path();
@@ -470,19 +469,18 @@ impl Data<'_> {
                             if theme_exists {
                                 info!("Theme '{}' is already listed", theme_name);
                                 continue;
-                            } else {
-                                info!("Found new graphics-theme: {}", theme_name);
-                                if theme_name == "classic" {
-                                    classic_theme_index =
-                                        self.graphics.all_themes.num_themes.try_into().unwrap();
-                                }
-                                self.graphics.all_themes.theme_name[usize::try_from(
-                                    self.graphics.all_themes.num_themes,
-                                )
-                                .unwrap()] = CString::new(theme_name).unwrap();
-
-                                self.graphics.all_themes.num_themes += 1;
                             }
+
+                            info!("Found new graphics-theme: {}", theme_name);
+                            if theme_name == "classic" {
+                                classic_theme_index =
+                                    self.graphics.all_themes.num_themes.try_into().unwrap();
+                            }
+                            self.graphics.all_themes.theme_name
+                                [usize::try_from(self.graphics.all_themes.num_themes).unwrap()] =
+                                CString::new(theme_name).unwrap();
+
+                            self.graphics.all_themes.num_themes += 1;
                         }
                         Err(err) => {
                             warn!(
@@ -515,25 +513,22 @@ impl Data<'_> {
             .iter()
             .position(|theme_name| **theme_name == game_config.theme_name);
 
-        match selected_theme_index {
-            Some(index) => {
-                info!(
-                    "Found selected theme {} from GameConfig.",
-                    self.global.game_config.theme_name.to_string_lossy(),
-                );
-                self.graphics.all_themes.cur_tnum = index.try_into().unwrap();
-            }
-            None => {
-                warn!(
-                    "selected theme {} not valid! Using classic theme.",
-                    self.global.game_config.theme_name.to_string_lossy(),
-                );
-                self.global
-                    .game_config
-                    .theme_name
-                    .set(&self.graphics.all_themes.theme_name[classic_theme_index]);
-                self.graphics.all_themes.cur_tnum = classic_theme_index.try_into().unwrap();
-            }
+        if let Some(index) = selected_theme_index {
+            info!(
+                "Found selected theme {} from GameConfig.",
+                self.global.game_config.theme_name.to_string_lossy(),
+            );
+            self.graphics.all_themes.cur_tnum = index.try_into().unwrap();
+        } else {
+            warn!(
+                "selected theme {} not valid! Using classic theme.",
+                self.global.game_config.theme_name.to_string_lossy(),
+            );
+            self.global
+                .game_config
+                .theme_name
+                .set(&self.graphics.all_themes.theme_name[classic_theme_index]);
+            self.graphics.all_themes.cur_tnum = classic_theme_index.try_into().unwrap();
         }
 
         info!(
@@ -542,6 +537,7 @@ impl Data<'_> {
         );
     }
 
+    #[allow(clippy::similar_names)]
     pub fn init_new_mission(&mut self, mission_name: &str) {
         const END_OF_MISSION_DATA_STRING: &[u8] = b"*** End of Mission File ***";
         const MISSION_BRIEFING_BEGIN_STRING: &[u8] =
@@ -586,7 +582,7 @@ impl Data<'_> {
 
         info!("InitNewMission: All bullets have been deleted.");
         for blast in &mut self.main.all_blasts {
-            blast.phase = Status::Out as c_int as c_float;
+            blast.phase = (Status::Out as u8).into();
             blast.ty = Status::Out as c_int;
         }
         info!("InitNewMission: All blasts have been deleted.");
@@ -744,7 +740,11 @@ impl Data<'_> {
             .finish()
             .expect("unable to find XPos parameter in mission data")
             .1;
-        self.vars.me.pos.x = starting_x_pos as c_float;
+        assert!(starting_x_pos <= 2i32.pow(f32::MANTISSA_DIGITS));
+        #[allow(clippy::cast_precision_loss)]
+        {
+            self.vars.me.pos.x = starting_x_pos as c_float;
+        }
 
         let start_point_slice = split_at_subslice(start_point_slice, b"YPos=").unwrap().1;
         let starting_y_pos = nom::character::complete::i32::<_, ()>(start_point_slice)
@@ -752,7 +752,10 @@ impl Data<'_> {
             .expect("unable to find YPos parameter in mission data")
             .1;
 
-        self.vars.me.pos.y = starting_y_pos as c_float;
+        #[allow(clippy::cast_precision_loss)]
+        {
+            self.vars.me.pos.y = starting_y_pos as c_float;
+        }
         info!(
             "Final starting position: Level={} XPos={} YPos={}.",
             starting_level, starting_x_pos, starting_y_pos,
@@ -880,6 +883,10 @@ impl Data<'_> {
     /// a dat file, that should be optimally human readable.
     pub fn init_game_data(&mut self, data_filename: &[u8]) {
         const END_OF_GAME_DAT_STRING: &[u8] = b"*** End of game.dat File ***";
+        const BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING: &[u8] =
+            b"Time in seconds for the animation of blast one :";
+        const BLAST_TWO_TOTAL_AMOUNT_OF_TIME_STRING: &[u8] =
+            b"Time in seconds for the animation of blast one :";
 
         /* Read the whole game data to memory */
         let fpath = self
@@ -903,11 +910,6 @@ impl Data<'_> {
         self.get_bullet_data(&data);
 
         // Now we read in the total time amount for the blast animations
-        const BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING: &[u8] =
-            b"Time in seconds for the animation of blast one :";
-        const BLAST_TWO_TOTAL_AMOUNT_OF_TIME_STRING: &[u8] =
-            b"Time in seconds for the animation of blast one :";
-
         self.vars.blastmap[0].total_animation_time =
             read_float_from_string(&data, BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING);
         self.vars.blastmap[1].total_animation_time =
@@ -1074,11 +1076,16 @@ impl Data<'_> {
         info!("That must have been the last robot.  We're done reading the robot data.");
         info!("Applying the calibration factors to all droids...");
 
+        #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
         for droid in &mut self.vars.droidmap {
             droid.maxspeed *= maxspeed_calibrator;
             droid.accel *= acceleration_calibrator;
             droid.maxenergy *= maxenergy_calibrator;
             droid.lose_health *= energyloss_calibrator;
+
+            assert!(droid.aggression < 2i32.pow(f32::MANTISSA_DIGITS));
+            assert!(droid.score < 2i32.pow(f32::MANTISSA_DIGITS));
+
             droid.aggression = (droid.aggression as f32 * aggression_calibrator) as c_int;
             droid.score = (droid.score as f32 * score_calibrator) as c_int;
         }
@@ -1194,8 +1201,10 @@ impl Data<'_> {
 
         // Now that all the calibrations factors have been read in, we can start to
         // apply them to all the bullet types
+        #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
         for bullet in &mut self.vars.bulletmap {
             bullet.speed *= bullet_speed_calibrator;
+            assert!(bullet.damage < 2i32.pow(f32::MANTISSA_DIGITS));
             bullet.damage = (bullet.damage as f32 * bullet_damage_calibrator) as c_int;
         }
     }

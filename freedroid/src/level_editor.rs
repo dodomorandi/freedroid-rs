@@ -11,7 +11,7 @@ use crate::{
 
 use log::{info, warn};
 use nom::Finish;
-use sdl::Pixel;
+use sdl::{convert::u32_to_i32, Pixel};
 use sdl_sys::{
     SDLKey_SDLK_F1, SDLKey_SDLK_KP0, SDLKey_SDLK_KP1, SDLKey_SDLK_KP2, SDLKey_SDLK_KP3,
     SDLKey_SDLK_KP4, SDLKey_SDLK_KP5, SDLKey_SDLK_KP6, SDLKey_SDLK_KP7, SDLKey_SDLK_KP8,
@@ -117,8 +117,11 @@ impl Data<'_> {
                 continue;
             }
 
-            let block_x = (self.vars.me.pos.x).round() as c_int;
-            let block_y = (self.vars.me.pos.y).round() as c_int;
+            #[allow(clippy::cast_possible_truncation)]
+            let [block_x, block_y] = [
+                (self.vars.me.pos.x).round() as c_int,
+                (self.vars.me.pos.y).round() as c_int,
+            ];
 
             self.fill_rect(self.vars.user_rect, BLACK);
             self.assemble_combat_picture(AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits().into());
@@ -127,6 +130,7 @@ impl Data<'_> {
 
             // show line between a selected connection-origin and the current block
             if origin_waypoint != -1 {
+                #[allow(clippy::cast_precision_loss)]
                 self.draw_line_between_tiles(
                     block_x as f32,
                     block_y as f32,
@@ -167,6 +171,7 @@ impl Data<'_> {
                 self.vars.me.pos.x -= 1.;
             }
 
+            #[allow(clippy::cast_possible_truncation)]
             if self.right_pressed_r()
                 && (self.vars.me.pos.x.round() as c_int) < self.main.cur_level().xlen - 1
             {
@@ -177,6 +182,7 @@ impl Data<'_> {
                 self.vars.me.pos.y -= 1.;
             }
 
+            #[allow(clippy::cast_possible_truncation)]
             if self.down_pressed_r()
                 && (self.vars.me.pos.y.round() as c_int) < self.main.cur_level().ylen - 1
             {
@@ -284,6 +290,11 @@ impl Data<'_> {
             // done upon pressing the 'e' key.
             //
             if self.key_is_pressed_r(b'e'.into()) {
+                use nom::{
+                    character::complete::{i32, space0},
+                    sequence::preceded,
+                };
+
                 let mut ne_screen = self.graphics.ne_screen.take().unwrap();
                 let menu_b_font = self
                     .global
@@ -303,11 +314,6 @@ impl Data<'_> {
                 assert!(ne_screen.flip());
                 self.graphics.ne_screen = Some(ne_screen);
                 let numeric_input_string = self.get_string(10, 2).unwrap();
-
-                use nom::{
-                    character::complete::{i32, space0},
-                    sequence::preceded,
-                };
 
                 let mut special_map_value =
                     preceded(space0::<_, ()>, i32)(numeric_input_string.as_bytes())
@@ -430,57 +436,57 @@ impl Data<'_> {
             if self.key_is_pressed_r(b'l'.into()) {
                 map_tile = Some(MapTile::Lift);
             }
-            if self.key_is_pressed_r(SDLKey_SDLK_KP_PLUS as c_int) {
+            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP_PLUS)) {
                 map_tile = Some(MapTile::VWall);
             }
-            if self.key_is_pressed_r(SDLKey_SDLK_KP0 as c_int) {
+            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP0)) {
                 map_tile = Some(MapTile::HWall);
             }
-            if self.key_is_pressed_r(SDLKey_SDLK_KP1 as c_int) {
+            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP1)) {
                 map_tile = Some(MapTile::EckLu);
             }
-            if self.key_is_pressed_r(SDLKey_SDLK_KP2 as c_int) {
-                if !self.shift_pressed() {
-                    map_tile = Some(MapTile::Tu);
-                } else {
+            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP2)) {
+                if self.shift_pressed() {
                     map_tile = Some(MapTile::KonsoleU);
+                } else {
+                    map_tile = Some(MapTile::Tu);
                 }
             }
-            if self.key_is_pressed_r(SDLKey_SDLK_KP3 as c_int) {
+            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP3)) {
                 map_tile = Some(MapTile::EckRu);
             }
-            if self.key_is_pressed_r(SDLKey_SDLK_KP4 as c_int) {
-                if !self.shift_pressed() {
-                    map_tile = Some(MapTile::Tl);
-                } else {
+            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP4)) {
+                if self.shift_pressed() {
                     map_tile = Some(MapTile::KonsoleL);
+                } else {
+                    map_tile = Some(MapTile::Tl);
                 }
             }
-            if self.key_is_pressed_r(SDLKey_SDLK_KP5 as c_int) {
-                if !self.shift_pressed() {
-                    map_tile = Some(MapTile::Kreuz);
-                } else {
+            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP5)) {
+                if self.shift_pressed() {
                     map_tile = Some(MapTile::Void);
-                }
-            }
-            if self.key_is_pressed_r(SDLKey_SDLK_KP6 as c_int) {
-                if !self.shift_pressed() {
-                    map_tile = Some(MapTile::Tr);
                 } else {
-                    map_tile = Some(MapTile::KonsoleR);
+                    map_tile = Some(MapTile::Kreuz);
                 }
             }
-            if self.key_is_pressed_r(SDLKey_SDLK_KP7 as c_int) {
+            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP6)) {
+                if self.shift_pressed() {
+                    map_tile = Some(MapTile::KonsoleR);
+                } else {
+                    map_tile = Some(MapTile::Tr);
+                }
+            }
+            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP7)) {
                 map_tile = Some(MapTile::EckLo);
             }
-            if self.key_is_pressed_r(SDLKey_SDLK_KP8 as c_int) {
-                if !self.shift_pressed() {
-                    map_tile = Some(MapTile::To);
-                } else {
+            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP8)) {
+                if self.shift_pressed() {
                     map_tile = Some(MapTile::KonsoleO);
+                } else {
+                    map_tile = Some(MapTile::To);
                 }
             }
-            if self.key_is_pressed_r(SDLKey_SDLK_KP9 as c_int) {
+            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP9)) {
                 map_tile = Some(MapTile::EckRo);
             }
             if self.key_is_pressed_r(b'm'.into()) {
@@ -526,12 +532,14 @@ impl Data<'_> {
                 ..i32::from(3 * self.vars.block_rect.width() / 4)
             {
                 // This draws a (double) line at the upper border of the current block
+                #[allow(clippy::cast_possible_truncation)]
                 let mut x = i
                     + i32::from(self.vars.user_rect.x())
                     + i32::from(self.vars.user_rect.width() / 2)
                     - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
                         * f32::from(self.vars.block_rect.width())) as i32;
                 let user_center = self.vars.get_user_center();
+                #[allow(clippy::cast_possible_truncation)]
                 let mut y = i + i32::from(user_center.y())
                     - ((self.vars.me.pos.y - f32::from(this_wp.y) + 0.5)
                         * f32::from(self.vars.block_rect.height())) as i32;
@@ -552,15 +560,20 @@ impl Data<'_> {
                     .set(x.try_into().unwrap(), y.try_into().unwrap(), HIGHLIGHTCOLOR)
                     .unwrap();
 
-                x = i
-                    + i32::from(self.vars.user_rect.x())
-                    + i32::from(self.vars.user_rect.width() / 2)
-                    - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
-                        * f32::from(self.vars.block_rect.width())) as i32;
-                y = i + i32::from(user_center.y())
-                    - ((self.vars.me.pos.y - f32::from(this_wp.y) + 0.5)
-                        * f32::from(self.vars.block_rect.height())) as i32
-                    + 1;
+                #[allow(clippy::cast_possible_truncation)]
+                {
+                    x = i
+                        + i32::from(self.vars.user_rect.x())
+                        + i32::from(self.vars.user_rect.width() / 2)
+                        - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
+                            * f32::from(self.vars.block_rect.width()))
+                            as i32;
+                    y = i + i32::from(user_center.y())
+                        - ((self.vars.me.pos.y - f32::from(this_wp.y) + 0.5)
+                            * f32::from(self.vars.block_rect.height()))
+                            as i32
+                        + 1;
+                }
                 if x < i32::from(self.vars.user_rect.x())
                     || x >= i32::from(self.vars.user_rect.x())
                         + i32::from(self.vars.user_rect.width())
@@ -576,15 +589,20 @@ impl Data<'_> {
                     .unwrap();
 
                 // This draws a line at the lower border of the current block
-                x = i
-                    + i32::from(self.vars.user_rect.x())
-                    + i32::from(self.vars.user_rect.width() / 2)
-                    - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
-                        * f32::from(self.vars.block_rect.width())) as i32;
-                y = -i + i32::from(user_center.y())
-                    - ((self.vars.me.pos.y - f32::from(this_wp.y) - 0.5)
-                        * f32::from(self.vars.block_rect.height())) as i32
-                    - 1;
+                #[allow(clippy::cast_possible_truncation)]
+                {
+                    x = i
+                        + i32::from(self.vars.user_rect.x())
+                        + i32::from(self.vars.user_rect.width() / 2)
+                        - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
+                            * f32::from(self.vars.block_rect.width()))
+                            as i32;
+                    y = -i + i32::from(user_center.y())
+                        - ((self.vars.me.pos.y - f32::from(this_wp.y) - 0.5)
+                            * f32::from(self.vars.block_rect.height()))
+                            as i32
+                        - 1;
+                }
                 if x < i32::from(self.vars.user_rect.x())
                     || x > i32::from(self.vars.user_rect.x())
                         + i32::from(self.vars.user_rect.width())
@@ -599,15 +617,20 @@ impl Data<'_> {
                     .set(x.try_into().unwrap(), y.try_into().unwrap(), HIGHLIGHTCOLOR)
                     .unwrap();
 
-                x = i
-                    + i32::from(self.vars.user_rect.x())
-                    + i32::from(self.vars.user_rect.width() / 2)
-                    - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
-                        * f32::from(self.vars.block_rect.width())) as i32;
-                y = -i + i32::from(user_center.y())
-                    - ((self.vars.me.pos.y - f32::from(this_wp.y) - 0.5)
-                        * f32::from(self.vars.block_rect.height())) as i32
-                    - 2;
+                #[allow(clippy::cast_possible_truncation)]
+                {
+                    x = i
+                        + i32::from(self.vars.user_rect.x())
+                        + i32::from(self.vars.user_rect.width() / 2)
+                        - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
+                            * f32::from(self.vars.block_rect.width()))
+                            as i32;
+                    y = -i + i32::from(user_center.y())
+                        - ((self.vars.me.pos.y - f32::from(this_wp.y) - 0.5)
+                            * f32::from(self.vars.block_rect.height()))
+                            as i32
+                        - 2;
+                }
                 if x < i32::from(self.vars.user_rect.x())
                     || x > i32::from(self.vars.user_rect.x())
                         + i32::from(self.vars.user_rect.width())
@@ -657,6 +680,7 @@ impl Data<'_> {
         let user_center = self.vars.get_user_center();
         for i in 0..i32::from(self.vars.block_rect.width()) {
             // This draws a (double) line at the upper border of the current block
+            #[allow(clippy::cast_possible_truncation)]
             pixels
                 .set(
                     u16::try_from(
@@ -677,6 +701,7 @@ impl Data<'_> {
                     HIGHLIGHTCOLOR,
                 )
                 .unwrap();
+            #[allow(clippy::cast_possible_truncation)]
             pixels
                 .set(
                     u16::try_from(
@@ -700,6 +725,7 @@ impl Data<'_> {
                 .unwrap();
 
             // This draws a line at the lower border of the current block
+            #[allow(clippy::cast_possible_truncation)]
             pixels
                 .set(
                     u16::try_from(
@@ -721,6 +747,7 @@ impl Data<'_> {
                     HIGHLIGHTCOLOR,
                 )
                 .unwrap();
+            #[allow(clippy::cast_possible_truncation)]
             pixels
                 .set(
                     u16::try_from(
@@ -744,6 +771,7 @@ impl Data<'_> {
                 .unwrap();
 
             // This draws a line at the left border of the current block
+            #[allow(clippy::cast_possible_truncation)]
             pixels
                 .set(
                     u16::try_from(
@@ -765,6 +793,7 @@ impl Data<'_> {
                     HIGHLIGHTCOLOR,
                 )
                 .unwrap();
+            #[allow(clippy::cast_possible_truncation)]
             pixels
                 .set(
                     u16::try_from(
@@ -788,6 +817,7 @@ impl Data<'_> {
                 .unwrap();
 
             // This draws a line at the right border of the current block
+            #[allow(clippy::cast_possible_truncation)]
             pixels
                 .set(
                     u16::try_from(
@@ -809,6 +839,7 @@ impl Data<'_> {
                     HIGHLIGHTCOLOR,
                 )
                 .unwrap();
+            #[allow(clippy::cast_possible_truncation)]
             pixels
                 .set(
                     u16::try_from(

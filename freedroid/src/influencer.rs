@@ -44,7 +44,7 @@ const MAXIMAL_STEP_SIZE: f32 = 7.0 / 20.;
 impl Data<'_> {
     /// Refresh fields can be used to regain energy
     /// lost due to bullets or collisions, but not energy lost due to permanent
-    /// loss of health in PermanentLoseEnergy.
+    /// loss of health in `PermanentLoseEnergy`.
     ///
     /// This function now takes into account the framerates.
     pub fn refresh_influencer(&mut self) {
@@ -108,36 +108,42 @@ impl Data<'_> {
                 continue;
             }
 
-            let xdist = vars.me.pos.x - enemy.pos.x;
-            let ydist = vars.me.pos.y - enemy.pos.y;
+            let x_dist = vars.me.pos.x - enemy.pos.x;
+            let y_dist = vars.me.pos.y - enemy.pos.y;
 
-            if xdist.trunc().abs() > 1. {
+            if x_dist.trunc().abs() > 1. {
                 continue;
             }
-            if ydist.trunc().abs() > 1. {
+            if y_dist.trunc().abs() > 1. {
                 continue;
             }
 
-            let dist2 = ((xdist * xdist) + (ydist * ydist)).sqrt();
+            let dist2 = ((x_dist * x_dist) + (y_dist * y_dist)).sqrt();
             if dist2 > 2. * global.droid_radius {
                 continue;
             }
 
-            if vars.me.status != Status::Transfermode as c_int {
+            if vars.me.status == Status::Transfermode as c_int {
+                self.takeover(enemy_index.try_into().unwrap());
+
+                if self.level_empty() != 0 {
+                    self.main.cur_level_mut().empty = true.into();
+                }
+            } else {
                 vars.me.speed.x = -vars.me.speed.x;
                 vars.me.speed.y = -vars.me.speed.y;
 
                 if vars.me.speed.x != 0. {
                     vars.me.speed.x +=
                         COLLISION_PUSHSPEED * (vars.me.speed.x / vars.me.speed.x.abs());
-                } else if xdist != 0. {
-                    vars.me.speed.x = COLLISION_PUSHSPEED * (xdist / xdist.abs());
+                } else if x_dist != 0. {
+                    vars.me.speed.x = COLLISION_PUSHSPEED * (x_dist / x_dist.abs());
                 }
                 if vars.me.speed.y != 0. {
                     vars.me.speed.y +=
                         COLLISION_PUSHSPEED * (vars.me.speed.y / vars.me.speed.y.abs());
-                } else if ydist != 0. {
-                    vars.me.speed.y = COLLISION_PUSHSPEED * (ydist / ydist.abs());
+                } else if y_dist != 0. {
+                    vars.me.speed.y = COLLISION_PUSHSPEED * (y_dist / y_dist.abs());
                 }
 
                 // move the influencer a little bit out of the enemy AND the enemy a little bit out of the influ
@@ -162,7 +168,7 @@ impl Data<'_> {
                 // shortly stop this enemy, then send him back to previous waypoint
                 let enemy = &mut self.main.all_enemys[enemy_index];
                 if enemy.warten == 0. {
-                    enemy.warten = WAIT_COLLISION as f32;
+                    enemy.warten = f32::from(WAIT_COLLISION);
                     std::mem::swap(&mut enemy.nextwaypoint, &mut enemy.lastwaypoint);
 
                     // Add some funny text!
@@ -170,12 +176,6 @@ impl Data<'_> {
                 }
                 /* someone loses energy ! */
                 self.influ_enemy_collision_lose_energy(enemy_index.try_into().unwrap());
-            } else {
-                self.takeover(enemy_index.try_into().unwrap());
-
-                if self.level_empty() != 0 {
-                    self.main.cur_level_mut().empty = true.into();
-                }
             }
         }
     }
@@ -183,6 +183,7 @@ impl Data<'_> {
     pub fn influ_enemy_collision_lose_energy(&mut self, enemy_num: c_int) {
         let enemy_type = self.main.all_enemys[usize::try_from(enemy_num).unwrap()].ty;
 
+        #[allow(clippy::cast_precision_loss)]
         let damage = (self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].class
             - self.vars.droidmap[usize::try_from(enemy_type).unwrap()].class)
             as f32
@@ -224,11 +225,14 @@ impl Data<'_> {
             );
             let blast = &mut self.main.all_blasts[counter];
             blast.ty = Explosion::Druidblast as c_int;
-            blast.px =
-                self.vars.me.pos.x - self.global.droid_radius / 2. + my_random(10) as f32 * 0.05;
-            blast.py =
-                self.vars.me.pos.y - self.global.droid_radius / 2. + my_random(10) as f32 * 0.05;
-            blast.phase = 0.2 * i as f32;
+            #[allow(clippy::cast_precision_loss)]
+            {
+                blast.px = self.vars.me.pos.x - self.global.droid_radius / 2.
+                    + my_random(10) as f32 * 0.05;
+                blast.py = self.vars.me.pos.y - self.global.droid_radius / 2.
+                    + my_random(10) as f32 * 0.05;
+                blast.phase = 0.2 * i as f32;
+            }
         }
 
         self.play_sound(SoundType::Influexplosion as c_int);
@@ -258,7 +262,7 @@ impl Data<'_> {
             // At first we just check in which directions (from the last position)
             // the ways are blocked and in which directions the ways are open.
             //
-            let north_south_axis_blocked = if !({
+            let north_south_axis_blocked = if {
                 let pos_y = lastpos.y
                     + self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed
                         * self.frame_time();
@@ -268,11 +272,11 @@ impl Data<'_> {
                     - self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed
                         * self.frame_time();
                 self.druid_passable(lastpos.x, pos_y) != Direction::Center as c_int
-            }) {
+            } {
+                true
+            } else {
                 info!("North-south-Axis seems to be free.");
                 false
-            } else {
-                true
             };
 
             let east_west_axis_blocked = !({
@@ -391,16 +395,16 @@ impl Data<'_> {
     }
 
     pub fn animate_influence(&mut self) {
-        if self.vars.me.ty != Droid::Droid001 as c_int {
+        if self.vars.me.ty == Droid::Droid001 as c_int {
             self.vars.me.phase += (self.vars.me.energy
-                / (self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxenergy
-                    + self.vars.droidmap[Droid::Droid001 as usize].maxenergy))
+                / (self.vars.droidmap[Droid::Droid001 as usize].maxenergy))
                 * self.frame_time()
                 * f32::from(ENEMYPHASES)
                 * 3.;
         } else {
             self.vars.me.phase += (self.vars.me.energy
-                / (self.vars.droidmap[Droid::Droid001 as usize].maxenergy))
+                / (self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxenergy
+                    + self.vars.droidmap[Droid::Droid001 as usize].maxenergy))
                 * self.frame_time()
                 * f32::from(ENEMYPHASES)
                 * 3.;
@@ -432,20 +436,20 @@ impl Data<'_> {
 
         // check, if the influencer is still ok
         if self.vars.me.energy <= 0. {
-            if self.vars.me.ty != Droid::Droid001 as c_int {
-                self.vars.me.ty = Droid::Droid001 as c_int;
-                self.vars.me.energy = BLINKENERGY;
-                self.vars.me.health = BLINKENERGY;
-                self.start_blast(
-                    self.vars.me.pos.x,
-                    self.vars.me.pos.y,
-                    Explosion::Rejectblast as c_int,
-                );
-            } else {
+            if self.vars.me.ty == Droid::Droid001 as c_int {
                 self.vars.me.status = Status::Terminated as c_int;
                 self.thou_art_defeated();
                 return;
             }
+
+            self.vars.me.ty = Droid::Droid001 as c_int;
+            self.vars.me.energy = BLINKENERGY;
+            self.vars.me.health = BLINKENERGY;
+            self.start_blast(
+                self.vars.me.pos.x,
+                self.vars.me.pos.y,
+                Explosion::Rejectblast as c_int,
+            );
         }
 
         /* Time passed before entering Transfermode ?? */
@@ -608,6 +612,7 @@ impl Data<'_> {
         }
 
         /* if using a joystick/mouse, allow exact directional shots! */
+        #[allow(clippy::cast_precision_loss)]
         if self.input.axis_is_active != 0 {
             let max_val = self
                 .input

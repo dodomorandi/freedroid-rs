@@ -25,7 +25,7 @@ fn get_features(include_dirs: &[PathBuf]) -> Features {
     let expanded = match gcc.file("build/detector.c").try_expand() {
         Ok(expanded) => expanded,
         Err(e) => {
-            panic!("Cannot compile the SDL features detector: {}", e);
+            panic!("Cannot compile the SDL features detector: {e}");
         }
     };
     let expanded = String::from_utf8(expanded).unwrap();
@@ -33,7 +33,7 @@ fn get_features(include_dirs: &[PathBuf]) -> Features {
     let mut video_driver = None;
     for line in expanded.lines() {
         if let Some(raw_driver) = line.strip_prefix("RUST_SDL_VIDEO_DRIVER_") {
-            use VideoDriver::*;
+            use VideoDriver::{Ddraw, Gapi, Nanox, Photon, RiscOs, WinDib, X11};
             let driver = match raw_driver {
                 "X11" => X11,
                 "NANOX" => Nanox,
@@ -42,12 +42,13 @@ fn get_features(include_dirs: &[PathBuf]) -> Features {
                 "GAPI" => Gapi,
                 "RISCOS" => RiscOs,
                 "PHOTON" => Photon,
-                _ => panic!("invalid video driver {}", raw_driver),
+                _ => panic!("invalid video driver {raw_driver}"),
             };
 
-            if video_driver.replace(driver).is_some() {
-                panic!("SDL video driver already set");
-            }
+            assert!(
+                video_driver.replace(driver).is_none(),
+                "SDL video driver already set"
+            );
         }
     }
 
@@ -59,7 +60,7 @@ fn main() {
 
     let features = get_features(&sdl.include_paths);
     if let Some(video_driver) = &features.video_driver {
-        use VideoDriver::*;
+        use VideoDriver::{Ddraw, Gapi, Nanox, Photon, RiscOs, WinDib, X11};
         let video_driver = match video_driver {
             X11 => "x11",
             Nanox => "nanox",
@@ -70,6 +71,6 @@ fn main() {
             Photon => "photon",
         };
 
-        println!("cargo:rustc-cfg=sdl_video_driver_{}", video_driver);
+        println!("cargo:rustc-cfg=sdl_video_driver_{video_driver}");
     }
 }

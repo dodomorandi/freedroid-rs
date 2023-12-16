@@ -1,3 +1,11 @@
+#![allow(
+    clippy::missing_panics_doc,
+    clippy::missing_errors_doc,
+    clippy::module_name_repetitions,
+    clippy::too_many_lines,
+    clippy::too_many_arguments
+)]
+
 mod array_c_string;
 mod array_index;
 mod b_font;
@@ -64,7 +72,7 @@ struct Main<'sdl> {
     cur_level_index: Option<ArrayIndex<MAX_LEVELS>>,
     // the current ship-data
     cur_ship: Ship,
-    show_score: i64,
+    show_score: u32,
     real_score: f32,
     // a cumulative/draining counter of kills->determines Alert!
     death_count: f32,
@@ -109,7 +117,7 @@ impl Default for Main<'_> {
             alert_threshold: 0,
             alert_bonus_per_sec: 0.,
             all_enemys: [Enemy::default(); MAX_ENEMYS_ON_SHIP],
-            config_dir: Default::default(),
+            config_dir: ArrayCString::default(),
             invincible_mode: 0,
             show_all_droids: 0,
             stop_influencer: 0,
@@ -118,9 +126,9 @@ impl Default for Main<'_> {
             pre_take_energy: 0,
             all_bullets: array_init(|_| Bullet::default_const()),
             all_blasts: [Blast::default(); MAXBLASTS + 10],
-            first_digit_rect: Default::default(),
-            second_digit_rect: Default::default(),
-            third_digit_rect: Default::default(),
+            first_digit_rect: Rect::default(),
+            second_digit_rect: Rect::default(),
+            third_digit_rect: Rect::default(),
             f_p_sover1: 0.,
         }
     }
@@ -161,23 +169,23 @@ impl<'sdl> Data<'sdl> {
         Self {
             game_over: false,
             sdl,
-            map: Default::default(),
-            b_font: Default::default(),
-            highscore: Default::default(),
-            bullet: Default::default(),
-            influencer: Default::default(),
-            init: Default::default(),
-            text: Default::default(),
-            sound: Default::default(),
-            misc: Default::default(),
-            ship: Default::default(),
-            input: Default::default(),
-            menu: Default::default(),
-            global: Default::default(),
-            vars: Default::default(),
-            takeover: Default::default(),
-            graphics: Default::default(),
-            main: Default::default(),
+            map: Map::default(),
+            b_font: BFont::default(),
+            highscore: Highscore::default(),
+            bullet: BulletData::default(),
+            influencer: Influencer::default(),
+            init: Init::default(),
+            text: Text::default(),
+            sound: Option::default(),
+            misc: Misc::default(),
+            ship: ShipData::default(),
+            input: Input::default(),
+            menu: Menu::default(),
+            global: Global::default(),
+            vars: Vars::default(),
+            takeover: Takeover::default(),
+            graphics: Graphics::default(),
+            main: Main::default(),
             quit: Cell::new(false),
             font_owner: FontCellOwner::new(),
         }
@@ -365,8 +373,10 @@ fn main() {
 impl Data<'_> {
     /// This function updates counters and is called ONCE every frame.
     /// The counters include timers, but framerate-independence of game speed
-    /// is preserved because everything is weighted with the Frame_Time()
+    /// is preserved because everything is weighted with the [`frame_time`]
     /// function.
+    ///
+    /// [`frame_time`]: Data::frame_time
     fn update_counters_for_this_frame(&mut self) {
         // Here are some things, that were previously done by some periodic */
         // interrupt function
@@ -401,11 +411,14 @@ impl Data<'_> {
         if cur_level.empty > 2 {
             cur_level.empty -= 1;
         }
-        if self.main.real_score > self.main.show_score as f32 {
-            self.main.show_score += 1;
-        }
-        if self.main.real_score < self.main.show_score as f32 {
-            self.main.show_score -= 1;
+        #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
+        {
+            if self.main.real_score > self.main.show_score as f32 {
+                self.main.show_score = self.main.show_score.saturating_add(1);
+            }
+            if self.main.real_score < self.main.show_score as f32 {
+                self.main.show_score = self.main.show_score.saturating_sub(1);
+            }
         }
 
         // drain Death-count, responsible for Alert-state
@@ -415,14 +428,19 @@ impl Data<'_> {
         if self.main.death_count < 0. {
             self.main.death_count = 0.;
         }
-        // and switch Alert-level according to DeathCount
-        self.main.alert_level = (self.main.death_count / self.main.alert_threshold as f32) as i32;
-        if self.main.alert_level > AlertNames::Red as i32 {
-            self.main.alert_level = AlertNames::Red as i32;
+
+        #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
+        {
+            // and switch Alert-level according to DeathCount
+            self.main.alert_level =
+                (self.main.death_count / self.main.alert_threshold as f32) as i32;
+            if self.main.alert_level > AlertNames::Red as i32 {
+                self.main.alert_level = AlertNames::Red as i32;
+            }
+            // player gets a bonus/second in AlertLevel
+            self.main.real_score +=
+                self.main.alert_level as f32 * self.main.alert_bonus_per_sec * self.frame_time();
         }
-        // player gets a bonus/second in AlertLevel
-        self.main.real_score +=
-            self.main.alert_level as f32 * self.main.alert_bonus_per_sec * self.frame_time();
 
         let Self {
             main, misc, global, ..
@@ -477,6 +495,7 @@ fn split_at_subslice_mut<'a>(
 /// memory for it of course, looks for the file end string and then
 /// terminates the whole read in file with a 0 character, so that it
 /// can easily be treated like a common string.
+#[must_use]
 pub fn read_and_malloc_and_terminate_file(filename: &Path, file_end_string: &[u8]) -> Box<[u8]> {
     use bstr::ByteSlice;
     use std::io::Read;
@@ -487,39 +506,35 @@ pub fn read_and_malloc_and_terminate_file(filename: &Path, file_end_string: &[u8
     );
 
     // Read the whole theme data to memory
-    let mut file = match File::open(filename) {
-        Ok(file) => {
-            info!("ReadAndMallocAndTerminateFile: Opening file succeeded...");
-            file
-        }
-        Err(_) => {
-            panic!(
-                "\n\
-        ----------------------------------------------------------------------\n\
-        Freedroid has encountered a problem:\n\
-        In function 'char* ReadAndMallocAndTerminateFile ( char* filename ):\n\
-        \n\
-        Freedroid was unable to open a given text file, that should be there and\n\
-        should be accessible.\n\
-        \n\
-        This might be due to a wrong file name in a mission file, a wrong filename\n\
-        in the source or a serious bug in the source.\n\
-        \n\
-        The file that couldn't be located was: {}\n\
-        \n\
-        Please check that your external text files are properly set up.\n\
-        \n\
-        Please also don't forget, that you might have to run 'make install'\n\
-        again after you've made modifications to the data files in the source tree.\n\
-        \n\
-        Freedroid will terminate now to draw attention to the data problem it could\n\
-        not resolve.... Sorry, if that interrupts a major game of yours.....\n\
-        ----------------------------------------------------------------------\n\
-        ",
-                filename.display()
-            );
-        }
+    let Ok(mut file) = File::open(filename) else {
+        panic!(
+            "\n\
+            ----------------------------------------------------------------------\n\
+            Freedroid has encountered a problem:\n\
+            In function 'char* ReadAndMallocAndTerminateFile ( char* filename ):\n\
+            \n\
+            Freedroid was unable to open a given text file, that should be there and\n\
+            should be accessible.\n\
+            \n\
+            This might be due to a wrong file name in a mission file, a wrong filename\n\
+            in the source or a serious bug in the source.\n\
+            \n\
+            The file that couldn't be located was: {}\n\
+            \n\
+            Please check that your external text files are properly set up.\n\
+            \n\
+            Please also don't forget, that you might have to run 'make install'\n\
+            again after you've made modifications to the data files in the source tree.\n\
+            \n\
+            Freedroid will terminate now to draw attention to the data problem it could\n\
+            not resolve.... Sorry, if that interrupts a major game of yours.....\n\
+            ----------------------------------------------------------------------\n\
+            ",
+            filename.display()
+        );
     };
+    info!("ReadAndMallocAndTerminateFile: Opening file succeeded...");
+
     let file_len = match file
         .metadata()
         .ok()
@@ -536,12 +551,9 @@ pub fn read_and_malloc_and_terminate_file(filename: &Path, file_end_string: &[u8
 
     let mut all_data: Box<[u8]> = vec![0; file_len + 64 * 2 + 10000].into_boxed_slice();
 
-    match file.read_exact(&mut all_data[..file_len]) {
-        Ok(()) => info!("ReadAndMallocAndTerminateFile: Reading file succeeded..."),
-        Err(_) => {
-            panic!("ReadAndMallocAndTerminateFile: Reading file failed...");
-        }
-    }
+    file.read_exact(&mut all_data[..file_len])
+        .expect("ReadAndMallocAndTerminateFile: Reading file failed...");
+    info!("ReadAndMallocAndTerminateFile: Reading file succeeded...");
     all_data[file_len..].fill(0);
 
     drop(file);

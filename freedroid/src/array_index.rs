@@ -34,9 +34,7 @@ where
 
 impl<const N: usize> ArrayIndex<N> {
     pub const fn new(index: usize) -> Self {
-        if index >= N {
-            panic!("creating an out of bound array index");
-        }
+        assert!(index < N, "creating an out of bound array index");
 
         Self(index)
     }

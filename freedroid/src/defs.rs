@@ -2,6 +2,7 @@ use crate::{input::Input, structs::Point, vars::Vars, Data, Sdl};
 
 use bitflags::bitflags;
 use cstr::cstr;
+use sdl::convert::{u32_to_i32, u32_to_isize};
 #[cfg(feature = "gcw0")]
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_LALT, SDLKey_SDLK_LCTRL, SDLKey_SDLK_LSHIFT, SDLKey_SDLK_TAB,
@@ -18,13 +19,14 @@ pub const MAX_THEMES: usize = 100;
 
 pub const RESET: c_int = 0x01;
 pub const UPDATE: c_int = 0x02;
-pub const INIT_ONLY: usize = 0x04;
-pub const FREE_ONLY: usize = 0x08;
+pub const INIT_ONLY: u8 = 0x04;
+pub const FREE_ONLY: u8 = 0x08;
 
 pub const DROID_ROTATION_TIME: f32 = 3.0;
 pub const NUM_DECAL_PICS: usize = 2;
 
 #[inline]
+#[allow(clippy::cast_possible_truncation)]
 pub fn scale_point(point: &mut Point, scale: f32) {
     let scale: f64 = scale.into();
     point.x = (f64::from(point.x) * scale) as i32;
@@ -43,7 +45,7 @@ pub fn scale_point(point: &mut Point, scale: f32) {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[allow(dead_code)]
 pub enum PointerStates {
-    MouseUp = SDLKey_SDLK_LAST as isize + 1,
+    MouseUp = u32_to_isize(SDLKey_SDLK_LAST) + 1,
     MouseRight,
     MouseDown,
     MouseLeft,
@@ -90,7 +92,7 @@ pub enum Cmds {
 impl Data<'_> {
     #[inline]
     pub fn return_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(SDLKey_SDLK_RETURN as i32)
+        self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_RETURN))
     }
 
     #[inline]
@@ -122,13 +124,13 @@ impl Data<'_> {
     #[cfg(not(target_os = "android"))]
     #[inline]
     pub fn space_pressed(&mut self) -> bool {
-        self.key_is_pressed(SDLKey_SDLK_SPACE as c_int)
+        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_SPACE))
     }
 
     #[cfg(not(target_os = "android"))]
     #[inline]
     pub fn escape_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(SDLKey_SDLK_ESCAPE as c_int)
+        self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_ESCAPE))
     }
 
     #[inline]
@@ -220,49 +222,49 @@ impl Data<'_> {
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_a_pressed(&mut self) -> bool {
-        self.key_is_pressed(SDLKey_SDLK_LCTRL as c_int)
+        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_LCTRL))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_b_pressed(&mut self) -> bool {
-        self.key_is_pressed(SDLKey_SDLK_LALT as c_int)
+        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_LALT))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_x_pressed(&mut self) -> bool {
-        self.key_is_pressed(SDLKey_SDLK_LSHIFT as c_int)
+        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_LSHIFT))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_y_pressed(&mut self) -> bool {
-        self.key_is_pressed(SDLKey_SDLK_SPACE as c_int)
+        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_SPACE))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_rs_pressed(&mut self) -> bool {
-        self.key_is_pressed(SDLKey_SDLK_BACKSPACE as c_int)
+        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_BACKSPACE))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_ls_pressed(&mut self) -> bool {
-        self.key_is_pressed(SDLKey_SDLK_TAB as c_int)
+        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_TAB))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_start_pressed(&mut self) -> bool {
-        self.key_is_pressed(SDLKey_SDLK_RETURN as c_int)
+        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_RETURN))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_select_pressed(&mut self) -> bool {
-        self.key_is_pressed(SDLKey_SDLK_ESCAPE as c_int)
+        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_ESCAPE))
     }
 
     #[cfg(feature = "gcw0")]
@@ -281,49 +283,49 @@ impl Data<'_> {
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_a_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(SDLKey_SDLK_LCTRL as c_int)
+        self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_LCTRL))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_b_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(SDLKey_SDLK_LALT as c_int)
+        self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_LALT))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_x_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(SDLKey_SDLK_LSHIFT as c_int)
+        self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_LSHIFT))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_y_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(SDLKey_SDLK_SPACE as c_int)
+        self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_SPACE))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_rs_pressed_r(&mut self) -> bool {
-        self.key_is_pressed(SDLKey_SDLK_BACKSPACE as c_int)
+        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_BACKSPACE))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_ls_pressed_r(&mut self) -> bool {
-        self.key_is_pressed(SDLKey_SDLK_TAB as c_int)
+        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_TAB))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_start_pressed_r(&mut self) -> bool {
-        self.key_is_pressed(SDLKey_SDLK_RETURN as c_int)
+        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_RETURN))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_select_pressed_r(&mut self) -> bool {
-        self.key_is_pressed(SDLKey_SDLK_ESCAPE as c_int)
+        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_ESCAPE))
     }
 
     #[cfg(feature = "gcw0")]
@@ -366,9 +368,9 @@ pub const COLLISION_STEPSIZE: f32 = 0.1;
  *************************************************************/
 pub const HS_BACKGROUND_FILE: &[u8] = b"transfer.jpg";
 pub const HS_EMPTY_ENTRY: &str = "--- empty ---";
-pub const MAX_NAME_LEN: usize = 15; /* max len of highscore name entry */
-pub const MAX_HIGHSCORES: usize = 10; /* only keep Top10 */
-pub const DATE_LEN: usize = 10; /* reserved for the date-string */
+pub const MAX_NAME_LEN: u8 = 15; /* max len of highscore name entry */
+pub const MAX_HIGHSCORES: u8 = 10; /* only keep Top10 */
+pub const DATE_LEN: u8 = 10; /* reserved for the date-string */
 //***************************************************************
 
 // find_file(): use current-theme subdir in search or not
@@ -392,11 +394,10 @@ impl TryFrom<i32> for Criticality {
     type Error = InvalidCriticality;
 
     fn try_from(value: i32) -> Result<Self, Self::Error> {
-        use Criticality::*;
         match value {
-            0 => Ok(Ignore),
-            1 => Ok(WarnOnly),
-            2 => Ok(Critical),
+            0 => Ok(Criticality::Ignore),
+            1 => Ok(Criticality::WarnOnly),
+            2 => Ok(Criticality::Critical),
             _ => Err(InvalidCriticality),
         }
     }
@@ -440,13 +441,12 @@ impl AlertNames {
 
 impl From<AlertNames> for &'static str {
     fn from(alert_name: AlertNames) -> Self {
-        use AlertNames::*;
         match alert_name {
-            Green => "green",
-            Yellow => "yellow",
-            Amber => "amber",
-            Red => "red",
-            Last => panic!("invalid alert name"),
+            AlertNames::Green => "green",
+            AlertNames::Yellow => "yellow",
+            AlertNames::Amber => "amber",
+            AlertNames::Red => "red",
+            AlertNames::Last => panic!("invalid alert name"),
         }
     }
 }
@@ -458,12 +458,11 @@ impl TryFrom<i32> for AlertNames {
     type Error = InvalidAlertName;
 
     fn try_from(value: i32) -> Result<Self, Self::Error> {
-        use AlertNames::*;
         Ok(match value {
-            0 => Green,
-            1 => Yellow,
-            2 => Amber,
-            3 => Red,
+            0 => AlertNames::Green,
+            1 => AlertNames::Yellow,
+            2 => AlertNames::Amber,
+            3 => AlertNames::Red,
             _ => return Err(InvalidAlertName),
         })
     }
@@ -603,8 +602,8 @@ pub const SHOW_WAIT: u32 = 3500; // std amount of time to show something
 pub const WAIT_TRANSFERMODE: f32 = 0.3; /* this is a "float" indicating the number of seconds the influence
                                         stand still with space pressed, before switching into transfermode
                                         This variable describes the amount in SECONDS */
-pub const WAIT_COLLISION: c_int = 1; // after a little collision with influ, enemys hold position for a while
-                                     // this variable describes the amount of time in SECONDS
+pub const WAIT_COLLISION: u8 = 1; // after a little collision with influ, enemys hold position for a while
+                                  // this variable describes the amount of time in SECONDS
 pub const ENEMYMAXWAIT: c_int = 2; // after each robot has reached its current destination waypoint is waits a
                                    // while.  This variable describes the amount of time in SECONDS.  However,
                                    // the final wait time is a random number within [0,ENEMYMAXWAIT].
@@ -728,14 +727,13 @@ impl TryFrom<u8> for BulletKind {
     type Error = InvalidBulletKind<u8>;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
-        use BulletKind::*;
         Ok(match value {
-            0 => Pulse,
-            1 => SinglePulse,
-            2 => Military,
-            3 => Flash,
-            4 => Exterminator,
-            5 => LaserRifle,
+            0 => BulletKind::Pulse,
+            1 => BulletKind::SinglePulse,
+            2 => BulletKind::Military,
+            3 => BulletKind::Flash,
+            4 => BulletKind::Exterminator,
+            5 => BulletKind::LaserRifle,
             _ => return Err(InvalidBulletKind(value)),
         })
     }
@@ -877,104 +875,104 @@ impl MapTile {
     }
 
     pub fn next(self) -> Option<Self> {
-        use MapTile::*;
+        use MapTile as M;
 
         Some(match self {
-            Floor => EckLu,
-            EckLu => Tu,
-            Tu => EckRu,
-            EckRu => Tl,
-            Tl => Kreuz,
-            Kreuz => Tr,
-            Tr => EckLo,
-            EckLo => To,
-            To => EckRo,
-            EckRo => HWall,
-            HWall => VWall,
-            VWall => Invisible,
-            Invisible => Block1,
-            Block1 => Block2,
-            Block2 => Block3,
-            Block3 => Block4,
-            Block4 => Block5,
-            Block5 => HZutuere,
-            HZutuere => HHalbtuere1,
-            HHalbtuere1 => HHalbtuere2,
-            HHalbtuere2 => HHalbtuere3,
-            HHalbtuere3 => HGanztuere,
-            HGanztuere => KonsoleL,
-            KonsoleL => KonsoleR,
-            KonsoleR => KonsoleO,
-            KonsoleO => KonsoleU,
-            KonsoleU => VZutuere,
-            VZutuere => VHalbtuere1,
-            VHalbtuere1 => VHalbtuere2,
-            VHalbtuere2 => VHalbtuere3,
-            VHalbtuere3 => VGanztuere,
-            VGanztuere => Lift,
-            Lift => Void,
-            Void => Refresh1,
-            Refresh1 => Refresh2,
-            Refresh2 => Refresh3,
-            Refresh3 => Refresh4,
-            Refresh4 => AlertGreen,
-            AlertGreen => AlertYellow,
-            AlertYellow => AlertAmber,
-            AlertAmber => AlertRed,
-            AlertRed => Unused2,
-            Unused2 => FineGrid,
-            FineGrid | NumMapTiles => return None,
+            M::Floor => M::EckLu,
+            M::EckLu => M::Tu,
+            M::Tu => M::EckRu,
+            M::EckRu => M::Tl,
+            M::Tl => M::Kreuz,
+            M::Kreuz => M::Tr,
+            M::Tr => M::EckLo,
+            M::EckLo => M::To,
+            M::To => M::EckRo,
+            M::EckRo => M::HWall,
+            M::HWall => M::VWall,
+            M::VWall => M::Invisible,
+            M::Invisible => M::Block1,
+            M::Block1 => M::Block2,
+            M::Block2 => M::Block3,
+            M::Block3 => M::Block4,
+            M::Block4 => M::Block5,
+            M::Block5 => M::HZutuere,
+            M::HZutuere => M::HHalbtuere1,
+            M::HHalbtuere1 => M::HHalbtuere2,
+            M::HHalbtuere2 => M::HHalbtuere3,
+            M::HHalbtuere3 => M::HGanztuere,
+            M::HGanztuere => M::KonsoleL,
+            M::KonsoleL => M::KonsoleR,
+            M::KonsoleR => M::KonsoleO,
+            M::KonsoleO => M::KonsoleU,
+            M::KonsoleU => M::VZutuere,
+            M::VZutuere => M::VHalbtuere1,
+            M::VHalbtuere1 => M::VHalbtuere2,
+            M::VHalbtuere2 => M::VHalbtuere3,
+            M::VHalbtuere3 => M::VGanztuere,
+            M::VGanztuere => M::Lift,
+            M::Lift => M::Void,
+            M::Void => M::Refresh1,
+            M::Refresh1 => M::Refresh2,
+            M::Refresh2 => M::Refresh3,
+            M::Refresh3 => M::Refresh4,
+            M::Refresh4 => M::AlertGreen,
+            M::AlertGreen => M::AlertYellow,
+            M::AlertYellow => M::AlertAmber,
+            M::AlertAmber => M::AlertRed,
+            M::AlertRed => M::Unused2,
+            M::Unused2 => M::FineGrid,
+            M::FineGrid | M::NumMapTiles => return None,
         })
     }
 
     pub fn prev(self) -> Option<Self> {
-        use MapTile::*;
+        use MapTile as M;
 
         Some(match self {
-            Floor | NumMapTiles => return None,
-            EckLu => Floor,
-            Tu => EckLu,
-            EckRu => Tu,
-            Tl => EckRu,
-            Kreuz => Tl,
-            Tr => Kreuz,
-            EckLo => Tr,
-            To => EckLo,
-            EckRo => To,
-            HWall => EckRo,
-            VWall => HWall,
-            Invisible => VWall,
-            Block1 => Invisible,
-            Block2 => Block1,
-            Block3 => Block2,
-            Block4 => Block3,
-            Block5 => Block4,
-            HZutuere => Block5,
-            HHalbtuere1 => HZutuere,
-            HHalbtuere2 => HHalbtuere1,
-            HHalbtuere3 => HHalbtuere2,
-            HGanztuere => HHalbtuere3,
-            KonsoleL => HGanztuere,
-            KonsoleR => KonsoleL,
-            KonsoleO => KonsoleR,
-            KonsoleU => KonsoleO,
-            VZutuere => KonsoleU,
-            VHalbtuere1 => VZutuere,
-            VHalbtuere2 => VHalbtuere1,
-            VHalbtuere3 => VHalbtuere2,
-            VGanztuere => VHalbtuere3,
-            Lift => VGanztuere,
-            Void => Lift,
-            Refresh1 => Void,
-            Refresh2 => Refresh1,
-            Refresh3 => Refresh2,
-            Refresh4 => Refresh3,
-            AlertGreen => Refresh4,
-            AlertYellow => AlertGreen,
-            AlertAmber => AlertYellow,
-            AlertRed => AlertAmber,
-            Unused2 => AlertRed,
-            FineGrid => Unused2,
+            M::Floor | M::NumMapTiles => return None,
+            M::EckLu => M::Floor,
+            M::Tu => M::EckLu,
+            M::EckRu => M::Tu,
+            M::Tl => M::EckRu,
+            M::Kreuz => M::Tl,
+            M::Tr => M::Kreuz,
+            M::EckLo => M::Tr,
+            M::To => M::EckLo,
+            M::EckRo => M::To,
+            M::HWall => M::EckRo,
+            M::VWall => M::HWall,
+            M::Invisible => M::VWall,
+            M::Block1 => M::Invisible,
+            M::Block2 => M::Block1,
+            M::Block3 => M::Block2,
+            M::Block4 => M::Block3,
+            M::Block5 => M::Block4,
+            M::HZutuere => M::Block5,
+            M::HHalbtuere1 => M::HZutuere,
+            M::HHalbtuere2 => M::HHalbtuere1,
+            M::HHalbtuere3 => M::HHalbtuere2,
+            M::HGanztuere => M::HHalbtuere3,
+            M::KonsoleL => M::HGanztuere,
+            M::KonsoleR => M::KonsoleL,
+            M::KonsoleO => M::KonsoleR,
+            M::KonsoleU => M::KonsoleO,
+            M::VZutuere => M::KonsoleU,
+            M::VHalbtuere1 => M::VZutuere,
+            M::VHalbtuere2 => M::VHalbtuere1,
+            M::VHalbtuere3 => M::VHalbtuere2,
+            M::VGanztuere => M::VHalbtuere3,
+            M::Lift => M::VGanztuere,
+            M::Void => M::Lift,
+            M::Refresh1 => M::Void,
+            M::Refresh2 => M::Refresh1,
+            M::Refresh3 => M::Refresh2,
+            M::Refresh4 => M::Refresh3,
+            M::AlertGreen => M::Refresh4,
+            M::AlertYellow => M::AlertGreen,
+            M::AlertAmber => M::AlertYellow,
+            M::AlertRed => M::AlertAmber,
+            M::Unused2 => M::AlertRed,
+            M::FineGrid => M::Unused2,
         })
     }
 }
@@ -990,53 +988,53 @@ macro_rules! impl_try_from_map_tile {
             type Error = InvalidMapTile;
 
             fn try_from(value: $ty) -> Result<Self, Self::Error> {
-                use MapTile::*;
+                use MapTile as M;
                 Ok(match value {
-                    0 => Floor,
-                    1 => EckLu,
-                    2 => Tu,
-                    3 => EckRu,
-                    4 => Tl,
-                    5 => Kreuz,
-                    6 => Tr,
-                    7 => EckLo,
-                    8 => To,
-                    9 => EckRo,
-                    10 => HWall,
-                    11 => VWall,
-                    12 => Invisible,
-                    13 => Block1,
-                    14 => Block2,
-                    15 => Block3,
-                    16 => Block4,
-                    17 => Block5,
-                    18 => HZutuere,
-                    19 => HHalbtuere1,
-                    20 => HHalbtuere2,
-                    21 => HHalbtuere3,
-                    22 => HGanztuere,
-                    23 => KonsoleL,
-                    24 => KonsoleR,
-                    25 => KonsoleO,
-                    26 => KonsoleU,
-                    27 => VZutuere,
-                    28 => VHalbtuere1,
-                    29 => VHalbtuere2,
-                    30 => VHalbtuere3,
-                    31 => VGanztuere,
-                    32 => Lift,
-                    33 => Void,
-                    34 => Refresh1,
-                    35 => Refresh2,
-                    36 => Refresh3,
-                    37 => Refresh4,
-                    38 => AlertGreen,
-                    39 => AlertYellow,
-                    40 => AlertAmber,
-                    41 => AlertRed,
-                    42 => Unused2,
-                    43 => FineGrid,
-                    44 => NumMapTiles,
+                    0 => M::Floor,
+                    1 => M::EckLu,
+                    2 => M::Tu,
+                    3 => M::EckRu,
+                    4 => M::Tl,
+                    5 => M::Kreuz,
+                    6 => M::Tr,
+                    7 => M::EckLo,
+                    8 => M::To,
+                    9 => M::EckRo,
+                    10 => M::HWall,
+                    11 => M::VWall,
+                    12 => M::Invisible,
+                    13 => M::Block1,
+                    14 => M::Block2,
+                    15 => M::Block3,
+                    16 => M::Block4,
+                    17 => M::Block5,
+                    18 => M::HZutuere,
+                    19 => M::HHalbtuere1,
+                    20 => M::HHalbtuere2,
+                    21 => M::HHalbtuere3,
+                    22 => M::HGanztuere,
+                    23 => M::KonsoleL,
+                    24 => M::KonsoleR,
+                    25 => M::KonsoleO,
+                    26 => M::KonsoleU,
+                    27 => M::VZutuere,
+                    28 => M::VHalbtuere1,
+                    29 => M::VHalbtuere2,
+                    30 => M::VHalbtuere3,
+                    31 => M::VGanztuere,
+                    32 => M::Lift,
+                    33 => M::Void,
+                    34 => M::Refresh1,
+                    35 => M::Refresh2,
+                    36 => M::Refresh3,
+                    37 => M::Refresh4,
+                    38 => M::AlertGreen,
+                    39 => M::AlertYellow,
+                    40 => M::AlertAmber,
+                    41 => M::AlertRed,
+                    42 => M::Unused2,
+                    43 => M::FineGrid,
+                    44 => M::NumMapTiles,
                     _ => return Err(InvalidMapTile),
                 })
             }

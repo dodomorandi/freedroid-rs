@@ -29,8 +29,8 @@ impl PixelFormatRef<'_> {
         self.inner.as_ptr()
     }
 
-    pub fn bytes_per_pixel(&self) -> BytesPerPixel {
-        use BytesPerPixel::*;
+    pub fn bytes_per_pixel(self) -> BytesPerPixel {
+        use BytesPerPixel::{Four, One, Three, Two};
 
         let bpp = unsafe { self.inner.as_ref().BytesPerPixel };
         match bpp {
@@ -52,12 +52,12 @@ impl PixelFormatRef<'_> {
         Pixel(result)
     }
 
-    pub fn has_alpha(&self) -> bool {
+    pub fn has_alpha(self) -> bool {
         let format = unsafe { self.inner.as_ref() };
         format.Amask != 0
     }
 
-    pub fn bits_per_pixel(&self) -> BitsPerPixel {
+    pub fn bits_per_pixel(self) -> BitsPerPixel {
         let bpp = unsafe { self.inner.as_ref().BitsPerPixel };
         match bpp {
             8 => BitsPerPixel::Eight,
@@ -74,10 +74,12 @@ impl PixelFormatRef<'_> {
 pub struct Pixel(pub(crate) u32);
 
 impl Pixel {
+    #[must_use]
     pub const fn black() -> Self {
         Self(0)
     }
 
+    #[must_use]
     pub const fn from_u8(color: u8) -> Self {
         Self(color as u32)
     }
@@ -99,7 +101,7 @@ pub enum BytesPerPixel {
 
 impl From<BytesPerPixel> for u8 {
     fn from(bpp: BytesPerPixel) -> Self {
-        use BytesPerPixel::*;
+        use BytesPerPixel::{Four, One, Three, Two};
 
         match bpp {
             One => 1,
@@ -207,16 +209,16 @@ macro_rules! impl_pixel_raw_slice {
                 let bpp = self.surface.format().bytes_per_pixel();
                 match bpp {
                     BytesPerPixel::One => {
-                        One(unsafe { std::slice::$from_raw_parts(pixel_ptr as _, buffer_size) })
+                        One(unsafe { std::slice::$from_raw_parts(pixel_ptr.cast_mut().cast(), buffer_size) })
                     }
                     BytesPerPixel::Two => {
-                        Two(unsafe { std::slice::$from_raw_parts(pixel_ptr as _, buffer_size / 2) })
+                        Two(unsafe { std::slice::$from_raw_parts(pixel_ptr.cast_mut().cast(), buffer_size / 2) })
                     }
                     BytesPerPixel::Three => Three(unsafe {
-                        std::slice::$from_raw_parts(pixel_ptr as _, buffer_size / 3)
+                        std::slice::$from_raw_parts(pixel_ptr.cast_mut().cast(), buffer_size / 3)
                     }),
                     BytesPerPixel::Four => Four(unsafe {
-                        std::slice::$from_raw_parts(pixel_ptr as _, buffer_size / 4)
+                        std::slice::$from_raw_parts(pixel_ptr.cast_mut().cast(), buffer_size / 4)
                     }),
                 }
             }
@@ -307,7 +309,7 @@ fn raw_get_pixel<F>(pixels_slice: PixelsSlicePerBpp, pos: usize, get_pixel_forma
 where
     F: FnOnce() -> *const SDL_PixelFormat,
 {
-    use PixelsSlicePerBpp::*;
+    use PixelsSlicePerBpp::{Four, One, Three, Two};
 
     match pixels_slice {
         One(slice) => slice[pos].into(),
@@ -323,9 +325,10 @@ where
 
 #[inline]
 fn raw_set_pixel(pixels_slice: PixelsSliceMutPerBpp, pos: usize, value: Pixel) {
-    use PixelsSliceMutPerBpp::*;
+    use PixelsSliceMutPerBpp::{Four, One, Three, Two};
 
     let value = value.0;
+    #[allow(clippy::cast_possible_truncation)]
     match pixels_slice {
         One(slice) => slice[pos] = value as u8,
         Two(slice) => slice[pos] = value as u16,
@@ -365,7 +368,7 @@ mod tests {
 
     #[test]
     fn set_pixel_3bpp() {
-        const VALUE: Pixel = Pixel(0x123456);
+        const VALUE: Pixel = Pixel(0x0012_3456);
 
         let mut data = [[0; 3]];
         raw_set_pixel(PixelsSliceMutPerBpp::Three(&mut data), 0, VALUE);
@@ -384,7 +387,7 @@ mod tests {
             Ashift: 0,
             Rmask: 0xFF,
             Gmask: 0xFF00,
-            Bmask: 0xFF0000,
+            Bmask: 0x00FF_0000,
             Amask: 0,
             colorkey: 0,
             alpha: 0,

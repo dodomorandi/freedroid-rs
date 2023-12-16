@@ -26,6 +26,7 @@ use nom::{Finish, Parser};
 #[cfg(not(target_os = "android"))]
 use std::ffi::CStr;
 use std::{
+    ffi::CString,
     ops::Not,
     os::raw::{c_float, c_int, c_uchar},
     path::Path,
@@ -68,27 +69,26 @@ pub struct Map {
     inner_wait_counter: f32,
 }
 
-pub fn get_map_brick(deck: &Level, x: c_float, y: c_float) -> c_uchar {
-    let xx = x.round() as c_int;
-    let yy = y.round() as c_int;
-
-    if yy >= deck.ylen || yy < 0 || xx >= deck.xlen || xx < 0 {
-        MapTile::Void as c_uchar
-    } else {
-        deck.map[usize::try_from(yy).unwrap()][usize::try_from(xx).unwrap()] as c_uchar
-    }
+pub fn get_map_brick(deck: &Level, x: f32, y: f32) -> c_uchar {
+    #[allow(clippy::cast_possible_truncation)]
+    let [x, y] = [x.round() as i32, y.round() as i32];
+    usize::try_from(y)
+        .ok()
+        .filter(|_| y < deck.ylen)
+        .zip(usize::try_from(x).ok().filter(|_| x < deck.xlen))
+        .map_or(MapTile::Void as c_uchar, |(y, x)| deck.map[y][x] as c_uchar)
 }
 
 pub fn free_level_memory(level: &mut Level) {
-    level.levelname = Default::default();
-    level.background_song_name = Default::default();
-    level.level_enter_comment = Default::default();
+    level.levelname = CString::default();
+    level.background_song_name = CString::default();
+    level.level_enter_comment = CString::default();
 
     level
         .map
         .iter_mut()
-        .take(level.ylen as usize)
-        .for_each(|map| map.clear());
+        .take(level.ylen.try_into().unwrap())
+        .for_each(Vec::clear);
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -109,15 +109,19 @@ fn reset_level_map(level: &mut Level) {
     // doors occur.  The make life easier for the saving routine, these doors should
     // be closed first.
 
-    use MapTile::*;
+    use MapTile as M;
     level.map[0..usize::try_from(level.ylen).unwrap()]
         .iter_mut()
         .flatten()
         .for_each(|tile| match tile {
-            VZutuere | VHalbtuere1 | VHalbtuere2 | VHalbtuere3 | VGanztuere => *tile = VZutuere,
-            HZutuere | HHalbtuere1 | HHalbtuere2 | HHalbtuere3 | HGanztuere => *tile = HZutuere,
-            Refresh1 | Refresh2 | Refresh3 | Refresh4 => *tile = Refresh1,
-            AlertGreen | AlertYellow | AlertAmber | AlertRed => *tile = AlertGreen,
+            M::VZutuere | M::VHalbtuere1 | M::VHalbtuere2 | M::VHalbtuere3 | M::VGanztuere => {
+                *tile = M::VZutuere;
+            }
+            M::HZutuere | M::HHalbtuere1 | M::HHalbtuere2 | M::HHalbtuere3 | M::HGanztuere => {
+                *tile = M::HZutuere;
+            }
+            M::Refresh1 | M::Refresh2 | M::Refresh3 | M::Refresh4 => *tile = M::Refresh1,
+            M::AlertGreen | M::AlertYellow | M::AlertAmber | M::AlertRed => *tile = M::AlertGreen,
             _ => {}
         });
 }
@@ -142,15 +146,15 @@ pub fn interpret_map(level: &mut Level) -> c_int {
 pub fn get_doors(level: &mut Level) -> c_int {
     let mut curdoor = 0;
 
-    let xlen = level.xlen;
-    let ylen = level.ylen;
+    let x_len = i8::try_from(level.xlen).unwrap();
+    let y_len = i8::try_from(level.ylen).unwrap();
 
     /* init Doors- Array to 0 */
     level.doors.fill(GrobPoint { x: -1, y: -1 });
 
     /* now find the doors */
-    for line in 0..i8::try_from(ylen).unwrap() {
-        for col in 0..i8::try_from(xlen).unwrap() {
+    for line in 0..y_len {
+        for col in 0..x_len {
             let brick = level.map[usize::try_from(line).unwrap()][usize::try_from(col).unwrap()];
             if brick == MapTile::VZutuere || brick == MapTile::HZutuere {
                 level.doors[curdoor].x = col;
@@ -194,16 +198,16 @@ Sorry...\n\
 /// within the level
 /// Returns the number of refreshes found or ERR
 pub fn get_refreshes(level: &mut Level) -> c_int {
-    let xlen = level.xlen;
-    let ylen = level.ylen;
+    let x_len = u8::try_from(level.xlen).unwrap();
+    let y_len = u8::try_from(level.ylen).unwrap();
 
     /* init refreshes array to -1 */
     level.refreshes.fill(GrobPoint { x: -1, y: -1 });
 
     let mut curref = 0;
     /* now find all the refreshes */
-    for row in 0..u8::try_from(ylen).unwrap() {
-        for col in 0..u8::try_from(xlen).unwrap() {
+    for row in 0..y_len {
+        for col in 0..x_len {
             if level.map[usize::from(row)][usize::from(col)] == MapTile::Refresh1 {
                 level.refreshes[curref].x = col.try_into().unwrap();
                 level.refreshes[curref].y = row.try_into().unwrap();
@@ -244,16 +248,16 @@ Sorry...\n\
 
 /// Find all alerts on this level and initialize their position-array
 pub fn get_alerts(level: &mut Level) {
-    let xlen = level.xlen;
-    let ylen = level.ylen;
+    let x_len = u8::try_from(level.xlen).unwrap();
+    let y_len = u8::try_from(level.ylen).unwrap();
 
     // init alert array to -1
     level.alerts.fill(GrobPoint { x: -1, y: -1 });
 
     // now find all the alerts
     let mut curref = 0;
-    for row in 0..u8::try_from(ylen).unwrap() {
-        for col in 0..u8::try_from(xlen).unwrap() {
+    for row in 0..y_len {
+        for col in 0..x_len {
             if level.map[usize::from(row)][usize::from(col)] == MapTile::AlertGreen {
                 level.alerts[curref].x = col.try_into().unwrap();
                 level.alerts[curref].y = row.try_into().unwrap();
@@ -282,7 +286,7 @@ where
         bytes::complete::is_a,
         combinator::{map, opt},
     };
-    map(opt(is_a(" \t")), |s| s.unwrap_or_default())(input)
+    map(opt(is_a(" \t")), Option::unwrap_or_default)(input)
 }
 
 /// This function is for LOADING map data!
@@ -298,13 +302,13 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
         empty: false.into(),
         timer: 0.,
         levelnum: 0,
-        levelname: Default::default(),
-        background_song_name: Default::default(),
-        level_enter_comment: Default::default(),
+        levelname: CString::default(),
+        background_song_name: CString::default(),
+        level_enter_comment: CString::default(),
         xlen: 0,
         ylen: 0,
         color: 0,
-        map: array_init(|_| Default::default()),
+        map: array_init(|_| Vec::default()),
         refreshes: [GrobPoint { x: 0, y: 0 }; MAX_REFRESHES_ON_LEVEL],
         doors: [GrobPoint { x: 0, y: 0 }; MAX_DOORS_ON_LEVEL],
         alerts: [GrobPoint { x: 0, y: 0 }; MAX_ALERTS_ON_LEVEL],
@@ -395,8 +399,9 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
             (raw_number, pos) = pos
                 .iter()
                 .position(|&c| c.is_ascii_digit().not())
-                .map(|end_of_digits| pos.split_at(end_of_digits))
-                .unwrap_or((pos, b""));
+                .map_or((pos, b"".as_slice()), |end_of_digits| {
+                    pos.split_at(end_of_digits)
+                });
             let tmp = std::str::from_utf8(raw_number)
                 .ok()
                 .and_then(|s| s.trim_start().parse::<u8>().ok())?;
@@ -409,12 +414,9 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
     let mut lines = data[wp_begin..level_end].lines().skip(1);
 
     for i in 0..MAXWAYPOINTS {
-        let this_line = match lines.next() {
-            Some(x) => x,
-            None => {
-                loadlevel.num_waypoints = i.try_into().unwrap();
-                break;
-            }
+        let Some(this_line) = lines.next() else {
+            loadlevel.num_waypoints = i.try_into().unwrap();
+            break;
         };
 
         let (_, (_, _, _, _, _, _, x, _, _, _, y)) = tuple::<_, _, (), _>((
@@ -465,7 +467,7 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
 
 impl Data<'_> {
     /// Determines wether object on x/y is visible to the 001 or not
-    pub fn is_visible(&self, objpos: &Finepoint) -> c_int {
+    pub fn is_visible(&self, objpos: Finepoint) -> c_int {
         let influ_x = self.vars.me.pos.x;
         let influ_y = self.vars.me.pos.y;
 
@@ -483,8 +485,9 @@ impl Data<'_> {
             y: a_y / step_num,
         };
 
-        let mut testpos = *objpos;
+        let mut testpos = objpos;
 
+        #[allow(clippy::cast_possible_truncation)]
         let step_num = step_num as i32;
         for _ in 1..step_num {
             testpos.x += step.x;
@@ -527,6 +530,7 @@ impl Data<'_> {
                 let y = usize::try_from(refresh.y).unwrap();
 
                 cur_level.map[y][x] = MapTile::refresh(
+                    #[allow(clippy::cast_possible_truncation)]
                     (self.map.inner_wait_counter.round() as c_int % 4)
                         .try_into()
                         .unwrap(),
@@ -536,177 +540,187 @@ impl Data<'_> {
     }
 
     pub fn is_passable(&self, x: c_float, y: c_float, check_pos: c_int) -> c_int {
+        use Direction as D;
+        use MapTile as M;
+
         let map_brick = get_map_brick(self.main.cur_level(), x, y);
 
         let fx = (x - 0.5) - (x - 0.5).floor();
         let fy = (y - 0.5) - (y - 0.5).floor();
 
-        let map_tile = match MapTile::try_from(map_brick) {
-            Ok(map_tile) => map_tile,
-            Err(_) => return -1,
+        let Ok(map_tile) = MapTile::try_from(map_brick) else {
+            return -1;
         };
 
-        use Direction::*;
-        use MapTile::*;
         match map_tile {
-            Floor | Lift | Void | Block4 | Block5 | Refresh1 | Refresh2 | Refresh3 | Refresh4
-            | FineGrid => {
-                Center as c_int /* these are passable */
+            M::Floor
+            | M::Lift
+            | M::Void
+            | M::Block4
+            | M::Block5
+            | M::Refresh1
+            | M::Refresh2
+            | M::Refresh3
+            | M::Refresh4
+            | M::FineGrid => {
+                D::Center as c_int /* these are passable */
             }
 
-            AlertGreen | AlertYellow | AlertAmber | AlertRed => {
-                if check_pos.try_into() == Ok(Light) {
-                    Center as c_int
+            M::AlertGreen | M::AlertYellow | M::AlertAmber | M::AlertRed => {
+                if check_pos.try_into() == Ok(D::Light) {
+                    D::Center as c_int
                 } else {
                     -1
                 }
             }
 
-            KonsoleL => {
-                if check_pos.try_into() == Ok(Light) || fx > 1.0 - KONSOLEPASS_X {
-                    Center as c_int
+            M::KonsoleL => {
+                if check_pos.try_into() == Ok(D::Light) || fx > 1.0 - KONSOLEPASS_X {
+                    D::Center as c_int
                 } else {
                     -1
                 }
             }
 
-            KonsoleR => {
-                if check_pos.try_into() == Ok(Light) || fx < KONSOLEPASS_X {
-                    Center as c_int
+            M::KonsoleR => {
+                if check_pos.try_into() == Ok(D::Light) || fx < KONSOLEPASS_X {
+                    D::Center as c_int
                 } else {
                     -1
                 }
             }
 
-            KonsoleO => {
-                if check_pos.try_into() == Ok(Light) || fy > 1. - KONSOLEPASS_Y {
-                    Center as c_int
+            M::KonsoleO => {
+                if check_pos.try_into() == Ok(D::Light) || fy > 1. - KONSOLEPASS_Y {
+                    D::Center as c_int
                 } else {
                     -1
                 }
             }
 
-            KonsoleU => {
-                if check_pos.try_into() == Ok(Light) || fy < KONSOLEPASS_Y {
-                    Center as c_int
+            M::KonsoleU => {
+                if check_pos.try_into() == Ok(D::Light) || fy < KONSOLEPASS_Y {
+                    D::Center as c_int
                 } else {
                     -1
                 }
             }
 
-            HWall => {
+            M::HWall => {
                 if (WALLPASS..=1. - WALLPASS).contains(&fy).not() {
-                    Center as c_int
+                    D::Center as c_int
                 } else {
                     -1
                 }
             }
 
-            VWall => {
+            M::VWall => {
                 if (WALLPASS..=1. - WALLPASS).contains(&fx).not() {
-                    Center as c_int
+                    D::Center as c_int
                 } else {
                     -1
                 }
             }
 
-            EckRo => {
+            M::EckRo => {
                 if fx > 1. - WALLPASS || fy < WALLPASS || (fx < WALLPASS && fy > 1. - WALLPASS) {
-                    Center as c_int
+                    D::Center as c_int
                 } else {
                     -1
                 }
             }
 
-            EckRu => {
+            M::EckRu => {
                 if fx > 1. - WALLPASS || fy > 1. - WALLPASS || (fx < WALLPASS && fy < WALLPASS) {
-                    Center as c_int
+                    D::Center as c_int
                 } else {
                     -1
                 }
             }
 
-            EckLu => {
+            M::EckLu => {
                 if fx < WALLPASS || fy > 1. - WALLPASS || (fx > 1. - WALLPASS && fy < WALLPASS) {
-                    Center as c_int
+                    D::Center as c_int
                 } else {
                     -1
                 }
             }
 
-            EckLo => {
+            M::EckLo => {
                 if fx < WALLPASS || fy < WALLPASS || (fx > 1. - WALLPASS && fy > 1. - WALLPASS) {
-                    Center as c_int
+                    D::Center as c_int
                 } else {
                     -1
                 }
             }
 
-            To => {
+            M::To => {
                 if fy < WALLPASS
                     || (fy > 1. - WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fx).not())
                 {
-                    Center as c_int
+                    D::Center as c_int
                 } else {
                     -1
                 }
             }
 
-            Tr => {
+            M::Tr => {
                 if fx > 1. - WALLPASS
                     || (fx < WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fy).not())
                 {
-                    Center as c_int
+                    D::Center as c_int
                 } else {
                     -1
                 }
             }
 
-            Tu => {
+            M::Tu => {
                 if fy > 1. - WALLPASS
                     || (fy < WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fx).not())
                 {
-                    Center as c_int
+                    D::Center as c_int
                 } else {
                     -1
                 }
             }
 
-            Tl => {
+            M::Tl => {
                 if fx < WALLPASS
                     || (fx > 1. - WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fy).not())
                 {
-                    Center as c_int
+                    D::Center as c_int
                 } else {
                     -1
                 }
             }
 
-            HGanztuere | HHalbtuere3 | HHalbtuere2 if (check_pos.try_into() == Ok(Light)) => {
-                Center as c_int
+            M::HGanztuere | M::HHalbtuere3 | M::HHalbtuere2
+                if (check_pos.try_into() == Ok(D::Light)) =>
+            {
+                D::Center as c_int
             }
-            HHalbtuere1 | HZutuere if (check_pos.try_into() == Ok(Light)) => -1,
+            M::HHalbtuere1 | M::HZutuere if (check_pos.try_into() == Ok(D::Light)) => -1,
 
-            HGanztuere | HHalbtuere3 | HHalbtuere2 | HHalbtuere1 | HZutuere => {
+            M::HGanztuere | M::HHalbtuere3 | M::HHalbtuere2 | M::HHalbtuere1 | M::HZutuere => {
                 if (H_RANDBREITE..=1. - H_RANDBREITE).contains(&fx).not()
                     && (H_RANDSPACE..=1. - H_RANDSPACE).contains(&fy)
                 {
-                    let check_pos = match check_pos.try_into() {
-                        Ok(check_pos) => check_pos,
-                        Err(_) => return -1,
+                    let Ok(check_pos) = check_pos.try_into() else {
+                        return -1;
                     };
-                    if check_pos != Center && check_pos != Light && self.vars.me.speed.y != 0. {
+                    if check_pos != D::Center && check_pos != D::Light && self.vars.me.speed.y != 0.
+                    {
                         match check_pos {
-                            Rechtsoben | Rechtsunten | Rechts => {
+                            D::Rechtsoben | D::Rechtsunten | D::Rechts => {
                                 if fx > 1. - H_RANDBREITE {
-                                    Links as c_int
+                                    D::Links as c_int
                                 } else {
                                     -1
                                 }
                             }
-                            Linksoben | Linksunten | Links => {
+                            D::Linksoben | D::Linksunten | D::Links => {
                                 if fx < H_RANDBREITE {
-                                    Rechts as c_int
+                                    D::Rechts as c_int
                                 } else {
                                     -1
                                 }
@@ -718,40 +732,42 @@ impl Data<'_> {
                     else {
                         -1
                     }
-                } else if map_tile == HGanztuere
-                    || map_tile == HHalbtuere3
+                } else if map_tile == M::HGanztuere
+                    || map_tile == M::HHalbtuere3
                     || !(TUERBREITE..=1. - TUERBREITE).contains(&fy)
                 {
-                    Center as c_int
+                    D::Center as c_int
                 } else {
                     -1
                 }
             }
-            VGanztuere | VHalbtuere3 | VHalbtuere2 if (check_pos.try_into() == Ok(Light)) => {
-                Center as c_int
+            M::VGanztuere | M::VHalbtuere3 | M::VHalbtuere2
+                if (check_pos.try_into() == Ok(D::Light)) =>
+            {
+                D::Center as c_int
             }
 
-            VHalbtuere1 | VZutuere if (check_pos.try_into() == Ok(Light)) => -1,
-            VGanztuere | VHalbtuere3 | VHalbtuere2 | VHalbtuere1 | VZutuere => {
+            M::VHalbtuere1 | M::VZutuere if (check_pos.try_into() == Ok(D::Light)) => -1,
+            M::VGanztuere | M::VHalbtuere3 | M::VHalbtuere2 | M::VHalbtuere1 | M::VZutuere => {
                 if (V_RANDBREITE..=1. - V_RANDBREITE).contains(&fy).not()
                     && (V_RANDSPACE..=1. - V_RANDSPACE).contains(&fx)
                 {
-                    let check_pos = match check_pos.try_into() {
-                        Ok(check_pos) => check_pos,
-                        Err(_) => return -1,
+                    let Ok(check_pos) = check_pos.try_into() else {
+                        return -1;
                     };
-                    if check_pos != Center && check_pos != Light && self.vars.me.speed.x != 0. {
+                    if check_pos != D::Center && check_pos != D::Light && self.vars.me.speed.x != 0.
+                    {
                         match check_pos {
-                            Rechtsoben | Linksoben | Oben => {
+                            D::Rechtsoben | D::Linksoben | D::Oben => {
                                 if fy < V_RANDBREITE {
-                                    Unten as c_int
+                                    D::Unten as c_int
                                 } else {
                                     -1
                                 }
                             }
-                            Rechtsunten | Linksunten | Unten => {
+                            D::Rechtsunten | D::Linksunten | D::Unten => {
                                 if fy > 1. - V_RANDBREITE {
-                                    Oben as c_int
+                                    D::Oben as c_int
                                 } else {
                                     -1
                                 }
@@ -761,11 +777,11 @@ impl Data<'_> {
                     } else {
                         -1
                     }
-                } else if map_tile == VGanztuere
-                    || map_tile == VHalbtuere3
+                } else if map_tile == M::VGanztuere
+                    || map_tile == M::VHalbtuere3
                     || !(TUERBREITE..=1. - TUERBREITE).contains(&fx)
                 {
-                    Center as c_int
+                    D::Center as c_int
                 } else {
                     -1
                 }
@@ -781,7 +797,7 @@ impl Data<'_> {
 
         trace!("SaveShip(): real function call confirmed.");
 
-        let filename = PathBuf::from(format!("{}{}", shipname, SHIP_EXT));
+        let filename = PathBuf::from(format!("{shipname}{SHIP_EXT}"));
 
         /* count the levels */
         let level_anz = self
@@ -797,7 +813,7 @@ impl Data<'_> {
         let mut ship_file = match File::create(filename) {
             Ok(file) => file,
             Err(err) => {
-                panic!("Error opening ship file: {}. Terminating", err);
+                panic!("Error opening ship file: {err}. Terminating");
             }
         };
 
@@ -818,10 +834,10 @@ send a short notice (not too large files attached) to the freedroid project.\n\
 freedroid-discussion@lists.sourceforge.net\n\
 ----------------------------------------------------------------------\n\
 \n";
+            const AREA_NAME_STRING: &str = "Area name=\"";
+            const END_OF_SHIP_DATA_STRING: &str = "*** End of Ship Data ***";
 
             ship_file.write_all(MAP_HEADER_STRING.as_bytes())?;
-
-            const AREA_NAME_STRING: &str = "Area name=\"";
             ship_file.write_all(AREA_NAME_STRING.as_bytes())?;
             ship_file.write_all(self.main.cur_ship.area_name.to_bytes())?;
             ship_file.write_all(b"\"\n\n  ")?;
@@ -867,8 +883,7 @@ freedroid-discussion@lists.sourceforge.net\n\
             // the data and to be able to terminate the long file-string with a
             // null character at the right position.
             //
-            const END_OF_SHIP_DATA_STRING: &str = "*** End of Ship Data ***";
-            writeln!(ship_file, "{}\n", END_OF_SHIP_DATA_STRING)?;
+            writeln!(ship_file, "{END_OF_SHIP_DATA_STRING}\n")?;
 
             trace!("SaveShip(): now flushing ship file...");
             ship_file.flush()?;
@@ -880,7 +895,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         match result {
             Ok(()) => defs::OK.into(),
             Err(err) => {
-                panic!("Error writing to ship file: {}. Terminating", err);
+                panic!("Error writing to ship file: {err}. Terminating");
             }
         }
     }
@@ -904,26 +919,27 @@ freedroid-discussion@lists.sourceforge.net\n\
 
         let cur_level = crate::cur_level!(mut self.main);
         for i in 0..MAX_DOORS_ON_LEVEL {
-            let doorx = cur_level.doors[i].x;
-            let doory = cur_level.doors[i].y;
+            const DOOROPENDIST2: f32 = 1.;
+
+            let door_x = cur_level.doors[i].x;
+            let door_y = cur_level.doors[i].y;
 
             /* Keine weiteren Tueren */
-            if doorx == -1 && doory == -1 {
+            if door_x == -1 && door_y == -1 {
                 break;
             }
 
-            let pos = &mut cur_level.map[usize::try_from(doory).unwrap()]
-                [usize::try_from(doorx).unwrap()];
+            let pos = &mut cur_level.map[usize::try_from(door_y).unwrap()]
+                [usize::try_from(door_x).unwrap()];
 
             // NORMALISATION doorx = doorx * Block_Rect.w + Block_Rect.w / 2;
             // NORMALISATION doory = doory * Block_Rect.h + Block_Rect.h / 2;
 
             /* first check Influencer gegen Tuer */
-            let xdist = self.vars.me.pos.x - f32::from(doorx);
-            let ydist = self.vars.me.pos.y - f32::from(doory);
-            let dist2 = xdist * xdist + ydist * ydist;
+            let x_dist = self.vars.me.pos.x - f32::from(door_x);
+            let y_dist = self.vars.me.pos.y - f32::from(door_y);
+            let dist2 = x_dist * x_dist + y_dist * y_dist;
 
-            const DOOROPENDIST2: f32 = 1.;
             if dist2 < DOOROPENDIST2 {
                 if *pos != MapTile::HGanztuere && *pos != MapTile::VGanztuere {
                     *pos = pos.next().unwrap();
@@ -941,15 +957,15 @@ freedroid-discussion@lists.sourceforge.net\n\
                         continue;
                     }
 
-                    let xdist = (self.main.all_enemys[j].pos.x - f32::from(doorx))
+                    let x_dist = (self.main.all_enemys[j].pos.x - f32::from(door_x))
                         .trunc()
                         .abs();
-                    if xdist < self.vars.block_rect.width().into() {
-                        let ydist = (self.main.all_enemys[j].pos.y - f32::from(doory))
+                    if x_dist < self.vars.block_rect.width().into() {
+                        let y_dist = (self.main.all_enemys[j].pos.y - f32::from(door_y))
                             .trunc()
                             .abs();
-                        if ydist < self.vars.block_rect.height().into() {
-                            let dist2 = xdist * xdist + ydist * ydist;
+                        if y_dist < self.vars.block_rect.height().into() {
+                            let dist2 = x_dist * x_dist + y_dist * y_dist;
                             if dist2 < DOOROPENDIST2 {
                                 if *pos != MapTile::HGanztuere && *pos != MapTile::VGanztuere {
                                     *pos = pos.next().unwrap();
@@ -1024,10 +1040,9 @@ freedroid-discussion@lists.sourceforge.net\n\
             .unwrap_or(Direction::Center as c_int)
     }
 
-    /// This function receives a pointer to the already read in crew section
-    /// in a already read in droids file and decodes all the contents of that
-    /// droid section to fill the AllEnemys array with droid types accoriding
-    /// to the specifications made in the file.
+    /// This function receives a pointer to the already read in crew section in a already read in
+    /// droids file and decodes all the contents of that droid section to fill the `AllEnemys`
+    /// array with droid types according to the specifications made in the file.
     pub fn get_this_levels_droids(&mut self, section_data: &[u8]) {
         const DROIDS_LEVEL_INDICATION_STRING: &[u8] = b"Level=";
         const DROIDS_LEVEL_END_INDICATION_STRING: &[u8] = b"** End of this levels droid data **";
@@ -1322,11 +1337,12 @@ freedroid-discussion@lists.sourceforge.net\n\
     }
 
     pub fn load_ship(&mut self, filename: &[u8]) -> c_int {
+        const END_OF_SHIP_DATA_STRING: &[u8] = b"*** End of Ship Data ***";
+
         let mut level_start: [Option<&[u8]>; MAX_LEVELS] = [None; MAX_LEVELS];
         self.free_ship_memory(); // clear vestiges of previous ship data, if any
 
         /* Read the whole ship-data to memory */
-        const END_OF_SHIP_DATA_STRING: &[u8] = b"*** End of Ship Data ***";
         let fpath = self
             .find_file(
                 filename,
@@ -1365,7 +1381,7 @@ freedroid-discussion@lists.sourceforge.net\n\
             };
 
             level_anz += 1;
-            level_start[level_anz] = Some(&ship_rest[1..])
+            level_start[level_anz] = Some(&ship_rest[1..]);
         }
 
         /* init the level-structs */
@@ -1380,16 +1396,13 @@ freedroid-discussion@lists.sourceforge.net\n\
             .enumerate()
             .take(level_anz)
             .try_for_each(|(index, (level, start))| {
-                match level_to_struct(start.unwrap()) {
-                    Some(new_level) => {
-                        let level = level.insert(new_level);
-                        interpret_map(level); // initialize doors, refreshes and lifts
-                        Some(())
-                    }
-                    None => {
-                        error!("reading of level {} failed", index);
-                        None
-                    }
+                if let Some(new_level) = level_to_struct(start.unwrap()) {
+                    let level = level.insert(new_level);
+                    interpret_map(level); // initialize doors, refreshes and lifts
+                    Some(())
+                } else {
+                    error!("reading of level {} failed", index);
+                    None
                 }
             });
         if result.is_none() {
@@ -1399,8 +1412,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         defs::OK.into()
     }
 
-    /// ActSpecialField: checks Influencer on SpecialFields like
-    /// Lifts and Konsoles and acts on it
+    /// Checks Influencer on `SpecialFields` like Lifts and Konsoles and acts on it
     pub fn act_special_field(&mut self, x: c_float, y: c_float) {
         let map_tile = get_map_brick(self.main.cur_level(), x, y);
 
@@ -1408,9 +1420,10 @@ freedroid-discussion@lists.sourceforge.net\n\
             + self.vars.me.speed.y * self.vars.me.speed.y;
 
         if let Ok(map_tile) = MapTile::try_from(map_tile) {
-            use MapTile::*;
+            use MapTile as M;
+
             match map_tile {
-                Lift => {
+                M::Lift => {
                     if myspeed2 <= 1.0
                         && (self.vars.me.status == Status::Activate as c_int
                             || (self.global.game_config.takeover_activates != 0
@@ -1425,7 +1438,7 @@ freedroid-discussion@lists.sourceforge.net\n\
                     }
                 }
 
-                KonsoleR | KonsoleL | KonsoleO | KonsoleU => {
+                M::KonsoleR | M::KonsoleL | M::KonsoleO | M::KonsoleU => {
                     if myspeed2 <= 1.0
                         && (self.vars.me.status == Status::Activate as c_int
                             || (self.global.game_config.takeover_activates != 0
@@ -1434,7 +1447,7 @@ freedroid-discussion@lists.sourceforge.net\n\
                         self.enter_konsole();
                     }
                 }
-                Refresh1 | Refresh2 | Refresh3 | Refresh4 => self.refresh_influencer(),
+                M::Refresh1 | M::Refresh2 | M::Refresh3 | M::Refresh4 => self.refresh_influencer(),
                 _ => {}
             }
         }
@@ -1443,12 +1456,16 @@ freedroid-discussion@lists.sourceforge.net\n\
     pub fn get_current_lift(&self) -> c_int {
         let curlev = self.main.cur_level().levelnum;
 
-        let gx = self.vars.me.pos.x.round() as c_int;
-        let gy = self.vars.me.pos.y.round() as c_int;
+        #[allow(clippy::cast_possible_truncation)]
+        let [gx, gy] = {
+            let gx = self.vars.me.pos.x.round() as c_int;
+            let gy = self.vars.me.pos.y.round() as c_int;
+            [gx, gy]
+        };
 
         info!("curlev={} gx={} gy={}", curlev, gx, gy);
         info!("List of elevators:");
-        for i in 0..usize::try_from(self.main.cur_ship.num_lifts).unwrap() + 1 {
+        for i in 0..=usize::try_from(self.main.cur_ship.num_lifts).unwrap() {
             info!(
                 "Index={} level={} gx={} gy={}",
                 i,
@@ -1505,13 +1522,13 @@ fn read_tagged_i32(s: &[u8], tag: &str) -> i32 {
 pub fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
     use std::io::Write;
 
-    let xlen = level.xlen;
-    let ylen = level.ylen;
+    let x_len = level.xlen;
+    let y_len = level.ylen;
 
     let anz_wp = usize::try_from(level.num_waypoints).unwrap();
 
     /* estimate the amount of memory needed */
-    let mem_amount = usize::try_from(xlen + 1).unwrap() * usize::try_from(ylen).unwrap()
+    let mem_amount = usize::try_from(x_len + 1).unwrap() * usize::try_from(y_len).unwrap()
         + anz_wp * MAX_WP_CONNECTIONS * 4
         + 50000; /* Map-memory; Puffer fuer Dimensionen, mark-strings .. */
 
@@ -1548,12 +1565,12 @@ pub fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
     .unwrap();
 
     // Now the beginning of the actual map data is marked:
-    writeln!(level_cursor, "{}", MAP_BEGIN_STRING).unwrap();
+    writeln!(level_cursor, "{MAP_BEGIN_STRING}").unwrap();
 
     // Now in the loop each line of map data should be saved as a whole
-    for i in 0..usize::try_from(ylen).unwrap() {
+    for i in 0..usize::try_from(y_len).unwrap() {
         reset_level_map(level); // make sure all doors are closed
-        for j in 0..usize::try_from(xlen).unwrap() {
+        for j in 0..usize::try_from(x_len).unwrap() {
             write!(level_cursor, "{:02} ", level.map[i][j] as u8).unwrap();
         }
         writeln!(level_cursor).unwrap();
@@ -1562,7 +1579,7 @@ pub fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
     // --------------------
     // The next thing we must do is write the waypoints of this level
 
-    writeln!(level_cursor, "{}", WP_BEGIN_STRING).unwrap();
+    writeln!(level_cursor, "{WP_BEGIN_STRING}").unwrap();
 
     for i in 0..usize::try_from(level.num_waypoints).unwrap() {
         write!(
@@ -1579,7 +1596,7 @@ pub fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
         writeln!(level_cursor).unwrap();
     }
 
-    writeln!(level_cursor, "{}", LEVEL_END_STRING).unwrap();
+    writeln!(level_cursor, "{LEVEL_END_STRING}").unwrap();
     writeln!(
         level_cursor,
         "----------------------------------------------------------------------"

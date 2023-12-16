@@ -66,18 +66,18 @@ impl Data<'_> {
     }
 
     /// This function assembles the contents of the combat window
-    /// in self.graphics.ne_screen.
+    /// in `self.graphics.ne_screen`.
     ///
     /// Several FLAGS can be used to control its behaviour:
     ///
-    /// (*) ONLY_SHOW_MAP = 0x01:  This flag indicates not do draw any
+    /// (*) `ONLY_SHOW_MAP` = 0x01:  This flag indicates not do draw any
     ///     game elements but the map blocks
     ///
-    /// (*) DO_SCREEgN_UPDATE = 0x02: This flag indicates for the function
-    ///     to also cause an SDL_Update of the portion of the screen
+    /// (*) `DO_SCREEgN_UPDATE` = 0x02: This flag indicates for the function
+    ///     to also cause an `SDL_Update` of the portion of the screen
     ///     that has been modified
     ///
-    /// (*) SHOW_FULL_MAP = 0x04: show complete map, disregard visibility
+    /// (*) `SHOW_FULL_MAP` = 0x04: show complete map, disregard visibility
     pub fn assemble_combat_picture(&mut self, mask: c_int) {
         thread_local! {
             static TIME_SINCE_LAST_FPS_UPDATE: Cell<f32> = Cell::new(10.);
@@ -98,21 +98,24 @@ impl Data<'_> {
         }
 
         let (upleft, downright) =
-            if (mask & AssembleCombatWindowFlags::SHOW_FULL_MAP.bits() as i32) != 0 {
-                let upleft = GrobPoint { x: -5, y: -5 };
-                let downright = GrobPoint {
-                    x: self.main.cur_level().xlen as i8 + 5,
-                    y: self.main.cur_level().ylen as i8 + 5,
-                };
-                (upleft, downright)
-            } else {
+            if (mask & i32::from(AssembleCombatWindowFlags::SHOW_FULL_MAP.bits())) == 0 {
+                #[allow(clippy::cast_possible_truncation)]
                 let upleft = GrobPoint {
                     x: self.vars.me.pos.x as i8 - 6,
                     y: self.vars.me.pos.y as i8 - 5,
                 };
+                #[allow(clippy::cast_possible_truncation)]
                 let downright = GrobPoint {
                     x: self.vars.me.pos.x as i8 + 7,
                     y: self.vars.me.pos.y as i8 + 5,
+                };
+                (upleft, downright)
+            } else {
+                let upleft = GrobPoint { x: -5, y: -5 };
+                #[allow(clippy::cast_possible_truncation)]
+                let downright = GrobPoint {
+                    x: self.main.cur_level().xlen as i8 + 5,
+                    y: self.main.cur_level().ylen as i8 + 5,
                 };
                 (upleft, downright)
             };
@@ -126,7 +129,7 @@ impl Data<'_> {
             .flat_map(|line| (upleft.x..downright.x).map(move |col| (line, col)))
             .for_each(|(line, col)| {
                 if self.global.game_config.all_map_visible == 0
-                    && ((mask & AssembleCombatWindowFlags::SHOW_FULL_MAP.bits() as i32) == 0x0)
+                    && ((mask & i32::from(AssembleCombatWindowFlags::SHOW_FULL_MAP.bits())) == 0x0)
                 {
                     pos.x = col.into();
                     pos.y = line.into();
@@ -139,19 +142,21 @@ impl Data<'_> {
                         pos.x += vect.x;
                         pos.y += vect.y;
                     }
-                    if self.is_visible(&pos) == 0 {
+                    if self.is_visible(pos) == 0 {
                         return;
                     }
                 }
 
                 map_brick = get_map_brick(self.main.cur_level(), col.into(), line.into());
                 let user_center = self.vars.get_user_center();
+                #[allow(clippy::cast_possible_truncation)]
                 target_rectangle.set_x(
                     user_center.x()
                         + ((-self.vars.me.pos.x + 1.0 * f32::from(col) - 0.5)
                             * f32::from(self.vars.block_rect.width()))
                         .round() as i16,
                 );
+                #[allow(clippy::cast_possible_truncation)]
                 target_rectangle.set_y(
                     user_center.y()
                         + ((-self.vars.me.pos.y + 1.0 * f32::from(line) - 0.5)
@@ -204,6 +209,7 @@ impl Data<'_> {
         }
 
         if self.global.game_config.draw_position != 0 {
+            #[allow(clippy::cast_possible_wrap)]
             print_string_font(
                 self.graphics.ne_screen.as_mut().unwrap(),
                 font0_b_font,
@@ -221,13 +227,14 @@ impl Data<'_> {
             );
         }
 
-        if mask & AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits() as i32 == 0 {
+        if mask & i32::from(AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits()) == 0 {
             if self.global.game_config.draw_framerate != 0 {
                 TIME_SINCE_LAST_FPS_UPDATE.with(|time_cell| {
                     let mut time = time_cell.get();
                     time += self.frame_time();
 
                     if time > UPDATE_FPS_HOW_OFTEN {
+                        #[allow(clippy::cast_possible_truncation)]
                         FPS_DISPLAYED.with(|fps_displayed| {
                             fps_displayed.set((1.0 / self.frame_time()) as i32);
                         });
@@ -248,8 +255,8 @@ impl Data<'_> {
                         self.graphics.ne_screen.as_mut().unwrap(),
                         font0_b_font,
                         self.vars.full_user_rect.x().into(),
-                        self.vars.full_user_rect.y() as i32
-                            + self.vars.full_user_rect.height() as i32
+                        i32::from(self.vars.full_user_rect.y())
+                            + i32::from(self.vars.full_user_rect.height())
                             - font_height(font0_b_font),
                         format_args!("FPS: {} ", fps_displayed.get()),
                     );
@@ -298,7 +305,7 @@ impl Data<'_> {
                 let enemy = &self.main.all_enemys[enemy_index];
                 if (enemy.status == Status::Terminated as i32)
                     && (enemy.levelnum == self.main.cur_level().levelnum)
-                    && self.is_visible(&enemy.pos) != 0
+                    && self.is_visible(enemy.pos) != 0
                 {
                     let x = enemy.pos.x;
                     let y = enemy.pos.y;
@@ -313,7 +320,7 @@ impl Data<'_> {
                     || (enemy.status == Status::Out as i32)
                     || (enemy.status == Status::Terminated as i32))
                 {
-                    self.put_enemy(enemy_index.try_into().unwrap(), -1, -1)
+                    self.put_enemy(enemy_index.try_into().unwrap(), -1, -1);
                 }
             }
 
@@ -323,7 +330,7 @@ impl Data<'_> {
 
             for bullet_index in 0..MAXBULLETS {
                 if self.main.all_bullets[bullet_index].ty != Status::Out as u8 {
-                    self.put_bullet(bullet_index.try_into().unwrap())
+                    self.put_bullet(bullet_index.try_into().unwrap());
                 }
             }
 
@@ -343,7 +350,7 @@ impl Data<'_> {
         // At this point we are done with the drawing procedure
         // and all that remains to be done is updating the screen.
 
-        if mask & AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits() as i32 != 0 {
+        if mask & i32::from(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits()) != 0 {
             let screen = self.graphics.ne_screen.as_mut().unwrap();
             screen.update_rect(&self.vars.user_rect);
             screen.update_rect(&text_rect);
@@ -359,6 +366,7 @@ impl Data<'_> {
         }
 
         let user_center = self.vars.get_user_center();
+        #[allow(clippy::cast_possible_truncation)]
         let mut dst = Rect::new(
             (f32::from(user_center.x())
                 + (-self.vars.me.pos.x + x) * f32::from(self.vars.block_rect.width())
@@ -395,7 +403,7 @@ impl Data<'_> {
         }
 
         // if the enemy is out of sight, we need not do anything more here
-        if self.main.show_all_droids == 0 && self.is_visible(&droid.pos) == 0 {
+        if self.main.show_all_droids == 0 && self.is_visible(droid.pos) == 0 {
             trace!("ONSCREEN=FALSE --> usual end of function reached.");
             return;
         }
@@ -415,6 +423,7 @@ impl Data<'_> {
             build_block,
             ..
         } = &mut self.graphics;
+        #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
         enemy_surface_pointer[phase as usize]
             .as_mut()
             .unwrap()
@@ -450,11 +459,13 @@ impl Data<'_> {
         // now blit the whole construction to screen:
         if x == -1 {
             let user_center = self.vars.get_user_center();
+            #[allow(clippy::cast_possible_truncation)]
             dst.set_x(
                 (f32::from(user_center.x())
                     + (droid.pos.x - self.vars.me.pos.x) * f32::from(self.vars.block_rect.width())
                     - f32::from(self.vars.block_rect.width() / 2)) as i16,
             );
+            #[allow(clippy::cast_possible_truncation)]
             dst.set_y(
                 (f32::from(user_center.y())
                     + (droid.pos.y - self.vars.me.pos.y) * f32::from(self.vars.block_rect.height())
@@ -480,6 +491,7 @@ impl Data<'_> {
             && droid.text_visible_time < self.global.game_config.wanted_text_visible_time
             && self.global.game_config.droid_talk != 0
         {
+            #[allow(clippy::cast_possible_truncation)]
             put_string_font(
                 self.graphics.ne_screen.as_mut().unwrap(),
                 self.global
@@ -508,6 +520,7 @@ impl Data<'_> {
     /// to the specified coordinates anywhere on the screen, useful e.g.
     /// for using the influencer as a cursor in the menus.
     pub fn put_influence(&mut self, x: c_int, y: c_int) {
+        #[allow(clippy::cast_possible_wrap)]
         let text_rect = Rect::new(
             self.vars.user_rect.x()
                 + (self.vars.user_rect.width() / 2) as i16
@@ -532,6 +545,7 @@ impl Data<'_> {
             vars,
             ..
         } = self;
+        #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
         influencer_surface_pointer[(vars.me.phase).floor() as usize]
             .as_mut()
             .unwrap()
@@ -608,7 +622,9 @@ impl Data<'_> {
 
         if x == -1 {
             let user_center = self.vars.get_user_center();
+            #[allow(clippy::cast_possible_wrap)]
             dst.set_x(user_center.x() - (self.vars.block_rect.width() / 2) as i16);
+            #[allow(clippy::cast_possible_wrap)]
             dst.set_y(user_center.y() - (self.vars.block_rect.height() / 2) as i16);
         } else {
             dst.set_x(x.try_into().unwrap());
@@ -660,8 +676,8 @@ impl Data<'_> {
         trace!("PutInfluence: end of function reached.");
     }
 
-    /// PutBullet: draws a Bullet into the combat window.  The only
-    /// parameter given is the number of the bullet in the AllBullets
+    /// `PutBullet`: draws a Bullet into the combat window.  The only
+    /// parameter given is the number of the bullet in the `AllBullets`
     /// array. Everything else is computed in here.
     pub fn put_bullet(&mut self, bullet_number: c_int) {
         let cur_bullet = &mut self.main.all_bullets[usize::try_from(bullet_number).unwrap()];
@@ -691,6 +707,7 @@ impl Data<'_> {
         }
 
         let bullet = &mut self.vars.bulletmap[usize::from(cur_bullet.ty)];
+        #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
         let mut phase_of_bullet =
             (cur_bullet.time_in_seconds * bullet.phase_changes_per_second) as usize;
 
@@ -728,21 +745,26 @@ impl Data<'_> {
         // blit of these surfaces!!!!
         let user_center = self.vars.get_user_center();
         let cur_bullet = &mut self.main.all_bullets[usize::try_from(bullet_number).unwrap()];
+        #[allow(clippy::cast_possible_truncation)]
         let mut dst = Rect::new(
             (f32::from(user_center.x())
                 - (self.vars.me.pos.x - cur_bullet.pos.x) * f32::from(self.vars.block_rect.width())
-                - (cur_bullet.surfaces[phase_of_bullet]
-                    .as_ref()
-                    .unwrap()
-                    .width()
-                    / 2) as f32) as i16,
+                - f32::from(
+                    cur_bullet.surfaces[phase_of_bullet]
+                        .as_ref()
+                        .unwrap()
+                        .width()
+                        / 2,
+                )) as i16,
             (f32::from(user_center.y())
                 - (self.vars.me.pos.y - cur_bullet.pos.y) * f32::from(self.vars.block_rect.width())
-                - (cur_bullet.surfaces[phase_of_bullet]
-                    .as_ref()
-                    .unwrap()
-                    .height()
-                    / 2) as f32) as i16,
+                - f32::from(
+                    cur_bullet.surfaces[phase_of_bullet]
+                        .as_ref()
+                        .unwrap()
+                        .height()
+                        / 2,
+                )) as i16,
             0,
             0,
         );
@@ -761,29 +783,13 @@ impl Data<'_> {
     /// if it thinks that work needs to be done.
     /// You can however force update if you say so with a flag.
     ///
-    /// BANNER_FORCE_UPDATE=1: Forces the redrawing of the title bar
+    /// `BANNER_FORCE_UPDATE=1`: Forces the redrawing of the title bar
     ///
-    /// BANNER_DONT_TOUCH_TEXT=2: Prevents DisplayBanner from touching the
+    /// `BANNER_DONT_TOUCH_TEXT=2`: Prevent`DisplayBanner`er from touching the
     /// text.
     ///
-    /// BANNER_NO_SDL_UPDATE=4: Prevents any SDL_Update calls.
+    /// `BANNER_NO_SDL_UPDATE=4`: Prevents any `SDL_Update` calls.
     pub fn display_banner(&mut self, left: Option<&CStr>, right: Option<&CStr>, flags: c_int) {
-        thread_local! {
-            static PREVIOUS_LEFT_BOX: RefCell<ArrayString::<[u8; LEFT_TEXT_LEN]>>={
-              RefCell::new(ArrayString::from("NOUGHT"))
-            };
-            static PREVIOUS_RIGHT_BOX: RefCell<ArrayString::<[u8; RIGHT_TEXT_LEN]>>= {
-              RefCell::new(ArrayString::from("NOUGHT"))
-            };
-        }
-
-        // --------------------
-        // At first the text is prepared.  This can't hurt.
-        // we will decide whether to display it or not later...
-        //
-
-        let left = left.unwrap_or(INFLUENCE_MODE_NAMES[self.vars.me.status as usize]);
-
         enum Right<'a, const N: usize> {
             Owned(ArrayCString<N>),
             Borrowed(&'a CStr),
@@ -800,13 +806,33 @@ impl Data<'_> {
             }
         }
 
-        let right = right.map(Right::Borrowed).unwrap_or_else(|| {
-            use std::fmt::Write;
+        thread_local! {
+            static PREVIOUS_LEFT_BOX: RefCell<ArrayString::<[u8; LEFT_TEXT_LEN]>>={
+              RefCell::new(ArrayString::from("NOUGHT"))
+            };
+            static PREVIOUS_RIGHT_BOX: RefCell<ArrayString::<[u8; RIGHT_TEXT_LEN]>>= {
+              RefCell::new(ArrayString::from("NOUGHT"))
+            };
+        }
 
-            let mut buffer = ArrayCString::<80>::default();
-            write!(buffer, "{}", self.main.show_score).unwrap();
-            Right::Owned(buffer)
-        });
+        // --------------------
+        // At first the text is prepared.  This can't hurt.
+        // we will decide whether to display it or not later...
+        //
+
+        #[allow(clippy::cast_sign_loss)]
+        let left = left.unwrap_or(INFLUENCE_MODE_NAMES[self.vars.me.status as usize]);
+
+        let right = right.map_or_else(
+            || {
+                use std::fmt::Write;
+
+                let mut buffer = ArrayCString::<80>::default();
+                write!(buffer, "{}", self.main.show_score).unwrap();
+                Right::Owned(buffer)
+            },
+            Right::Borrowed,
+        );
 
         // Now fill in the text
         let left_len = left.to_bytes().len();
@@ -876,7 +902,7 @@ impl Data<'_> {
                     para_b_font,
                     dst.x().into(),
                     dst.y().into(),
-                    format_args!("{}", left_box),
+                    format_args!("{left_box}"),
                 );
                 PREVIOUS_LEFT_BOX.with(|previous_left_box| {
                     let mut previous_left_box = previous_left_box.borrow_mut();
@@ -893,7 +919,7 @@ impl Data<'_> {
                     para_b_font,
                     dst.x().into(),
                     dst.y().into(),
-                    format_args!("{}", right_box),
+                    format_args!("{right_box}"),
                 );
                 PREVIOUS_RIGHT_BOX.with(|previous_right_box| {
                     let mut previous_right_box = previous_right_box.borrow_mut();
@@ -924,6 +950,7 @@ pub fn put_blast(blast: &Blast, vars: &mut Vars, graphics: &mut Graphics) {
     }
 
     let user_center = vars.get_user_center();
+    #[allow(clippy::cast_possible_truncation)]
     let mut dst = Rect::new(
         (f32::from(user_center.x())
             - (vars.me.pos.x - blast.px) * f32::from(vars.block_rect.width())
@@ -935,6 +962,7 @@ pub fn put_blast(blast: &Blast, vars: &mut Vars, graphics: &mut Graphics) {
         0,
     );
 
+    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
     vars.blastmap[usize::try_from(blast.ty).unwrap()].surfaces[(blast.phase).floor() as usize]
         .as_mut()
         .unwrap()

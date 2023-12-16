@@ -24,13 +24,13 @@ use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
 use sdl::{
     rwops::{self, RwOps},
-    ColorKeyFlag, Cursor, CursorData, FrameBuffer, Pixel, Rect, RwOpsOwned, Surface,
+    ColorKeyFlag, Cursor, CursorData, FrameBuffer, Pixel, Rect, Rgba, RwOpsOwned, Surface,
     VideoModeFlags,
 };
 use std::{
     borrow::Cow,
     cell::RefCell,
-    ffi::CStr,
+    ffi::{CStr, CString},
     ops::Not,
     os::raw::{c_char, c_float, c_int},
     path::Path,
@@ -122,7 +122,7 @@ impl Default for Graphics<'_> {
             all_themes: ThemeList {
                 num_themes: 0,
                 cur_tnum: 0,
-                theme_name: array_init(|_| Default::default()),
+                theme_name: array_init(|_| CString::default()),
             },
             classic_theme_index: 0,
             number_of_screenshot: 0,
@@ -141,17 +141,22 @@ pub fn apply_filter(
     (0..surface.height())
         .flat_map(move |y| (0..w).map(move |x| (x, y)))
         .for_each(|(x, y)| {
-            let [mut red, mut green, mut blue, alpha] =
+            let [mut pixel_red, mut pixel_green, mut pixel_blue, alpha] =
                 surface.lock().unwrap().pixels().get(x, y).unwrap().rgba();
             if alpha == 0 {
                 return;
             }
 
-            red = (red as c_float * fred) as u8;
-            green = (green as c_float * fgreen) as u8;
-            blue = (blue as c_float * fblue) as u8;
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            {
+                pixel_red = (f32::from(pixel_red) * fred) as u8;
+                pixel_green = (f32::from(pixel_green) * fgreen) as u8;
+                pixel_blue = (f32::from(pixel_blue) * fblue) as u8;
+            }
 
-            let pixel_value = surface.format().map_rgba(red, green, blue, alpha);
+            let pixel_value = surface
+                .format()
+                .map_rgba(pixel_red, pixel_green, pixel_blue, alpha);
             let mut surface = surface.lock().unwrap();
             surface.pixels().set(x, y, pixel_value).unwrap();
         });
@@ -167,7 +172,7 @@ impl<'sdl> Graphics<'sdl> {
     /// block: dimension of blocks to consider: if NULL: copy whole pic
     /// NOTE: only w and h of block are used!!
     ///
-    /// NOTE: to avoid memory-leaks, use (flags | INIT_ONLY) if you only
+    /// NOTE: to avoid memory-leaks, use (flags | `INIT_ONLY`) if you only
     ///       call this function to set up a new pic-file to be read.
     ///       This will avoid copying & mallocing a new pic, NULL will be returned
     pub fn load_block(
@@ -208,7 +213,7 @@ impl<'sdl> Graphics<'sdl> {
             return None;
         }
 
-        if pic.is_some() && flags == FREE_ONLY as c_int {
+        if pic.is_some() && flags == i32::from(FREE_ONLY) {
             *pic = None;
             return None;
         }
@@ -218,14 +223,15 @@ impl<'sdl> Graphics<'sdl> {
             *pic = Some(sdl.load_image_from_c_str_path(fpath).unwrap());
         }
 
-        if (flags & INIT_ONLY as c_int) != 0 {
+        if (flags & i32::from(INIT_ONLY)) != 0 {
             return None; // that's it guys, only initialzing...
         }
 
         let pic = pic.as_mut().unwrap();
-        let dim = block
-            .map(|block| block.with_xy(0, 0))
-            .unwrap_or_else(|| Rect::new(0, 0, pic.width(), pic.height()));
+        let dim = block.map_or_else(
+            || Rect::new(0, 0, pic.width(), pic.height()),
+            |block| block.with_xy(0, 0),
+        );
 
         let usealpha = pic.format().has_alpha();
         if usealpha {
@@ -238,7 +244,7 @@ impl<'sdl> Graphics<'sdl> {
             dim.width().into(),
             dim.height().into(),
             vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
-            Default::default(),
+            Rgba::default(),
         )
         .unwrap();
         let mut ret = if usealpha {
@@ -273,7 +279,7 @@ pub fn scale_pic(pic: &mut Surface, scale: c_float) {
 
     *pic = pic
         .zoom(scale, scale, false)
-        .unwrap_or_else(|| panic!("surface.zoom() failed for scale = {}.", scale));
+        .unwrap_or_else(|| panic!("surface.zoom() failed for scale = {scale}."));
 }
 
 static CROSSHAIR_CURSOR: Lazy<CursorData<32>> = Lazy::new(|| {
@@ -383,33 +389,31 @@ impl Data<'_> {
             self.global.game_config.use_fullscreen == 0,
         );
 
-        *ne_screen = match self.sdl.video.set_video_mode(
+        let Some(new_ne_screen) = self.sdl.video.set_video_mode(
             self.vars.screen_rect.width().into(),
             self.vars.screen_rect.height().into(),
             None,
             vid_flags,
-        ) {
-            Some(ne_screen) => ne_screen,
-            None => {
-                error!(
-                    "unable to toggle windowed/fullscreen {} x {} video mode.",
-                    self.vars.screen_rect.width(),
-                    self.vars.screen_rect.height(),
-                );
-                panic!("SDL-Error: {}", self.sdl.get_error().to_string_lossy());
-            }
+        ) else {
+            error!(
+                "unable to toggle windowed/fullscreen {} x {} video mode.",
+                self.vars.screen_rect.width(),
+                self.vars.screen_rect.height(),
+            );
+            panic!("SDL-Error: {}", self.sdl.get_error().to_string_lossy());
         };
+        *ne_screen = new_ne_screen;
 
-        if ne_screen.flags() != vid_flags.bits() {
-            warn!("Failed to toggle windowed/fullscreen mode!");
-        } else {
+        if ne_screen.flags() == vid_flags.bits() {
             self.global.game_config.use_fullscreen = !self.global.game_config.use_fullscreen;
+        } else {
+            warn!("Failed to toggle windowed/fullscreen mode!");
         }
     }
 
     /// This function saves a screenshot to disk.
     ///
-    /// The screenshots are names "Screenshot_XX.bmp" where XX is a
+    /// The screenshots are names `Screenshot_XX.bmp` where XX is a
     /// running number.
     ///
     /// NOTE:  This function does NOT check for existing screenshots,
@@ -422,15 +426,12 @@ impl Data<'_> {
 
         let screenshot_filename =
             format!("Screenshot_{}.bmp", self.graphics.number_of_screenshot).into();
-        let mut rw_ops = match RwOps::from_pathbuf(
+        let Some(mut rw_ops) = RwOps::from_pathbuf(
             screenshot_filename,
             Mode::from(ReadWriteMode::Write).with_binary(true),
-        ) {
-            Some(rw_ops) => rw_ops,
-            None => {
-                error!("Unable to take screenshot, cannot write to file.");
-                return;
-            }
+        ) else {
+            error!("Unable to take screenshot, cannot write to file.");
+            return;
         };
         if self
             .graphics
@@ -509,7 +510,7 @@ impl Data<'_> {
 
         // free Load_Block()-internal buffer
         self.graphics
-            .load_block(None, 0, 0, None, FREE_ONLY as i32, self.sdl);
+            .load_block(None, 0, 0, None, i32::from(FREE_ONLY), self.sdl);
 
         // free cursors
         self.graphics.crosshair_cursor = None;
@@ -715,7 +716,7 @@ impl Data<'_> {
                 self.vars.block_rect.width().into(),
                 self.vars.block_rect.height().into(),
                 self.graphics.vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
-                Default::default(),
+                Rgba::default(),
             )
             .unwrap()
             .display_format_alpha()
@@ -762,13 +763,18 @@ impl Data<'_> {
             seq::{IteratorRandom, SliceRandom},
             Rng,
         };
-        const NOISE_COLORS: usize = 6;
-        const NOISE_TILES: usize = 8;
+        const NOISE_COLORS: u8 = 6;
+        const NOISE_TILES: u8 = 8;
 
         let signal_strengh = 60;
 
-        let grey: [Pixel; NOISE_COLORS] = array_init(|index| {
-            let color = (((index as f64 + 1.0) / (NOISE_COLORS as f64)) * 255.0) as u8;
+        #[allow(
+            clippy::cast_precision_loss,
+            clippy::cast_sign_loss,
+            clippy::cast_possible_truncation
+        )]
+        let grey: [Pixel; NOISE_COLORS as usize] = array_init(|index| {
+            let color = (((index as f64 + 1.0) / f64::from(NOISE_COLORS)) * 255.0) as u8;
             frame_buffer.format().map_rgb(color, color, color)
         });
 
@@ -778,7 +784,7 @@ impl Data<'_> {
             rect.width().into(),
             rect.height().into(),
             self.graphics.vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
-            Default::default(),
+            Rgba::default(),
         )
         .unwrap()
         .display_format()
@@ -786,7 +792,7 @@ impl Data<'_> {
         frame_buffer.blit_from(&*rect, &mut tmp);
 
         let mut rng = rand::thread_rng();
-        let mut noise_tiles: [Surface; NOISE_TILES] = array_init(|_| {
+        let mut noise_tiles: [Surface; NOISE_TILES as usize] = array_init(|_| {
             let mut tile = tmp.display_format().unwrap();
             let mut lock = tile.lock().unwrap();
             (0..u16::try_from(rect.x()).unwrap())
@@ -803,7 +809,8 @@ impl Data<'_> {
         });
         drop(tmp);
 
-        let mut used_tiles: [c_char; NOISE_TILES / 2 + 1] = [-1; NOISE_TILES / 2 + 1];
+        let mut used_tiles: [c_char; NOISE_TILES as usize / 2 + 1] =
+            [-1; NOISE_TILES as usize / 2 + 1];
         // let's go
         self.play_sound(SoundType::WhiteNoise as c_int);
 
@@ -814,7 +821,9 @@ impl Data<'_> {
             // pick an old enough tile
             let mut next_tile;
             loop {
-                next_tile = (0..NOISE_TILES as i8).choose(&mut rng).unwrap();
+                next_tile = (0..i8::try_from(NOISE_TILES).unwrap())
+                    .choose(&mut rng)
+                    .unwrap();
                 for &used_tile in &used_tiles {
                     if next_tile == used_tile {
                         next_tile = -1;
@@ -867,7 +876,7 @@ impl Data<'_> {
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         )
-        .unwrap_or_else(|| panic!("font file named {} was not found.", PARA_FONT_FILE));
+        .unwrap_or_else(|| panic!("font file named {PARA_FONT_FILE} was not found."));
 
         global.para_b_font = Some(Self::load_font(
             sdl,
@@ -884,7 +893,7 @@ impl Data<'_> {
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         )
-        .unwrap_or_else(|| panic!("font file named {} was not found.", FONT0_FILE));
+        .unwrap_or_else(|| panic!("font file named {FONT0_FILE} was not found."));
         global.font0_b_font = Some(Self::load_font(
             sdl,
             b_font,
@@ -900,7 +909,7 @@ impl Data<'_> {
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         )
-        .unwrap_or_else(|| panic!("font file named {} was not found.", FONT1_FILE));
+        .unwrap_or_else(|| panic!("font file named {FONT1_FILE} was not found."));
         global.font1_b_font = Some(Self::load_font(
             sdl,
             b_font,
@@ -916,7 +925,7 @@ impl Data<'_> {
             Themed::NoTheme as c_int,
             Criticality::Critical as c_int,
         )
-        .unwrap_or_else(|| panic!("font file named {} was not found.", FONT2_FILE));
+        .unwrap_or_else(|| panic!("font file named {FONT2_FILE} was not found."));
         global.font2_b_font = Some(Self::load_font(
             sdl,
             b_font,
@@ -1021,16 +1030,15 @@ impl Data<'_> {
         );
         info!(
             "Video Driver Name: {}",
-            vid_driver
-                .map(|vid_driver| vid_driver.to_string_lossy())
-                .unwrap_or(Cow::Borrowed("UNKNOWN DRIVER"))
+            vid_driver.map_or(Cow::Borrowed("UNKNOWN DRIVER"), |vid_driver| vid_driver
+                .to_string_lossy())
         );
         info!("----------------------------------------------------------------------");
 
-        let vid_flags = if self.global.game_config.use_fullscreen != 0 {
-            VideoModeFlags::FULLSCREEN
-        } else {
+        let vid_flags = if self.global.game_config.use_fullscreen == 0 {
             VideoModeFlags::empty()
+        } else {
+            VideoModeFlags::FULLSCREEN
         };
 
         if flag!(wm_available) {
@@ -1051,8 +1059,8 @@ impl Data<'_> {
                 Criticality::WarnOnly as c_int,
             );
 
-            match fpath {
-                Some(fpath) => match sdl.load_image_from_c_str_path(fpath) {
+            if let Some(fpath) = fpath {
+                match sdl.load_image_from_c_str_path(fpath) {
                     Some(mut img) => sdl.video.window_manager().set_icon(&mut img, None),
                     None => {
                         warn!(
@@ -1060,27 +1068,25 @@ impl Data<'_> {
                             fpath.to_string_lossy()
                         );
                     }
-                },
-                None => warn!("Could not find icon file '{}'", ICON_FILE),
+                }
+            } else {
+                warn!("Could not find icon file '{}'", ICON_FILE);
             }
         }
 
-        let ne_screen = match self.sdl.video.set_video_mode(
+        let Some(ne_screen) = self.sdl.video.set_video_mode(
             self.vars.screen_rect.width().into(),
             self.vars.screen_rect.height().into(),
             None,
             vid_flags,
-        ) {
-            Some(ne_screen) => ne_screen,
-            None => {
-                error!(
-                    "Couldn't set {} x {} video mode. SDL: {}",
-                    self.vars.screen_rect.width(),
-                    self.vars.screen_rect.height(),
-                    self.sdl.get_error().to_string_lossy(),
-                );
-                std::process::exit(-1);
-            }
+        ) else {
+            error!(
+                "Couldn't set {} x {} video mode. SDL: {}",
+                self.vars.screen_rect.width(),
+                self.vars.screen_rect.height(),
+                self.sdl.get_error().to_string_lossy(),
+            );
+            std::process::exit(-1);
         };
         self.graphics.ne_screen = Some(ne_screen);
 
@@ -1092,27 +1098,24 @@ impl Data<'_> {
         self.global.game_config.current_gamma_correction = 1.;
     }
 
-    /// load a pic into memory and return the SDL_RWops pointer to it
+    /// load a pic into memory and return the `SDL_RWops` pointer to it
     pub fn load_raw_pic(fpath: &CStr) -> Option<RwOpsOwned> {
         use std::{fs::File, io::Read};
         let fpath = match fpath.to_str() {
             Ok(fpath) => fpath,
             Err(err) => {
-                panic!("unable to convert path with invalid UTF-8 data: {}", err);
+                panic!("unable to convert path with invalid UTF-8 data: {err}");
             }
         };
         let fpath = Path::new(&fpath);
-        let mut file = match File::open(fpath) {
-            Ok(file) => file,
-            Err(_) => {
-                panic!("could not open file {}. Giving up", fpath.display());
-            }
+        let Ok(mut file) = File::open(fpath) else {
+            panic!("could not open file {}. Giving up", fpath.display());
         };
 
         let metadata = match file.metadata() {
             Ok(metadata) => metadata,
             Err(err) => {
-                panic!("unable to get file metadata: {}", err);
+                panic!("unable to get file metadata: {err}");
             }
         };
 
@@ -1169,7 +1172,7 @@ impl Data<'_> {
             Criticality::Critical as c_int,
         );
         self.graphics
-            .load_block(fpath, 0, 0, None, INIT_ONLY as i32, self.sdl); /* init function */
+            .load_block(fpath, 0, 0, None, i32::from(INIT_ONLY), self.sdl); /* init function */
         let Self {
             graphics:
                 Graphics {
@@ -1220,7 +1223,7 @@ impl Data<'_> {
             Criticality::Critical as c_int,
         );
         self.graphics
-            .load_block(fpath, 0, 0, None, INIT_ONLY as c_int, self.sdl);
+            .load_block(fpath, 0, 0, None, i32::from(INIT_ONLY), self.sdl);
 
         let Self {
             graphics:
@@ -1296,7 +1299,7 @@ impl Data<'_> {
             Criticality::Critical as c_int,
         );
         self.graphics
-            .load_block(fpath, 0, 0, None, INIT_ONLY as c_int, self.sdl);
+            .load_block(fpath, 0, 0, None, i32::from(INIT_ONLY), self.sdl);
         self.vars
             .bulletmap
             .iter_mut()
@@ -1331,7 +1334,7 @@ impl Data<'_> {
             Criticality::Critical as c_int,
         );
         self.graphics
-            .load_block(fpath, 0, 0, None, INIT_ONLY as c_int, self.sdl);
+            .load_block(fpath, 0, 0, None, i32::from(INIT_ONLY), self.sdl);
 
         let Self { vars, graphics, .. } = self;
         vars.blastmap
@@ -1367,7 +1370,7 @@ impl Data<'_> {
             Criticality::Critical as c_int,
         );
         self.graphics
-            .load_block(fpath, 0, 0, None, INIT_ONLY as c_int, self.sdl);
+            .load_block(fpath, 0, 0, None, i32::from(INIT_ONLY), self.sdl);
         let Self {
             graphics:
                 Graphics {
@@ -1453,7 +1456,7 @@ impl Data<'_> {
                 self.vars.block_rect.width().into(),
                 self.vars.block_rect.height().into(),
                 self.graphics.vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
-                Default::default(),
+                Rgba::default(),
             )
             .unwrap()
             .display_format_alpha()
@@ -1634,7 +1637,7 @@ impl Data<'_> {
             );
 
             self.graphics
-                .load_block(fpath, 0, 0, None, INIT_ONLY as c_int, self.sdl);
+                .load_block(fpath, 0, 0, None, i32::from(INIT_ONLY), self.sdl);
             self.graphics.decal_pics[0] =
                 self.graphics
                     .load_block(None, 0, 0, Some(ORIG_BLOCK_RECT), 0, self.sdl);
@@ -1665,6 +1668,14 @@ impl Data<'_> {
         use bstr::ByteSlice;
 
         const END_OF_THEME_DATA_STRING: &[u8] = b"**** End of theme data section ****";
+        const BLAST_ONE_NUMBER_OF_PHASES_STRING: &[u8] = b"How many phases in Blast one :";
+        const BLAST_TWO_NUMBER_OF_PHASES_STRING: &[u8] = b"How many phases in Blast two :";
+        const DIGIT_ONE_POSITION_X_STRING: &[u8] = b"First digit x :";
+        const DIGIT_ONE_POSITION_Y_STRING: &[u8] = b"First digit y :";
+        const DIGIT_TWO_POSITION_X_STRING: &[u8] = b"Second digit x :";
+        const DIGIT_TWO_POSITION_Y_STRING: &[u8] = b"Second digit y :";
+        const DIGIT_THREE_POSITION_X_STRING: &[u8] = b"Third digit x :";
+        const DIGIT_THREE_POSITION_Y_STRING: &[u8] = b"Third digit y :";
 
         let fpath = Self::find_file_static(
             &self.global,
@@ -1687,8 +1698,6 @@ impl Data<'_> {
         // Now the file is read in entirely and
         // we can start to analyze its content,
         //
-        const BLAST_ONE_NUMBER_OF_PHASES_STRING: &[u8] = b"How many phases in Blast one :";
-        const BLAST_TWO_NUMBER_OF_PHASES_STRING: &[u8] = b"How many phases in Blast two :";
 
         self.vars.blastmap[0].phases =
             read_i32_from_string(&data, BLAST_ONE_NUMBER_OF_PHASES_STRING);
@@ -1735,12 +1744,6 @@ impl Data<'_> {
         // display the digits.  This must also be read from the configuration
         // file of the theme
         //
-        const DIGIT_ONE_POSITION_X_STRING: &[u8] = b"First digit x :";
-        const DIGIT_ONE_POSITION_Y_STRING: &[u8] = b"First digit y :";
-        const DIGIT_TWO_POSITION_X_STRING: &[u8] = b"Second digit x :";
-        const DIGIT_TWO_POSITION_Y_STRING: &[u8] = b"Second digit y :";
-        const DIGIT_THREE_POSITION_X_STRING: &[u8] = b"Third digit x :";
-        const DIGIT_THREE_POSITION_Y_STRING: &[u8] = b"Third digit y :";
 
         self.main.first_digit_rect.as_mut().x =
             read_i16_from_string(&data, DIGIT_ONE_POSITION_X_STRING);
@@ -1762,10 +1765,12 @@ impl Data<'_> {
     /// the combat picture to a new scale.  The new scale is relative to the
     /// standard scale with means scale=1 is 64x64 tile size.
     ///
-    /// in the first call we assume the Block_Rect to be the original game-size
+    /// in the first call we assume the `Block_Rect` to be the original game-size
     /// and store this value for future rescalings
     pub fn set_combat_scale_to(&mut self, scale: c_float) {
         use once_cell::sync::OnceCell;
+
+        static ORIG_BLOCK: OnceCell<Rect> = OnceCell::new();
 
         self.graphics
             .map_block_surface_pointer
@@ -1778,19 +1783,18 @@ impl Data<'_> {
                 let mut orig_surface = orig_surface.as_mut().unwrap().borrow_mut();
                 let mut tmp = orig_surface
                     .zoom(scale.into(), scale.into(), false)
-                    .unwrap_or_else(|| panic!("surface.zoom() failed for scale = {}.", scale));
+                    .unwrap_or_else(|| panic!("surface.zoom() failed for scale = {scale}."));
                 // and optimize
                 *surface = Some(Rc::new(RefCell::new(tmp.display_format().unwrap())));
             });
 
-        static ORIG_BLOCK: OnceCell<Rect> = OnceCell::new();
         let orig_block = ORIG_BLOCK.get_or_init(|| self.vars.block_rect);
 
         self.vars.block_rect = *orig_block;
         self.vars.block_rect.scale(scale);
     }
 
-    /// This function load an image and displays it directly to the self.graphics.ne_screen
+    /// This function load an image and displays it directly to the `self.graphics.ne_screen`
     /// but without updating it.
     /// This might be very handy, especially in the Title() function to
     /// display the title image and perhaps also for displaying the ship
@@ -1821,7 +1825,7 @@ impl Data<'_> {
         y2: c_float,
         color: Pixel,
     ) {
-        Self::draw_line_between_tiles_static(&self.vars, &mut self.graphics, x1, y1, x2, y2, color)
+        Self::draw_line_between_tiles_static(&self.vars, &mut self.graphics, x1, y1, x2, y2, color);
     }
 
     #[cfg(not(target_os = "android"))]
@@ -1850,17 +1854,17 @@ impl Data<'_> {
             let mut i = 0.;
             let max = (y2 - y1) * f32::from(vars.block_rect.width());
             while i < max {
-                let pixx = f32::from(vars.user_rect.x()) + f32::from(vars.user_rect.width() / 2)
+                let pix_x = f32::from(vars.user_rect.x()) + f32::from(vars.user_rect.width() / 2)
                     - f32::from(vars.block_rect.width()) * (vars.me.pos.x - x1);
                 let user_center = vars.get_user_center();
-                let pixy = f32::from(user_center.y())
+                let pix_y = f32::from(user_center.y())
                     - f32::from(vars.block_rect.height()) * (vars.me.pos.y - y1)
                     + i;
-                if pixx <= vars.user_rect.x().into()
-                    || pixx
+                if pix_x <= vars.user_rect.x().into()
+                    || pix_x
                         >= f32::from(vars.user_rect.x()) + f32::from(vars.user_rect.width()) - 1.
-                    || pixy <= f32::from(vars.user_rect.y())
-                    || pixy
+                    || pix_y <= f32::from(vars.user_rect.y())
+                    || pix_y
                         >= f32::from(vars.user_rect.y()) + f32::from(vars.user_rect.height()) - 1.
                 {
                     i += 1.;
@@ -1868,14 +1872,17 @@ impl Data<'_> {
                 }
                 let ne_screen = graphics.ne_screen.as_mut().unwrap();
                 let mut ne_screen = ne_screen.lock().unwrap();
-                ne_screen
-                    .pixels()
-                    .set(pixx as u16, pixy as u16, color)
-                    .unwrap();
-                ne_screen
-                    .pixels()
-                    .set(pixx as u16 - 1, pixy as u16, color)
-                    .unwrap();
+                #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+                {
+                    ne_screen
+                        .pixels()
+                        .set(pix_x as u16, pix_y as u16, color)
+                        .unwrap();
+                    ne_screen
+                        .pixels()
+                        .set(pix_x as u16 - 1, pix_y as u16, color)
+                        .unwrap();
+                }
 
                 i += 1.;
             }
@@ -1897,31 +1904,35 @@ impl Data<'_> {
         let mut i = 0.;
         let max = (x2 - x1) * f32::from(vars.block_rect.width());
         while i < max {
-            let pixx = f32::from(vars.user_rect.x()) + f32::from(vars.user_rect.width() / 2)
+            let pix_x = f32::from(vars.user_rect.x()) + f32::from(vars.user_rect.width() / 2)
                 - f32::from(vars.block_rect.width()) * (vars.me.pos.x - x1)
                 + i;
             let user_center = vars.get_user_center();
-            let pixy = f32::from(user_center.y())
+            let pix_y = f32::from(user_center.y())
                 - f32::from(vars.block_rect.height()) * (vars.me.pos.y - y1)
                 + i * slope;
-            if pixx <= f32::from(vars.user_rect.x())
-                || pixx >= f32::from(vars.user_rect.x()) + f32::from(vars.user_rect.width()) - 1.
-                || pixy <= f32::from(vars.user_rect.y())
-                || pixy >= f32::from(vars.user_rect.y()) + f32::from(vars.user_rect.height()) - 1.
+            if pix_x <= f32::from(vars.user_rect.x())
+                || pix_x >= f32::from(vars.user_rect.x()) + f32::from(vars.user_rect.width()) - 1.
+                || pix_y <= f32::from(vars.user_rect.y())
+                || pix_y >= f32::from(vars.user_rect.y()) + f32::from(vars.user_rect.height()) - 1.
             {
                 i += 1.;
                 continue;
             }
             let ne_screen = graphics.ne_screen.as_mut().unwrap();
             let mut ne_screen = ne_screen.lock().unwrap();
-            ne_screen
-                .pixels()
-                .set(pixx as u16, pixy as u16, color)
-                .unwrap();
-            ne_screen
-                .pixels()
-                .set(pixx as u16, pixy as u16 - 1, color)
-                .unwrap();
+
+            #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+            {
+                ne_screen
+                    .pixels()
+                    .set(pix_x as u16, pix_y as u16, color)
+                    .unwrap();
+                ne_screen
+                    .pixels()
+                    .set(pix_x as u16, pix_y as u16 - 1, color)
+                    .unwrap();
+            }
             i += 1.;
         }
     }

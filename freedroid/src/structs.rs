@@ -1,7 +1,15 @@
-use crate::{array_c_string::ArrayCString, defs::*};
+use crate::{
+    array_c_string::ArrayCString,
+    defs::{
+        MapTile, DATE_LEN, MAXWAYPOINTS, MAX_ALERTS_ON_LEVEL, MAX_DOORS_ON_LEVEL,
+        MAX_INFLU_POSITION_HISTORY, MAX_LEVELS, MAX_LEVEL_RECTS, MAX_LIFTS, MAX_LIFT_ROWS,
+        MAX_MAP_ROWS, MAX_NAME_LEN, MAX_PHASES_IN_A_BULLET, MAX_REFRESHES_ON_LEVEL, MAX_THEMES,
+        MAX_WP_CONNECTIONS,
+    },
+};
 
 use array_init::array_init;
-use sdl::{Rect, Surface};
+use sdl::{convert::u8_to_usize, Rect, Surface};
 use std::ffi::{CStr, CString};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -19,9 +27,9 @@ pub struct ThemeList {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct HighscoreEntry {
-    pub name: [i8; MAX_NAME_LEN + 5],
+    pub name: [i8; u8_to_usize(MAX_NAME_LEN) + 5],
     pub score: i64, /* use -1 for an empty entry */
-    pub date: [i8; DATE_LEN + 5],
+    pub date: [i8; u8_to_usize(DATE_LEN) + 5],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -297,7 +305,7 @@ impl Default for Ship {
             num_levels: 0,
             num_lifts: 0,
             num_lift_rows: 0,
-            area_name: Default::default(),
+            area_name: ArrayCString::default(),
             all_levels: array_init(|_| None),
             all_lifts: [Lift {
                 level: 0,

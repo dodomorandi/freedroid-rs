@@ -22,7 +22,7 @@ use crate::{
 
 use cstr::cstr;
 use nom::Finish;
-use sdl::Surface;
+use sdl::{convert::u32_to_i32, Surface};
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT,
     SDLKey_SDLK_RIGHT, SDLKey_SDLK_UP,
@@ -58,6 +58,7 @@ pub struct Menu<'sdl> {
     sound_volume_buf: ArrayCString<256>,
 }
 
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Default)]
 struct MenuActionDirections {
     up: bool,
@@ -202,18 +203,18 @@ impl<'sdl> Data<'sdl> {
     ];
 
     pub fn handle_quit_game(&mut self, action: MenuAction) -> Option<&CStr> {
+        #[cfg(feature = "gcw0")]
+        const QUIT_STRING: &str = "Press A to quit";
+
+        #[cfg(not(feature = "gcw0"))]
+        const QUIT_STRING: &str = "Hit 'y' or press Fire to quit";
+
         if action != MenuAction::CLICK {
             return None;
         }
 
         self.menu_item_selected_sound();
         self.initiate_menu(false);
-
-        #[cfg(feature = "gcw0")]
-        const QUIT_STRING: &str = "Press A to quit";
-
-        #[cfg(not(feature = "gcw0"))]
-        const QUIT_STRING: &str = "Hit 'y' or press Fire to quit";
 
         let text_width = self.text_width(QUIT_STRING.as_bytes());
         let text_x = i32::from(self.vars.user_rect.x())
@@ -256,13 +257,13 @@ impl<'sdl> Data<'sdl> {
         None
     }
 
-    /// simple wrapper to ShowMenu() to provide the external entry point into the main menu
+    /// simple wrapper to `ShowMenu`() to provide the external entry point into the main menu
     pub fn show_main_menu(&mut self) {
         self.show_menu(&Self::MAIN_MENU);
     }
 
     pub fn free_menu_data(&mut self) {
-        self.menu.menu_background = None
+        self.menu.menu_background = None;
     }
 
     pub fn initiate_menu(&mut self, with_droids: bool) {
@@ -312,6 +313,9 @@ impl<'sdl> Data<'sdl> {
     }
 
     pub fn cheatmenu(&mut self) {
+        const X0: i32 = 50;
+        const Y0: i32 = 20;
+
         // Prevent distortion of framerate by the delay coming from
         // the time spend in the menu.
         self.activate_conservative_frame_computation();
@@ -320,8 +324,6 @@ impl<'sdl> Data<'sdl> {
 
         self.b_font.current_font = font; /* not the ideal one, but there's currently */
         /* no other it seems.. */
-        const X0: i32 = 50;
-        const Y0: i32 = 20;
 
         let mut resume = false;
         while !resume {
@@ -378,10 +380,10 @@ impl<'sdl> Data<'sdl> {
                 -1,
                 format_args!(
                     " i. Invinciblemode: {}\n",
-                    if self.main.invincible_mode != 0 {
-                        "ON"
-                    } else {
+                    if self.main.invincible_mode == 0 {
                         "OFF"
+                    } else {
+                        "ON"
                     },
                 ),
             );
@@ -392,10 +394,10 @@ impl<'sdl> Data<'sdl> {
                 -1,
                 format_args!(
                     " n. No hidden droids: {}\n",
-                    if self.main.show_all_droids != 0 {
-                        "ON"
-                    } else {
+                    if self.main.show_all_droids == 0 {
                         "OFF"
+                    } else {
+                        "ON"
                     },
                 ),
             );
@@ -406,7 +408,7 @@ impl<'sdl> Data<'sdl> {
                 -1,
                 format_args!(
                     " s. Sound: {}\n",
-                    if self.main.sound_on != 0 { "ON" } else { "OFF" }
+                    if self.main.sound_on == 0 { "OFF" } else { "ON" }
                 ),
             );
             self.printf_sdl(
@@ -427,10 +429,10 @@ impl<'sdl> Data<'sdl> {
                 -1,
                 format_args!(
                     " f. Freeze on this positon: {}\n",
-                    if self.main.stop_influencer != 0 {
-                        "ON"
-                    } else {
+                    if self.main.stop_influencer == 0 {
                         "OFF"
+                    } else {
+                        "ON"
                     },
                 ),
             );
@@ -442,6 +444,10 @@ impl<'sdl> Data<'sdl> {
                 }
 
                 Some(b'z') => {
+                    use nom::{
+                        character::complete::space0, number::complete::float, sequence::preceded,
+                    };
+
                     self.graphics.ne_screen = Some(ne_screen);
                     self.clear_graph_mem();
                     ne_screen = self.graphics.ne_screen.take().unwrap();
@@ -458,9 +464,6 @@ impl<'sdl> Data<'sdl> {
                     self.graphics.ne_screen = Some(ne_screen);
                     let input = self.get_string(40, 2).unwrap();
                     ne_screen = self.graphics.ne_screen.take().unwrap();
-                    use nom::{
-                        character::complete::space0, number::complete::float, sequence::preceded,
-                    };
 
                     self.global.current_combat_scale_factor =
                         preceded(space0::<_, ()>, float)(input.to_bytes())
@@ -639,6 +642,12 @@ impl<'sdl> Data<'sdl> {
                 }
 
                 Some(b't') => {
+                    use nom::{
+                        bytes::complete::tag,
+                        character::complete::{i32, space0},
+                        sequence::{delimited, pair, preceded, tuple},
+                    };
+
                     /* Teleportation */
                     self.graphics.ne_screen = Some(ne_screen);
                     self.clear_graph_mem();
@@ -647,12 +656,6 @@ impl<'sdl> Data<'sdl> {
                     self.graphics.ne_screen = Some(ne_screen);
                     let input = self.get_string(40, 2).unwrap();
                     ne_screen = self.graphics.ne_screen.take().unwrap();
-
-                    use nom::{
-                        bytes::complete::tag,
-                        character::complete::{i32, space0},
-                        sequence::{delimited, pair, preceded, tuple},
-                    };
 
                     let (l_num, x, y) = tuple((
                         preceded(space0::<_, ()>, i32),
@@ -719,6 +722,11 @@ impl<'sdl> Data<'sdl> {
                 }
 
                 Some(b'e') => {
+                    use nom::{
+                        character::complete::{i32, space0},
+                        sequence::preceded,
+                    };
+
                     /* complete heal */
                     self.graphics.ne_screen = Some(ne_screen);
                     self.clear_graph_mem();
@@ -739,15 +747,14 @@ impl<'sdl> Data<'sdl> {
                     let input = self.get_string(40, 2).unwrap();
                     ne_screen = self.graphics.ne_screen.take().unwrap();
 
-                    use nom::{
-                        character::complete::{i32, space0},
-                        sequence::preceded,
-                    };
                     let num = preceded(space0::<_, ()>, i32)(input.to_bytes())
                         .finish()
                         .unwrap()
                         .1;
-                    self.vars.me.energy = num as f32;
+                    #[allow(clippy::cast_precision_loss)]
+                    {
+                        self.vars.me.energy = num as f32;
+                    }
                     if self.vars.me.energy > self.vars.me.health {
                         self.vars.me.health = self.vars.me.energy;
                     }
@@ -828,7 +835,7 @@ impl<'sdl> Data<'sdl> {
                     self.getchar_raw();
                 }
 
-                Some(b' ') | Some(b'q') => {
+                Some(b' ' | b'q') => {
                     resume = true;
                 }
 
@@ -847,17 +854,18 @@ impl<'sdl> Data<'sdl> {
     /// NOTE: built-in time delay to ensure spurious key-repetitions
     /// such as from touchpad 'wheel' or android joystic emulation
     /// don't create unexpected menu movements:
-    /// ==> ignore all movement commands withing delay_ms milliseconds of each other
+    /// ==> ignore all movement commands withing `delay_ms` milliseconds of each other
     pub fn get_menu_action(&mut self, wait_repeat_ticks: u32) -> MenuAction {
         let mut action = MenuAction::empty();
 
         // 'normal' menu action keys get released
-        if self.key_is_pressed_r(SDLKey_SDLK_BACKSPACE as c_int) {
+        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_BACKSPACE)) {
             {
                 action = MenuAction::DELETE;
             }
         }
-        if self.cmd_is_active_r(Cmds::Back) || self.key_is_pressed_r(SDLKey_SDLK_ESCAPE as c_int) {
+        if self.cmd_is_active_r(Cmds::Back) || self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_ESCAPE))
+        {
             {
                 action = MenuAction::BACK;
             }
@@ -871,44 +879,44 @@ impl<'sdl> Data<'sdl> {
 
         // we register if there have been key-press events in the "waiting period" between move-ticks
         if !self.menu.menu_action_directions.up
-            && (self.up_pressed() || self.key_is_pressed(SDLKey_SDLK_UP as c_int))
+            && (self.up_pressed() || self.key_is_pressed(u32_to_i32(SDLKey_SDLK_UP)))
         {
             self.menu.menu_action_directions.up = true;
             self.menu.last_movekey_time = self.sdl.ticks_ms();
             action |= MenuAction::UP;
         }
         if !self.menu.menu_action_directions.down
-            && (self.down_pressed() || self.key_is_pressed(SDLKey_SDLK_DOWN as c_int))
+            && (self.down_pressed() || self.key_is_pressed(u32_to_i32(SDLKey_SDLK_DOWN)))
         {
             self.menu.menu_action_directions.down = true;
             self.menu.last_movekey_time = self.sdl.ticks_ms();
             action |= MenuAction::DOWN;
         }
         if !self.menu.menu_action_directions.left
-            && (self.left_pressed() || self.key_is_pressed(SDLKey_SDLK_LEFT as c_int))
+            && (self.left_pressed() || self.key_is_pressed(u32_to_i32(SDLKey_SDLK_LEFT)))
         {
             self.menu.menu_action_directions.left = true;
             self.menu.last_movekey_time = self.sdl.ticks_ms();
             action |= MenuAction::LEFT;
         }
         if !self.menu.menu_action_directions.right
-            && (self.right_pressed() || self.key_is_pressed(SDLKey_SDLK_RIGHT as c_int))
+            && (self.right_pressed() || self.key_is_pressed(u32_to_i32(SDLKey_SDLK_RIGHT)))
         {
             self.menu.menu_action_directions.right = true;
             self.menu.last_movekey_time = self.sdl.ticks_ms();
             action |= MenuAction::RIGHT;
         }
 
-        if !(self.up_pressed() || self.key_is_pressed(SDLKey_SDLK_UP as c_int)) {
+        if !(self.up_pressed() || self.key_is_pressed(u32_to_i32(SDLKey_SDLK_UP))) {
             self.menu.menu_action_directions.up = false;
         }
-        if !(self.down_pressed() || self.key_is_pressed(SDLKey_SDLK_DOWN as c_int)) {
+        if !(self.down_pressed() || self.key_is_pressed(u32_to_i32(SDLKey_SDLK_DOWN))) {
             self.menu.menu_action_directions.down = false;
         }
-        if !(self.left_pressed() || self.key_is_pressed(SDLKey_SDLK_LEFT as c_int)) {
+        if !(self.left_pressed() || self.key_is_pressed(u32_to_i32(SDLKey_SDLK_LEFT))) {
             self.menu.menu_action_directions.left = false;
         }
-        if !(self.right_pressed() || self.key_is_pressed(SDLKey_SDLK_RIGHT as c_int)) {
+        if !(self.right_pressed() || self.key_is_pressed(u32_to_i32(SDLKey_SDLK_RIGHT))) {
             self.menu.menu_action_directions.right = false;
         }
 
@@ -950,17 +958,12 @@ impl<'sdl> Data<'sdl> {
         let mut menu_width = None::<i32>;
         loop {
             let entry = &menu_entries[num_entries];
-            let name = match entry.name.as_ref() {
-                Some(name) => name,
-                None => break,
+            let Some(name) = entry.name.as_ref() else {
+                break;
             };
 
             let width = self.text_width(name.as_bytes());
-            menu_width = Some(
-                menu_width
-                    .map(|menu_width| menu_width.max(width))
-                    .unwrap_or(width),
-            );
+            menu_width = Some(menu_width.map_or(width, |menu_width| menu_width.max(width)));
 
             num_entries += 1;
         }
@@ -1017,6 +1020,7 @@ impl<'sdl> Data<'sdl> {
                     );
                     self.graphics.ne_screen = Some(ne_screen);
                 });
+                #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
                 self.put_influence(
                     influ_x,
                     menu_y + ((menu_pos as f64 - 0.5) * f64::from(self.menu.font_height)) as c_int,
@@ -1130,18 +1134,22 @@ impl<'sdl> Data<'sdl> {
 
     /// subroutine to display the current key-config and highlight current selection
     #[cfg(not(target_os = "android"))]
-    pub fn display_key_config(&mut self, selx: c_int, sely: c_int) {
+    pub fn display_key_config(&mut self, sel_x: c_int, sel_y: c_int) {
         let current_font = self
             .b_font
             .current_font
             .as_ref()
             .unwrap()
             .ro(&self.font_owner);
-        let startx = i32::from(self.vars.full_user_rect.x())
+        #[allow(clippy::cast_possible_truncation)]
+        let start_x = i32::from(self.vars.full_user_rect.x())
             + (1.2 * f32::from(self.vars.block_rect.width())) as i32;
-        let starty = i32::from(self.vars.full_user_rect.y()) + font_height(current_font);
-        let col1 = startx + (7.5 * f64::from(char_width(current_font, b'O'))) as i32;
+        let start_y = i32::from(self.vars.full_user_rect.y()) + font_height(current_font);
+        #[allow(clippy::cast_possible_truncation)]
+        let col1 = start_x + (7.5 * f64::from(char_width(current_font, b'O'))) as i32;
+        #[allow(clippy::cast_possible_truncation)]
         let col2 = col1 + (6.5 * f64::from(char_width(current_font, b'O'))) as i32;
+        #[allow(clippy::cast_possible_truncation)]
         let col3 = col2 + (6.5 * f64::from(char_width(current_font, b'O'))) as i32;
         let lheight = font_height(
             self.global
@@ -1179,14 +1187,14 @@ impl<'sdl> Data<'sdl> {
                 self.graphics.ne_screen.as_mut().unwrap(),
                 font0_b_font,
                 col1,
-                starty,
+                start_y,
                 format_args!("(RShldr to clear an entry)"),
             );
             print_string_font(
                 self.graphics.ne_screen.as_mut().unwrap(),
                 font0_b_font,
                 col1,
-                starty,
+                start_y,
                 format_args!("(Backspace to clear an entry)"),
             );
         }
@@ -1195,29 +1203,29 @@ impl<'sdl> Data<'sdl> {
         print_string_font(
             self.graphics.ne_screen.as_mut().unwrap(),
             font0_b_font,
-            startx,
-            starty + (posy) * lheight,
+            start_x,
+            start_y + (posy) * lheight,
             format_args!("Command"),
         );
         print_string_font(
             self.graphics.ne_screen.as_mut().unwrap(),
             font0_b_font,
             col1,
-            starty + (posy) * lheight,
+            start_y + (posy) * lheight,
             format_args!("Key1"),
         );
         print_string_font(
             self.graphics.ne_screen.as_mut().unwrap(),
             font0_b_font,
             col2,
-            starty + (posy) * lheight,
+            start_y + (posy) * lheight,
             format_args!("Key2"),
         );
         print_string_font(
             self.graphics.ne_screen.as_mut().unwrap(),
             font0_b_font,
             col3,
-            starty + (posy) * lheight,
+            start_y + (posy) * lheight,
             format_args!("Key3"),
         );
         posy += 1;
@@ -1242,7 +1250,7 @@ impl<'sdl> Data<'sdl> {
             } = self;
 
             let pos_font = |x, y| {
-                if x != selx || i32::try_from(y).unwrap() != sely {
+                if x != sel_x || i32::try_from(y).unwrap() != sel_y {
                     font1_b_font
                 } else {
                     font2_b_font
@@ -1252,9 +1260,9 @@ impl<'sdl> Data<'sdl> {
             print_string_font(
                 ne_screen.as_mut().unwrap(),
                 font0_b_font.as_ref().unwrap().rw(&mut self.font_owner),
-                startx,
-                starty + (posy) * lheight,
-                format_args!("{}", cmd_string),
+                start_x,
+                start_y + (posy) * lheight,
+                format_args!("{cmd_string}"),
             );
             print_string_font(
                 ne_screen.as_mut().unwrap(),
@@ -1263,7 +1271,7 @@ impl<'sdl> Data<'sdl> {
                     .unwrap()
                     .rw(&mut self.font_owner),
                 col1,
-                starty + (posy) * lheight,
+                start_y + (posy) * lheight,
                 format_args!(
                     "{}",
                     KEY_STRINGS[usize::try_from(self.input.key_cmds[i][0]).unwrap()]
@@ -1279,7 +1287,7 @@ impl<'sdl> Data<'sdl> {
                     .unwrap()
                     .rw(&mut self.font_owner),
                 col2,
-                starty + (posy) * lheight,
+                start_y + (posy) * lheight,
                 format_args!(
                     "{}",
                     KEY_STRINGS[usize::try_from(self.input.key_cmds[i][1]).unwrap()]
@@ -1295,7 +1303,7 @@ impl<'sdl> Data<'sdl> {
                     .unwrap()
                     .rw(&mut self.font_owner),
                 col3,
-                starty + (posy) * lheight,
+                start_y + (posy) * lheight,
                 format_args!(
                     "{}",
                     KEY_STRINGS[usize::try_from(self.input.key_cmds[i][2]).unwrap()]
@@ -1312,13 +1320,14 @@ impl<'sdl> Data<'sdl> {
 
     #[cfg(not(target_os = "android"))]
     pub fn key_config_menu(&mut self) {
-        let mut selx = 1;
-        let mut sely = 1; // currently selected menu-position
         const WAIT_MOVE_TICKS: u32 = 100;
+
+        let mut sel_x = 1;
+        let mut sel_y = 1; // currently selected menu-position
 
         let mut finished = false;
         while !finished {
-            self.display_key_config(i32::try_from(selx).unwrap(), i32::try_from(sely).unwrap());
+            self.display_key_config(i32::try_from(sel_x).unwrap(), i32::try_from(sel_y).unwrap());
 
             let action = self.get_menu_action(250);
             let time_for_move =
@@ -1333,12 +1342,12 @@ impl<'sdl> Data<'sdl> {
                 MenuAction::CLICK => {
                     self.menu_item_selected_sound();
 
-                    self.input.key_cmds[sely - 1][selx - 1] = b'_'.into();
+                    self.input.key_cmds[sel_y - 1][sel_x - 1] = b'_'.into();
                     self.display_key_config(
-                        i32::try_from(selx).unwrap(),
-                        i32::try_from(sely).unwrap(),
+                        i32::try_from(sel_x).unwrap(),
+                        i32::try_from(sel_y).unwrap(),
                     );
-                    self.input.key_cmds[sely - 1][selx - 1] = self.getchar_raw(); // includes joystick input!;
+                    self.input.key_cmds[sel_y - 1][sel_x - 1] = self.getchar_raw(); // includes joystick input!;
                     self.wait_for_all_keys_released();
                     self.menu.key_config_menu_last_move_tick = self.sdl.ticks_ms();
                 }
@@ -1347,10 +1356,10 @@ impl<'sdl> Data<'sdl> {
                     if action == MenuAction::UP && !time_for_move {
                         continue;
                     }
-                    if sely > 1 {
-                        sely -= 1;
+                    if sel_y > 1 {
+                        sel_y -= 1;
                     } else {
-                        sely = Cmds::Last as usize;
+                        sel_y = Cmds::Last as usize;
                     }
                     self.move_menu_position_sound();
                     self.menu.key_config_menu_last_move_tick = self.sdl.ticks_ms();
@@ -1360,10 +1369,10 @@ impl<'sdl> Data<'sdl> {
                     if action == MenuAction::DOWN && !time_for_move {
                         continue;
                     }
-                    if sely < Cmds::Last as usize {
-                        sely += 1;
+                    if sel_y < Cmds::Last as usize {
+                        sel_y += 1;
                     } else {
-                        sely = 1;
+                        sel_y = 1;
                     }
                     self.move_menu_position_sound();
                     self.menu.key_config_menu_last_move_tick = self.sdl.ticks_ms();
@@ -1374,10 +1383,10 @@ impl<'sdl> Data<'sdl> {
                         continue;
                     }
 
-                    if selx < 3 {
-                        selx += 1;
+                    if sel_x < 3 {
+                        sel_x += 1;
                     } else {
-                        selx = 1;
+                        sel_x = 1;
                     }
                     self.move_menu_position_sound();
                     self.menu.key_config_menu_last_move_tick = self.sdl.ticks_ms();
@@ -1388,17 +1397,17 @@ impl<'sdl> Data<'sdl> {
                         continue;
                     }
 
-                    if selx > 1 {
-                        selx -= 1;
+                    if sel_x > 1 {
+                        sel_x -= 1;
                     } else {
-                        selx = 3;
+                        sel_x = 3;
                     }
                     self.move_menu_position_sound();
                     self.menu.key_config_menu_last_move_tick = self.sdl.ticks_ms();
                 }
 
                 MenuAction::DELETE => {
-                    self.input.key_cmds[sely - 1][selx - 1] = 0;
+                    self.input.key_cmds[sel_y - 1][sel_x - 1] = 0;
                     self.menu_item_selected_sound();
                 }
                 _ => {}
@@ -1500,7 +1509,7 @@ impl<'sdl> Data<'sdl> {
         self.b_font.current_font = oldfont;
     }
 
-    /// simple wrapper to ShowMenu() to provide the external entry point into the Level Editor menu
+    /// simple wrapper to `ShowMenu`() to provide the external entry point into the Level Editor menu
     #[cfg(not(target_os = "android"))]
     pub fn show_level_editor_menu(&mut self) {
         self.menu.quit_level_editor = false;
@@ -1631,15 +1640,15 @@ impl<'sdl> Data<'sdl> {
             return Some(self.menu.le_level_number_buf.as_ref());
         }
 
-        let mut curlevel = cur_level.levelnum;
+        let mut cur_level = cur_level.levelnum;
         self.menu_change_int(
             action,
-            &mut curlevel,
+            &mut cur_level,
             1,
             0,
             self.main.cur_ship.num_levels - 1,
         );
-        self.teleport(curlevel, 3, 3);
+        self.teleport(cur_level, 3, 3);
         self.switch_background_music_to(Some(BYCOLOR));
         self.initiate_menu(false);
 
@@ -1762,10 +1771,10 @@ impl<'sdl> Data<'sdl> {
 
     pub fn handle_window_type(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
-            let s = if self.global.game_config.full_user_rect != 0 {
-                cstr!("Full")
-            } else {
+            let s = if self.global.game_config.full_user_rect == 0 {
                 cstr!("Classic")
+            } else {
+                cstr!("Full")
             };
 
             return Some(s);
@@ -1774,10 +1783,10 @@ impl<'sdl> Data<'sdl> {
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
             self.flip_toggle(|data| &mut data.global.game_config.full_user_rect);
-            if self.global.game_config.full_user_rect != 0 {
-                self.vars.user_rect = self.vars.full_user_rect;
-            } else {
+            if self.global.game_config.full_user_rect == 0 {
                 self.vars.user_rect = self.vars.classic_user_rect;
+            } else {
+                self.vars.user_rect = self.vars.full_user_rect;
             }
 
             self.initiate_menu(false);
@@ -2011,7 +2020,7 @@ impl<'sdl> Data<'sdl> {
             min_value,
             max_value,
         }
-        .run()
+        .run();
     }
 
     pub fn menu_change_float(
@@ -2022,7 +2031,7 @@ impl<'sdl> Data<'sdl> {
         min_value: c_float,
         max_value: c_float,
     ) {
-        self.menu_change(action, val, step, min_value, max_value)
+        self.menu_change(action, val, step, min_value, max_value);
     }
 
     #[cfg(not(target_os = "android"))]
@@ -2034,7 +2043,7 @@ impl<'sdl> Data<'sdl> {
         min_value: c_int,
         max_value: c_int,
     ) {
-        self.menu_change(action, val, step, min_value, max_value)
+        self.menu_change(action, val, step, min_value, max_value);
     }
 
     pub fn flip_toggle<F>(&mut self, mut get_toggle: F)
@@ -2059,10 +2068,10 @@ impl<'sdl> Data<'sdl> {
 }
 
 pub fn is_toggle_on(toggle: c_int) -> &'static CStr {
-    if toggle != 0 {
-        cstr!("YES")
-    } else {
+    if toggle == 0 {
         cstr!("NO")
+    } else {
+        cstr!("YES")
     }
 }
 

@@ -13,53 +13,53 @@ use sdl_sys::{
     SDL_SysWMmsg, SDL_UserEvent,
 };
 
-use crate::{keyboard::KeySym, system_window_manager};
+use crate::{convert, keyboard::KeySym, system_window_manager};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 #[non_exhaustive]
 pub enum EventType {
     /// Unused (do not remove)
-    None = SDL_EventType_SDL_NOEVENT as u8,
+    None = convert::u32_to_u8(SDL_EventType_SDL_NOEVENT),
     /// Application loses/gains visibility
-    ActiveEvent = SDL_EventType_SDL_ACTIVEEVENT as u8,
+    ActiveEvent = convert::u32_to_u8(SDL_EventType_SDL_ACTIVEEVENT),
     /// Keys pressed
-    KeyDown = SDL_EventType_SDL_KEYDOWN as u8,
+    KeyDown = convert::u32_to_u8(SDL_EventType_SDL_KEYDOWN),
     /// Keys released
-    KeyUp = SDL_EventType_SDL_KEYUP as u8,
+    KeyUp = convert::u32_to_u8(SDL_EventType_SDL_KEYUP),
     /// Mouse moved
-    MouseMotion = SDL_EventType_SDL_MOUSEMOTION as u8,
+    MouseMotion = convert::u32_to_u8(SDL_EventType_SDL_MOUSEMOTION),
     /// Mouse button pressed
-    MouseButtonDown = SDL_EventType_SDL_MOUSEBUTTONDOWN as u8,
+    MouseButtonDown = convert::u32_to_u8(SDL_EventType_SDL_MOUSEBUTTONDOWN),
     /// Mouse button released
-    MouseButtonUp = SDL_EventType_SDL_MOUSEBUTTONUP as u8,
+    MouseButtonUp = convert::u32_to_u8(SDL_EventType_SDL_MOUSEBUTTONUP),
     /// Joystick axis motion
-    JoyAxisMotion = SDL_EventType_SDL_JOYAXISMOTION as u8,
+    JoyAxisMotion = convert::u32_to_u8(SDL_EventType_SDL_JOYAXISMOTION),
     /// Joystick trackball motion
-    JoyBallMotion = SDL_EventType_SDL_JOYBALLMOTION as u8,
+    JoyBallMotion = convert::u32_to_u8(SDL_EventType_SDL_JOYBALLMOTION),
     /// Joystick hat position change
-    JoyHatMotion = SDL_EventType_SDL_JOYHATMOTION as u8,
+    JoyHatMotion = convert::u32_to_u8(SDL_EventType_SDL_JOYHATMOTION),
     /// Joystick button pressed
-    JoyButtonDown = SDL_EventType_SDL_JOYBUTTONDOWN as u8,
+    JoyButtonDown = convert::u32_to_u8(SDL_EventType_SDL_JOYBUTTONDOWN),
     /// Joystick button released
-    JoyButtonUp = SDL_EventType_SDL_JOYBUTTONUP as u8,
+    JoyButtonUp = convert::u32_to_u8(SDL_EventType_SDL_JOYBUTTONUP),
     /// User-requested quit
-    Quit = SDL_EventType_SDL_QUIT as u8,
+    Quit = convert::u32_to_u8(SDL_EventType_SDL_QUIT),
     /// System specific event
-    SysWmEvent = SDL_EventType_SDL_SYSWMEVENT as u8,
+    SysWmEvent = convert::u32_to_u8(SDL_EventType_SDL_SYSWMEVENT),
     /// User resized video mode
-    VideoResize = SDL_EventType_SDL_VIDEORESIZE as u8,
+    VideoResize = convert::u32_to_u8(SDL_EventType_SDL_VIDEORESIZE),
     /// Screen needs to be redrawn
-    VideoExpose = SDL_EventType_SDL_VIDEOEXPOSE as u8,
+    VideoExpose = convert::u32_to_u8(SDL_EventType_SDL_VIDEOEXPOSE),
     /// Events SDL_USEREVENT through `MAX_EVENTS - 1` are for your use
-    UserEvent1 = SDL_EventType_SDL_USEREVENT as u8,
-    UserEvent2 = SDL_EventType_SDL_USEREVENT as u8 + 1,
-    UserEvent3 = SDL_EventType_SDL_USEREVENT as u8 + 2,
-    UserEvent4 = SDL_EventType_SDL_USEREVENT as u8 + 3,
-    UserEvent5 = SDL_EventType_SDL_USEREVENT as u8 + 4,
-    UserEvent6 = SDL_EventType_SDL_USEREVENT as u8 + 5,
-    UserEvent7 = SDL_EventType_SDL_USEREVENT as u8 + 6,
-    UserEvent8 = SDL_EventType_SDL_USEREVENT as u8 + 7,
+    UserEvent1 = convert::u32_to_u8(SDL_EventType_SDL_USEREVENT),
+    UserEvent2 = convert::u32_to_u8(SDL_EventType_SDL_USEREVENT + 1),
+    UserEvent3 = convert::u32_to_u8(SDL_EventType_SDL_USEREVENT + 2),
+    UserEvent4 = convert::u32_to_u8(SDL_EventType_SDL_USEREVENT + 3),
+    UserEvent5 = convert::u32_to_u8(SDL_EventType_SDL_USEREVENT + 4),
+    UserEvent6 = convert::u32_to_u8(SDL_EventType_SDL_USEREVENT + 5),
+    UserEvent7 = convert::u32_to_u8(SDL_EventType_SDL_USEREVENT + 6),
+    UserEvent8 = convert::u32_to_u8(SDL_EventType_SDL_USEREVENT + 7),
 }
 
 // Just a compile-time check
@@ -76,7 +76,7 @@ impl Default for EventType {
 pub struct InvalidRawType;
 
 impl EventType {
-    pub const MAX_EVENTS: u8 = SDL_EventType_SDL_NUMEVENTS as u8;
+    pub const MAX_EVENTS: u8 = convert::u32_to_u8(SDL_EventType_SDL_NUMEVENTS);
 
     pub fn from_raw(raw_type: u8) -> Result<Self, InvalidRawType> {
         const MAX_USER_EVENTS: u32 = SDL_EventType_SDL_USEREVENT + 7;
@@ -131,6 +131,7 @@ impl ButtonState {
         })
     }
 
+    #[must_use]
     pub fn is_pressed(self) -> bool {
         match self {
             Self::Pressed => true,
@@ -353,10 +354,12 @@ impl Event {
         })
     }
 
+    #[must_use]
     pub fn from_raw(event: SDL_Event) -> Self {
         Self::try_from_raw(event).unwrap()
     }
 
+    #[must_use]
     pub fn to_raw(&self) -> SDL_Event {
         match self {
             &Event::Active(ActiveEvent { gain, state }) => SDL_Event {
@@ -584,8 +587,8 @@ pub struct MouseButtonEvent {
 /// Joystick hat position change event structure
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MouseButtonEventType {
-    Up = SDL_EventType_SDL_MOUSEBUTTONUP as isize,
-    Down = SDL_EventType_SDL_MOUSEBUTTONDOWN as isize,
+    Up = convert::u32_to_isize(SDL_EventType_SDL_MOUSEBUTTONUP),
+    Down = convert::u32_to_isize(SDL_EventType_SDL_MOUSEBUTTONDOWN),
 }
 
 /// Joystick button event structure
@@ -680,8 +683,8 @@ pub struct JoyButtonEvent {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum JoyButtonEventType {
-    Up = SDL_EventType_SDL_JOYBUTTONUP as isize,
-    Down = SDL_EventType_SDL_JOYBUTTONDOWN as isize,
+    Up = convert::u32_to_isize(SDL_EventType_SDL_JOYBUTTONUP),
+    Down = convert::u32_to_isize(SDL_EventType_SDL_JOYBUTTONDOWN),
 }
 
 /// The "window resized" event
@@ -698,8 +701,8 @@ pub struct ResizeEvent {
 /// A user-defined event type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UserEvent {
-    /// Event type. Can be any value between [`EventType::UserEvent`] and
-    /// `[EventType::MAX_EVENTS] - 1`
+    /// Event type. Can be any value between [`EventType::UserEvent1`] and
+    /// `[EventType::UserEvent8]`
     pub ty: u8,
     /// User defined event code
     pub code: c_int,
