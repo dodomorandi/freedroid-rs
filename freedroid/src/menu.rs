@@ -1177,7 +1177,7 @@ impl<'sdl> Data<'sdl> {
             self.graphics.ne_screen.as_mut().unwrap(),
             font0_b_font,
             col1,
-            starty,
+            start_y,
             format_args!("(RShldr to clear an entry)"),
         );
 
