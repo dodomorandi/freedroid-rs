@@ -6,7 +6,6 @@ use crate::{
     },
     structs::{Level, Waypoint},
     view::BLACK,
-    Data,
 };
 
 use log::{info, warn};
@@ -89,7 +88,7 @@ fn delete_waypoint(level: &mut Level, num: c_int) {
     }
 }
 
-impl Data<'_> {
+impl crate::Data<'_> {
     /// This function is provides the Level Editor integrated into
     /// freedroid.  Actually this function is a submenu of the big
     /// Escape Menu.  In here you can edit the level and upon pressing

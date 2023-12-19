@@ -6,7 +6,6 @@ use crate::{
     graphics::Graphics,
     misc::my_random,
     structs::Point,
-    Data,
 };
 
 use cstr::cstr;
@@ -644,7 +643,7 @@ fn process_playground_row(
 }
 
 /// Define all the Rects for the takeover-game
-impl Data<'_> {
+impl crate::Data<'_> {
     pub fn set_takeover_rects(&mut self) -> c_int {
         let Self {
             takeover:
@@ -1104,7 +1103,7 @@ impl Data<'_> {
         let x_offs = self.vars.classic_user_rect.x();
         let y_offs = self.vars.classic_user_rect.y();
 
-        let Data {
+        let Self {
             graphics:
                 Graphics {
                     takeover_bg_pic,
@@ -1146,7 +1145,7 @@ impl Data<'_> {
             self.vars.user_rect.height(),
         );
 
-        let Data {
+        let Self {
             takeover:
                 Takeover {
                     to_blocks,

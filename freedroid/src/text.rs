@@ -7,7 +7,7 @@ use crate::{
     misc::my_random,
     structs::TextToBeDisplayed,
     vars::Vars,
-    Data, FontCellOwner, Sdl,
+    FontCellOwner, Sdl,
 };
 
 #[cfg(feature = "arcade-input")]
@@ -69,7 +69,7 @@ impl Default for Text {
     }
 }
 
-impl Data<'_> {
+impl crate::Data<'_> {
     /// Reads a string of "`MaxLen`" from User-input, and echos it
     /// either to stdout or using graphics-text, depending on the
     /// parameter "echo":
@@ -333,7 +333,7 @@ impl Data<'_> {
     ///  o) passing -1 as coord uses previous x and next-line y for printing
     ///  o) Screen is updated immediatly after print, using `SDL_flip`()
     ///
-    /// [`print_string`]: Data::print_string
+    /// [`print_string`]: crate::Data::print_string
     #[inline]
     pub fn printf_sdl<const F: bool>(
         &mut self,

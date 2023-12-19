@@ -17,7 +17,7 @@ use crate::{
     sound::Sound,
     split_at_subslice,
     structs::{BulletSpec, DruidSpec, TextToBeDisplayed},
-    ArrayIndex, Data,
+    ArrayIndex,
 };
 
 #[cfg(target_os = "windows")]
@@ -108,7 +108,7 @@ struct Opt {
     scale: Option<f32>,
 }
 
-impl Data<'_> {
+impl crate::Data<'_> {
     pub fn free_game_mem(&mut self) {
         // free bullet map
         if self.vars.bulletmap.is_empty().not() {

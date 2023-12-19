@@ -4,7 +4,7 @@ use crate::{
         MAXBLASTS, MAXBULLETS,
     },
     structs::{Finepoint, Vect},
-    Data, Status,
+    Status,
 };
 
 use log::info;
@@ -15,7 +15,7 @@ pub struct BulletData {
     fbt_counter: u32,
 }
 
-impl Data<'_> {
+impl crate::Data<'_> {
     #[inline]
     fn get_druid_hit_dist_squared(&self) -> f32 {
         (0.3 + 4. / 64.) * (self.global.droid_radius + 4. / 64.)

@@ -8,7 +8,7 @@ use crate::{
     },
     global::INFLUENCE_MODE_NAMES,
     sound::Sound,
-    Data, Sdl,
+    Sdl,
 };
 #[cfg(not(target_os = "android"))]
 use crate::{
@@ -115,64 +115,64 @@ macro_rules! menu_entry {
 
 pub struct MenuEntry<'sdl> {
     name: Option<&'static str>,
-    handler: Option<for<'a> fn(&'a mut Data<'sdl>, MenuAction) -> Option<&'a CStr>>,
+    handler: Option<for<'a> fn(&'a mut crate::Data<'sdl>, MenuAction) -> Option<&'a CStr>>,
     submenu: Option<&'sdl [MenuEntry<'sdl>]>,
 }
 
-impl<'sdl> Data<'sdl> {
+impl<'sdl> crate::Data<'sdl> {
     #[cfg(target_os = "android")]
     const LEGACY_MENU: [MenuEntry<'sdl>; 9] = [
         menu_entry! { "Back" },
-        menu_entry! { "Set Strictly Classic", Data::handle_strictly_classic},
-        menu_entry! { "Combat Window: ", Data::handle_window_type},
-        menu_entry! { "Graphics Theme: ", Data::handle_theme},
-        menu_entry! { "Droid Talk: ", Data::handle_droid_talk},
-        menu_entry! { "Show Decals: ", Data::handle_show_decals},
-        menu_entry! { "All Map Visible: ", Data::handle_all_map_visible},
-        menu_entry! { "Empty Level Speedup: ", Data::handle_empty_level_speedup},
+        menu_entry! { "Set Strictly Classic", crate::Data::handle_strictly_classic},
+        menu_entry! { "Combat Window: ", crate::Data::handle_window_type},
+        menu_entry! { "Graphics Theme: ", crate::Data::handle_theme},
+        menu_entry! { "Droid Talk: ", crate::Data::handle_droid_talk},
+        menu_entry! { "Show Decals: ", crate::Data::handle_show_decals},
+        menu_entry! { "All Map Visible: ", crate::Data::handle_all_map_visible},
+        menu_entry! { "Empty Level Speedup: ", crate::Data::handle_empty_level_speedup},
         menu_entry! {},
     ];
 
     #[cfg(not(target_os = "android"))]
     const LEGACY_MENU: [MenuEntry<'sdl>; 11] = [
         menu_entry! { "Back"},
-        menu_entry! { "Set Strictly Classic", Data::handle_strictly_classic},
-        menu_entry! { "Combat Window: ", Data::handle_window_type},
-        menu_entry! { "Graphics Theme: ", Data::handle_theme},
-        menu_entry! { "Droid Talk: ", Data::handle_droid_talk},
-        menu_entry! { "Show Decals: ", Data::handle_show_decals},
-        menu_entry! { "All Map Visible: ", Data::handle_all_map_visible},
-        menu_entry! { "Transfer = Activate: ", Data::handle_transfer_is_activate},
-        menu_entry! { "Hold Fire to Transfer: ", Data::handle_fire_is_transfer},
-        menu_entry! { "Empty Level Speedup: ", Data::handle_empty_level_speedup},
+        menu_entry! { "Set Strictly Classic", crate::Data::handle_strictly_classic},
+        menu_entry! { "Combat Window: ", crate::Data::handle_window_type},
+        menu_entry! { "Graphics Theme: ", crate::Data::handle_theme},
+        menu_entry! { "Droid Talk: ", crate::Data::handle_droid_talk},
+        menu_entry! { "Show Decals: ", crate::Data::handle_show_decals},
+        menu_entry! { "All Map Visible: ", crate::Data::handle_all_map_visible},
+        menu_entry! { "Transfer = Activate: ", crate::Data::handle_transfer_is_activate},
+        menu_entry! { "Hold Fire to Transfer: ", crate::Data::handle_fire_is_transfer},
+        menu_entry! { "Empty Level Speedup: ", crate::Data::handle_empty_level_speedup},
         menu_entry! {},
     ];
 
     const GRAPHICS_SOUND_MENU: [MenuEntry<'sdl>; 5] = [
         menu_entry! { "Back"},
-        menu_entry! { "Music Volume: ", Data::handle_music_volume},
-        menu_entry! { "Sound Volume: ", Data::handle_sound_volume},
-        menu_entry! { "Fullscreen Mode: ", Data::handle_fullscreen},
+        menu_entry! { "Music Volume: ", crate::Data::handle_music_volume},
+        menu_entry! { "Sound Volume: ", crate::Data::handle_sound_volume},
+        menu_entry! { "Fullscreen Mode: ", crate::Data::handle_fullscreen},
         menu_entry! {},
     ];
 
     const HUD_MENU: [MenuEntry<'sdl>; 5] = [
         menu_entry! { "Back"},
-        menu_entry! { "Show Position: ", Data::handle_show_position},
-        menu_entry! { "Show Framerate: ", Data::handle_show_framerate},
-        menu_entry! { "Show Energy: ", Data::handle_show_energy},
+        menu_entry! { "Show Position: ", crate::Data::handle_show_position},
+        menu_entry! { "Show Framerate: ", crate::Data::handle_show_framerate},
+        menu_entry! { "Show Energy: ", crate::Data::handle_show_energy},
         menu_entry! {},
     ];
 
     #[cfg(not(target_os = "android"))]
     const LEVEL_EDITOR_MENU: [MenuEntry<'sdl>; 8] = [
-        menu_entry! { "Exit Level Editor", 	Data::handle_le_exit},
-        menu_entry! { "Current Level: ", Data::handle_le_level_number},
-        menu_entry! { "Level Color: ", Data::handle_le_color},
-        menu_entry! { "Levelsize X: ", Data::handle_le_size_x},
-        menu_entry! { "Levelsize Y: ", Data::handle_le_size_y},
-        menu_entry! { "Level Name: ", Data::handle_le_name},
-        menu_entry! { "Save ship: ", Data::handle_le_save_ship},
+        menu_entry! { "Exit Level Editor", 	crate::Data::handle_le_exit},
+        menu_entry! { "Current Level: ", crate::Data::handle_le_level_number},
+        menu_entry! { "Level Color: ", crate::Data::handle_le_color},
+        menu_entry! { "Levelsize X: ", crate::Data::handle_le_size_x},
+        menu_entry! { "Levelsize Y: ", crate::Data::handle_le_size_y},
+        menu_entry! { "Level Name: ", crate::Data::handle_le_name},
+        menu_entry! { "Save ship: ", crate::Data::handle_le_save_ship},
         menu_entry! {},
     ];
 
@@ -182,9 +182,9 @@ impl<'sdl> Data<'sdl> {
         menu_entry! { "Graphics & Sound", None, Self::GRAPHICS_SOUND_MENU },
         menu_entry! { "Legacy Options", None, Self::LEGACY_MENU },
         menu_entry! { "HUD Settings", None, Self::HUD_MENU },
-        menu_entry! { "Highscores", Data::handle_highscores},
-        menu_entry! { "Credits", Data::handle_credits},
-        menu_entry! { "Quit Game", Data::handle_quit_game},
+        menu_entry! { "Highscores", crate::Data::handle_highscores},
+        menu_entry! { "Credits", crate::Data::handle_credits},
+        menu_entry! { "Quit Game", crate::Data::handle_quit_game},
         menu_entry! {},
     ];
 
@@ -194,11 +194,11 @@ impl<'sdl> Data<'sdl> {
         menu_entry! { "Graphics & Sound", None, Self::GRAPHICS_SOUND_MENU },
         menu_entry! { "Legacy Options", None, Self::LEGACY_MENU },
         menu_entry! { "HUD Settings", None, Self::HUD_MENU },
-        menu_entry! { "Level Editor", Data::handle_open_level_editor},
-        menu_entry! { "Highscores", Data::handle_highscores},
-        menu_entry! { "Credits", Data::handle_credits},
-        menu_entry! { "Configure Keys", Data::handle_configure_keys},
-        menu_entry! { "Quit Game", Data::handle_quit_game},
+        menu_entry! { "Level Editor", crate::Data::handle_open_level_editor},
+        menu_entry! { "Highscores", crate::Data::handle_highscores},
+        menu_entry! { "Credits", crate::Data::handle_credits},
+        menu_entry! { "Configure Keys", crate::Data::handle_configure_keys},
+        menu_entry! { "Quit Game", crate::Data::handle_quit_game},
         menu_entry! {},
     ];
 
@@ -988,7 +988,7 @@ impl<'sdl> Data<'sdl> {
             let submenu = menu_entries[menu_pos].submenu;
 
             if need_update {
-                let Data { menu, graphics, .. } = self;
+                let Self { menu, graphics, .. } = self;
 
                 menu.menu_background
                     .as_mut()
@@ -1159,7 +1159,7 @@ impl<'sdl> Data<'sdl> {
                 .ro(&self.font_owner),
         ) + 2;
 
-        let Data { menu, graphics, .. } = self;
+        let Self { menu, graphics, .. } = self;
         menu.menu_background
             .as_mut()
             .unwrap()
@@ -1235,7 +1235,7 @@ impl<'sdl> Data<'sdl> {
             .copied()
             .enumerate()
         {
-            let &mut Data {
+            let &mut Self {
                 graphics: Graphics {
                     ref mut ne_screen, ..
                 },
@@ -2048,7 +2048,7 @@ impl<'sdl> Data<'sdl> {
 
     pub fn flip_toggle<F>(&mut self, mut get_toggle: F)
     where
-        F: for<'a> FnMut(&'a mut Data) -> &'a mut c_int,
+        F: for<'a> FnMut(&'a mut crate::Data) -> &'a mut c_int,
     {
         self.menu_item_selected_sound();
         let toggle = get_toggle(self);
@@ -2104,13 +2104,13 @@ where
         } = self;
 
         if action == MenuAction::RIGHT && *val < max_value {
-            Data::move_lift_sound_static(sound_on, sdl, sound);
+            crate::Data::move_lift_sound_static(sound_on, sdl, sound);
             *val += step;
             if *val > max_value {
                 *val = max_value;
             }
         } else if action == MenuAction::LEFT && *val > min_value {
-            Data::move_lift_sound_static(sound_on, sdl, sound);
+            crate::Data::move_lift_sound_static(sound_on, sdl, sound);
             *val -= step;
             if *val <= min_value {
                 *val = min_value;

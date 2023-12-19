@@ -5,7 +5,7 @@ use crate::{
     },
     graphics::{scale_pic, Graphics},
     input::CMD_STRINGS,
-    ArrayCString, ArrayIndex, Data, Global,
+    ArrayCString, ArrayIndex, Global,
 };
 
 use bstr::{BStr, ByteSlice};
@@ -266,7 +266,7 @@ pub fn read_and_malloc_string_from_data(
     return_string
 }
 
-impl Data<'_> {
+impl crate::Data<'_> {
     pub fn update_progress(&mut self, percent: c_int) {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let h =
@@ -289,7 +289,7 @@ impl Data<'_> {
             0,
         );
 
-        let Data {
+        let Self {
             graphics:
                 Graphics {
                     progress_filler_pic,
@@ -746,7 +746,7 @@ impl Data<'_> {
         }
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
-        let Data {
+        let Self {
             graphics:
                 Graphics {
                     progress_meter_pic,

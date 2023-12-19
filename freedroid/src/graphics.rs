@@ -15,7 +15,7 @@ use crate::{
     structs::ThemeList,
     takeover::TO_BLOCK_FILE,
     vars::{ORIG_BLOCK_RECT, ORIG_DIGIT_RECT},
-    Data, Sdl,
+    Sdl,
 };
 
 use array_init::array_init;
@@ -360,7 +360,7 @@ static ARROW_CURSOR: Lazy<CursorData<32>> = Lazy::new(|| {
     CursorData::from_draw(&XPM)
 });
 
-impl Data<'_> {
+impl crate::Data<'_> {
     /// This function draws a "grid" on the screen, that means every
     /// "second" pixel is blacked out, thereby generation a fading
     /// effect.  This function was created to fade the background of the
@@ -868,7 +868,7 @@ impl Data<'_> {
             ..
         } = self;
 
-        let mut fpath = Data::find_file_static(
+        let mut fpath = crate::Data::find_file_static(
             global,
             misc,
             PARA_FONT_FILE.as_bytes(),
@@ -885,7 +885,7 @@ impl Data<'_> {
             global.game_config.scale,
         ));
 
-        fpath = Data::find_file_static(
+        fpath = crate::Data::find_file_static(
             global,
             misc,
             FONT0_FILE.as_bytes(),

@@ -9,7 +9,7 @@ use crate::{
     map::get_map_brick,
     structs::{Point, TextToBeDisplayed},
     vars::{BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES, WEAPON_NAMES},
-    ArrayIndex, Data,
+    ArrayIndex,
 };
 
 use log::{error, warn};
@@ -61,7 +61,7 @@ impl Default for ShipData<'_> {
     }
 }
 
-impl Data<'_> {
+impl crate::Data<'_> {
     /// do all alert-related agitations: alert-sirens and alert-lights
     pub fn alert_level_warning(&mut self) {
         const SIREN_WAIT: f32 = 2.5;
@@ -144,7 +144,7 @@ impl Data<'_> {
             .unwrap()
             .set_clip_rect(&dst);
 
-        let Data {
+        let Self {
             ship:
                 ShipData {
                     droid_background,
@@ -261,7 +261,7 @@ impl Data<'_> {
                     * i16::try_from(self.ship.src_rect.width()).unwrap(),
             );
 
-            let Data {
+            let Self {
                 ship:
                     ShipData {
                         droid_background,
@@ -441,7 +441,7 @@ impl Data<'_> {
             }
         }
 
-        let Data {
+        let Self {
             graphics:
                 Graphics {
                     console_bg_pic2,
@@ -503,7 +503,7 @@ impl Data<'_> {
         );
 
         if show_arrows {
-            let Data {
+            let Self {
                 graphics:
                     Graphics {
                         arrow_up,
@@ -989,7 +989,7 @@ impl Data<'_> {
         if (flag & i32::from(UPDATE_ONLY)) == 0 {
             self.clear_graph_mem();
 
-            let Data {
+            let Self {
                 graphics:
                     Graphics {
                         ne_screen,
@@ -1041,7 +1041,7 @@ impl Data<'_> {
             self.vars.cons_menu_rect.width(),
             4 * self.vars.cons_menu_rect.height(),
         );
-        let Data {
+        let Self {
             graphics:
                 Graphics {
                     console_pic,

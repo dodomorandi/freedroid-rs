@@ -4,7 +4,7 @@ use crate::{
     defs::{Cmds, MenuAction, PointerStates},
     structs::Point,
     vars::Vars,
-    Data, Sdl,
+    Sdl,
 };
 
 #[cfg(not(target_os = "android"))]
@@ -437,7 +437,7 @@ pub const CMD_STRINGS: [&str; Cmds::Last as usize] = [
 
 pub const CURSOR_KEEP_VISIBLE: u32 = 3000; // ticks to keep mouse-cursor visible without mouse-input
 
-impl Data<'_> {
+impl crate::Data<'_> {
     /// Check if any keys have been 'freshly' pressed. If yes, return key-code, otherwise 0.
     pub fn wait_for_key_pressed(&mut self) -> c_int {
         loop {

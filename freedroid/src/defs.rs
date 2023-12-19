@@ -1,4 +1,4 @@
-use crate::{input::Input, structs::Point, vars::Vars, Data, Sdl};
+use crate::{input::Input, structs::Point, vars::Vars, Sdl};
 
 use bitflags::bitflags;
 use cstr::cstr;
@@ -89,7 +89,7 @@ pub enum Cmds {
 
 //--------------------------------------------------
 
-impl Data<'_> {
+impl crate::Data<'_> {
     #[inline]
     pub fn return_pressed_r(&mut self) -> bool {
         self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_RETURN))

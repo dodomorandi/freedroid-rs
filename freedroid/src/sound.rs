@@ -2,7 +2,7 @@ use crate::{
     defs::{BulletKind, Criticality, SoundType, Themed, BYCOLOR, NUM_COLORS, SOUND_DIR_C},
     global::Global,
     misc::Misc,
-    Data, Main, Sdl,
+    Main, Sdl,
 };
 
 use array_init::array_init;
@@ -87,7 +87,7 @@ pub struct Sound<'a> {
     tmp_mod_file: Option<Music<'a>>,
 }
 
-impl Data<'_> {
+impl crate::Data<'_> {
     pub fn cry_sound(&self) {
         self.play_sound(SoundType::Cry as i32);
     }
@@ -277,7 +277,7 @@ impl Data<'_> {
     }
 }
 
-impl<'sdl> Data<'sdl> {
+impl<'sdl> crate::Data<'sdl> {
     pub fn fire_bullet_sound(&self, bullet_type: c_int) {
         use BulletKind as K;
 
@@ -466,7 +466,7 @@ impl<'a> Sound<'a> {
 
         let iter = SOUND_SAMPLE_FILENAMES.iter().copied().enumerate().skip(1);
         for (sound_file_index, sample_filename) in iter {
-            let fpath = Data::find_file_static(
+            let fpath = crate::Data::find_file_static(
                 global,
                 misc,
                 sample_filename.as_bytes(),
@@ -497,7 +497,7 @@ impl<'a> Sound<'a> {
         let mut music_songs: [_; NUM_COLORS] = array_init(|_| None);
         let iter = MUSIC_FILES.iter().copied().enumerate();
         for (music_file_index, music_file) in iter {
-            let fpath = Data::find_file_static(
+            let fpath = crate::Data::find_file_static(
                 global,
                 misc,
                 music_file,

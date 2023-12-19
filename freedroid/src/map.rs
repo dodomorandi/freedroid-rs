@@ -11,7 +11,6 @@ use crate::{
     },
     read_and_malloc_and_terminate_file, split_at_subslice, split_at_subslice_mut,
     structs::{Finepoint, GrobPoint, Level, Waypoint},
-    Data,
 };
 
 use array_init::array_init;
@@ -465,7 +464,7 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
     Some(loadlevel)
 }
 
-impl Data<'_> {
+impl crate::Data<'_> {
     /// Determines wether object on x/y is visible to the 001 or not
     pub fn is_visible(&self, objpos: Finepoint) -> c_int {
         let influ_x = self.vars.me.pos.x;

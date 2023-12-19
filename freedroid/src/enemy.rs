@@ -7,7 +7,6 @@ use crate::{
     },
     misc::my_random,
     structs::Finepoint,
-    Data,
 };
 
 use log::warn;
@@ -19,7 +18,7 @@ const FIREDIST2: f32 = 8.;
 
 const COL_SPEED: f32 = 3.;
 
-impl Data<'_> {
+impl crate::Data<'_> {
     pub fn class_of_druid(&self, druid_type: c_int) -> c_int {
         /* first digit is class */
         let class_char = self.vars.droidmap[usize::try_from(druid_type).unwrap()].druidname[0];

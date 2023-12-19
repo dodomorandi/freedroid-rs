@@ -1,4 +1,4 @@
-use crate::{graphics::scale_pic, Data, FontCell, FontCellOwner, Sdl};
+use crate::{graphics::scale_pic, FontCell, FontCellOwner, Sdl};
 
 use sdl::{ColorKeyFlag, Rect};
 use std::{
@@ -161,7 +161,7 @@ pub fn centered_put_string_font<const F: bool>(
     );
 }
 
-impl<'sdl> Data<'sdl> {
+impl<'sdl> crate::Data<'sdl> {
     pub fn put_string<const F: bool>(
         &mut self,
         surface: &mut sdl::GenericSurface<F>,

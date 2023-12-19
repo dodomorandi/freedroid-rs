@@ -6,7 +6,6 @@ use crate::{
         HS_BACKGROUND_FILE, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
     },
     graphics::Graphics,
-    Data,
 };
 
 use log::{info, warn};
@@ -171,7 +170,7 @@ impl Highscore {
     }
 }
 
-impl Data<'_> {
+impl crate::Data<'_> {
     pub fn update_highscores(&mut self) {
         let score = self.main.real_score;
         self.main.real_score = 0.;
@@ -216,7 +215,7 @@ impl Data<'_> {
             self.vars.portrait_rect.height(),
         );
 
-        let Data {
+        let Self {
             graphics: Graphics {
                 pic999, ne_screen, ..
             },

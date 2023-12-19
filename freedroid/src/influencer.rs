@@ -7,7 +7,6 @@ use crate::{
     map::get_map_brick,
     misc::my_random,
     structs::{Finepoint, Gps, TextToBeDisplayed},
-    Data,
 };
 
 use cstr::cstr;
@@ -41,7 +40,7 @@ const REFRESH_ENERGY: f32 = 3.;
 const COLLISION_PUSHSPEED: f32 = 2.0;
 const MAXIMAL_STEP_SIZE: f32 = 7.0 / 20.;
 
-impl Data<'_> {
+impl crate::Data<'_> {
     /// Refresh fields can be used to regain energy
     /// lost due to bullets or collisions, but not energy lost due to permanent
     /// loss of health in `PermanentLoseEnergy`.

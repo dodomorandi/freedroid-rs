@@ -11,7 +11,7 @@ use crate::{
     map::get_map_brick,
     structs::{Blast, Finepoint, GrobPoint, TextToBeDisplayed},
     vars::Vars,
-    Data, Main,
+    Main,
 };
 
 use log::{info, trace};
@@ -47,7 +47,7 @@ const FLASH_DARK: SDL_Color = SDL_Color {
     unused: 0,
 };
 
-impl Data<'_> {
+impl crate::Data<'_> {
     pub fn fill_rect(&mut self, rect: Rect, color: SDL_Color) {
         let pixcolor = self
             .graphics
@@ -334,7 +334,7 @@ impl Data<'_> {
                 }
             }
 
-            let &mut Data {
+            let &mut crate::Data {
                 main: Main { ref all_blasts, .. },
                 ref mut vars,
                 ref mut graphics,
@@ -534,7 +534,7 @@ impl Data<'_> {
         trace!("PutInfluence real function call confirmed.");
 
         // Now we draw the hat and shoes of the influencer
-        let Data {
+        let crate::Data {
             graphics:
                 Graphics {
                     influencer_surface_pointer,
