@@ -22,18 +22,18 @@ use std::{
 
 #[derive(Debug, Default)]
 pub struct Highscore {
-    pub entries: Option<Box<[HighscoreEntry]>>,
+    pub entries: Option<Box<[Entry]>>,
     pub num: i32,
 }
 
 #[derive(Debug)]
-pub struct HighscoreEntry {
+pub struct Entry {
     name: ArrayCString<{ u8_to_usize(MAX_NAME_LEN) + 5 }>,
     score: i64,
     date: ArrayCString<{ u8_to_usize(DATE_LEN) + 5 }>,
 }
 
-impl Default for HighscoreEntry {
+impl Default for Entry {
     fn default() -> Self {
         Self {
             name: ArrayCString::try_from(HS_EMPTY_ENTRY).unwrap(),
@@ -43,7 +43,7 @@ impl Default for HighscoreEntry {
     }
 }
 
-impl HighscoreEntry {
+impl Entry {
     fn new<Name, Date>(name: Name, score: i64, date: Date) -> Self
     where
         Name: TryInto<ArrayCString<{ u8_to_usize(MAX_NAME_LEN) + 5 }>>,
@@ -95,8 +95,8 @@ impl Highscore {
         let highscores = match file {
             Some(mut file) => (0..MAX_HIGHSCORES)
                 .map(|_| {
-                    const SCORE_PADDING: usize = HighscoreEntry::score_padding();
-                    const END_PADDING: usize = HighscoreEntry::end_padding();
+                    const SCORE_PADDING: usize = Entry::score_padding();
+                    const END_PADDING: usize = Entry::end_padding();
 
                     let mut name = ArrayCString::new();
                     name.use_slice_mut(|name| {
@@ -124,12 +124,12 @@ impl Highscore {
                             file.seek_relative(END_PADDING.try_into().unwrap()).ok()?;
                         }
 
-                        Some(HighscoreEntry { name, score, date })
+                        Some(Entry { name, score, date })
                     };
                     get_rest().unwrap_or_default()
                 })
                 .collect(),
-            None => std::iter::repeat_with(HighscoreEntry::default)
+            None => std::iter::repeat_with(Entry::default)
                 .take(MAX_HIGHSCORES.into())
                 .collect(),
         };
@@ -145,8 +145,8 @@ impl Highscore {
             };
 
             for entry in self.entries.as_mut().unwrap().iter_mut() {
-                const SCORE_PADDING: usize = HighscoreEntry::score_padding();
-                const END_PADDING: usize = HighscoreEntry::end_padding();
+                const SCORE_PADDING: usize = Entry::score_padding();
+                const END_PADDING: usize = Entry::end_padding();
 
                 file.write_all(entry.name.as_buffer_bytes()).unwrap();
                 if SCORE_PADDING != 0 {
@@ -261,10 +261,10 @@ impl crate::Data<'_> {
         let date = format!("{}", chrono::Local::now().format("%Y/%m/%d"));
 
         #[cfg(target_os = "android")]
-        let new_entry = HighscoreEntry::new("Player", score as i64, &*date);
+        let new_entry = Entry::new("Player", score as i64, &*date);
         #[cfg(not(target_os = "android"))]
         #[allow(clippy::cast_possible_truncation)]
-        let new_entry = HighscoreEntry::new(
+        let new_entry = Entry::new(
             &*self.get_string(MAX_NAME_LEN.into(), 2).unwrap(),
             score as i64,
             &*date,

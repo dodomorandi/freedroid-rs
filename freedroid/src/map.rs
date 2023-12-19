@@ -5,7 +5,7 @@ use crate::{
         self, Criticality, Direction, MapTile, Status, Themed, DIRECTIONS, MAP_DIR_C, MAXWAYPOINTS,
         MAX_ALERTS_ON_LEVEL, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_REFRESHES_ON_LEVEL,
     },
-    find_subslice,
+    find_subslice, map,
     misc::{
         locate_string_in_data, my_random, read_and_malloc_string_from_data, read_i32_from_string,
     },
@@ -126,7 +126,7 @@ fn reset_level_map(level: &mut Level) {
 }
 
 /// initialize doors, refreshes and lifts for the given level-data
-pub fn interpret_map(level: &mut Level) -> c_int {
+pub fn interpret(level: &mut Level) -> c_int {
     /* Get Doors Array */
     get_doors(level);
 
@@ -1397,7 +1397,7 @@ freedroid-discussion@lists.sourceforge.net\n\
             .try_for_each(|(index, (level, start))| {
                 if let Some(new_level) = level_to_struct(start.unwrap()) {
                     let level = level.insert(new_level);
-                    interpret_map(level); // initialize doors, refreshes and lifts
+                    map::interpret(level); // initialize doors, refreshes and lifts
                     Some(())
                 } else {
                     error!("reading of level {} failed", index);

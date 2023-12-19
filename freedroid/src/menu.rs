@@ -77,35 +77,35 @@ pub const SHIP_EXT: &str = ".shp";
 
 macro_rules! menu_entry {
     () => {
-        MenuEntry {
+        Entry {
             name: None,
             handler: None,
             submenu: None,
         }
     };
     ($name:tt) => {
-        MenuEntry {
+        Entry {
             name: Some($name),
             handler: None,
             submenu: None,
         }
     };
     ($name:tt, $handler:expr) => {
-        MenuEntry {
+        Entry {
             name: Some($name),
             handler: Some($handler),
             submenu: None,
         }
     };
     ($name:tt, None, $submenu:expr) => {
-        MenuEntry {
+        Entry {
             name: Some($name),
             handler: None,
             submenu: Some(&$submenu),
         }
     };
     ($name:tt, $handler:expr, $submenu:expr) => {
-        MenuEntry {
+        Entry {
             name: Some($name),
             handler: Some($handler),
             submenu: Some(&$submenu),
@@ -113,15 +113,15 @@ macro_rules! menu_entry {
     };
 }
 
-pub struct MenuEntry<'sdl> {
+pub struct Entry<'sdl> {
     name: Option<&'static str>,
     handler: Option<for<'a> fn(&'a mut crate::Data<'sdl>, MenuAction) -> Option<&'a CStr>>,
-    submenu: Option<&'sdl [MenuEntry<'sdl>]>,
+    submenu: Option<&'sdl [Entry<'sdl>]>,
 }
 
 impl<'sdl> crate::Data<'sdl> {
     #[cfg(target_os = "android")]
-    const LEGACY_MENU: [MenuEntry<'sdl>; 9] = [
+    const LEGACY_MENU: [Entry<'sdl>; 9] = [
         menu_entry! { "Back" },
         menu_entry! { "Set Strictly Classic", crate::Data::handle_strictly_classic},
         menu_entry! { "Combat Window: ", crate::Data::handle_window_type},
@@ -134,7 +134,7 @@ impl<'sdl> crate::Data<'sdl> {
     ];
 
     #[cfg(not(target_os = "android"))]
-    const LEGACY_MENU: [MenuEntry<'sdl>; 11] = [
+    const LEGACY_MENU: [Entry<'sdl>; 11] = [
         menu_entry! { "Back"},
         menu_entry! { "Set Strictly Classic", crate::Data::handle_strictly_classic},
         menu_entry! { "Combat Window: ", crate::Data::handle_window_type},
@@ -148,7 +148,7 @@ impl<'sdl> crate::Data<'sdl> {
         menu_entry! {},
     ];
 
-    const GRAPHICS_SOUND_MENU: [MenuEntry<'sdl>; 5] = [
+    const GRAPHICS_SOUND_MENU: [Entry<'sdl>; 5] = [
         menu_entry! { "Back"},
         menu_entry! { "Music Volume: ", crate::Data::handle_music_volume},
         menu_entry! { "Sound Volume: ", crate::Data::handle_sound_volume},
@@ -156,7 +156,7 @@ impl<'sdl> crate::Data<'sdl> {
         menu_entry! {},
     ];
 
-    const HUD_MENU: [MenuEntry<'sdl>; 5] = [
+    const HUD_MENU: [Entry<'sdl>; 5] = [
         menu_entry! { "Back"},
         menu_entry! { "Show Position: ", crate::Data::handle_show_position},
         menu_entry! { "Show Framerate: ", crate::Data::handle_show_framerate},
@@ -165,7 +165,7 @@ impl<'sdl> crate::Data<'sdl> {
     ];
 
     #[cfg(not(target_os = "android"))]
-    const LEVEL_EDITOR_MENU: [MenuEntry<'sdl>; 8] = [
+    const LEVEL_EDITOR_MENU: [Entry<'sdl>; 8] = [
         menu_entry! { "Exit Level Editor", 	crate::Data::handle_le_exit},
         menu_entry! { "Current Level: ", crate::Data::handle_le_level_number},
         menu_entry! { "Level Color: ", crate::Data::handle_le_color},
@@ -177,7 +177,7 @@ impl<'sdl> crate::Data<'sdl> {
     ];
 
     #[cfg(target_os = "android")]
-    const MAIN_MENU: [MenuEntry<'sdl>; 8] = [
+    const MAIN_MENU: [Entry<'sdl>; 8] = [
         menu_entry! { "Back to Game"},
         menu_entry! { "Graphics & Sound", None, Self::GRAPHICS_SOUND_MENU },
         menu_entry! { "Legacy Options", None, Self::LEGACY_MENU },
@@ -189,7 +189,7 @@ impl<'sdl> crate::Data<'sdl> {
     ];
 
     #[cfg(not(target_os = "android"))]
-    const MAIN_MENU: [MenuEntry<'sdl>; 10] = [
+    const MAIN_MENU: [Entry<'sdl>; 10] = [
         menu_entry! { "Back to Game"},
         menu_entry! { "Graphics & Sound", None, Self::GRAPHICS_SOUND_MENU },
         menu_entry! { "Legacy Options", None, Self::LEGACY_MENU },
@@ -947,7 +947,7 @@ impl<'sdl> crate::Data<'sdl> {
     }
 
     /// Generic menu handler
-    pub fn show_menu(&mut self, menu_entries: &[MenuEntry<'sdl>]) {
+    pub fn show_menu(&mut self, menu_entries: &[Entry<'sdl>]) {
         use std::io::Write;
 
         self.initiate_menu(false);

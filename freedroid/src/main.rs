@@ -1,7 +1,6 @@
 #![allow(
     clippy::missing_panics_doc,
     clippy::missing_errors_doc,
-    clippy::module_name_repetitions,
     clippy::too_many_lines,
     clippy::too_many_arguments
 )]
@@ -34,8 +33,7 @@ mod view;
 use array_c_string::ArrayCString;
 pub use array_index::ArrayIndex;
 use array_init::array_init;
-use b_font::{BFont, BFontInfo};
-use bullet::BulletData;
+use b_font::BFont;
 use defs::{
     AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Status, BYCOLOR,
     DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, RESET, SHOW_WAIT,
@@ -54,7 +52,6 @@ use misc::Misc;
 use once_cell::unsync::OnceCell;
 use qcell::{TCell, TCellOwner};
 use sdl::Rect;
-use ship::ShipData;
 use sound::Sound;
 use structs::{Blast, Bullet, Enemy, Level, Ship};
 use takeover::Takeover;
@@ -137,7 +134,7 @@ impl Default for Main<'_> {
 type Sdl = sdl::Sdl<sdl::Video, sdl::Timer, OnceCell<sdl::JoystickSystem>, OnceCell<sdl::Mixer>>;
 
 pub struct FontCellMarker;
-type FontCell<'sdl> = TCell<FontCellMarker, BFontInfo<'sdl>>;
+type FontCell<'sdl> = TCell<FontCellMarker, b_font::Info<'sdl>>;
 type FontCellOwner = TCellOwner<FontCellMarker>;
 
 struct Data<'sdl> {
@@ -146,13 +143,13 @@ struct Data<'sdl> {
     map: Map,
     b_font: BFont<'sdl>,
     highscore: Highscore,
-    bullet: BulletData,
+    bullet: bullet::Data,
     influencer: Influencer,
     init: Init,
     text: Text,
     sound: Option<Sound<'sdl>>,
     misc: Misc,
-    ship: ShipData<'sdl>,
+    ship: ship::Data<'sdl>,
     input: Input,
     menu: Menu<'sdl>,
     global: Global<'sdl>,
@@ -172,13 +169,13 @@ impl<'sdl> Data<'sdl> {
             map: Map::default(),
             b_font: BFont::default(),
             highscore: Highscore::default(),
-            bullet: BulletData::default(),
+            bullet: bullet::Data::default(),
             influencer: Influencer::default(),
             init: Init::default(),
             text: Text::default(),
             sound: Option::default(),
             misc: Misc::default(),
-            ship: ShipData::default(),
+            ship: ship::Data::default(),
             input: Input::default(),
             menu: Menu::default(),
             global: Global::default(),

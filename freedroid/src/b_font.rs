@@ -27,7 +27,7 @@ impl fmt::Debug for BFont<'_> {
 }
 
 #[derive(Debug)]
-pub struct BFontInfo<'sdl> {
+pub struct Info<'sdl> {
     /// font height
     pub h: c_int,
 
@@ -38,13 +38,13 @@ pub struct BFontInfo<'sdl> {
     pub chars: [Rect; 256],
 }
 
-pub fn font_height(font: &BFontInfo) -> c_int {
+pub fn font_height(font: &Info) -> c_int {
     font.h
 }
 
 pub fn put_string_font<const F: bool>(
     surface: &mut sdl::GenericSurface<F>,
-    font: &mut BFontInfo,
+    font: &mut Info,
     mut x: c_int,
     y: c_int,
     text: &[u8],
@@ -57,7 +57,7 @@ pub fn put_string_font<const F: bool>(
 /// Put a single char on the surface with the specified font
 fn put_char_font<const F: bool>(
     surface: &mut sdl::GenericSurface<F>,
-    font: &mut BFontInfo,
+    font: &mut Info,
     x: c_int,
     y: c_int,
     c: u8,
@@ -80,13 +80,13 @@ fn put_char_font<const F: bool>(
 }
 
 /// Return the width of the "c" character
-pub fn char_width(font: &BFontInfo, c: u8) -> c_int {
+pub fn char_width(font: &Info, c: u8) -> c_int {
     font.chars[usize::from(c)].width().into()
 }
 
 pub fn print_string_font<const F: bool>(
     surface: &mut sdl::GenericSurface<F>,
-    font: &mut BFontInfo,
+    font: &mut Info,
     x: c_int,
     y: c_int,
     format_args: fmt::Arguments,
@@ -100,7 +100,7 @@ pub fn print_string_font<const F: bool>(
     put_string_font(surface, font, x, y, &temp[..written]);
 }
 
-pub fn init_font(font: &mut BFontInfo) {
+pub fn init_font(font: &mut Info) {
     let mut i: usize = b'!'.into();
 
     let mut surface = font.surface.as_mut().unwrap().lock().unwrap();
@@ -148,7 +148,7 @@ pub fn init_font(font: &mut BFontInfo) {
 
 pub fn centered_put_string_font<const F: bool>(
     surface: &mut sdl::GenericSurface<F>,
-    font: &mut BFontInfo,
+    font: &mut Info,
     y: c_int,
     text: &[u8],
 ) {
@@ -217,7 +217,7 @@ impl<'sdl> crate::Data<'sdl> {
         let mut surface = sdl.load_image_from_c_str_path(filename).unwrap();
         scale_pic(&mut surface, scale);
 
-        let mut font = BFontInfo {
+        let mut font = Info {
             h: 0,
             surface: Some(surface),
             chars: [Rect::default(); 256],
@@ -319,6 +319,6 @@ impl<'sdl> crate::Data<'sdl> {
     }
 }
 
-pub fn text_width_font(font: &BFontInfo, text: &[u8]) -> c_int {
+pub fn text_width_font(font: &Info, text: &[u8]) -> c_int {
     text.iter().map(|&c| char_width(font, c)).sum()
 }

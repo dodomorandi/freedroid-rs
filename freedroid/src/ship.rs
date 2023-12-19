@@ -23,7 +23,7 @@ use tinyvec_string::ArrayString;
 
 const UPDATE_ONLY: u8 = 0x01;
 
-pub struct ShipData<'sdl> {
+pub struct Data<'sdl> {
     last_siren: u32,
     frame_num: c_int,
     last_droid_type: c_int,
@@ -40,7 +40,7 @@ pub struct ShipData<'sdl> {
     right_rect: Rect,
 }
 
-impl Default for ShipData<'_> {
+impl Default for Data<'_> {
     fn default() -> Self {
         Self {
             last_siren: 0,
@@ -146,7 +146,7 @@ impl crate::Data<'_> {
 
         let Self {
             ship:
-                ShipData {
+                Data {
                     droid_background,
                     src_rect,
                     ..
@@ -263,7 +263,7 @@ impl crate::Data<'_> {
 
             let Self {
                 ship:
-                    ShipData {
+                    Data {
                         droid_background,
                         droid_pics,
                         src_rect,

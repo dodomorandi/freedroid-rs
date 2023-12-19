@@ -11,7 +11,7 @@ use log::info;
 use std::os::raw::{c_float, c_int};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct BulletData {
+pub struct Data {
     fbt_counter: u32,
 }
 
