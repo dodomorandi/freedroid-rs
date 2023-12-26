@@ -12,7 +12,8 @@ use bitflags::bitflags;
 use sdl_sys::{
     SDL_GetVideoInfo, SDL_SetGamma, SDL_SetVideoMode, SDL_VideoDriverName, SDL_VideoInfo,
     SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_ANYFORMAT, SDL_ASYNCBLIT, SDL_DOUBLEBUF, SDL_FULLSCREEN,
-    SDL_HWPALETTE, SDL_HWSURFACE, SDL_NOFRAME, SDL_OPENGL, SDL_OPENGLBLIT, SDL_RESIZABLE,
+    SDL_HWACCEL, SDL_HWPALETTE, SDL_HWSURFACE, SDL_NOFRAME, SDL_OPENGL, SDL_OPENGLBLIT,
+    SDL_PREALLOC, SDL_RESIZABLE, SDL_RLEACCEL, SDL_RLEACCELOK, SDL_SRCALPHA, SDL_SRCCOLORKEY,
     SDL_SWSURFACE,
 };
 
@@ -132,6 +133,18 @@ bitflags! {
         const OPENGL_BLIT = convert::i32_to_u32(SDL_OPENGLBLIT);
         const RESIZABLE = convert::i32_to_u32(SDL_RESIZABLE);
         const NO_FRAME = convert::i32_to_u32(SDL_NOFRAME);
+        #[doc(hidden)]
+        const HARDWARE_ACCELERATION = convert::i32_to_u32(SDL_HWACCEL);
+        #[doc(hidden)]
+        const SOURCE_COLOR_KEY = convert::i32_to_u32(SDL_SRCCOLORKEY);
+        #[doc(hidden)]
+        const RLE_ACCELERATION_OK = convert::i32_to_u32(SDL_RLEACCELOK);
+        #[doc(hidden)]
+        const RLE_ACCELERATION = convert::i32_to_u32(SDL_RLEACCEL);
+        #[doc(hidden)]
+        const SOURCE_ALPHA = convert::i32_to_u32(SDL_SRCALPHA);
+        #[doc(hidden)]
+        const PREALLOC = convert::i32_to_u32(SDL_PREALLOC);
     }
 }
 
