@@ -186,149 +186,23 @@ impl Event {
 
         Ok(match ty {
             Type::None => return Err(InvalidRaw::NoneType),
-            Type::ActiveEvent => {
-                let cur = unsafe { &event.active };
-                Event::Active(Active {
-                    gain: cur.gain != 0,
-                    state: cur.state,
-                })
-            }
-            ty @ (Type::KeyDown | Type::KeyUp) => {
-                let ty = match ty {
-                    Type::KeyDown => KeyboardEventType::KeyDown,
-                    Type::KeyUp => KeyboardEventType::KeyUp,
-                    _ => unreachable!(),
-                };
-
-                let cur = unsafe { &event.key };
-                let state =
-                    ButtonState::from_raw(cur.state).map_err(|_| InvalidRaw::ButtonState)?;
-                let keysym = KeySym::from_raw(cur.keysym).map_err(|_| InvalidRaw::KeySym)?;
-                Event::Keyboard(Keyboard {
-                    ty,
-                    which: cur.which,
-                    state,
-                    keysym,
-                })
-            }
-            Type::MouseMotion => {
-                let &SDL_MouseMotionEvent {
-                    which,
-                    state,
-                    x,
-                    y,
-                    xrel,
-                    yrel,
-                    ..
-                } = unsafe { &event.motion };
-
-                Event::MouseMotion(MouseMotion {
-                    which,
-                    state,
-                    x,
-                    y,
-                    xrel,
-                    yrel,
-                })
-            }
-            ty @ (Type::MouseButtonDown | Type::MouseButtonUp) => {
-                let ty = match ty {
-                    Type::MouseButtonDown => MouseButtonEventType::Down,
-                    Type::MouseButtonUp => MouseButtonEventType::Up,
-                    _ => unreachable!(),
-                };
-
-                let &SDL_MouseButtonEvent {
-                    which,
-                    button,
-                    state,
-                    x,
-                    y,
-                    ..
-                } = unsafe { &event.button };
-
-                let state = ButtonState::from_raw(state).map_err(|_| InvalidRaw::ButtonState)?;
-
-                Event::MouseButton(MouseButton {
-                    ty,
-                    which,
-                    button,
-                    state,
-                    x,
-                    y,
-                })
-            }
-            Type::JoyAxisMotion => {
-                let &SDL_JoyAxisEvent {
-                    which, axis, value, ..
-                } = unsafe { &event.jaxis };
-
-                Event::JoyAxis(JoyAxis { which, axis, value })
-            }
-            Type::JoyBallMotion => {
-                let &SDL_JoyBallEvent {
-                    which,
-                    ball,
-                    xrel,
-                    yrel,
-                    ..
-                } = unsafe { &event.jball };
-
-                Event::JoyBall(JoyBall {
-                    which,
-                    ball,
-                    xrel,
-                    yrel,
-                })
-            }
-            Type::JoyHatMotion => {
-                let &SDL_JoyHatEvent {
-                    which, hat, value, ..
-                } = unsafe { &event.jhat };
-
-                let value =
-                    JoyHatPosition::from_raw(value).map_err(|_| InvalidRaw::JoyHatPosition)?;
-                Event::JoyHat(JoyHat { which, hat, value })
-            }
-            ty @ (Type::JoyButtonDown | Type::JoyButtonUp) => {
-                let ty = match ty {
-                    Type::JoyButtonDown => JoyButtonEventType::Down,
-                    Type::JoyButtonUp => JoyButtonEventType::Up,
-                    _ => unreachable!(),
-                };
-
-                let &SDL_JoyButtonEvent {
-                    which,
-                    button,
-                    state,
-                    ..
-                } = unsafe { &event.jbutton };
-
-                let state = ButtonState::from_raw(state).map_err(|_| InvalidRaw::ButtonState)?;
-
-                Event::JoyButton(JoyButton {
-                    ty,
-                    which,
-                    button,
-                    state,
-                })
-            }
+            Type::ActiveEvent => unsafe { Self::from_active_event(&event) },
+            ty @ (Type::KeyDown | Type::KeyUp) => unsafe {
+                Self::try_from_key_down_up(&event, ty)?
+            },
+            Type::MouseMotion => unsafe { Self::from_mouse_motion(&event) },
+            ty @ (Type::MouseButtonDown | Type::MouseButtonUp) => unsafe {
+                Self::try_from_mouse_button_down_up(&event, ty)?
+            },
+            Type::JoyAxisMotion => unsafe { Self::from_joy_axis_motion(&event) },
+            Type::JoyBallMotion => unsafe { Self::from_joy_ball_motion(&event) },
+            Type::JoyHatMotion => unsafe { Self::try_from_joy_hat_motion(&event)? },
+            ty @ (Type::JoyButtonDown | Type::JoyButtonUp) => unsafe {
+                Self::try_from_joy_button_down_up(&event, ty)?
+            },
             Type::Quit => Event::Quit,
-            Type::SysWmEvent => {
-                let cur = unsafe { &event.syswm };
-
-                Event::SymWindowManager(SysWindowManager {
-                    msg: NonNull::new(cur.msg).map(|ptr| {
-                        system_window_manager::Message::try_from(unsafe { ptr.as_ref() }).unwrap()
-                    }),
-                    pointer: cur.msg,
-                })
-            }
-            Type::VideoResize => {
-                let &SDL_ResizeEvent { w, h, .. } = unsafe { &event.resize };
-
-                Event::Resize(Resize { w, h })
-            }
+            Type::SysWmEvent => unsafe { Self::from_sys_wm_event(&event) },
+            Type::VideoResize => unsafe { Self::from_video_resize(&event) },
             Type::VideoExpose => Event::Exposure,
             ty @ (Type::UserEvent1
             | Type::UserEvent2
@@ -337,18 +211,7 @@ impl Event {
             | Type::UserEvent5
             | Type::UserEvent6
             | Type::UserEvent7
-            | Type::UserEvent8) => {
-                let &SDL_UserEvent {
-                    code, data1, data2, ..
-                } = unsafe { &event.user };
-
-                Event::User(User {
-                    ty: ty as u8,
-                    code,
-                    data1,
-                    data2,
-                })
-            }
+            | Type::UserEvent8) => unsafe { Self::from_user_event(&event, ty) },
         })
     }
 
@@ -360,118 +223,15 @@ impl Event {
     #[must_use]
     pub fn to_raw(&self) -> SDL_Event {
         match self {
-            &Event::Active(Active { gain, state }) => SDL_Event {
-                active: SDL_ActiveEvent {
-                    type_: Type::ActiveEvent as u8,
-                    gain: gain.into(),
-                    state,
-                },
-            },
-            &Event::Keyboard(Keyboard {
-                ty,
-                which,
-                state,
-                ref keysym,
-            }) => {
-                let type_ = match ty {
-                    KeyboardEventType::KeyDown => Type::KeyDown as u8,
-                    KeyboardEventType::KeyUp => Type::KeyUp as u8,
-                };
-
-                SDL_Event {
-                    key: SDL_KeyboardEvent {
-                        type_,
-                        which,
-                        state: state as u8,
-                        keysym: keysym.to_raw(),
-                    },
-                }
-            }
-            &Event::MouseMotion(MouseMotion {
-                which,
-                state,
-                x,
-                y,
-                xrel,
-                yrel,
-            }) => SDL_Event {
-                motion: SDL_MouseMotionEvent {
-                    type_: Type::MouseMotion as u8,
-                    which,
-                    state,
-                    x,
-                    y,
-                    xrel,
-                    yrel,
-                },
-            },
-            &Event::MouseButton(MouseButton {
-                ty,
-                which,
-                button,
-                state,
-                x,
-                y,
-            }) => SDL_Event {
-                button: SDL_MouseButtonEvent {
-                    type_: ty as u8,
-                    which,
-                    button,
-                    state: state as u8,
-                    x,
-                    y,
-                },
-            },
-            &Event::JoyAxis(JoyAxis { which, axis, value }) => SDL_Event {
-                jaxis: SDL_JoyAxisEvent {
-                    type_: Type::JoyAxisMotion as u8,
-                    which,
-                    axis,
-                    value,
-                },
-            },
-            &Event::JoyBall(JoyBall {
-                which,
-                ball,
-                xrel,
-                yrel,
-            }) => SDL_Event {
-                jball: SDL_JoyBallEvent {
-                    type_: Type::JoyBallMotion as u8,
-                    which,
-                    ball,
-                    xrel,
-                    yrel,
-                },
-            },
-            &Event::JoyHat(JoyHat { which, hat, value }) => SDL_Event {
-                jhat: SDL_JoyHatEvent {
-                    type_: Type::JoyHatMotion as u8,
-                    which,
-                    hat,
-                    value: value as u8,
-                },
-            },
-            &Event::JoyButton(JoyButton {
-                ty,
-                which,
-                button,
-                state,
-            }) => SDL_Event {
-                jbutton: SDL_JoyButtonEvent {
-                    type_: ty as u8,
-                    which,
-                    button,
-                    state: state as u8,
-                },
-            },
-            &Event::Resize(Resize { w, h }) => SDL_Event {
-                resize: SDL_ResizeEvent {
-                    type_: Type::VideoResize as u8,
-                    w,
-                    h,
-                },
-            },
+            &Event::Active(active) => active.into(),
+            Event::Keyboard(keyboard) => keyboard.into(),
+            &Event::MouseMotion(mouse_motion) => mouse_motion.into(),
+            &Event::MouseButton(mouse_button) => mouse_button.into(),
+            &Event::JoyAxis(joy_axis) => joy_axis.into(),
+            &Event::JoyBall(joy_ball) => joy_ball.into(),
+            &Event::JoyHat(joy_hat) => joy_hat.into(),
+            &Event::JoyButton(joy_button) => joy_button.into(),
+            &Event::Resize(resize) => resize.into(),
             Event::Exposure => SDL_Event {
                 expose: SDL_ExposeEvent {
                     type_: Type::VideoExpose as u8,
@@ -482,26 +242,186 @@ impl Event {
                     type_: Type::Quit as u8,
                 },
             },
-            &Event::User(User {
-                ty,
-                code,
-                data1,
-                data2,
-            }) => SDL_Event {
-                user: SDL_UserEvent {
-                    type_: ty,
-                    code,
-                    data1,
-                    data2,
-                },
-            },
-            &Event::SymWindowManager(SysWindowManager { pointer, .. }) => SDL_Event {
-                syswm: SDL_SysWMEvent {
-                    type_: Type::SysWmEvent as u8,
-                    msg: pointer,
-                },
-            },
+            &Event::User(user) => user.into(),
+            Event::SymWindowManager(sys_window_manager) => sys_window_manager.into(),
         }
+    }
+
+    #[inline]
+    unsafe fn from_active_event(event: &SDL_Event) -> Self {
+        let cur = unsafe { &event.active };
+        Event::Active(Active {
+            gain: cur.gain != 0,
+            state: cur.state,
+        })
+    }
+
+    #[inline]
+    unsafe fn try_from_key_down_up(event: &SDL_Event, ty: Type) -> Result<Self, InvalidRaw> {
+        let ty = match ty {
+            Type::KeyDown => KeyboardEventType::KeyDown,
+            Type::KeyUp => KeyboardEventType::KeyUp,
+            _ => unreachable!(),
+        };
+
+        let cur = unsafe { &event.key };
+        let state = ButtonState::from_raw(cur.state).map_err(|_| InvalidRaw::ButtonState)?;
+        let keysym = KeySym::from_raw(cur.keysym).map_err(|_| InvalidRaw::KeySym)?;
+        Ok(Event::Keyboard(Keyboard {
+            ty,
+            which: cur.which,
+            state,
+            keysym,
+        }))
+    }
+
+    #[inline]
+    unsafe fn from_mouse_motion(event: &SDL_Event) -> Self {
+        let &SDL_MouseMotionEvent {
+            which,
+            state,
+            x,
+            y,
+            xrel,
+            yrel,
+            ..
+        } = unsafe { &event.motion };
+
+        Event::MouseMotion(MouseMotion {
+            which,
+            state,
+            x,
+            y,
+            xrel,
+            yrel,
+        })
+    }
+
+    #[inline]
+    unsafe fn try_from_mouse_button_down_up(
+        event: &SDL_Event,
+        ty: Type,
+    ) -> Result<Self, InvalidRaw> {
+        let ty = match ty {
+            Type::MouseButtonDown => MouseButtonEventType::Down,
+            Type::MouseButtonUp => MouseButtonEventType::Up,
+            _ => unreachable!(),
+        };
+
+        let &SDL_MouseButtonEvent {
+            which,
+            button,
+            state,
+            x,
+            y,
+            ..
+        } = unsafe { &event.button };
+
+        let state = ButtonState::from_raw(state).map_err(|_| InvalidRaw::ButtonState)?;
+
+        Ok(Event::MouseButton(MouseButton {
+            ty,
+            which,
+            button,
+            state,
+            x,
+            y,
+        }))
+    }
+
+    #[inline]
+    unsafe fn from_joy_axis_motion(event: &SDL_Event) -> Self {
+        let &SDL_JoyAxisEvent {
+            which, axis, value, ..
+        } = unsafe { &event.jaxis };
+
+        Event::JoyAxis(JoyAxis { which, axis, value })
+    }
+
+    #[inline]
+    unsafe fn from_joy_ball_motion(event: &SDL_Event) -> Self {
+        let &SDL_JoyBallEvent {
+            which,
+            ball,
+            xrel,
+            yrel,
+            ..
+        } = unsafe { &event.jball };
+
+        Event::JoyBall(JoyBall {
+            which,
+            ball,
+            xrel,
+            yrel,
+        })
+    }
+
+    #[inline]
+    unsafe fn try_from_joy_hat_motion(event: &SDL_Event) -> Result<Self, InvalidRaw> {
+        let &SDL_JoyHatEvent {
+            which, hat, value, ..
+        } = unsafe { &event.jhat };
+
+        let value = JoyHatPosition::from_raw(value).map_err(|_| InvalidRaw::JoyHatPosition)?;
+        Ok(Event::JoyHat(JoyHat { which, hat, value }))
+    }
+
+    #[inline]
+    unsafe fn try_from_joy_button_down_up(event: &SDL_Event, ty: Type) -> Result<Self, InvalidRaw> {
+        let ty = match ty {
+            Type::JoyButtonDown => JoyButtonEventType::Down,
+            Type::JoyButtonUp => JoyButtonEventType::Up,
+            _ => unreachable!(),
+        };
+
+        let &SDL_JoyButtonEvent {
+            which,
+            button,
+            state,
+            ..
+        } = unsafe { &event.jbutton };
+
+        let state = ButtonState::from_raw(state).map_err(|_| InvalidRaw::ButtonState)?;
+
+        Ok(Event::JoyButton(JoyButton {
+            ty,
+            which,
+            button,
+            state,
+        }))
+    }
+
+    #[inline]
+    unsafe fn from_sys_wm_event(event: &SDL_Event) -> Self {
+        let cur = unsafe { &event.syswm };
+
+        Event::SymWindowManager(SysWindowManager {
+            msg: NonNull::new(cur.msg).map(|ptr| {
+                system_window_manager::Message::try_from(unsafe { ptr.as_ref() }).unwrap()
+            }),
+            pointer: cur.msg,
+        })
+    }
+
+    #[inline]
+    unsafe fn from_video_resize(event: &SDL_Event) -> Self {
+        let &SDL_ResizeEvent { w, h, .. } = unsafe { &event.resize };
+
+        Event::Resize(Resize { w, h })
+    }
+
+    #[inline]
+    unsafe fn from_user_event(event: &SDL_Event, ty: Type) -> Self {
+        let &SDL_UserEvent {
+            code, data1, data2, ..
+        } = unsafe { &event.user };
+
+        Event::User(User {
+            ty: ty as u8,
+            code,
+            data1,
+            data2,
+        })
     }
 }
 
@@ -522,6 +442,20 @@ pub struct Active {
     pub state: u8,
 }
 
+impl From<Active> for SDL_Event {
+    #[inline]
+    fn from(value: Active) -> Self {
+        let Active { gain, state } = value;
+        SDL_Event {
+            active: SDL_ActiveEvent {
+                type_: Type::ActiveEvent as u8,
+                gain: gain.into(),
+                state,
+            },
+        }
+    }
+}
+
 /// Keyboard event structure
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Keyboard {
@@ -532,6 +466,32 @@ pub struct Keyboard {
     /// The state of the button
     pub state: ButtonState,
     pub keysym: KeySym,
+}
+
+impl From<&Keyboard> for SDL_Event {
+    #[inline]
+    fn from(value: &Keyboard) -> Self {
+        let &Keyboard {
+            ty,
+            which,
+            state,
+            ref keysym,
+        } = value;
+
+        let type_ = match ty {
+            KeyboardEventType::KeyDown => Type::KeyDown as u8,
+            KeyboardEventType::KeyUp => Type::KeyUp as u8,
+        };
+
+        SDL_Event {
+            key: SDL_KeyboardEvent {
+                type_,
+                which,
+                state: state as u8,
+                keysym: keysym.to_raw(),
+            },
+        }
+    }
 }
 
 /// Mouse motion event structure
@@ -565,6 +525,32 @@ pub struct MouseMotion {
     pub yrel: i16,
 }
 
+impl From<MouseMotion> for SDL_Event {
+    #[inline]
+    fn from(value: MouseMotion) -> Self {
+        let MouseMotion {
+            which,
+            state,
+            x,
+            y,
+            xrel,
+            yrel,
+        } = value;
+
+        SDL_Event {
+            motion: SDL_MouseMotionEvent {
+                type_: Type::MouseMotion as u8,
+                which,
+                state,
+                x,
+                y,
+                xrel,
+                yrel,
+            },
+        }
+    }
+}
+
 /// Joystick trackball motion event structure
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MouseButton {
@@ -580,6 +566,30 @@ pub struct MouseButton {
     pub x: u16,
     /// The Y coordinates of the mouse at press time
     pub y: u16,
+}
+
+impl From<MouseButton> for SDL_Event {
+    fn from(value: MouseButton) -> Self {
+        let MouseButton {
+            ty,
+            which,
+            button,
+            state,
+            x,
+            y,
+        } = value;
+
+        SDL_Event {
+            button: SDL_MouseButtonEvent {
+                type_: ty as u8,
+                which,
+                button,
+                state: state as u8,
+                x,
+                y,
+            },
+        }
+    }
 }
 
 /// Joystick hat position change event structure
@@ -600,6 +610,21 @@ pub struct JoyAxis {
     pub value: i16,
 }
 
+impl From<JoyAxis> for SDL_Event {
+    #[inline]
+    fn from(value: JoyAxis) -> Self {
+        let JoyAxis { which, axis, value } = value;
+        SDL_Event {
+            jaxis: SDL_JoyAxisEvent {
+                type_: Type::JoyAxisMotion as u8,
+                which,
+                axis,
+                value,
+            },
+        }
+    }
+}
+
 /// The "window resized" event
 /// When you get this event, you are responsible for setting a new video
 /// mode with the new width and height.
@@ -615,6 +640,28 @@ pub struct JoyBall {
     pub yrel: i16,
 }
 
+impl From<JoyBall> for SDL_Event {
+    #[inline]
+    fn from(value: JoyBall) -> Self {
+        let JoyBall {
+            which,
+            ball,
+            xrel,
+            yrel,
+        } = value;
+
+        SDL_Event {
+            jball: SDL_JoyBallEvent {
+                type_: Type::JoyBallMotion as u8,
+                which,
+                ball,
+                xrel,
+                yrel,
+            },
+        }
+    }
+}
+
 /// Joystick hat position change event structure
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct JoyHat {
@@ -624,6 +671,22 @@ pub struct JoyHat {
     pub hat: u8,
     /// The hat position val
     pub value: JoyHatPosition,
+}
+
+impl From<JoyHat> for SDL_Event {
+    #[inline]
+    fn from(value: JoyHat) -> Self {
+        let JoyHat { which, hat, value } = value;
+
+        SDL_Event {
+            jhat: SDL_JoyHatEvent {
+                type_: Type::JoyHatMotion as u8,
+                which,
+                hat,
+                value: value as u8,
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -679,6 +742,27 @@ pub struct JoyButton {
     pub state: ButtonState,
 }
 
+impl From<JoyButton> for SDL_Event {
+    #[inline]
+    fn from(value: JoyButton) -> Self {
+        let JoyButton {
+            ty,
+            which,
+            button,
+            state,
+        } = value;
+
+        SDL_Event {
+            jbutton: SDL_JoyButtonEvent {
+                type_: ty as u8,
+                which,
+                button,
+                state: state as u8,
+            },
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum JoyButtonEventType {
     Up = convert::u32_to_isize(SDL_EventType_SDL_JOYBUTTONUP),
@@ -696,6 +780,21 @@ pub struct Resize {
     pub h: c_int,
 }
 
+impl From<Resize> for SDL_Event {
+    #[inline]
+    fn from(value: Resize) -> Self {
+        let Resize { w, h } = value;
+
+        SDL_Event {
+            resize: SDL_ResizeEvent {
+                type_: Type::VideoResize as u8,
+                w,
+                h,
+            },
+        }
+    }
+}
+
 /// A user-defined event type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct User {
@@ -709,8 +808,43 @@ pub struct User {
     pub data2: *mut c_void,
 }
 
+impl From<User> for SDL_Event {
+    #[inline]
+    fn from(value: User) -> Self {
+        let User {
+            ty,
+            code,
+            data1,
+            data2,
+        } = value;
+
+        SDL_Event {
+            user: SDL_UserEvent {
+                type_: ty,
+                code,
+                data1,
+                data2,
+            },
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SysWindowManager {
     pub msg: Option<system_window_manager::Message>,
     pub pointer: *mut SDL_SysWMmsg,
+}
+
+impl From<&SysWindowManager> for SDL_Event {
+    #[inline]
+    fn from(value: &SysWindowManager) -> Self {
+        let &SysWindowManager { pointer, .. } = value;
+
+        SDL_Event {
+            syswm: SDL_SysWMEvent {
+                type_: Type::SysWmEvent as u8,
+                msg: pointer,
+            },
+        }
+    }
 }
