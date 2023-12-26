@@ -18,6 +18,7 @@ pub struct PixelFormatRef<'a> {
 impl PixelFormatRef<'_> {
     /// # Safety
     /// No mutable borrows must be alive.
+    #[must_use]
     pub unsafe fn from_raw(pointer: NonNull<SDL_PixelFormat>) -> Self {
         Self {
             inner: pointer,
@@ -25,10 +26,12 @@ impl PixelFormatRef<'_> {
         }
     }
 
+    #[must_use]
     pub fn as_ptr(&self) -> *const SDL_PixelFormat {
         self.inner.as_ptr()
     }
 
+    #[must_use]
     pub fn bytes_per_pixel(self) -> BytesPerPixel {
         use BytesPerPixel::{Four, One, Three, Two};
 
@@ -42,21 +45,25 @@ impl PixelFormatRef<'_> {
         }
     }
 
+    #[must_use]
     pub fn map_rgb(self, red: u8, green: u8, blue: u8) -> Pixel {
         let result = unsafe { SDL_MapRGB(self.inner.as_ptr(), red, green, blue) };
         Pixel(result)
     }
 
+    #[must_use]
     pub fn map_rgba(self, red: u8, green: u8, blue: u8, alpha: u8) -> Pixel {
         let result = unsafe { SDL_MapRGBA(self.inner.as_ptr(), red, green, blue, alpha) };
         Pixel(result)
     }
 
+    #[must_use]
     pub fn has_alpha(self) -> bool {
         let format = unsafe { self.inner.as_ref() };
         format.Amask != 0
     }
 
+    #[must_use]
     pub fn bits_per_pixel(self) -> BitsPerPixel {
         let bpp = unsafe { self.inner.as_ref().BitsPerPixel };
         match bpp {
@@ -173,6 +180,7 @@ impl<'a, 'b: 'a, 'sdl, const FREEABLE: bool> Pixels<'a, 'b, 'sdl, FREEABLE> {
         }
     }
 
+    #[must_use]
     pub fn get(&self, x: u16, y: u16) -> Option<PixelRef<'_, 'a, 'b, 'sdl, FREEABLE>> {
         if x >= self.width || y >= self.height {
             return None;
@@ -268,12 +276,14 @@ pub struct PixelMut<'a, 'b, 'c, 'sdl, const FREEABLE: bool> {
 macro_rules! impl_pixel_ref {
     ($ty:ident) => {
         impl<const FREEABLE: bool> $ty<'_, '_, '_, '_, FREEABLE> {
+            #[must_use]
             pub fn get(&self) -> u32 {
                 raw_get_pixel(self.pixels.raw_slice(), self.pos, || {
                     self.pixels.surface.raw().format()
                 })
             }
 
+            #[must_use]
             pub fn rgba(&self) -> [u8; 4] {
                 let pixel = self.get();
                 let format = self.pixels.surface.raw().format();
