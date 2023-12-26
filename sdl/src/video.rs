@@ -13,6 +13,7 @@ use sdl_sys::{
     SDL_GetVideoInfo, SDL_SetGamma, SDL_SetVideoMode, SDL_VideoDriverName, SDL_VideoInfo,
     SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_ANYFORMAT, SDL_ASYNCBLIT, SDL_DOUBLEBUF, SDL_FULLSCREEN,
     SDL_HWPALETTE, SDL_HWSURFACE, SDL_NOFRAME, SDL_OPENGL, SDL_OPENGLBLIT, SDL_RESIZABLE,
+    SDL_SWSURFACE,
 };
 
 use crate::{convert, pixel, FrameBuffer, Surface};
@@ -120,7 +121,7 @@ impl WindowManager<'_> {
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct VideoModeFlags: u32 {
-        const SOFTWARE_SURFACE = SDL_HWSURFACE as u32;
+        const SOFTWARE_SURFACE = SDL_SWSURFACE as u32;
         const HARDWARE_SURFACE = SDL_HWSURFACE as u32;
         const ASYNC_BLIT = SDL_ASYNCBLIT as u32;
         const ANY_FORMAT = SDL_ANYFORMAT as u32;
