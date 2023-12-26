@@ -359,10 +359,10 @@ impl<const FREEABLE: bool> Drop for Generic<'_, FREEABLE> {
     }
 }
 
-/// A [`GenericSurface`] that must be freed on drop.
+/// A [`Generic`] that must be freed on drop.
 pub type Surface<'sdl> = Generic<'sdl, true>;
 
-/// A [`GenericSurface`] that must not be freed on drop.
+/// A [`Generic`] that must not be freed on drop.
 #[derive(Debug)]
 pub struct FrameBuffer<'sdl> {
     inner: Generic<'sdl, false>,

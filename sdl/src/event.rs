@@ -699,8 +699,7 @@ pub struct Resize {
 /// A user-defined event type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct User {
-    /// Event type. Can be any value between [`EventType::UserEvent1`] and
-    /// `[EventType::UserEvent8]`
+    /// Event type. Can be any value between [`Type::UserEvent1`] and `[Type::UserEvent8]`
     pub ty: u8,
     /// User defined event code
     pub code: c_int,
