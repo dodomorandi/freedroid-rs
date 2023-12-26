@@ -381,7 +381,7 @@ impl crate::Data<'_> {
     }
 
     pub fn toggle_fullscreen(&mut self) {
-        let ne_screen = self.graphics.ne_screen.as_mut().unwrap();
+        let ne_screen = self.graphics.ne_screen.take().unwrap();
         let mut vid_flags = VideoModeFlags::from_bits(ne_screen.flags()).unwrap();
 
         vid_flags.set(
@@ -389,6 +389,7 @@ impl crate::Data<'_> {
             self.global.game_config.use_fullscreen == 0,
         );
 
+        drop(ne_screen);
         let Some(new_ne_screen) = self.sdl.video.set_video_mode(
             self.vars.screen_rect.width().into(),
             self.vars.screen_rect.height().into(),
@@ -402,13 +403,14 @@ impl crate::Data<'_> {
             );
             panic!("SDL-Error: {}", self.sdl.get_error().to_string_lossy());
         };
-        *ne_screen = new_ne_screen;
 
-        if ne_screen.flags() == vid_flags.bits() {
+        if new_ne_screen.flags() == vid_flags.bits() {
             self.global.game_config.use_fullscreen = !self.global.game_config.use_fullscreen;
         } else {
             warn!("Failed to toggle windowed/fullscreen mode!");
         }
+
+        self.graphics.ne_screen = Some(new_ne_screen);
     }
 
     /// This function saves a screenshot to disk.
