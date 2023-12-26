@@ -27,6 +27,16 @@ pub const fn i32_to_u8(value: i32) -> u8 {
 }
 
 #[must_use]
+pub const fn i32_to_u32(value: i32) -> u32 {
+    assert!(value >= 0, "i32 less than 0");
+
+    // Checked above
+    #[allow(clippy::cast_sign_loss)]
+    let value = value as u32;
+    value
+}
+
+#[must_use]
 #[allow(clippy::cast_possible_truncation)]
 pub const fn u32_to_isize(value: u32) -> isize {
     if mem::size_of::<isize>() <= 4 {

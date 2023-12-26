@@ -121,17 +121,17 @@ impl WindowManager<'_> {
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct VideoModeFlags: u32 {
-        const SOFTWARE_SURFACE = SDL_SWSURFACE as u32;
-        const HARDWARE_SURFACE = SDL_HWSURFACE as u32;
-        const ASYNC_BLIT = SDL_ASYNCBLIT as u32;
-        const ANY_FORMAT = SDL_ANYFORMAT as u32;
-        const HARDWARE_PALETTE = SDL_HWPALETTE as u32;
-        const DOUBLE_BUFFER = SDL_DOUBLEBUF as u32;
+        const SOFTWARE_SURFACE = convert::i32_to_u32(SDL_SWSURFACE);
+        const HARDWARE_SURFACE = convert::i32_to_u32(SDL_HWSURFACE);
+        const ASYNC_BLIT = convert::i32_to_u32(SDL_ASYNCBLIT);
+        const ANY_FORMAT = convert::i32_to_u32(SDL_ANYFORMAT);
+        const HARDWARE_PALETTE = convert::i32_to_u32(SDL_HWPALETTE);
+        const DOUBLE_BUFFER = convert::i32_to_u32(SDL_DOUBLEBUF);
         const FULLSCREEN = convert::i64_to_u32(SDL_FULLSCREEN);
-        const OPENGL = SDL_OPENGL as u32;
-        const OPENGL_BLIT = SDL_OPENGLBLIT as u32;
-        const RESIZABLE = SDL_RESIZABLE as u32;
-        const NO_FRAME = SDL_NOFRAME as u32;
+        const OPENGL = convert::i32_to_u32(SDL_OPENGL);
+        const OPENGL_BLIT = convert::i32_to_u32(SDL_OPENGLBLIT);
+        const RESIZABLE = convert::i32_to_u32(SDL_RESIZABLE);
+        const NO_FRAME = convert::i32_to_u32(SDL_NOFRAME);
     }
 }
 
