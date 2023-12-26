@@ -158,7 +158,7 @@ pub enum Event {
     Exposure,
     Quit,
     User(User),
-    SymWindowManager(SysWindowManager),
+    SysWindowManager(SysWindowManager),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -243,7 +243,7 @@ impl Event {
                 },
             },
             &Event::User(user) => user.into(),
-            Event::SymWindowManager(sys_window_manager) => sys_window_manager.into(),
+            Event::SysWindowManager(sys_window_manager) => sys_window_manager.into(),
         }
     }
 
@@ -395,7 +395,7 @@ impl Event {
     unsafe fn from_sys_wm_event(event: &SDL_Event) -> Self {
         let cur = unsafe { &event.syswm };
 
-        Event::SymWindowManager(SysWindowManager {
+        Event::SysWindowManager(SysWindowManager {
             msg: NonNull::new(cur.msg).map(|ptr| {
                 system_window_manager::Message::try_from(unsafe { ptr.as_ref() }).unwrap()
             }),
