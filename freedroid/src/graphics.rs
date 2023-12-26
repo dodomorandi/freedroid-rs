@@ -23,9 +23,9 @@ use cstr::cstr;
 use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
 use sdl::{
+    cursor,
     rwops::{self, RwOps},
-    ColorKeyFlag, Cursor, CursorData, FrameBuffer, Pixel, Rect, Rgba, RwOpsOwned, Surface,
-    VideoModeFlags,
+    ColorKeyFlag, Cursor, FrameBuffer, Pixel, Rect, Rgba, RwOpsOwned, Surface, VideoModeFlags,
 };
 use std::{
     borrow::Cow,
@@ -282,7 +282,7 @@ pub fn scale_pic(pic: &mut Surface, scale: c_float) {
         .unwrap_or_else(|| panic!("surface.zoom() failed for scale = {scale}."));
 }
 
-static CROSSHAIR_CURSOR: Lazy<CursorData<32>> = Lazy::new(|| {
+static CROSSHAIR_CURSOR: Lazy<cursor::Data<32>> = Lazy::new(|| {
     const XPM: [[u8; 32]; 32] = [
         *b"                                ",
         *b"                                ",
@@ -318,10 +318,10 @@ static CROSSHAIR_CURSOR: Lazy<CursorData<32>> = Lazy::new(|| {
         *b"                                ",
     ];
 
-    CursorData::from_draw(&XPM)
+    cursor::Data::from_draw(&XPM)
 });
 
-static ARROW_CURSOR: Lazy<CursorData<32>> = Lazy::new(|| {
+static ARROW_CURSOR: Lazy<cursor::Data<32>> = Lazy::new(|| {
     const XPM: [[u8; 32]; 32] = [
         *b"X                               ",
         *b"XX                              ",
@@ -357,7 +357,7 @@ static ARROW_CURSOR: Lazy<CursorData<32>> = Lazy::new(|| {
         *b"                                ",
     ];
 
-    CursorData::from_draw(&XPM)
+    cursor::Data::from_draw(&XPM)
 });
 
 impl crate::Data<'_> {

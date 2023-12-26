@@ -7,15 +7,15 @@ use std::{
 
 use sdl_sys::{SDL_MapRGB, SDL_MapRGBA, SDL_PixelFormat};
 
-use crate::UsableSurface;
+use crate::surface;
 
 #[derive(Debug, Clone, Copy)]
-pub struct PixelFormatRef<'a> {
+pub struct FormatRef<'a> {
     inner: NonNull<SDL_PixelFormat>,
     _marker: PhantomData<&'a SDL_PixelFormat>,
 }
 
-impl PixelFormatRef<'_> {
+impl FormatRef<'_> {
     /// # Safety
     /// No mutable borrows must be alive.
     #[must_use]
@@ -98,6 +98,7 @@ impl From<u32> for Pixel {
     }
 }
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BytesPerPixel {
     One,
@@ -130,6 +131,7 @@ impl Display for BytesPerPixel {
     }
 }
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BitsPerPixel {
     Eight,
@@ -153,13 +155,13 @@ impl From<BitsPerPixel> for u8 {
 
 #[derive(Debug)]
 pub struct Pixels<'a, 'b, 'sdl, const FREEABLE: bool> {
-    surface: &'a mut UsableSurface<'b, 'sdl, FREEABLE>,
+    surface: &'a mut surface::Usable<'b, 'sdl, FREEABLE>,
     width: u16,
     height: u16,
 }
 
 impl<'a, 'b: 'a, 'sdl, const FREEABLE: bool> Pixels<'a, 'b, 'sdl, FREEABLE> {
-    pub fn new(surface: &'a mut UsableSurface<'b, 'sdl, FREEABLE>) -> Self {
+    pub fn new(surface: &'a mut surface::Usable<'b, 'sdl, FREEABLE>) -> Self {
         let raw_surface = surface.raw();
         let width: u16 = raw_surface
             .width()
@@ -181,26 +183,26 @@ impl<'a, 'b: 'a, 'sdl, const FREEABLE: bool> Pixels<'a, 'b, 'sdl, FREEABLE> {
     }
 
     #[must_use]
-    pub fn get(&self, x: u16, y: u16) -> Option<PixelRef<'_, 'a, 'b, 'sdl, FREEABLE>> {
+    pub fn get(&self, x: u16, y: u16) -> Option<Ref<'_, 'a, 'b, 'sdl, FREEABLE>> {
         if x >= self.width || y >= self.height {
             return None;
         }
 
         let pos = pixel_offset(x, y, self.width);
-        Some(PixelRef { pixels: self, pos })
+        Some(Ref { pixels: self, pos })
     }
 
-    pub fn get_mut(&mut self, x: u16, y: u16) -> Option<PixelMut<'_, 'a, 'b, 'sdl, FREEABLE>> {
+    pub fn get_mut(&mut self, x: u16, y: u16) -> Option<RefMut<'_, 'a, 'b, 'sdl, FREEABLE>> {
         if x >= self.width || y >= self.height {
             return None;
         }
 
         let pos = pixel_offset(x, y, self.width);
-        Some(PixelMut { pixels: self, pos })
+        Some(RefMut { pixels: self, pos })
     }
 
-    pub fn set(&mut self, x: u16, y: u16, pixel: Pixel) -> Result<(), InvalidPixel> {
-        self.get_mut(x, y).ok_or(InvalidPixel)?.set(pixel);
+    pub fn set(&mut self, x: u16, y: u16, pixel: Pixel) -> Result<(), InvalidError> {
+        self.get_mut(x, y).ok_or(InvalidError)?.set(pixel);
         Ok(())
     }
 }
@@ -262,13 +264,13 @@ enum PixelsSliceMutPerBpp<'a> {
 }
 
 #[derive(Debug, Clone)]
-pub struct PixelRef<'a, 'b, 'c, 'sdl, const FREEABLE: bool> {
+pub struct Ref<'a, 'b, 'c, 'sdl, const FREEABLE: bool> {
     pixels: &'a Pixels<'b, 'c, 'sdl, FREEABLE>,
     pos: usize,
 }
 
 #[derive(Debug)]
-pub struct PixelMut<'a, 'b, 'c, 'sdl, const FREEABLE: bool> {
+pub struct RefMut<'a, 'b, 'c, 'sdl, const FREEABLE: bool> {
     pixels: &'a mut Pixels<'b, 'c, 'sdl, FREEABLE>,
     pos: usize,
 }
@@ -305,10 +307,10 @@ macro_rules! impl_pixel_ref {
     };
 }
 
-impl_pixel_ref!(PixelRef);
-impl_pixel_ref!(PixelMut);
+impl_pixel_ref!(Ref);
+impl_pixel_ref!(RefMut);
 
-impl<const FREEABLE: bool> PixelMut<'_, '_, '_, '_, FREEABLE> {
+impl<const FREEABLE: bool> RefMut<'_, '_, '_, '_, FREEABLE> {
     pub fn set(&mut self, value: Pixel) {
         raw_set_pixel(self.pixels.raw_slice_mut(), self.pos, value);
     }
@@ -362,9 +364,9 @@ fn pixel_offset(x: u16, y: u16, width: u16) -> usize {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct InvalidPixel;
+pub struct InvalidError;
 
-impl fmt::Display for InvalidPixel {
+impl fmt::Display for InvalidError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("Invalid pixel coordinate.")
     }

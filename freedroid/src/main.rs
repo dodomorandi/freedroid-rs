@@ -131,7 +131,7 @@ impl Default for Main<'_> {
     }
 }
 
-type Sdl = sdl::Sdl<sdl::Video, sdl::Timer, OnceCell<sdl::JoystickSystem>, OnceCell<sdl::Mixer>>;
+type Sdl = sdl::Sdl<sdl::Video, sdl::Timer, OnceCell<sdl::joystick::System>, OnceCell<sdl::Mixer>>;
 
 pub struct FontCellMarker;
 type FontCell<'sdl> = TCell<FontCellMarker, b_font::Info<'sdl>>;

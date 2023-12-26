@@ -30,8 +30,8 @@ impl Rect {
 
     #[inline]
     #[must_use]
-    pub fn as_rect_ref(&self) -> RectRef {
-        RectRef(&self.0)
+    pub fn as_rect_ref(&self) -> Ref {
+        Ref(&self.0)
     }
 
     #[inline]
@@ -143,37 +143,37 @@ impl AsMut<SDL_Rect> for Rect {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct RectRef<'a>(&'a SDL_Rect);
+pub struct Ref<'a>(&'a SDL_Rect);
 
-impl RectRef<'_> {
+impl Ref<'_> {
     #[must_use]
     pub fn as_ptr(&self) -> *const SDL_Rect {
         self.0
     }
 }
 
-impl<'a> From<&'a SDL_Rect> for RectRef<'a> {
+impl<'a> From<&'a SDL_Rect> for Ref<'a> {
     fn from(rect: &'a SDL_Rect) -> Self {
         Self(rect)
     }
 }
 
-impl<'a> From<&'a Rect> for RectRef<'a> {
+impl<'a> From<&'a Rect> for Ref<'a> {
     fn from(rect: &'a Rect) -> Self {
-        RectRef(&rect.0)
+        Ref(&rect.0)
     }
 }
 
-impl<'a> AsRef<SDL_Rect> for RectRef<'a> {
+impl<'a> AsRef<SDL_Rect> for Ref<'a> {
     fn as_ref(&self) -> &'a SDL_Rect {
         self.0
     }
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct RectMut<'a>(&'a mut SDL_Rect);
+pub struct RefMut<'a>(&'a mut SDL_Rect);
 
-impl RectMut<'_> {
+impl RefMut<'_> {
     #[must_use]
     pub fn as_ptr(&self) -> *const SDL_Rect {
         self.0
@@ -184,14 +184,14 @@ impl RectMut<'_> {
     }
 }
 
-impl<'a> From<&'a mut SDL_Rect> for RectMut<'a> {
+impl<'a> From<&'a mut SDL_Rect> for RefMut<'a> {
     fn from(rect: &'a mut SDL_Rect) -> Self {
         Self(rect)
     }
 }
 
-impl<'a> From<&'a mut Rect> for RectMut<'a> {
+impl<'a> From<&'a mut Rect> for RefMut<'a> {
     fn from(rect: &'a mut Rect) -> Self {
-        RectMut(&mut rect.0)
+        RefMut(&mut rect.0)
     }
 }

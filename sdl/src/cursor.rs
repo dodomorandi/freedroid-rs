@@ -5,7 +5,7 @@ use sdl_sys::{
     SDL_ENABLE,
 };
 
-pub struct CursorHelper<'sdl>(PhantomData<&'sdl *const ()>);
+pub struct Unassociated<'sdl>(PhantomData<&'sdl *const ()>);
 
 #[derive(Debug)]
 pub struct Cursor<'sdl, 'data> {
@@ -23,13 +23,13 @@ impl Cursor<'_, '_> {
 const WIDTH: usize = 32 / 8;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CursorData<const HEIGHT: usize> {
+pub struct Data<const HEIGHT: usize> {
     data: [[u8; WIDTH]; HEIGHT],
     mask: [[u8; WIDTH]; HEIGHT],
     upper_left_corner: [c_int; 2],
 }
 
-impl<const HEIGHT: usize> CursorData<HEIGHT> {
+impl<const HEIGHT: usize> Data<HEIGHT> {
     #[must_use]
     pub fn from_draw(draw: &[[u8; WIDTH * 8]; HEIGHT]) -> Self {
         let mut data = [[0; WIDTH]; HEIGHT];
@@ -80,14 +80,14 @@ pub enum CreationError {
     Sdl,
 }
 
-impl<'sdl> CursorHelper<'sdl> {
+impl<'sdl> Unassociated<'sdl> {
     pub(crate) fn new() -> Self {
         Self(PhantomData)
     }
 
     pub fn from_data<'data, const HEIGHT: usize>(
         &self,
-        data: &'data CursorData<HEIGHT>,
+        data: &'data Data<HEIGHT>,
     ) -> Result<Cursor<'sdl, 'data>, CreationError> {
         let height = HEIGHT
             .try_into()

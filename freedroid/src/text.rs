@@ -21,7 +21,7 @@ use log::{error, info, trace};
 use sdl::{
     convert::i32_to_u8,
     event::{JoyButtonEventType, KeyboardEventType, MouseButtonEventType},
-    Event, Rect, RectRef, Rgba, Surface,
+    rect, Event, Rect, Rgba, Surface,
 };
 #[cfg(not(feature = "arcade-input"))]
 use sdl_sys::SDLKey_SDLK_DELETE;
@@ -337,7 +337,7 @@ impl crate::Data<'_> {
     #[inline]
     pub fn printf_sdl<const F: bool>(
         &mut self,
-        screen: &mut sdl::GenericSurface<F>,
+        screen: &mut sdl::surface::Generic<F>,
         x: c_int,
         y: c_int,
         format_args: fmt::Arguments,
@@ -357,7 +357,7 @@ impl crate::Data<'_> {
         text: &mut Text,
         b_font: &BFont,
         font_owner: &mut FontCellOwner,
-        screen: &mut sdl::GenericSurface<F>,
+        screen: &mut sdl::surface::Generic<F>,
         mut x: c_int,
         mut y: c_int,
         format_args: fmt::Arguments,
@@ -467,7 +467,7 @@ impl crate::Data<'_> {
                     .ne_screen
                     .as_mut()
                     .unwrap()
-                    .set_clip_rect(RectRef::from(&clip));
+                    .set_clip_rect(rect::Ref::from(&clip));
 
                 clip
             }

@@ -8,7 +8,7 @@ use sdl_sys::{
 type ActiveJoysticks = Rc<RefCell<Vec<c_int>>>;
 
 #[derive(Debug, Default)]
-pub struct JoystickSystem {
+pub struct System {
     active_joysticks: ActiveJoysticks,
 }
 
@@ -18,7 +18,7 @@ pub struct Joystick {
     index: c_int,
 }
 
-impl JoystickSystem {
+impl System {
     #[must_use]
     pub fn num_joysticks(&self) -> Option<u32> {
         let num = unsafe { SDL_NumJoysticks() };

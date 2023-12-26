@@ -1,4 +1,4 @@
-mod lock;
+pub mod lock;
 
 use std::{
     cell::Cell,
@@ -20,20 +20,21 @@ use sdl_sys::{
 
 use crate::{
     get_error,
-    pixel::{Pixel, PixelFormatRef, Pixels},
+    pixel::{self, Pixel, Pixels},
+    rect,
     rwops::RwOpsCapability,
-    Rect, RectMut, RectRef,
+    Rect,
 };
 
-pub use self::lock::{ResultMaybeLockedSurface, SurfaceLockError, SurfaceLockGuard};
+use self::lock::ResultMaybeLocked;
 
 #[derive(Debug)]
-pub struct GenericSurface<'sdl, const FREEABLE: bool> {
+pub struct Generic<'sdl, const FREEABLE: bool> {
     pointer: NonNull<SDL_Surface>,
     _marker: PhantomData<&'sdl *const ()>,
 }
 
-impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
+impl<'sdl, const FREEABLE: bool> Generic<'sdl, FREEABLE> {
     /// # Safety
     /// * A [`Sdl`] instance must be alive.
     /// * `pointer` must point to a valid [`SDL_Surface`].
@@ -58,21 +59,21 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
                 != 0
     }
 
-    pub fn lock(&mut self) -> ResultMaybeLockedSurface<'_, 'sdl, FREEABLE> {
+    pub fn lock(&mut self) -> ResultMaybeLocked<'_, 'sdl, FREEABLE> {
         if self.must_lock() {
-            ResultMaybeLockedSurface::Locked(SurfaceLockGuard::new(self))
+            ResultMaybeLocked::Locked(lock::Guard::new(self))
         } else {
-            ResultMaybeLockedSurface::Unlocked(UsableSurface(self))
+            ResultMaybeLocked::Unlocked(Usable(self))
         }
     }
 
     #[must_use]
-    pub fn format(&self) -> PixelFormatRef {
+    pub fn format(&self) -> pixel::FormatRef {
         // SAFETY: format becomes null once SDL_FreeSurface is called, which is performed only on
         // drop.
         unsafe {
             let pointer = NonNull::new_unchecked(self.pointer.as_ref().format);
-            PixelFormatRef::from_raw(pointer)
+            pixel::FormatRef::from_raw(pointer)
         }
     }
 
@@ -113,16 +114,16 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
         self.pointer.as_ptr()
     }
 
-    pub fn blit<const TO_FREEABLE: bool>(&mut self, to_surface: &mut GenericSurface<TO_FREEABLE>) {
+    pub fn blit<const TO_FREEABLE: bool>(&mut self, to_surface: &mut Generic<TO_FREEABLE>) {
         self.blit_inner(None::<&Rect>, to_surface, None::<&mut Rect>);
     }
 
     pub fn blit_to<'to, ToRect, const TO_FREEABLE: bool>(
         &mut self,
-        to_surface: &mut GenericSurface<TO_FREEABLE>,
+        to_surface: &mut Generic<TO_FREEABLE>,
         to: ToRect,
     ) where
-        ToRect: Into<RectMut<'to>>,
+        ToRect: Into<rect::RefMut<'to>>,
     {
         self.blit_inner(None::<&Rect>, to_surface, Some(to));
     }
@@ -130,9 +131,9 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
     pub fn blit_from<'from, FromRect, const TO_FREEABLE: bool>(
         &mut self,
         from: FromRect,
-        to_surface: &mut GenericSurface<TO_FREEABLE>,
+        to_surface: &mut Generic<TO_FREEABLE>,
     ) where
-        FromRect: Into<RectRef<'from>>,
+        FromRect: Into<rect::Ref<'from>>,
     {
         self.blit_inner(Some(from), to_surface, None::<&mut Rect>);
     }
@@ -140,11 +141,11 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
     pub fn blit_from_to<'from, 'to, FromRect, ToRect, const TO_FREEABLE: bool>(
         &mut self,
         from: FromRect,
-        to_surface: &mut GenericSurface<TO_FREEABLE>,
+        to_surface: &mut Generic<TO_FREEABLE>,
         to: ToRect,
     ) where
-        FromRect: Into<RectRef<'from>>,
-        ToRect: Into<RectMut<'to>>,
+        FromRect: Into<rect::Ref<'from>>,
+        ToRect: Into<rect::RefMut<'to>>,
     {
         self.blit_inner(Some(from), to_surface, Some(to));
     }
@@ -152,11 +153,11 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
     fn blit_inner<'from, 'to, FromRect, ToRect, const TO_FREEABLE: bool>(
         &mut self,
         from: Option<FromRect>,
-        to_surface: &mut GenericSurface<TO_FREEABLE>,
+        to_surface: &mut Generic<TO_FREEABLE>,
         to: Option<ToRect>,
     ) where
-        FromRect: Into<RectRef<'from>>,
-        ToRect: Into<RectMut<'to>>,
+        FromRect: Into<rect::Ref<'from>>,
+        ToRect: Into<rect::RefMut<'to>>,
     {
         // Possible errors coming from SDL_UpperBlit:
         // - src or dest null pointers -- cannot happen
@@ -196,14 +197,14 @@ impl<'sdl, const FREEABLE: bool> GenericSurface<'sdl, FREEABLE> {
 
     pub fn set_clip_rect<'a, R>(&mut self, rect: R) -> bool
     where
-        R: Into<RectRef<'a>>,
+        R: Into<rect::Ref<'a>>,
     {
         self.set_clip_rect_inner(Some(rect))
     }
 
     fn set_clip_rect_inner<'a, R>(&mut self, rect: Option<R>) -> bool
     where
-        R: Into<RectRef<'a>>,
+        R: Into<rect::Ref<'a>>,
     {
         let rect = rect.map_or(ptr::null(), |rect| rect.into().as_ptr());
         let result = unsafe { SDL_SetClipRect(self.pointer.as_ptr(), rect) };
@@ -325,7 +326,7 @@ bitflags! {
     }
 }
 
-impl GenericSurface<'_, true> {
+impl Generic<'_, true> {
     #[must_use]
     pub fn create_rgb(width: u32, height: u32, depth: u8, mask: Rgba<u32>) -> Option<Self> {
         let width = width.try_into().expect("width greater than c_int::MAX");
@@ -343,14 +344,14 @@ impl GenericSurface<'_, true> {
     }
 }
 
-impl GenericSurface<'_, false> {
+impl Generic<'_, false> {
     #[must_use]
     pub fn flip(&mut self) -> bool {
         unsafe { SDL_Flip(self.pointer.as_ptr()) == 0 }
     }
 }
 
-impl<const FREEABLE: bool> Drop for GenericSurface<'_, FREEABLE> {
+impl<const FREEABLE: bool> Drop for Generic<'_, FREEABLE> {
     fn drop(&mut self) {
         if FREEABLE {
             unsafe { SDL_FreeSurface(self.pointer.as_ptr()) }
@@ -359,12 +360,12 @@ impl<const FREEABLE: bool> Drop for GenericSurface<'_, FREEABLE> {
 }
 
 /// A [`GenericSurface`] that must be freed on drop.
-pub type Surface<'sdl> = GenericSurface<'sdl, true>;
+pub type Surface<'sdl> = Generic<'sdl, true>;
 
 /// A [`GenericSurface`] that must not be freed on drop.
 #[derive(Debug)]
 pub struct FrameBuffer<'sdl> {
-    inner: GenericSurface<'sdl, false>,
+    inner: Generic<'sdl, false>,
     refcount: &'sdl Cell<u8>,
 }
 
@@ -385,7 +386,7 @@ impl<'sdl> FrameBuffer<'sdl> {
         refcount: &'sdl Cell<u8>,
     ) -> Self {
         // Safety: the invariants of the function include the invariants of this call.
-        let inner = unsafe { GenericSurface::from_ptr(pointer) };
+        let inner = unsafe { Generic::from_ptr(pointer) };
         Self { inner, refcount }
     }
 }
@@ -398,7 +399,7 @@ impl Drop for FrameBuffer<'_> {
 }
 
 impl<'sdl> Deref for FrameBuffer<'sdl> {
-    type Target = GenericSurface<'sdl, false>;
+    type Target = Generic<'sdl, false>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -413,26 +414,26 @@ impl DerefMut for FrameBuffer<'_> {
     }
 }
 
-impl<'sdl> AsRef<GenericSurface<'sdl, false>> for FrameBuffer<'sdl> {
+impl<'sdl> AsRef<Generic<'sdl, false>> for FrameBuffer<'sdl> {
     #[inline]
-    fn as_ref(&self) -> &GenericSurface<'sdl, false> {
+    fn as_ref(&self) -> &Generic<'sdl, false> {
         &self.inner
     }
 }
 
-impl<'sdl> AsMut<GenericSurface<'sdl, false>> for FrameBuffer<'sdl> {
+impl<'sdl> AsMut<Generic<'sdl, false>> for FrameBuffer<'sdl> {
     #[inline]
-    fn as_mut(&mut self) -> &mut GenericSurface<'sdl, false> {
+    fn as_mut(&mut self) -> &mut Generic<'sdl, false> {
         &mut self.inner
     }
 }
 
 #[derive(Debug)]
-pub struct UsableSurface<'a, 'sdl, const FREEABLE: bool>(&'a mut GenericSurface<'sdl, FREEABLE>);
+pub struct Usable<'a, 'sdl, const FREEABLE: bool>(&'a mut Generic<'sdl, FREEABLE>);
 
-impl<'a, 'sdl, const FREEABLE: bool> UsableSurface<'a, 'sdl, FREEABLE> {
+impl<'a, 'sdl, const FREEABLE: bool> Usable<'a, 'sdl, FREEABLE> {
     #[must_use]
-    pub fn format(&self) -> PixelFormatRef {
+    pub fn format(&self) -> pixel::FormatRef {
         self.0.format()
     }
 
@@ -467,7 +468,7 @@ impl<'a, 'sdl, const FREEABLE: bool> UsableSurface<'a, 'sdl, FREEABLE> {
 }
 
 #[derive(Debug)]
-pub struct UsableSurfaceRaw<'a, 'sdl, const FREEABLE: bool>(&'a GenericSurface<'sdl, FREEABLE>);
+pub struct UsableSurfaceRaw<'a, 'sdl, const FREEABLE: bool>(&'a Generic<'sdl, FREEABLE>);
 
 impl<'a, 'sdl, const FREEABLE: bool> UsableSurfaceRaw<'a, 'sdl, FREEABLE> {
     #[must_use]

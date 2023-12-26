@@ -2,7 +2,6 @@
 #![allow(
     clippy::missing_panics_doc,
     clippy::missing_errors_doc,
-    clippy::module_name_repetitions,
     clippy::too_many_lines,
     clippy::too_many_arguments
 )]
@@ -10,15 +9,15 @@
 pub mod convert;
 pub mod cursor;
 pub mod event;
-mod joystick;
+pub mod joystick;
 pub mod keyboard;
 pub mod mixer;
-mod pixel;
-mod rect;
+pub mod pixel;
+pub mod rect;
 pub mod rwops;
-mod surface;
+pub mod surface;
 pub mod system_window_manager;
-mod video;
+pub mod video;
 
 use std::{
     ffi::{CStr, CString},
@@ -28,20 +27,18 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
-use cursor::CursorHelper;
-pub use cursor::{Cursor, CursorData};
+pub use cursor::Cursor;
 pub use event::Event;
-use event::InvalidRawEvent;
-pub use joystick::{Joystick, JoystickSystem};
+pub use joystick::Joystick;
 pub use mixer::Mixer;
 pub use pixel::Pixel;
-pub use rect::*;
+pub use rect::Rect;
 pub use rwops::RwOpsOwned;
 use sdl_sys::{
     IMG_Load, SDL_GetError, SDL_InitSubSystem, SDL_PushEvent, SDL_Quit, SDL_WaitEvent,
     SDL_WarpMouse, SDL_version, SDL_INIT_AUDIO, SDL_INIT_JOYSTICK,
 };
-pub use surface::*;
+pub use surface::{ColorKeyFlag, FrameBuffer, Rgba, Surface};
 pub use video::{Video, VideoModeFlags};
 
 use once_cell::unsync::OnceCell;
@@ -89,7 +86,9 @@ where
 mod private {
     use sdl_sys::{SDL_VideoQuit, SDL_INIT_AUDIO, SDL_INIT_JOYSTICK, SDL_INIT_TIMER};
 
-    use super::{JoystickSystem, Mixer, OnceCell, Timer, Video};
+    use crate::joystick;
+
+    use super::{Mixer, OnceCell, Timer, Video};
 
     pub trait Quittable {
         fn quit(&mut self) {}
@@ -117,8 +116,8 @@ mod private {
         }
     }
 
-    impl Quittable for JoystickSystem {}
-    impl Quittable for OnceCell<JoystickSystem> {
+    impl Quittable for joystick::System {}
+    impl Quittable for OnceCell<joystick::System> {
         fn quit(&mut self) {
             if self.take().is_some() {
                 unsafe { sdl_sys::SDL_QuitSubSystem(SDL_INIT_JOYSTICK as u32) }
@@ -139,11 +138,11 @@ mod private {
 pub trait Quittable: private::Quittable {}
 impl Quittable for Video {}
 impl Quittable for Timer {}
-impl Quittable for JoystickSystem {}
+impl Quittable for joystick::System {}
 impl Quittable for Mixer {}
 impl Quittable for OnceCell<Video> {}
 impl Quittable for OnceCell<Timer> {}
-impl Quittable for OnceCell<JoystickSystem> {}
+impl Quittable for OnceCell<joystick::System> {}
 impl Quittable for OnceCell<Mixer> {}
 
 impl<V, T, J, M> Sdl<V, T, J, M>
@@ -170,8 +169,8 @@ where
         unsafe { sdl_sys::SDL_GetTicks() }
     }
 
-    pub fn cursor(&self) -> CursorHelper {
-        CursorHelper::new()
+    pub fn cursor(&self) -> cursor::Unassociated {
+        cursor::Unassociated::new()
     }
 
     pub fn next_event(&self) -> Option<Event> {
@@ -215,23 +214,23 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum WaitEventError {
     #[error("unable to convert SDL error to wrapped error: {0}")]
-    InvalidEvent(#[from] InvalidRawEvent),
+    InvalidEvent(#[from] event::InvalidRaw),
     #[error("SDL error")]
     Sdl,
 }
 
-impl<V, T, M> Sdl<V, T, OnceCell<JoystickSystem>, M>
+impl<V, T, M> Sdl<V, T, OnceCell<joystick::System>, M>
 where
     V: Quittable,
     T: Quittable,
     M: Quittable,
 {
-    pub fn init_joystick(&self) -> Option<&JoystickSystem> {
+    pub fn init_joystick(&self) -> Option<&joystick::System> {
         self.joystick
             .get_or_try_init(|| unsafe {
                 let ret = SDL_InitSubSystem(SDL_INIT_JOYSTICK as u32);
                 if ret == 0 {
-                    Ok(JoystickSystem::default())
+                    Ok(joystick::System::default())
                 } else {
                     Err(())
                 }
@@ -272,8 +271,8 @@ pub struct Builder<V, T, J, M> {
 static INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 #[must_use]
-pub fn init() -> Builder<OnceCell<Video>, OnceCell<Timer>, OnceCell<JoystickSystem>, OnceCell<Mixer>>
-{
+pub fn init(
+) -> Builder<OnceCell<Video>, OnceCell<Timer>, OnceCell<joystick::System>, OnceCell<Mixer>> {
     Builder {
         value: 0,
         video: OnceCell::new(),

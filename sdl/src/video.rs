@@ -15,7 +15,7 @@ use sdl_sys::{
     SDL_HWPALETTE, SDL_HWSURFACE, SDL_NOFRAME, SDL_OPENGL, SDL_OPENGLBLIT, SDL_RESIZABLE,
 };
 
-use crate::{convert, pixel::PixelFormatRef, FrameBuffer, Surface};
+use crate::{convert, pixel, FrameBuffer, Surface};
 
 #[derive(Debug)]
 pub struct Video {
@@ -164,13 +164,13 @@ impl<'a> InfoRef<'a> {
 
     #[inline]
     #[must_use]
-    pub fn format(&self) -> PixelFormatRef<'a> {
+    pub fn format(&self) -> pixel::FormatRef<'a> {
         // Safety: the `vfmt` is set to point to an sdl surface by `SDL_SetVideoMode`.
         let vfmt = unsafe { NonNull::new_unchecked(self.inner().vfmt) };
 
         // Safety: there should not be possible to have a mutable reference to this pointed pixel
         // format.
-        unsafe { PixelFormatRef::from_raw(vfmt) }
+        unsafe { pixel::FormatRef::from_raw(vfmt) }
     }
 
     impl_flag!(hw_available, wm_available, blit_hw, blit_sw, blit_fill);

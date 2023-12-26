@@ -43,7 +43,7 @@ pub fn font_height(font: &Info) -> c_int {
 }
 
 pub fn put_string_font<const F: bool>(
-    surface: &mut sdl::GenericSurface<F>,
+    surface: &mut sdl::surface::Generic<F>,
     font: &mut Info,
     mut x: c_int,
     y: c_int,
@@ -56,7 +56,7 @@ pub fn put_string_font<const F: bool>(
 
 /// Put a single char on the surface with the specified font
 fn put_char_font<const F: bool>(
-    surface: &mut sdl::GenericSurface<F>,
+    surface: &mut sdl::surface::Generic<F>,
     font: &mut Info,
     x: c_int,
     y: c_int,
@@ -85,7 +85,7 @@ pub fn char_width(font: &Info, c: u8) -> c_int {
 }
 
 pub fn print_string_font<const F: bool>(
-    surface: &mut sdl::GenericSurface<F>,
+    surface: &mut sdl::surface::Generic<F>,
     font: &mut Info,
     x: c_int,
     y: c_int,
@@ -147,7 +147,7 @@ pub fn init_font(font: &mut Info) {
 }
 
 pub fn centered_put_string_font<const F: bool>(
-    surface: &mut sdl::GenericSurface<F>,
+    surface: &mut sdl::surface::Generic<F>,
     font: &mut Info,
     y: c_int,
     text: &[u8],
@@ -164,7 +164,7 @@ pub fn centered_put_string_font<const F: bool>(
 impl<'sdl> crate::Data<'sdl> {
     pub fn put_string<const F: bool>(
         &mut self,
-        surface: &mut sdl::GenericSurface<F>,
+        surface: &mut sdl::surface::Generic<F>,
         x: c_int,
         y: c_int,
         text: &[u8],
@@ -175,7 +175,7 @@ impl<'sdl> crate::Data<'sdl> {
     pub fn put_string_static<const F: bool>(
         b_font: &BFont,
         font_owner: &mut FontCellOwner,
-        surface: &mut sdl::GenericSurface<F>,
+        surface: &mut sdl::surface::Generic<F>,
         x: c_int,
         y: c_int,
         text: &[u8],
@@ -193,7 +193,7 @@ impl<'sdl> crate::Data<'sdl> {
     pub fn put_char<const F: bool>(
         b_font: &BFont,
         font_owner: &mut FontCellOwner,
-        surface: &mut sdl::GenericSurface<F>,
+        surface: &mut sdl::surface::Generic<F>,
         x: c_int,
         y: c_int,
         c: u8,
@@ -234,7 +234,7 @@ impl<'sdl> crate::Data<'sdl> {
     pub fn centered_print_string<const F: bool>(
         b_font: &BFont,
         font_owner: &mut FontCellOwner,
-        surface: &mut sdl::GenericSurface<F>,
+        surface: &mut sdl::surface::Generic<F>,
         y: c_int,
         format_args: fmt::Arguments,
     ) {
@@ -249,7 +249,7 @@ impl<'sdl> crate::Data<'sdl> {
 
     pub fn print_string<const F: bool>(
         &mut self,
-        surface: &mut sdl::GenericSurface<F>,
+        surface: &mut sdl::surface::Generic<F>,
         x: c_int,
         y: c_int,
         format_args: fmt::Arguments,
@@ -276,7 +276,7 @@ impl<'sdl> crate::Data<'sdl> {
     #[cfg(not(target_os = "android"))]
     pub fn centered_put_string<const F: bool>(
         &mut self,
-        surface: &mut sdl::GenericSurface<F>,
+        surface: &mut sdl::surface::Generic<F>,
         y: c_int,
         text: &[u8],
     ) {
@@ -295,7 +295,7 @@ impl<'sdl> crate::Data<'sdl> {
     pub fn centered_put_string_static<const F: bool>(
         b_font: &BFont,
         font_owner: &mut FontCellOwner,
-        surface: &mut sdl::GenericSurface<F>,
+        surface: &mut sdl::surface::Generic<F>,
         y: c_int,
         text: &[u8],
     ) {
