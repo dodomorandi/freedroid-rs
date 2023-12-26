@@ -146,6 +146,7 @@ macro_rules! impl_flag {
     ),* $(,)?) => {
         $(
             #[inline]
+            #[must_use]
             pub fn $flag(&self) -> bool {
                 self.inner().$flag() != 0
             }
@@ -155,12 +156,14 @@ macro_rules! impl_flag {
 
 impl<'a> InfoRef<'a> {
     #[inline]
+    #[must_use]
     fn inner(&self) -> &'a SDL_VideoInfo {
         // Safety: the pointer is returned by `SDL_GetVideoInfo`.
         unsafe { self.inner.as_ref() }
     }
 
     #[inline]
+    #[must_use]
     pub fn format(&self) -> PixelFormatRef<'a> {
         // Safety: the `vfmt` is set to point to an sdl surface by `SDL_SetVideoMode`.
         let vfmt = unsafe { NonNull::new_unchecked(self.inner().vfmt) };
@@ -173,26 +176,31 @@ impl<'a> InfoRef<'a> {
     impl_flag!(hw_available, wm_available, blit_hw, blit_sw, blit_fill);
 
     #[inline]
+    #[must_use]
     pub fn blit_hw_colorkey(&self) -> bool {
         self.inner().blit_hw_CC() != 0
     }
 
     #[inline]
+    #[must_use]
     pub fn blit_hw_alpha(&self) -> bool {
         self.inner().blit_hw_A() != 0
     }
 
     #[inline]
+    #[must_use]
     pub fn blit_sw_colorkey(&self) -> bool {
         self.inner().blit_sw_CC() != 0
     }
 
     #[inline]
+    #[must_use]
     pub fn blit_sw_alpha(&self) -> bool {
         self.inner().blit_sw_A() != 0
     }
 
     #[inline]
+    #[must_use]
     pub fn video_mem(&self) -> u32 {
         self.inner().video_mem
     }
