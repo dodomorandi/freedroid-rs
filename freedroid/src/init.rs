@@ -17,7 +17,7 @@ use crate::{
     sound::Sound,
     split_at_subslice,
     structs::{BulletSpec, DruidSpec, TextToBeDisplayed},
-    ArrayIndex,
+    text, ArrayIndex,
 };
 
 #[cfg(target_os = "windows")]
@@ -206,20 +206,33 @@ impl crate::Data<'_> {
         rect.inc_x(10);
         rect.dec_width(20); //leave some border
         self.b_font.current_font = self.global.para_b_font.clone();
-        Self::scroll_text_static(
-            &mut self.graphics,
-            &mut self.input,
-            self.sdl,
-            &self.vars,
-            &self.global,
-            &mut self.text,
-            &self.b_font,
-            &mut self.font_owner,
-            &self.quit,
-            self.init.debriefing_text.to_bytes(),
-            &mut rect,
-            6,
-        );
+
+        let Self {
+            sdl,
+            b_font,
+            text,
+            input,
+            global,
+            vars,
+            graphics,
+            quit,
+            font_owner,
+            ..
+        } = self;
+        text::Scroll {
+            graphics,
+            input,
+            sdl,
+            vars,
+            global,
+            data_text: text,
+            b_font,
+            font_owner,
+            quit,
+            text: self.init.debriefing_text.to_bytes(),
+            rect: &mut rect,
+        }
+        .run();
 
         self.wait_for_all_keys_released();
     }
@@ -873,7 +886,7 @@ impl crate::Data<'_> {
             let mut rect = self.vars.full_user_rect;
             rect.inc_x(10);
             rect.dec_width(10); //leave some border
-            if self.scroll_text(&next_subsection_data[..this_text_length], &mut rect, 0) == 1 {
+            if self.scroll_text(&next_subsection_data[..this_text_length], &mut rect) == 1 {
                 break; // User pressed 'fire'
             }
         }

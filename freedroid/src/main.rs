@@ -1,8 +1,7 @@
 #![allow(
     clippy::missing_panics_doc,
     clippy::missing_errors_doc,
-    clippy::too_many_lines,
-    clippy::too_many_arguments
+    clippy::too_many_lines
 )]
 
 mod array_c_string;

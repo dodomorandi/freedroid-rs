@@ -435,88 +435,19 @@ impl crate::Data<'_> {
             font_owner,
             ..
         } = self;
-        Self::display_text_static(
-            data_text, graphics, vars, b_font, font_owner, text, start_x, start_y, clip,
-        )
-    }
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn display_text_static(
-        data_text: &mut Text,
-        graphics: &mut Graphics,
-        vars: &Vars,
-        b_font: &BFont,
-        font_owner: &mut FontCellOwner,
-        mut text: &[u8],
-        start_x: c_int,
-        start_y: c_int,
-        clip: Option<Rect>,
-    ) -> c_int {
-        if start_x != -1 {
-            data_text.my_cursor_x = start_x;
+        Displayer {
+            data_text,
+            graphics,
+            vars,
+            b_font,
+            font_owner,
+            text,
+            start_x,
+            start_y,
+            clip,
         }
-        if start_y != -1 {
-            data_text.my_cursor_y = start_y;
-        }
-
-        // store previous clip-rect
-        let store_clip = graphics.ne_screen.as_ref().unwrap().get_clip_rect();
-        let clip = match clip {
-            Some(clip) => {
-                graphics
-                    .ne_screen
-                    .as_mut()
-                    .unwrap()
-                    .set_clip_rect(rect::Ref::from(&clip));
-
-                clip
-            }
-            None => Rect::new(0, 0, vars.screen_rect.width(), vars.screen_rect.height()),
-        };
-
-        while let Some((&first, rest)) = text.split_first() {
-            if data_text.my_cursor_y >= c_int::from(clip.y()) + c_int::from(clip.height()) {
-                break;
-            }
-
-            #[allow(clippy::cast_possible_truncation)]
-            if first == b'\n' {
-                data_text.my_cursor_x = clip.x().into();
-                data_text.my_cursor_y += (f64::from(font_height(
-                    b_font.current_font.as_ref().unwrap().ro(font_owner),
-                )) * TEXT_STRETCH) as c_int;
-            } else {
-                Self::display_char(graphics, data_text, b_font, font_owner, first as c_uchar);
-            }
-
-            text = rest;
-            #[allow(clippy::cast_possible_truncation)]
-            if Self::is_linebreak_needed(b_font, font_owner, data_text, text, clip) {
-                text = &text[1..];
-                data_text.my_cursor_x = clip.x().into();
-                data_text.my_cursor_y += (f64::from(font_height(
-                    b_font.current_font.as_ref().unwrap().ro(font_owner),
-                )) * TEXT_STRETCH) as c_int;
-            }
-        }
-
-        graphics
-            .ne_screen
-            .as_mut()
-            .unwrap()
-            .set_clip_rect(&store_clip); /* restore previous clip-rect */
-
-        /*
-         * ScrollText() wants to know if we still wrote something inside the
-         * clip-rectangle, of if the Text has been scrolled out
-         */
-        if data_text.my_cursor_y < clip.y().into()
-            || start_y > c_int::from(clip.y()) + c_int::from(clip.height())
-        {
-            i32::from(false)
-        } else {
-            i32::from(true)
-        }
+        .run()
     }
 
     /// This function displays a char. It uses `Menu_BFont` now
@@ -664,12 +595,7 @@ impl crate::Data<'_> {
     /// Scrolls a given text down inside the given rect
     ///
     /// returns 0 if end of text was scolled out, 1 if user pressed fire
-    pub fn scroll_text(
-        &mut self,
-        text: &[u8],
-        rect: &mut Rect,
-        seconds_minimum_duration: c_int,
-    ) -> c_int {
+    pub fn scroll_text(&mut self, text: &[u8], rect: &mut Rect) -> c_int {
         let Self {
             sdl,
             b_font,
@@ -683,7 +609,7 @@ impl crate::Data<'_> {
             ..
         } = self;
 
-        Self::scroll_text_static(
+        Scroll {
             graphics,
             input,
             sdl,
@@ -695,26 +621,42 @@ impl crate::Data<'_> {
             quit,
             text,
             rect,
-            seconds_minimum_duration,
-        )
+        }
+        .run()
     }
+}
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn scroll_text_static(
-        graphics: &mut Graphics,
-        input: &mut Input,
-        sdl: &Sdl,
-        vars: &Vars,
-        global: &Global,
-        data_text: &mut Text,
-        b_font: &BFont,
-        font_owner: &mut FontCellOwner,
-        quit: &Cell<bool>,
-        text: &[u8],
-        rect: &mut Rect,
-        _seconds_minimum_duration: c_int,
-    ) -> c_int {
+pub struct Scroll<'a, 'sdl: 'a> {
+    pub graphics: &'a mut Graphics<'sdl>,
+    pub input: &'a mut Input,
+    pub sdl: &'sdl Sdl,
+    pub vars: &'a Vars<'sdl>,
+    pub global: &'a Global<'sdl>,
+    pub data_text: &'a mut Text,
+    pub b_font: &'a BFont<'sdl>,
+    pub font_owner: &'a mut FontCellOwner,
+    pub quit: &'a Cell<bool>,
+    pub text: &'a [u8],
+    pub rect: &'a mut Rect,
+}
+
+impl Scroll<'_, '_> {
+    pub fn run(self) -> c_int {
         const MAX_SPEED: c_int = 150;
+
+        let Self {
+            graphics,
+            input,
+            sdl,
+            vars,
+            global,
+            data_text,
+            b_font,
+            font_owner,
+            quit,
+            text,
+            rect,
+        } = self;
 
         let mut insert_line: f32 = rect.y().into();
         let mut speed = 30; // in pixel / sec
@@ -727,7 +669,7 @@ impl crate::Data<'_> {
             .display_format()
             .unwrap();
 
-        Self::wait_for_all_keys_released_static(
+        crate::Data::wait_for_all_keys_released_static(
             input,
             sdl,
             #[cfg(not(target_os = "android"))]
@@ -741,18 +683,20 @@ impl crate::Data<'_> {
         loop {
             let mut prev_tick = sdl.ticks_ms();
             background.blit(graphics.ne_screen.as_mut().unwrap());
-            #[allow(clippy::cast_possible_truncation)]
-            if Self::display_text_static(
+            if (Displayer {
                 data_text,
                 graphics,
                 vars,
                 b_font,
                 font_owner,
                 text,
-                rect.x().into(),
-                insert_line as c_int,
-                Some(*rect),
-            ) == 0
+                start_x: rect.x().into(),
+                #[allow(clippy::cast_possible_truncation)]
+                start_y: insert_line as c_int,
+                clip: Some(*rect),
+            }
+            .run())
+                == 0
             {
                 ret_val = 0; /* Text has been scrolled outside Rect */
                 break;
@@ -768,7 +712,7 @@ impl crate::Data<'_> {
                 let now = sdl.ticks_ms();
                 let mut key;
                 loop {
-                    key = Self::any_key_just_pressed_static(
+                    key = crate::Data::any_key_just_pressed_static(
                         sdl,
                         input,
                         vars,
@@ -794,7 +738,7 @@ impl crate::Data<'_> {
                 prev_tick = sdl.ticks_ms();
             }
 
-            if Self::fire_pressed_r_static(sdl, input, vars, quit) {
+            if crate::Data::fire_pressed_r_static(sdl, input, vars, quit) {
                 trace!("outside just_started: Fire registered");
                 ret_val = 1;
                 break;
@@ -804,16 +748,16 @@ impl crate::Data<'_> {
                 return 1;
             }
 
-            if Self::up_pressed_static(sdl, input, vars, quit)
-                || Self::wheel_up_pressed_static(sdl, input, vars, quit)
+            if crate::Data::up_pressed_static(sdl, input, vars, quit)
+                || crate::Data::wheel_up_pressed_static(sdl, input, vars, quit)
             {
                 speed -= 5;
                 if speed < -MAX_SPEED {
                     speed = -MAX_SPEED;
                 }
             }
-            if Self::down_pressed_static(sdl, input, vars, quit)
-                || Self::wheel_down_pressed_static(sdl, input, vars, quit)
+            if crate::Data::down_pressed_static(sdl, input, vars, quit)
+                || crate::Data::wheel_down_pressed_static(sdl, input, vars, quit)
             {
                 speed += 5;
                 if speed > MAX_SPEED {
@@ -839,5 +783,105 @@ impl crate::Data<'_> {
         assert!(graphics.ne_screen.as_mut().unwrap().flip());
 
         ret_val
+    }
+}
+
+pub struct Displayer<'a, 'sdl: 'a> {
+    pub data_text: &'a mut Text,
+    pub graphics: &'a mut Graphics<'sdl>,
+    pub vars: &'a Vars<'sdl>,
+    pub b_font: &'a BFont<'sdl>,
+    pub font_owner: &'a mut FontCellOwner,
+    pub text: &'a [u8],
+    pub start_x: c_int,
+    pub start_y: c_int,
+    pub clip: Option<Rect>,
+}
+
+impl Displayer<'_, '_> {
+    pub fn run(self) -> c_int {
+        let Self {
+            data_text,
+            graphics,
+            vars,
+            b_font,
+            font_owner,
+            mut text,
+            start_x,
+            start_y,
+            clip,
+        } = self;
+
+        if start_x != -1 {
+            data_text.my_cursor_x = start_x;
+        }
+        if start_y != -1 {
+            data_text.my_cursor_y = start_y;
+        }
+
+        // store previous clip-rect
+        let store_clip = graphics.ne_screen.as_ref().unwrap().get_clip_rect();
+        let clip = match clip {
+            Some(clip) => {
+                graphics
+                    .ne_screen
+                    .as_mut()
+                    .unwrap()
+                    .set_clip_rect(rect::Ref::from(&clip));
+
+                clip
+            }
+            None => Rect::new(0, 0, vars.screen_rect.width(), vars.screen_rect.height()),
+        };
+
+        while let Some((&first, rest)) = text.split_first() {
+            if data_text.my_cursor_y >= c_int::from(clip.y()) + c_int::from(clip.height()) {
+                break;
+            }
+
+            #[allow(clippy::cast_possible_truncation)]
+            if first == b'\n' {
+                data_text.my_cursor_x = clip.x().into();
+                data_text.my_cursor_y += (f64::from(font_height(
+                    b_font.current_font.as_ref().unwrap().ro(font_owner),
+                )) * TEXT_STRETCH) as c_int;
+            } else {
+                crate::Data::display_char(
+                    graphics,
+                    data_text,
+                    b_font,
+                    font_owner,
+                    first as c_uchar,
+                );
+            }
+
+            text = rest;
+            #[allow(clippy::cast_possible_truncation)]
+            if crate::Data::is_linebreak_needed(b_font, font_owner, data_text, text, clip) {
+                text = &text[1..];
+                data_text.my_cursor_x = clip.x().into();
+                data_text.my_cursor_y += (f64::from(font_height(
+                    b_font.current_font.as_ref().unwrap().ro(font_owner),
+                )) * TEXT_STRETCH) as c_int;
+            }
+        }
+
+        graphics
+            .ne_screen
+            .as_mut()
+            .unwrap()
+            .set_clip_rect(&store_clip); /* restore previous clip-rect */
+
+        /*
+         * ScrollText() wants to know if we still wrote something inside the
+         * clip-rectangle, of if the Text has been scrolled out
+         */
+        if data_text.my_cursor_y < clip.y().into()
+            || start_y > c_int::from(clip.y()) + c_int::from(clip.height())
+        {
+            i32::from(false)
+        } else {
+            i32::from(true)
+        }
     }
 }

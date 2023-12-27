@@ -10,6 +10,7 @@ use crate::{
     graphics::{apply_filter, Graphics},
     map::get_map_brick,
     structs::{Blast, Finepoint, GrobPoint, TextToBeDisplayed},
+    text,
     vars::Vars,
     Main,
 };
@@ -657,20 +658,31 @@ impl crate::Data<'_> {
                     self.main.cur_level().level_enter_comment.to_bytes()
                 }
             };
-            Self::display_text_static(
-                &mut self.text,
-                &mut self.graphics,
-                &self.vars,
-                &self.b_font,
-                &mut self.font_owner,
-                text_to_display,
-                i32::from(self.vars.user_rect.x())
-                    + i32::from(self.vars.user_rect.width() / 2)
-                    + i32::from(self.vars.block_rect.width() / 3),
-                i32::from(self.vars.user_rect.y()) + i32::from(self.vars.user_rect.height() / 2)
-                    - i32::from(self.vars.block_rect.height() / 2),
-                Some(text_rect),
-            );
+
+            let Self {
+                b_font,
+                text,
+                vars,
+                graphics,
+                font_owner,
+                ..
+            } = self;
+
+            text::Displayer {
+                data_text: text,
+                graphics,
+                vars,
+                b_font,
+                font_owner,
+                text: text_to_display,
+                start_x: i32::from(vars.user_rect.x())
+                    + i32::from(vars.user_rect.width() / 2)
+                    + i32::from(vars.block_rect.width() / 3),
+                start_y: i32::from(vars.user_rect.y()) + i32::from(vars.user_rect.height() / 2)
+                    - i32::from(vars.block_rect.height() / 2),
+                clip: Some(text_rect),
+            }
+            .run();
         }
 
         trace!("PutInfluence: end of function reached.");

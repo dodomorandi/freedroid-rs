@@ -184,90 +184,23 @@ impl<'sdl> Graphics<'sdl> {
         flags: c_int,
         sdl: &'sdl Sdl,
     ) -> Option<Surface<'sdl>> {
-        Self::load_block_vid_bpp_pic(
-            self.vid_bpp,
-            &mut self.pic,
+        let &mut Self {
+            vid_bpp,
+            ref mut pic,
+            ..
+        } = self;
+
+        LoadBlockVidBppPic {
+            vid_bpp,
+            pic,
             fpath,
             line,
             col,
             block,
             flags,
             sdl,
-        )
-    }
-
-    // FIXME: create a better abstraction
-    #[allow(clippy::too_many_arguments)]
-    pub fn load_block_vid_bpp_pic(
-        vid_bpp: i32,
-        pic: &mut Option<Surface<'sdl>>,
-        fpath: Option<&CStr>,
-        line: c_int,
-        col: c_int,
-        block: Option<Rect>,
-        flags: c_int,
-        sdl: &'sdl Sdl,
-    ) -> Option<Surface<'sdl>> {
-        if fpath.is_none() && pic.is_none() {
-            /* we need some info.. */
-            return None;
         }
-
-        if pic.is_some() && flags == i32::from(FREE_ONLY) {
-            *pic = None;
-            return None;
-        }
-
-        if let Some(fpath) = fpath {
-            // initialize: read & malloc new pic, dont' return a copy!!
-            *pic = Some(sdl.load_image_from_c_str_path(fpath).unwrap());
-        }
-
-        if (flags & i32::from(INIT_ONLY)) != 0 {
-            return None; // that's it guys, only initialzing...
-        }
-
-        let pic = pic.as_mut().unwrap();
-        let dim = block.map_or_else(
-            || Rect::new(0, 0, pic.width(), pic.height()),
-            |block| block.with_xy(0, 0),
-        );
-
-        let usealpha = pic.format().has_alpha();
-        if usealpha {
-            // clear per-surf alpha for internal blit */
-            if pic.set_alpha(ColorKeyFlag::empty(), 0).not() {
-                error!("Cannot set alpha channel on surface");
-            }
-        }
-        let mut tmp = Surface::create_rgb(
-            dim.width().into(),
-            dim.height().into(),
-            vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
-            Rgba::default(),
-        )
-        .unwrap();
-        let mut ret = if usealpha {
-            tmp.display_format_alpha().unwrap()
-        } else {
-            tmp.display_format().unwrap()
-        };
-        drop(tmp);
-
-        let src = dim.with_xy(
-            i16::try_from(col).unwrap() * i16::try_from(dim.width() + 2).unwrap(),
-            i16::try_from(line).unwrap() * i16::try_from(dim.height() + 2).unwrap(),
-        );
-        pic.blit_from(&src, &mut ret);
-        if usealpha
-            && ret
-                .set_alpha(ColorKeyFlag::SRC_ALPHA | ColorKeyFlag::RLE_ACCEL, 255)
-                .not()
-        {
-            error!("Cannot set alpha channel on surface");
-        }
-
-        Some(ret)
+        .run()
     }
 }
 
@@ -1200,16 +1133,17 @@ impl crate::Data<'_> {
                     .zip(color_map.iter_mut())
             })
             .for_each(|((color_index, block_index, orig_surface), surface)| {
-                *orig_surface = Graphics::load_block_vid_bpp_pic(
-                    *vid_bpp,
+                *orig_surface = LoadBlockVidBppPic {
+                    vid_bpp: *vid_bpp,
                     pic,
-                    None,
-                    color_index.try_into().unwrap(),
-                    block_index.try_into().unwrap(),
-                    Some(ORIG_BLOCK_RECT),
-                    0,
-                    self.sdl,
-                )
+                    fpath: None,
+                    line: color_index.try_into().unwrap(),
+                    col: block_index.try_into().unwrap(),
+                    block: Some(ORIG_BLOCK_RECT),
+                    flags: 0,
+                    sdl: self.sdl,
+                }
+                .run()
                 .map(|surface| Rc::new(RefCell::new(surface)));
                 *surface = orig_surface.as_ref().map(Rc::clone);
             });
@@ -1241,16 +1175,17 @@ impl crate::Data<'_> {
 
         influencer_surface_pointer.iter_mut().enumerate().for_each(
             |(index, influencer_surface)| {
-                *influencer_surface = Graphics::load_block_vid_bpp_pic(
-                    *vid_bpp,
+                *influencer_surface = LoadBlockVidBppPic {
+                    vid_bpp: *vid_bpp,
                     pic,
-                    None,
-                    0,
-                    index.try_into().unwrap(),
-                    Some(ORIG_BLOCK_RECT),
-                    0,
-                    self.sdl,
-                );
+                    fpath: None,
+                    line: 0,
+                    col: index.try_into().unwrap(),
+                    block: Some(ORIG_BLOCK_RECT),
+                    flags: 0,
+                    sdl: self.sdl,
+                }
+                .run();
 
                 /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
                 if influencer_surface
@@ -1268,16 +1203,17 @@ impl crate::Data<'_> {
             .iter_mut()
             .enumerate()
             .for_each(|(index, enemy_surface)| {
-                *enemy_surface = Graphics::load_block_vid_bpp_pic(
-                    *vid_bpp,
+                *enemy_surface = LoadBlockVidBppPic {
+                    vid_bpp: *vid_bpp,
                     pic,
-                    None,
-                    1,
-                    index.try_into().unwrap(),
-                    Some(ORIG_BLOCK_RECT),
-                    0,
-                    self.sdl,
-                );
+                    fpath: None,
+                    line: 1,
+                    col: index.try_into().unwrap(),
+                    block: Some(ORIG_BLOCK_RECT),
+                    flags: 0,
+                    sdl: self.sdl,
+                }
+                .run();
 
                 /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
                 if enemy_surface
@@ -1388,31 +1324,33 @@ impl crate::Data<'_> {
             .iter_mut()
             .enumerate()
             .for_each(|(index, surface)| {
-                *surface = Graphics::load_block_vid_bpp_pic(
-                    *vid_bpp,
+                *surface = LoadBlockVidBppPic {
+                    vid_bpp: *vid_bpp,
                     pic,
-                    None,
-                    0,
-                    index.try_into().unwrap(),
-                    Some(ORIG_DIGIT_RECT),
-                    0,
-                    self.sdl,
-                );
+                    fpath: None,
+                    line: 0,
+                    col: index.try_into().unwrap(),
+                    block: Some(ORIG_DIGIT_RECT),
+                    flags: 0,
+                    sdl: self.sdl,
+                }
+                .run();
             });
         enemy_digit_surface_pointer
             .iter_mut()
             .enumerate()
             .for_each(|(index, surface)| {
-                *surface = Graphics::load_block_vid_bpp_pic(
-                    *vid_bpp,
+                *surface = LoadBlockVidBppPic {
+                    vid_bpp: *vid_bpp,
                     pic,
-                    None,
-                    0,
-                    (index + 10).try_into().unwrap(),
-                    Some(ORIG_DIGIT_RECT),
-                    0,
-                    self.sdl,
-                );
+                    fpath: None,
+                    line: 0,
+                    col: (index + 10).try_into().unwrap(),
+                    block: Some(ORIG_DIGIT_RECT),
+                    flags: 0,
+                    sdl: self.sdl,
+                }
+                .run();
             });
 
         self.update_progress(50);
@@ -1937,5 +1875,92 @@ impl crate::Data<'_> {
             }
             i += 1.;
         }
+    }
+}
+
+struct LoadBlockVidBppPic<'a, 'sdl: 'a> {
+    pub vid_bpp: i32,
+    pub pic: &'a mut Option<Surface<'sdl>>,
+    pub fpath: Option<&'a CStr>,
+    pub line: c_int,
+    pub col: c_int,
+    pub block: Option<Rect>,
+    pub flags: c_int,
+    pub sdl: &'sdl Sdl,
+}
+
+impl<'sdl> LoadBlockVidBppPic<'_, 'sdl> {
+    pub fn run(self) -> Option<Surface<'sdl>> {
+        let Self {
+            vid_bpp,
+            pic,
+            fpath,
+            line,
+            col,
+            block,
+            flags,
+            sdl,
+        } = self;
+
+        if fpath.is_none() && pic.is_none() {
+            /* we need some info.. */
+            return None;
+        }
+
+        if pic.is_some() && flags == i32::from(FREE_ONLY) {
+            *pic = None;
+            return None;
+        }
+
+        if let Some(fpath) = fpath {
+            // initialize: read & malloc new pic, dont' return a copy!!
+            *pic = Some(sdl.load_image_from_c_str_path(fpath).unwrap());
+        }
+
+        if (flags & i32::from(INIT_ONLY)) != 0 {
+            return None; // that's it guys, only initialzing...
+        }
+
+        let pic = pic.as_mut().unwrap();
+        let dim = block.map_or_else(
+            || Rect::new(0, 0, pic.width(), pic.height()),
+            |block| block.with_xy(0, 0),
+        );
+
+        let usealpha = pic.format().has_alpha();
+        if usealpha {
+            // clear per-surf alpha for internal blit */
+            if pic.set_alpha(ColorKeyFlag::empty(), 0).not() {
+                error!("Cannot set alpha channel on surface");
+            }
+        }
+        let mut tmp = Surface::create_rgb(
+            dim.width().into(),
+            dim.height().into(),
+            vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
+            Rgba::default(),
+        )
+        .unwrap();
+        let mut ret = if usealpha {
+            tmp.display_format_alpha().unwrap()
+        } else {
+            tmp.display_format().unwrap()
+        };
+        drop(tmp);
+
+        let src = dim.with_xy(
+            i16::try_from(col).unwrap() * i16::try_from(dim.width() + 2).unwrap(),
+            i16::try_from(line).unwrap() * i16::try_from(dim.height() + 2).unwrap(),
+        );
+        pic.blit_from(&src, &mut ret);
+        if usealpha
+            && ret
+                .set_alpha(ColorKeyFlag::SRC_ALPHA | ColorKeyFlag::RLE_ACCEL, 255)
+                .not()
+        {
+            error!("Cannot set alpha channel on surface");
+        }
+
+        Some(ret)
     }
 }
