@@ -730,7 +730,7 @@ impl crate::Data<'_> {
         let mut noise_tiles: [Surface; NOISE_TILES as usize] = array_init(|_| {
             let mut tile = tmp.display_format().unwrap();
             let mut lock = tile.lock().unwrap();
-            (0..u16::try_from(rect.x()).unwrap())
+            (0..rect.width())
                 .flat_map(|x| (0..rect.height()).map(move |y| (x, y)))
                 .for_each(|(x, y)| {
                     if rng.gen_range(0i32..100) > signal_strengh {
