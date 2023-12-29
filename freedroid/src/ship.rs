@@ -67,9 +67,9 @@ impl crate::Data<'_> {
         const SIREN_WAIT: f32 = 2.5;
 
         use AlertNames as A;
-        match AlertNames::try_from(self.main.alert_level).ok() {
-            Some(A::Green) => {}
-            Some(A::Yellow | A::Amber | A::Red) => {
+        let cur_alert = match AlertNames::try_from(self.main.alert_level).ok() {
+            Some(A::Green) => A::Green,
+            Some(alert @ (A::Yellow | A::Amber | A::Red)) => {
                 #[allow(
                     clippy::cast_possible_truncation,
                     clippy::cast_sign_loss,
@@ -82,6 +82,8 @@ impl crate::Data<'_> {
                     self.play_sound(SoundType::Alert as c_int);
                     self.ship.last_siren = self.sdl.ticks_ms();
                 }
+
+                alert
             }
             Some(A::Last) | None => {
                 warn!(
@@ -89,8 +91,9 @@ impl crate::Data<'_> {
                     self.main.alert_level,
                     AlertNames::Red as c_int
                 );
+                return;
             }
-        }
+        };
 
         // so much to the sirens, now make sure the alert-tiles are updated correctly:
         let cur_level = cur_level!(mut self.main);
@@ -101,10 +104,8 @@ impl crate::Data<'_> {
             return;
         }
 
-        let cur_alert = AlertNames::try_from(self.main.alert_level).unwrap();
-
         // check if alert-tiles are up-to-date
-        if get_map_brick(cur_level, pos_x.into(), pos_y.into()) == cur_alert as u8 {
+        if get_map_brick(cur_level, pos_x.into(), pos_y.into()) == cur_alert.to_tile() as u8 {
             // ok
             return;
         }

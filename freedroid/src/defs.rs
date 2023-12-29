@@ -437,6 +437,16 @@ impl AlertNames {
     pub fn to_str(self) -> &'static str {
         self.into()
     }
+
+    pub const fn to_tile(self) -> MapTile {
+        match self {
+            AlertNames::Green => MapTile::AlertGreen,
+            AlertNames::Yellow => MapTile::AlertYellow,
+            AlertNames::Amber => MapTile::AlertAmber,
+            AlertNames::Red => MapTile::AlertRed,
+            AlertNames::Last => panic!("invalid alert name"),
+        }
+    }
 }
 
 impl From<AlertNames> for &'static str {
