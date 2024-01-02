@@ -327,108 +327,6 @@ impl fmt::Debug for Input {
 
 impl Default for Input {
     fn default() -> Self {
-        #[cfg(feature = "gcw0")]
-        let key_cmds = [
-            [u32_to_i32(SDLKey_SDLK_UP), PointerStates::JoyUp as c_int, 0], // CMD_UP
-            [
-                u32_to_i32(SDLKey_SDLK_DOWN),
-                PointerStates::JoyDown as c_int,
-                0,
-            ], // CMD_DOWN
-            [
-                u32_to_i32(SDLKey_SDLK_LEFT),
-                PointerStates::JoyLeft as c_int,
-                0,
-            ], // CMD_LEFT
-            [
-                u32_to_i32(SDLKey_SDLK_RIGHT),
-                PointerStates::JoyRight as c_int,
-                0,
-            ], // CMD_RIGHT
-            [
-                u32_to_i32(SDLKey_SDLK_SPACE),
-                u32_to_i32(SDLKey_SDLK_LCTRL),
-                0,
-            ], // CMD_FIRE
-            [
-                u32_to_i32(SDLKey_SDLK_LALT),
-                PointerStates::JoyButton2 as c_int,
-                0,
-            ], // CMD_ACTIVATE
-            [
-                u32_to_i32(SDLKey_SDLK_BACKSPACE),
-                u32_to_i32(SDLKey_SDLK_TAB),
-                0,
-            ], // CMD_TAKEOVER
-            [0, 0, 0],                                                      // CMD_QUIT,
-            [u32_to_i32(SDLKey_SDLK_RETURN), 0, 0],                         // CMD_PAUSE,
-            [0, 0, 0],                                                      // CMD_SCREENSHOT
-            [0, 0, 0],                                                      // CMD_FULLSCREEN,
-            [
-                u32_to_i32(SDLKey_SDLK_ESCAPE),
-                PointerStates::JoyButton4 as c_int,
-                0,
-            ], // CMD_MENU,
-            [
-                u32_to_i32(SDLKey_SDLK_ESCAPE),
-                PointerStates::JoyButton2 as c_int,
-                PointerStates::MouseButton2 as c_int,
-            ], // CMD_BACK
-        ];
-
-        #[cfg(not(feature = "gcw0"))]
-        let key_cmds = [
-            [
-                u32_to_i32(SDLKey_SDLK_UP),
-                PointerStates::JoyUp as c_int,
-                i32::from(b'w'),
-            ], // CMD_UP
-            [
-                u32_to_i32(SDLKey_SDLK_DOWN),
-                PointerStates::JoyDown as c_int,
-                i32::from(b's'),
-            ], // CMD_DOWN
-            [
-                u32_to_i32(SDLKey_SDLK_LEFT),
-                PointerStates::JoyLeft as c_int,
-                i32::from(b'a'),
-            ], // CMD_LEFT
-            [
-                u32_to_i32(SDLKey_SDLK_RIGHT),
-                PointerStates::JoyRight as c_int,
-                i32::from(b'd'),
-            ], // CMD_RIGHT
-            [
-                u32_to_i32(SDLKey_SDLK_SPACE),
-                PointerStates::JoyButton1 as c_int,
-                PointerStates::MouseButton1 as c_int,
-            ], // CMD_FIRE
-            [
-                u32_to_i32(SDLKey_SDLK_RETURN),
-                u32_to_i32(SDLKey_SDLK_RSHIFT),
-                i32::from(b'e'),
-            ], // CMD_ACTIVATE
-            [
-                u32_to_i32(SDLKey_SDLK_SPACE),
-                PointerStates::JoyButton2 as c_int,
-                PointerStates::MouseButton2 as c_int,
-            ], // CMD_TAKEOVER
-            [i32::from(b'q'), 0, 0],                             // CMD_QUIT,
-            [u32_to_i32(SDLKey_SDLK_PAUSE), i32::from(b'p'), 0], // CMD_PAUSE,
-            [u32_to_i32(SDLKey_SDLK_F12), 0, 0],                 // CMD_SCREENSHOT
-            [i32::from(b'f'), 0, 0],                             // CMD_FULLSCREEN,
-            [
-                u32_to_i32(SDLKey_SDLK_ESCAPE),
-                PointerStates::JoyButton4 as c_int,
-                0,
-            ], // CMD_MENU,
-            [
-                u32_to_i32(SDLKey_SDLK_ESCAPE),
-                PointerStates::JoyButton2 as c_int,
-                PointerStates::MouseButton2 as c_int,
-            ], // CMD_BACK
-        ];
-
         Self {
             show_cursor: false,
             wheel_up_events: 0,
@@ -442,9 +340,115 @@ impl Default for Input {
             input_axis: Point { x: 0, y: 0 },
             joy_num_axes: 0,
             axis_is_active: 0,
-            key_cmds,
+            key_cmds: default_key_cmds(),
         }
     }
+}
+
+#[cfg(feature = "gcw0")]
+fn default_key_cmds() -> [[c_int; 3]; Cmds::Last as usize] {
+    [
+        [u32_to_i32(SDLKey_SDLK_UP), PointerStates::JoyUp as c_int, 0], // CMD_UP
+        [
+            u32_to_i32(SDLKey_SDLK_DOWN),
+            PointerStates::JoyDown as c_int,
+            0,
+        ], // CMD_DOWN
+        [
+            u32_to_i32(SDLKey_SDLK_LEFT),
+            PointerStates::JoyLeft as c_int,
+            0,
+        ], // CMD_LEFT
+        [
+            u32_to_i32(SDLKey_SDLK_RIGHT),
+            PointerStates::JoyRight as c_int,
+            0,
+        ], // CMD_RIGHT
+        [
+            u32_to_i32(SDLKey_SDLK_SPACE),
+            u32_to_i32(SDLKey_SDLK_LCTRL),
+            0,
+        ], // CMD_FIRE
+        [
+            u32_to_i32(SDLKey_SDLK_LALT),
+            PointerStates::JoyButton2 as c_int,
+            0,
+        ], // CMD_ACTIVATE
+        [
+            u32_to_i32(SDLKey_SDLK_BACKSPACE),
+            u32_to_i32(SDLKey_SDLK_TAB),
+            0,
+        ], // CMD_TAKEOVER
+        [0, 0, 0],                                                      // CMD_QUIT,
+        [u32_to_i32(SDLKey_SDLK_RETURN), 0, 0],                         // CMD_PAUSE,
+        [0, 0, 0],                                                      // CMD_SCREENSHOT
+        [0, 0, 0],                                                      // CMD_FULLSCREEN,
+        [
+            u32_to_i32(SDLKey_SDLK_ESCAPE),
+            PointerStates::JoyButton4 as c_int,
+            0,
+        ], // CMD_MENU,
+        [
+            u32_to_i32(SDLKey_SDLK_ESCAPE),
+            PointerStates::JoyButton2 as c_int,
+            PointerStates::MouseButton2 as c_int,
+        ], // CMD_BACK
+    ]
+}
+
+#[cfg(not(feature = "gcw0"))]
+fn default_key_cmds() -> [[c_int; 3]; Cmds::Last as usize] {
+    [
+        [
+            u32_to_i32(SDLKey_SDLK_UP),
+            PointerStates::JoyUp as c_int,
+            i32::from(b'w'),
+        ], // CMD_UP
+        [
+            u32_to_i32(SDLKey_SDLK_DOWN),
+            PointerStates::JoyDown as c_int,
+            i32::from(b's'),
+        ], // CMD_DOWN
+        [
+            u32_to_i32(SDLKey_SDLK_LEFT),
+            PointerStates::JoyLeft as c_int,
+            i32::from(b'a'),
+        ], // CMD_LEFT
+        [
+            u32_to_i32(SDLKey_SDLK_RIGHT),
+            PointerStates::JoyRight as c_int,
+            i32::from(b'd'),
+        ], // CMD_RIGHT
+        [
+            u32_to_i32(SDLKey_SDLK_SPACE),
+            PointerStates::JoyButton1 as c_int,
+            PointerStates::MouseButton1 as c_int,
+        ], // CMD_FIRE
+        [
+            u32_to_i32(SDLKey_SDLK_RETURN),
+            u32_to_i32(SDLKey_SDLK_RSHIFT),
+            i32::from(b'e'),
+        ], // CMD_ACTIVATE
+        [
+            u32_to_i32(SDLKey_SDLK_SPACE),
+            PointerStates::JoyButton2 as c_int,
+            PointerStates::MouseButton2 as c_int,
+        ], // CMD_TAKEOVER
+        [i32::from(b'q'), 0, 0],                             // CMD_QUIT,
+        [u32_to_i32(SDLKey_SDLK_PAUSE), i32::from(b'p'), 0], // CMD_PAUSE,
+        [u32_to_i32(SDLKey_SDLK_F12), 0, 0],                 // CMD_SCREENSHOT
+        [i32::from(b'f'), 0, 0],                             // CMD_FULLSCREEN,
+        [
+            u32_to_i32(SDLKey_SDLK_ESCAPE),
+            PointerStates::JoyButton4 as c_int,
+            0,
+        ], // CMD_MENU,
+        [
+            u32_to_i32(SDLKey_SDLK_ESCAPE),
+            PointerStates::JoyButton2 as c_int,
+            PointerStates::MouseButton2 as c_int,
+        ], // CMD_BACK
+    ]
 }
 
 pub const CMD_STRINGS: [&str; Cmds::Last as usize] = [
