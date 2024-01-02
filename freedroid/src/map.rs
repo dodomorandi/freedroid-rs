@@ -294,7 +294,7 @@ where
 ///
 /// Doors and Waypoints Arrays are initialized too
 pub fn level_to_struct(data: &[u8]) -> Option<Level> {
-    use nom::{bytes::complete::tag, character::complete::i32, sequence::tuple};
+    use nom::{character::complete::i32, sequence::tuple};
 
     /* Get the memory for one level */
     let mut loadlevel = Level {
@@ -327,38 +327,12 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
         .map(|pos| &data[pos..])
         .expect("No Levelnumber entry found! Terminating! ");
 
-    (
-        _,
-        (
-            _,
-            _,
-            loadlevel.levelnum,
-            _,
-            _,
-            loadlevel.xlen,
-            _,
-            _,
-            loadlevel.ylen,
-            _,
-            _,
-            loadlevel.color,
-        ),
-    ) = tuple::<_, _, (), _>((
-        tag("Levelnumber: "),
-        whitespace,
-        i32,
-        tag("\nxlen of this level: "),
-        whitespace,
-        i32,
-        tag("\nylen of this level: "),
-        whitespace,
-        i32,
-        tag("\ncolor of this level: "),
-        whitespace,
-        i32,
-    ))(data_pointer)
-    .finish()
-    .unwrap();
+    [
+        loadlevel.levelnum,
+        loadlevel.xlen,
+        loadlevel.ylen,
+        loadlevel.color,
+    ] = parse_levelnum_xlen_ylen_color(data_pointer);
 
     info!("Levelnumber : {} ", loadlevel.levelnum);
     info!("xlen of this level: {} ", loadlevel.xlen);
@@ -418,22 +392,7 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
             break;
         };
 
-        let (_, (_, _, _, _, _, _, x, _, _, _, y)) = tuple::<_, _, (), _>((
-            tag("Nr.="),
-            whitespace,
-            i32,
-            whitespace,
-            tag("x="),
-            whitespace,
-            i32,
-            whitespace,
-            tag("y="),
-            whitespace,
-            i32,
-        ))(this_line)
-        .finish()
-        .unwrap();
-
+        let [x, y] = parse_waypoint_x_y(this_line);
         loadlevel.all_waypoints[i].x = x.try_into().unwrap();
         loadlevel.all_waypoints[i].y = y.try_into().unwrap();
 
@@ -462,6 +421,51 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
     }
 
     Some(loadlevel)
+}
+
+fn parse_levelnum_xlen_ylen_color(data: &[u8]) -> [i32; 4] {
+    use nom::{bytes::complete::tag, character::complete::i32, sequence::tuple};
+
+    let (_, (_, _, levelnum, _, _, x_len, _, _, y_len, _, _, color)) = tuple::<_, _, (), _>((
+        tag("Levelnumber: "),
+        whitespace,
+        i32,
+        tag("\nxlen of this level: "),
+        whitespace,
+        i32,
+        tag("\nylen of this level: "),
+        whitespace,
+        i32,
+        tag("\ncolor of this level: "),
+        whitespace,
+        i32,
+    ))(data)
+    .finish()
+    .unwrap();
+
+    [levelnum, x_len, y_len, color]
+}
+
+fn parse_waypoint_x_y(data: &[u8]) -> [i32; 2] {
+    use nom::{bytes::complete::tag, character::complete::i32, sequence::tuple};
+
+    let (_, (_, _, _, _, _, _, x, _, _, _, y)) = tuple::<_, _, (), _>((
+        tag("Nr.="),
+        whitespace,
+        i32,
+        whitespace,
+        tag("x="),
+        whitespace,
+        i32,
+        whitespace,
+        tag("y="),
+        whitespace,
+        i32,
+    ))(data)
+    .finish()
+    .unwrap();
+
+    [x, y]
 }
 
 impl crate::Data<'_> {
