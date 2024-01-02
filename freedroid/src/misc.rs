@@ -399,118 +399,42 @@ impl crate::Data<'_> {
             return defs::ERR.into();
         };
 
+        macro_rules! write_key_value {
+            ($($key:ident = $value:expr),+ $(,)?) => {
+                $(
+                    writeln!(
+                        config,
+                        "{} = {}",
+                        $key,
+                        $value,
+                    ).unwrap();
+                )+
+            };
+        }
+
         // Now write the actual data, line by line
-        writeln!(config, "{} = {}", VERSION_STRING, env!("CARGO_PKG_VERSION")).unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            DRAW_FRAMERATE, self.global.game_config.draw_framerate
-        )
-        .unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            DRAW_ENERGY, self.global.game_config.draw_energy
-        )
-        .unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            DRAW_POSITION, self.global.game_config.draw_position
-        )
-        .unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            DRAW_DEATHCOUNT, self.global.game_config.draw_death_count
-        )
-        .unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            DROID_TALK, self.global.game_config.droid_talk
-        )
-        .unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            WANTED_TEXT_VISIBLE_TIME, self.global.game_config.wanted_text_visible_time,
-        )
-        .unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            CURRENT_BG_MUSIC_VOLUME, self.global.game_config.current_bg_music_volume,
-        )
-        .unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            CURRENT_SOUND_FX_VOLUME, self.global.game_config.current_sound_fx_volume,
-        )
-        .unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            CURRENT_GAMMA_CORRECTION, self.global.game_config.current_gamma_correction,
-        )
-        .unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            THEME_NAME,
-            self.global.game_config.theme_name.to_str().unwrap()
-        )
-        .unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            FULL_USER_RECT, self.global.game_config.full_user_rect
-        )
-        .unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            USE_FULLSCREEN, self.global.game_config.use_fullscreen
-        )
-        .unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            TAKEOVER_ACTIVATES, self.global.game_config.takeover_activates,
-        )
-        .unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            FIRE_HOLD_TAKEOVER, self.global.game_config.fire_hold_takeover,
-        )
-        .unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            SHOW_DECALS, self.global.game_config.show_decals
-        )
-        .unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            ALL_MAP_VISIBLE, self.global.game_config.all_map_visible
-        )
-        .unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            VID_SCALE_FACTOR, self.global.game_config.scale
-        )
-        .unwrap();
-        writeln!(config, "{} = {}", HOG_CPU, self.global.game_config.hog_cpu).unwrap();
-        writeln!(
-            config,
-            "{} = {}",
-            EMPTY_LEVEL_SPEEDUP, self.global.game_config.empty_level_speedup,
-        )
-        .unwrap();
+        write_key_value!(
+            VERSION_STRING = env!("CARGO_PKG_VERSION"),
+            DRAW_FRAMERATE = self.global.game_config.draw_framerate,
+            DRAW_ENERGY = self.global.game_config.draw_energy,
+            DRAW_POSITION = self.global.game_config.draw_position,
+            DRAW_DEATHCOUNT = self.global.game_config.draw_death_count,
+            DROID_TALK = self.global.game_config.droid_talk,
+            WANTED_TEXT_VISIBLE_TIME = self.global.game_config.wanted_text_visible_time,
+            CURRENT_BG_MUSIC_VOLUME = self.global.game_config.current_bg_music_volume,
+            CURRENT_SOUND_FX_VOLUME = self.global.game_config.current_sound_fx_volume,
+            CURRENT_GAMMA_CORRECTION = self.global.game_config.current_gamma_correction,
+            THEME_NAME = self.global.game_config.theme_name.to_str().unwrap(),
+            FULL_USER_RECT = self.global.game_config.full_user_rect,
+            USE_FULLSCREEN = self.global.game_config.use_fullscreen,
+            TAKEOVER_ACTIVATES = self.global.game_config.takeover_activates,
+            FIRE_HOLD_TAKEOVER = self.global.game_config.fire_hold_takeover,
+            SHOW_DECALS = self.global.game_config.show_decals,
+            ALL_MAP_VISIBLE = self.global.game_config.all_map_visible,
+            VID_SCALE_FACTOR = self.global.game_config.scale,
+            HOG_CPU = self.global.game_config.hog_cpu,
+            EMPTY_LEVEL_SPEEDUP = self.global.game_config.empty_level_speedup,
+        );
 
         // now write the keyboard->cmd mappings
         for (cmd_string, key_cmd) in CMD_STRINGS[0..Cmds::Last as usize]
