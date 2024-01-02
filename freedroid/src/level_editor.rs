@@ -98,8 +98,6 @@ impl crate::Data<'_> {
         let mut done = false;
         let mut origin_waypoint: c_int = -1;
 
-        let keymap_offset = 15;
-
         let rect = self.vars.user_rect;
         self.vars.user_rect = self.vars.screen_rect; // level editor can use the full screen!
         let mut src_wp_index = None;
@@ -163,122 +161,10 @@ impl crate::Data<'_> {
 
             assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
-            // If the user of the Level editor pressed some cursor keys, move the
-            // highlited filed (that is Me.pos) accordingly. This is done here:
-            //
-            if self.left_pressed_r() && self.vars.me.pos.x.round() > 0. {
-                self.vars.me.pos.x -= 1.;
-            }
-
-            #[allow(clippy::cast_possible_truncation)]
-            if self.right_pressed_r()
-                && (self.vars.me.pos.x.round() as c_int) < self.main.cur_level().xlen - 1
-            {
-                self.vars.me.pos.x += 1.;
-            }
-
-            if self.up_pressed_r() && self.vars.me.pos.y.round() > 0. {
-                self.vars.me.pos.y -= 1.;
-            }
-
-            #[allow(clippy::cast_possible_truncation)]
-            if self.down_pressed_r()
-                && (self.vars.me.pos.y.round() as c_int) < self.main.cur_level().ylen - 1
-            {
-                self.vars.me.pos.y += 1.;
-            }
+            self.handle_level_editor_arrow_keys();
 
             if self.key_is_pressed_r(SDLKey_SDLK_F1.try_into().unwrap()) {
-                let mut k = 3;
-                self.make_grid_on_screen(None);
-                let mut ne_screen = self.graphics.ne_screen.take().unwrap();
-                let menu_b_font = self
-                    .global
-                    .menu_b_font
-                    .as_ref()
-                    .unwrap()
-                    .ro(&self.font_owner);
-                let font_height = font_height(menu_b_font);
-
-                self.centered_put_string(&mut ne_screen, k * font_height, b"Level Editor Keymap");
-                k += 2;
-                self.put_string(
-                    &mut ne_screen,
-                    keymap_offset,
-                    k * font_height,
-                    b"Use cursor keys to move around.",
-                );
-                k += 1;
-                self.put_string(
-                    &mut ne_screen,
-                    keymap_offset,
-                    k * font_height,
-                    b"Use number pad to plant walls.",
-                );
-                k += 1;
-                self.put_string(
-                    &mut ne_screen,
-                    keymap_offset,
-                    k * font_height,
-                    b"Use shift and number pad to plant extras.",
-                );
-                k += 1;
-                self.put_string(
-                    &mut ne_screen,
-                    keymap_offset,
-                    k * font_height,
-                    b"R...Refresh, 1-5...Blocktype 1-5, L...Lift",
-                );
-                k += 1;
-                self.put_string(
-                    &mut ne_screen,
-                    keymap_offset,
-                    k * font_height,
-                    b"F...Fine grid, T/SHIFT + T...Doors",
-                );
-                k += 1;
-                self.put_string(
-                    &mut ne_screen,
-                    keymap_offset,
-                    k * font_height,
-                    b"M...Alert, E...Enter tile by number",
-                );
-                k += 1;
-                self.put_string(
-                    &mut ne_screen,
-                    keymap_offset,
-                    k * font_height,
-                    b"Space/Enter...Floor",
-                );
-                k += 2;
-
-                self.put_string(
-                    &mut ne_screen,
-                    keymap_offset,
-                    k * font_height,
-                    b"I/O...zoom INTO/OUT OF the map",
-                );
-                k += 2;
-                self.put_string(
-                    &mut ne_screen,
-                    keymap_offset,
-                    k * font_height,
-                    b"P...toggle wayPOINT on/off",
-                );
-                k += 1;
-                self.put_string(
-                    &mut ne_screen,
-                    keymap_offset,
-                    k * font_height,
-                    b"C...start/end waypoint CONNECTION",
-                );
-
-                assert!(ne_screen.flip());
-                self.graphics.ne_screen = Some(ne_screen);
-                while !self.fire_pressed_r() && !self.escape_pressed_r() && !self.return_pressed_r()
-                {
-                    self.sdl.delay_ms(1);
-                }
+                self.handle_level_editor_help();
             }
 
             //--------------------
@@ -289,41 +175,7 @@ impl crate::Data<'_> {
             // done upon pressing the 'e' key.
             //
             if self.key_is_pressed_r(b'e'.into()) {
-                use nom::{
-                    character::complete::{i32, space0},
-                    sequence::preceded,
-                };
-
-                let mut ne_screen = self.graphics.ne_screen.take().unwrap();
-                let menu_b_font = self
-                    .global
-                    .menu_b_font
-                    .as_ref()
-                    .unwrap()
-                    .ro(&self.font_owner);
-                let font_height = font_height(menu_b_font);
-
-                Self::centered_put_string_static(
-                    &self.b_font,
-                    &mut self.font_owner,
-                    &mut ne_screen,
-                    6 * font_height,
-                    b"Please enter new value: ",
-                );
-                assert!(ne_screen.flip());
-                self.graphics.ne_screen = Some(ne_screen);
-                let numeric_input_string = self.get_string(10, 2).unwrap();
-
-                let mut special_map_value =
-                    preceded(space0::<_, ()>, i32)(numeric_input_string.as_bytes())
-                        .finish()
-                        .unwrap()
-                        .1;
-                if special_map_value >= NUM_MAP_BLOCKS.try_into().unwrap() {
-                    special_map_value = 0;
-                }
-                self.main.cur_level_mut().map[usize::try_from(block_y).unwrap()]
-                    [usize::try_from(block_x).unwrap()] = special_map_value.try_into().unwrap();
+                self.handle_level_editor_tile_by_number(block_x, block_y);
             }
 
             //If the person using the level editor decides he/she wants a different
@@ -342,168 +194,24 @@ impl crate::Data<'_> {
             // toggle waypoint on current square.  That means either removed or added.
             // And in case of removal, also the connections must be removed.
             if self.key_is_pressed_r(b'p'.into()) {
-                // find out if there is a waypoint on the current square
-                let mut i = 0;
-                while i < usize::try_from(self.main.cur_level().num_waypoints).unwrap() {
-                    if i32::from(self.main.cur_level().all_waypoints[i].x) == block_x
-                        && i32::from(self.main.cur_level().all_waypoints[i].y) == block_y
-                    {
-                        break;
-                    }
-
-                    i += 1;
-                }
-
-                // if its waypoint already, this waypoint must be deleted.
-                if i < usize::try_from(self.main.cur_level().num_waypoints).unwrap() {
-                    delete_waypoint(self.main.cur_level_mut(), i.try_into().unwrap());
-                } else {
-                    // if its not a waypoint already, it must be made into one
-                    create_waypoint(self.main.cur_level_mut(), block_x, block_y);
-                }
-            } // if 'p' pressed (toggle waypoint)
+                self.handle_level_editor_toggle_waypoint(block_x, block_y);
+            }
 
             // create a connection between waypoints.  If this is the first selected waypoint, its
             // an origin and the second "C"-pressed waypoint will be used a target.
             // If origin and destination are the same, the operation is cancelled.
             if self.key_is_pressed_r(b'c'.into()) {
-                // Determine which waypoint is currently targeted
-                let mut i = 0;
-                while i < usize::try_from(self.main.cur_level().num_waypoints).unwrap() {
-                    if i32::from(self.main.cur_level().all_waypoints[i].x) == block_x
-                        && i32::from(self.main.cur_level().all_waypoints[i].y) == block_y
-                    {
-                        break;
-                    }
-
-                    i += 1;
-                }
-
-                if i == usize::try_from(self.main.cur_level().num_waypoints).unwrap() {
-                    warn!("Sorry, no waypoint here to connect.");
-                } else if origin_waypoint == -1 {
-                    origin_waypoint = i.try_into().unwrap();
-                    let waypoint = &mut cur_level!(mut self.main).all_waypoints[i];
-                    if waypoint.num_connections < c_int::try_from(MAX_WP_CONNECTIONS).unwrap() {
-                        info!("Waypoint nr. {}. selected as origin", i);
-                        src_wp_index = Some(i);
-                    } else {
-                        warn!(
-                            "Sorry, maximal number of waypoint-connections ({}) reached! Operation \
-                             not possible.",
-                            MAX_WP_CONNECTIONS,
-                        );
-                        origin_waypoint = -1;
-                        src_wp_index = None;
-                    }
-                } else if origin_waypoint == c_int::try_from(i).unwrap() {
-                    info!("Origin==Target --> Connection Operation cancelled.");
-                    origin_waypoint = -1;
-                    src_wp_index = None;
-                } else {
-                    info!("Target-waypoint {} selected. Connection established!", i);
-                    let waypoint_index = src_wp_index.take().unwrap();
-                    let waypoint = &mut cur_level!(mut self.main).all_waypoints[waypoint_index];
-                    waypoint.connections[usize::try_from(waypoint.num_connections).unwrap()] =
-                        i.try_into().unwrap();
-                    waypoint.num_connections += 1;
-                    origin_waypoint = -1;
-                }
+                self.handle_level_editor_waypoint_connection(
+                    block_x,
+                    block_y,
+                    &mut origin_waypoint,
+                    &mut src_wp_index,
+                );
             }
 
             // If the person using the level editor pressed some editing keys, insert the
             // corresponding map tile.  This is done here:
-            let mut map_tile = None;
-            if self.key_is_pressed_r(b'f'.into()) {
-                map_tile = Some(MapTile::FineGrid);
-            }
-            if self.key_is_pressed_r(b'1'.into()) {
-                map_tile = Some(MapTile::Block1);
-            }
-            if self.key_is_pressed_r(b'2'.into()) {
-                map_tile = Some(MapTile::Block2);
-            }
-            if self.key_is_pressed_r(b'3'.into()) {
-                map_tile = Some(MapTile::Block3);
-            }
-            if self.key_is_pressed_r(b'4'.into()) {
-                map_tile = Some(MapTile::Block4);
-            }
-            if self.key_is_pressed_r(b'5'.into()) {
-                map_tile = Some(MapTile::Block5);
-            }
-            if self.key_is_pressed_r(b'l'.into()) {
-                map_tile = Some(MapTile::Lift);
-            }
-            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP_PLUS)) {
-                map_tile = Some(MapTile::VWall);
-            }
-            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP0)) {
-                map_tile = Some(MapTile::HWall);
-            }
-            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP1)) {
-                map_tile = Some(MapTile::EckLu);
-            }
-            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP2)) {
-                if self.shift_pressed() {
-                    map_tile = Some(MapTile::KonsoleU);
-                } else {
-                    map_tile = Some(MapTile::Tu);
-                }
-            }
-            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP3)) {
-                map_tile = Some(MapTile::EckRu);
-            }
-            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP4)) {
-                if self.shift_pressed() {
-                    map_tile = Some(MapTile::KonsoleL);
-                } else {
-                    map_tile = Some(MapTile::Tl);
-                }
-            }
-            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP5)) {
-                if self.shift_pressed() {
-                    map_tile = Some(MapTile::Void);
-                } else {
-                    map_tile = Some(MapTile::Kreuz);
-                }
-            }
-            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP6)) {
-                if self.shift_pressed() {
-                    map_tile = Some(MapTile::KonsoleR);
-                } else {
-                    map_tile = Some(MapTile::Tr);
-                }
-            }
-            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP7)) {
-                map_tile = Some(MapTile::EckLo);
-            }
-            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP8)) {
-                if self.shift_pressed() {
-                    map_tile = Some(MapTile::KonsoleO);
-                } else {
-                    map_tile = Some(MapTile::To);
-                }
-            }
-            if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP9)) {
-                map_tile = Some(MapTile::EckRo);
-            }
-            if self.key_is_pressed_r(b'm'.into()) {
-                map_tile = Some(MapTile::AlertGreen);
-            }
-            if self.key_is_pressed_r(b'r'.into()) {
-                map_tile = Some(MapTile::Refresh1);
-            }
-            if self.key_is_pressed_r(b't'.into()) {
-                if self.shift_pressed() {
-                    map_tile = Some(MapTile::VZutuere);
-                } else {
-                    map_tile = Some(MapTile::HZutuere);
-                }
-            }
-            if self.space_pressed() || self.mouse_left_pressed() {
-                map_tile = Some(MapTile::Floor);
-            }
+            let map_tile = self.handle_level_editor_key_pressed();
 
             if let Some(map_tile) = map_tile {
                 self.main.cur_level_mut().map[usize::try_from(block_y).unwrap()]
@@ -516,6 +224,286 @@ impl crate::Data<'_> {
         self.vars.user_rect = rect;
 
         self.clear_graph_mem();
+    }
+
+    fn handle_level_editor_arrow_keys(&mut self) {
+        if self.left_pressed_r() && self.vars.me.pos.x.round() > 0. {
+            self.vars.me.pos.x -= 1.;
+        }
+
+        #[allow(clippy::cast_possible_truncation)]
+        if self.right_pressed_r()
+            && (self.vars.me.pos.x.round() as c_int) < self.main.cur_level().xlen - 1
+        {
+            self.vars.me.pos.x += 1.;
+        }
+
+        if self.up_pressed_r() && self.vars.me.pos.y.round() > 0. {
+            self.vars.me.pos.y -= 1.;
+        }
+
+        #[allow(clippy::cast_possible_truncation)]
+        if self.down_pressed_r()
+            && (self.vars.me.pos.y.round() as c_int) < self.main.cur_level().ylen - 1
+        {
+            self.vars.me.pos.y += 1.;
+        }
+    }
+
+    fn handle_level_editor_help(&mut self) {
+        const KEYMAP_OFFSET: i32 = 15;
+
+        let mut k = 3;
+        self.make_grid_on_screen(None);
+        let mut ne_screen = self.graphics.ne_screen.take().unwrap();
+        let menu_b_font = self
+            .global
+            .menu_b_font
+            .as_ref()
+            .unwrap()
+            .ro(&self.font_owner);
+        let font_height = font_height(menu_b_font);
+
+        self.centered_put_string(&mut ne_screen, k * font_height, b"Level Editor Keymap");
+        macro_rules! put_string {
+            ($s:expr) => {
+                self.put_string(&mut ne_screen, KEYMAP_OFFSET, k * font_height, $s);
+            };
+        }
+
+        k += 2;
+        put_string!(b"Use cursor keys to move around.");
+        k += 1;
+        put_string!(b"Use number pad to plant walls.");
+        k += 1;
+        put_string!(b"Use shift and number pad to plant extras.");
+        k += 1;
+        put_string!(b"R...Refresh, 1-5...Blocktype 1-5, L...Lift");
+        k += 1;
+        put_string!(b"F...Fine grid, T/SHIFT + T...Doors");
+        k += 1;
+        put_string!(b"M...Alert, E...Enter tile by number");
+        k += 1;
+        put_string!(b"Space/Enter...Floor");
+        k += 2;
+
+        put_string!(b"I/O...zoom INTO/OUT OF the map");
+        k += 2;
+        put_string!(b"P...toggle wayPOINT on/off");
+        k += 1;
+        put_string!(b"C...start/end waypoint CONNECTION");
+
+        assert!(ne_screen.flip());
+        self.graphics.ne_screen = Some(ne_screen);
+        while !self.fire_pressed_r() && !self.escape_pressed_r() && !self.return_pressed_r() {
+            self.sdl.delay_ms(1);
+        }
+    }
+
+    fn handle_level_editor_tile_by_number(&mut self, block_x: c_int, block_y: c_int) {
+        use nom::{
+            character::complete::{i32, space0},
+            sequence::preceded,
+        };
+
+        let mut ne_screen = self.graphics.ne_screen.take().unwrap();
+        let menu_b_font = self
+            .global
+            .menu_b_font
+            .as_ref()
+            .unwrap()
+            .ro(&self.font_owner);
+        let font_height = font_height(menu_b_font);
+
+        Self::centered_put_string_static(
+            &self.b_font,
+            &mut self.font_owner,
+            &mut ne_screen,
+            6 * font_height,
+            b"Please enter new value: ",
+        );
+        assert!(ne_screen.flip());
+        self.graphics.ne_screen = Some(ne_screen);
+        let numeric_input_string = self.get_string(10, 2).unwrap();
+
+        let mut special_map_value = preceded(space0::<_, ()>, i32)(numeric_input_string.as_bytes())
+            .finish()
+            .unwrap()
+            .1;
+        if special_map_value >= NUM_MAP_BLOCKS.try_into().unwrap() {
+            special_map_value = 0;
+        }
+        self.main.cur_level_mut().map[usize::try_from(block_y).unwrap()]
+            [usize::try_from(block_x).unwrap()] = special_map_value.try_into().unwrap();
+    }
+
+    fn handle_level_editor_toggle_waypoint(&mut self, block_x: c_int, block_y: c_int) {
+        // find out if there is a waypoint on the current square
+        let mut i = 0;
+        while i < usize::try_from(self.main.cur_level().num_waypoints).unwrap() {
+            if i32::from(self.main.cur_level().all_waypoints[i].x) == block_x
+                && i32::from(self.main.cur_level().all_waypoints[i].y) == block_y
+            {
+                break;
+            }
+
+            i += 1;
+        }
+
+        // if its waypoint already, this waypoint must be deleted.
+        if i < usize::try_from(self.main.cur_level().num_waypoints).unwrap() {
+            delete_waypoint(self.main.cur_level_mut(), i.try_into().unwrap());
+        } else {
+            // if its not a waypoint already, it must be made into one
+            create_waypoint(self.main.cur_level_mut(), block_x, block_y);
+        }
+    }
+
+    fn handle_level_editor_waypoint_connection(
+        &mut self,
+        block_x: c_int,
+        block_y: c_int,
+        origin_waypoint: &mut i32,
+        src_wp_index: &mut Option<usize>,
+    ) {
+        // Determine which waypoint is currently targeted
+        let mut i = 0;
+        while i < usize::try_from(self.main.cur_level().num_waypoints).unwrap() {
+            if i32::from(self.main.cur_level().all_waypoints[i].x) == block_x
+                && i32::from(self.main.cur_level().all_waypoints[i].y) == block_y
+            {
+                break;
+            }
+
+            i += 1;
+        }
+
+        if i == usize::try_from(self.main.cur_level().num_waypoints).unwrap() {
+            warn!("Sorry, no waypoint here to connect.");
+        } else if *origin_waypoint == -1 {
+            *origin_waypoint = i.try_into().unwrap();
+            let waypoint = &mut cur_level!(mut self.main).all_waypoints[i];
+            if waypoint.num_connections < c_int::try_from(MAX_WP_CONNECTIONS).unwrap() {
+                info!("Waypoint nr. {}. selected as origin", i);
+                *src_wp_index = Some(i);
+            } else {
+                warn!(
+                    "Sorry, maximal number of waypoint-connections ({}) reached! Operation \
+                             not possible.",
+                    MAX_WP_CONNECTIONS,
+                );
+                *origin_waypoint = -1;
+                *src_wp_index = None;
+            }
+        } else if *origin_waypoint == c_int::try_from(i).unwrap() {
+            info!("Origin==Target --> Connection Operation cancelled.");
+            *origin_waypoint = -1;
+            *src_wp_index = None;
+        } else {
+            info!("Target-waypoint {} selected. Connection established!", i);
+            let waypoint_index = src_wp_index.take().unwrap();
+            let waypoint = &mut cur_level!(mut self.main).all_waypoints[waypoint_index];
+            waypoint.connections[usize::try_from(waypoint.num_connections).unwrap()] =
+                i.try_into().unwrap();
+            waypoint.num_connections += 1;
+            *origin_waypoint = -1;
+        }
+    }
+
+    fn handle_level_editor_key_pressed(&mut self) -> Option<MapTile> {
+        let mut map_tile = None;
+        if self.key_is_pressed_r(b'f'.into()) {
+            map_tile = Some(MapTile::FineGrid);
+        }
+        if self.key_is_pressed_r(b'1'.into()) {
+            map_tile = Some(MapTile::Block1);
+        }
+        if self.key_is_pressed_r(b'2'.into()) {
+            map_tile = Some(MapTile::Block2);
+        }
+        if self.key_is_pressed_r(b'3'.into()) {
+            map_tile = Some(MapTile::Block3);
+        }
+        if self.key_is_pressed_r(b'4'.into()) {
+            map_tile = Some(MapTile::Block4);
+        }
+        if self.key_is_pressed_r(b'5'.into()) {
+            map_tile = Some(MapTile::Block5);
+        }
+        if self.key_is_pressed_r(b'l'.into()) {
+            map_tile = Some(MapTile::Lift);
+        }
+        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP_PLUS)) {
+            map_tile = Some(MapTile::VWall);
+        }
+        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP0)) {
+            map_tile = Some(MapTile::HWall);
+        }
+        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP1)) {
+            map_tile = Some(MapTile::EckLu);
+        }
+        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP2)) {
+            if self.shift_pressed() {
+                map_tile = Some(MapTile::KonsoleU);
+            } else {
+                map_tile = Some(MapTile::Tu);
+            }
+        }
+        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP3)) {
+            map_tile = Some(MapTile::EckRu);
+        }
+        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP4)) {
+            if self.shift_pressed() {
+                map_tile = Some(MapTile::KonsoleL);
+            } else {
+                map_tile = Some(MapTile::Tl);
+            }
+        }
+        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP5)) {
+            if self.shift_pressed() {
+                map_tile = Some(MapTile::Void);
+            } else {
+                map_tile = Some(MapTile::Kreuz);
+            }
+        }
+        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP6)) {
+            if self.shift_pressed() {
+                map_tile = Some(MapTile::KonsoleR);
+            } else {
+                map_tile = Some(MapTile::Tr);
+            }
+        }
+        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP7)) {
+            map_tile = Some(MapTile::EckLo);
+        }
+        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP8)) {
+            if self.shift_pressed() {
+                map_tile = Some(MapTile::KonsoleO);
+            } else {
+                map_tile = Some(MapTile::To);
+            }
+        }
+        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP9)) {
+            map_tile = Some(MapTile::EckRo);
+        }
+        if self.key_is_pressed_r(b'm'.into()) {
+            map_tile = Some(MapTile::AlertGreen);
+        }
+        if self.key_is_pressed_r(b'r'.into()) {
+            map_tile = Some(MapTile::Refresh1);
+        }
+        if self.key_is_pressed_r(b't'.into()) {
+            if self.shift_pressed() {
+                map_tile = Some(MapTile::VZutuere);
+            } else {
+                map_tile = Some(MapTile::HZutuere);
+            }
+        }
+        if self.space_pressed() || self.mouse_left_pressed() {
+            map_tile = Some(MapTile::Floor);
+        }
+
+        map_tile
     }
 
     /// This function is used by the Level Editor integrated into
