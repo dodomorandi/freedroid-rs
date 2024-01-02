@@ -131,7 +131,7 @@ impl crate::Data<'_> {
                 cur_bullet.pos.x,
                 cur_bullet.pos.y,
                 Direction::Center as c_int,
-            ) != Direction::Center as c_int
+            ) != Some(Direction::Center)
             {
                 let pos_x = cur_bullet.pos.x;
                 let pos_y = cur_bullet.pos.y;

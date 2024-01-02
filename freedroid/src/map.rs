@@ -497,7 +497,7 @@ impl crate::Data<'_> {
             testpos.y += step.y;
 
             if self.is_passable(testpos.x, testpos.y, Direction::Light as i32)
-                != Direction::Center as i32
+                != Some(Direction::Center)
             {
                 return false.into();
             }
@@ -542,7 +542,8 @@ impl crate::Data<'_> {
             });
     }
 
-    pub fn is_passable(&self, x: c_float, y: c_float, check_pos: c_int) -> c_int {
+    #[allow(clippy::too_many_lines)]
+    pub fn is_passable(&self, x: c_float, y: c_float, check_pos: c_int) -> Option<Direction> {
         use Direction as D;
         use MapTile as M;
 
@@ -551,9 +552,7 @@ impl crate::Data<'_> {
         let fx = (x - 0.5) - (x - 0.5).floor();
         let fy = (y - 0.5) - (y - 0.5).floor();
 
-        let Ok(map_tile) = MapTile::try_from(map_brick) else {
-            return -1;
-        };
+        let map_tile = MapTile::try_from(map_brick).ok()?;
 
         match map_tile {
             M::Floor
@@ -566,230 +565,144 @@ impl crate::Data<'_> {
             | M::Refresh3
             | M::Refresh4
             | M::FineGrid => {
-                D::Center as c_int /* these are passable */
+                Some(D::Center) /* these are passable */
             }
 
             M::AlertGreen | M::AlertYellow | M::AlertAmber | M::AlertRed => {
-                if check_pos.try_into() == Ok(D::Light) {
-                    D::Center as c_int
-                } else {
-                    -1
-                }
+                (check_pos.try_into() == Ok(D::Light)).then_some(D::Center)
             }
 
-            M::KonsoleL => {
-                if check_pos.try_into() == Ok(D::Light) || fx > 1.0 - KONSOLEPASS_X {
-                    D::Center as c_int
-                } else {
-                    -1
-                }
-            }
+            M::KonsoleL => (check_pos.try_into() == Ok(D::Light) || fx > 1.0 - KONSOLEPASS_X)
+                .then_some(D::Center),
 
             M::KonsoleR => {
-                if check_pos.try_into() == Ok(D::Light) || fx < KONSOLEPASS_X {
-                    D::Center as c_int
-                } else {
-                    -1
-                }
+                (check_pos.try_into() == Ok(D::Light) || fx < KONSOLEPASS_X).then_some(D::Center)
             }
 
-            M::KonsoleO => {
-                if check_pos.try_into() == Ok(D::Light) || fy > 1. - KONSOLEPASS_Y {
-                    D::Center as c_int
-                } else {
-                    -1
-                }
-            }
+            M::KonsoleO => (check_pos.try_into() == Ok(D::Light) || fy > 1. - KONSOLEPASS_Y)
+                .then_some(D::Center),
 
             M::KonsoleU => {
-                if check_pos.try_into() == Ok(D::Light) || fy < KONSOLEPASS_Y {
-                    D::Center as c_int
-                } else {
-                    -1
-                }
+                (check_pos.try_into() == Ok(D::Light) || fy < KONSOLEPASS_Y).then_some(D::Center)
             }
 
-            M::HWall => {
-                if (WALLPASS..=1. - WALLPASS).contains(&fy).not() {
-                    D::Center as c_int
-                } else {
-                    -1
-                }
-            }
+            M::HWall => ((WALLPASS..=1. - WALLPASS).contains(&fy).not()).then_some(D::Center),
 
-            M::VWall => {
-                if (WALLPASS..=1. - WALLPASS).contains(&fx).not() {
-                    D::Center as c_int
-                } else {
-                    -1
-                }
-            }
+            M::VWall => ((WALLPASS..=1. - WALLPASS).contains(&fx).not()).then_some(D::Center),
 
             M::EckRo => {
-                if fx > 1. - WALLPASS || fy < WALLPASS || (fx < WALLPASS && fy > 1. - WALLPASS) {
-                    D::Center as c_int
-                } else {
-                    -1
-                }
+                (fx > 1. - WALLPASS || fy < WALLPASS || (fx < WALLPASS && fy > 1. - WALLPASS))
+                    .then_some(D::Center)
             }
 
             M::EckRu => {
-                if fx > 1. - WALLPASS || fy > 1. - WALLPASS || (fx < WALLPASS && fy < WALLPASS) {
-                    D::Center as c_int
-                } else {
-                    -1
-                }
+                (fx > 1. - WALLPASS || fy > 1. - WALLPASS || (fx < WALLPASS && fy < WALLPASS))
+                    .then_some(D::Center)
             }
 
             M::EckLu => {
-                if fx < WALLPASS || fy > 1. - WALLPASS || (fx > 1. - WALLPASS && fy < WALLPASS) {
-                    D::Center as c_int
-                } else {
-                    -1
-                }
+                (fx < WALLPASS || fy > 1. - WALLPASS || (fx > 1. - WALLPASS && fy < WALLPASS))
+                    .then_some(D::Center)
             }
 
             M::EckLo => {
-                if fx < WALLPASS || fy < WALLPASS || (fx > 1. - WALLPASS && fy > 1. - WALLPASS) {
-                    D::Center as c_int
-                } else {
-                    -1
-                }
+                (fx < WALLPASS || fy < WALLPASS || (fx > 1. - WALLPASS && fy > 1. - WALLPASS))
+                    .then_some(D::Center)
             }
 
-            M::To => {
-                if fy < WALLPASS
-                    || (fy > 1. - WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fx).not())
-                {
-                    D::Center as c_int
-                } else {
-                    -1
-                }
-            }
+            M::To => (fy < WALLPASS
+                || (fy > 1. - WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fx).not()))
+            .then_some(D::Center),
 
-            M::Tr => {
-                if fx > 1. - WALLPASS
-                    || (fx < WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fy).not())
-                {
-                    D::Center as c_int
-                } else {
-                    -1
-                }
-            }
+            M::Tr => (fx > 1. - WALLPASS
+                || (fx < WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fy).not()))
+            .then_some(D::Center),
 
-            M::Tu => {
-                if fy > 1. - WALLPASS
-                    || (fy < WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fx).not())
-                {
-                    D::Center as c_int
-                } else {
-                    -1
-                }
-            }
+            M::Tu => (fy > 1. - WALLPASS
+                || (fy < WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fx).not()))
+            .then_some(D::Center),
 
-            M::Tl => {
-                if fx < WALLPASS
-                    || (fx > 1. - WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fy).not())
-                {
-                    D::Center as c_int
-                } else {
-                    -1
-                }
-            }
+            M::Tl => (fx < WALLPASS
+                || (fx > 1. - WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fy).not()))
+            .then_some(D::Center),
 
             M::HGanztuere | M::HHalbtuere3 | M::HHalbtuere2
                 if (check_pos.try_into() == Ok(D::Light)) =>
             {
-                D::Center as c_int
+                Some(D::Center)
             }
-            M::HHalbtuere1 | M::HZutuere if (check_pos.try_into() == Ok(D::Light)) => -1,
+            M::HHalbtuere1 | M::HZutuere if (check_pos.try_into() == Ok(D::Light)) => None,
 
             M::HGanztuere | M::HHalbtuere3 | M::HHalbtuere2 | M::HHalbtuere1 | M::HZutuere => {
                 if (H_RANDBREITE..=1. - H_RANDBREITE).contains(&fx).not()
                     && (H_RANDSPACE..=1. - H_RANDSPACE).contains(&fy)
                 {
                     let Ok(check_pos) = check_pos.try_into() else {
-                        return -1;
+                        return None;
                     };
                     if check_pos != D::Center && check_pos != D::Light && self.vars.me.speed.y != 0.
                     {
                         match check_pos {
                             D::Rechtsoben | D::Rechtsunten | D::Rechts => {
-                                if fx > 1. - H_RANDBREITE {
-                                    D::Links as c_int
-                                } else {
-                                    -1
-                                }
+                                (fx > 1. - H_RANDBREITE).then_some(D::Links)
                             }
                             D::Linksoben | D::Linksunten | D::Links => {
-                                if fx < H_RANDBREITE {
-                                    D::Rechts as c_int
-                                } else {
-                                    -1
-                                }
+                                (fx < H_RANDBREITE).then_some(D::Rechts)
                             }
-                            _ => -1, /* switch check_pos */
+                            _ => None, /* switch check_pos */
                         }
                     }
                     /* if DRUID && Me.speed.y != 0 */
                     else {
-                        -1
+                        None
                     }
                 } else if map_tile == M::HGanztuere
                     || map_tile == M::HHalbtuere3
                     || !(TUERBREITE..=1. - TUERBREITE).contains(&fy)
                 {
-                    D::Center as c_int
+                    Some(D::Center)
                 } else {
-                    -1
+                    None
                 }
             }
             M::VGanztuere | M::VHalbtuere3 | M::VHalbtuere2
                 if (check_pos.try_into() == Ok(D::Light)) =>
             {
-                D::Center as c_int
+                Some(D::Center)
             }
 
-            M::VHalbtuere1 | M::VZutuere if (check_pos.try_into() == Ok(D::Light)) => -1,
+            M::VHalbtuere1 | M::VZutuere if (check_pos.try_into() == Ok(D::Light)) => None,
             M::VGanztuere | M::VHalbtuere3 | M::VHalbtuere2 | M::VHalbtuere1 | M::VZutuere => {
                 if (V_RANDBREITE..=1. - V_RANDBREITE).contains(&fy).not()
                     && (V_RANDSPACE..=1. - V_RANDSPACE).contains(&fx)
                 {
                     let Ok(check_pos) = check_pos.try_into() else {
-                        return -1;
+                        return None;
                     };
                     if check_pos != D::Center && check_pos != D::Light && self.vars.me.speed.x != 0.
                     {
                         match check_pos {
                             D::Rechtsoben | D::Linksoben | D::Oben => {
-                                if fy < V_RANDBREITE {
-                                    D::Unten as c_int
-                                } else {
-                                    -1
-                                }
+                                (fy < V_RANDBREITE).then_some(D::Unten)
                             }
                             D::Rechtsunten | D::Linksunten | D::Unten => {
-                                if fy > 1. - V_RANDBREITE {
-                                    D::Oben as c_int
-                                } else {
-                                    -1
-                                }
+                                (fy > 1. - V_RANDBREITE).then_some(D::Oben)
                             }
-                            _ => -1,
+                            _ => None,
                         }
                     } else {
-                        -1
+                        None
                     }
                 } else if map_tile == M::VGanztuere
                     || map_tile == M::VHalbtuere3
                     || !(TUERBREITE..=1. - TUERBREITE).contains(&fx)
                 {
-                    D::Center as c_int
+                    Some(D::Center)
                 } else {
-                    -1
+                    None
                 }
             }
-            _ => -1,
+            _ => None,
         }
     }
 
@@ -993,7 +906,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         }
     }
 
-    pub fn druid_passable(&self, x: c_float, y: c_float) -> c_int {
+    pub fn druid_passable(&self, x: c_float, y: c_float) -> Option<Direction> {
         let testpos: [Finepoint; DIRECTIONS] = [
             Finepoint {
                 x,
@@ -1039,8 +952,8 @@ freedroid-discussion@lists.sourceforge.net\n\
                     c_int::try_from(direction_index).unwrap(),
                 )
             })
-            .find(|&is_passable| is_passable != Direction::Center as c_int)
-            .unwrap_or(Direction::Center as c_int)
+            .find(|&is_passable| is_passable != Some(Direction::Center))
+            .unwrap_or(Some(Direction::Center))
     }
 
     /// This function receives a pointer to the already read in crew section in a already read in

@@ -256,7 +256,7 @@ impl crate::Data<'_> {
 
         // Influence-Wall-Collision only has to be checked in case of
         // a collision of course, which is indicated by res not CENTER.
-        if res != Direction::Center as c_int {
+        if res != Some(Direction::Center) {
             //--------------------
             // At first we just check in which directions (from the last position)
             // the ways are blocked and in which directions the ways are open.
@@ -265,12 +265,12 @@ impl crate::Data<'_> {
                 let pos_y = lastpos.y
                     + self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed
                         * self.frame_time();
-                self.druid_passable(lastpos.x, pos_y) != Direction::Center as c_int
+                self.druid_passable(lastpos.x, pos_y) != Some(Direction::Center)
             } || {
                 let pos_y = lastpos.y
                     - self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed
                         * self.frame_time();
-                self.druid_passable(lastpos.x, pos_y) != Direction::Center as c_int
+                self.druid_passable(lastpos.x, pos_y) != Some(Direction::Center)
             } {
                 true
             } else {
@@ -282,12 +282,12 @@ impl crate::Data<'_> {
                 let pos_x = lastpos.x
                     + self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed
                         * self.frame_time();
-                self.druid_passable(pos_x, lastpos.y) == Direction::Center as c_int
+                self.druid_passable(pos_x, lastpos.y) == Some(Direction::Center)
             } && {
                 let pos_x = lastpos.x
                     - self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed
                         * self.frame_time();
-                self.druid_passable(pos_x, lastpos.y) == Direction::Center as c_int
+                self.druid_passable(pos_x, lastpos.y) == Some(Direction::Center)
             });
 
             // Now we try to handle the sitution:
@@ -357,12 +357,12 @@ impl crate::Data<'_> {
                 // (Of course we may only move into the one direction that is free)
                 //
                 if self.druid_passable(self.vars.me.pos.x + sx, self.vars.me.pos.y)
-                    == Direction::Center as c_int
+                    == Some(Direction::Center)
                 {
                     self.vars.me.pos.x += sx;
                 }
                 if self.druid_passable(self.vars.me.pos.x, self.vars.me.pos.y + sy)
-                    == Direction::Center as c_int
+                    == Some(Direction::Center)
                 {
                     self.vars.me.pos.y += sy;
                 }
@@ -376,15 +376,15 @@ impl crate::Data<'_> {
             // be done here and now:
 
             if (self.druid_passable(self.vars.me.pos.x, self.vars.me.pos.y)
-                != Direction::Center as c_int)
+                != Some(Direction::Center))
                 && (self.druid_passable(
                     self.get_influ_position_history_x(0),
                     self.get_influ_position_history_y(0),
-                ) != Direction::Center as c_int)
+                ) != Some(Direction::Center))
                 && (self.druid_passable(
                     self.get_influ_position_history_x(1),
                     self.get_influ_position_history_y(1),
-                ) != Direction::Center as c_int)
+                ) != Some(Direction::Center))
             {
                 self.vars.me.pos.x = self.get_influ_position_history_x(2);
                 self.vars.me.pos.y = self.get_influ_position_history_y(2);
