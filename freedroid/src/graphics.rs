@@ -881,8 +881,6 @@ impl crate::Data<'_> {
 
     /// Initialise the Video display and graphics engine
     pub fn init_video(&mut self) {
-        const YN: [&str; 2] = ["no", "yes"];
-
         let vid_info = self
             .sdl
             .video
@@ -897,67 +895,7 @@ impl crate::Data<'_> {
             self.graphics.vid_bpp = u8::from(vid_info.format().bits_per_pixel()).into();
         }
 
-        macro_rules! flag {
-            ($flag:ident) => {
-                (vid_info.$flag())
-            };
-        }
-        macro_rules! flag_yn {
-            ($flag:ident) => {
-                YN[usize::from(flag!($flag))]
-            };
-        }
-
-        info!("Video info summary from SDL:");
-        info!("----------------------------------------------------------------------");
-        info!(
-            "Is it possible to create hardware surfaces: {}",
-            flag_yn!(hw_available)
-        );
-        info!(
-            "Is there a window manager available: {}",
-            flag_yn!(wm_available)
-        );
-        info!(
-            "Are hardware to hardware blits accelerated: {}",
-            flag_yn!(blit_hw)
-        );
-        info!(
-            "Are hardware to hardware colorkey blits accelerated: {}",
-            flag_yn!(blit_hw_colorkey)
-        );
-        info!(
-            "Are hardware to hardware alpha blits accelerated: {}",
-            flag_yn!(blit_hw_alpha)
-        );
-        info!(
-            "Are software to hardware blits accelerated: {}",
-            flag_yn!(blit_sw)
-        );
-        info!(
-            "Are software to hardware colorkey blits accelerated: {}",
-            flag_yn!(blit_sw_colorkey)
-        );
-        info!(
-            "Are software to hardware alpha blits accelerated: {}",
-            flag_yn!(blit_sw_alpha)
-        );
-        info!("Are color fills accelerated: {}", flag_yn!(blit_fill));
-        info!(
-            "Total amount of video memory in Kilobytes: {}",
-            vid_info.video_mem()
-        );
-        info!(
-            "Pixel format of the video device: bpp = {}, bytes/pixel = {}",
-            self.graphics.vid_bpp,
-            vid_info.format().bytes_per_pixel()
-        );
-        info!(
-            "Video Driver Name: {}",
-            vid_driver.map_or(Cow::Borrowed("UNKNOWN DRIVER"), |vid_driver| vid_driver
-                .to_string_lossy())
-        );
-        info!("----------------------------------------------------------------------");
+        print_init_info(&vid_info, self.graphics.vid_bpp, vid_driver);
 
         let vid_flags = if self.global.game_config.use_fullscreen == 0 {
             VideoModeFlags::empty()
@@ -965,7 +903,7 @@ impl crate::Data<'_> {
             VideoModeFlags::FULLSCREEN
         };
 
-        if flag!(wm_available) {
+        if vid_info.wm_available() {
             let Self {
                 sdl, global, misc, ..
             } = self;
@@ -1952,4 +1890,70 @@ impl<'sdl> LoadBlockVidBppPic<'_, 'sdl> {
 
         Some(ret)
     }
+}
+
+fn print_init_info(vid_info: &sdl::video::InfoRef<'_>, vid_bpp: i32, vid_driver: Option<&CStr>) {
+    const YN: [&str; 2] = ["no", "yes"];
+
+    macro_rules! flag {
+        ($flag:ident) => {
+            (vid_info.$flag())
+        };
+    }
+    macro_rules! flag_yn {
+        ($flag:ident) => {
+            YN[usize::from(flag!($flag))]
+        };
+    }
+
+    info!("Video info summary from SDL:");
+    info!("----------------------------------------------------------------------");
+    info!(
+        "Is it possible to create hardware surfaces: {}",
+        flag_yn!(hw_available)
+    );
+    info!(
+        "Is there a window manager available: {}",
+        flag_yn!(wm_available)
+    );
+    info!(
+        "Are hardware to hardware blits accelerated: {}",
+        flag_yn!(blit_hw)
+    );
+    info!(
+        "Are hardware to hardware colorkey blits accelerated: {}",
+        flag_yn!(blit_hw_colorkey)
+    );
+    info!(
+        "Are hardware to hardware alpha blits accelerated: {}",
+        flag_yn!(blit_hw_alpha)
+    );
+    info!(
+        "Are software to hardware blits accelerated: {}",
+        flag_yn!(blit_sw)
+    );
+    info!(
+        "Are software to hardware colorkey blits accelerated: {}",
+        flag_yn!(blit_sw_colorkey)
+    );
+    info!(
+        "Are software to hardware alpha blits accelerated: {}",
+        flag_yn!(blit_sw_alpha)
+    );
+    info!("Are color fills accelerated: {}", flag_yn!(blit_fill));
+    info!(
+        "Total amount of video memory in Kilobytes: {}",
+        vid_info.video_mem()
+    );
+    info!(
+        "Pixel format of the video device: bpp = {}, bytes/pixel = {}",
+        vid_bpp,
+        vid_info.format().bytes_per_pixel()
+    );
+    info!(
+        "Video Driver Name: {}",
+        vid_driver.map_or(Cow::Borrowed("UNKNOWN DRIVER"), |vid_driver| vid_driver
+            .to_string_lossy())
+    );
+    info!("----------------------------------------------------------------------");
 }
