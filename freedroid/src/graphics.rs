@@ -542,21 +542,14 @@ impl crate::Data<'_> {
         self.graphics
             .influ_digit_surface_pointer
             .iter_mut()
+            .chain(&mut self.graphics.enemy_digit_surface_pointer)
             .flatten()
             .for_each(|surface| {
                 if surface.set_alpha(ColorKeyFlag::empty(), 0).not() {
                     error!("Cannot set alpha channel on surface");
                 }
             });
-        self.graphics
-            .enemy_digit_surface_pointer
-            .iter_mut()
-            .flatten()
-            .for_each(|surface| {
-                if surface.set_alpha(ColorKeyFlag::empty(), 0).not() {
-                    error!("Cannot set alpha channel on surface");
-                }
-            });
+
         if (scale - 1.).abs() <= f32::EPSILON {
             return;
         }
@@ -593,54 +586,46 @@ impl crate::Data<'_> {
 
         //---------- rescale Droid-model  blocks
         /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
-        for surface in &mut self.graphics.influencer_surface_pointer {
-            let surface = surface.as_mut().unwrap();
-            scale_pic(surface, scale);
-            if surface.set_alpha(ColorKeyFlag::empty(), 0).not() {
-                error!("Cannot set alpha channel on surface");
-            }
-        }
-        for surface in &mut self.graphics.enemy_surface_pointer {
-            let surface = surface.as_mut().unwrap();
-            scale_pic(surface, scale);
-            if surface.set_alpha(ColorKeyFlag::empty(), 0).not() {
-                error!("Cannot set alpha channel on surface");
-            }
-        }
+        self.graphics
+            .influencer_surface_pointer
+            .iter_mut()
+            .chain(&mut self.graphics.enemy_surface_pointer)
+            .for_each(|surface| {
+                let surface = surface.as_mut().unwrap();
+                scale_pic(surface, scale);
+                if surface.set_alpha(ColorKeyFlag::empty(), 0).not() {
+                    error!("Cannot set alpha channel on surface");
+                }
+            });
 
-        //---------- rescale Bullet blocks
+        //---------- rescale Bullet and Blast blocks
         let bulletmap = &mut self.vars.bulletmap;
         bulletmap
             .iter_mut()
             .flat_map(|bullet| bullet.surfaces.iter_mut())
-            .for_each(|surface| scale_pic(surface.as_mut().unwrap(), scale));
-
-        //---------- rescale Blast blocks
-        self.vars
-            .blastmap
-            .iter_mut()
-            .flat_map(|blast| blast.surfaces.iter_mut())
+            .chain(
+                self.vars
+                    .blastmap
+                    .iter_mut()
+                    .flat_map(|blast| blast.surfaces.iter_mut()),
+            )
             .for_each(|surface| scale_pic(surface.as_mut().unwrap(), scale));
 
         //---------- rescale Digit blocks
-        for surface in &mut self.graphics.influ_digit_surface_pointer {
-            let surface = surface.as_mut().unwrap();
-            scale_pic(surface, scale);
-            if surface.set_alpha(ColorKeyFlag::empty(), 0).not() {
-                error!("Cannot set alpha channel on surface");
-            }
-        }
-        for surface in &mut self.graphics.enemy_digit_surface_pointer {
-            let surface = surface.as_mut().unwrap();
-            scale_pic(surface, scale);
-            if surface.set_alpha(ColorKeyFlag::empty(), 0).not() {
-                error!("Cannot set alpha channel on surface");
-            }
-        }
+        self.graphics
+            .influ_digit_surface_pointer
+            .iter_mut()
+            .chain(&mut self.graphics.enemy_digit_surface_pointer)
+            .for_each(|surface| {
+                let surface = surface.as_mut().unwrap();
+                scale_pic(surface, scale);
+                if surface.set_alpha(ColorKeyFlag::empty(), 0).not() {
+                    error!("Cannot set alpha channel on surface");
+                }
+            });
 
         //---------- rescale Takeover pics
         scale_pic(self.takeover.to_blocks.as_mut().unwrap(), scale);
-
         scale_pic(self.graphics.ship_on_pic.as_mut().unwrap(), scale);
         scale_pic(self.graphics.ship_off_pic.as_mut().unwrap(), scale);
 
@@ -662,13 +647,7 @@ impl crate::Data<'_> {
             scale_pic(self.graphics.takeover_bg_pic.as_mut().unwrap(), scale);
 
             //---------- Console pictures
-            scale_pic(self.graphics.console_pic.as_mut().unwrap(), scale);
-            scale_pic(self.graphics.console_bg_pic1.as_mut().unwrap(), scale);
-            scale_pic(self.graphics.console_bg_pic2.as_mut().unwrap(), scale);
-            scale_pic(self.graphics.arrow_up.as_mut().unwrap(), scale);
-            scale_pic(self.graphics.arrow_down.as_mut().unwrap(), scale);
-            scale_pic(self.graphics.arrow_right.as_mut().unwrap(), scale);
-            scale_pic(self.graphics.arrow_left.as_mut().unwrap(), scale);
+            self.scale_console_pictures(scale);
             //---------- Banner
             scale_pic(self.graphics.banner_pic.as_mut().unwrap(), scale);
 
@@ -686,6 +665,16 @@ impl crate::Data<'_> {
         let mut ne_screen = self.graphics.ne_screen.take().unwrap();
         self.printf_sdl(&mut ne_screen, -1, -1, format_args!(" ok\n"));
         self.graphics.ne_screen = Some(ne_screen);
+    }
+
+    fn scale_console_pictures(&mut self, scale: f32) {
+        scale_pic(self.graphics.console_pic.as_mut().unwrap(), scale);
+        scale_pic(self.graphics.console_bg_pic1.as_mut().unwrap(), scale);
+        scale_pic(self.graphics.console_bg_pic2.as_mut().unwrap(), scale);
+        scale_pic(self.graphics.arrow_up.as_mut().unwrap(), scale);
+        scale_pic(self.graphics.arrow_down.as_mut().unwrap(), scale);
+        scale_pic(self.graphics.arrow_right.as_mut().unwrap(), scale);
+        scale_pic(self.graphics.arrow_left.as_mut().unwrap(), scale);
     }
 
     /// display "white noise" effect in Rect.
