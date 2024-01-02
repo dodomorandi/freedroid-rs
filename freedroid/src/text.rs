@@ -73,6 +73,13 @@ impl crate::Data<'_> {
     ///
     /// values of echo > 2 are ignored and treated like echo=0
     pub fn get_string(&mut self, max_len: c_int, echo: c_int) -> Option<CString> {
+        //for "empty" input line / backspace etc...
+        #[cfg(feature = "arcade-input")]
+        const EMPTY_CHAR: u8 = b' ';
+
+        #[cfg(not(feature = "arcade-input"))]
+        const EMPTY_CHAR: u8 = b'.';
+
         let max_len: usize = max_len.try_into().unwrap();
 
         if echo == 1 {
@@ -110,16 +117,9 @@ impl crate::Data<'_> {
             .blit_from(&store_rect, &mut store);
 
         #[cfg(feature = "arcade-input")]
-        let blink_time = 200; // For adjusting fast <->slow blink; in ms
-        #[cfg(feature = "arcade-input")]
         let mut inputchar: c_int = 17; // initial char = A
-        #[cfg(feature = "arcade-input")]
-        let empty_char = b' '; //for "empty" input line / backspace etc...
 
-        #[cfg(not(feature = "arcade-input"))]
-        let empty_char = b'.'; //for "empty" input linue / backspace etc...
-
-        let mut input = vec![empty_char; max_len + 5];
+        let mut input = vec![EMPTY_CHAR; max_len + 5];
         input[max_len] = 0;
 
         let mut finished = false;
@@ -138,81 +138,10 @@ impl crate::Data<'_> {
             self.graphics.ne_screen = Some(ne_screen);
 
             #[cfg(feature = "arcade-input")]
-            {
-                if inputchar < 0 {
-                    inputchar += i32::try_from(ARCADE_INPUT_CHARS.len()).unwrap();
-                }
-                if inputchar >= i32::try_from(ARCADE_INPUT_CHARS.len()).unwrap() {
-                    inputchar -= i32::try_from(ARCADE_INPUT_CHARS.len()).unwrap();
-                }
-                let key = ARCADE_INPUT_CHARS[usize::try_from(inputchar).unwrap()];
-
-                let frame_duration = self.sdl.ticks_ms() - self.text.last_frame_time;
-                if frame_duration > blink_time / 2 {
-                    input[curpos] = key.try_into().unwrap(); // We want to show the currently chosen character
-                    if frame_duration > blink_time {
-                        self.text.last_frame_time = self.sdl.ticks_ms();
-                    } else {
-                        input[curpos] = empty_char; // Hmm., how to get character widht? If using '.', or any fill character, we'd need to know
-                    }
-
-                    if self.key_is_pressed_r(SDLKey_SDLK_RETURN.try_into().unwrap()) {
-                        // For GCW0, maybe we need a prompt to say [PRESS ENTER WHEN FINISHED], or any other key we may choose...
-                        input[curpos] = 0; // The last char is currently shown but, not entered into the string...
-                                           // 	  input[curpos] = key; // Not sure which one would be expected by most users; the last blinking char is input or not?
-                        finished = true;
-                    } else if self.up_pressed_r() {
-                        /* Currently, the key will work ON RELEASE; we might change this to
-                         * ON PRESS and add a counter / delay after which while holding, will
-                         * scroll trough the chars */
-                        inputchar += 1;
-                    } else if self.down_pressed_r() {
-                        inputchar -= 1;
-                    } else if self.fire_pressed_r() {
-                        // ADVANCE CURSOR
-                        input[curpos] = key.try_into().unwrap(); // Needed in case character has just blinked out...
-                        curpos += 1;
-                    } else if self.left_pressed_r() {
-                        inputchar -= 5;
-                    } else if self.right_pressed_r() {
-                        inputchar += 5;
-                    } else if self.cmd_is_active_r(Cmds::Activate) {
-                        // CAPITAL <-> small
-                        if (17..=42).contains(&inputchar) {
-                            inputchar = 44 + (inputchar - 17);
-                        } else if (44..=69).contains(&inputchar) {
-                            inputchar = 17 + (inputchar - 44);
-                        }
-                    } else if self.key_is_pressed_r(SDLKey_SDLK_BACKSPACE.try_into().unwrap()) {
-                        // else if ... other functions to consider: SPACE
-                        // Or any othe key we choose for the GCW0!
-                        input[curpos] = empty_char;
-                        curpos = curpos.saturating_sub(1);
-                    }
-                }
-            }
+            self.get_string_inner(&mut input, &mut curpos, &mut finished, &mut inputchar);
 
             #[cfg(not(feature = "arcade-input"))]
-            {
-                let key = self.getchar_raw();
-
-                #[allow(clippy::cast_sign_loss)]
-                if key == SDLKey_SDLK_RETURN.try_into().unwrap() {
-                    input[curpos] = 0;
-                    finished = true;
-                } else if key < SDLKey_SDLK_DELETE.try_into().unwrap()
-                    && (u8::try_from(key).map_or(false, |key| key.is_ascii_graphic())
-                        || (u8::try_from(key).map_or(false, |key| key.is_ascii_whitespace())))
-                    && curpos < max_len
-                {
-                    /* printable characters are entered in string */
-                    input[curpos] = key.try_into().unwrap();
-                    curpos += 1;
-                } else if key == SDLKey_SDLK_BACKSPACE.try_into().unwrap() {
-                    curpos = curpos.saturating_sub(1);
-                    input[curpos] = b'.';
-                }
-            }
+            self.get_string_inner(&mut input, &mut curpos, &mut finished, max_len);
         }
 
         let end_pos = input.iter().copied().position(|c| c == 0).unwrap();
@@ -225,6 +154,98 @@ impl crate::Data<'_> {
         );
 
         Some(input)
+    }
+
+    #[cfg(feature = "arcade-input")]
+    fn get_string_inner(
+        &mut self,
+        input: &mut [u8],
+        curpos: &mut usize,
+        finished: &mut bool,
+        inputchar: &mut c_int,
+    ) {
+        const EMPTY_CHAR: u8 = b' ';
+        const BLINK_TIME: u8 = 200; // For adjusting fast <->slow blink; in ms
+
+        if *inputchar < 0 {
+            *inputchar += i32::try_from(ARCADE_INPUT_CHARS.len()).unwrap();
+        }
+        if *inputchar >= i32::try_from(ARCADE_INPUT_CHARS.len()).unwrap() {
+            *inputchar -= i32::try_from(ARCADE_INPUT_CHARS.len()).unwrap();
+        }
+        let key = ARCADE_INPUT_CHARS[usize::try_from(*inputchar).unwrap()];
+
+        let frame_duration = self.sdl.ticks_ms() - self.text.last_frame_time;
+        if frame_duration > u32::from(BLINK_TIME / 2) {
+            input[*curpos] = key.try_into().unwrap(); // We want to show the currently chosen character
+            if frame_duration > u32::from(BLINK_TIME) {
+                self.text.last_frame_time = self.sdl.ticks_ms();
+            } else {
+                input[*curpos] = EMPTY_CHAR; // Hmm., how to get character widht? If using '.', or any fill character, we'd need to know
+            }
+
+            if self.key_is_pressed_r(SDLKey_SDLK_RETURN.try_into().unwrap()) {
+                // For GCW0, maybe we need a prompt to say [PRESS ENTER WHEN FINISHED], or any other key we may choose...
+                input[*curpos] = 0; // The last char is currently shown but, not entered into the string...
+                                    // 	  input[*curpos] = key; // Not sure which one would be expected by most users; the last blinking char is input or not?
+                *finished = true;
+            } else if self.up_pressed_r() {
+                /* Currently, the key will work ON RELEASE; we might change this to
+                 * ON PRESS and add a counter / delay after which while holding, will
+                 * scroll trough the chars */
+                *inputchar += 1;
+            } else if self.down_pressed_r() {
+                *inputchar -= 1;
+            } else if self.fire_pressed_r() {
+                // ADVANCE CURSOR
+                input[*curpos] = key.try_into().unwrap(); // Needed in case character has just blinked out...
+                *curpos += 1;
+            } else if self.left_pressed_r() {
+                *inputchar -= 5;
+            } else if self.right_pressed_r() {
+                *inputchar += 5;
+            } else if self.cmd_is_active_r(Cmds::Activate) {
+                // CAPITAL <-> small
+                if (17..=42).contains(inputchar) {
+                    *inputchar = 44 + (*inputchar - 17);
+                } else if (44..=69).contains(inputchar) {
+                    *inputchar = 17 + (*inputchar - 44);
+                }
+            } else if self.key_is_pressed_r(SDLKey_SDLK_BACKSPACE.try_into().unwrap()) {
+                // else if ... other functions to consider: SPACE
+                // Or any othe key we choose for the GCW0!
+                input[*curpos] = EMPTY_CHAR;
+                *curpos = curpos.saturating_sub(1);
+            }
+        }
+    }
+
+    #[cfg(not(feature = "arcade-input"))]
+    fn get_string_inner(
+        &mut self,
+        input: &mut [u8],
+        curpos: &mut usize,
+        finished: &mut bool,
+        max_len: usize,
+    ) {
+        let key = self.getchar_raw();
+
+        #[allow(clippy::cast_sign_loss)]
+        if key == SDLKey_SDLK_RETURN.try_into().unwrap() {
+            input[*curpos] = 0;
+            *finished = true;
+        } else if key < SDLKey_SDLK_DELETE.try_into().unwrap()
+            && (u8::try_from(key).map_or(false, |key| key.is_ascii_graphic())
+                || (u8::try_from(key).map_or(false, |key| key.is_ascii_whitespace())))
+            && *curpos < max_len
+        {
+            /* printable characters are entered in string */
+            input[*curpos] = key.try_into().unwrap();
+            *curpos += 1;
+        } else if key == SDLKey_SDLK_BACKSPACE.try_into().unwrap() {
+            *curpos = curpos.saturating_sub(1);
+            input[*curpos] = b'.';
+        }
     }
 
     /// Should do roughly what getchar() does, but in raw (SLD) keyboard mode.
