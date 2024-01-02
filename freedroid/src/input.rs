@@ -78,201 +78,229 @@ pub struct Input {
 pub const KEY_STRINGS: [Option<&'static CStr>; PointerStates::Last as usize] = create_key_strings();
 
 #[cfg(not(target_os = "android"))]
+#[allow(clippy::too_many_lines)]
 const fn create_key_strings() -> [Option<&'static CStr>; PointerStates::Last as usize] {
     let mut out = [None; PointerStates::Last as usize];
 
     macro_rules! set_out {
-        (ps::$key:ident = $str:literal) => {
-            out[PointerStates::$key as usize] = Some(cstr!($str));
+        ($(ps::$key:ident = $str:literal);+ $(;)?) => {
+            $(
+                out[PointerStates::$key as usize] = Some(cstr!($str));
+            )+
         };
 
-        ($key:ident = $str:literal) => {
-            out[sdl_sys::$key as usize] = Some(cstr!($str));
+        ($($key:ident = $str:literal);+ $(;)?) => {
+            $(
+                out[sdl_sys::$key as usize] = Some(cstr!($str));
+            )+
         };
     }
 
     out[0] = Some(cstr!("None"));
     if cfg!(feature = "gcw0") {
-        set_out!(SDLKey_SDLK_BACKSPACE = "RSldr");
-        set_out!(SDLKey_SDLK_TAB = "LSldr");
-        set_out!(SDLKey_SDLK_RETURN = "Start");
-        set_out!(SDLKey_SDLK_SPACE = "Y");
-        set_out!(SDLKey_SDLK_ESCAPE = "Select");
+        set_out!(
+            SDLKey_SDLK_BACKSPACE = "RSldr";
+            SDLKey_SDLK_TAB = "LSldr";
+            SDLKey_SDLK_RETURN = "Start";
+            SDLKey_SDLK_SPACE = "Y";
+            SDLKey_SDLK_ESCAPE = "Select";
+        );
     }
 
     if cfg!(not(feature = "gcw0")) {
-        set_out!(SDLKey_SDLK_BACKSPACE = "BS");
-        set_out!(SDLKey_SDLK_TAB = "Tab");
-        set_out!(SDLKey_SDLK_RETURN = "Return");
-        set_out!(SDLKey_SDLK_SPACE = "Space");
-        set_out!(SDLKey_SDLK_ESCAPE = "Esc");
+        set_out!(
+            SDLKey_SDLK_BACKSPACE = "BS";
+            SDLKey_SDLK_TAB = "Tab";
+            SDLKey_SDLK_RETURN = "Return";
+            SDLKey_SDLK_SPACE = "Space";
+            SDLKey_SDLK_ESCAPE = "Esc";
+        );
     }
 
-    set_out!(SDLKey_SDLK_CLEAR = "Clear");
-    set_out!(SDLKey_SDLK_PAUSE = "Pause");
-    set_out!(SDLKey_SDLK_EXCLAIM = "!");
-    set_out!(SDLKey_SDLK_QUOTEDBL = "\"");
-    set_out!(SDLKey_SDLK_HASH = "#");
-    set_out!(SDLKey_SDLK_DOLLAR = "$");
-    set_out!(SDLKey_SDLK_AMPERSAND = "&");
-    set_out!(SDLKey_SDLK_QUOTE = "'");
-    set_out!(SDLKey_SDLK_LEFTPAREN = "(");
-    set_out!(SDLKey_SDLK_RIGHTPAREN = ")");
-    set_out!(SDLKey_SDLK_ASTERISK = "*");
-    set_out!(SDLKey_SDLK_PLUS = "+");
-    set_out!(SDLKey_SDLK_COMMA = ",");
-    set_out!(SDLKey_SDLK_MINUS = "-");
-    set_out!(SDLKey_SDLK_PERIOD = ".");
-    set_out!(SDLKey_SDLK_SLASH = "/");
-    set_out!(SDLKey_SDLK_0 = "0");
-    set_out!(SDLKey_SDLK_1 = "1");
-    set_out!(SDLKey_SDLK_2 = "2");
-    set_out!(SDLKey_SDLK_3 = "3");
-    set_out!(SDLKey_SDLK_4 = "4");
-    set_out!(SDLKey_SDLK_5 = "5");
-    set_out!(SDLKey_SDLK_6 = "6");
-    set_out!(SDLKey_SDLK_7 = "7");
-    set_out!(SDLKey_SDLK_8 = "8");
-    set_out!(SDLKey_SDLK_9 = "9");
-    set_out!(SDLKey_SDLK_COLON = ":");
-    set_out!(SDLKey_SDLK_SEMICOLON = ";");
-    set_out!(SDLKey_SDLK_LESS = "<");
-    set_out!(SDLKey_SDLK_EQUALS = "=");
-    set_out!(SDLKey_SDLK_GREATER = ">");
-    set_out!(SDLKey_SDLK_QUESTION = "?");
-    set_out!(SDLKey_SDLK_AT = "@");
-    set_out!(SDLKey_SDLK_LEFTBRACKET = "[");
-    set_out!(SDLKey_SDLK_BACKSLASH = "\\");
-    set_out!(SDLKey_SDLK_RIGHTBRACKET = "]");
-    set_out!(SDLKey_SDLK_CARET = "^");
-    set_out!(SDLKey_SDLK_UNDERSCORE = "_");
-    set_out!(SDLKey_SDLK_BACKQUOTE = "`");
-    set_out!(SDLKey_SDLK_a = "a");
-    set_out!(SDLKey_SDLK_b = "b");
-    set_out!(SDLKey_SDLK_c = "c");
-    set_out!(SDLKey_SDLK_d = "d");
-    set_out!(SDLKey_SDLK_e = "e");
-    set_out!(SDLKey_SDLK_f = "f");
-    set_out!(SDLKey_SDLK_g = "g");
-    set_out!(SDLKey_SDLK_h = "h");
-    set_out!(SDLKey_SDLK_i = "i");
-    set_out!(SDLKey_SDLK_j = "j");
-    set_out!(SDLKey_SDLK_k = "k");
-    set_out!(SDLKey_SDLK_l = "l");
-    set_out!(SDLKey_SDLK_m = "m");
-    set_out!(SDLKey_SDLK_n = "n");
-    set_out!(SDLKey_SDLK_o = "o");
-    set_out!(SDLKey_SDLK_p = "p");
-    set_out!(SDLKey_SDLK_q = "q");
-    set_out!(SDLKey_SDLK_r = "r");
-    set_out!(SDLKey_SDLK_s = "s");
-    set_out!(SDLKey_SDLK_t = "t");
-    set_out!(SDLKey_SDLK_u = "u");
-    set_out!(SDLKey_SDLK_v = "v");
-    set_out!(SDLKey_SDLK_w = "w");
-    set_out!(SDLKey_SDLK_x = "x");
-    set_out!(SDLKey_SDLK_y = "y");
-    set_out!(SDLKey_SDLK_z = "z");
-    set_out!(SDLKey_SDLK_DELETE = "Del");
+    set_out!(
+        SDLKey_SDLK_CLEAR = "Clear";
+        SDLKey_SDLK_PAUSE = "Pause";
+        SDLKey_SDLK_EXCLAIM = "!";
+        SDLKey_SDLK_QUOTEDBL = "\"";
+        SDLKey_SDLK_HASH = "#";
+        SDLKey_SDLK_DOLLAR = "$";
+        SDLKey_SDLK_AMPERSAND = "&";
+        SDLKey_SDLK_QUOTE = "'";
+        SDLKey_SDLK_LEFTPAREN = "(";
+        SDLKey_SDLK_RIGHTPAREN = ")";
+        SDLKey_SDLK_ASTERISK = "*";
+        SDLKey_SDLK_PLUS = "+";
+        SDLKey_SDLK_COMMA = ",";
+        SDLKey_SDLK_MINUS = "-";
+        SDLKey_SDLK_PERIOD = ".";
+        SDLKey_SDLK_SLASH = "/";
+        SDLKey_SDLK_0 = "0";
+        SDLKey_SDLK_1 = "1";
+        SDLKey_SDLK_2 = "2";
+        SDLKey_SDLK_3 = "3";
+        SDLKey_SDLK_4 = "4";
+        SDLKey_SDLK_5 = "5";
+        SDLKey_SDLK_6 = "6";
+        SDLKey_SDLK_7 = "7";
+        SDLKey_SDLK_8 = "8";
+        SDLKey_SDLK_9 = "9";
+        SDLKey_SDLK_COLON = ":";
+        SDLKey_SDLK_SEMICOLON = ";";
+        SDLKey_SDLK_LESS = "<";
+        SDLKey_SDLK_EQUALS = "=";
+        SDLKey_SDLK_GREATER = ">";
+        SDLKey_SDLK_QUESTION = "?";
+        SDLKey_SDLK_AT = "@";
+        SDLKey_SDLK_LEFTBRACKET = "[";
+        SDLKey_SDLK_BACKSLASH = "\\";
+        SDLKey_SDLK_RIGHTBRACKET = "]";
+        SDLKey_SDLK_CARET = "^";
+        SDLKey_SDLK_UNDERSCORE = "_";
+        SDLKey_SDLK_BACKQUOTE = "`";
+        SDLKey_SDLK_a = "a";
+        SDLKey_SDLK_b = "b";
+        SDLKey_SDLK_c = "c";
+        SDLKey_SDLK_d = "d";
+        SDLKey_SDLK_e = "e";
+        SDLKey_SDLK_f = "f";
+        SDLKey_SDLK_g = "g";
+        SDLKey_SDLK_h = "h";
+        SDLKey_SDLK_i = "i";
+        SDLKey_SDLK_j = "j";
+        SDLKey_SDLK_k = "k";
+        SDLKey_SDLK_l = "l";
+        SDLKey_SDLK_m = "m";
+        SDLKey_SDLK_n = "n";
+        SDLKey_SDLK_o = "o";
+        SDLKey_SDLK_p = "p";
+        SDLKey_SDLK_q = "q";
+        SDLKey_SDLK_r = "r";
+        SDLKey_SDLK_s = "s";
+        SDLKey_SDLK_t = "t";
+        SDLKey_SDLK_u = "u";
+        SDLKey_SDLK_v = "v";
+        SDLKey_SDLK_w = "w";
+        SDLKey_SDLK_x = "x";
+        SDLKey_SDLK_y = "y";
+        SDLKey_SDLK_z = "z";
+        SDLKey_SDLK_DELETE = "Del";
+    );
 
     /* Numeric keypad */
-    set_out!(SDLKey_SDLK_KP0 = "Num[0 as usize]");
-    set_out!(SDLKey_SDLK_KP1 = "Num[1 as usize]");
-    set_out!(SDLKey_SDLK_KP2 = "Num[2 as usize]");
-    set_out!(SDLKey_SDLK_KP3 = "Num[3 as usize]");
-    set_out!(SDLKey_SDLK_KP4 = "Num[4 as usize]");
-    set_out!(SDLKey_SDLK_KP5 = "Num[5 as usize]");
-    set_out!(SDLKey_SDLK_KP6 = "Num[6 as usize]");
-    set_out!(SDLKey_SDLK_KP7 = "Num[7 as usize]");
-    set_out!(SDLKey_SDLK_KP8 = "Num[8 as usize]");
-    set_out!(SDLKey_SDLK_KP9 = "Num[9 as usize]");
-    set_out!(SDLKey_SDLK_KP_PERIOD = "Num[. as usize]");
-    set_out!(SDLKey_SDLK_KP_DIVIDE = "Num[/ as usize]");
-    set_out!(SDLKey_SDLK_KP_MULTIPLY = "Num[* as usize]");
-    set_out!(SDLKey_SDLK_KP_MINUS = "Num[- as usize]");
-    set_out!(SDLKey_SDLK_KP_PLUS = "Num[+ as usize]");
-    set_out!(SDLKey_SDLK_KP_ENTER = "Num[Enter as usize]");
-    set_out!(SDLKey_SDLK_KP_EQUALS = "Num[= as usize]");
+    set_out!(
+        SDLKey_SDLK_KP0 = "Num[0 as usize]";
+        SDLKey_SDLK_KP1 = "Num[1 as usize]";
+        SDLKey_SDLK_KP2 = "Num[2 as usize]";
+        SDLKey_SDLK_KP3 = "Num[3 as usize]";
+        SDLKey_SDLK_KP4 = "Num[4 as usize]";
+        SDLKey_SDLK_KP5 = "Num[5 as usize]";
+        SDLKey_SDLK_KP6 = "Num[6 as usize]";
+        SDLKey_SDLK_KP7 = "Num[7 as usize]";
+        SDLKey_SDLK_KP8 = "Num[8 as usize]";
+        SDLKey_SDLK_KP9 = "Num[9 as usize]";
+        SDLKey_SDLK_KP_PERIOD = "Num[. as usize]";
+        SDLKey_SDLK_KP_DIVIDE = "Num[/ as usize]";
+        SDLKey_SDLK_KP_MULTIPLY = "Num[* as usize]";
+        SDLKey_SDLK_KP_MINUS = "Num[- as usize]";
+        SDLKey_SDLK_KP_PLUS = "Num[+ as usize]";
+        SDLKey_SDLK_KP_ENTER = "Num[Enter as usize]";
+        SDLKey_SDLK_KP_EQUALS = "Num[= as usize]";
+    );
 
     /* Arrows + Home/End pad */
-    set_out!(SDLKey_SDLK_UP = "Up");
-    set_out!(SDLKey_SDLK_DOWN = "Down");
-    set_out!(SDLKey_SDLK_RIGHT = "Right");
-    set_out!(SDLKey_SDLK_LEFT = "Left");
-    set_out!(SDLKey_SDLK_INSERT = "Insert");
-    set_out!(SDLKey_SDLK_HOME = "Home");
-    set_out!(SDLKey_SDLK_END = "End");
-    set_out!(SDLKey_SDLK_PAGEUP = "PageUp");
-    set_out!(SDLKey_SDLK_PAGEDOWN = "PageDown");
+    set_out!(
+        SDLKey_SDLK_UP = "Up";
+        SDLKey_SDLK_DOWN = "Down";
+        SDLKey_SDLK_RIGHT = "Right";
+        SDLKey_SDLK_LEFT = "Left";
+        SDLKey_SDLK_INSERT = "Insert";
+        SDLKey_SDLK_HOME = "Home";
+        SDLKey_SDLK_END = "End";
+        SDLKey_SDLK_PAGEUP = "PageUp";
+        SDLKey_SDLK_PAGEDOWN = "PageDown";
+    );
 
     /* Function keys */
-    set_out!(SDLKey_SDLK_F1 = "F1");
-    set_out!(SDLKey_SDLK_F2 = "F2");
-    set_out!(SDLKey_SDLK_F3 = "F3");
-    set_out!(SDLKey_SDLK_F4 = "F4");
-    set_out!(SDLKey_SDLK_F5 = "F5");
-    set_out!(SDLKey_SDLK_F6 = "F6");
-    set_out!(SDLKey_SDLK_F7 = "F7");
-    set_out!(SDLKey_SDLK_F8 = "F8");
-    set_out!(SDLKey_SDLK_F9 = "F9");
-    set_out!(SDLKey_SDLK_F10 = "F10");
-    set_out!(SDLKey_SDLK_F11 = "F11");
-    set_out!(SDLKey_SDLK_F12 = "F12");
-    set_out!(SDLKey_SDLK_F13 = "F13");
-    set_out!(SDLKey_SDLK_F14 = "F14");
-    set_out!(SDLKey_SDLK_F15 = "F15");
+    set_out!(
+        SDLKey_SDLK_F1 = "F1";
+        SDLKey_SDLK_F2 = "F2";
+        SDLKey_SDLK_F3 = "F3";
+        SDLKey_SDLK_F4 = "F4";
+        SDLKey_SDLK_F5 = "F5";
+        SDLKey_SDLK_F6 = "F6";
+        SDLKey_SDLK_F7 = "F7";
+        SDLKey_SDLK_F8 = "F8";
+        SDLKey_SDLK_F9 = "F9";
+        SDLKey_SDLK_F10 = "F10";
+        SDLKey_SDLK_F11 = "F11";
+        SDLKey_SDLK_F12 = "F12";
+        SDLKey_SDLK_F13 = "F13";
+        SDLKey_SDLK_F14 = "F14";
+        SDLKey_SDLK_F15 = "F15";
+    );
 
     /* Key state modifier keys */
-    set_out!(SDLKey_SDLK_NUMLOCK = "NumLock");
-    set_out!(SDLKey_SDLK_CAPSLOCK = "CapsLock");
-    set_out!(SDLKey_SDLK_SCROLLOCK = "ScrlLock");
+    set_out!(
+        SDLKey_SDLK_NUMLOCK = "NumLock";
+        SDLKey_SDLK_CAPSLOCK = "CapsLock";
+        SDLKey_SDLK_SCROLLOCK = "ScrlLock";
+    );
     if cfg!(feature = "gcw0") {
-        set_out!(SDLKey_SDLK_LSHIFT = "X");
-        set_out!(SDLKey_SDLK_LCTRL = "A");
-        set_out!(SDLKey_SDLK_LALT = "B");
+        set_out!(
+            SDLKey_SDLK_LSHIFT = "X";
+            SDLKey_SDLK_LCTRL = "A";
+            SDLKey_SDLK_LALT = "B";
+        );
     }
 
     if cfg!(not(feature = "gcw0")) {
-        set_out!(SDLKey_SDLK_LSHIFT = "LShift");
-        set_out!(SDLKey_SDLK_LCTRL = "LCtrl");
-        set_out!(SDLKey_SDLK_LALT = "LAlt");
+        set_out!(
+            SDLKey_SDLK_LSHIFT = "LShift";
+            SDLKey_SDLK_LCTRL = "LCtrl";
+            SDLKey_SDLK_LALT = "LAlt";
+        );
     }
 
-    set_out!(SDLKey_SDLK_RSHIFT = "RShift");
-    set_out!(SDLKey_SDLK_RCTRL = "RCtrl");
-    set_out!(SDLKey_SDLK_RALT = "RAlt");
-    set_out!(SDLKey_SDLK_RMETA = "RMeta");
-    set_out!(SDLKey_SDLK_LMETA = "LMeta");
-    set_out!(SDLKey_SDLK_LSUPER = "LSuper");
-    set_out!(SDLKey_SDLK_RSUPER = "RSuper");
-    set_out!(SDLKey_SDLK_MODE = "Mode");
-    set_out!(SDLKey_SDLK_COMPOSE = "Compose");
+    set_out!(
+        SDLKey_SDLK_RSHIFT = "RShift";
+        SDLKey_SDLK_RCTRL = "RCtrl";
+        SDLKey_SDLK_RALT = "RAlt";
+        SDLKey_SDLK_RMETA = "RMeta";
+        SDLKey_SDLK_LMETA = "LMeta";
+        SDLKey_SDLK_LSUPER = "LSuper";
+        SDLKey_SDLK_RSUPER = "RSuper";
+        SDLKey_SDLK_MODE = "Mode";
+        SDLKey_SDLK_COMPOSE = "Compose";
+    );
 
     /* Miscellaneous function keys */
-    set_out!(SDLKey_SDLK_HELP = "Help");
-    set_out!(SDLKey_SDLK_PRINT = "Print");
-    set_out!(SDLKey_SDLK_SYSREQ = "SysReq");
-    set_out!(SDLKey_SDLK_BREAK = "Break");
-    set_out!(SDLKey_SDLK_MENU = "Menu");
-    set_out!(SDLKey_SDLK_POWER = "Power");
-    set_out!(SDLKey_SDLK_EURO = "Euro");
-    set_out!(SDLKey_SDLK_UNDO = "Undo");
+    set_out!(
+        SDLKey_SDLK_HELP = "Help";
+        SDLKey_SDLK_PRINT = "Print";
+        SDLKey_SDLK_SYSREQ = "SysReq";
+        SDLKey_SDLK_BREAK = "Break";
+        SDLKey_SDLK_MENU = "Menu";
+        SDLKey_SDLK_POWER = "Power";
+        SDLKey_SDLK_EURO = "Euro";
+        SDLKey_SDLK_UNDO = "Undo";
+    );
 
     /* Mouse und Joy buttons */
-    set_out!(ps::MouseButton1 = "Mouse1");
-    set_out!(ps::MouseButton2 = "Mouse2");
-    set_out!(ps::MouseButton3 = "Mouse3");
-    set_out!(ps::MouseWheelup = "WheelUp");
-    set_out!(ps::MouseWheeldown = "WheelDown");
-
-    set_out!(ps::JoyUp = "JoyUp");
-    set_out!(ps::JoyDown = "JoyDown");
-    set_out!(ps::JoyLeft = "JoyLeft");
-    set_out!(ps::JoyRight = "JoyRight");
-    set_out!(ps::JoyButton1 = "Joy-A");
-    set_out!(ps::JoyButton2 = "Joy-B");
-    set_out!(ps::JoyButton3 = "Joy-X");
-    set_out!(ps::JoyButton4 = "Joy-Y");
+    set_out!(
+        ps::MouseButton1 = "Mouse1";
+        ps::MouseButton2 = "Mouse2";
+        ps::MouseButton3 = "Mouse3";
+        ps::MouseWheelup = "WheelUp";
+        ps::MouseWheeldown = "WheelDown";
+        ps::JoyUp = "JoyUp";
+        ps::JoyDown = "JoyDown";
+        ps::JoyLeft = "JoyLeft";
+        ps::JoyRight = "JoyRight";
+        ps::JoyButton1 = "Joy-A";
+        ps::JoyButton2 = "Joy-B";
+        ps::JoyButton3 = "Joy-X";
+        ps::JoyButton4 = "Joy-Y";
+    );
 
     out
 }
