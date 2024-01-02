@@ -629,194 +629,101 @@ impl crate::Data<'_> {
     /// freedroid.  It highlights the map position that is currently
     /// edited or would be edited, if the user pressed something.  I.e.
     /// it provides a "cursor" for the Level Editor.
+    #[allow(clippy::similar_names)]
     fn highlight_current_block(&mut self) {
         let mut ne_screen = self.graphics.ne_screen.as_mut().unwrap().lock().unwrap();
         let mut pixels = ne_screen.pixels();
 
+        macro_rules! set_pixels {
+            ($x:expr, $y:expr $(,)?) => {
+                #[allow(clippy::cast_possible_truncation)]
+                pixels
+                    .set(
+                        u16::try_from($x).unwrap(),
+                        u16::try_from($y).unwrap(),
+                        HIGHLIGHTCOLOR,
+                    )
+                    .unwrap();
+            };
+        }
+
+        let user_rect_x = i32::from(self.vars.user_rect.x());
+        let user_rect_width = i32::from(self.vars.user_rect.width());
+        let block_rect_width = f32::from(self.vars.block_rect.width());
+        let block_rect_height = f32::from(self.vars.block_rect.height());
+        let pos_x_r = (self.vars.me.pos.x).round();
+        let pos_y_r = (self.vars.me.pos.y).round();
+
         let user_center = self.vars.get_user_center();
+        let user_center_y = i32::from(user_center.y());
         for i in 0..i32::from(self.vars.block_rect.width()) {
             // This draws a (double) line at the upper border of the current block
-            #[allow(clippy::cast_possible_truncation)]
-            pixels
-                .set(
-                    u16::try_from(
-                        i + i32::from(self.vars.user_rect.x())
-                            + i32::from(self.vars.user_rect.width() / 2)
-                            + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
-                                * f32::from(self.vars.block_rect.width()))
-                                as i32,
-                    )
-                    .unwrap(),
-                    u16::try_from(
-                        i32::from(user_center.y())
-                            + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
-                                * f32::from(self.vars.block_rect.height()))
-                                as i32,
-                    )
-                    .unwrap(),
-                    HIGHLIGHTCOLOR,
-                )
-                .unwrap();
-            #[allow(clippy::cast_possible_truncation)]
-            pixels
-                .set(
-                    u16::try_from(
-                        i + i32::from(self.vars.user_rect.x())
-                            + i32::from(self.vars.user_rect.width() / 2)
-                            + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
-                                * f32::from(self.vars.block_rect.width()))
-                                as i32,
-                    )
-                    .unwrap(),
-                    u16::try_from(
-                        i32::from(user_center.y())
-                            + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
-                                * f32::from(self.vars.block_rect.height()))
-                                as i32
-                            + 1,
-                    )
-                    .unwrap(),
-                    HIGHLIGHTCOLOR,
-                )
-                .unwrap();
+            set_pixels!(
+                i + user_rect_x
+                    + user_rect_width / 2
+                    + ((pos_x_r - self.vars.me.pos.x - 0.5) * block_rect_width) as i32,
+                user_center_y + ((pos_y_r - self.vars.me.pos.y - 0.5) * block_rect_height) as i32,
+            );
+            set_pixels!(
+                i + user_rect_x
+                    + user_rect_width / 2
+                    + ((pos_x_r - self.vars.me.pos.x - 0.5) * block_rect_width) as i32,
+                user_center_y
+                    + ((pos_y_r - self.vars.me.pos.y - 0.5) * block_rect_height) as i32
+                    + 1,
+            );
 
             // This draws a line at the lower border of the current block
-            #[allow(clippy::cast_possible_truncation)]
-            pixels
-                .set(
-                    u16::try_from(
-                        i + i32::from(self.vars.user_rect.x())
-                            + i32::from(self.vars.user_rect.width() / 2)
-                            + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
-                                * f32::from(self.vars.block_rect.width()))
-                                as i32,
-                    )
-                    .unwrap(),
-                    u16::try_from(
-                        i32::from(user_center.y())
-                            + (((self.vars.me.pos.y).round() - self.vars.me.pos.y + 0.5)
-                                * f32::from(self.vars.block_rect.height()))
-                                as i32
-                            - 1,
-                    )
-                    .unwrap(),
-                    HIGHLIGHTCOLOR,
-                )
-                .unwrap();
-            #[allow(clippy::cast_possible_truncation)]
-            pixels
-                .set(
-                    u16::try_from(
-                        i + i32::from(self.vars.user_rect.x())
-                            + i32::from(self.vars.user_rect.width() / 2)
-                            + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
-                                * f32::from(self.vars.block_rect.width()))
-                                as i32,
-                    )
-                    .unwrap(),
-                    u16::try_from(
-                        i32::from(user_center.y())
-                            + (((self.vars.me.pos.y).round() - self.vars.me.pos.y + 0.5)
-                                * f32::from(self.vars.block_rect.height()))
-                                as i32
-                            - 2,
-                    )
-                    .unwrap(),
-                    HIGHLIGHTCOLOR,
-                )
-                .unwrap();
+            set_pixels!(
+                i + user_rect_x
+                    + user_rect_width / 2
+                    + ((pos_x_r - self.vars.me.pos.x - 0.5) * block_rect_width) as i32,
+                user_center_y + ((pos_y_r - self.vars.me.pos.y + 0.5) * block_rect_height) as i32
+                    - 1,
+            );
+            set_pixels!(
+                i + user_rect_x
+                    + user_rect_width / 2
+                    + ((pos_x_r - self.vars.me.pos.x - 0.5) * block_rect_width) as i32,
+                user_center_y + ((pos_y_r - self.vars.me.pos.y + 0.5) * block_rect_height) as i32
+                    - 2,
+            );
 
             // This draws a line at the left border of the current block
-            #[allow(clippy::cast_possible_truncation)]
-            pixels
-                .set(
-                    u16::try_from(
-                        i32::from(self.vars.user_rect.x())
-                            + i32::from(self.vars.user_rect.width() / 2)
-                            + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
-                                * f32::from(self.vars.block_rect.width()))
-                                as i32,
-                    )
-                    .unwrap(),
-                    u16::try_from(
-                        i32::from(user_center.y())
-                            + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
-                                * f32::from(self.vars.block_rect.height()))
-                                as i32
-                            + i,
-                    )
-                    .unwrap(),
-                    HIGHLIGHTCOLOR,
-                )
-                .unwrap();
-            #[allow(clippy::cast_possible_truncation)]
-            pixels
-                .set(
-                    u16::try_from(
-                        1 + i32::from(self.vars.user_rect.x())
-                            + i32::from(self.vars.user_rect.width() / 2)
-                            + (((self.vars.me.pos.x).round() - self.vars.me.pos.x - 0.5)
-                                * f32::from(self.vars.block_rect.width()))
-                                as i32,
-                    )
-                    .unwrap(),
-                    u16::try_from(
-                        i32::from(user_center.y())
-                            + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
-                                * f32::from(self.vars.block_rect.height()))
-                                as i32
-                            + i,
-                    )
-                    .unwrap(),
-                    HIGHLIGHTCOLOR,
-                )
-                .unwrap();
+            set_pixels!(
+                user_rect_x
+                    + user_rect_width / 2
+                    + ((pos_x_r - self.vars.me.pos.x - 0.5) * block_rect_width) as i32,
+                user_center_y
+                    + ((pos_y_r - self.vars.me.pos.y - 0.5) * block_rect_height) as i32
+                    + i,
+            );
+            set_pixels!(
+                1 + user_rect_x
+                    + user_rect_width / 2
+                    + ((pos_x_r - self.vars.me.pos.x - 0.5) * block_rect_width) as i32,
+                user_center_y
+                    + ((pos_y_r - self.vars.me.pos.y - 0.5) * block_rect_height) as i32
+                    + i,
+            );
 
             // This draws a line at the right border of the current block
-            #[allow(clippy::cast_possible_truncation)]
-            pixels
-                .set(
-                    u16::try_from(
-                        -1 + i32::from(self.vars.user_rect.x())
-                            + i32::from(self.vars.user_rect.width() / 2)
-                            + (((self.vars.me.pos.x).round() - self.vars.me.pos.x + 0.5)
-                                * f32::from(self.vars.block_rect.width()))
-                                as i32,
-                    )
-                    .unwrap(),
-                    u16::try_from(
-                        i32::from(user_center.y())
-                            + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
-                                * f32::from(self.vars.block_rect.height()))
-                                as i32
-                            + i,
-                    )
-                    .unwrap(),
-                    HIGHLIGHTCOLOR,
-                )
-                .unwrap();
-            #[allow(clippy::cast_possible_truncation)]
-            pixels
-                .set(
-                    u16::try_from(
-                        -2 + i32::from(self.vars.user_rect.x())
-                            + i32::from(self.vars.user_rect.width() / 2)
-                            + (((self.vars.me.pos.x).round() - self.vars.me.pos.x + 0.5)
-                                * f32::from(self.vars.block_rect.width()))
-                                as i32,
-                    )
-                    .unwrap(),
-                    u16::try_from(
-                        i32::from(user_center.y())
-                            + (((self.vars.me.pos.y).round() - self.vars.me.pos.y - 0.5)
-                                * f32::from(self.vars.block_rect.height()))
-                                as i32
-                            + i,
-                    )
-                    .unwrap(),
-                    HIGHLIGHTCOLOR,
-                )
-                .unwrap();
+            set_pixels!(
+                -1 + user_rect_x
+                    + user_rect_width / 2
+                    + ((pos_x_r - self.vars.me.pos.x + 0.5) * block_rect_width) as i32,
+                user_center_y
+                    + ((pos_y_r - self.vars.me.pos.y - 0.5) * block_rect_height) as i32
+                    + i,
+            );
+            set_pixels!(
+                -2 + user_rect_x
+                    + user_rect_width / 2
+                    + ((pos_x_r - self.vars.me.pos.x + 0.5) * block_rect_width) as i32,
+                user_center_y
+                    + ((pos_y_r - self.vars.me.pos.y - 0.5) * block_rect_height) as i32
+                    + i,
+            );
         }
     }
 }
