@@ -13,6 +13,7 @@ use sdl::{Rect, Surface};
 use sdl_sys::SDL_Color;
 use std::{
     convert::Infallible,
+    ffi::CStr,
     ops::{Deref, DerefMut, Not},
     os::raw::c_int,
 };
@@ -1738,130 +1739,7 @@ impl crate::Data<'_> {
         self.wait_for_all_keys_released();
         let mut finish_takeover = false;
         while !finish_takeover {
-            /* Init Color-column and Capsule-Number for each opponenet and your color */
-            self.takeover
-                .display_column
-                .iter_mut()
-                .enumerate()
-                .for_each(|(row, column)| *column = (row % 2).try_into().unwrap());
-            self.takeover
-                .capsules_countdown
-                .iter_mut()
-                .flat_map(|color_countdown| color_countdown[0].iter_mut())
-                .for_each(|x| *x = None);
-
-            self.takeover.your_color = Color::Yellow;
-            self.takeover.opponent_color = Color::Violet;
-
-            self.takeover.capsule_cur_row[usize::from(Color::Yellow)] = 0;
-            self.takeover.capsule_cur_row[usize::from(Color::Violet)] = 0;
-
-            self.takeover.droid_num = enemynum;
-            self.takeover.opponent_type = self.main.all_enemys[enemy_index].ty;
-            self.takeover.num_capsules[Opponents::You as usize] =
-                3 + self.class_of_druid(self.vars.me.ty);
-            self.takeover.num_capsules[Opponents::Enemy as usize] =
-                4 + self.class_of_druid(self.takeover.opponent_type);
-
-            self.invent_playground();
-
-            self.show_playground();
-            assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
-
-            self.choose_color();
-            self.wait_for_all_keys_released();
-
-            self.play_game();
-            self.wait_for_all_keys_released();
-
-            let message;
-            /* Ausgang beurteilen und returnen */
-            if self.main.invincible_mode != 0
-                || self.takeover.leader_color == self.takeover.your_color
-            {
-                self.takeover_game_won_sound();
-                #[allow(clippy::cast_possible_truncation)]
-                if self.vars.me.ty == Droid::Droid001 as c_int {
-                    self.takeover.reject_energy = self.vars.me.energy as c_int;
-                    self.main.pre_take_energy = self.vars.me.energy as c_int;
-                }
-
-                // We provide some security agains too high energy/health values gained
-                // by very rapid successions of successful takeover attempts
-                let droid_map = &self.vars.droidmap;
-                if self.vars.me.energy > droid_map[Droid::Droid001 as usize].maxenergy {
-                    self.vars.me.energy = droid_map[Droid::Droid001 as usize].maxenergy;
-                }
-                if self.vars.me.health > droid_map[Droid::Droid001 as usize].maxenergy {
-                    self.vars.me.health = droid_map[Droid::Droid001 as usize].maxenergy;
-                }
-
-                // We allow to gain the current energy/full health that was still in the
-                // other droid, since all previous damage must be due to fighting damage,
-                // and this is exactly the sort of damage can usually be cured in refreshes.
-                self.vars.me.energy += self.main.all_enemys[enemy_index].energy;
-                self.vars.me.health +=
-                    droid_map[usize::try_from(self.takeover.opponent_type).unwrap()].maxenergy;
-
-                self.vars.me.ty = self.main.all_enemys[enemy_index].ty;
-
-                #[allow(clippy::cast_precision_loss)]
-                {
-                    self.main.real_score += droid_map
-                        [usize::try_from(self.takeover.opponent_type).unwrap()]
-                    .score as f32;
-
-                    self.main.death_count +=
-                        (self.takeover.opponent_type * self.takeover.opponent_type) as f32;
-                    // quadratic "importance", max=529
-                }
-
-                self.main.all_enemys[enemy_index].status = Status::Out as c_int; // removed droid silently (no blast!)
-
-                if self.takeover.leader_color == self.takeover.your_color {
-                    /* won the proper way */
-                    message = cstr!("Complete");
-                } else {
-                    /* only won because of InvincibleMode */
-                    message = cstr!("You cheat");
-                };
-
-                finish_takeover = true;
-            } else if self.takeover.leader_color == self.takeover.opponent_color {
-                /* self.takeover.leader_color == self.takeover.your_color */
-                // you lost, but enemy is killed too --> blast it!
-                self.main.all_enemys[enemy_index].energy = -1.0; /* to be sure */
-
-                self.takeover_game_lost_sound();
-                #[allow(clippy::cast_precision_loss)]
-                if self.vars.me.ty == Droid::Droid001 as c_int {
-                    message = cstr!("Burnt Out");
-                    self.vars.me.energy = 0.;
-                } else {
-                    message = cstr!("Rejected");
-                    self.vars.me.ty = Droid::Droid001 as c_int;
-                    self.vars.me.energy = self.takeover.reject_energy as f32;
-                }
-                finish_takeover = true;
-            } else {
-                /* LeadColor == self.takeover.opponent_color */
-
-                self.takeover_game_deadlock_sound();
-                message = cstr!("Deadlock");
-            }
-
-            self.display_banner(Some(message), None, 0);
-            self.show_playground();
-            assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
-
-            self.wait_for_all_keys_released();
-            let now = self.sdl.ticks_ms();
-            while !self.fire_pressed_r() && self.sdl.ticks_ms() - now < SHOW_WAIT {
-                #[cfg(target_os = "android")]
-                assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
-
-                self.sdl.delay_ms(1);
-            }
+            self.takeover_round(enemynum, enemy_index, &mut finish_takeover);
         }
 
         // restore User_Rect
@@ -1870,6 +1748,136 @@ impl crate::Data<'_> {
         self.clear_graph_mem();
 
         (self.takeover.leader_color == self.takeover.your_color).into()
+    }
+
+    fn takeover_round(&mut self, enemynum: c_int, enemy_index: usize, finish_takeover: &mut bool) {
+        /* Init Color-column and Capsule-Number for each opponenet and your color */
+        self.takeover
+            .display_column
+            .iter_mut()
+            .enumerate()
+            .for_each(|(row, column)| *column = (row % 2).try_into().unwrap());
+        self.takeover
+            .capsules_countdown
+            .iter_mut()
+            .flat_map(|color_countdown| color_countdown[0].iter_mut())
+            .for_each(|x| *x = None);
+
+        self.takeover.your_color = Color::Yellow;
+        self.takeover.opponent_color = Color::Violet;
+
+        self.takeover.capsule_cur_row[usize::from(Color::Yellow)] = 0;
+        self.takeover.capsule_cur_row[usize::from(Color::Violet)] = 0;
+
+        self.takeover.droid_num = enemynum;
+        self.takeover.opponent_type = self.main.all_enemys[enemy_index].ty;
+        self.takeover.num_capsules[Opponents::You as usize] =
+            3 + self.class_of_druid(self.vars.me.ty);
+        self.takeover.num_capsules[Opponents::Enemy as usize] =
+            4 + self.class_of_druid(self.takeover.opponent_type);
+
+        self.invent_playground();
+
+        self.show_playground();
+        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
+
+        self.choose_color();
+        self.wait_for_all_keys_released();
+
+        self.play_game();
+        self.wait_for_all_keys_released();
+
+        let message;
+        /* Ausgang beurteilen und returnen */
+        if self.main.invincible_mode != 0 || self.takeover.leader_color == self.takeover.your_color
+        {
+            message = self.takeover_win(enemy_index, finish_takeover);
+        } else if self.takeover.leader_color == self.takeover.opponent_color {
+            /* self.takeover.leader_color == self.takeover.your_color */
+            // you lost, but enemy is killed too --> blast it!
+            self.main.all_enemys[enemy_index].energy = -1.0; /* to be sure */
+
+            self.takeover_game_lost_sound();
+            #[allow(clippy::cast_precision_loss)]
+            if self.vars.me.ty == Droid::Droid001 as c_int {
+                message = cstr!("Burnt Out");
+                self.vars.me.energy = 0.;
+            } else {
+                message = cstr!("Rejected");
+                self.vars.me.ty = Droid::Droid001 as c_int;
+                self.vars.me.energy = self.takeover.reject_energy as f32;
+            }
+            *finish_takeover = true;
+        } else {
+            /* LeadColor == self.takeover.opponent_color */
+
+            self.takeover_game_deadlock_sound();
+            message = cstr!("Deadlock");
+        }
+
+        self.display_banner(Some(message), None, 0);
+        self.show_playground();
+        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
+
+        self.wait_for_all_keys_released();
+        let now = self.sdl.ticks_ms();
+        while !self.fire_pressed_r() && self.sdl.ticks_ms() - now < SHOW_WAIT {
+            #[cfg(target_os = "android")]
+            assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
+
+            self.sdl.delay_ms(1);
+        }
+    }
+
+    fn takeover_win(&mut self, enemy_index: usize, finish_takeover: &mut bool) -> &'static CStr {
+        self.takeover_game_won_sound();
+        #[allow(clippy::cast_possible_truncation)]
+        if self.vars.me.ty == Droid::Droid001 as c_int {
+            self.takeover.reject_energy = self.vars.me.energy as c_int;
+            self.main.pre_take_energy = self.vars.me.energy as c_int;
+        }
+
+        // We provide some security agains too high energy/health values gained
+        // by very rapid successions of successful takeover attempts
+        let droid_map = &self.vars.droidmap;
+        if self.vars.me.energy > droid_map[Droid::Droid001 as usize].maxenergy {
+            self.vars.me.energy = droid_map[Droid::Droid001 as usize].maxenergy;
+        }
+        if self.vars.me.health > droid_map[Droid::Droid001 as usize].maxenergy {
+            self.vars.me.health = droid_map[Droid::Droid001 as usize].maxenergy;
+        }
+
+        // We allow to gain the current energy/full health that was still in the
+        // other droid, since all previous damage must be due to fighting damage,
+        // and this is exactly the sort of damage can usually be cured in refreshes.
+        self.vars.me.energy += self.main.all_enemys[enemy_index].energy;
+        self.vars.me.health +=
+            droid_map[usize::try_from(self.takeover.opponent_type).unwrap()].maxenergy;
+
+        self.vars.me.ty = self.main.all_enemys[enemy_index].ty;
+
+        #[allow(clippy::cast_precision_loss)]
+        {
+            self.main.real_score +=
+                droid_map[usize::try_from(self.takeover.opponent_type).unwrap()].score as f32;
+
+            self.main.death_count +=
+                (self.takeover.opponent_type * self.takeover.opponent_type) as f32;
+            // quadratic "importance", max=529
+        }
+
+        self.main.all_enemys[enemy_index].status = Status::Out as c_int; // removed droid silently (no blast!)
+
+        let message = if self.takeover.leader_color == self.takeover.your_color {
+            /* won the proper way */
+            cstr!("Complete")
+        } else {
+            /* only won because of InvincibleMode */
+            cstr!("You cheat")
+        };
+
+        *finish_takeover = true;
+        message
     }
 }
 
