@@ -1138,13 +1138,50 @@ impl crate::Data<'_> {
             );
         }
 
-        let mut dst = Rect::new(
-            x_offs + i16::try_from(self.takeover.left_ground_start.x).unwrap(),
-            y_offs + i16::try_from(self.takeover.left_ground_start.y).unwrap(),
-            self.vars.user_rect.width(),
-            self.vars.user_rect.height(),
-        );
+        self.show_yellow_blocks();
+        self.show_violet_blocks();
 
+        let Self {
+            takeover:
+                Takeover {
+                    to_blocks,
+                    display_column,
+                    column_start,
+                    column_rect,
+                    fill_blocks,
+                    ..
+                },
+            graphics: Graphics { ne_screen, .. },
+            ..
+        } = self;
+        /* Fill the Display Column with its leds */
+        display_column
+            .iter()
+            .copied()
+            .enumerate()
+            .for_each(|(line, display_column)| {
+                let mut dst = Rect::new(
+                    x_offs + i16::try_from(column_start.x).unwrap(),
+                    y_offs
+                        + i16::try_from(column_start.y).unwrap()
+                        + i16::try_from(line).unwrap()
+                            * i16::try_from(column_rect.height()).unwrap(),
+                    0,
+                    0,
+                );
+                to_blocks.as_mut().unwrap().blit_from_to(
+                    &fill_blocks[usize::from(display_column)],
+                    ne_screen.as_mut().unwrap(),
+                    &mut dst,
+                );
+            });
+
+        self.show_yellow_playground();
+        self.show_violet_playground();
+        self.show_capsules_left();
+    }
+
+    fn show_yellow_blocks(&mut self) {
         let Self {
             takeover:
                 Takeover {
@@ -1152,12 +1189,22 @@ impl crate::Data<'_> {
                     leader_block,
                     to_ground_blocks,
                     column_block,
-                    fill_blocks,
                     ..
                 },
             graphics: Graphics { ne_screen, .. },
             ..
         } = self;
+
+        let x_offs = self.vars.classic_user_rect.x();
+        let y_offs = self.vars.classic_user_rect.y();
+
+        let mut dst = Rect::new(
+            x_offs + i16::try_from(self.takeover.left_ground_start.x).unwrap(),
+            y_offs + i16::try_from(self.takeover.left_ground_start.y).unwrap(),
+            self.vars.user_rect.width(),
+            self.vars.user_rect.height(),
+        );
+
         to_blocks.as_mut().unwrap().blit_from_to(
             &to_ground_blocks[GroundBlock::YellowAbove as usize],
             ne_screen.as_mut().unwrap(),
@@ -1203,9 +1250,25 @@ impl crate::Data<'_> {
             );
             dst.inc_y(i16::try_from(self.takeover.column_rect.height()).unwrap());
         }
+    }
 
-        /* rechte Saeule */
-        dst = Rect::new(
+    fn show_violet_blocks(&mut self) {
+        let Self {
+            takeover:
+                Takeover {
+                    to_blocks,
+                    to_ground_blocks,
+                    fill_blocks,
+                    ..
+                },
+            graphics: Graphics { ne_screen, .. },
+            ..
+        } = self;
+
+        let x_offs = self.vars.classic_user_rect.x();
+        let y_offs = self.vars.classic_user_rect.y();
+
+        let mut dst = Rect::new(
             x_offs + i16::try_from(self.takeover.right_ground_start.x).unwrap(),
             y_offs + i16::try_from(self.takeover.right_ground_start.y).unwrap(),
             0,
@@ -1253,7 +1316,9 @@ impl crate::Data<'_> {
             ne_screen.as_mut().unwrap(),
             &mut dst,
         );
+    }
 
+    fn show_yellow_playground(&mut self) {
         let Self {
             takeover:
                 Takeover {
@@ -1262,45 +1327,17 @@ impl crate::Data<'_> {
                     to_game_blocks,
                     element_rect,
                     to_blocks,
-                    display_column,
-                    column_start,
-                    column_rect,
-                    fill_blocks,
-                    num_capsules,
-                    capsule_cur_row,
-                    capsule_rect,
-                    capsule_blocks,
-                    left_capsule_starts,
-                    cur_capsule_starts,
                     playground_starts,
                     ..
                 },
             graphics: Graphics { ne_screen, .. },
+            vars,
             ..
         } = self;
-        /* Fill the Display Column with its leds */
-        display_column
-            .iter()
-            .copied()
-            .enumerate()
-            .for_each(|(line, display_column)| {
-                dst = Rect::new(
-                    x_offs + i16::try_from(column_start.x).unwrap(),
-                    y_offs
-                        + i16::try_from(column_start.y).unwrap()
-                        + i16::try_from(line).unwrap()
-                            * i16::try_from(column_rect.height()).unwrap(),
-                    0,
-                    0,
-                );
-                to_blocks.as_mut().unwrap().blit_from_to(
-                    &fill_blocks[usize::from(display_column)],
-                    ne_screen.as_mut().unwrap(),
-                    &mut dst,
-                );
-            });
 
-        /* Show the yellow playground */
+        let x_offs = vars.classic_user_rect.x();
+        let y_offs = vars.classic_user_rect.y();
+
         playground[Color::Yellow as usize]
             .iter()
             .take(NUM_LAYERS - 1)
@@ -1328,7 +1365,7 @@ impl crate::Data<'_> {
             })
             .for_each(
                 |(layer_index, line_index, playground_line, activation_line)| {
-                    dst = Rect::new(
+                    let mut dst = Rect::new(
                         x_offs
                             + i16::try_from(playground_starts[Color::Yellow as usize].x).unwrap()
                             + layer_index * i16::try_from(element_rect.width()).unwrap(),
@@ -1347,8 +1384,28 @@ impl crate::Data<'_> {
                     );
                 },
             );
+    }
 
-        /* Show the violet playground */
+    fn show_violet_playground(&mut self) {
+        let Self {
+            takeover:
+                Takeover {
+                    playground,
+                    activation_map,
+                    to_game_blocks,
+                    element_rect,
+                    to_blocks,
+                    playground_starts,
+                    ..
+                },
+            graphics: Graphics { ne_screen, .. },
+            vars,
+            ..
+        } = self;
+
+        let x_offs = vars.classic_user_rect.x();
+        let y_offs = vars.classic_user_rect.y();
+
         playground[Color::Violet as usize]
             .iter()
             .take(NUM_LAYERS - 1)
@@ -1376,7 +1433,7 @@ impl crate::Data<'_> {
             })
             .for_each(
                 |(layer_index, line_index, playground_line, activation_line)| {
-                    dst = Rect::new(
+                    let mut dst = Rect::new(
                         x_offs
                             + i16::try_from(playground_starts[Color::Violet as usize].x).unwrap()
                             + (i16::try_from(NUM_LAYERS).unwrap() - layer_index - 2)
@@ -1395,8 +1452,34 @@ impl crate::Data<'_> {
                     );
                 },
             );
+    }
 
-        /* Show the capsules left for each player */
+    fn show_capsules_left(&mut self) {
+        let Self {
+            takeover:
+                Takeover {
+                    to_blocks,
+                    num_capsules,
+                    capsule_cur_row,
+                    capsule_rect,
+                    capsule_blocks,
+                    left_capsule_starts,
+                    cur_capsule_starts,
+                    your_color,
+                    opponent_color,
+                    ..
+                },
+            graphics: Graphics { ne_screen, .. },
+            vars,
+            ..
+        } = self;
+
+        let your_color: usize = (*your_color).into();
+        let opponent_color: usize = (*opponent_color).into();
+
+        let x_offs = vars.classic_user_rect.x();
+        let y_offs = vars.classic_user_rect.y();
+
         num_capsules
             .iter()
             .copied()
@@ -1408,7 +1491,7 @@ impl crate::Data<'_> {
                     opponent_color
                 };
 
-                dst = Rect::new(
+                let mut dst = Rect::new(
                     x_offs + i16::try_from(cur_capsule_starts[color].x).unwrap(),
                     y_offs
                         + i16::try_from(cur_capsule_starts[color].y).unwrap()
