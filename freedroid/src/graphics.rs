@@ -1003,7 +1003,27 @@ impl crate::Data<'_> {
         use std::sync::Once;
 
         static DO_ONCE: Once = Once::new();
-        let mut fname = ArrayString::<[u8; 500]>::new();
+
+        macro_rules! find_file {
+            ($file_name:expr) => {
+                Self::find_file_static(
+                    &self.global,
+                    &mut self.misc,
+                    $file_name,
+                    Some(GRAPHICS_DIR_C),
+                    Themed::UseTheme as c_int,
+                    Criticality::Critical as c_int,
+                )
+            };
+        }
+
+        macro_rules! load_block_from_file {
+            ($file_name:expr) => {{
+                let fpath = find_file!($file_name);
+                self.graphics
+                    .load_block(fpath, 0, 0, None, i32::from(INIT_ONLY), self.sdl);
+            }};
+        }
 
         // Loading all these pictures might take a while...
         // and we do not want do deal with huge frametimes, which
@@ -1025,493 +1045,46 @@ impl crate::Data<'_> {
         self.update_progress(15);
 
         //---------- get Map blocks
-        let fpath = Self::find_file_static(
-            &self.global,
-            &mut self.misc,
-            MAP_BLOCK_FILE,
-            Some(GRAPHICS_DIR_C),
-            Themed::UseTheme as c_int,
-            Criticality::Critical as c_int,
-        );
-        self.graphics
-            .load_block(fpath, 0, 0, None, i32::from(INIT_ONLY), self.sdl); /* init function */
-        let Self {
-            graphics:
-                Graphics {
-                    map_block_surface_pointer,
-                    vid_bpp,
-                    orig_map_block_surface_pointer,
-                    pic,
-                    ..
-                },
-            ..
-        } = self;
-        orig_map_block_surface_pointer
-            .iter_mut()
-            .enumerate()
-            .zip(map_block_surface_pointer.iter_mut())
-            .flat_map(|((color_index, orig_color_map), color_map)| {
-                orig_color_map
-                    .iter_mut()
-                    .enumerate()
-                    .map(move |(block_index, orig_surface)| {
-                        (color_index, block_index, orig_surface)
-                    })
-                    .zip(color_map.iter_mut())
-            })
-            .for_each(|((color_index, block_index, orig_surface), surface)| {
-                *orig_surface = LoadBlockVidBppPic {
-                    vid_bpp: *vid_bpp,
-                    pic,
-                    fpath: None,
-                    line: color_index.try_into().unwrap(),
-                    col: block_index.try_into().unwrap(),
-                    block: Some(ORIG_BLOCK_RECT),
-                    flags: 0,
-                    sdl: self.sdl,
-                }
-                .run()
-                .map(|surface| Rc::new(RefCell::new(surface)));
-                *surface = orig_surface.as_ref().map(Rc::clone);
-            });
-
+        load_block_from_file!(MAP_BLOCK_FILE);
+        self.load_orig_map_block_surface_pointer();
         self.update_progress(20);
         //---------- get Droid-model  blocks
-        let fpath = Self::find_file_static(
-            &self.global,
-            &mut self.misc,
-            DROID_BLOCK_FILE,
-            Some(GRAPHICS_DIR_C),
-            Themed::UseTheme as c_int,
-            Criticality::Critical as c_int,
-        );
-        self.graphics
-            .load_block(fpath, 0, 0, None, i32::from(INIT_ONLY), self.sdl);
+        load_block_from_file!(DROID_BLOCK_FILE);
 
-        let Self {
-            graphics:
-                Graphics {
-                    vid_bpp,
-                    pic,
-                    influencer_surface_pointer,
-                    enemy_surface_pointer,
-                    ..
-                },
-            ..
-        } = self;
-
-        influencer_surface_pointer.iter_mut().enumerate().for_each(
-            |(index, influencer_surface)| {
-                *influencer_surface = LoadBlockVidBppPic {
-                    vid_bpp: *vid_bpp,
-                    pic,
-                    fpath: None,
-                    line: 0,
-                    col: index.try_into().unwrap(),
-                    block: Some(ORIG_BLOCK_RECT),
-                    flags: 0,
-                    sdl: self.sdl,
-                }
-                .run();
-
-                /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
-                if influencer_surface
-                    .as_mut()
-                    .unwrap()
-                    .set_alpha(ColorKeyFlag::empty(), 0)
-                    .not()
-                {
-                    error!("Cannot set alpha channel on surface");
-                }
-            },
-        );
-
-        enemy_surface_pointer
-            .iter_mut()
-            .enumerate()
-            .for_each(|(index, enemy_surface)| {
-                *enemy_surface = LoadBlockVidBppPic {
-                    vid_bpp: *vid_bpp,
-                    pic,
-                    fpath: None,
-                    line: 1,
-                    col: index.try_into().unwrap(),
-                    block: Some(ORIG_BLOCK_RECT),
-                    flags: 0,
-                    sdl: self.sdl,
-                }
-                .run();
-
-                /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
-                if enemy_surface
-                    .as_mut()
-                    .unwrap()
-                    .set_alpha(ColorKeyFlag::empty(), 0)
-                    .not()
-                {
-                    error!("Cannot set alpha channel on surface");
-                }
-            });
+        self.load_influencer_enemy_surface();
 
         self.update_progress(30);
         //---------- get Bullet blocks
-        let fpath = Self::find_file_static(
-            &self.global,
-            &mut self.misc,
-            BULLET_BLOCK_FILE,
-            Some(GRAPHICS_DIR_C),
-            Themed::UseTheme as c_int,
-            Criticality::Critical as c_int,
-        );
-        self.graphics
-            .load_block(fpath, 0, 0, None, i32::from(INIT_ONLY), self.sdl);
-        self.vars
-            .bulletmap
-            .iter_mut()
-            .enumerate()
-            .flat_map(|(bullet_type_index, bullet)| {
-                bullet
-                    .surfaces
-                    .iter_mut()
-                    .enumerate()
-                    .map(move |(phase_index, surface)| (bullet_type_index, phase_index, surface))
-            })
-            .for_each(|(bullet_type_index, phase_index, surface)| {
-                *surface = self.graphics.load_block(
-                    None,
-                    bullet_type_index.try_into().unwrap(),
-                    phase_index.try_into().unwrap(),
-                    Some(ORIG_BLOCK_RECT),
-                    0,
-                    self.sdl,
-                );
-            });
+        load_block_from_file!(BULLET_BLOCK_FILE);
+        self.load_bullet_surfaces();
 
         self.update_progress(35);
 
         //---------- get Blast blocks
-        let fpath = Self::find_file_static(
-            &self.global,
-            &mut self.misc,
-            BLAST_BLOCK_FILE,
-            Some(GRAPHICS_DIR_C),
-            Themed::UseTheme as c_int,
-            Criticality::Critical as c_int,
-        );
-        self.graphics
-            .load_block(fpath, 0, 0, None, i32::from(INIT_ONLY), self.sdl);
+        load_block_from_file!(BLAST_BLOCK_FILE);
 
-        let Self { vars, graphics, .. } = self;
-        vars.blastmap
-            .iter_mut()
-            .enumerate()
-            .flat_map(|(blast_type_index, blast)| {
-                blast
-                    .surfaces
-                    .iter_mut()
-                    .enumerate()
-                    .map(move |(surface_index, surface)| (blast_type_index, surface_index, surface))
-            })
-            .for_each(|(blast_type_index, surface_index, surface)| {
-                *surface = graphics.load_block(
-                    None,
-                    blast_type_index.try_into().unwrap(),
-                    surface_index.try_into().unwrap(),
-                    Some(ORIG_BLOCK_RECT),
-                    0,
-                    self.sdl,
-                );
-            });
-
+        self.load_blast_surfaces();
         self.update_progress(45);
 
         //---------- get Digit blocks
-        let fpath = Self::find_file_static(
-            &self.global,
-            &mut self.misc,
-            DIGIT_BLOCK_FILE,
-            Some(GRAPHICS_DIR_C),
-            Themed::UseTheme as c_int,
-            Criticality::Critical as c_int,
-        );
-        self.graphics
-            .load_block(fpath, 0, 0, None, i32::from(INIT_ONLY), self.sdl);
-        let Self {
-            graphics:
-                Graphics {
-                    vid_bpp,
-                    pic,
-                    influ_digit_surface_pointer,
-                    enemy_digit_surface_pointer,
-                    ..
-                },
-            ..
-        } = self;
-        influ_digit_surface_pointer
-            .iter_mut()
-            .enumerate()
-            .for_each(|(index, surface)| {
-                *surface = LoadBlockVidBppPic {
-                    vid_bpp: *vid_bpp,
-                    pic,
-                    fpath: None,
-                    line: 0,
-                    col: index.try_into().unwrap(),
-                    block: Some(ORIG_DIGIT_RECT),
-                    flags: 0,
-                    sdl: self.sdl,
-                }
-                .run();
-            });
-        enemy_digit_surface_pointer
-            .iter_mut()
-            .enumerate()
-            .for_each(|(index, surface)| {
-                *surface = LoadBlockVidBppPic {
-                    vid_bpp: *vid_bpp,
-                    pic,
-                    fpath: None,
-                    line: 0,
-                    col: (index + 10).try_into().unwrap(),
-                    block: Some(ORIG_DIGIT_RECT),
-                    flags: 0,
-                    sdl: self.sdl,
-                }
-                .run();
-            });
+        load_block_from_file!(DIGIT_BLOCK_FILE);
+        self.load_influencer_enemy_digit_surface();
 
         self.update_progress(50);
 
         //---------- get Takeover pics
-        let fpath = Self::find_file_static(
-            &self.global,
-            &mut self.misc,
-            TO_BLOCK_FILE,
-            Some(GRAPHICS_DIR_C),
-            Themed::UseTheme as c_int,
-            Criticality::Critical as c_int,
-        );
+        let fpath = find_file!(TO_BLOCK_FILE);
         self.takeover.to_blocks = self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
 
         self.update_progress(60);
 
-        let path = Self::find_file_static(
-            &self.global,
-            &mut self.misc,
-            SHIP_ON_PIC_FILE,
-            Some(GRAPHICS_DIR_C),
-            Themed::UseTheme as c_int,
-            Criticality::Critical as c_int,
-        )
-        .unwrap();
+        let path = find_file!(SHIP_ON_PIC_FILE).unwrap();
         self.graphics.ship_on_pic = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
-        let path = Self::find_file_static(
-            &self.global,
-            &mut self.misc,
-            SHIP_OFF_PIC_FILE,
-            Some(GRAPHICS_DIR_C),
-            Themed::UseTheme as c_int,
-            Criticality::Critical as c_int,
-        )
-        .unwrap();
+        let path = find_file!(SHIP_OFF_PIC_FILE).unwrap();
         self.graphics.ship_off_pic = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
 
         // the following are not theme-specific and are therefore only loaded once!
-        DO_ONCE.call_once(|| {
-            //  create the tmp block-build storage
-            let build_block = Surface::create_rgb(
-                self.vars.block_rect.width().into(),
-                self.vars.block_rect.height().into(),
-                self.graphics.vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
-                Rgba::default(),
-            )
-            .unwrap()
-            .display_format_alpha()
-            .unwrap();
-            self.graphics.build_block = Some(build_block);
-
-            // takeover background pics
-            let fpath = Self::find_file_static(
-                &self.global,
-                &mut self.misc,
-                TAKEOVER_BG_PIC_FILE,
-                Some(GRAPHICS_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
-            );
-            self.graphics.takeover_bg_pic =
-                self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
-            self.set_takeover_rects(); // setup takeover rectangles
-
-            // cursor shapes
-            self.graphics.arrow_cursor = Some(self.sdl.cursor().from_data(&ARROW_CURSOR).unwrap());
-            self.graphics.crosshair_cursor =
-                Some(self.sdl.cursor().from_data(&CROSSHAIR_CURSOR).unwrap());
-            //---------- get Console pictures
-            let fpath = Self::find_file_static(
-                &self.global,
-                &mut self.misc,
-                CONSOLE_PIC_FILE,
-                Some(GRAPHICS_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
-            );
-            self.graphics.console_pic = self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
-            let fpath = Self::find_file_static(
-                &self.global,
-                &mut self.misc,
-                CONSOLE_BG_PIC1_FILE,
-                Some(GRAPHICS_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
-            );
-            self.graphics.console_bg_pic1 =
-                self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
-            let fpath = Self::find_file_static(
-                &self.global,
-                &mut self.misc,
-                CONSOLE_BG_PIC2_FILE,
-                Some(GRAPHICS_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
-            );
-            self.graphics.console_bg_pic2 =
-                self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
-
-            self.update_progress(80);
-
-            let path = Self::find_file_static(
-                &self.global,
-                &mut self.misc,
-                b"arrow_up.png",
-                Some(GRAPHICS_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
-            )
-            .unwrap();
-            self.graphics.arrow_up = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
-
-            let path = Self::find_file_static(
-                &self.global,
-                &mut self.misc,
-                b"arrow_down.png",
-                Some(GRAPHICS_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
-            )
-            .unwrap();
-            self.graphics.arrow_down = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
-
-            let path = Self::find_file_static(
-                &self.global,
-                &mut self.misc,
-                b"arrow_right.png",
-                Some(GRAPHICS_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
-            )
-            .unwrap();
-            self.graphics.arrow_right = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
-
-            let path = Self::find_file_static(
-                &self.global,
-                &mut self.misc,
-                b"arrow_left.png",
-                Some(GRAPHICS_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
-            )
-            .unwrap();
-            self.graphics.arrow_left = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
-            //---------- get Banner
-            let fpath = Self::find_file_static(
-                &self.global,
-                &mut self.misc,
-                BANNER_BLOCK_FILE,
-                Some(GRAPHICS_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
-            );
-            self.graphics.banner_pic = self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
-
-            self.update_progress(90);
-            //---------- get Droid images ----------
-            let droids = &mut self.vars.droidmap;
-            let Self {
-                graphics,
-                global,
-                misc,
-                ..
-            } = self;
-            droids
-                .iter()
-                .zip(graphics.packed_portraits.iter_mut())
-                .for_each(|(droid, packed_portrait)| {
-                    // first check if we find a file with rotation-frames: first try .jpg
-                    fname.clear();
-                    fname.push_str(droid.druidname.to_str().unwrap());
-                    fname.push_str(".jpg");
-                    let mut fpath = Self::find_file_static(
-                        global,
-                        misc,
-                        fname.as_ref(),
-                        Some(GRAPHICS_DIR_C),
-                        Themed::NoTheme as c_int,
-                        Criticality::Ignore as c_int,
-                    );
-                    // then try with .png
-                    if fpath.is_none() {
-                        fname.truncate(droid.druidname.len());
-                        fname.push_str(".png");
-                        fpath = Self::find_file_static(
-                            global,
-                            misc,
-                            fname.as_ref(),
-                            Some(GRAPHICS_DIR_C),
-                            Themed::NoTheme as c_int,
-                            Criticality::Critical as c_int,
-                        );
-                    }
-
-                    let fpath = fpath.expect("unable to find droid imag");
-                    *packed_portrait = Self::load_raw_pic(fpath);
-                });
-
-            self.update_progress(95);
-            let droids = &self.vars.droidmap;
-            // we need the 999.png in any case for transparency!
-            fname.clear();
-            fname.push_str(droids[Droid::Droid999 as usize].druidname.to_str().unwrap());
-            fname.push_str(".png");
-            let fpath = Self::find_file_static(
-                &self.global,
-                &mut self.misc,
-                fname.as_ref(),
-                Some(GRAPHICS_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
-            );
-            self.graphics.pic999 = self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
-
-            // get the Ashes pics
-            let fpath = Self::find_file_static(
-                &self.global,
-                &mut self.misc,
-                b"Ashes.png",
-                Some(GRAPHICS_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::WarnOnly as c_int,
-            );
-
-            self.graphics
-                .load_block(fpath, 0, 0, None, i32::from(INIT_ONLY), self.sdl);
-            self.graphics.decal_pics[0] =
-                self.graphics
-                    .load_block(None, 0, 0, Some(ORIG_BLOCK_RECT), 0, self.sdl);
-            self.graphics.decal_pics[1] =
-                self.graphics
-                    .load_block(None, 0, 1, Some(ORIG_BLOCK_RECT), 0, self.sdl);
-        });
+        DO_ONCE.call_once(|| self.init_pictures_once());
 
         self.update_progress(96);
         // if scale != 1 then we need to rescale everything now
@@ -1529,6 +1102,117 @@ impl crate::Data<'_> {
         self.b_font.current_font = oldfont;
 
         true.into()
+    }
+
+    fn init_pictures_once(&mut self) {
+        macro_rules! find_file {
+            ($file_name:expr, $criticality:expr) => {
+                Self::find_file_static(
+                    &self.global,
+                    &mut self.misc,
+                    $file_name,
+                    Some(GRAPHICS_DIR_C),
+                    Themed::NoTheme as c_int,
+                    $criticality as c_int,
+                )
+            };
+
+            ($file_name:expr) => {
+                find_file!($file_name, Criticality::Critical)
+            };
+        }
+
+        macro_rules! load_block_from_file {
+            ($file_name:expr) => {{
+                let fpath = find_file!($file_name);
+                self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl)
+            }};
+        }
+
+        //  create the tmp block-build storage
+        let build_block = Surface::create_rgb(
+            self.vars.block_rect.width().into(),
+            self.vars.block_rect.height().into(),
+            self.graphics.vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
+            Rgba::default(),
+        )
+        .unwrap()
+        .display_format_alpha()
+        .unwrap();
+        self.graphics.build_block = Some(build_block);
+
+        // takeover background pics
+        self.graphics.takeover_bg_pic = load_block_from_file!(TAKEOVER_BG_PIC_FILE);
+        self.set_takeover_rects(); // setup takeover rectangles
+
+        // cursor shapes
+        self.graphics.arrow_cursor = Some(self.sdl.cursor().from_data(&ARROW_CURSOR).unwrap());
+        self.graphics.crosshair_cursor =
+            Some(self.sdl.cursor().from_data(&CROSSHAIR_CURSOR).unwrap());
+        //---------- get Console pictures
+        self.graphics.console_pic = load_block_from_file!(CONSOLE_PIC_FILE);
+        self.graphics.console_bg_pic1 = load_block_from_file!(CONSOLE_BG_PIC1_FILE);
+        self.graphics.console_bg_pic2 = load_block_from_file!(CONSOLE_BG_PIC2_FILE);
+
+        self.update_progress(80);
+
+        let path = find_file!(b"arrow_up.png").unwrap();
+        self.graphics.arrow_up = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
+
+        let path = find_file!(b"arrow_down.png").unwrap();
+        self.graphics.arrow_down = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
+
+        let path = find_file!(b"arrow_right.png").unwrap();
+        self.graphics.arrow_right = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
+
+        let path = find_file!(b"arrow_left.png").unwrap();
+        self.graphics.arrow_left = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
+        //---------- get Banner
+        self.graphics.banner_pic = load_block_from_file!(BANNER_BLOCK_FILE);
+
+        self.update_progress(90);
+        //---------- get Droid images ----------
+        let droids = &mut self.vars.droidmap;
+        let mut fname = ArrayString::<[u8; 500]>::new();
+        droids
+            .iter()
+            .zip(self.graphics.packed_portraits.iter_mut())
+            .for_each(|(droid, packed_portrait)| {
+                // first check if we find a file with rotation-frames: first try .jpg
+                fname.clear();
+                fname.push_str(droid.druidname.to_str().unwrap());
+                fname.push_str(".jpg");
+                let mut fpath = find_file!(fname.as_ref(), Criticality::Ignore);
+                // then try with .png
+                if fpath.is_none() {
+                    fname.truncate(droid.druidname.len());
+                    fname.push_str(".png");
+                    fpath = find_file!(fname.as_ref());
+                }
+
+                let fpath = fpath.expect("unable to find droid imag");
+                *packed_portrait = Self::load_raw_pic(fpath);
+            });
+
+        self.update_progress(95);
+        let droids = &self.vars.droidmap;
+        // we need the 999.png in any case for transparency!
+        fname.clear();
+        fname.push_str(droids[Droid::Droid999 as usize].druidname.to_str().unwrap());
+        fname.push_str(".png");
+        self.graphics.pic999 = load_block_from_file!(fname.as_ref());
+
+        // get the Ashes pics
+        let fpath = find_file!(b"Ashes.png", Criticality::WarnOnly);
+
+        self.graphics
+            .load_block(fpath, 0, 0, None, i32::from(INIT_ONLY), self.sdl);
+        self.graphics.decal_pics[0] =
+            self.graphics
+                .load_block(None, 0, 0, Some(ORIG_BLOCK_RECT), 0, self.sdl);
+        self.graphics.decal_pics[1] =
+            self.graphics
+                .load_block(None, 0, 1, Some(ORIG_BLOCK_RECT), 0, self.sdl);
     }
 
     pub fn load_theme_configuration_file(&mut self) {
@@ -1802,6 +1486,211 @@ impl crate::Data<'_> {
             }
             i += 1.;
         }
+    }
+
+    fn load_orig_map_block_surface_pointer(&mut self) {
+        let Self {
+            sdl,
+            graphics:
+                Graphics {
+                    map_block_surface_pointer,
+                    vid_bpp,
+                    orig_map_block_surface_pointer,
+                    pic,
+                    ..
+                },
+            ..
+        } = self;
+
+        orig_map_block_surface_pointer
+            .iter_mut()
+            .enumerate()
+            .zip(map_block_surface_pointer.iter_mut())
+            .flat_map(|((color_index, orig_color_map), color_map)| {
+                orig_color_map
+                    .iter_mut()
+                    .enumerate()
+                    .map(move |(block_index, orig_surface)| {
+                        (color_index, block_index, orig_surface)
+                    })
+                    .zip(color_map.iter_mut())
+            })
+            .for_each(|((color_index, block_index, orig_surface), surface)| {
+                *orig_surface = LoadBlockVidBppPic {
+                    vid_bpp: *vid_bpp,
+                    pic,
+                    fpath: None,
+                    line: color_index.try_into().unwrap(),
+                    col: block_index.try_into().unwrap(),
+                    block: Some(ORIG_BLOCK_RECT),
+                    flags: 0,
+                    sdl,
+                }
+                .run()
+                .map(|surface| Rc::new(RefCell::new(surface)));
+                *surface = orig_surface.as_ref().map(Rc::clone);
+            });
+    }
+
+    fn load_influencer_enemy_surface(&mut self) {
+        let Self {
+            graphics:
+                Graphics {
+                    vid_bpp,
+                    pic,
+                    influencer_surface_pointer,
+                    enemy_surface_pointer,
+                    ..
+                },
+            ..
+        } = self;
+
+        influencer_surface_pointer.iter_mut().enumerate().for_each(
+            |(index, influencer_surface)| {
+                *influencer_surface = LoadBlockVidBppPic {
+                    vid_bpp: *vid_bpp,
+                    pic,
+                    fpath: None,
+                    line: 0,
+                    col: index.try_into().unwrap(),
+                    block: Some(ORIG_BLOCK_RECT),
+                    flags: 0,
+                    sdl: self.sdl,
+                }
+                .run();
+
+                /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
+                if influencer_surface
+                    .as_mut()
+                    .unwrap()
+                    .set_alpha(ColorKeyFlag::empty(), 0)
+                    .not()
+                {
+                    error!("Cannot set alpha channel on surface");
+                }
+            },
+        );
+
+        enemy_surface_pointer
+            .iter_mut()
+            .enumerate()
+            .for_each(|(index, enemy_surface)| {
+                *enemy_surface = LoadBlockVidBppPic {
+                    vid_bpp: *vid_bpp,
+                    pic,
+                    fpath: None,
+                    line: 1,
+                    col: index.try_into().unwrap(),
+                    block: Some(ORIG_BLOCK_RECT),
+                    flags: 0,
+                    sdl: self.sdl,
+                }
+                .run();
+
+                /* Droid pics are only used in _internal_ blits ==> clear per-surf alpha */
+                if enemy_surface
+                    .as_mut()
+                    .unwrap()
+                    .set_alpha(ColorKeyFlag::empty(), 0)
+                    .not()
+                {
+                    error!("Cannot set alpha channel on surface");
+                }
+            });
+    }
+
+    fn load_bullet_surfaces(&mut self) {
+        self.vars
+            .bulletmap
+            .iter_mut()
+            .enumerate()
+            .flat_map(|(bullet_type_index, bullet)| {
+                bullet
+                    .surfaces
+                    .iter_mut()
+                    .enumerate()
+                    .map(move |(phase_index, surface)| (bullet_type_index, phase_index, surface))
+            })
+            .for_each(|(bullet_type_index, phase_index, surface)| {
+                *surface = self.graphics.load_block(
+                    None,
+                    bullet_type_index.try_into().unwrap(),
+                    phase_index.try_into().unwrap(),
+                    Some(ORIG_BLOCK_RECT),
+                    0,
+                    self.sdl,
+                );
+            });
+    }
+
+    fn load_blast_surfaces(&mut self) {
+        let Self { vars, graphics, .. } = self;
+        vars.blastmap
+            .iter_mut()
+            .enumerate()
+            .flat_map(|(blast_type_index, blast)| {
+                blast
+                    .surfaces
+                    .iter_mut()
+                    .enumerate()
+                    .map(move |(surface_index, surface)| (blast_type_index, surface_index, surface))
+            })
+            .for_each(|(blast_type_index, surface_index, surface)| {
+                *surface = graphics.load_block(
+                    None,
+                    blast_type_index.try_into().unwrap(),
+                    surface_index.try_into().unwrap(),
+                    Some(ORIG_BLOCK_RECT),
+                    0,
+                    self.sdl,
+                );
+            });
+    }
+
+    fn load_influencer_enemy_digit_surface(&mut self) {
+        let Self {
+            graphics:
+                Graphics {
+                    vid_bpp,
+                    pic,
+                    influ_digit_surface_pointer,
+                    enemy_digit_surface_pointer,
+                    ..
+                },
+            ..
+        } = self;
+        influ_digit_surface_pointer
+            .iter_mut()
+            .enumerate()
+            .for_each(|(index, surface)| {
+                *surface = LoadBlockVidBppPic {
+                    vid_bpp: *vid_bpp,
+                    pic,
+                    fpath: None,
+                    line: 0,
+                    col: index.try_into().unwrap(),
+                    block: Some(ORIG_DIGIT_RECT),
+                    flags: 0,
+                    sdl: self.sdl,
+                }
+                .run();
+            });
+        enemy_digit_surface_pointer
+            .iter_mut()
+            .enumerate()
+            .for_each(|(index, surface)| {
+                *surface = LoadBlockVidBppPic {
+                    vid_bpp: *vid_bpp,
+                    pic,
+                    fpath: None,
+                    line: 0,
+                    col: (index + 10).try_into().unwrap(),
+                    block: Some(ORIG_DIGIT_RECT),
+                    flags: 0,
+                    sdl: self.sdl,
+                }
+                .run();
+            });
     }
 }
 
