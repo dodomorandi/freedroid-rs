@@ -187,47 +187,7 @@ impl crate::Data<'_> {
         }
 
         if droid_type != self.ship.last_droid_type || self.ship.droid_pics.is_none() {
-            // we need to unpack the droid-pics into our local storage
-            self.ship.droid_pics = None;
-            let packed_portrait = self.graphics.packed_portraits
-                [usize::try_from(droid_type).unwrap()]
-            .as_mut()
-            .unwrap();
-            let tmp = packed_portrait.image_load();
-            // important: return seek-position to beginning of RWops for next operation to succeed!
-            packed_portrait
-                .seek(0, sdl::rwops::Whence::Set)
-                .expect("unable to seek rw_ops");
-            let Some(mut tmp) = tmp else {
-                error!(
-                    "failed to unpack droid-portraits of droid-type {}",
-                    droid_type,
-                );
-                return; // ok, so no pic but we continue ;)
-            };
-            // now see if its a jpg, then we add some transparency by color-keying:
-            let droid_pics = if packed_portrait.is_jpg() {
-                tmp.display_format().unwrap()
-            } else {
-                // else assume it's png ;
-                tmp.display_format_alpha().unwrap()
-            };
-            self.ship.droid_pics = Some(droid_pics);
-            drop(tmp);
-            packed_portrait
-                .seek(0, sdl::rwops::Whence::Set)
-                .expect("unable to seek rw_ops");
-
-            // do we have to scale the droid pics
-            #[allow(clippy::float_cmp)]
-            if self.global.game_config.scale != 1.0 {
-                scale_pic(
-                    self.ship.droid_pics.as_mut().unwrap(),
-                    self.global.game_config.scale,
-                );
-            }
-
-            self.ship.last_droid_type = droid_type;
+            self.unpack_droid_pics(droid_type);
         }
 
         let droid_pics_ref = self.ship.droid_pics.as_ref().unwrap();
@@ -292,6 +252,49 @@ impl crate::Data<'_> {
         }
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
+    }
+
+    fn unpack_droid_pics(&mut self, droid_type: c_int) {
+        // we need to unpack the droid-pics into our local storage
+        self.ship.droid_pics = None;
+        let packed_portrait = self.graphics.packed_portraits[usize::try_from(droid_type).unwrap()]
+            .as_mut()
+            .unwrap();
+        let tmp = packed_portrait.image_load();
+        // important: return seek-position to beginning of RWops for next operation to succeed!
+        packed_portrait
+            .seek(0, sdl::rwops::Whence::Set)
+            .expect("unable to seek rw_ops");
+        let Some(mut tmp) = tmp else {
+            error!(
+                "failed to unpack droid-portraits of droid-type {}",
+                droid_type,
+            );
+            return; // ok, so no pic but we continue ;)
+        };
+        // now see if its a jpg, then we add some transparency by color-keying:
+        let droid_pics = if packed_portrait.is_jpg() {
+            tmp.display_format().unwrap()
+        } else {
+            // else assume it's png ;
+            tmp.display_format_alpha().unwrap()
+        };
+        self.ship.droid_pics = Some(droid_pics);
+        drop(tmp);
+        packed_portrait
+            .seek(0, sdl::rwops::Whence::Set)
+            .expect("unable to seek rw_ops");
+
+        // do we have to scale the droid pics
+        #[allow(clippy::float_cmp)]
+        if self.global.game_config.scale != 1.0 {
+            scale_pic(
+                self.ship.droid_pics.as_mut().unwrap(),
+                self.global.game_config.scale,
+            );
+        }
+
+        self.ship.last_droid_type = droid_type;
     }
 
     /// display infopage page of droidtype
