@@ -30,6 +30,7 @@ use log::{error, info, warn};
 use nom::Finish;
 use std::{
     ffi::CString,
+    fs::{self, DirEntry},
     ops::Not,
     os::raw::{c_float, c_int},
     path::Path,
@@ -397,8 +398,6 @@ impl crate::Data<'_> {
 
     /// find all themes and put them in `AllThemes`
     pub fn find_all_themes(&mut self) {
-        use std::fs;
-
         let mut classic_theme_index: usize = 0; // default: override when we actually find 'classic' theme
 
         // just to make sure...
@@ -416,94 +415,19 @@ impl crate::Data<'_> {
             };
 
             for entry in read_dir {
-                {
-                    let entry = match entry {
-                        Ok(entry) => entry,
-                        Err(err) => {
-                            warn!(
-                                "cannot get next entry from dir {}: {}",
-                                dir_name.display(),
-                                err
-                            );
-                            continue;
-                        }
-                    };
-
-                    let file_type = match entry.file_type() {
-                        Ok(file_type) => file_type,
-                        Err(err) => {
-                            error!(
-                                "could not get file type for {}: {}",
-                                entry.path().display(),
-                                err
-                            );
-                            continue;
-                        }
-                    };
-
-                    if file_type.is_dir().not() {
-                        continue;
-                    }
-
-                    let theme_name = entry.file_name();
-                    let Some(theme_name) = theme_name
-                        .to_str()
-                        .and_then(|name| name.strip_suffix("_theme"))
-                    else {
-                        continue;
-                    };
-
-                    let theme_path = entry.path();
-                    if theme_name.len() >= 100 {
+                let entry = match entry {
+                    Ok(entry) => entry,
+                    Err(err) => {
                         warn!(
-                            "theme-name of '{}' longer than allowed 100 chars... discarded!",
-                            theme_path.display()
+                            "cannot get next entry from dir {}: {}",
+                            dir_name.display(),
+                            err
                         );
                         continue;
                     }
+                };
 
-                    info!("Found a new theme: {}", theme_name);
-                    // check readabiltiy of "config.theme"
-                    let config_path = theme_path.join(Path::new("config.theme"));
-
-                    match fs::File::open(config_path) {
-                        Ok(_) => {
-                            info!("The theme file is readable");
-                            // last check: is this theme already in the list??
-
-                            let theme_exists = self
-                                .graphics
-                                .all_themes
-                                .theme_name
-                                .iter()
-                                .filter_map(|s| s.to_str().ok())
-                                .any(|theme| theme == theme_name);
-
-                            if theme_exists {
-                                info!("Theme '{}' is already listed", theme_name);
-                                continue;
-                            }
-
-                            info!("Found new graphics-theme: {}", theme_name);
-                            if theme_name == "classic" {
-                                classic_theme_index =
-                                    self.graphics.all_themes.num_themes.try_into().unwrap();
-                            }
-                            self.graphics.all_themes.theme_name
-                                [usize::try_from(self.graphics.all_themes.num_themes).unwrap()] =
-                                CString::new(theme_name).unwrap();
-
-                            self.graphics.all_themes.num_themes += 1;
-                        }
-                        Err(err) => {
-                            warn!(
-                                "config.theme of theme '{}' not readable: {}. Discarded.",
-                                theme_name, err
-                            );
-                            continue;
-                        }
-                    }
-                }
+                self.find_theme_on_dir_entry(&entry, &mut classic_theme_index);
             }
         };
 
@@ -548,6 +472,81 @@ impl crate::Data<'_> {
             "Game starts using theme: {}",
             self.global.game_config.theme_name.to_str().unwrap()
         );
+    }
+
+    fn find_theme_on_dir_entry(&mut self, entry: &DirEntry, classic_theme_index: &mut usize) {
+        let file_type = match entry.file_type() {
+            Ok(file_type) => file_type,
+            Err(err) => {
+                error!(
+                    "could not get file type for {}: {}",
+                    entry.path().display(),
+                    err
+                );
+                return;
+            }
+        };
+
+        if file_type.is_dir().not() {
+            return;
+        }
+
+        let theme_name = entry.file_name();
+        let Some(theme_name) = theme_name
+            .to_str()
+            .and_then(|name| name.strip_suffix("_theme"))
+        else {
+            return;
+        };
+
+        let theme_path = entry.path();
+        if theme_name.len() >= 100 {
+            warn!(
+                "theme-name of '{}' longer than allowed 100 chars... discarded!",
+                theme_path.display()
+            );
+            return;
+        }
+
+        info!("Found a new theme: {}", theme_name);
+        // check readabiltiy of "config.theme"
+        let config_path = theme_path.join(Path::new("config.theme"));
+
+        match fs::File::open(config_path) {
+            Ok(_) => {
+                info!("The theme file is readable");
+                // last check: is this theme already in the list??
+
+                let theme_exists = self
+                    .graphics
+                    .all_themes
+                    .theme_name
+                    .iter()
+                    .filter_map(|s| s.to_str().ok())
+                    .any(|theme| theme == theme_name);
+
+                if theme_exists {
+                    info!("Theme '{}' is already listed", theme_name);
+                    return;
+                }
+
+                info!("Found new graphics-theme: {}", theme_name);
+                if theme_name == "classic" {
+                    *classic_theme_index = self.graphics.all_themes.num_themes.try_into().unwrap();
+                }
+                self.graphics.all_themes.theme_name
+                    [usize::try_from(self.graphics.all_themes.num_themes).unwrap()] =
+                    CString::new(theme_name).unwrap();
+
+                self.graphics.all_themes.num_themes += 1;
+            }
+            Err(err) => {
+                warn!(
+                    "config.theme of theme '{}' not readable: {}. Discarded.",
+                    theme_name, err
+                );
+            }
+        }
     }
 
     #[allow(clippy::similar_names)]
