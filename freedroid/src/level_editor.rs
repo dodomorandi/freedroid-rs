@@ -512,33 +512,43 @@ impl crate::Data<'_> {
         let block_x = self.vars.me.pos.x.round();
         let block_y = self.vars.me.pos.y.round();
 
+        let user_rect_x = i32::from(self.vars.user_rect.x());
+        let user_rect_y = i32::from(self.vars.user_rect.y());
+        let user_rect_width = i32::from(self.vars.user_rect.width());
+        let user_rect_height = i32::from(self.vars.user_rect.height());
+        let block_rect_width_f = f32::from(self.vars.block_rect.width());
+        let block_rect_height_f = f32::from(self.vars.block_rect.height());
+
         for wp in 0..usize::try_from(self.main.cur_level().num_waypoints).unwrap() {
             let this_wp = &cur_level!(self.main).all_waypoints[wp];
+            let wp_x = f32::from(this_wp.x);
+            let wp_y = f32::from(this_wp.y);
+
             // Draw the cross in the middle of the middle of the tile
             for i in i32::from(self.vars.block_rect.width() / 4)
                 ..i32::from(3 * self.vars.block_rect.width() / 4)
             {
                 // This draws a (double) line at the upper border of the current block
                 #[allow(clippy::cast_possible_truncation)]
-                let mut x = i
-                    + i32::from(self.vars.user_rect.x())
-                    + i32::from(self.vars.user_rect.width() / 2)
-                    - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
-                        * f32::from(self.vars.block_rect.width())) as i32;
+                let mut x = i + user_rect_x + user_rect_width / 2
+                    - ((self.vars.me.pos.x - wp_x + 0.5) * block_rect_width_f) as i32;
                 let user_center = self.vars.get_user_center();
                 #[allow(clippy::cast_possible_truncation)]
                 let mut y = i + i32::from(user_center.y())
-                    - ((self.vars.me.pos.y - f32::from(this_wp.y) + 0.5)
-                        * f32::from(self.vars.block_rect.height())) as i32;
-                if x < i32::from(self.vars.user_rect.x())
-                    || x >= i32::from(self.vars.user_rect.x())
-                        + i32::from(self.vars.user_rect.width())
-                    || y < i32::from(self.vars.user_rect.y())
-                    || y >= i32::from(self.vars.user_rect.y())
-                        + i32::from(self.vars.user_rect.height())
-                {
-                    continue;
+                    - ((self.vars.me.pos.y - wp_y + 0.5) * block_rect_height_f) as i32;
+
+                macro_rules! check_valid_x_y {
+                    () => {
+                        if x < user_rect_x
+                            || x >= user_rect_x + user_rect_width
+                            || y < user_rect_y
+                            || y >= user_rect_y + user_rect_height
+                        {
+                            continue;
+                        }
+                    };
                 }
+                check_valid_x_y!();
 
                 // FIXME: avoid this inside the loop
                 let mut ne_screen = self.graphics.ne_screen.as_mut().unwrap().lock().unwrap();
@@ -549,27 +559,14 @@ impl crate::Data<'_> {
 
                 #[allow(clippy::cast_possible_truncation)]
                 {
-                    x = i
-                        + i32::from(self.vars.user_rect.x())
-                        + i32::from(self.vars.user_rect.width() / 2)
-                        - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
-                            * f32::from(self.vars.block_rect.width()))
-                            as i32;
+                    x = i + user_rect_x + user_rect_width / 2
+                        - ((self.vars.me.pos.x - wp_x + 0.5) * block_rect_width_f) as i32;
                     y = i + i32::from(user_center.y())
-                        - ((self.vars.me.pos.y - f32::from(this_wp.y) + 0.5)
-                            * f32::from(self.vars.block_rect.height()))
-                            as i32
+                        - ((self.vars.me.pos.y - wp_y + 0.5) * block_rect_height_f) as i32
                         + 1;
                 }
-                if x < i32::from(self.vars.user_rect.x())
-                    || x >= i32::from(self.vars.user_rect.x())
-                        + i32::from(self.vars.user_rect.width())
-                    || y < i32::from(self.vars.user_rect.y())
-                    || y >= i32::from(self.vars.user_rect.y())
-                        + i32::from(self.vars.user_rect.height())
-                {
-                    continue;
-                }
+                check_valid_x_y!();
+
                 ne_screen
                     .pixels()
                     .set(x.try_into().unwrap(), y.try_into().unwrap(), HIGHLIGHTCOLOR)
@@ -578,27 +575,14 @@ impl crate::Data<'_> {
                 // This draws a line at the lower border of the current block
                 #[allow(clippy::cast_possible_truncation)]
                 {
-                    x = i
-                        + i32::from(self.vars.user_rect.x())
-                        + i32::from(self.vars.user_rect.width() / 2)
-                        - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
-                            * f32::from(self.vars.block_rect.width()))
-                            as i32;
+                    x = i + user_rect_x + user_rect_width / 2
+                        - ((self.vars.me.pos.x - wp_x + 0.5) * block_rect_width_f) as i32;
                     y = -i + i32::from(user_center.y())
-                        - ((self.vars.me.pos.y - f32::from(this_wp.y) - 0.5)
-                            * f32::from(self.vars.block_rect.height()))
-                            as i32
+                        - ((self.vars.me.pos.y - wp_y - 0.5) * block_rect_height_f) as i32
                         - 1;
                 }
-                if x < i32::from(self.vars.user_rect.x())
-                    || x > i32::from(self.vars.user_rect.x())
-                        + i32::from(self.vars.user_rect.width())
-                    || y < i32::from(self.vars.user_rect.y())
-                    || y > i32::from(self.vars.user_rect.y())
-                        + i32::from(self.vars.user_rect.height())
-                {
-                    continue;
-                }
+                check_valid_x_y!();
+
                 ne_screen
                     .pixels()
                     .set(x.try_into().unwrap(), y.try_into().unwrap(), HIGHLIGHTCOLOR)
@@ -606,27 +590,14 @@ impl crate::Data<'_> {
 
                 #[allow(clippy::cast_possible_truncation)]
                 {
-                    x = i
-                        + i32::from(self.vars.user_rect.x())
-                        + i32::from(self.vars.user_rect.width() / 2)
-                        - ((self.vars.me.pos.x - f32::from(this_wp.x) + 0.5)
-                            * f32::from(self.vars.block_rect.width()))
-                            as i32;
+                    x = i + user_rect_x + user_rect_width / 2
+                        - ((self.vars.me.pos.x - wp_x + 0.5) * block_rect_width_f) as i32;
                     y = -i + i32::from(user_center.y())
-                        - ((self.vars.me.pos.y - f32::from(this_wp.y) - 0.5)
-                            * f32::from(self.vars.block_rect.height()))
-                            as i32
+                        - ((self.vars.me.pos.y - wp_y - 0.5) * block_rect_height_f) as i32
                         - 2;
                 }
-                if x < i32::from(self.vars.user_rect.x())
-                    || x > i32::from(self.vars.user_rect.x())
-                        + i32::from(self.vars.user_rect.width())
-                    || y < i32::from(self.vars.user_rect.y())
-                    || y > i32::from(self.vars.user_rect.y())
-                        + i32::from(self.vars.user_rect.height())
-                {
-                    continue;
-                }
+                check_valid_x_y!();
+
                 ne_screen
                     .pixels()
                     .set(x.try_into().unwrap(), y.try_into().unwrap(), HIGHLIGHTCOLOR)
@@ -634,9 +605,7 @@ impl crate::Data<'_> {
             }
 
             // Draw the connections to other waypoints, BUT ONLY FOR THE WAYPOINT CURRENTLY TARGETED
-            if (block_x - f32::from(this_wp.x)).abs() <= f32::EPSILON
-                && (block_y - f32::from(this_wp.y)).abs() <= f32::EPSILON
-            {
+            if (block_x - wp_x).abs() <= f32::EPSILON && (block_y - wp_y).abs() <= f32::EPSILON {
                 for &connection in
                     &this_wp.connections[0..usize::try_from(this_wp.num_connections).unwrap()]
                 {
