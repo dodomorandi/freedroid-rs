@@ -12,7 +12,7 @@ use cstr::cstr;
 use log::info;
 use sdl::{
     convert::{i32_to_u8, u32_to_i32},
-    event::KeyboardEventType,
+    event::{self, KeyboardEventType},
     Event, Joystick,
 };
 #[cfg(feature = "gcw0")]
@@ -62,7 +62,6 @@ pub struct Input {
     pub last_mouse_event: u32,
     current_modifiers: SDLMod,
     input_state: [InputState; PointerStates::Last as usize],
-    event: Option<Event>,
     pub joy: Option<Joystick>,
     pub joy_sensitivity: c_int,
     // joystick (and mouse) axis values
@@ -334,7 +333,6 @@ impl Default for Input {
             last_mouse_event: 0,
             current_modifiers: 0,
             input_state: [InputState::default(); PointerStates::Last as usize],
-            event: None,
             joy: None,
             joy_sensitivity: 0,
             input_axis: Point { x: 0, y: 0 },
@@ -548,163 +546,24 @@ impl crate::Data<'_> {
         input.show_cursor = sdl.ticks_ms() - input.last_mouse_event <= CURSOR_KEEP_VISIBLE;
 
         loop {
-            input.event = sdl.next_event();
-            match &input.event {
-                Some(event) => {
-                    match event {
-                        Event::Quit => {
-                            info!("User requested termination, terminating.");
-                            quit.set(true);
-                            return 0;
-                        }
+            let Some(event) = sdl.next_event() else {
+                break;
+            };
 
-                        Event::Keyboard(event) => {
-                            input.current_modifiers = event.keysym.mod_.bits();
-                            match event.ty {
-                                KeyboardEventType::KeyDown => {
-                                    input.input_state
-                                        [usize::try_from(event.keysym.symbol as isize).unwrap()]
-                                    .set_just_pressed();
-                                    #[cfg(feature = "gcw0")]
-                                    if input.input_axis.x != 0 || input.input_axis.y != 0 {
-                                        input.axis_is_active = true.into(); // 4 GCW-0 ; breaks cursor keys after axis has been active...
-                                    }
-                                }
-                                KeyboardEventType::KeyUp => {
-                                    input.input_state
-                                        [usize::try_from(event.keysym.symbol as isize).unwrap()]
-                                    .set_just_released();
-                                    #[cfg(feature = "gcw0")]
-                                    {
-                                        input.axis_is_active = false.into();
-                                    }
-                                }
-                            }
-                        }
-
-                        Event::JoyAxis(event) => {
-                            let axis = event.axis;
-                            if axis == 0 || ((input.joy_num_axes >= 5) && (axis == 3))
-                            /* x-axis */
-                            {
-                                input.input_axis.x = event.value.into();
-
-                                // this is a bit tricky, because we want to allow direction keys
-                                // to be soft-released. When mapping the joystick->keyboard, we
-                                // therefore have to make sure that this mapping only occurs when
-                                // and actual _change_ of the joystick-direction ('digital') occurs
-                                // so that it behaves like "set"/"release"
-                                if input.joy_sensitivity * i32::from(event.value) > 10000 {
-                                    /* about half tilted */
-                                    input.input_state[PointerStates::JoyRight as usize]
-                                        .set_just_pressed();
-                                    input.input_state[PointerStates::JoyLeft as usize]
-                                        .set_released();
-                                } else if input.joy_sensitivity * i32::from(event.value) < -10000 {
-                                    input.input_state[PointerStates::JoyLeft as usize]
-                                        .set_just_pressed();
-                                    input.input_state[PointerStates::JoyRight as usize]
-                                        .set_released();
-                                } else {
-                                    input.input_state[PointerStates::JoyLeft as usize]
-                                        .set_released();
-                                    input.input_state[PointerStates::JoyRight as usize]
-                                        .set_released();
-                                }
-                            } else if (axis == 1) || ((input.joy_num_axes >= 5) && (axis == 4)) {
-                                /* y-axis */
-                                input.input_axis.y = event.value.into();
-
-                                if input.joy_sensitivity * i32::from(event.value) > 10000 {
-                                    input.input_state[PointerStates::JoyDown as usize]
-                                        .set_just_pressed();
-                                    input.input_state[PointerStates::JoyUp as usize].set_released();
-                                } else if input.joy_sensitivity * i32::from(event.value) < -10000 {
-                                    input.input_state[PointerStates::JoyUp as usize]
-                                        .set_just_pressed();
-                                    input.input_state[PointerStates::JoyDown as usize]
-                                        .set_released();
-                                } else {
-                                    input.input_state[PointerStates::JoyUp as usize].set_released();
-                                    input.input_state[PointerStates::JoyDown as usize]
-                                        .set_released();
-                                }
-                            }
-                        }
-
-                        Event::JoyButton(event) => {
-                            let is_pressed = event.state.is_pressed();
-                            let input_state_index = match event.button {
-                                0 => Some(PointerStates::JoyButton1 as usize),
-                                1 => Some(PointerStates::JoyButton2 as usize),
-                                2 => Some(PointerStates::JoyButton3 as usize),
-                                3 => Some(PointerStates::JoyButton4 as usize),
-                                _ => None,
-                            };
-                            if let Some(input_state_index) = input_state_index {
-                                let input_state = &mut input.input_state[input_state_index];
-                                input_state.pressed = is_pressed;
-                                input_state.fresh = true;
-                            }
-                            input.axis_is_active = is_pressed.into();
-                        }
-
-                        Event::MouseMotion(event) => {
-                            let user_center = vars.get_user_center();
-                            input.input_axis.x =
-                                i32::from(event.x) - i32::from(user_center.x()) + 16;
-                            input.input_axis.y =
-                                i32::from(event.y) - i32::from(user_center.y()) + 16;
-
-                            input.last_mouse_event = sdl.ticks_ms();
-                        }
-
-                        Event::MouseButton(event) => {
-                            const BUTTON_LEFT: u8 = i32_to_u8(SDL_BUTTON_LEFT);
-                            const BUTTON_RIGHT: u8 = i32_to_u8(SDL_BUTTON_RIGHT);
-                            const BUTTON_MIDDLE: u8 = i32_to_u8(SDL_BUTTON_MIDDLE);
-                            const BUTTON_WHEELUP: u8 = i32_to_u8(SDL_BUTTON_WHEELUP);
-                            const BUTTON_WHEELDOWN: u8 = i32_to_u8(SDL_BUTTON_WHEELDOWN);
-
-                            let is_pressed = event.state.is_pressed();
-                            let input_state_index = match event.button {
-                                BUTTON_LEFT => {
-                                    input.axis_is_active = is_pressed.into();
-                                    Some(PointerStates::MouseButton1 as usize)
-                                }
-                                BUTTON_RIGHT => Some(PointerStates::MouseButton2 as usize),
-                                BUTTON_MIDDLE => Some(PointerStates::MouseButton3 as usize),
-                                // wheel events are immediately released, so we rather
-                                // count the number of not yet read-out events
-                                BUTTON_WHEELUP => {
-                                    if is_pressed {
-                                        input.wheel_up_events += 1;
-                                    }
-                                    None
-                                }
-                                BUTTON_WHEELDOWN => {
-                                    if is_pressed {
-                                        input.wheel_down_events += 1;
-                                    }
-                                    None
-                                }
-                                _ => None,
-                            };
-
-                            if let Some(input_state_index) = input_state_index {
-                                let input_state = &mut input.input_state[input_state_index];
-                                input_state.pressed = is_pressed;
-                                input_state.fresh = true;
-                            }
-                            if is_pressed {
-                                input.last_mouse_event = sdl.ticks_ms();
-                            }
-                        }
-
-                        _ => break,
-                    }
+            match event {
+                Event::Quit => {
+                    info!("User requested termination, terminating.");
+                    quit.set(true);
+                    return 0;
                 }
-                None => break,
+
+                Event::Keyboard(event) => handle_keyboard_event(&event, input),
+                Event::JoyAxis(event) => handle_joy_axis_event(event, input),
+                Event::JoyButton(event) => handle_joy_button_event(event, input),
+                Event::MouseMotion(event) => handle_mouse_motion_event(event, input, vars, sdl),
+                Event::MouseButton(event) => handle_mouse_button_event(event, input, sdl),
+
+                _ => break,
             }
         }
         0
@@ -1052,5 +911,134 @@ impl Input {
 
     pub fn release_key(&mut self, key: c_int) {
         self.input_state[usize::try_from(key).unwrap()].set_released();
+    }
+}
+
+fn handle_keyboard_event(event: &event::Keyboard, input: &mut Input) {
+    input.current_modifiers = event.keysym.mod_.bits();
+    match event.ty {
+        KeyboardEventType::KeyDown => {
+            input.input_state[usize::try_from(event.keysym.symbol as isize).unwrap()]
+                .set_just_pressed();
+            #[cfg(feature = "gcw0")]
+            if input.input_axis.x != 0 || input.input_axis.y != 0 {
+                input.axis_is_active = true.into(); // 4 GCW-0 ; breaks cursor keys after axis has been active...
+            }
+        }
+        KeyboardEventType::KeyUp => {
+            input.input_state[usize::try_from(event.keysym.symbol as isize).unwrap()]
+                .set_just_released();
+            #[cfg(feature = "gcw0")]
+            {
+                input.axis_is_active = false.into();
+            }
+        }
+    }
+}
+
+fn handle_joy_axis_event(event: event::JoyAxis, input: &mut Input) {
+    let axis = event.axis;
+    if axis == 0 || ((input.joy_num_axes >= 5) && (axis == 3))
+    /* x-axis */
+    {
+        input.input_axis.x = event.value.into();
+
+        // this is a bit tricky, because we want to allow direction keys
+        // to be soft-released. When mapping the joystick->keyboard, we
+        // therefore have to make sure that this mapping only occurs when
+        // and actual _change_ of the joystick-direction ('digital') occurs
+        // so that it behaves like "set"/"release"
+        if input.joy_sensitivity * i32::from(event.value) > 10000 {
+            /* about half tilted */
+            input.input_state[PointerStates::JoyRight as usize].set_just_pressed();
+            input.input_state[PointerStates::JoyLeft as usize].set_released();
+        } else if input.joy_sensitivity * i32::from(event.value) < -10000 {
+            input.input_state[PointerStates::JoyLeft as usize].set_just_pressed();
+            input.input_state[PointerStates::JoyRight as usize].set_released();
+        } else {
+            input.input_state[PointerStates::JoyLeft as usize].set_released();
+            input.input_state[PointerStates::JoyRight as usize].set_released();
+        }
+    } else if (axis == 1) || ((input.joy_num_axes >= 5) && (axis == 4)) {
+        /* y-axis */
+        input.input_axis.y = event.value.into();
+
+        if input.joy_sensitivity * i32::from(event.value) > 10000 {
+            input.input_state[PointerStates::JoyDown as usize].set_just_pressed();
+            input.input_state[PointerStates::JoyUp as usize].set_released();
+        } else if input.joy_sensitivity * i32::from(event.value) < -10000 {
+            input.input_state[PointerStates::JoyUp as usize].set_just_pressed();
+            input.input_state[PointerStates::JoyDown as usize].set_released();
+        } else {
+            input.input_state[PointerStates::JoyUp as usize].set_released();
+            input.input_state[PointerStates::JoyDown as usize].set_released();
+        }
+    }
+}
+
+fn handle_joy_button_event(event: event::JoyButton, input: &mut Input) {
+    let is_pressed = event.state.is_pressed();
+    let input_state_index = match event.button {
+        0 => Some(PointerStates::JoyButton1 as usize),
+        1 => Some(PointerStates::JoyButton2 as usize),
+        2 => Some(PointerStates::JoyButton3 as usize),
+        3 => Some(PointerStates::JoyButton4 as usize),
+        _ => None,
+    };
+    if let Some(input_state_index) = input_state_index {
+        let input_state = &mut input.input_state[input_state_index];
+        input_state.pressed = is_pressed;
+        input_state.fresh = true;
+    }
+    input.axis_is_active = is_pressed.into();
+}
+
+fn handle_mouse_motion_event(event: event::MouseMotion, input: &mut Input, vars: &Vars, sdl: &Sdl) {
+    let user_center = vars.get_user_center();
+    input.input_axis.x = i32::from(event.x) - i32::from(user_center.x()) + 16;
+    input.input_axis.y = i32::from(event.y) - i32::from(user_center.y()) + 16;
+
+    input.last_mouse_event = sdl.ticks_ms();
+}
+
+fn handle_mouse_button_event(event: event::MouseButton, input: &mut Input, sdl: &Sdl) {
+    const BUTTON_LEFT: u8 = i32_to_u8(SDL_BUTTON_LEFT);
+    const BUTTON_RIGHT: u8 = i32_to_u8(SDL_BUTTON_RIGHT);
+    const BUTTON_MIDDLE: u8 = i32_to_u8(SDL_BUTTON_MIDDLE);
+    const BUTTON_WHEELUP: u8 = i32_to_u8(SDL_BUTTON_WHEELUP);
+    const BUTTON_WHEELDOWN: u8 = i32_to_u8(SDL_BUTTON_WHEELDOWN);
+
+    let is_pressed = event.state.is_pressed();
+    let input_state_index = match event.button {
+        BUTTON_LEFT => {
+            input.axis_is_active = is_pressed.into();
+            Some(PointerStates::MouseButton1 as usize)
+        }
+        BUTTON_RIGHT => Some(PointerStates::MouseButton2 as usize),
+        BUTTON_MIDDLE => Some(PointerStates::MouseButton3 as usize),
+        // wheel events are immediately released, so we rather
+        // count the number of not yet read-out events
+        BUTTON_WHEELUP => {
+            if is_pressed {
+                input.wheel_up_events += 1;
+            }
+            None
+        }
+        BUTTON_WHEELDOWN => {
+            if is_pressed {
+                input.wheel_down_events += 1;
+            }
+            None
+        }
+        _ => None,
+    };
+
+    if let Some(input_state_index) = input_state_index {
+        let input_state = &mut input.input_state[input_state_index];
+        input_state.pressed = is_pressed;
+        input_state.fresh = true;
+    }
+    if is_pressed {
+        input.last_mouse_event = sdl.ticks_ms();
     }
 }
