@@ -13,7 +13,7 @@ use sdl::{Rect, Surface};
 use sdl_sys::SDL_Color;
 use std::{
     convert::Infallible,
-    ops::{Deref, DerefMut},
+    ops::{Deref, DerefMut, Not},
     os::raw::c_int,
 };
 
@@ -933,8 +933,6 @@ impl crate::Data<'_> {
 
     /// generate a random Playground
     fn invent_playground(&mut self) {
-        use std::ops::Not;
-
         const MAX_PROB: i32 = 100;
         const ELEMENTS_PROBABILITIES: [i32; TO_ELEMENTS] = [
             100, /* Cable */
@@ -944,12 +942,6 @@ impl crate::Data<'_> {
             5,   /* Branch */
             5,   /* Gate */
         ];
-
-        fn cut_cable(block: &mut Block) {
-            if block.is_connector() {
-                *block = Block::CableEnd;
-            }
-        }
 
         /* first clear the playground: we depend on this !! */
         self.clear_playground();
@@ -978,92 +970,13 @@ impl crate::Data<'_> {
                             continue;
                         }
 
-                        let prev_block = playground_prev_layer[row];
-                        match ToElement::try_from(new_element).unwrap() {
-                            ToElement::Cable => {
-                                if prev_block.is_connector().not() {
-                                    *block = Block::Empty;
-                                }
-                            }
-                            ToElement::CableEnd => {
-                                if prev_block.is_connector() {
-                                    *block = Block::CableEnd;
-                                } else {
-                                    *block = Block::Empty;
-                                }
-                            }
-                            ToElement::Repeater => {
-                                if prev_block.is_connector() {
-                                    *block = Block::Repeater;
-                                } else {
-                                    *block = Block::Empty;
-                                }
-                            }
-                            ToElement::ColorSwapper => {
-                                if layer != 2 {
-                                    continue;
-                                }
-                                if prev_block.is_connector() {
-                                    *block = Block::ColorSwapper;
-                                } else {
-                                    *block = Block::Empty;
-                                }
-                            }
-                            ToElement::Branch => {
-                                if row > NUM_LINES - 3 {
-                                    continue;
-                                }
-                                let next_block = playground_prev_layer[row + 1];
-                                if next_block.is_connector().not() {
-                                    continue;
-                                }
-                                let (prev_layer_block, prev_layer_next_blocks) =
-                                    playground_prev_layer[row..].split_first_mut().unwrap();
-                                if matches!(
-                                    prev_layer_block,
-                                    Block::BranchAbove | Block::BranchBelow
-                                ) {
-                                    continue;
-                                }
-                                let next_next_block = &mut prev_layer_next_blocks[1];
-                                if matches!(
-                                    next_next_block,
-                                    Block::BranchAbove | Block::BranchBelow
-                                ) {
-                                    continue;
-                                }
-                                cut_cable(prev_layer_block);
-                                cut_cable(next_next_block);
-
-                                *block = Block::BranchAbove;
-                                playground_layer[row + 1] = Block::BranchMiddle;
-                                playground_layer[row + 2] = Block::BranchBelow;
-                                row += 2;
-                            }
-                            ToElement::Gate => {
-                                if row > NUM_LINES - 3 {
-                                    continue;
-                                }
-
-                                let prev_layer_block = playground_prev_layer[row];
-                                if prev_layer_block.is_connector().not() {
-                                    continue;
-                                }
-
-                                let next_next_block = playground_prev_layer[row + 2];
-                                if next_next_block.is_connector().not() {
-                                    continue;
-                                }
-                                cut_cable(&mut playground_prev_layer[row + 1]);
-
-                                *block = Block::GateAbove;
-                                playground_layer[row + 1] = Block::GateMiddle;
-                                playground_layer[row + 2] = Block::GateBelow;
-                                row += 2;
-                            }
-                        }
-
-                        row += 1;
+                        try_set_new_playground_element(
+                            new_element,
+                            &mut row,
+                            layer,
+                            playground_layer,
+                            playground_prev_layer,
+                        );
                     }
                 }
             });
@@ -1958,6 +1871,103 @@ impl crate::Data<'_> {
 
         (self.takeover.leader_color == self.takeover.your_color).into()
     }
+}
+
+#[inline]
+fn try_set_new_playground_element(
+    new_element: u8,
+    row: &mut usize,
+    layer: usize,
+    playground_layer: &mut map::Layer<Block>,
+    playground_prev_layer: &mut map::Layer<Block>,
+) {
+    fn cut_cable(block: &mut Block) {
+        if block.is_connector() {
+            *block = Block::CableEnd;
+        }
+    }
+
+    let block = &mut playground_layer[*row];
+    let prev_block = playground_prev_layer[*row];
+    match ToElement::try_from(new_element).unwrap() {
+        ToElement::Cable => {
+            if prev_block.is_connector().not() {
+                *block = Block::Empty;
+            }
+        }
+        ToElement::CableEnd => {
+            if prev_block.is_connector() {
+                *block = Block::CableEnd;
+            } else {
+                *block = Block::Empty;
+            }
+        }
+        ToElement::Repeater => {
+            if prev_block.is_connector() {
+                *block = Block::Repeater;
+            } else {
+                *block = Block::Empty;
+            }
+        }
+        ToElement::ColorSwapper => {
+            if layer != 2 {
+                return;
+            }
+            if prev_block.is_connector() {
+                *block = Block::ColorSwapper;
+            } else {
+                *block = Block::Empty;
+            }
+        }
+        ToElement::Branch => {
+            if *row > NUM_LINES - 3 {
+                return;
+            }
+            let next_block = playground_prev_layer[*row + 1];
+            if next_block.is_connector().not() {
+                return;
+            }
+            let (prev_layer_block, prev_layer_next_blocks) =
+                playground_prev_layer[*row..].split_first_mut().unwrap();
+            if matches!(prev_layer_block, Block::BranchAbove | Block::BranchBelow) {
+                return;
+            }
+            let next_next_block = &mut prev_layer_next_blocks[1];
+            if matches!(next_next_block, Block::BranchAbove | Block::BranchBelow) {
+                return;
+            }
+            cut_cable(prev_layer_block);
+            cut_cable(next_next_block);
+
+            *block = Block::BranchAbove;
+            playground_layer[*row + 1] = Block::BranchMiddle;
+            playground_layer[*row + 2] = Block::BranchBelow;
+            *row += 2;
+        }
+        ToElement::Gate => {
+            if *row > NUM_LINES - 3 {
+                return;
+            }
+
+            let prev_layer_block = playground_prev_layer[*row];
+            if prev_layer_block.is_connector().not() {
+                return;
+            }
+
+            let next_next_block = playground_prev_layer[*row + 2];
+            if next_next_block.is_connector().not() {
+                return;
+            }
+            cut_cable(&mut playground_prev_layer[*row + 1]);
+
+            *block = Block::GateAbove;
+            playground_layer[*row + 1] = Block::GateMiddle;
+            playground_layer[*row + 2] = Block::GateBelow;
+            *row += 2;
+        }
+    }
+
+    *row += 1;
 }
 
 #[derive(Debug, Clone, Copy)]
