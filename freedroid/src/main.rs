@@ -57,7 +57,13 @@ use takeover::Takeover;
 use text::Text;
 use vars::Vars;
 
-use std::{cell::Cell, fs::File, ops::Not, os::raw::c_float, path::Path};
+use std::{
+    cell::Cell,
+    fs::File,
+    ops::{ControlFlow, Not},
+    os::raw::c_float,
+    path::Path,
+};
 
 struct Main<'sdl> {
     last_got_into_blast_sound: c_float,
@@ -208,9 +214,7 @@ fn main() {
     let mut data = Data::new(&sdl);
 
     data.input.joy_sensitivity = 1;
-
     data.init_freedroid(); // Initialisation of global variables and arrays
-
     sdl.cursor().hide();
 
     #[cfg(target_os = "windows")]
@@ -220,140 +224,15 @@ fn main() {
     }
 
     while data.quit.get().not() {
-        data.init_new_mission(STANDARD_MISSION);
-        if data.quit.get() {
+        if matches!(game_single_loop(&mut data, &sdl), ControlFlow::Break(())) {
             break;
-        }
-
-        // scale Level-pic rects
-        let scale = data.global.game_config.scale;
-        #[allow(clippy::float_cmp)]
-        if scale != 1.0 {
-            data.main.cur_ship.level_rects
-                [0..usize::try_from(data.main.cur_ship.num_levels).unwrap()]
-                .iter_mut()
-                .zip(data.main.cur_ship.num_level_rects.iter())
-                .flat_map(|(rects, &num_rects)| {
-                    rects[0..usize::try_from(num_rects).unwrap()].iter_mut()
-                })
-                .for_each(|rect| rect.scale(scale));
-
-            for rect in &mut data.main.cur_ship.lift_row_rect
-                [0..usize::try_from(data.main.cur_ship.num_lift_rows).unwrap()]
-            {
-                rect.scale(scale);
-            }
-        }
-
-        // release all keys
-        data.wait_for_all_keys_released();
-
-        data.show_droid_info(data.vars.me.ty, -3, 0); // show unit-intro page
-        data.show_droid_portrait(
-            data.vars.cons_droid_rect,
-            data.vars.me.ty,
-            DROID_ROTATION_TIME,
-            RESET,
-        );
-        let now = sdl.ticks_ms();
-        while data.quit.get().not() && sdl.ticks_ms() - now < SHOW_WAIT && !data.fire_pressed_r() {
-            data.show_droid_portrait(
-                data.vars.cons_droid_rect,
-                data.vars.me.ty,
-                DROID_ROTATION_TIME,
-                0,
-            );
-            sdl.delay_ms(1);
-        }
-
-        data.clear_graph_mem();
-        data.display_banner(
-            None,
-            None,
-            (DisplayBannerFlags::FORCE_UPDATE | DisplayBannerFlags::NO_SDL_UPDATE)
-                .bits()
-                .into(),
-        );
-        assert!(data.graphics.ne_screen.as_mut().unwrap().flip());
-
-        data.game_over = false;
-
-        data.graphics
-            .crosshair_cursor
-            .as_ref()
-            .unwrap()
-            .set_active(); // default cursor is a crosshair
-        sdl.cursor().show();
-
-        while data.quit.get().not() && data.game_over.not() {
-            data.start_taking_time_for_fps_calculation();
-
-            data.update_counters_for_this_frame();
-
-            data.react_to_special_keys();
-
-            if data.input.show_cursor {
-                sdl.cursor().show();
-            } else {
-                sdl.cursor().hide();
-            }
-
-            data.move_level_doors();
-
-            data.animate_refresh();
-
-            data.explode_blasts(); // move blasts to the right current "phase" of the blast
-
-            data.alert_level_warning(); // tout tout, blink blink... Alert!!
-
-            data.display_banner(None, None, 0);
-
-            data.move_bullets(); // leave this in front of graphics output: time_in_frames should start with 1
-
-            data.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
-
-            for bullet in 0..i32::try_from(MAXBULLETS).unwrap() {
-                data.check_bullet_collisions(bullet);
-            }
-
-            // change Influ-speed depending on keys pressed, but
-            // also change his status and position and "phase" of rotation
-            data.move_influence();
-
-            data.move_enemys(); // move all the enemys:
-                                // also do attacks on influ and also move "phase" or their rotation
-
-            data.check_influence_wall_collisions(); /* Testen ob der Weg nicht durch Mauern verstellt ist */
-            data.check_influence_enemy_collision();
-
-            // control speed of time-flow: dark-levels=emptyLevelSpeedup, normal-levels=1.0
-            let cur_level = data.main.cur_level_mut();
-            if cur_level.empty == 0 {
-                data.set_time_factor(1.0);
-            } else if cur_level.color == ColorNames::Dark as i32 {
-                // if level is already dark
-                data.set_time_factor(data.global.game_config.empty_level_speedup);
-            } else if cur_level.timer <= 0. {
-                // time to switch off the lights ...
-                cur_level.color = ColorNames::Dark as i32;
-                data.switch_background_music_to(Some(BYCOLOR)); // start new background music
-            }
-
-            data.check_if_mission_is_complete();
-
-            if data.global.game_config.hog_cpu == 0 {
-                // don't use up 100% CPU unless requested
-                sdl.delay_ms(1);
-            }
-
-            data.compute_fps_for_this_frame();
         }
     }
 
     info!("Termination of Freedroid initiated.");
-
     info!("Writing config file");
     data.save_game_config();
+
     info!("Writing highscores to disk");
     data.save_highscores();
 
@@ -364,6 +243,128 @@ fn main() {
     data.free_game_mem();
 
     info!("Thank you for playing Freedroid.");
+}
+
+fn game_single_loop<'sdl>(data: &mut Data<'sdl>, sdl: &'sdl Sdl) -> ControlFlow<()> {
+    data.init_new_mission(STANDARD_MISSION);
+    if data.quit.get() {
+        return ControlFlow::Break(());
+    }
+
+    // scale Level-pic rects
+    let scale = data.global.game_config.scale;
+    #[allow(clippy::float_cmp)]
+    if scale != 1.0 {
+        data.main.cur_ship.level_rects[0..usize::try_from(data.main.cur_ship.num_levels).unwrap()]
+            .iter_mut()
+            .zip(data.main.cur_ship.num_level_rects.iter())
+            .flat_map(|(rects, &num_rects)| {
+                rects[0..usize::try_from(num_rects).unwrap()].iter_mut()
+            })
+            .for_each(|rect| rect.scale(scale));
+
+        for rect in &mut data.main.cur_ship.lift_row_rect
+            [0..usize::try_from(data.main.cur_ship.num_lift_rows).unwrap()]
+        {
+            rect.scale(scale);
+        }
+    }
+
+    // release all keys
+    data.wait_for_all_keys_released();
+
+    data.show_droid_info(data.vars.me.ty, -3, 0); // show unit-intro page
+    data.show_droid_portrait(
+        data.vars.cons_droid_rect,
+        data.vars.me.ty,
+        DROID_ROTATION_TIME,
+        RESET,
+    );
+    let now = sdl.ticks_ms();
+    while data.quit.get().not() && sdl.ticks_ms() - now < SHOW_WAIT && !data.fire_pressed_r() {
+        data.show_droid_portrait(
+            data.vars.cons_droid_rect,
+            data.vars.me.ty,
+            DROID_ROTATION_TIME,
+            0,
+        );
+        sdl.delay_ms(1);
+    }
+
+    data.clear_graph_mem();
+    data.display_banner(
+        None,
+        None,
+        (DisplayBannerFlags::FORCE_UPDATE | DisplayBannerFlags::NO_SDL_UPDATE)
+            .bits()
+            .into(),
+    );
+    assert!(data.graphics.ne_screen.as_mut().unwrap().flip());
+
+    data.game_over = false;
+
+    data.graphics
+        .crosshair_cursor
+        .as_ref()
+        .unwrap()
+        .set_active(); // default cursor is a crosshair
+    sdl.cursor().show();
+
+    while data.quit.get().not() && data.game_over.not() {
+        data.start_taking_time_for_fps_calculation();
+        data.update_counters_for_this_frame();
+        data.react_to_special_keys();
+
+        if data.input.show_cursor {
+            sdl.cursor().show();
+        } else {
+            sdl.cursor().hide();
+        }
+
+        data.move_level_doors();
+        data.animate_refresh();
+        data.explode_blasts(); // move blasts to the right current "phase" of the blast
+        data.alert_level_warning(); // tout tout, blink blink... Alert!!
+        data.display_banner(None, None, 0);
+        data.move_bullets(); // leave this in front of graphics output: time_in_frames should start with 1
+        data.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+
+        for bullet in 0..i32::try_from(MAXBULLETS).unwrap() {
+            data.check_bullet_collisions(bullet);
+        }
+
+        // change Influ-speed depending on keys pressed, but
+        // also change his status and position and "phase" of rotation
+        data.move_influence();
+        data.move_enemys(); // move all the enemys:
+                            // also do attacks on influ and also move "phase" or their rotation
+        data.check_influence_wall_collisions(); /* Testen ob der Weg nicht durch Mauern verstellt ist */
+        data.check_influence_enemy_collision();
+
+        // control speed of time-flow: dark-levels=emptyLevelSpeedup, normal-levels=1.0
+        let cur_level = data.main.cur_level_mut();
+        if cur_level.empty == 0 {
+            data.set_time_factor(1.0);
+        } else if cur_level.color == ColorNames::Dark as i32 {
+            // if level is already dark
+            data.set_time_factor(data.global.game_config.empty_level_speedup);
+        } else if cur_level.timer <= 0. {
+            // time to switch off the lights ...
+            cur_level.color = ColorNames::Dark as i32;
+            data.switch_background_music_to(Some(BYCOLOR)); // start new background music
+        }
+
+        data.check_if_mission_is_complete();
+
+        if data.global.game_config.hog_cpu == 0 {
+            // don't use up 100% CPU unless requested
+            sdl.delay_ms(1);
+        }
+
+        data.compute_fps_for_this_frame();
+    }
+
+    ControlFlow::Continue(())
 }
 
 impl Data<'_> {
