@@ -261,34 +261,8 @@ impl crate::Data<'_> {
             // At first we just check in which directions (from the last position)
             // the ways are blocked and in which directions the ways are open.
             //
-            let north_south_axis_blocked = if {
-                let pos_y = lastpos.y
-                    + self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed
-                        * self.frame_time();
-                self.druid_passable(lastpos.x, pos_y) != Some(Direction::Center)
-            } || {
-                let pos_y = lastpos.y
-                    - self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed
-                        * self.frame_time();
-                self.druid_passable(lastpos.x, pos_y) != Some(Direction::Center)
-            } {
-                true
-            } else {
-                info!("North-south-Axis seems to be free.");
-                false
-            };
-
-            let east_west_axis_blocked = !({
-                let pos_x = lastpos.x
-                    + self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed
-                        * self.frame_time();
-                self.druid_passable(pos_x, lastpos.y) == Some(Direction::Center)
-            } && {
-                let pos_x = lastpos.x
-                    - self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed
-                        * self.frame_time();
-                self.druid_passable(pos_x, lastpos.y) == Some(Direction::Center)
-            });
+            let north_south_axis_blocked = self.is_north_south_axis_blocked(lastpos);
+            let east_west_axis_blocked = self.is_east_west_axis_blocked(lastpos);
 
             // Now we try to handle the sitution:
 
@@ -703,5 +677,39 @@ impl crate::Data<'_> {
             y: self.vars.me.pos.y,
             z: self.main.cur_level().levelnum,
         });
+    }
+
+    fn is_north_south_axis_blocked(&mut self, lastpos: Finepoint) -> bool {
+        if {
+            let pos_y = lastpos.y
+                + self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed
+                    * self.frame_time();
+            self.druid_passable(lastpos.x, pos_y) != Some(Direction::Center)
+        } || {
+            let pos_y = lastpos.y
+                - self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed
+                    * self.frame_time();
+            self.druid_passable(lastpos.x, pos_y) != Some(Direction::Center)
+        } {
+            true
+        } else {
+            info!("North-south-Axis seems to be free.");
+            false
+        }
+    }
+
+    fn is_east_west_axis_blocked(&mut self, lastpos: Finepoint) -> bool {
+        ({
+            let pos_x = lastpos.x
+                + self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed
+                    * self.frame_time();
+            self.druid_passable(pos_x, lastpos.y) == Some(Direction::Center)
+        } && {
+            let pos_x = lastpos.x
+                - self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed
+                    * self.frame_time();
+            self.druid_passable(pos_x, lastpos.y) == Some(Direction::Center)
+        })
+        .not()
     }
 }
