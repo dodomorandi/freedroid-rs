@@ -1,4 +1,5 @@
 use std::{
+    array,
     ffi::CStr,
     fmt,
     ops::{Deref, Index},
@@ -270,5 +271,32 @@ impl<const N: usize> PartialEq<ArrayCString<N>> for str {
 impl<const N: usize> PartialEq<ArrayCString<N>> for CStr {
     fn eq(&self, other: &ArrayCString<N>) -> bool {
         other == self
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct IntoIter<const N: usize>(array::IntoIter<u8, N>);
+
+impl<const N: usize> Iterator for IntoIter<N> {
+    type Item = u8;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().filter(|&c| c != 0)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(N - 1))
+    }
+}
+
+impl<const N: usize> IntoIterator for ArrayCString<N> {
+    type Item = u8;
+    type IntoIter = IntoIter<N>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter(self.0.into_iter())
     }
 }
