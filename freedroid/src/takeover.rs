@@ -1530,7 +1530,6 @@ impl crate::Data<'_> {
     /// the acutal Takeover game-playing is done here
     fn play_game(&mut self) {
         const COUNT_TICK_LEN: u32 = 100;
-        const MOVE_TICK_LEN: u32 = 60;
 
         let mut countdown = 100;
 
@@ -1540,100 +1539,20 @@ impl crate::Data<'_> {
         self.wait_for_all_keys_released();
 
         self.countdown_sound();
-        let mut finish_takeover = false;
-        let your_color = usize::from(self.takeover.your_color);
         let mut count_text = ArrayCString::<11>::default();
 
-        while !finish_takeover {
-            let cur_time = self.sdl.ticks_ms();
-
-            let do_update_count = cur_time > prev_count_tick + COUNT_TICK_LEN;
-            if do_update_count {
-                use std::fmt::Write;
-
-                /* time to count 1 down */
-                prev_count_tick += COUNT_TICK_LEN; /* set for next countdown tick */
-                countdown -= 1;
-                count_text.clear();
-                write!(count_text, "Finish-{countdown}").unwrap();
-                self.display_banner(Some(&*count_text), None, 0);
-
-                if countdown != 0 && countdown % 10 == 0 {
-                    self.countdown_sound();
-                }
-                if countdown == 0 {
-                    self.end_countdown_sound();
-                    finish_takeover = true;
-                }
-
-                self.animate_currents(); /* do some animation on the active cables */
+        loop {
+            match self.play_takeover_once(
+                &mut countdown,
+                &mut count_text,
+                &mut prev_count_tick,
+                &mut prev_move_tick,
+            ) {
+                PlayTakeoverOnce::Continue => {}
+                PlayTakeoverOnce::Finish => break,
+                PlayTakeoverOnce::Return => return,
             }
-
-            let do_update_move = cur_time > prev_move_tick + MOVE_TICK_LEN;
-            if do_update_move {
-                prev_move_tick += MOVE_TICK_LEN; /* set for next motion tick */
-
-                let key_repeat_delay = if cfg!(target_os = "android") {
-                    150 // better to avoid accidential key-repeats on touchscreen
-                } else {
-                    110 // PC default, allows for quick-repeat key hits
-                };
-
-                let action = self.get_menu_action(key_repeat_delay);
-                /* allow for a WIN-key that give immedate victory */
-                if self.key_is_pressed_r(b'w'.into()) && self.ctrl_pressed() && self.alt_pressed() {
-                    self.takeover.leader_color = self.takeover.your_color; /* simple as that */
-                    return;
-                }
-
-                if action.intersects(MenuAction::UP | MenuAction::UP_WHEEL) {
-                    self.takeover.capsule_cur_row[your_color] -= 1;
-                    if self.takeover.capsule_cur_row[your_color] < 1 {
-                        self.takeover.capsule_cur_row[your_color] = NUM_LINES.try_into().unwrap();
-                    }
-                }
-
-                if action.intersects(MenuAction::DOWN | MenuAction::DOWN_WHEEL) {
-                    self.takeover.capsule_cur_row[your_color] += 1;
-                    if self.takeover.capsule_cur_row[your_color] > NUM_LINES.try_into().unwrap() {
-                        self.takeover.capsule_cur_row[your_color] = 1;
-                    }
-                }
-
-                if action.intersects(MenuAction::CLICK) {
-                    if let Ok(row) = usize::try_from(self.takeover.capsule_cur_row[your_color] - 1)
-                    {
-                        if self.takeover.num_capsules[Opponents::You as usize] > 0
-                            && self.takeover.playground[your_color][0][row] != Block::CableEnd
-                            && self.takeover.activation_map[your_color][0][row]
-                                == Condition::Inactive
-                        {
-                            self.takeover.num_capsules[Opponents::You as usize] -= 1;
-                            self.takeover.capsule_cur_row[your_color] = 0;
-                            self.takeover.playground[your_color][0][row] = Block::Repeater;
-                            self.takeover.activation_map[your_color][0][row] = Condition::Active1;
-                            self.takeover.capsules_countdown[your_color][0][row] =
-                                Some(CAPSULE_COUNTDOWN * 2);
-                            self.takeover_set_capsule_sound();
-                        }
-                    }
-                }
-
-                self.enemy_movements();
-                self.process_capsules(); /* count down the lifetime of the capsules */
-
-                self.process_playground();
-                self.process_playground();
-                self.process_playground();
-                self.process_playground(); /* this has to be done several times to be sure */
-
-                self.process_display_column();
-                self.show_playground();
-            } // if do_update_move
-
-            assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
-            self.sdl.delay_ms(1);
-        } /* while !FinishTakeover */
+        }
 
         /* Schluss- Countdown */
         countdown = CAPSULE_COUNTDOWN;
@@ -1656,10 +1575,10 @@ impl crate::Data<'_> {
             self.process_capsules(); /* count down the lifetime of the capsules */
             self.process_capsules(); /* do it twice this time to be faster */
             self.animate_currents();
-            self.process_playground();
-            self.process_playground();
-            self.process_playground();
-            self.process_playground(); /* this has to be done several times to be sure */
+            /* this has to be done several times to be sure */
+            for _ in 0..4 {
+                self.process_playground();
+            }
             self.process_display_column();
             self.show_playground();
             self.sdl.delay_ms(1);
@@ -1667,6 +1586,108 @@ impl crate::Data<'_> {
         } /* while (countdown) */
 
         self.wait_for_all_keys_released();
+    }
+
+    fn play_takeover_once(
+        &mut self,
+        countdown: &mut u8,
+        count_text: &mut ArrayCString<11>,
+        prev_count_tick: &mut u32,
+        prev_move_tick: &mut u32,
+    ) -> PlayTakeoverOnce {
+        const COUNT_TICK_LEN: u32 = 100;
+        const MOVE_TICK_LEN: u32 = 60;
+
+        let your_color = usize::from(self.takeover.your_color);
+        let mut outcome = PlayTakeoverOnce::Continue;
+        let cur_time = self.sdl.ticks_ms();
+
+        let do_update_count = cur_time > *prev_count_tick + COUNT_TICK_LEN;
+        if do_update_count {
+            use std::fmt::Write;
+
+            /* time to count 1 down */
+            *prev_count_tick += COUNT_TICK_LEN; /* set for next countdown tick */
+            *countdown -= 1;
+            count_text.clear();
+            write!(count_text, "Finish-{countdown}").unwrap();
+            self.display_banner(Some(&*count_text), None, 0);
+
+            if *countdown != 0 && *countdown % 10 == 0 {
+                self.countdown_sound();
+            }
+            if *countdown == 0 {
+                self.end_countdown_sound();
+                outcome = PlayTakeoverOnce::Finish;
+            }
+
+            self.animate_currents(); /* do some animation on the active cables */
+        }
+
+        let do_update_move = cur_time > *prev_move_tick + MOVE_TICK_LEN;
+        if do_update_move {
+            *prev_move_tick += MOVE_TICK_LEN; /* set for next motion tick */
+
+            let key_repeat_delay = if cfg!(target_os = "android") {
+                150 // better to avoid accidential key-repeats on touchscreen
+            } else {
+                110 // PC default, allows for quick-repeat key hits
+            };
+
+            let action = self.get_menu_action(key_repeat_delay);
+            /* allow for a WIN-key that give immedate victory */
+            if self.key_is_pressed_r(b'w'.into()) && self.ctrl_pressed() && self.alt_pressed() {
+                self.takeover.leader_color = self.takeover.your_color; /* simple as that */
+                return PlayTakeoverOnce::Return;
+            }
+
+            if action.intersects(MenuAction::UP | MenuAction::UP_WHEEL) {
+                self.takeover.capsule_cur_row[your_color] -= 1;
+                if self.takeover.capsule_cur_row[your_color] < 1 {
+                    self.takeover.capsule_cur_row[your_color] = NUM_LINES.try_into().unwrap();
+                }
+            }
+
+            if action.intersects(MenuAction::DOWN | MenuAction::DOWN_WHEEL) {
+                self.takeover.capsule_cur_row[your_color] += 1;
+                if self.takeover.capsule_cur_row[your_color] > NUM_LINES.try_into().unwrap() {
+                    self.takeover.capsule_cur_row[your_color] = 1;
+                }
+            }
+
+            if action.intersects(MenuAction::CLICK) {
+                if let Ok(row) = usize::try_from(self.takeover.capsule_cur_row[your_color] - 1) {
+                    if self.takeover.num_capsules[Opponents::You as usize] > 0
+                        && self.takeover.playground[your_color][0][row] != Block::CableEnd
+                        && self.takeover.activation_map[your_color][0][row] == Condition::Inactive
+                    {
+                        self.takeover.num_capsules[Opponents::You as usize] -= 1;
+                        self.takeover.capsule_cur_row[your_color] = 0;
+                        self.takeover.playground[your_color][0][row] = Block::Repeater;
+                        self.takeover.activation_map[your_color][0][row] = Condition::Active1;
+                        self.takeover.capsules_countdown[your_color][0][row] =
+                            Some(CAPSULE_COUNTDOWN * 2);
+                        self.takeover_set_capsule_sound();
+                    }
+                }
+            }
+
+            self.enemy_movements();
+            self.process_capsules(); /* count down the lifetime of the capsules */
+
+            /* this has to be done several times to be sure */
+            for _ in 0..4 {
+                self.process_playground();
+            }
+
+            self.process_display_column();
+            self.show_playground();
+        } // if do_update_move
+
+        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
+        self.sdl.delay_ms(1);
+
+        outcome
     }
 
     fn choose_color(&mut self) {
@@ -1937,4 +1958,11 @@ impl crate::Data<'_> {
 
         (self.takeover.leader_color == self.takeover.your_color).into()
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum PlayTakeoverOnce {
+    Continue,
+    Finish,
+    Return,
 }
