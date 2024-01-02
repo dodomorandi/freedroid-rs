@@ -7,7 +7,7 @@ use crate::{
     },
     graphics::{scale_pic, Graphics},
     map::get_map_brick,
-    structs::{Point, TextToBeDisplayed},
+    structs::{DruidSpec, Point, TextToBeDisplayed},
     vars::{BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES, WEAPON_NAMES},
     ArrayIndex,
 };
@@ -319,34 +319,7 @@ impl crate::Data<'_> {
         )) * TEXT_STRETCH) as f32) as i16;
         let lastline = self.vars.cons_header_rect.y()
             + i16::try_from(self.vars.cons_header_rect.height()).unwrap();
-        self.ship.up_rect = Rect::new(self.vars.cons_header_rect.x(), lastline - lineskip, 25, 13);
-        #[allow(clippy::cast_possible_truncation)]
-        {
-            self.ship.down_rect = Rect::new(
-                self.vars.cons_header_rect.x(),
-                (f32::from(lastline) - 0.5 * f32::from(lineskip)) as i16,
-                25,
-                13,
-            );
-            self.ship.left_rect = Rect::new(
-                (f32::from(
-                    self.vars.cons_header_rect.x()
-                        + i16::try_from(self.vars.cons_header_rect.width()).unwrap(),
-                ) - 1.5 * f32::from(lineskip)) as i16,
-                (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
-                13,
-                25,
-            );
-            self.ship.right_rect = Rect::new(
-                (f32::from(
-                    self.vars.cons_header_rect.x()
-                        + i16::try_from(self.vars.cons_header_rect.width()).unwrap(),
-                ) - 1.0 * f32::from(lineskip)) as i16,
-                (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
-                13,
-                25,
-            );
-        }
+        self.set_ship_rects(lastline, lineskip);
 
         let mut droid_name = ArrayString::<[u8; 80]>::default();
         let droid = &self.vars.droidmap[usize::try_from(droid_type).unwrap()];
@@ -362,88 +335,7 @@ impl crate::Data<'_> {
 
         let mut info_text = ArrayString::<[u8; 1000]>::default();
         let mut show_arrows = false;
-        match page {
-            -3 => {
-                // Title screen: intro unit
-                write!(
-                    info_text,
-                    "This is the unit that you currently control. Prepare to board Robo-frighter \
-                     Paradroid to eliminate all rogue robots.",
-                )
-                .unwrap();
-            }
-            -2 => {
-                // Takeover: unit that you wish to control
-                write!(
-                    info_text,
-                    "This is the unit that you wish to control.\n\n Prepare to takeover.",
-                )
-                .unwrap();
-            }
-            -1 => {
-                // Takeover: unit that you control
-                write!(info_text, "This is the unit that you currently control.").unwrap();
-            }
-            0 => {
-                show_arrows = true;
-                write!(
-                    info_text,
-                    "Entry : {:02}\n\
-                 Class : {}\n\
-                 Height : {:5.2} m\n\
-                 Weight: {} kg\n\
-                 Drive : {} \n\
-                 Brain : {}",
-                    droid_type + 1,
-                    CLASSES[usize::try_from(droid.class).unwrap()]
-                        .to_str()
-                        .unwrap(),
-                    droid.height,
-                    droid.weight,
-                    DRIVE_NAMES[usize::try_from(droid.drive).unwrap()]
-                        .to_str()
-                        .unwrap(),
-                    BRAIN_NAMES[usize::try_from(droid.brain).unwrap()]
-                        .to_str()
-                        .unwrap(),
-                )
-                .unwrap();
-            }
-            1 => {
-                show_arrows = true;
-                write!(
-                    info_text,
-                    "Armament : {}\n\
-                 Sensors  1: {}\n\
-                    2: {}\n\
-                    3: {}",
-                    WEAPON_NAMES[usize::try_from(droid.gun).unwrap()]
-                        .to_str()
-                        .unwrap(),
-                    SENSOR_NAMES[usize::try_from(droid.sensor1).unwrap()]
-                        .to_str()
-                        .unwrap(),
-                    SENSOR_NAMES[usize::try_from(droid.sensor2).unwrap()]
-                        .to_str()
-                        .unwrap(),
-                    SENSOR_NAMES[usize::try_from(droid.sensor3).unwrap()]
-                        .to_str()
-                        .unwrap(),
-                )
-                .unwrap();
-            }
-            2 => {
-                show_arrows = true;
-                write!(info_text, "Notes: {}", droid.notes.to_str().unwrap()).unwrap();
-            }
-            _ => {
-                write!(
-                    info_text,
-                    "ERROR: Page not implemented!! \nPlease report bug!",
-                )
-                .unwrap();
-            }
-        }
+        show_droid_page_info(page, &mut info_text, &mut show_arrows, droid_type, droid);
 
         let Self {
             graphics:
@@ -507,48 +399,7 @@ impl crate::Data<'_> {
         );
 
         if show_arrows {
-            let Self {
-                graphics:
-                    Graphics {
-                        arrow_up,
-                        arrow_down,
-                        arrow_left,
-                        arrow_right,
-                        ne_screen,
-                        ..
-                    },
-                ship,
-                vars,
-                ..
-            } = self;
-
-            if vars.me.ty > droid_type {
-                arrow_up
-                    .as_mut()
-                    .unwrap()
-                    .blit_to(ne_screen.as_mut().unwrap(), &mut ship.up_rect);
-            }
-
-            if droid_type > 0 {
-                arrow_down
-                    .as_mut()
-                    .unwrap()
-                    .blit_to(ne_screen.as_mut().unwrap(), &mut ship.down_rect);
-            }
-
-            if page > 0 {
-                arrow_left
-                    .as_mut()
-                    .unwrap()
-                    .blit_to(ne_screen.as_mut().unwrap(), &mut ship.left_rect);
-            }
-
-            if page < 2 {
-                arrow_right
-                    .as_mut()
-                    .unwrap()
-                    .blit_to(ne_screen.as_mut().unwrap(), &mut ship.right_rect);
-            }
+            self.show_arrows(droid_type, page);
         }
 
         if flags & i32::from(UPDATE_ONLY) == 0 {
@@ -557,6 +408,82 @@ impl crate::Data<'_> {
             let screen = self.graphics.ne_screen.as_mut().unwrap();
             screen.update_rects(&[self.vars.cons_header_rect]);
             screen.update_rects(&[self.vars.cons_text_rect]);
+        }
+    }
+
+    fn set_ship_rects(&mut self, lastline: i16, lineskip: i16) {
+        self.ship.up_rect = Rect::new(self.vars.cons_header_rect.x(), lastline - lineskip, 25, 13);
+        #[allow(clippy::cast_possible_truncation)]
+        {
+            self.ship.down_rect = Rect::new(
+                self.vars.cons_header_rect.x(),
+                (f32::from(lastline) - 0.5 * f32::from(lineskip)) as i16,
+                25,
+                13,
+            );
+            self.ship.left_rect = Rect::new(
+                (f32::from(
+                    self.vars.cons_header_rect.x()
+                        + i16::try_from(self.vars.cons_header_rect.width()).unwrap(),
+                ) - 1.5 * f32::from(lineskip)) as i16,
+                (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
+                13,
+                25,
+            );
+            self.ship.right_rect = Rect::new(
+                (f32::from(
+                    self.vars.cons_header_rect.x()
+                        + i16::try_from(self.vars.cons_header_rect.width()).unwrap(),
+                ) - 1.0 * f32::from(lineskip)) as i16,
+                (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i16,
+                13,
+                25,
+            );
+        }
+    }
+
+    fn show_arrows(&mut self, droid_type: c_int, page: c_int) {
+        let Self {
+            graphics:
+                Graphics {
+                    arrow_up,
+                    arrow_down,
+                    arrow_left,
+                    arrow_right,
+                    ne_screen,
+                    ..
+                },
+            ship,
+            vars,
+            ..
+        } = self;
+
+        if vars.me.ty > droid_type {
+            arrow_up
+                .as_mut()
+                .unwrap()
+                .blit_to(ne_screen.as_mut().unwrap(), &mut ship.up_rect);
+        }
+
+        if droid_type > 0 {
+            arrow_down
+                .as_mut()
+                .unwrap()
+                .blit_to(ne_screen.as_mut().unwrap(), &mut ship.down_rect);
+        }
+
+        if page > 0 {
+            arrow_left
+                .as_mut()
+                .unwrap()
+                .blit_to(ne_screen.as_mut().unwrap(), &mut ship.left_rect);
+        }
+
+        if page < 2 {
+            arrow_right
+                .as_mut()
+                .unwrap()
+                .blit_to(ne_screen.as_mut().unwrap(), &mut ship.right_rect);
         }
     }
 
@@ -642,113 +569,7 @@ impl crate::Data<'_> {
             }
             let action = self.get_menu_action(250);
             if self.sdl.ticks_ms() - self.ship.enter_console_last_move_tick > wait_move_ticks {
-                match action {
-                    MenuAction::BACK => {
-                        finished = true;
-                        self.wait_for_all_keys_released();
-                    }
-
-                    MenuAction::UP => {
-                        if pos > 0 {
-                            pos -= 1;
-                        } else {
-                            pos = 3;
-                        }
-                        // when warping the mouse-cursor: don't count that as a mouse-activity
-                        // this is a dirty hack, but that should be enough for here...
-                        if self.input.show_cursor {
-                            let mousemove_buf = self.input.last_mouse_event;
-                            self.sdl.warp_mouse(
-                                (self.vars.cons_menu_rects[pos].x()
-                                    + i16::try_from(self.vars.cons_menu_rects[pos].width() / 2)
-                                        .unwrap())
-                                .try_into()
-                                .unwrap(),
-                                (self.vars.cons_menu_rects[pos].y()
-                                    + i16::try_from(self.vars.cons_menu_rects[pos].height() / 2)
-                                        .unwrap())
-                                .try_into()
-                                .unwrap(),
-                            );
-                            self.update_input(); // this sets a new last_mouse_event
-                            self.input.last_mouse_event = mousemove_buf; //... which we override.. ;)
-                        }
-                        self.move_menu_position_sound();
-                        need_update = true;
-                        self.ship.enter_console_last_move_tick = self.sdl.ticks_ms();
-                    }
-
-                    MenuAction::DOWN => {
-                        if pos < 3 {
-                            pos += 1;
-                        } else {
-                            pos = 0;
-                        }
-                        // when warping the mouse-cursor: don't count that as a mouse-activity
-                        // this is a dirty hack, but that should be enough for here...
-                        if self.input.show_cursor {
-                            let mousemove_buf = self.input.last_mouse_event;
-                            self.sdl.warp_mouse(
-                                (self.vars.cons_menu_rects[pos].x()
-                                    + i16::try_from(self.vars.cons_menu_rects[pos].width() / 2)
-                                        .unwrap())
-                                .try_into()
-                                .unwrap(),
-                                (self.vars.cons_menu_rects[pos].y()
-                                    + i16::try_from(self.vars.cons_menu_rects[pos].height() / 2)
-                                        .unwrap())
-                                .try_into()
-                                .unwrap(),
-                            );
-                            self.update_input(); // this sets a new last_mouse_event
-                            self.input.last_mouse_event = mousemove_buf; //... which we override.. ;)
-                        }
-                        self.move_menu_position_sound();
-                        need_update = true;
-                        self.ship.enter_console_last_move_tick = self.sdl.ticks_ms();
-                    }
-
-                    MenuAction::CLICK => {
-                        self.menu_item_selected_sound();
-                        self.wait_for_all_keys_released();
-                        need_update = true;
-                        match pos {
-                            0 => {
-                                finished = true;
-                            }
-                            1 => {
-                                self.great_druid_show();
-                                self.paint_console_menu(pos.try_into().unwrap(), 0);
-                            }
-                            2 => {
-                                self.clear_graph_mem();
-                                self.display_banner(
-                                    None,
-                                    None,
-                                    DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-                                );
-                                self.show_deck_map();
-                                self.paint_console_menu(pos.try_into().unwrap(), 0);
-                            }
-                            3 => {
-                                self.clear_graph_mem();
-                                self.display_banner(
-                                    None,
-                                    None,
-                                    DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-                                );
-                                self.show_lifts(self.main.cur_level().levelnum, -1);
-                                self.wait_for_key_pressed();
-                                self.paint_console_menu(pos.try_into().unwrap(), 0);
-                            }
-                            _ => {
-                                error!("Konsole menu out of bounds... pos = {}", pos);
-                                pos = 0;
-                            }
-                        }
-                    }
-                    _ => {}
-                }
+                self.handle_console_menu_action(action, &mut finished, &mut pos, &mut need_update);
             }
 
             if need_update {
@@ -780,6 +601,118 @@ impl crate::Data<'_> {
             .set_active();
         if !self.input.show_cursor {
             self.sdl.cursor().hide();
+        }
+    }
+
+    fn handle_console_menu_action(
+        &mut self,
+        action: MenuAction,
+        finished: &mut bool,
+        pos: &mut usize,
+        need_update: &mut bool,
+    ) {
+        match action {
+            MenuAction::BACK => {
+                *finished = true;
+                self.wait_for_all_keys_released();
+            }
+
+            MenuAction::UP => {
+                if *pos > 0 {
+                    *pos -= 1;
+                } else {
+                    *pos = 3;
+                }
+                // when warping the mouse-cursor: don't count that as a mouse-activity
+                // this is a dirty hack, but that should be enough for here...
+                if self.input.show_cursor {
+                    let mousemove_buf = self.input.last_mouse_event;
+                    self.sdl.warp_mouse(
+                        (self.vars.cons_menu_rects[*pos].x()
+                            + i16::try_from(self.vars.cons_menu_rects[*pos].width() / 2).unwrap())
+                        .try_into()
+                        .unwrap(),
+                        (self.vars.cons_menu_rects[*pos].y()
+                            + i16::try_from(self.vars.cons_menu_rects[*pos].height() / 2).unwrap())
+                        .try_into()
+                        .unwrap(),
+                    );
+                    self.update_input(); // this sets a new last_mouse_event
+                    self.input.last_mouse_event = mousemove_buf; //... which we override.. ;)
+                }
+                self.move_menu_position_sound();
+                *need_update = true;
+                self.ship.enter_console_last_move_tick = self.sdl.ticks_ms();
+            }
+
+            MenuAction::DOWN => {
+                if *pos < 3 {
+                    *pos += 1;
+                } else {
+                    *pos = 0;
+                }
+                // when warping the mouse-cursor: don't count that as a mouse-activity
+                // this is a dirty hack, but that should be enough for here...
+                if self.input.show_cursor {
+                    let mousemove_buf = self.input.last_mouse_event;
+                    self.sdl.warp_mouse(
+                        (self.vars.cons_menu_rects[*pos].x()
+                            + i16::try_from(self.vars.cons_menu_rects[*pos].width() / 2).unwrap())
+                        .try_into()
+                        .unwrap(),
+                        (self.vars.cons_menu_rects[*pos].y()
+                            + i16::try_from(self.vars.cons_menu_rects[*pos].height() / 2).unwrap())
+                        .try_into()
+                        .unwrap(),
+                    );
+                    self.update_input(); // this sets a new last_mouse_event
+                    self.input.last_mouse_event = mousemove_buf; //... which we override.. ;)
+                }
+                self.move_menu_position_sound();
+                *need_update = true;
+                self.ship.enter_console_last_move_tick = self.sdl.ticks_ms();
+            }
+
+            MenuAction::CLICK => {
+                self.menu_item_selected_sound();
+                self.wait_for_all_keys_released();
+                *need_update = true;
+                match *pos {
+                    0 => {
+                        *finished = true;
+                    }
+                    1 => {
+                        self.great_druid_show();
+                        self.paint_console_menu((*pos).try_into().unwrap(), 0);
+                    }
+                    2 => {
+                        self.clear_graph_mem();
+                        self.display_banner(
+                            None,
+                            None,
+                            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+                        );
+                        self.show_deck_map();
+                        self.paint_console_menu((*pos).try_into().unwrap(), 0);
+                    }
+                    3 => {
+                        self.clear_graph_mem();
+                        self.display_banner(
+                            None,
+                            None,
+                            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
+                        );
+                        self.show_lifts(self.main.cur_level().levelnum, -1);
+                        self.wait_for_key_pressed();
+                        self.paint_console_menu((*pos).try_into().unwrap(), 0);
+                    }
+                    _ => {
+                        error!("Konsole menu out of bounds... pos = {}", *pos);
+                        *pos = 0;
+                    }
+                }
+            }
+            _ => {}
         }
     }
 
@@ -1219,5 +1152,98 @@ impl crate::Data<'_> {
             })
             .not()
             .into()
+    }
+}
+
+fn show_droid_page_info(
+    page: i32,
+    info_text: &mut ArrayString<[u8; 1000]>,
+    show_arrows: &mut bool,
+    droid_type: c_int,
+    droid: &DruidSpec,
+) {
+    use std::fmt::Write;
+
+    match page {
+        -3 => {
+            // Title screen: intro unit
+            write!(
+                info_text,
+                "This is the unit that you currently control. Prepare to board Robo-frighter \
+                     Paradroid to eliminate all rogue robots.",
+            )
+            .unwrap();
+        }
+        -2 => {
+            // Takeover: unit that you wish to control
+            write!(
+                info_text,
+                "This is the unit that you wish to control.\n\n Prepare to takeover.",
+            )
+            .unwrap();
+        }
+        -1 => {
+            // Takeover: unit that you control
+            write!(info_text, "This is the unit that you currently control.").unwrap();
+        }
+        0 => {
+            *show_arrows = true;
+            write!(
+                info_text,
+                "Entry : {:02}\n\
+                 Class : {}\n\
+                 Height : {:5.2} m\n\
+                 Weight: {} kg\n\
+                 Drive : {} \n\
+                 Brain : {}",
+                droid_type + 1,
+                CLASSES[usize::try_from(droid.class).unwrap()]
+                    .to_str()
+                    .unwrap(),
+                droid.height,
+                droid.weight,
+                DRIVE_NAMES[usize::try_from(droid.drive).unwrap()]
+                    .to_str()
+                    .unwrap(),
+                BRAIN_NAMES[usize::try_from(droid.brain).unwrap()]
+                    .to_str()
+                    .unwrap(),
+            )
+            .unwrap();
+        }
+        1 => {
+            *show_arrows = true;
+            write!(
+                info_text,
+                "Armament : {}\n\
+                 Sensors  1: {}\n\
+                    2: {}\n\
+                    3: {}",
+                WEAPON_NAMES[usize::try_from(droid.gun).unwrap()]
+                    .to_str()
+                    .unwrap(),
+                SENSOR_NAMES[usize::try_from(droid.sensor1).unwrap()]
+                    .to_str()
+                    .unwrap(),
+                SENSOR_NAMES[usize::try_from(droid.sensor2).unwrap()]
+                    .to_str()
+                    .unwrap(),
+                SENSOR_NAMES[usize::try_from(droid.sensor3).unwrap()]
+                    .to_str()
+                    .unwrap(),
+            )
+            .unwrap();
+        }
+        2 => {
+            *show_arrows = true;
+            write!(info_text, "Notes: {}", droid.notes.to_str().unwrap()).unwrap();
+        }
+        _ => {
+            write!(
+                info_text,
+                "ERROR: Page not implemented!! \nPlease report bug!",
+            )
+            .unwrap();
+        }
     }
 }
