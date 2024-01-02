@@ -769,25 +769,6 @@ impl crate::Data<'_> {
         // Game-config maker-strings for config-file:
 
         const VERSION_STRING: &str = "Freedroid Version";
-        const DRAW_FRAMERATE: &str = "Draw_Framerate";
-        const DRAW_ENERGY: &str = "Draw_Energy";
-        const DRAW_POSITION: &str = "Draw_Position";
-        const DRAW_DEATHCOUNT: &str = "Draw_DeathCount";
-        const DROID_TALK: &str = "Droid_Talk";
-        const WANTED_TEXT_VISIBLE_TIME: &str = "WantedTextVisibleTime";
-        const CURRENT_BG_MUSIC_VOLUME: &str = "Current_BG_Music_Volume";
-        const CURRENT_SOUND_FX_VOLUME: &str = "Current_Sound_FX_Volume";
-        const CURRENT_GAMMA_CORRECTION: &str = "Current_Gamma_Correction";
-        const THEME_NAME: &str = "Theme_Name";
-        const FULL_USER_RECT: &str = "FullUserRect";
-        const USE_FULLSCREEN: &str = "UseFullscreen";
-        const TAKEOVER_ACTIVATES: &str = "TakeoverActivates";
-        const FIRE_HOLD_TAKEOVER: &str = "FireHoldTakeover";
-        const SHOW_DECALS: &str = "ShowDecals";
-        const ALL_MAP_VISIBLE: &str = "AllMapVisible";
-        const VID_SCALE_FACTOR: &str = "Vid_ScaleFactor";
-        const HOG_CPU: &str = "Hog_Cpu";
-        const EMPTY_LEVEL_SPEEDUP: &str = "EmptyLevelSpeedup";
 
         // first we need the user's homedir for loading/saving stuff
         let homedir = match env::var("HOME") {
@@ -836,49 +817,7 @@ impl crate::Data<'_> {
             return defs::ERR.into();
         }
 
-        macro_rules! parse_variable {
-        (@@inner = $name:expr; $($var:tt)+) => {
-            {
-                let value = read_variable(&data, $name)
-                    .and_then(|slice| std::str::from_utf8(slice).ok())
-                    .and_then(|value| value.parse().ok());
-                if let Some(value) = value {
-                    $($var)+ = value;
-                }
-            }
-        };
-        (@@inner $tt:tt $($rest:tt)+) => {
-                parse_variable!(@@inner $($rest)+ $tt);
-        };
-        ($($tt:tt)+) => {
-            parse_variable!(@@inner $($tt)+);
-        };
-    }
-
-        parse_variable! { self.global.game_config.draw_framerate = DRAW_FRAMERATE; };
-        parse_variable! { self.global.game_config.draw_energy = DRAW_ENERGY; };
-        parse_variable! { self.global.game_config.draw_position = DRAW_POSITION; };
-        parse_variable! { self.global.game_config.draw_death_count = DRAW_DEATHCOUNT; };
-        parse_variable! { self.global.game_config.droid_talk = DROID_TALK; };
-        parse_variable! { self.global.game_config.wanted_text_visible_time = WANTED_TEXT_VISIBLE_TIME; };
-        parse_variable! { self.global.game_config.current_bg_music_volume = CURRENT_BG_MUSIC_VOLUME; };
-        parse_variable! { self.global.game_config.current_sound_fx_volume = CURRENT_SOUND_FX_VOLUME; };
-        parse_variable! { self.global.game_config.current_gamma_correction = CURRENT_GAMMA_CORRECTION; };
-        {
-            let value = read_variable(&data, THEME_NAME);
-            if let Some(value) = value {
-                self.global.game_config.theme_name.set_slice(value);
-            }
-        }
-        parse_variable! { self.global.game_config.full_user_rect = FULL_USER_RECT; };
-        parse_variable! { self.global.game_config.use_fullscreen = USE_FULLSCREEN; };
-        parse_variable! { self.global.game_config.takeover_activates = TAKEOVER_ACTIVATES; };
-        parse_variable! { self.global.game_config.fire_hold_takeover = FIRE_HOLD_TAKEOVER; };
-        parse_variable! { self.global.game_config.show_decals = SHOW_DECALS; };
-        parse_variable! { self.global.game_config.all_map_visible = ALL_MAP_VISIBLE; };
-        parse_variable! { self.global.game_config.scale = VID_SCALE_FACTOR; };
-        parse_variable! { self.global.game_config.hog_cpu = HOG_CPU; };
-        parse_variable! { self.global.game_config.empty_level_speedup = EMPTY_LEVEL_SPEEDUP; };
+        self.parse_game_config_variables(&data);
 
         // read in keyboard-config
         for (index, &cmd_string) in CMD_STRINGS.iter().enumerate() {
@@ -893,6 +832,74 @@ impl crate::Data<'_> {
         }
 
         defs::OK.into()
+    }
+
+    fn parse_game_config_variables(&mut self, data: &[u8]) {
+        const DRAW_FRAMERATE: &str = "Draw_Framerate";
+        const DRAW_ENERGY: &str = "Draw_Energy";
+        const DRAW_POSITION: &str = "Draw_Position";
+        const DRAW_DEATHCOUNT: &str = "Draw_DeathCount";
+        const DROID_TALK: &str = "Droid_Talk";
+        const WANTED_TEXT_VISIBLE_TIME: &str = "WantedTextVisibleTime";
+        const CURRENT_BG_MUSIC_VOLUME: &str = "Current_BG_Music_Volume";
+        const CURRENT_SOUND_FX_VOLUME: &str = "Current_Sound_FX_Volume";
+        const CURRENT_GAMMA_CORRECTION: &str = "Current_Gamma_Correction";
+        const THEME_NAME: &str = "Theme_Name";
+        const FULL_USER_RECT: &str = "FullUserRect";
+        const USE_FULLSCREEN: &str = "UseFullscreen";
+        const TAKEOVER_ACTIVATES: &str = "TakeoverActivates";
+        const FIRE_HOLD_TAKEOVER: &str = "FireHoldTakeover";
+        const SHOW_DECALS: &str = "ShowDecals";
+        const ALL_MAP_VISIBLE: &str = "AllMapVisible";
+        const VID_SCALE_FACTOR: &str = "Vid_ScaleFactor";
+        const HOG_CPU: &str = "Hog_Cpu";
+        const EMPTY_LEVEL_SPEEDUP: &str = "EmptyLevelSpeedup";
+
+        macro_rules! parse_variable {
+            ($(
+                $($var:ident).+ = $name:expr;
+            )+) => {
+                $(
+                    {
+                        let value = read_variable(&data, $name)
+                            .and_then(|slice| std::str::from_utf8(slice).ok())
+                            .and_then(|value| value.parse().ok());
+                        if let Some(value) = value {
+                            $($var).+ = value;
+                        }
+                    }
+                )+
+            };
+        }
+
+        parse_variable! {
+            self.global.game_config.draw_framerate = DRAW_FRAMERATE;
+            self.global.game_config.draw_energy = DRAW_ENERGY;
+            self.global.game_config.draw_position = DRAW_POSITION;
+            self.global.game_config.draw_death_count = DRAW_DEATHCOUNT;
+            self.global.game_config.droid_talk = DROID_TALK;
+            self.global.game_config.wanted_text_visible_time = WANTED_TEXT_VISIBLE_TIME;
+            self.global.game_config.current_bg_music_volume = CURRENT_BG_MUSIC_VOLUME;
+            self.global.game_config.current_sound_fx_volume = CURRENT_SOUND_FX_VOLUME;
+            self.global.game_config.current_gamma_correction = CURRENT_GAMMA_CORRECTION;
+        };
+        {
+            let value = read_variable(data, THEME_NAME);
+            if let Some(value) = value {
+                self.global.game_config.theme_name.set_slice(value);
+            }
+        }
+        parse_variable! {
+            self.global.game_config.full_user_rect = FULL_USER_RECT;
+            self.global.game_config.use_fullscreen = USE_FULLSCREEN;
+            self.global.game_config.takeover_activates = TAKEOVER_ACTIVATES;
+            self.global.game_config.fire_hold_takeover = FIRE_HOLD_TAKEOVER;
+            self.global.game_config.show_decals = SHOW_DECALS;
+            self.global.game_config.all_map_visible = ALL_MAP_VISIBLE;
+            self.global.game_config.scale = VID_SCALE_FACTOR;
+            self.global.game_config.hog_cpu = HOG_CPU;
+            self.global.game_config.empty_level_speedup = EMPTY_LEVEL_SPEEDUP;
+        };
     }
 }
 
