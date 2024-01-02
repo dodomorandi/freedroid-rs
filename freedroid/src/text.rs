@@ -28,7 +28,7 @@ use std::{
     ffi::CString,
     fmt,
     io::Cursor,
-    ops::Not,
+    ops::{ControlFlow, Not},
     os::raw::{c_int, c_uchar},
 };
 
@@ -654,28 +654,15 @@ pub struct Scroll<'a, 'sdl: 'a> {
 }
 
 impl Scroll<'_, '_> {
-    pub fn run(self) -> c_int {
+    pub fn run(mut self) -> c_int {
         const MAX_SPEED: c_int = 150;
 
-        let Self {
-            graphics,
-            input,
-            sdl,
-            vars,
-            global,
-            data_text,
-            b_font,
-            font_owner,
-            quit,
-            text,
-            rect,
-        } = self;
-
-        let mut insert_line: f32 = rect.y().into();
+        let mut insert_line: f32 = self.rect.y().into();
         let mut speed = 30; // in pixel / sec
         let mut just_started = true;
 
-        let mut background = graphics
+        let mut background = self
+            .graphics
             .ne_screen
             .as_mut()
             .unwrap()
@@ -683,30 +670,30 @@ impl Scroll<'_, '_> {
             .unwrap();
 
         crate::Data::wait_for_all_keys_released_static(
-            input,
-            sdl,
+            self.input,
+            self.sdl,
             #[cfg(not(target_os = "android"))]
-            vars,
+            self.vars,
             #[cfg(not(target_os = "android"))]
-            quit,
+            self.quit,
             #[cfg(target_os = "android")]
-            graphics,
+            self.graphics,
         );
         let ret_val;
         loop {
-            let mut prev_tick = sdl.ticks_ms();
-            background.blit(graphics.ne_screen.as_mut().unwrap());
+            let mut prev_tick = self.sdl.ticks_ms();
+            background.blit(self.graphics.ne_screen.as_mut().unwrap());
             if (Displayer {
-                data_text,
-                graphics,
-                vars,
-                b_font,
-                font_owner,
-                text,
-                start_x: rect.x().into(),
+                data_text: self.data_text,
+                graphics: self.graphics,
+                vars: self.vars,
+                b_font: self.b_font,
+                font_owner: self.font_owner,
+                text: self.text,
+                start_x: self.rect.x().into(),
                 #[allow(clippy::cast_possible_truncation)]
                 start_y: insert_line as c_int,
-                clip: Some(*rect),
+                clip: Some(*self.rect),
             }
             .run())
                 == 0
@@ -714,63 +701,41 @@ impl Scroll<'_, '_> {
                 ret_val = 0; /* Text has been scrolled outside Rect */
                 break;
             }
-            assert!(graphics.ne_screen.as_mut().unwrap().flip());
+            assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
-            if global.game_config.hog_cpu != 0 {
-                sdl.delay_ms(1);
+            if self.global.game_config.hog_cpu != 0 {
+                self.sdl.delay_ms(1);
             }
 
-            if just_started {
-                just_started = false;
-                let now = sdl.ticks_ms();
-                let mut key;
-                loop {
-                    key = crate::Data::any_key_just_pressed_static(
-                        sdl,
-                        input,
-                        vars,
-                        quit,
-                        #[cfg(target_os = "android")]
-                        graphics,
-                    );
-                    if key == 0 && (sdl.ticks_ms() - now < SHOW_WAIT) {
-                        sdl.delay_ms(1); // wait before starting auto-scroll
-                    } else {
-                        break;
-                    }
-                }
-
-                if (key == input.key_cmds[Cmds::Fire as usize][0])
-                    || (key == input.key_cmds[Cmds::Fire as usize][1])
-                    || (key == input.key_cmds[Cmds::Fire as usize][2])
-                {
-                    trace!("in just_started: Fire registered");
-                    ret_val = 1;
-                    break;
-                }
-                prev_tick = sdl.ticks_ms();
+            if let ControlFlow::Break(ret) =
+                self.handle_just_started(&mut just_started, &mut prev_tick)
+            {
+                ret_val = ret;
+                break;
             }
 
-            if crate::Data::fire_pressed_r_static(sdl, input, vars, quit) {
+            if crate::Data::fire_pressed_r_static(self.sdl, self.input, self.vars, self.quit) {
                 trace!("outside just_started: Fire registered");
                 ret_val = 1;
                 break;
             }
 
-            if quit.get() {
+            if self.quit.get() {
                 return 1;
             }
 
-            if crate::Data::up_pressed_static(sdl, input, vars, quit)
-                || crate::Data::wheel_up_pressed_static(sdl, input, vars, quit)
+            if crate::Data::up_pressed_static(self.sdl, self.input, self.vars, self.quit)
+                || crate::Data::wheel_up_pressed_static(self.sdl, self.input, self.vars, self.quit)
             {
                 speed -= 5;
                 if speed < -MAX_SPEED {
                     speed = -MAX_SPEED;
                 }
             }
-            if crate::Data::down_pressed_static(sdl, input, vars, quit)
-                || crate::Data::wheel_down_pressed_static(sdl, input, vars, quit)
+            if crate::Data::down_pressed_static(self.sdl, self.input, self.vars, self.quit)
+                || crate::Data::wheel_down_pressed_static(
+                    self.sdl, self.input, self.vars, self.quit,
+                )
             {
                 speed += 5;
                 if speed > MAX_SPEED {
@@ -781,21 +746,59 @@ impl Scroll<'_, '_> {
             #[allow(clippy::cast_possible_truncation)]
             {
                 insert_line -=
-                    (f64::from(sdl.ticks_ms() - prev_tick) * f64::from(speed) / 1000.0) as f32;
+                    (f64::from(self.sdl.ticks_ms() - prev_tick) * f64::from(speed) / 1000.0) as f32;
             }
 
-            if insert_line > f32::from(rect.y()) + f32::from(rect.height()) {
-                insert_line = f32::from(rect.y()) + f32::from(rect.height());
+            if insert_line > f32::from(self.rect.y()) + f32::from(self.rect.height()) {
+                insert_line = f32::from(self.rect.y()) + f32::from(self.rect.height());
                 if speed < 0 {
                     speed = 0;
                 }
             }
         }
 
-        background.blit(graphics.ne_screen.as_mut().unwrap());
-        assert!(graphics.ne_screen.as_mut().unwrap().flip());
+        background.blit(self.graphics.ne_screen.as_mut().unwrap());
+        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
         ret_val
+    }
+
+    fn handle_just_started(
+        &mut self,
+        just_started: &mut bool,
+        prev_tick: &mut u32,
+    ) -> ControlFlow<c_int> {
+        if *just_started {
+            *just_started = false;
+            let now = self.sdl.ticks_ms();
+            let mut key;
+            loop {
+                key = crate::Data::any_key_just_pressed_static(
+                    self.sdl,
+                    self.input,
+                    self.vars,
+                    self.quit,
+                    #[cfg(target_os = "android")]
+                    self.graphics,
+                );
+                if key == 0 && (self.sdl.ticks_ms() - now < SHOW_WAIT) {
+                    self.sdl.delay_ms(1); // wait before starting auto-scroll
+                } else {
+                    break;
+                }
+            }
+
+            if (key == self.input.key_cmds[Cmds::Fire as usize][0])
+                || (key == self.input.key_cmds[Cmds::Fire as usize][1])
+                || (key == self.input.key_cmds[Cmds::Fire as usize][2])
+            {
+                trace!("in just_started: Fire registered");
+                return ControlFlow::Break(1);
+            }
+            *prev_tick = self.sdl.ticks_ms();
+        }
+
+        ControlFlow::Continue(())
     }
 }
 
