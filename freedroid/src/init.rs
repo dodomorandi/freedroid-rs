@@ -551,20 +551,6 @@ impl crate::Data<'_> {
 
     #[allow(clippy::similar_names)]
     pub fn init_new_mission(&mut self, mission_name: &str) {
-        const END_OF_MISSION_DATA_STRING: &[u8] = b"*** End of Mission File ***";
-        const MISSION_BRIEFING_BEGIN_STRING: &[u8] =
-            b"** Start of Mission Briefing Text Section **";
-        const MISSION_ENDTITLE_SONG_NAME_STRING: &[u8] =
-            b"Song name to play in the end title if the mission is completed: ";
-        const SHIPNAME_INDICATION_STRING: &[u8] = b"Ship file to use for this mission: ";
-        const ELEVATORNAME_INDICATION_STRING: &[u8] = b"Lift file to use for this mission: ";
-        const CREWNAME_INDICATION_STRING: &[u8] = b"Crew file to use for this mission: ";
-        const GAMEDATANAME_INDICATION_STRING: &[u8] =
-            b"Physics ('game.dat') file to use for this mission: ";
-        const MISSION_ENDTITLE_BEGIN_STRING: &[u8] = b"** Beginning of End Title Text Section **";
-        const MISSION_ENDTITLE_END_STRING: &[u8] = b"** End of End Title Text Section **";
-        const MISSION_START_POINT_STRING: &[u8] = b"Possible Start Point : ";
-
         // We store the mission name in case the influ
         // gets destroyed so we know where to continue in
         // case the player doesn't want to return to the very beginning
@@ -613,165 +599,22 @@ impl crate::Data<'_> {
             self.global.font0_b_font.clone(),
         );
 
-        /* Read the whole mission data to memory */
-        let fpath = self
-            .find_file(
-                mission_name.as_bytes(),
-                Some(MAP_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
-            )
-            .unwrap();
-        let fpath = Path::new(
-            fpath
-                .to_str()
-                .expect("Unable to convert C string to UTF-8 string"),
-        );
+        let main_mission_data = MainMissionData::load(self, mission_name);
+        main_mission_data.init_game_data(self);
+        main_mission_data.load_ship(self);
+        main_mission_data.get_lift_connections(self);
 
-        let main_mission_data =
-            read_and_malloc_and_terminate_file(fpath, END_OF_MISSION_DATA_STRING);
-
-        //--------------------
-        // Now the mission file is read into memory.  That means we can start to decode the details given
-        // in the body of the mission file.
-
-        //--------------------
-        // First we extract the game physics file name from the
-        // mission file and load the game data.
-        //
-        let indication =
-            read_string_from_string(&main_mission_data, GAMEDATANAME_INDICATION_STRING);
-
-        self.init_game_data(indication);
-
-        //--------------------
-        // Now its time to get the shipname from the mission file and
-        // read the ship file into the right memory structures
-        //
-        let indication = read_string_from_string(&main_mission_data, SHIPNAME_INDICATION_STRING);
-
-        assert!(
-            self.load_ship(indication) != defs::ERR.into(),
-            "Error in LoadShip"
-        );
-        //--------------------
-        // Now its time to get the elevator file name from the mission file and
-        // read the elevator file into the right memory structures
-        //
-        let indication =
-            read_string_from_string(&main_mission_data, ELEVATORNAME_INDICATION_STRING);
-
-        assert!(
-            self.get_lift_connections(indication) != defs::ERR.into(),
-            "Error in GetLiftConnections"
-        );
         //--------------------
         // We also load the comment for the influencer to say at the beginning of the mission
         //
-
-        // NO! these strings are allocated elsewhere or even static, so free'ing them
-        // here would SegFault eventually!
-        //  if (Me.TextToBeDisplayed) free (Me.TextToBeDisplayed);
 
         self.vars.me.text_to_be_displayed =
             TextToBeDisplayed::String(cstr!("Ok. I'm on board.  Let's get to work.")); // taken from Paradroid.mission
         self.vars.me.text_visible_time = 0.;
 
-        //--------------------
-        // Now its time to get the crew file name from the mission file and
-        // assemble an appropriate crew out of it
-        //
-        let indication = read_string_from_string(&main_mission_data, CREWNAME_INDICATION_STRING);
-
-        /* initialize enemys according to crew file */
-        // WARNING!! THIS REQUIRES THE freedroid.ruleset FILE TO BE READ ALREADY, BECAUSE
-        // ROBOT SPECIFICATIONS ARE ALREADY REQUIRED HERE!!!!!
-        assert!(
-            self.get_crew(indication) != defs::ERR.into(),
-            "InitNewGame(): Initialization of enemys failed."
-        );
-
-        //--------------------
-        // Now its time to get the debriefing text from the mission file so that it
-        // can be used, if the mission is completed and also the end title music name
-        // must be read in as well
-        let song_name =
-            read_string_from_string(&main_mission_data, MISSION_ENDTITLE_SONG_NAME_STRING);
-        self.init.debriefing_song.set_slice(song_name);
-
-        self.init.debriefing_text = read_and_malloc_string_from_data(
-            &main_mission_data,
-            MISSION_ENDTITLE_BEGIN_STRING,
-            MISSION_ENDTITLE_END_STRING,
-        );
-
-        //--------------------
-        // Now we read all the possible starting points for the
-        // current mission file, so that we know where to place the
-        // influencer at the beginning of the mission.
-
-        let number_of_start_points =
-            count_string_occurences(&main_mission_data, MISSION_START_POINT_STRING);
-
-        assert!(
-            number_of_start_points != 0,
-            "NOT EVEN ONE SINGLE STARTING POINT ENTRY FOUND!  TERMINATING!"
-        );
-        info!(
-            "Found {} different starting points for the mission in the mission file.",
-            number_of_start_points,
-        );
-
-        // Now that we know how many different starting points there are, we can randomly select
-        // one of them and read then in this one starting point into the right structures...
-        let start_point_index = main_mission_data
-            .windows(MISSION_START_POINT_STRING.len())
-            .enumerate()
-            .filter(|&(_, slice)| slice == MISSION_START_POINT_STRING)
-            .map(|(index, _)| index)
-            .nth(
-                usize::try_from(my_random((number_of_start_points - 1).try_into().unwrap()))
-                    .unwrap(),
-            )
-            .unwrap();
-
-        let start_point_slice = split_at_subslice(
-            &main_mission_data[(start_point_index + MISSION_START_POINT_STRING.len())..],
-            b"Level=",
-        )
-        .expect("unable to find Level parameter in mission data")
-        .1;
-        let starting_level = nom::character::complete::i32::<_, ()>(start_point_slice)
-            .finish()
-            .unwrap()
-            .1;
-        self.main.cur_level_index = Some(ArrayIndex::new(usize::try_from(starting_level).unwrap()));
-
-        let start_point_slice = split_at_subslice(start_point_slice, b"XPos=").unwrap().1;
-        let starting_x_pos = nom::character::complete::i32::<_, ()>(start_point_slice)
-            .finish()
-            .expect("unable to find XPos parameter in mission data")
-            .1;
-        assert!(starting_x_pos <= 2i32.pow(f32::MANTISSA_DIGITS));
-        #[allow(clippy::cast_precision_loss)]
-        {
-            self.vars.me.pos.x = starting_x_pos as c_float;
-        }
-
-        let start_point_slice = split_at_subslice(start_point_slice, b"YPos=").unwrap().1;
-        let starting_y_pos = nom::character::complete::i32::<_, ()>(start_point_slice)
-            .finish()
-            .expect("unable to find YPos parameter in mission data")
-            .1;
-
-        #[allow(clippy::cast_precision_loss)]
-        {
-            self.vars.me.pos.y = starting_y_pos as c_float;
-        }
-        info!(
-            "Final starting position: Level={} XPos={} YPos={}.",
-            starting_level, starting_x_pos, starting_y_pos,
-        );
+        main_mission_data.get_crew(self);
+        main_mission_data.set_debriefeing_song(self);
+        let starting_level = main_mission_data.set_cur_level_index_x_y(self);
 
         /* Reactivate the light on alle Levels, that might have been dark */
         for level in &mut self.main.cur_ship.all_levels
@@ -791,9 +634,7 @@ impl crate::Data<'_> {
         // We start with doing the briefing things...
         // Now we search for the beginning of the mission briefing big section NOT subsection.
         // We display the title and explanation of controls and such...
-        let briefing_section_pos =
-            locate_string_in_data(&main_mission_data, MISSION_BRIEFING_BEGIN_STRING);
-        self.title(&main_mission_data[briefing_section_pos..]);
+        main_mission_data.set_title(self);
 
         if self.quit.get() {
             return;
@@ -1369,5 +1210,167 @@ impl crate::Data<'_> {
         self.update_highscores();
 
         self.game_over = true;
+    }
+}
+
+#[derive(Debug)]
+struct MainMissionData(Box<[u8]>);
+
+impl MainMissionData {
+    fn load(data: &mut crate::Data<'_>, mission_name: &str) -> Self {
+        const END_OF_MISSION_DATA_STRING: &[u8] = b"*** End of Mission File ***";
+
+        /* Read the whole mission data to memory */
+        let fpath = data
+            .find_file(
+                mission_name.as_bytes(),
+                Some(MAP_DIR_C),
+                Themed::NoTheme as c_int,
+                Criticality::Critical as c_int,
+            )
+            .unwrap();
+        let fpath = Path::new(
+            fpath
+                .to_str()
+                .expect("Unable to convert C string to UTF-8 string"),
+        );
+
+        let mission_data = read_and_malloc_and_terminate_file(fpath, END_OF_MISSION_DATA_STRING);
+        Self(mission_data)
+    }
+
+    fn init_game_data(&self, data: &mut crate::Data<'_>) {
+        const GAMEDATANAME_INDICATION_STRING: &[u8] =
+            b"Physics ('game.dat') file to use for this mission: ";
+
+        let indication = read_string_from_string(&self.0, GAMEDATANAME_INDICATION_STRING);
+
+        data.init_game_data(indication);
+    }
+
+    fn load_ship(&self, data: &mut crate::Data<'_>) {
+        const SHIPNAME_INDICATION_STRING: &[u8] = b"Ship file to use for this mission: ";
+        let indication = read_string_from_string(&self.0, SHIPNAME_INDICATION_STRING);
+
+        assert!(
+            data.load_ship(indication) != defs::ERR.into(),
+            "Error in LoadShip"
+        );
+    }
+
+    fn get_lift_connections(&self, data: &mut crate::Data<'_>) {
+        const ELEVATORNAME_INDICATION_STRING: &[u8] = b"Lift file to use for this mission: ";
+        let indication = read_string_from_string(&self.0, ELEVATORNAME_INDICATION_STRING);
+
+        assert!(
+            data.get_lift_connections(indication) != defs::ERR.into(),
+            "Error in GetLiftConnections"
+        );
+    }
+
+    fn get_crew(&self, data: &mut crate::Data<'_>) {
+        const CREWNAME_INDICATION_STRING: &[u8] = b"Crew file to use for this mission: ";
+        let indication = read_string_from_string(&self.0, CREWNAME_INDICATION_STRING);
+
+        /* initialize enemys according to crew file */
+        // WARNING!! THIS REQUIRES THE freedroid.ruleset FILE TO BE READ ALREADY, BECAUSE
+        // ROBOT SPECIFICATIONS ARE ALREADY REQUIRED HERE!!!!!
+        assert!(
+            data.get_crew(indication) != defs::ERR.into(),
+            "InitNewGame(): Initialization of enemys failed."
+        );
+    }
+
+    fn set_debriefeing_song(&self, data: &mut crate::Data<'_>) {
+        const MISSION_ENDTITLE_SONG_NAME_STRING: &[u8] =
+            b"Song name to play in the end title if the mission is completed: ";
+        const MISSION_ENDTITLE_BEGIN_STRING: &[u8] = b"** Beginning of End Title Text Section **";
+        const MISSION_ENDTITLE_END_STRING: &[u8] = b"** End of End Title Text Section **";
+
+        let song_name = read_string_from_string(&self.0, MISSION_ENDTITLE_SONG_NAME_STRING);
+        data.init.debriefing_song.set_slice(song_name);
+
+        data.init.debriefing_text = read_and_malloc_string_from_data(
+            &self.0,
+            MISSION_ENDTITLE_BEGIN_STRING,
+            MISSION_ENDTITLE_END_STRING,
+        );
+    }
+
+    fn set_cur_level_index_x_y(&self, data: &mut crate::Data<'_>) -> i32 {
+        const MISSION_START_POINT_STRING: &[u8] = b"Possible Start Point : ";
+
+        let number_of_start_points = count_string_occurences(&self.0, MISSION_START_POINT_STRING);
+
+        assert!(
+            number_of_start_points != 0,
+            "NOT EVEN ONE SINGLE STARTING POINT ENTRY FOUND!  TERMINATING!"
+        );
+
+        info!(
+            "Found {} different starting points for the mission in the mission file.",
+            number_of_start_points,
+        );
+
+        let start_point_index = self
+            .0
+            .windows(MISSION_START_POINT_STRING.len())
+            .enumerate()
+            .filter(|&(_, slice)| slice == MISSION_START_POINT_STRING)
+            .map(|(index, _)| index)
+            .nth(
+                usize::try_from(my_random((number_of_start_points - 1).try_into().unwrap()))
+                    .unwrap(),
+            )
+            .unwrap();
+
+        let start_point_slice = split_at_subslice(
+            &self.0[(start_point_index + MISSION_START_POINT_STRING.len())..],
+            b"Level=",
+        )
+        .expect("unable to find Level parameter in mission data")
+        .1;
+        let starting_level = nom::character::complete::i32::<_, ()>(start_point_slice)
+            .finish()
+            .unwrap()
+            .1;
+        data.main.cur_level_index = Some(ArrayIndex::new(usize::try_from(starting_level).unwrap()));
+
+        let start_point_slice = split_at_subslice(start_point_slice, b"XPos=").unwrap().1;
+        let x_pos = nom::character::complete::i32::<_, ()>(start_point_slice)
+            .finish()
+            .expect("unable to find XPos parameter in mission data")
+            .1;
+        assert!(x_pos <= 2i32.pow(f32::MANTISSA_DIGITS));
+        #[allow(clippy::cast_precision_loss)]
+        {
+            data.vars.me.pos.x = x_pos as c_float;
+        }
+
+        let start_point_slice = split_at_subslice(start_point_slice, b"YPos=").unwrap().1;
+        let y_pos = nom::character::complete::i32::<_, ()>(start_point_slice)
+            .finish()
+            .expect("unable to find YPos parameter in mission data")
+            .1;
+
+        #[allow(clippy::cast_precision_loss)]
+        {
+            data.vars.me.pos.y = y_pos as c_float;
+        }
+
+        info!(
+            "Final starting position: Level={} XPos={} YPos={}.",
+            starting_level, x_pos, y_pos,
+        );
+
+        starting_level
+    }
+
+    fn set_title(&self, data: &mut crate::Data<'_>) {
+        const MISSION_BRIEFING_BEGIN_STRING: &[u8] =
+            b"** Start of Mission Briefing Text Section **";
+
+        let briefing_section_pos = locate_string_in_data(&self.0, MISSION_BRIEFING_BEGIN_STRING);
+        data.title(&self.0[briefing_section_pos..]);
     }
 }
