@@ -1044,41 +1044,21 @@ impl crate::Data<'_> {
                         self.wait_for_all_keys_released();
                     }
 
-                    MenuAction::UP | MenuAction::UP_WHEEL => {
-                        self.ship.enter_lift_last_move_tick = self.sdl.ticks_ms();
-                        if up_lift != -1 {
-                            if self.main.cur_ship.all_lifts[usize::try_from(up_lift).unwrap()].x
-                                == 99
-                            {
-                                error!("Lift out of order, so sorry ..");
-                            } else {
-                                down_lift = cur_lift.try_into().unwrap();
-                                cur_lift = up_lift.try_into().unwrap();
-                                cur_level = self.main.cur_ship.all_lifts[cur_lift].level;
-                                up_lift = self.main.cur_ship.all_lifts[cur_lift].up;
-                                self.show_lifts(cur_level, liftrow);
-                                self.move_lift_sound();
-                            }
-                        }
-                    }
+                    MenuAction::UP | MenuAction::UP_WHEEL => self.lift_move_up(
+                        &mut up_lift,
+                        &mut down_lift,
+                        &mut cur_lift,
+                        liftrow,
+                        &mut cur_level,
+                    ),
 
-                    MenuAction::DOWN | MenuAction::DOWN_WHEEL => {
-                        self.ship.enter_lift_last_move_tick = self.sdl.ticks_ms();
-                        if down_lift != -1 {
-                            if self.main.cur_ship.all_lifts[usize::try_from(down_lift).unwrap()].x
-                                == 99
-                            {
-                                error!("Lift Out of order, so sorry ..");
-                            } else {
-                                up_lift = cur_lift.try_into().unwrap();
-                                cur_lift = down_lift.try_into().unwrap();
-                                cur_level = self.main.cur_ship.all_lifts[cur_lift].level;
-                                down_lift = self.main.cur_ship.all_lifts[cur_lift].down;
-                                self.show_lifts(cur_level, liftrow);
-                                self.move_lift_sound();
-                            }
-                        }
-                    }
+                    MenuAction::DOWN | MenuAction::DOWN_WHEEL => self.lift_move_down(
+                        &mut up_lift,
+                        &mut down_lift,
+                        &mut cur_lift,
+                        liftrow,
+                        &mut cur_level,
+                    ),
                     _ => {}
                 }
             }
@@ -1133,6 +1113,52 @@ impl crate::Data<'_> {
         self.vars.me.status = Status::Mobile as c_int;
         self.vars.me.text_visible_time = 0.;
         self.vars.me.text_to_be_displayed = TextToBeDisplayed::LevelEnterComment;
+    }
+
+    fn lift_move_up(
+        &mut self,
+        up_lift: &mut i32,
+        down_lift: &mut i32,
+        cur_lift: &mut usize,
+        liftrow: c_int,
+        cur_level: &mut i32,
+    ) {
+        self.ship.enter_lift_last_move_tick = self.sdl.ticks_ms();
+        if *up_lift != -1 {
+            if self.main.cur_ship.all_lifts[usize::try_from(*up_lift).unwrap()].x == 99 {
+                error!("Lift out of order, so sorry ..");
+            } else {
+                *down_lift = (*cur_lift).try_into().unwrap();
+                *cur_lift = (*up_lift).try_into().unwrap();
+                *cur_level = self.main.cur_ship.all_lifts[*cur_lift].level;
+                *up_lift = self.main.cur_ship.all_lifts[*cur_lift].up;
+                self.show_lifts(*cur_level, liftrow);
+                self.move_lift_sound();
+            }
+        }
+    }
+
+    fn lift_move_down(
+        &mut self,
+        up_lift: &mut i32,
+        down_lift: &mut i32,
+        cur_lift: &mut usize,
+        liftrow: c_int,
+        cur_level: &mut i32,
+    ) {
+        self.ship.enter_lift_last_move_tick = self.sdl.ticks_ms();
+        if *down_lift != -1 {
+            if self.main.cur_ship.all_lifts[usize::try_from(*down_lift).unwrap()].x == 99 {
+                error!("Lift Out of order, so sorry ..");
+            } else {
+                *up_lift = (*cur_lift).try_into().unwrap();
+                *cur_lift = (*down_lift).try_into().unwrap();
+                *cur_level = self.main.cur_ship.all_lifts[*cur_lift].level;
+                *down_lift = self.main.cur_ship.all_lifts[*cur_lift].down;
+                self.show_lifts(*cur_level, liftrow);
+                self.move_lift_sound();
+            }
+        }
     }
 
     pub fn level_empty(&self) -> c_int {
