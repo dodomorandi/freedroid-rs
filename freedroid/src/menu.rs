@@ -3,7 +3,6 @@ mod cheats;
 use crate::{
     array_c_string::ArrayCString,
     b_font::{char_width, font_height},
-    cur_level,
     defs::{
         AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags, MenuAction, Status,
         Themed, CREDITS_PIC_FILE, GRAPHICS_DIR_C,
@@ -14,6 +13,7 @@ use crate::{
 #[cfg(not(target_os = "android"))]
 use crate::{
     b_font::print_string_font,
+    cur_level,
     defs::{MapTile, BYCOLOR, MAX_MAP_COLS, MAX_MAP_ROWS},
     input::{CMD_STRINGS, KEY_STRINGS},
     map::COLOR_NAMES,
@@ -813,6 +813,7 @@ impl<'sdl> crate::Data<'sdl> {
         assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
     }
 
+    #[cfg(not(target_os = "android"))]
     fn display_key_config_get_positions(&self) -> DisplayKeyConfigPositions {
         let current_font = self
             .b_font
@@ -1649,6 +1650,7 @@ where
     }
 }
 
+#[cfg(not(target_os = "android"))]
 struct DisplayKeyConfigPositions {
     start_x: i32,
     start_y: i32,
