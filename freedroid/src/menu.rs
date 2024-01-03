@@ -1,3 +1,5 @@
+mod cheats;
+
 use crate::{
     array_c_string::ArrayCString,
     b_font::{char_width, font_height},
@@ -6,7 +8,6 @@ use crate::{
         AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags, MenuAction, Status,
         Themed, CREDITS_PIC_FILE, GRAPHICS_DIR_C,
     },
-    global::INFLUENCE_MODE_NAMES,
     sound::Sound,
     Sdl,
 };
@@ -21,7 +22,6 @@ use crate::{
 };
 
 use cstr::cstr;
-use nom::Finish;
 use sdl::{convert::u32_to_i32, Surface};
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT,
@@ -313,9 +313,6 @@ impl<'sdl> crate::Data<'sdl> {
     }
 
     pub fn cheatmenu(&mut self) {
-        const X0: i32 = 50;
-        const Y0: i32 = 20;
-
         // Prevent distortion of framerate by the delay coming from
         // the time spend in the menu.
         self.activate_conservative_frame_computation();
@@ -329,516 +326,41 @@ impl<'sdl> crate::Data<'sdl> {
         while !resume {
             self.clear_graph_mem();
             let mut ne_screen = self.graphics.ne_screen.take().unwrap();
-            Self::printf_sdl_static(
-                &mut self.text,
-                &self.b_font,
-                &mut self.font_owner,
-                &mut ne_screen,
-                X0,
-                Y0,
-                format_args!(
-                    "Current position: Level={}, X={:.0}, Y={:.0}\n",
-                    cur_level!(self.main).levelnum,
-                    self.vars.me.pos.x.clone(),
-                    self.vars.me.pos.y.clone(),
-                ),
-            );
-            self.printf_sdl(
-                &mut ne_screen,
-                -1,
-                -1,
-                format_args!(" a. Armageddon (alle Robots sprengen)\n"),
-            );
-            self.printf_sdl(
-                &mut ne_screen,
-                -1,
-                -1,
-                format_args!(" l. robot list of current level\n"),
-            );
-            self.printf_sdl(
-                &mut ne_screen,
-                -1,
-                -1,
-                format_args!(" g. complete robot list\n"),
-            );
-            self.printf_sdl(
-                &mut ne_screen,
-                -1,
-                -1,
-                format_args!(" d. destroy robots on current level\n"),
-            );
-            self.printf_sdl(&mut ne_screen, -1, -1, format_args!(" t. Teleportation\n"));
-            self.printf_sdl(
-                &mut ne_screen,
-                -1,
-                -1,
-                format_args!(" r. change to new robot type\n"),
-            );
-            self.printf_sdl(
-                &mut ne_screen,
-                -1,
-                -1,
-                format_args!(
-                    " i. Invinciblemode: {}\n",
-                    if self.main.invincible_mode == 0 {
-                        "OFF"
-                    } else {
-                        "ON"
-                    },
-                ),
-            );
-            self.printf_sdl(&mut ne_screen, -1, -1, format_args!(" e. set energy\n"));
-            self.printf_sdl(
-                &mut ne_screen,
-                -1,
-                -1,
-                format_args!(
-                    " n. No hidden droids: {}\n",
-                    if self.main.show_all_droids == 0 {
-                        "OFF"
-                    } else {
-                        "ON"
-                    },
-                ),
-            );
-            self.printf_sdl(&mut ne_screen, -1, -1, format_args!(" m. Map of Deck xy\n"));
-            self.printf_sdl(
-                &mut ne_screen,
-                -1,
-                -1,
-                format_args!(
-                    " s. Sound: {}\n",
-                    if self.main.sound_on == 0 { "OFF" } else { "ON" }
-                ),
-            );
-            self.printf_sdl(
-                &mut ne_screen,
-                -1,
-                -1,
-                format_args!(" w. Print current waypoints\n"),
-            );
-            self.printf_sdl(
-                &mut ne_screen,
-                -1,
-                -1,
-                format_args!(" z. change Zoom factor\n"),
-            );
-            self.printf_sdl(
-                &mut ne_screen,
-                -1,
-                -1,
-                format_args!(
-                    " f. Freeze on this positon: {}\n",
-                    if self.main.stop_influencer == 0 {
-                        "OFF"
-                    } else {
-                        "ON"
-                    },
-                ),
-            );
-            self.printf_sdl(&mut ne_screen, -1, -1, format_args!(" q. RESUME game\n"));
+            self.print_cheat_menu(&mut ne_screen);
 
             match u8::try_from(self.getchar_raw()).ok() {
                 Some(b'f') => {
                     self.main.stop_influencer = !self.main.stop_influencer;
                 }
-
-                Some(b'z') => {
-                    use nom::{
-                        character::complete::space0, number::complete::float, sequence::preceded,
-                    };
-
-                    self.graphics.ne_screen = Some(ne_screen);
-                    self.clear_graph_mem();
-                    ne_screen = self.graphics.ne_screen.take().unwrap();
-                    self.printf_sdl(
-                        &mut ne_screen,
-                        X0,
-                        Y0,
-                        format_args!(
-                            "Current Zoom factor: {}\n",
-                            self.global.current_combat_scale_factor.clone(),
-                        ),
-                    );
-                    self.printf_sdl(&mut ne_screen, -1, -1, format_args!("New zoom factor: "));
-                    self.graphics.ne_screen = Some(ne_screen);
-                    let input = self.get_string(40, 2).unwrap();
-                    ne_screen = self.graphics.ne_screen.take().unwrap();
-
-                    self.global.current_combat_scale_factor =
-                        preceded(space0::<_, ()>, float)(input.to_bytes())
-                            .finish()
-                            .unwrap()
-                            .1;
-                    self.set_combat_scale_to(self.global.current_combat_scale_factor);
-                }
-
+                Some(b'z') => ne_screen = self.change_zoom_factor(ne_screen),
                 Some(b'a') => {
                     /* armageddon */
                     resume = true;
                     self.armageddon();
                 }
-
-                Some(b'l') => {
-                    /* robot list of this deck */
-                    let mut l = 0; /* line counter for enemy output */
-                    for i in 0..usize::try_from(self.main.num_enemys).unwrap() {
-                        if self.main.all_enemys[i].levelnum == cur_level!(self.main).levelnum {
-                            if l != 0 && l % 20 == 0 {
-                                Self::printf_sdl_static(
-                                    &mut self.text,
-                                    &self.b_font,
-                                    &mut self.font_owner,
-                                    &mut ne_screen,
-                                    -1,
-                                    -1,
-                                    format_args!(" --- MORE --- \n"),
-                                );
-                                if self.getchar_raw() == b'q'.into() {
-                                    break;
-                                }
-                            }
-                            if l % 20 == 0 {
-                                self.graphics.ne_screen = Some(ne_screen);
-                                self.clear_graph_mem();
-                                ne_screen = self.graphics.ne_screen.take().unwrap();
-                                Self::printf_sdl_static(
-                                    &mut self.text,
-                                    &self.b_font,
-                                    &mut self.font_owner,
-                                    &mut ne_screen,
-                                    X0,
-                                    Y0,
-                                    format_args!(" NR.   ID  X    Y   ENERGY   Status\n"),
-                                );
-                                Self::printf_sdl_static(
-                                    &mut self.text,
-                                    &self.b_font,
-                                    &mut self.font_owner,
-                                    &mut ne_screen,
-                                    -1,
-                                    -1,
-                                    format_args!("---------------------------------------------\n"),
-                                );
-                            }
-
-                            l += 1;
-                            let status = if self.main.all_enemys[i].status == Status::Out as i32 {
-                                "OUT"
-                            } else if self.main.all_enemys[i].status == Status::Terminated as i32 {
-                                "DEAD"
-                            } else {
-                                "ACTIVE"
-                            };
-
-                            Self::printf_sdl_static(
-                                &mut self.text,
-                                &self.b_font,
-                                &mut self.font_owner,
-                                &mut ne_screen,
-                                -1,
-                                -1,
-                                format_args!(
-                                    "{}.   {}   {:.0}   {:.0}   {:.0}    {}.\n",
-                                    i,
-                                    self.vars.droidmap
-                                        [usize::try_from(self.main.all_enemys[i].ty).unwrap()]
-                                    .druidname
-                                    .to_str()
-                                    .unwrap(),
-                                    self.main.all_enemys[i].pos.x.clone(),
-                                    self.main.all_enemys[i].pos.y.clone(),
-                                    self.main.all_enemys[i].energy.clone(),
-                                    status,
-                                ),
-                            );
-                        }
-                    }
-
-                    self.printf_sdl(&mut ne_screen, -1, -1, format_args!(" --- END --- \n"));
-                    self.getchar_raw();
-                }
-
-                Some(b'g') => {
-                    /* complete robot list of this ship */
-                    for i in 0..usize::try_from(self.main.num_enemys).unwrap() {
-                        if self.main.all_enemys[i].ty == -1 {
-                            continue;
-                        }
-
-                        if i != 0 && !i % 13 == 0 {
-                            self.printf_sdl(
-                                &mut ne_screen,
-                                -1,
-                                -1,
-                                format_args!(" --- MORE --- ('q' to quit)\n"),
-                            );
-                            if self.getchar_raw() == b'q'.into() {
-                                break;
-                            }
-                        }
-                        if i % 13 == 0 {
-                            self.graphics.ne_screen = Some(ne_screen);
-                            self.clear_graph_mem();
-                            ne_screen = self.graphics.ne_screen.take().unwrap();
-                            self.printf_sdl(
-                                &mut ne_screen,
-                                X0,
-                                Y0,
-                                format_args!("Nr.  Lev. ID  Energy  Status.\n"),
-                            );
-                            self.printf_sdl(
-                                &mut ne_screen,
-                                -1,
-                                -1,
-                                format_args!("------------------------------\n"),
-                            );
-                        }
-
-                        Self::printf_sdl_static(
-                            &mut self.text,
-                            &self.b_font,
-                            &mut self.font_owner,
-                            &mut ne_screen,
-                            -1,
-                            -1,
-                            format_args!(
-                                "{}  {}  {}  {:.0}  {}\n",
-                                i,
-                                self.main.all_enemys[i].levelnum.clone(),
-                                self.vars.droidmap
-                                    [usize::try_from(self.main.all_enemys[i].ty).unwrap()]
-                                .druidname
-                                .to_str()
-                                .unwrap(),
-                                self.main.all_enemys[i].energy.clone(),
-                                INFLUENCE_MODE_NAMES
-                                    [usize::try_from(self.main.all_enemys[i].status).unwrap()]
-                                .to_str()
-                                .unwrap(),
-                            ),
-                        );
-                    }
-
-                    self.printf_sdl(&mut ne_screen, -1, -1, format_args!(" --- END ---\n"));
-                    self.getchar_raw();
-                }
-
-                Some(b'd') => {
-                    /* destroy all robots on this level, haha */
-                    let cur_level = cur_level!(self.main);
-                    for enemy in &mut self.main.all_enemys {
-                        if enemy.levelnum == cur_level.levelnum {
-                            enemy.energy = -100.;
-                        }
-                    }
-                    self.printf_sdl(
-                        &mut ne_screen,
-                        -1,
-                        -1,
-                        format_args!("All robots on this deck killed!\n"),
-                    );
-                    self.getchar_raw();
-                }
-
-                Some(b't') => {
-                    use nom::{
-                        bytes::complete::tag,
-                        character::complete::{i32, space0},
-                        sequence::{delimited, pair, preceded, tuple},
-                    };
-
-                    /* Teleportation */
-                    self.graphics.ne_screen = Some(ne_screen);
-                    self.clear_graph_mem();
-                    ne_screen = self.graphics.ne_screen.take().unwrap();
-                    self.printf_sdl(&mut ne_screen, X0, Y0, format_args!("Enter Level, X, Y: "));
-                    self.graphics.ne_screen = Some(ne_screen);
-                    let input = self.get_string(40, 2).unwrap();
-                    ne_screen = self.graphics.ne_screen.take().unwrap();
-
-                    let (l_num, x, y) = tuple((
-                        preceded(space0::<_, ()>, i32),
-                        preceded(pair(tag(", "), space0), i32),
-                        delimited(pair(tag(", "), space0), i32, tag("\n")),
-                    ))(input.to_bytes())
-                    .finish()
-                    .unwrap()
-                    .1;
-                    self.teleport(l_num, x, y);
-                }
-
-                Some(b'r') => {
-                    /* change to new robot type */
-                    self.graphics.ne_screen = Some(ne_screen);
-                    self.clear_graph_mem();
-                    ne_screen = self.graphics.ne_screen.take().unwrap();
-                    self.printf_sdl(
-                        &mut ne_screen,
-                        X0,
-                        Y0,
-                        format_args!("Type number of new robot: "),
-                    );
-                    self.graphics.ne_screen = Some(ne_screen);
-                    let input = self.get_string(40, 2).unwrap();
-                    ne_screen = self.graphics.ne_screen.take().unwrap();
-                    let mut i = 0;
-                    for _ in 0..u32::from(self.main.number_of_droid_types) {
-                        if self.vars.droidmap[i].druidname != *input {
-                            break;
-                        }
-                        i += 1;
-                    }
-
-                    if i == usize::from(self.main.number_of_droid_types) {
-                        self.printf_sdl(
-                            &mut ne_screen,
-                            X0,
-                            Y0 + 20,
-                            format_args!("Unrecognized robot-type: {}", input.to_str().unwrap(),),
-                        );
-                        self.getchar_raw();
-                        self.graphics.ne_screen = Some(ne_screen);
-                        self.clear_graph_mem();
-                        ne_screen = self.graphics.ne_screen.take().unwrap();
-                    } else {
-                        self.vars.me.ty = i.try_into().unwrap();
-                        self.vars.me.energy =
-                            self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxenergy;
-                        self.vars.me.health = self.vars.me.energy;
-                        self.printf_sdl(
-                            &mut ne_screen,
-                            X0,
-                            Y0 + 20,
-                            format_args!("You are now a {}. Have fun!\n", input.to_str().unwrap(),),
-                        );
-                        self.getchar_raw();
-                    }
-                }
-
+                Some(b'l') => ne_screen = self.level_robots_list(ne_screen),
+                Some(b'g') => ne_screen = self.ship_robots_list(ne_screen),
+                Some(b'd') => self.level_robots_destroy(&mut ne_screen),
+                Some(b't') => ne_screen = self.cheating_teleport(ne_screen),
+                Some(b'r') => ne_screen = self.change_robot_type(ne_screen),
                 Some(b'i') => {
                     /* togge Invincible mode */
                     self.main.invincible_mode = !self.main.invincible_mode;
                 }
-
-                Some(b'e') => {
-                    use nom::{
-                        character::complete::{i32, space0},
-                        sequence::preceded,
-                    };
-
-                    /* complete heal */
-                    self.graphics.ne_screen = Some(ne_screen);
-                    self.clear_graph_mem();
-                    ne_screen = self.graphics.ne_screen.take().unwrap();
-                    self.printf_sdl(
-                        &mut ne_screen,
-                        X0,
-                        Y0,
-                        format_args!("Current energy: {}\n", self.vars.me.energy.clone()),
-                    );
-                    self.printf_sdl(
-                        &mut ne_screen,
-                        -1,
-                        -1,
-                        format_args!("Enter your new energy: "),
-                    );
-                    self.graphics.ne_screen = Some(ne_screen);
-                    let input = self.get_string(40, 2).unwrap();
-                    ne_screen = self.graphics.ne_screen.take().unwrap();
-
-                    let num = preceded(space0::<_, ()>, i32)(input.to_bytes())
-                        .finish()
-                        .unwrap()
-                        .1;
-                    #[allow(clippy::cast_precision_loss)]
-                    {
-                        self.vars.me.energy = num as f32;
-                    }
-                    if self.vars.me.energy > self.vars.me.health {
-                        self.vars.me.health = self.vars.me.energy;
-                    }
-                }
-
+                Some(b'e') => ne_screen = self.complete_heal(ne_screen),
                 Some(b'n') => {
                     /* toggle display of all droids */
                     self.main.show_all_droids = !self.main.show_all_droids;
                 }
-
                 Some(b's') => {
                     /* toggle sound on/off */
                     self.main.sound_on = !self.main.sound_on;
                 }
-
-                Some(b'm') => {
-                    /* Show deck map in Concept view */
-                    self.printf_sdl(&mut ne_screen, -1, -1, format_args!("\nLevelnum: "));
-                    self.graphics.ne_screen = Some(ne_screen);
-                    self.show_deck_map();
-                    ne_screen = self.graphics.ne_screen.take().unwrap();
-                    self.getchar_raw();
-                }
-
-                Some(b'w') => {
-                    /* print waypoint info of current level */
-                    for i in 0..cur_level!(self.main).all_waypoints.len() {
-                        if i != 0 && i % 20 == 0 {
-                            self.printf_sdl(
-                                &mut ne_screen,
-                                -1,
-                                -1,
-                                format_args!(" ---- MORE -----\n"),
-                            );
-                            if self.getchar_raw() == b'q'.into() {
-                                break;
-                            }
-                        }
-                        if i % 20 == 0 {
-                            self.graphics.ne_screen = Some(ne_screen);
-                            self.clear_graph_mem();
-                            ne_screen = self.graphics.ne_screen.take().unwrap();
-                            self.printf_sdl(
-                                &mut ne_screen,
-                                X0,
-                                Y0,
-                                format_args!("Nr.   X   Y      C1  C2  C3  C4\n"),
-                            );
-                            self.printf_sdl(
-                                &mut ne_screen,
-                                -1,
-                                -1,
-                                format_args!("------------------------------------\n"),
-                            );
-                        }
-                        let cur_level = cur_level!(self.main);
-                        let waypoint = &cur_level.all_waypoints[i];
-                        Self::printf_sdl_static(
-                            &mut self.text,
-                            &self.b_font,
-                            &mut self.font_owner,
-                            &mut ne_screen,
-                            -1,
-                            -1,
-                            format_args!(
-                                "{:2}   {:2}  {:2}      {:2}  {:2}  {:2}  {:2}\n",
-                                i,
-                                waypoint.x,
-                                waypoint.y,
-                                waypoint.connections[0],
-                                waypoint.connections[1],
-                                waypoint.connections[2],
-                                waypoint.connections[3],
-                            ),
-                        );
-                    }
-                    self.printf_sdl(&mut ne_screen, -1, -1, format_args!(" --- END ---\n"));
-                    self.getchar_raw();
-                }
-
+                Some(b'm') => ne_screen = self.cheating_show_deck_map(ne_screen),
+                Some(b'w') => ne_screen = self.print_waypoints(ne_screen),
                 Some(b' ' | b'q') => {
                     resume = true;
                 }
-
                 _ => {}
             }
             self.graphics.ne_screen = Some(ne_screen);
