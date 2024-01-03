@@ -16,7 +16,6 @@ use crate::{
     cur_level,
     defs::{MapTile, BYCOLOR, MAX_MAP_COLS, MAX_MAP_ROWS},
     input::{CMD_STRINGS, KEY_STRINGS},
-    map::COLOR_NAMES,
 };
 
 use cstr::cstr;
@@ -28,7 +27,7 @@ use sdl_sys::{
 use std::{
     ffi::CStr,
     io::Cursor,
-    ops::{AddAssign, SubAssign},
+    ops::{AddAssign, RangeInclusive, SubAssign},
 };
 
 #[derive(Debug, Default)]
@@ -1186,7 +1185,7 @@ impl<'sdl> crate::Data<'sdl> {
     pub fn handle_le_color(&mut self, action: MenuAction) -> Option<&CStr> {
         let cur_level = cur_level!(mut self.main);
         if action == MenuAction::INFO {
-            return Some(COLOR_NAMES[usize::try_from(cur_level.color).unwrap()]);
+            return Some(cur_level.color.c_name());
         }
         MenuChange {
             sound_on: self.main.sound_on,
@@ -1194,11 +1193,8 @@ impl<'sdl> crate::Data<'sdl> {
             sound: self.sound.as_ref().unwrap(),
             action,
             val: &mut cur_level.color,
-            step: 1,
-            min_value: 0,
-            max_value: i32::try_from(COLOR_NAMES.len()).unwrap() - 1,
         }
-        .run();
+        .run_steppable();
         self.switch_background_music_to(Some(BYCOLOR));
         self.initiate_menu(false);
 
@@ -1217,17 +1213,18 @@ impl<'sdl> crate::Data<'sdl> {
         }
 
         let oldxlen = cur_level.xlen;
+
+        // Cannot do that
+        #[allow(clippy::range_minus_one)]
         MenuChange {
             sound_on: self.main.sound_on,
             sdl: self.sdl,
             sound: self.sound.as_ref().unwrap(),
             action,
             val: &mut cur_level.xlen,
-            step: 1,
-            min_value: 0,
-            max_value: i32::try_from(MAX_MAP_COLS).unwrap() - 1,
         }
-        .run();
+        .run(1, 0..=(i32::try_from(MAX_MAP_COLS).unwrap() - 1));
+
         let newmem = usize::try_from(cur_level.xlen).unwrap();
         // adjust memory sizes for new value
         for row in 0..usize::try_from(cur_level.ylen).unwrap() {
@@ -1259,11 +1256,8 @@ impl<'sdl> crate::Data<'sdl> {
             sound: self.sound.as_ref().unwrap(),
             action,
             val: &mut cur_level.ylen,
-            step: 1,
-            min_value: 0,
-            max_value: i32::try_from(MAX_MAP_ROWS - 1).unwrap(),
         }
-        .run();
+        .run(1, 0..=i32::try_from(MAX_MAP_ROWS - 1).unwrap());
         match oldylen.cmp(&cur_level.ylen) {
             Ordering::Greater => cur_level.map[usize::try_from(oldylen - 1).unwrap()].clear(),
             Ordering::Less => cur_level.map[usize::try_from(cur_level.ylen - 1).unwrap()]
@@ -1540,7 +1534,7 @@ impl<'sdl> crate::Data<'sdl> {
         min_value: T,
         max_value: T,
     ) where
-        T: PartialOrd + AddAssign + SubAssign,
+        T: PartialOrd + AddAssign + SubAssign + Copy,
     {
         MenuChange {
             sound_on: self.main.sound_on,
@@ -1548,11 +1542,8 @@ impl<'sdl> crate::Data<'sdl> {
             sound: self.sound.as_ref().unwrap(),
             action,
             val,
-            step,
-            min_value,
-            max_value,
         }
-        .run();
+        .run(step, min_value..=max_value);
     }
 
     pub fn flip_toggle<F>(&mut self, mut get_toggle: F)
@@ -1591,41 +1582,65 @@ struct MenuChange<'a, 'b, T> {
     sound: &'a Sound<'b>,
     action: MenuAction,
     val: &'a mut T,
-    step: T,
-    min_value: T,
-    max_value: T,
 }
 
 impl<T> MenuChange<'_, '_, T>
 where
-    T: PartialOrd + AddAssign + SubAssign,
+    T: PartialOrd + AddAssign + SubAssign + Copy,
 {
-    fn run(self) {
+    fn run(self, step: T, range: RangeInclusive<T>) {
         let Self {
             sound_on,
             sdl,
             sound,
             action,
             val,
-            step,
-            min_value,
-            max_value,
         } = self;
 
-        if action == MenuAction::RIGHT && *val < max_value {
+        if action == MenuAction::RIGHT && *val < *range.end() {
             crate::Data::move_lift_sound_static(sound_on, sdl, sound);
             *val += step;
-            if *val > max_value {
-                *val = max_value;
+            if *val > *range.end() {
+                *val = *range.end();
             }
-        } else if action == MenuAction::LEFT && *val > min_value {
+        } else if action == MenuAction::LEFT && *val > *range.start() {
             crate::Data::move_lift_sound_static(sound_on, sdl, sound);
             *val -= step;
-            if *val <= min_value {
-                *val = min_value;
+            if *val <= *range.start() {
+                *val = *range.start();
             }
         }
     }
+}
+
+#[cfg(not(target_os = "android"))]
+impl<T> MenuChange<'_, '_, T>
+where
+    T: Steppable,
+{
+    fn run_steppable(self) {
+        let Self {
+            sound_on,
+            sdl,
+            sound,
+            action,
+            val,
+        } = self;
+
+        if action == MenuAction::RIGHT {
+            if val.step_forward() {
+                crate::Data::move_lift_sound_static(sound_on, sdl, sound);
+            }
+        } else if action == MenuAction::LEFT && val.step_back() {
+            crate::Data::move_lift_sound_static(sound_on, sdl, sound);
+        }
+    }
+}
+
+#[cfg(not(target_os = "android"))]
+pub trait Steppable {
+    fn step_forward(&mut self) -> bool;
+    fn step_back(&mut self) -> bool;
 }
 
 #[cfg(not(target_os = "android"))]

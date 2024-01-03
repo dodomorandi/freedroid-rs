@@ -729,7 +729,7 @@ impl crate::Data<'_> {
         );
 
         let mut surface = self.graphics.map_block_surface_pointer
-            [usize::try_from(self.main.cur_level().color).unwrap()][usize::from(map_brick)]
+            [self.main.cur_level().color.to_usize()][usize::from(map_brick)]
         .as_mut()
         .unwrap()
         .borrow_mut();

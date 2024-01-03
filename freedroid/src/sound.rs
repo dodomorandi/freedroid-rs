@@ -1,6 +1,7 @@
 use crate::{
     defs::{BulletKind, Criticality, SoundType, Themed, BYCOLOR, NUM_COLORS, SOUND_DIR_C},
     global::Global,
+    map,
     misc::Misc,
     Main, Sdl,
 };
@@ -76,7 +77,7 @@ const MUSIC_FILES: [&[u8]; NUM_COLORS] = [
 
 #[derive(Debug)]
 pub struct Sound<'a> {
-    prev_color: i32,
+    prev_color: Option<map::Color>,
     paused: bool,
     loaded_wav_files: [Option<Chunk<'a>>; SoundType::All as usize],
     _opened_audio: OpenAudio<'a>,
@@ -338,19 +339,19 @@ impl<'sdl> crate::Data<'sdl> {
         // if filename_raw==BYCOLOR then chose bg_music[color]
         // NOTE: if new level-color is the same as before, just resume paused music!
         if filename_raw == BYCOLOR {
-            if sound.paused && sound.prev_color == main.cur_level().color {
+            if sound.paused && sound.prev_color == Some(main.cur_level().color) {
                 // current level-song was just paused
                 mixer.resume_music();
                 sound.paused = false;
             } else {
                 mixer.play_music(
-                    sound.music_songs[usize::try_from(main.cur_level().color).unwrap()]
+                    sound.music_songs[main.cur_level().color.to_usize()]
                         .as_ref()
                         .unwrap(),
                     None,
                 );
                 sound.paused = false;
-                sound.prev_color = main.cur_level().color;
+                sound.prev_color = Some(main.cur_level().color);
             }
         } else {
             // not using BYCOLOR mechanism: just play specified song
@@ -525,7 +526,7 @@ impl<'a> Sound<'a> {
         }
 
         let sound = Self {
-            prev_color: -1,
+            prev_color: None,
             paused: false,
             loaded_wav_files,
             _opened_audio: opened_audio,

@@ -25,18 +25,12 @@ use log::{error, info, warn};
 use nom::{Finish, Parser};
 #[cfg(not(target_os = "android"))]
 use std::ffi::CStr;
-use std::{ffi::CString, ops::Not, path::Path};
-
-#[cfg(not(target_os = "android"))]
-pub const COLOR_NAMES: [&CStr; 7] = [
-    cstr!("Red"),
-    cstr!("Yellow"),
-    cstr!("Green"),
-    cstr!("Gray"),
-    cstr!("Blue"),
-    cstr!("Turquoise"),
-    cstr!("Dark"),
-];
+use std::{
+    ffi::CString,
+    fmt::{self, Display},
+    ops::Not,
+    path::Path,
+};
 
 const WALLPASS: f32 = 4_f32 / 64.;
 
@@ -86,9 +80,9 @@ pub fn free_level_memory(level: &mut Level) {
         .for_each(Vec::clear);
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[allow(dead_code)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Color {
+    #[default]
     Red,
     Yellow,
     Green,
@@ -97,6 +91,92 @@ pub enum Color {
     Greenblue,
     Dark,
 }
+
+impl Color {
+    #[cfg(not(target_os = "android"))]
+    #[must_use]
+    pub const fn c_name(self) -> &'static CStr {
+        match self {
+            Color::Red => cstr!("Red"),
+            Color::Yellow => cstr!("Yellow"),
+            Color::Green => cstr!("Green"),
+            Color::Gray => cstr!("Grey"),
+            Color::Blue => cstr!("Blue"),
+            Color::Greenblue => cstr!("Turquoise"),
+            Color::Dark => cstr!("Dark"),
+        }
+    }
+
+    #[cfg(not(target_os = "android"))]
+    #[inline]
+    #[must_use]
+    pub const fn to_u8(self) -> u8 {
+        self as u8
+    }
+
+    #[inline]
+    #[must_use]
+    pub const fn to_usize(self) -> usize {
+        self as usize
+    }
+}
+
+#[cfg(not(target_os = "android"))]
+impl crate::menu::Steppable for Color {
+    fn step_forward(&mut self) -> bool {
+        *self = match *self {
+            Color::Red => Color::Yellow,
+            Color::Yellow => Color::Green,
+            Color::Green => Color::Gray,
+            Color::Gray => Color::Blue,
+            Color::Blue => Color::Greenblue,
+            Color::Greenblue => Color::Dark,
+            Color::Dark => return false,
+        };
+        true
+    }
+
+    fn step_back(&mut self) -> bool {
+        *self = match *self {
+            Color::Red => return false,
+            Color::Yellow => Color::Red,
+            Color::Green => Color::Yellow,
+            Color::Gray => Color::Green,
+            Color::Blue => Color::Gray,
+            Color::Greenblue => Color::Blue,
+            Color::Dark => Color::Greenblue,
+        };
+        true
+    }
+}
+
+impl TryFrom<u8> for Color {
+    type Error = InvalidColor;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::Red),
+            1 => Ok(Self::Yellow),
+            2 => Ok(Self::Green),
+            3 => Ok(Self::Gray),
+            4 => Ok(Self::Blue),
+            5 => Ok(Self::Greenblue),
+            6 => Ok(Self::Dark),
+            _ => Err(InvalidColor),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct InvalidColor;
+
+impl Display for InvalidColor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("raw color value is invalid")
+    }
+}
+
+impl std::error::Error for InvalidColor {}
 
 #[cfg(not(target_os = "android"))]
 fn reset_level_map(level: &mut Level) {
@@ -302,7 +382,7 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
         level_enter_comment: CString::default(),
         xlen: 0,
         ylen: 0,
-        color: 0,
+        color: Color::default(),
         map: array_init(|_| Vec::default()),
         refreshes: [GrobPoint { x: 0, y: 0 }; MAX_REFRESHES_ON_LEVEL],
         doors: [GrobPoint { x: 0, y: 0 }; MAX_DOORS_ON_LEVEL],
@@ -419,7 +499,7 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
     Some(loadlevel)
 }
 
-fn parse_levelnum_xlen_ylen_color(data: &[u8]) -> (u8, i32, i32, i32) {
+fn parse_levelnum_xlen_ylen_color(data: &[u8]) -> (u8, i32, i32, map::Color) {
     use nom::{
         bytes::complete::tag,
         character::complete::{i32, u8},
@@ -438,12 +518,12 @@ fn parse_levelnum_xlen_ylen_color(data: &[u8]) -> (u8, i32, i32, i32) {
         i32,
         tag("\ncolor of this level: "),
         whitespace,
-        i32,
+        u8,
     ))(data)
     .finish()
     .unwrap();
 
-    (levelnum, x_len, y_len, color)
+    (levelnum, x_len, y_len, color.try_into().unwrap())
 }
 
 fn parse_waypoint_x_y(data: &[u8]) -> [i32; 2] {
@@ -1476,7 +1556,7 @@ pub fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
     writeln!(level_cursor, "Levelnumber: {}", level.levelnum).unwrap();
     writeln!(level_cursor, "xlen of this level: {}", level.xlen).unwrap();
     writeln!(level_cursor, "ylen of this level: {}", level.ylen).unwrap();
-    writeln!(level_cursor, "color of this level: {}", level.color).unwrap();
+    writeln!(level_cursor, "color of this level: {}", level.color.to_u8()).unwrap();
     writeln!(
         level_cursor,
         "{}{}",

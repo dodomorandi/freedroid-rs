@@ -6,6 +6,7 @@ use crate::{
         MAX_MAP_ROWS, MAX_NAME_LEN, MAX_PHASES_IN_A_BULLET, MAX_REFRESHES_ON_LEVEL, MAX_THEMES,
         MAX_WP_CONNECTIONS,
     },
+    map,
 };
 
 use array_init::array_init;
@@ -277,7 +278,7 @@ pub struct Level {
     pub level_enter_comment: CString,
     pub xlen: i32, /* X dimension */
     pub ylen: i32,
-    pub color: i32,
+    pub color: map::Color,
     pub map: [Vec<MapTile>; MAX_MAP_ROWS],
     pub refreshes: [GrobPoint; MAX_REFRESHES_ON_LEVEL],
     pub doors: [GrobPoint; MAX_DOORS_ON_LEVEL],
