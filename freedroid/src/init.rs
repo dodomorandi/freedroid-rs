@@ -616,8 +616,8 @@ impl crate::Data<'_> {
         let starting_level = main_mission_data.set_cur_level_index_x_y(self);
 
         /* Reactivate the light on alle Levels, that might have been dark */
-        for level in &mut self.main.cur_ship.all_levels
-            [0..usize::try_from(self.main.cur_ship.num_levels).unwrap()]
+        for level in
+            &mut self.main.cur_ship.all_levels[0..usize::from(self.main.cur_ship.num_levels)]
         {
             level.as_mut().unwrap().empty = false.into();
         }
@@ -653,12 +653,12 @@ impl crate::Data<'_> {
             Some(self.main.cur_level().background_song_name.to_bytes()),
         );
 
-        for level_index in 0..usize::try_from(self.main.cur_ship.num_levels).unwrap() {
+        for level_index in 0..usize::from(self.main.cur_ship.num_levels) {
             self.main.cur_level_index = Some(ArrayIndex::new(level_index));
             self.shuffle_enemys();
         }
 
-        self.main.cur_level_index = Some(ArrayIndex::new(usize::try_from(starting_level).unwrap()));
+        self.main.cur_level_index = Some(ArrayIndex::new(usize::from(starting_level)));
 
         // Now that the briefing and all that is done,
         // the influence structure can be initialized for
@@ -1296,7 +1296,7 @@ impl MainMissionData {
         );
     }
 
-    fn set_cur_level_index_x_y(&self, data: &mut crate::Data<'_>) -> i32 {
+    fn set_cur_level_index_x_y(&self, data: &mut crate::Data<'_>) -> u8 {
         const MISSION_START_POINT_STRING: &[u8] = b"Possible Start Point : ";
 
         let number_of_start_points = count_string_occurences(&self.0, MISSION_START_POINT_STRING);
@@ -1329,11 +1329,11 @@ impl MainMissionData {
         )
         .expect("unable to find Level parameter in mission data")
         .1;
-        let starting_level = nom::character::complete::i32::<_, ()>(start_point_slice)
+        let starting_level = nom::character::complete::u8::<_, ()>(start_point_slice)
             .finish()
             .unwrap()
             .1;
-        data.main.cur_level_index = Some(ArrayIndex::new(usize::try_from(starting_level).unwrap()));
+        data.main.cur_level_index = Some(ArrayIndex::new(usize::from(starting_level)));
 
         let start_point_slice = split_at_subslice(start_point_slice, b"XPos=").unwrap().1;
         let x_pos = nom::character::complete::i32::<_, ()>(start_point_slice)

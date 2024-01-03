@@ -281,7 +281,7 @@ impl<'sdl> crate::Data<'sdl> {
     ) -> FrameBuffer<'sdl> {
         use nom::{
             bytes::complete::tag,
-            character::complete::{i32, space0},
+            character::complete::{i32, space0, u8},
             sequence::{delimited, pair, preceded, tuple},
         };
 
@@ -295,7 +295,7 @@ impl<'sdl> crate::Data<'sdl> {
         ne_screen = self.graphics.ne_screen.take().unwrap();
 
         let (l_num, x, y) = tuple((
-            preceded(space0::<_, ()>, i32),
+            preceded(space0::<_, ()>, u8),
             preceded(pair(tag(", "), space0), i32),
             delimited(pair(tag(", "), space0), i32, tag("\n")),
         ))(input.to_bytes())

@@ -1168,7 +1168,7 @@ impl<'sdl> crate::Data<'sdl> {
         }
 
         let mut cur_level = cur_level.levelnum;
-        self.menu_change_int(
+        self.menu_change(
             action,
             &mut cur_level,
             1,
@@ -1427,7 +1427,7 @@ impl<'sdl> crate::Data<'sdl> {
         }
 
         let mut f = self.global.game_config.empty_level_speedup;
-        self.menu_change_float(action, &mut f, 0.1, 0.5, 2.0);
+        self.menu_change(action, &mut f, 0.1, 0.5, 2.0);
         self.global.game_config.empty_level_speedup = f;
         None
     }
@@ -1447,7 +1447,7 @@ impl<'sdl> crate::Data<'sdl> {
         }
 
         let mut f = self.global.game_config.current_bg_music_volume;
-        self.menu_change_float(action, &mut f, 0.05, 0., 1.);
+        self.menu_change(action, &mut f, 0.05, 0., 1.);
         self.global.game_config.current_bg_music_volume = f;
 
         self.set_bg_music_volume(self.global.game_config.current_bg_music_volume);
@@ -1469,7 +1469,7 @@ impl<'sdl> crate::Data<'sdl> {
         }
 
         let mut f = self.global.game_config.current_sound_fx_volume;
-        self.menu_change_float(action, &mut f, 0.05, 0., 1.);
+        self.menu_change(action, &mut f, 0.05, 0., 1.);
         self.global.game_config.current_sound_fx_volume = f;
         let Self {
             sound,
@@ -1532,9 +1532,14 @@ impl<'sdl> crate::Data<'sdl> {
         None
     }
 
-    #[inline]
-    fn menu_change<T>(&self, action: MenuAction, val: &mut T, step: T, min_value: T, max_value: T)
-    where
+    pub fn menu_change<T>(
+        &self,
+        action: MenuAction,
+        val: &mut T,
+        step: T,
+        min_value: T,
+        max_value: T,
+    ) where
         T: PartialOrd + AddAssign + SubAssign,
     {
         MenuChange {
@@ -1548,29 +1553,6 @@ impl<'sdl> crate::Data<'sdl> {
             max_value,
         }
         .run();
-    }
-
-    pub fn menu_change_float(
-        &self,
-        action: MenuAction,
-        val: &mut f32,
-        step: f32,
-        min_value: f32,
-        max_value: f32,
-    ) {
-        self.menu_change(action, val, step, min_value, max_value);
-    }
-
-    #[cfg(not(target_os = "android"))]
-    pub fn menu_change_int(
-        &self,
-        action: MenuAction,
-        val: &mut i32,
-        step: i32,
-        min_value: i32,
-        max_value: i32,
-    ) {
-        self.menu_change(action, val, step, min_value, max_value);
     }
 
     pub fn flip_toggle<F>(&mut self, mut get_toggle: F)

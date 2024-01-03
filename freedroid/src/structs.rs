@@ -86,7 +86,7 @@ pub struct GrobPoint {
 pub struct Gps {
     pub x: f32,
     pub y: f32,
-    pub z: i32,
+    pub z: u8,
 }
 
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -139,7 +139,7 @@ pub struct Influence {
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Enemy {
     pub ty: i32,           /* gibt die Nummer in Druidmap an */
-    pub levelnum: i32,     /* Level in dem sich enemy befindet */
+    pub levelnum: u8,      /* Level in dem sich enemy befindet */
     pub pos: Finepoint,    /* gibt die Koordinaten der Momentanposition an */
     pub speed: Finepoint,  /* current speed  */
     pub energy: f32,       /* gibt die Energie dieses Robots an */
@@ -248,9 +248,9 @@ impl Default for Blast {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Lift {
-    pub level: i32, // The level, where this elevtor entrance is located
-    pub x: i32,     // The position in x of this elevator entrance within the level
-    pub y: i32,     // The position in y of this elevator entrance within the level
+    pub level: u8, // The level, where this elevtor entrance is located
+    pub x: i32,    // The position in x of this elevator entrance within the level
+    pub y: i32,    // The position in y of this elevator entrance within the level
 
     /* connections: Numbers in Lift-Array */
     pub up: i32,
@@ -271,7 +271,7 @@ pub struct Waypoint {
 pub struct Level {
     pub empty: i32,
     pub timer: f32,
-    pub levelnum: i32,      /* Number of this level */
+    pub levelnum: u8,       /* Number of this level */
     pub levelname: CString, /* Name of this level */
     pub background_song_name: CString,
     pub level_enter_comment: CString,
@@ -288,7 +288,7 @@ pub struct Level {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Ship {
-    pub num_levels: i32,
+    pub num_levels: u8,
     pub num_lifts: i32,
     pub num_lift_rows: i32,
     pub area_name: ArrayCString<100>,

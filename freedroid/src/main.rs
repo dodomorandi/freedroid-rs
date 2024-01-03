@@ -250,7 +250,7 @@ fn game_single_loop<'sdl>(data: &mut Data<'sdl>, sdl: &'sdl Sdl) -> ControlFlow<
     let scale = data.global.game_config.scale;
     #[allow(clippy::float_cmp)]
     if scale != 1.0 {
-        data.main.cur_ship.level_rects[0..usize::try_from(data.main.cur_ship.num_levels).unwrap()]
+        data.main.cur_ship.level_rects[0..usize::from(data.main.cur_ship.num_levels)]
             .iter_mut()
             .zip(data.main.cur_ship.num_level_rects.iter())
             .flat_map(|(rects, &num_rects)| {

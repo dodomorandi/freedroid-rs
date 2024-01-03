@@ -106,6 +106,22 @@ pub fn read_i32_from_string(data: &[u8], label: &[u8]) -> i32 {
     out
 }
 
+pub fn read_u8_from_string(data: &[u8], label: &[u8]) -> u8 {
+    use nom::character::complete::{space0, u8};
+
+    let pos = locate_string_in_data(data, label) + label.len();
+    let data = &data[pos..];
+
+    let Ok((_, (_, out))) = space0::<_, ()>.and(u8).parse(data).finish() else {
+        panic!(
+            "could not read u8 {} of label {}",
+            <&BStr>::from(data),
+            <&BStr>::from(label),
+        );
+    };
+    out
+}
+
 pub fn read_i16_from_string(data: &[u8], label: &[u8]) -> i16 {
     use nom::character::complete::{i16, space0};
 
@@ -701,7 +717,7 @@ impl crate::Data<'_> {
 
     /// This function teleports the influencer to a new position on the
     /// ship.  THIS CAN BE A POSITION ON A DIFFERENT LEVEL.
-    pub fn teleport(&mut self, level_num: i32, x: i32, y: i32) {
+    pub fn teleport(&mut self, level_num: u8, x: i32, y: i32) {
         let cur_level = level_num;
         let mut array_num = 0;
 

@@ -8,6 +8,7 @@ use crate::{
     find_subslice, map,
     misc::{
         locate_string_in_data, my_random, read_and_malloc_string_from_data, read_i32_from_string,
+        read_u8_from_string,
     },
     read_and_malloc_and_terminate_file, split_at_subslice, split_at_subslice_mut,
     structs::{Finepoint, GrobPoint, Level, Waypoint},
@@ -322,12 +323,12 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
         .map(|pos| &data[pos..])
         .expect("No Levelnumber entry found! Terminating! ");
 
-    [
+    (
         loadlevel.levelnum,
         loadlevel.xlen,
         loadlevel.ylen,
         loadlevel.color,
-    ] = parse_levelnum_xlen_ylen_color(data_pointer);
+    ) = parse_levelnum_xlen_ylen_color(data_pointer);
 
     info!("Levelnumber : {} ", loadlevel.levelnum);
     info!("xlen of this level: {} ", loadlevel.xlen);
@@ -418,13 +419,17 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
     Some(loadlevel)
 }
 
-fn parse_levelnum_xlen_ylen_color(data: &[u8]) -> [i32; 4] {
-    use nom::{bytes::complete::tag, character::complete::i32, sequence::tuple};
+fn parse_levelnum_xlen_ylen_color(data: &[u8]) -> (u8, i32, i32, i32) {
+    use nom::{
+        bytes::complete::tag,
+        character::complete::{i32, u8},
+        sequence::tuple,
+    };
 
     let (_, (_, _, levelnum, _, _, x_len, _, _, y_len, _, _, color)) = tuple::<_, _, (), _>((
         tag("Levelnumber: "),
         whitespace,
-        i32,
+        u8,
         tag("\nxlen of this level: "),
         whitespace,
         i32,
@@ -438,7 +443,7 @@ fn parse_levelnum_xlen_ylen_color(data: &[u8]) -> [i32; 4] {
     .finish()
     .unwrap();
 
-    [levelnum, x_len, y_len, color]
+    (levelnum, x_len, y_len, color)
 }
 
 fn parse_waypoint_x_y(data: &[u8]) -> [i32; 2] {
@@ -506,7 +511,7 @@ impl crate::Data<'_> {
             .cur_ship
             .all_levels
             .iter_mut()
-            .take(usize::try_from(self.main.cur_ship.num_levels).unwrap())
+            .take(self.main.cur_ship.num_levels.into())
             .for_each(|level| {
                 if let Some(mut level) = level.take() {
                     free_level_memory(&mut level);
@@ -711,13 +716,15 @@ impl crate::Data<'_> {
         let filename = PathBuf::from(format!("{shipname}{SHIP_EXT}"));
 
         /* count the levels */
-        let level_anz = self
+        let level_anz: u8 = self
             .main
             .cur_ship
             .all_levels
             .iter()
             .take_while(|level| level.is_some())
-            .count();
+            .count()
+            .try_into()
+            .unwrap();
 
         trace!("SaveShip(): now opening the ship file...");
 
@@ -757,7 +764,7 @@ freedroid-discussion@lists.sourceforge.net\n\
 
             trace!("SaveShip(): now saving levels...");
 
-            for i in 0..i32::try_from(level_anz).unwrap() {
+            for i in 0..level_anz {
                 let mut level_iter = self
                     .main
                     .cur_ship
@@ -966,7 +973,7 @@ freedroid-discussion@lists.sourceforge.net\n\
             [..locate_string_in_data(section_data, DROIDS_LEVEL_END_INDICATION_STRING)];
 
         // Now we read in the level number for this level
-        let our_level_number = read_i32_from_string(section_data, DROIDS_LEVEL_INDICATION_STRING);
+        let our_level_number = read_u8_from_string(section_data, DROIDS_LEVEL_INDICATION_STRING);
 
         // Now we read in the maximal number of random droids for this level
         let max_rand = read_i32_from_string(section_data, DROIDS_MAXRAND_INDICATION_STRING);
@@ -1192,7 +1199,7 @@ freedroid-discussion@lists.sourceforge.net\n\
                 None => break,
             };
 
-            let deck_index = nom::character::complete::i32::<_, ()>(entry_slice)
+            let deck_index = nom::character::complete::u8::<_, ()>(entry_slice)
                 .finish()
                 .unwrap()
                 .1;
@@ -1200,7 +1207,7 @@ freedroid-discussion@lists.sourceforge.net\n\
             entry_slice = &entry_slice[1..];
 
             // count the number of rects for this deck one up
-            self.main.cur_ship.num_level_rects[usize::try_from(deck_index).unwrap()] += 1;
+            self.main.cur_ship.num_level_rects[usize::from(deck_index)] += 1;
 
             let x = read_tagged_i32(&entry_slice[1..], "DeckX=");
             let y = read_tagged_i32(entry_slice, "DeckY=");
@@ -1234,7 +1241,7 @@ freedroid-discussion@lists.sourceforge.net\n\
             let cur_lift = &mut self.main.cur_ship.all_lifts[usize::try_from(label).unwrap()];
             entry_slice = &entry_slice[1..];
 
-            cur_lift.level = read_tagged_i32(entry_slice, "Deck=");
+            cur_lift.level = read_tagged_u8(entry_slice, "Deck=");
             cur_lift.x = read_tagged_i32(entry_slice, "PosX=");
             cur_lift.y = read_tagged_i32(entry_slice, "PosY=");
             cur_lift.up = read_tagged_i32(entry_slice, "LevelUp=");
@@ -1279,9 +1286,9 @@ freedroid-discussion@lists.sourceforge.net\n\
         // This is done by searching for the LEVEL_END_STRING again and again
         // until it is no longer found in the ship file.  good.
 
-        let mut level_anz = 0;
+        let mut level_anz = 0u8;
         let mut ship_rest = &*ship_data;
-        level_start[level_anz] = Some(ship_rest);
+        level_start[0] = Some(ship_rest);
 
         loop {
             let next_ship_rest =
@@ -1292,11 +1299,11 @@ freedroid-discussion@lists.sourceforge.net\n\
             };
 
             level_anz += 1;
-            level_start[level_anz] = Some(&ship_rest[1..]);
+            level_start[usize::from(level_anz)] = Some(&ship_rest[1..]);
         }
 
         /* init the level-structs */
-        self.main.cur_ship.num_levels = level_anz.try_into().unwrap();
+        self.main.cur_ship.num_levels = level_anz;
 
         let result = self
             .main
@@ -1305,7 +1312,7 @@ freedroid-discussion@lists.sourceforge.net\n\
             .iter_mut()
             .zip(level_start.iter().copied())
             .enumerate()
-            .take(level_anz)
+            .take(level_anz.into())
             .try_for_each(|(index, (level, start))| {
                 if let Some(new_level) = level_to_struct(start.unwrap()) {
                     let level = level.insert(new_level);
@@ -1423,6 +1430,23 @@ fn read_tagged_i32(s: &[u8], tag: &str) -> i32 {
 
     whitespace::<_, ()>
         .and(complete::i32)
+        .parse(&s[(pos + tag.len())..])
+        .map(|(_, (_, n))| n)
+        .unwrap()
+}
+
+fn read_tagged_u8(s: &[u8], tag: &str) -> u8 {
+    use nom::character::complete;
+
+    let pos = s
+        .windows(tag.len())
+        .enumerate()
+        .find(|&(_, s)| s == tag.as_bytes())
+        .unwrap()
+        .0;
+
+    whitespace::<_, ()>
+        .and(complete::u8)
         .parse(&s[(pos + tag.len())..])
         .map(|(_, (_, n))| n)
         .unwrap()

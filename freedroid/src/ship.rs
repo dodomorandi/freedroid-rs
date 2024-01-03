@@ -844,7 +844,7 @@ impl crate::Data<'_> {
     ///
     ///  if level==-1: don't highlight any level
     ///  if liftrow==-1: dont' highlight any liftrows
-    pub fn show_lifts(&mut self, level: i32, liftrow: i32) {
+    pub fn show_lifts(&mut self, level: u8, liftrow: i32) {
         let lift_bg_color = SDL_Color {
             r: 0,
             g: 0,
@@ -880,19 +880,16 @@ impl crate::Data<'_> {
             .unwrap()
             .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
 
-        if level >= 0 {
-            for i in 0..self.main.cur_ship.num_level_rects[usize::try_from(level).unwrap()] {
-                let src = self.main.cur_ship.level_rects[usize::try_from(level).unwrap()]
-                    [usize::try_from(i).unwrap()];
-                dst = src;
-                dst.inc_x(self.vars.user_rect.x() + x_offs); /* offset respective to User-Rectangle */
-                dst.inc_y(self.vars.user_rect.y() + y_offs);
-                ship_on_pic.as_mut().unwrap().blit_from_to(
-                    &src,
-                    ne_screen.as_mut().unwrap(),
-                    &mut dst,
-                );
-            }
+        for i in 0..self.main.cur_ship.num_level_rects[usize::from(level)] {
+            let src =
+                self.main.cur_ship.level_rects[usize::from(level)][usize::try_from(i).unwrap()];
+            dst = src;
+            dst.inc_x(self.vars.user_rect.x() + x_offs); /* offset respective to User-Rectangle */
+            dst.inc_y(self.vars.user_rect.y() + y_offs);
+            ship_on_pic
+                .as_mut()
+                .unwrap()
+                .blit_from_to(&src, ne_screen.as_mut().unwrap(), &mut dst);
         }
 
         if liftrow >= 0 {
@@ -1118,7 +1115,7 @@ impl crate::Data<'_> {
         down_lift: &mut i32,
         cur_lift: &mut usize,
         liftrow: i32,
-        cur_level: &mut i32,
+        cur_level: &mut u8,
     ) {
         self.ship.enter_lift_last_move_tick = self.sdl.ticks_ms();
         if *up_lift != -1 {
@@ -1141,7 +1138,7 @@ impl crate::Data<'_> {
         down_lift: &mut i32,
         cur_lift: &mut usize,
         liftrow: i32,
-        cur_level: &mut i32,
+        cur_level: &mut u8,
     ) {
         self.ship.enter_lift_last_move_tick = self.sdl.ticks_ms();
         if *down_lift != -1 {

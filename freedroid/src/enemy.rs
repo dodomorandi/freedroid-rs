@@ -453,7 +453,7 @@ impl crate::Data<'_> {
     pub fn clear_enemys(&mut self) {
         for enemy in &mut self.main.all_enemys[..MAX_ENEMYS_ON_SHIP] {
             enemy.ty = -1;
-            enemy.levelnum = -1;
+            enemy.levelnum = 0;
             enemy.phase = 0.;
             enemy.nextwaypoint = 0;
             enemy.lastwaypoint = 0;
