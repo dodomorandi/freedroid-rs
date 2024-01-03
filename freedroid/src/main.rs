@@ -1,8 +1,4 @@
-#![allow(
-    clippy::missing_panics_doc,
-    clippy::missing_errors_doc,
-    clippy::too_many_lines
-)]
+#![allow(clippy::missing_panics_doc, clippy::missing_errors_doc)]
 
 mod array_c_string;
 mod array_index;
