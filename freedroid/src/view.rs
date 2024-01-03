@@ -2,8 +2,8 @@ use crate::{
     array_c_string::ArrayCString,
     b_font::{font_height, print_string_font, put_string_font},
     defs::{
-        AssembleCombatWindowFlags, BulletKind, DisplayBannerFlags, Status, BLINKENERGY,
-        CRY_SOUND_INTERVAL, FLASH_DURATION, LEFT_TEXT_LEN, MAXBLASTS, MAXBULLETS, RIGHT_TEXT_LEN,
+        AssembleCombatWindowFlags, BulletKind, Status, BLINKENERGY, CRY_SOUND_INTERVAL,
+        FLASH_DURATION, LEFT_TEXT_LEN, MAXBLASTS, MAXBULLETS, RIGHT_TEXT_LEN,
         TRANSFER_SOUND_INTERVAL,
     },
     global::INFLUENCE_MODE_NAMES,
@@ -12,18 +12,14 @@ use crate::{
     structs::{Blast, Finepoint, GrobPoint, TextToBeDisplayed},
     text,
     vars::Vars,
+    view::screen_updater::{screen_needs_update, update_screen},
     Main,
 };
 
 use log::{info, trace};
 use sdl::{Pixel, Rect};
 use sdl_sys::SDL_Color;
-use std::{
-    cell::{Cell, RefCell},
-    ffi::CStr,
-    ops::Deref,
-    os::raw::c_int,
-};
+use std::{cell::Cell, ffi::CStr, ops::Deref, os::raw::c_int};
 use tinyvec_string::ArrayString;
 
 const BLINK_LEN: f32 = 1.0;
@@ -628,31 +624,6 @@ impl crate::Data<'_> {
     ///
     /// `BANNER_NO_SDL_UPDATE=4`: Prevents any `SDL_Update` calls.
     pub fn display_banner(&mut self, left: Option<&CStr>, right: Option<&CStr>, flags: c_int) {
-        enum Right<'a, const N: usize> {
-            Owned(ArrayCString<N>),
-            Borrowed(&'a CStr),
-        }
-
-        impl<const N: usize> Deref for Right<'_, N> {
-            type Target = CStr;
-
-            fn deref(&self) -> &Self::Target {
-                match self {
-                    Self::Owned(s) => s,
-                    &Self::Borrowed(s) => s,
-                }
-            }
-        }
-
-        thread_local! {
-            static PREVIOUS_LEFT_BOX: RefCell<ArrayString::<[u8; LEFT_TEXT_LEN]>>={
-              RefCell::new(ArrayString::from("NOUGHT"))
-            };
-            static PREVIOUS_RIGHT_BOX: RefCell<ArrayString::<[u8; RIGHT_TEXT_LEN]>>= {
-              RefCell::new(ArrayString::from("NOUGHT"))
-            };
-        }
-
         // --------------------
         // At first the text is prepared.  This can't hurt.
         // we will decide whether to display it or not later...
@@ -667,9 +638,9 @@ impl crate::Data<'_> {
 
                 let mut buffer = ArrayCString::<80>::default();
                 write!(buffer, "{}", self.main.show_score).unwrap();
-                Right::Owned(buffer)
+                CStrFixedCow::Owned(buffer)
             },
-            Right::Borrowed,
+            CStrFixedCow::Borrowed,
         );
 
         // Now fill in the text
@@ -695,86 +666,8 @@ impl crate::Data<'_> {
         // --------------------
         // No we see if the screen need an update...
 
-        let screen_needs_update = self.graphics.banner_is_destroyed != 0
-            || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
-            || PREVIOUS_LEFT_BOX
-                .with(|previous_left_box| left_box != previous_left_box.borrow().as_ref())
-            || PREVIOUS_RIGHT_BOX
-                .with(|previous_right_box| right_box != previous_right_box.borrow().as_ref());
-        if screen_needs_update {
-            // Redraw the whole background of the top status bar
-            let Graphics {
-                ne_screen,
-                banner_pic,
-                ..
-            } = &mut self.graphics;
-            ne_screen.as_mut().unwrap().clear_clip_rect();
-            let mut dst = Rect::default();
-            banner_pic
-                .as_mut()
-                .unwrap()
-                .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
-
-            // Now the text should be ready and its
-            // time to display it...
-            let previous_left_check = PREVIOUS_LEFT_BOX
-                .with(|previous_left_box| left_box != previous_left_box.borrow().as_ref());
-            let previous_right_check = PREVIOUS_RIGHT_BOX
-                .with(|previous_right_box| right_box != previous_right_box.borrow().as_ref());
-            if previous_left_check
-                || previous_right_check
-                || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
-            {
-                let para_b_font = self
-                    .global
-                    .para_b_font
-                    .as_ref()
-                    .unwrap()
-                    .rw(&mut self.font_owner);
-                dst.set_x(self.vars.left_info_rect.x());
-                dst.set_y(
-                    self.vars.left_info_rect.y() - i16::try_from(font_height(para_b_font)).unwrap(),
-                );
-                print_string_font(
-                    self.graphics.ne_screen.as_mut().unwrap(),
-                    para_b_font,
-                    dst.x().into(),
-                    dst.y().into(),
-                    format_args!("{left_box}"),
-                );
-                PREVIOUS_LEFT_BOX.with(|previous_left_box| {
-                    let mut previous_left_box = previous_left_box.borrow_mut();
-                    *previous_left_box = left_box;
-                });
-
-                dst.set_x(self.vars.right_info_rect.x());
-                dst.set_y(
-                    self.vars.right_info_rect.y()
-                        - i16::try_from(font_height(para_b_font)).unwrap(),
-                );
-                print_string_font(
-                    self.graphics.ne_screen.as_mut().unwrap(),
-                    para_b_font,
-                    dst.x().into(),
-                    dst.y().into(),
-                    format_args!("{right_box}"),
-                );
-                PREVIOUS_RIGHT_BOX.with(|previous_right_box| {
-                    let mut previous_right_box = previous_right_box.borrow_mut();
-                    *previous_right_box = right_box;
-                });
-            }
-
-            // finally update the whole top status box
-            if (flags & i32::from(DisplayBannerFlags::NO_SDL_UPDATE.bits())) == 0 {
-                self.graphics
-                    .ne_screen
-                    .as_mut()
-                    .unwrap()
-                    .update_rect(&self.vars.banner_rect.with_xy(0, 0));
-            }
-
-            self.graphics.banner_is_destroyed = false.into();
+        if screen_needs_update(self, left_box, right_box, flags) {
+            update_screen(self, left_box, right_box, flags);
         }
     }
 
@@ -1023,4 +916,137 @@ struct BlitCombatCellState {
     len: f32,
     map_brick: u8,
     target_rectangle: Rect,
+}
+
+#[derive(Debug)]
+enum CStrFixedCow<'a, const N: usize> {
+    Owned(ArrayCString<N>),
+    Borrowed(&'a CStr),
+}
+
+impl<const N: usize> Deref for CStrFixedCow<'_, N> {
+    type Target = CStr;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Owned(s) => s,
+            &Self::Borrowed(s) => s,
+        }
+    }
+}
+
+mod screen_updater {
+    use std::{cell::RefCell, ffi::c_int};
+
+    use sdl::Rect;
+    use tinyvec_string::ArrayString;
+
+    use crate::{
+        b_font::{font_height, print_string_font},
+        defs::{DisplayBannerFlags, LEFT_TEXT_LEN, RIGHT_TEXT_LEN},
+        graphics::Graphics,
+    };
+
+    thread_local! {
+        static PREVIOUS_LEFT_BOX: RefCell<ArrayString::<[u8; LEFT_TEXT_LEN]>>={
+          RefCell::new(ArrayString::from("NOUGHT"))
+        };
+        static PREVIOUS_RIGHT_BOX: RefCell<ArrayString::<[u8; RIGHT_TEXT_LEN]>>= {
+          RefCell::new(ArrayString::from("NOUGHT"))
+        };
+    }
+
+    pub fn screen_needs_update(
+        data: &crate::Data,
+        left_box: ArrayString<[u8; LEFT_TEXT_LEN]>,
+        right_box: ArrayString<[u8; RIGHT_TEXT_LEN]>,
+        flags: c_int,
+    ) -> bool {
+        data.graphics.banner_is_destroyed != 0
+            || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
+            || PREVIOUS_LEFT_BOX
+                .with(|previous_left_box| left_box != previous_left_box.borrow().as_ref())
+            || PREVIOUS_RIGHT_BOX
+                .with(|previous_right_box| right_box != previous_right_box.borrow().as_ref())
+    }
+
+    pub fn update_screen(
+        data: &mut crate::Data,
+        left_box: ArrayString<[u8; LEFT_TEXT_LEN]>,
+        right_box: ArrayString<[u8; RIGHT_TEXT_LEN]>,
+        flags: c_int,
+    ) {
+        // Redraw the whole background of the top status bar
+        let Graphics {
+            ne_screen,
+            banner_pic,
+            ..
+        } = &mut data.graphics;
+        ne_screen.as_mut().unwrap().clear_clip_rect();
+        let mut dst = Rect::default();
+        banner_pic
+            .as_mut()
+            .unwrap()
+            .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
+
+        // Now the text should be ready and its
+        // time to display it...
+        let previous_left_check = PREVIOUS_LEFT_BOX
+            .with(|previous_left_box| left_box != previous_left_box.borrow().as_ref());
+        let previous_right_check = PREVIOUS_RIGHT_BOX
+            .with(|previous_right_box| right_box != previous_right_box.borrow().as_ref());
+        if previous_left_check
+            || previous_right_check
+            || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
+        {
+            let para_b_font = data
+                .global
+                .para_b_font
+                .as_ref()
+                .unwrap()
+                .rw(&mut data.font_owner);
+            dst.set_x(data.vars.left_info_rect.x());
+            dst.set_y(
+                data.vars.left_info_rect.y() - i16::try_from(font_height(para_b_font)).unwrap(),
+            );
+            print_string_font(
+                data.graphics.ne_screen.as_mut().unwrap(),
+                para_b_font,
+                dst.x().into(),
+                dst.y().into(),
+                format_args!("{left_box}"),
+            );
+            PREVIOUS_LEFT_BOX.with(|previous_left_box| {
+                let mut previous_left_box = previous_left_box.borrow_mut();
+                *previous_left_box = left_box;
+            });
+
+            dst.set_x(data.vars.right_info_rect.x());
+            dst.set_y(
+                data.vars.right_info_rect.y() - i16::try_from(font_height(para_b_font)).unwrap(),
+            );
+            print_string_font(
+                data.graphics.ne_screen.as_mut().unwrap(),
+                para_b_font,
+                dst.x().into(),
+                dst.y().into(),
+                format_args!("{right_box}"),
+            );
+            PREVIOUS_RIGHT_BOX.with(|previous_right_box| {
+                let mut previous_right_box = previous_right_box.borrow_mut();
+                *previous_right_box = right_box;
+            });
+        }
+
+        // finally update the whole top status box
+        if (flags & i32::from(DisplayBannerFlags::NO_SDL_UPDATE.bits())) == 0 {
+            data.graphics
+                .ne_screen
+                .as_mut()
+                .unwrap()
+                .update_rect(&data.vars.banner_rect.with_xy(0, 0));
+        }
+
+        data.graphics.banner_is_destroyed = false.into();
+    }
 }
