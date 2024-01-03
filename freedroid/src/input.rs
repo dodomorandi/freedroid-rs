@@ -91,7 +91,7 @@ const fn create_key_strings() -> [Option<&'static CStr>; PointerStates::Last.to_
 
         ($($key:ident = $str:literal);+ $(;)?) => {
             $(
-                out[sdl_sys::$key as usize] = Some(cstr!($str));
+                out[::sdl::convert::u32_to_usize(sdl_sys::$key)] = Some(cstr!($str));
             )+
         };
     }

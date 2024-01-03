@@ -66,6 +66,19 @@ pub const fn u32_to_isize(value: u32) -> isize {
 }
 
 #[must_use]
+pub const fn u32_to_usize(value: u32) -> usize {
+    #[allow(clippy::cast_possible_truncation)]
+    if mem::size_of::<usize>() <= 4 {
+        assert!(
+            value <= usize::MAX as u32,
+            "u32 too big to being converted to usize"
+        );
+    }
+
+    value as usize
+}
+
+#[must_use]
 pub const fn i64_to_u32(value: i64) -> u32 {
     assert!(
         value >= 0 && value <= (u32::MAX as i64),
