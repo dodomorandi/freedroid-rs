@@ -41,7 +41,7 @@ use influencer::Influencer;
 use init::Init;
 use input::Input;
 use log::info;
-use map::{ColorNames, Map};
+use map::{Color, Map};
 use menu::Menu;
 use misc::Misc;
 use once_cell::unsync::OnceCell;
@@ -340,12 +340,12 @@ fn game_single_loop<'sdl>(data: &mut Data<'sdl>, sdl: &'sdl Sdl) -> ControlFlow<
         let cur_level = data.main.cur_level_mut();
         if cur_level.empty == 0 {
             data.set_time_factor(1.0);
-        } else if cur_level.color == ColorNames::Dark as i32 {
+        } else if cur_level.color == Color::Dark as i32 {
             // if level is already dark
             data.set_time_factor(data.global.game_config.empty_level_speedup);
         } else if cur_level.timer <= 0. {
             // time to switch off the lights ...
-            cur_level.color = ColorNames::Dark as i32;
+            cur_level.color = Color::Dark as i32;
             data.switch_background_music_to(Some(BYCOLOR)); // start new background music
         }
 

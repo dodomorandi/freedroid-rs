@@ -88,7 +88,7 @@ pub fn free_level_memory(level: &mut Level) {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[allow(dead_code)]
-pub enum ColorNames {
+pub enum Color {
     Red,
     Yellow,
     Green,
