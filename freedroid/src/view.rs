@@ -521,17 +521,6 @@ impl crate::Data<'_> {
     /// to the specified coordinates anywhere on the screen, useful e.g.
     /// for using the influencer as a cursor in the menus.
     pub fn put_influence(&mut self, x: c_int, y: c_int) {
-        #[allow(clippy::cast_possible_wrap)]
-        let text_rect = Rect::new(
-            self.vars.user_rect.x()
-                + (self.vars.user_rect.width() / 2) as i16
-                + (self.vars.block_rect.width() / 3) as i16,
-            self.vars.user_rect.y() + (self.vars.user_rect.height() / 2) as i16
-                - (self.vars.block_rect.height() / 2) as i16,
-            self.vars.user_rect.width() / 2 - self.vars.block_rect.width() / 3,
-            self.vars.user_rect.height() / 2,
-        );
-
         trace!("PutInfluence real function call confirmed.");
 
         // Now we draw the hat and shoes of the influencer
@@ -552,33 +541,20 @@ impl crate::Data<'_> {
             .unwrap()
             .blit(build_block.as_mut().unwrap());
 
-        // Now we draw the first digit of the influencers current number.
-        let mut dst = self.main.first_digit_rect;
-        influ_digit_surface_pointer[usize::from(
-            vars.droidmap[usize::try_from(vars.me.ty).unwrap()].druidname[0] + 1 - b'1',
-        )]
-        .as_mut()
-        .unwrap()
-        .blit_to(build_block.as_mut().unwrap(), &mut dst);
-
-        // Now we draw the second digit of the influencers current number.
-        dst = self.main.second_digit_rect;
-        influ_digit_surface_pointer[usize::from(
-            vars.droidmap[usize::try_from(vars.me.ty).unwrap()].druidname[1] + 1 - b'1',
-        )]
-        .as_mut()
-        .unwrap()
-        .blit_to(build_block.as_mut().unwrap(), &mut dst);
-
-        // Now we draw the third digit of the influencers current number.
-        dst = self.main.third_digit_rect;
-
-        influ_digit_surface_pointer[usize::from(
-            vars.droidmap[usize::try_from(vars.me.ty).unwrap()].druidname[2] + 1 - b'1',
-        )]
-        .as_mut()
-        .unwrap()
-        .blit_to(build_block.as_mut().unwrap(), &mut dst);
+        // Now we draw the three digits of the influencers current number.
+        [
+            self.main.first_digit_rect,
+            self.main.second_digit_rect,
+            self.main.third_digit_rect,
+        ]
+        .into_iter()
+        .zip(vars.droidmap[usize::try_from(vars.me.ty).unwrap()].druidname)
+        .for_each(|(mut dst, name_char)| {
+            influ_digit_surface_pointer[usize::from(name_char + 1 - b'1')]
+                .as_mut()
+                .unwrap()
+                .blit_to(build_block.as_mut().unwrap(), &mut dst);
+        });
 
         if self.vars.me.energy * 100.
             / self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxenergy
@@ -621,16 +597,16 @@ impl crate::Data<'_> {
             }
         }
 
-        if x == -1 {
+        let mut dst = if x == -1 {
             let user_center = self.vars.get_user_center();
             #[allow(clippy::cast_possible_wrap)]
-            dst.set_x(user_center.x() - (self.vars.block_rect.width() / 2) as i16);
+            let x = user_center.x() - (self.vars.block_rect.width() / 2) as i16;
             #[allow(clippy::cast_possible_wrap)]
-            dst.set_y(user_center.y() - (self.vars.block_rect.height() / 2) as i16);
+            let y = user_center.y() - (self.vars.block_rect.height() / 2) as i16;
+            Rect::new(x, y, 0, 0)
         } else {
-            dst.set_x(x.try_into().unwrap());
-            dst.set_y(y.try_into().unwrap());
-        }
+            Rect::new(x.try_into().unwrap(), y.try_into().unwrap(), 0, 0)
+        };
 
         let Graphics {
             build_block,
@@ -650,42 +626,57 @@ impl crate::Data<'_> {
             && self.vars.me.text_visible_time < self.global.game_config.wanted_text_visible_time
             && self.global.game_config.droid_talk != 0
         {
-            self.b_font.current_font = self.global.font0_b_font.clone();
-            let text_to_display = match &self.vars.me.text_to_be_displayed {
-                TextToBeDisplayed::None => b"",
-                TextToBeDisplayed::String(s) => s.to_bytes(),
-                TextToBeDisplayed::LevelEnterComment => {
-                    self.main.cur_level().level_enter_comment.to_bytes()
-                }
-            };
-
-            let Self {
-                b_font,
-                text,
-                vars,
-                graphics,
-                font_owner,
-                ..
-            } = self;
-
-            text::Displayer {
-                data_text: text,
-                graphics,
-                vars,
-                b_font,
-                font_owner,
-                text: text_to_display,
-                start_x: i32::from(vars.user_rect.x())
-                    + i32::from(vars.user_rect.width() / 2)
-                    + i32::from(vars.block_rect.width() / 3),
-                start_y: i32::from(vars.user_rect.y()) + i32::from(vars.user_rect.height() / 2)
-                    - i32::from(vars.block_rect.height() / 2),
-                clip: Some(text_rect),
-            }
-            .run();
+            self.make_influencer_talk();
         }
 
         trace!("PutInfluence: end of function reached.");
+    }
+
+    fn make_influencer_talk(&mut self) {
+        self.b_font.current_font = self.global.font0_b_font.clone();
+        let text_to_display = match &self.vars.me.text_to_be_displayed {
+            TextToBeDisplayed::None => b"",
+            TextToBeDisplayed::String(s) => s.to_bytes(),
+            TextToBeDisplayed::LevelEnterComment => {
+                self.main.cur_level().level_enter_comment.to_bytes()
+            }
+        };
+
+        let Self {
+            b_font,
+            text,
+            vars,
+            graphics,
+            font_owner,
+            ..
+        } = self;
+
+        #[allow(clippy::cast_possible_wrap)]
+        let text_rect = Rect::new(
+            vars.user_rect.x()
+                + (vars.user_rect.width() / 2) as i16
+                + (vars.block_rect.width() / 3) as i16,
+            vars.user_rect.y() + (vars.user_rect.height() / 2) as i16
+                - (vars.block_rect.height() / 2) as i16,
+            vars.user_rect.width() / 2 - vars.block_rect.width() / 3,
+            vars.user_rect.height() / 2,
+        );
+
+        text::Displayer {
+            data_text: text,
+            graphics,
+            vars,
+            b_font,
+            font_owner,
+            text: text_to_display,
+            start_x: i32::from(vars.user_rect.x())
+                + i32::from(vars.user_rect.width() / 2)
+                + i32::from(vars.block_rect.width() / 3),
+            start_y: i32::from(vars.user_rect.y()) + i32::from(vars.user_rect.height() / 2)
+                - i32::from(vars.block_rect.height() / 2),
+            clip: Some(text_rect),
+        }
+        .run();
     }
 
     /// `PutBullet`: draws a Bullet into the combat window.  The only
