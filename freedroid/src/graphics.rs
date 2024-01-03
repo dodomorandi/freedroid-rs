@@ -384,7 +384,7 @@ impl crate::Data<'_> {
         );
         self.make_grid_on_screen(None);
         assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
-        self.play_sound(SoundType::Screenshot as i32);
+        self.play_sound(SoundType::Screenshot);
 
         while self.cmd_is_active(Cmds::Screenshot) {
             self.sdl.delay_ms(1);
@@ -729,7 +729,7 @@ impl crate::Data<'_> {
 
         let mut used_tiles: [i8; NOISE_TILES as usize / 2 + 1] = [-1; NOISE_TILES as usize / 2 + 1];
         // let's go
-        self.play_sound(SoundType::WhiteNoise as i32);
+        self.play_sound(SoundType::WhiteNoise);
 
         let now = self.sdl.ticks_ms();
 

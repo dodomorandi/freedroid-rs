@@ -86,15 +86,15 @@ pub struct Sound<'a> {
 
 impl crate::Data<'_> {
     pub fn cry_sound(&self) {
-        self.play_sound(SoundType::Cry as i32);
+        self.play_sound(SoundType::Cry);
     }
 
     pub fn transfer_sound(&self) {
-        self.play_sound(SoundType::Transfer as i32);
+        self.play_sound(SoundType::Transfer);
     }
 
     #[inline]
-    pub fn play_sound(&self, tune: i32) {
+    pub fn play_sound(&self, tune: SoundType) {
         Self::play_sound_static(
             self.main.sound_on,
             self.sdl,
@@ -103,16 +103,15 @@ impl crate::Data<'_> {
         );
     }
 
-    pub fn play_sound_static(sound_on: i32, sdl: &Sdl, sound: &Sound, tune: i32) {
+    pub fn play_sound_static(sound_on: i32, sdl: &Sdl, sound: &Sound, tune: SoundType) {
         if sound_on == 0 {
             return;
         }
 
         let mixer = sdl.mixer.get().unwrap();
-        let tune = usize::try_from(tune).unwrap();
         let newest_sound_channel = mixer.play_channel_timed(
             None,
-            sound.loaded_wav_files[tune].as_ref().unwrap(),
+            sound.loaded_wav_files[tune.to_usize()].as_ref().unwrap(),
             Some(0),
             None,
         );
@@ -121,13 +120,13 @@ impl crate::Data<'_> {
             warn!(
                 "Could not play sound-sample: {} Error: {}.\
                  This usually just means that too many samples where played at the same time",
-                SOUND_SAMPLE_FILENAMES[tune],
+                SOUND_SAMPLE_FILENAMES[tune.to_usize()],
                 err.to_string_lossy(),
             );
         } else {
             info!(
                 "Successfully playing file {}.",
-                SOUND_SAMPLE_FILENAMES[tune]
+                SOUND_SAMPLE_FILENAMES[tune.to_usize()]
             );
         };
     }
@@ -137,7 +136,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        self.play_sound(SoundType::TakeoverSetCapsule as i32);
+        self.play_sound(SoundType::TakeoverSetCapsule);
     }
 
     pub fn takeover_game_won_sound(&self) {
@@ -145,7 +144,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        self.play_sound(SoundType::TakeoverGameWon as i32);
+        self.play_sound(SoundType::TakeoverGameWon);
     }
 
     pub fn takeover_game_deadlock_sound(&self) {
@@ -153,7 +152,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        self.play_sound(SoundType::TakeoverGameDeadlock as i32);
+        self.play_sound(SoundType::TakeoverGameDeadlock);
     }
 
     pub fn takeover_game_lost_sound(&self) {
@@ -161,7 +160,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        self.play_sound(SoundType::TakeoverGameLost as i32);
+        self.play_sound(SoundType::TakeoverGameLost);
     }
 
     pub fn collision_got_damaged_sound(&self) {
@@ -169,7 +168,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        self.play_sound(SoundType::CollisionGotDamaged as i32);
+        self.play_sound(SoundType::CollisionGotDamaged);
     }
 
     pub fn collision_damaged_enemy_sound(&self) {
@@ -177,7 +176,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        self.play_sound(SoundType::CollisionDamagedEnemy as i32);
+        self.play_sound(SoundType::CollisionDamagedEnemy);
     }
 
     pub fn bounce_sound(&self) {
@@ -185,7 +184,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        self.play_sound(SoundType::Collision as i32);
+        self.play_sound(SoundType::Collision);
     }
 
     pub fn druid_blast_sound(&self) {
@@ -193,7 +192,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        self.play_sound(SoundType::Blast as i32);
+        self.play_sound(SoundType::Blast);
     }
 
     pub fn got_hit_sound(&self) {
@@ -201,7 +200,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        self.play_sound(SoundType::GotHit as i32);
+        self.play_sound(SoundType::GotHit);
     }
 
     pub fn got_into_blast_sound(&self) {
@@ -209,7 +208,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        self.play_sound(SoundType::GotIntoBlast as i32);
+        self.play_sound(SoundType::GotIntoBlast);
     }
 
     pub fn refresh_sound(&self) {
@@ -217,7 +216,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        self.play_sound(SoundType::Refresh as i32);
+        self.play_sound(SoundType::Refresh);
     }
 
     #[inline]
@@ -230,7 +229,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        Self::play_sound_static(sound_on, sdl, sound, SoundType::MoveElevator as i32);
+        Self::play_sound_static(sound_on, sdl, sound, SoundType::MoveElevator);
     }
 
     pub fn menu_item_selected_sound(&self) {
@@ -238,7 +237,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        self.play_sound(SoundType::MenuItemSelected as i32);
+        self.play_sound(SoundType::MenuItemSelected);
     }
 
     pub fn move_menu_position_sound(&self) {
@@ -246,7 +245,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        self.play_sound(SoundType::MoveMenuPosition as i32);
+        self.play_sound(SoundType::MoveMenuPosition);
     }
 
     pub fn thou_art_defeated_sound(&self) {
@@ -254,7 +253,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        self.play_sound(SoundType::ThouArtDefeated as i32);
+        self.play_sound(SoundType::ThouArtDefeated);
     }
 
     pub fn enter_lift_sound(&self) {
@@ -262,7 +261,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        self.play_sound(SoundType::EnterElevator as i32);
+        self.play_sound(SoundType::EnterElevator);
     }
 
     pub fn leave_lift_sound(&self) {
@@ -270,7 +269,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        self.play_sound(SoundType::LeaveElevator as i32);
+        self.play_sound(SoundType::LeaveElevator);
     }
 }
 
@@ -293,12 +292,12 @@ impl<'sdl> crate::Data<'sdl> {
         };
 
         match bullet_type {
-            K::Pulse => self.play_sound(SoundType::FireBulletPulse as i32),
-            K::SinglePulse => self.play_sound(SoundType::FireBulletSinglePulse as i32),
-            K::Military => self.play_sound(SoundType::FireBulletMilitary as i32),
-            K::Flash => self.play_sound(SoundType::FireBulletFlash as i32),
-            K::Exterminator => self.play_sound(SoundType::FireBulletExterminator as i32),
-            K::LaserRifle => self.play_sound(SoundType::FireBulletLaserRifle as i32),
+            K::Pulse => self.play_sound(SoundType::FireBulletPulse),
+            K::SinglePulse => self.play_sound(SoundType::FireBulletSinglePulse),
+            K::Military => self.play_sound(SoundType::FireBulletMilitary),
+            K::Flash => self.play_sound(SoundType::FireBulletFlash),
+            K::Exterminator => self.play_sound(SoundType::FireBulletExterminator),
+            K::LaserRifle => self.play_sound(SoundType::FireBulletLaserRifle),
         }
     }
 
@@ -392,11 +391,11 @@ impl<'sdl> crate::Data<'sdl> {
     }
 
     pub fn countdown_sound(&self) {
-        self.play_sound(SoundType::Countdown as i32);
+        self.play_sound(SoundType::Countdown);
     }
 
     pub fn end_countdown_sound(&self) {
-        self.play_sound(SoundType::Endcountdown as i32);
+        self.play_sound(SoundType::Endcountdown);
     }
 
     pub fn set_bg_music_volume(&self, new_volume: f32) {

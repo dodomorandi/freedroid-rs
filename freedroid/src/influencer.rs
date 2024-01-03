@@ -231,7 +231,7 @@ impl crate::Data<'_> {
             }
         }
 
-        self.play_sound(SoundType::Influexplosion as i32);
+        self.play_sound(SoundType::Influexplosion);
     }
 
     /// This function checks for collisions of the influencer with walls,

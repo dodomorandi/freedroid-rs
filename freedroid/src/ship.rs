@@ -76,7 +76,7 @@ impl crate::Data<'_> {
                     > (SIREN_WAIT * 1000.0 / (self.main.alert_level as f32)) as u32
                 {
                     // higher alert-> faster sirens!
-                    self.play_sound(SoundType::Alert as i32);
+                    self.play_sound(SoundType::Alert);
                     self.ship.last_siren = self.sdl.ticks_ms();
                 }
 

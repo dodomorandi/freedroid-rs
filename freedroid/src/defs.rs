@@ -597,6 +597,14 @@ pub enum SoundType {
     All, // marks the last entry always!
 }
 
+impl SoundType {
+    #[inline]
+    #[must_use]
+    pub const fn to_usize(self) -> usize {
+        self as usize
+    }
+}
+
 // choose background music by level-color:
 // if filename_raw==BYCOLOR then chose bg_music[color]
 pub const BYCOLOR: &[u8] = b"BYCOLOR";
