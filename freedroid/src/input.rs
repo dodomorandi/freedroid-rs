@@ -61,7 +61,7 @@ pub struct Input {
     wheel_down_events: i32,
     pub last_mouse_event: u32,
     current_modifiers: SDLMod,
-    input_state: [InputState; PointerStates::Last as usize],
+    input_state: [InputState; PointerStates::Last.to_usize()],
     pub joy: Option<Joystick>,
     pub joy_sensitivity: i32,
     // joystick (and mouse) axis values
@@ -74,17 +74,18 @@ pub struct Input {
 }
 
 #[cfg(not(target_os = "android"))]
-pub const KEY_STRINGS: [Option<&'static CStr>; PointerStates::Last as usize] = create_key_strings();
+pub const KEY_STRINGS: [Option<&'static CStr>; PointerStates::Last.to_usize()] =
+    create_key_strings();
 
 #[cfg(not(target_os = "android"))]
 #[allow(clippy::too_many_lines)]
-const fn create_key_strings() -> [Option<&'static CStr>; PointerStates::Last as usize] {
-    let mut out = [None; PointerStates::Last as usize];
+const fn create_key_strings() -> [Option<&'static CStr>; PointerStates::Last.to_usize()] {
+    let mut out = [None; PointerStates::Last.to_usize()];
 
     macro_rules! set_out {
         ($(ps::$key:ident = $str:literal);+ $(;)?) => {
             $(
-                out[PointerStates::$key as usize] = Some(cstr!($str));
+                out[PointerStates::$key.to_usize()] = Some(cstr!($str));
             )+
         };
 

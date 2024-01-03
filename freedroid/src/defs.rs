@@ -73,6 +73,12 @@ impl PointerStates {
     pub const fn to_u16(self) -> u16 {
         self as u16
     }
+
+    #[inline]
+    #[must_use]
+    pub const fn to_usize(self) -> usize {
+        self as usize
+    }
 }
 
 //--------------------------------------------------
