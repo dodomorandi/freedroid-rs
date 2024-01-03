@@ -11,7 +11,7 @@ use crate::{
 use cstr::cstr;
 use log::info;
 use sdl::{
-    convert::{i32_to_u8, u32_to_i32},
+    convert::{i32_to_u8, u32_to_u16},
     event::{self, KeyboardEventType},
     Event, Joystick,
 };
@@ -70,7 +70,7 @@ pub struct Input {
     pub joy_num_axes: u16,
     // is firing to use axis-values or not
     pub axis_is_active: i32,
-    pub key_cmds: [[i32; 3]; Cmds::Last as usize],
+    pub key_cmds: [[u16; 3]; Cmds::Last as usize],
 }
 
 #[cfg(not(target_os = "android"))]
@@ -344,107 +344,107 @@ impl Default for Input {
 }
 
 #[cfg(feature = "gcw0")]
-fn default_key_cmds() -> [[i32; 3]; Cmds::Last as usize] {
+fn default_key_cmds() -> [[u16; 3]; Cmds::Last as usize] {
     [
-        [u32_to_i32(SDLKey_SDLK_UP), PointerStates::JoyUp as i32, 0], // CMD_UP
+        [u32_to_u16(SDLKey_SDLK_UP), PointerStates::JoyUp.to_u16(), 0], // CMD_UP
         [
-            u32_to_i32(SDLKey_SDLK_DOWN),
-            PointerStates::JoyDown as i32,
+            u32_to_u16(SDLKey_SDLK_DOWN),
+            PointerStates::JoyDown.to_u16(),
             0,
         ], // CMD_DOWN
         [
-            u32_to_i32(SDLKey_SDLK_LEFT),
-            PointerStates::JoyLeft as i32,
+            u32_to_u16(SDLKey_SDLK_LEFT),
+            PointerStates::JoyLeft.to_u16(),
             0,
         ], // CMD_LEFT
         [
-            u32_to_i32(SDLKey_SDLK_RIGHT),
-            PointerStates::JoyRight as i32,
+            u32_to_u16(SDLKey_SDLK_RIGHT),
+            PointerStates::JoyRight.to_u16(),
             0,
         ], // CMD_RIGHT
         [
-            u32_to_i32(SDLKey_SDLK_SPACE),
-            u32_to_i32(SDLKey_SDLK_LCTRL),
+            u32_to_u16(SDLKey_SDLK_SPACE),
+            u32_to_u16(SDLKey_SDLK_LCTRL),
             0,
         ], // CMD_FIRE
         [
-            u32_to_i32(SDLKey_SDLK_LALT),
-            PointerStates::JoyButton2 as i32,
+            u32_to_u16(SDLKey_SDLK_LALT),
+            PointerStates::JoyButton2.to_u16(),
             0,
         ], // CMD_ACTIVATE
         [
-            u32_to_i32(SDLKey_SDLK_BACKSPACE),
-            u32_to_i32(SDLKey_SDLK_TAB),
+            u32_to_u16(SDLKey_SDLK_BACKSPACE),
+            u32_to_u16(SDLKey_SDLK_TAB),
             0,
         ], // CMD_TAKEOVER
-        [0, 0, 0],                                                    // CMD_QUIT,
-        [u32_to_i32(SDLKey_SDLK_RETURN), 0, 0],                       // CMD_PAUSE,
-        [0, 0, 0],                                                    // CMD_SCREENSHOT
-        [0, 0, 0],                                                    // CMD_FULLSCREEN,
+        [0, 0, 0],                                                      // CMD_QUIT,
+        [u32_to_u16(SDLKey_SDLK_RETURN), 0, 0],                         // CMD_PAUSE,
+        [0, 0, 0],                                                      // CMD_SCREENSHOT
+        [0, 0, 0],                                                      // CMD_FULLSCREEN,
         [
-            u32_to_i32(SDLKey_SDLK_ESCAPE),
-            PointerStates::JoyButton4 as i32,
+            u32_to_u16(SDLKey_SDLK_ESCAPE),
+            PointerStates::JoyButton4.to_u16(),
             0,
         ], // CMD_MENU,
         [
-            u32_to_i32(SDLKey_SDLK_ESCAPE),
-            PointerStates::JoyButton2 as i32,
-            PointerStates::MouseButton2 as i32,
+            u32_to_u16(SDLKey_SDLK_ESCAPE),
+            PointerStates::JoyButton2.to_u16(),
+            PointerStates::MouseButton2.to_u16(),
         ], // CMD_BACK
     ]
 }
 
 #[cfg(not(feature = "gcw0"))]
-fn default_key_cmds() -> [[i32; 3]; Cmds::Last as usize] {
+fn default_key_cmds() -> [[u16; 3]; Cmds::Last as usize] {
     [
         [
-            u32_to_i32(SDLKey_SDLK_UP),
-            PointerStates::JoyUp as i32,
-            i32::from(b'w'),
+            u32_to_u16(SDLKey_SDLK_UP),
+            PointerStates::JoyUp.to_u16(),
+            b'w'.into(),
         ], // CMD_UP
         [
-            u32_to_i32(SDLKey_SDLK_DOWN),
-            PointerStates::JoyDown as i32,
-            i32::from(b's'),
+            u32_to_u16(SDLKey_SDLK_DOWN),
+            PointerStates::JoyDown.to_u16(),
+            b's'.into(),
         ], // CMD_DOWN
         [
-            u32_to_i32(SDLKey_SDLK_LEFT),
-            PointerStates::JoyLeft as i32,
-            i32::from(b'a'),
+            u32_to_u16(SDLKey_SDLK_LEFT),
+            PointerStates::JoyLeft.to_u16(),
+            b'a'.into(),
         ], // CMD_LEFT
         [
-            u32_to_i32(SDLKey_SDLK_RIGHT),
-            PointerStates::JoyRight as i32,
-            i32::from(b'd'),
+            u32_to_u16(SDLKey_SDLK_RIGHT),
+            PointerStates::JoyRight.to_u16(),
+            b'd'.into(),
         ], // CMD_RIGHT
         [
-            u32_to_i32(SDLKey_SDLK_SPACE),
-            PointerStates::JoyButton1 as i32,
-            PointerStates::MouseButton1 as i32,
+            u32_to_u16(SDLKey_SDLK_SPACE),
+            PointerStates::JoyButton1.to_u16(),
+            PointerStates::MouseButton1.to_u16(),
         ], // CMD_FIRE
         [
-            u32_to_i32(SDLKey_SDLK_RETURN),
-            u32_to_i32(SDLKey_SDLK_RSHIFT),
-            i32::from(b'e'),
+            u32_to_u16(SDLKey_SDLK_RETURN),
+            u32_to_u16(SDLKey_SDLK_RSHIFT),
+            b'e'.into(),
         ], // CMD_ACTIVATE
         [
-            u32_to_i32(SDLKey_SDLK_SPACE),
-            PointerStates::JoyButton2 as i32,
-            PointerStates::MouseButton2 as i32,
+            u32_to_u16(SDLKey_SDLK_SPACE),
+            PointerStates::JoyButton2.to_u16(),
+            PointerStates::MouseButton2.to_u16(),
         ], // CMD_TAKEOVER
-        [i32::from(b'q'), 0, 0],                             // CMD_QUIT,
-        [u32_to_i32(SDLKey_SDLK_PAUSE), i32::from(b'p'), 0], // CMD_PAUSE,
-        [u32_to_i32(SDLKey_SDLK_F12), 0, 0],                 // CMD_SCREENSHOT
-        [i32::from(b'f'), 0, 0],                             // CMD_FULLSCREEN,
+        [b'q'.into(), 0, 0],                             // CMD_QUIT,
+        [u32_to_u16(SDLKey_SDLK_PAUSE), b'p'.into(), 0], // CMD_PAUSE,
+        [u32_to_u16(SDLKey_SDLK_F12), 0, 0],             // CMD_SCREENSHOT
+        [b'f'.into(), 0, 0],                             // CMD_FULLSCREEN,
         [
-            u32_to_i32(SDLKey_SDLK_ESCAPE),
-            PointerStates::JoyButton4 as i32,
+            u32_to_u16(SDLKey_SDLK_ESCAPE),
+            PointerStates::JoyButton4.to_u16(),
             0,
         ], // CMD_MENU,
         [
-            u32_to_i32(SDLKey_SDLK_ESCAPE),
-            PointerStates::JoyButton2 as i32,
-            PointerStates::MouseButton2 as i32,
+            u32_to_u16(SDLKey_SDLK_ESCAPE),
+            PointerStates::JoyButton2.to_u16(),
+            PointerStates::MouseButton2.to_u16(),
         ], // CMD_BACK
     ]
 }
@@ -469,7 +469,7 @@ pub const CURSOR_KEEP_VISIBLE: u32 = 3000; // ticks to keep mouse-cursor visible
 
 impl crate::Data<'_> {
     /// Check if any keys have been 'freshly' pressed. If yes, return key-code, otherwise 0.
-    pub fn wait_for_key_pressed(&mut self) -> i32 {
+    pub fn wait_for_key_pressed(&mut self) -> u16 {
         loop {
             match self.any_key_just_pressed() {
                 0 => self.sdl.delay_ms(1),
@@ -478,7 +478,7 @@ impl crate::Data<'_> {
         }
     }
 
-    pub fn any_key_just_pressed(&mut self) -> i32 {
+    pub fn any_key_just_pressed(&mut self) -> u16 {
         let Self {
             sdl,
             input,
@@ -505,20 +505,18 @@ impl crate::Data<'_> {
         vars: &Vars,
         quit: &Cell<bool>,
         #[cfg(target_os = "android")] graphics: &mut Graphics<'_>,
-    ) -> i32 {
+    ) -> u16 {
         #[cfg(target_os = "android")]
         assert!(graphics.ne_screen.as_mut().unwrap().flip());
 
         Self::update_input_static(sdl, input, vars, quit);
 
-        #[allow(clippy::cast_sign_loss)]
-        let pressed_key = (0..PointerStates::Last as i32)
-            .find(|&key| input.input_state[key as usize].is_just_pressed());
+        let pressed_key = (0..PointerStates::Last.to_u16())
+            .find(|&key| input.input_state[usize::from(key)].is_just_pressed());
 
-        #[allow(clippy::cast_sign_loss)]
         match pressed_key {
             Some(key) => {
-                input.input_state[key as usize].fresh = false;
+                input.input_state[usize::from(key)].fresh = false;
                 key
             }
             None => 0,
@@ -569,7 +567,7 @@ impl crate::Data<'_> {
         0
     }
 
-    pub fn key_is_pressed(&mut self, key: i32) -> bool {
+    pub fn key_is_pressed(&mut self, key: u16) -> bool {
         let Self {
             sdl,
             input,
@@ -586,15 +584,15 @@ impl crate::Data<'_> {
         input: &mut Input,
         vars: &Vars,
         quit: &Cell<bool>,
-        key: i32,
+        key: u16,
     ) -> bool {
         Self::update_input_static(sdl, input, vars, quit);
 
-        input.input_state[usize::try_from(key).unwrap()].is_just_pressed()
+        input.input_state[usize::from(key)].is_just_pressed()
     }
 
     /// Does the same as `KeyIsPressed`, but automatically releases the key as well..
-    pub fn key_is_pressed_r(&mut self, key: i32) -> bool {
+    pub fn key_is_pressed_r(&mut self, key: u16) -> bool {
         let Self {
             sdl,
             input,
@@ -611,7 +609,7 @@ impl crate::Data<'_> {
         input: &mut Input,
         vars: &Vars,
         quit: &Cell<bool>,
-        key: i32,
+        key: u16,
     ) -> bool {
         let ret = Self::key_is_pressed_static(sdl, input, vars, quit, key);
 
@@ -909,7 +907,7 @@ impl Input {
         self.wheel_down_events = 0;
     }
 
-    pub fn release_key(&mut self, key: i32) {
+    pub fn release_key(&mut self, key: u16) {
         self.input_state[usize::try_from(key).unwrap()].set_released();
     }
 }

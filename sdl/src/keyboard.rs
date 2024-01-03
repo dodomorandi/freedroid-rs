@@ -582,6 +582,12 @@ impl Key {
             _ => return Err(InvalidKey),
         })
     }
+
+    #[inline]
+    #[must_use]
+    pub const fn to_u16(self) -> u16 {
+        self as u16
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, thiserror::Error)]

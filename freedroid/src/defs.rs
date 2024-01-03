@@ -2,7 +2,7 @@ use crate::{input::Input, structs::Point, vars::Vars, Sdl};
 
 use bitflags::bitflags;
 use cstr::cstr;
-use sdl::convert::{u32_to_i32, u32_to_isize};
+use sdl::convert::{u32_to_isize, u32_to_u16};
 #[cfg(feature = "gcw0")]
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_LALT, SDLKey_SDLK_LCTRL, SDLKey_SDLK_LSHIFT, SDLKey_SDLK_TAB,
@@ -67,6 +67,14 @@ pub enum PointerStates {
     Last,
 }
 
+impl PointerStates {
+    #[inline]
+    #[must_use]
+    pub const fn to_u16(self) -> u16 {
+        self as u16
+    }
+}
+
 //--------------------------------------------------
 // here come the actual game-"commands"
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -92,7 +100,7 @@ pub enum Cmds {
 impl crate::Data<'_> {
     #[inline]
     pub fn return_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_RETURN))
+        self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_RETURN))
     }
 
     #[inline]
@@ -113,24 +121,24 @@ impl crate::Data<'_> {
     #[cfg(not(target_os = "android"))]
     #[inline]
     pub fn mouse_left_pressed(&mut self) -> bool {
-        self.key_is_pressed(PointerStates::MouseButton1 as i32)
+        self.key_is_pressed(PointerStates::MouseButton1.to_u16())
     }
 
     #[inline]
     pub fn mouse_left_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(PointerStates::MouseButton1 as i32)
+        self.key_is_pressed_r(PointerStates::MouseButton1.to_u16())
     }
 
     #[cfg(not(target_os = "android"))]
     #[inline]
     pub fn space_pressed(&mut self) -> bool {
-        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_SPACE))
+        self.key_is_pressed(u32_to_u16(SDLKey_SDLK_SPACE))
     }
 
     #[cfg(not(target_os = "android"))]
     #[inline]
     pub fn escape_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_ESCAPE))
+        self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_ESCAPE))
     }
 
     #[inline]
@@ -222,49 +230,49 @@ impl crate::Data<'_> {
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_a_pressed(&mut self) -> bool {
-        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_LCTRL))
+        self.key_is_pressed(u32_to_u16(SDLKey_SDLK_LCTRL))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_b_pressed(&mut self) -> bool {
-        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_LALT))
+        self.key_is_pressed(u32_to_u16(SDLKey_SDLK_LALT))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_x_pressed(&mut self) -> bool {
-        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_LSHIFT))
+        self.key_is_pressed(u32_to_u16(SDLKey_SDLK_LSHIFT))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_y_pressed(&mut self) -> bool {
-        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_SPACE))
+        self.key_is_pressed(u32_to_u16(SDLKey_SDLK_SPACE))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_rs_pressed(&mut self) -> bool {
-        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_BACKSPACE))
+        self.key_is_pressed(u32_to_u16(SDLKey_SDLK_BACKSPACE))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_ls_pressed(&mut self) -> bool {
-        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_TAB))
+        self.key_is_pressed(u32_to_u16(SDLKey_SDLK_TAB))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_start_pressed(&mut self) -> bool {
-        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_RETURN))
+        self.key_is_pressed(u32_to_u16(SDLKey_SDLK_RETURN))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_select_pressed(&mut self) -> bool {
-        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_ESCAPE))
+        self.key_is_pressed(u32_to_u16(SDLKey_SDLK_ESCAPE))
     }
 
     #[cfg(feature = "gcw0")]
@@ -283,49 +291,49 @@ impl crate::Data<'_> {
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_a_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_LCTRL))
+        self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_LCTRL))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_b_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_LALT))
+        self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_LALT))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_x_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_LSHIFT))
+        self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_LSHIFT))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_y_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_SPACE))
+        self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_SPACE))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_rs_pressed_r(&mut self) -> bool {
-        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_BACKSPACE))
+        self.key_is_pressed(u32_to_u16(SDLKey_SDLK_BACKSPACE))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_ls_pressed_r(&mut self) -> bool {
-        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_TAB))
+        self.key_is_pressed(u32_to_u16(SDLKey_SDLK_TAB))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_start_pressed_r(&mut self) -> bool {
-        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_RETURN))
+        self.key_is_pressed(u32_to_u16(SDLKey_SDLK_RETURN))
     }
 
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_select_pressed_r(&mut self) -> bool {
-        self.key_is_pressed(u32_to_i32(SDLKey_SDLK_ESCAPE))
+        self.key_is_pressed(u32_to_u16(SDLKey_SDLK_ESCAPE))
     }
 
     #[cfg(feature = "gcw0")]

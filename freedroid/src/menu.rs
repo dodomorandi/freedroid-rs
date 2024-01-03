@@ -20,7 +20,7 @@ use crate::{
 };
 
 use cstr::cstr;
-use sdl::{convert::u32_to_i32, Surface};
+use sdl::{convert::u32_to_u16, Surface};
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT,
     SDLKey_SDLK_RIGHT, SDLKey_SDLK_UP,
@@ -378,12 +378,12 @@ impl<'sdl> crate::Data<'sdl> {
         let mut action = MenuAction::empty();
 
         // 'normal' menu action keys get released
-        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_BACKSPACE)) {
+        if self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_BACKSPACE)) {
             {
                 action = MenuAction::DELETE;
             }
         }
-        if self.cmd_is_active_r(Cmds::Back) || self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_ESCAPE))
+        if self.cmd_is_active_r(Cmds::Back) || self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_ESCAPE))
         {
             {
                 action = MenuAction::BACK;
@@ -398,44 +398,44 @@ impl<'sdl> crate::Data<'sdl> {
 
         // we register if there have been key-press events in the "waiting period" between move-ticks
         if !self.menu.menu_action_directions.up
-            && (self.up_pressed() || self.key_is_pressed(u32_to_i32(SDLKey_SDLK_UP)))
+            && (self.up_pressed() || self.key_is_pressed(u32_to_u16(SDLKey_SDLK_UP)))
         {
             self.menu.menu_action_directions.up = true;
             self.menu.last_movekey_time = self.sdl.ticks_ms();
             action |= MenuAction::UP;
         }
         if !self.menu.menu_action_directions.down
-            && (self.down_pressed() || self.key_is_pressed(u32_to_i32(SDLKey_SDLK_DOWN)))
+            && (self.down_pressed() || self.key_is_pressed(u32_to_u16(SDLKey_SDLK_DOWN)))
         {
             self.menu.menu_action_directions.down = true;
             self.menu.last_movekey_time = self.sdl.ticks_ms();
             action |= MenuAction::DOWN;
         }
         if !self.menu.menu_action_directions.left
-            && (self.left_pressed() || self.key_is_pressed(u32_to_i32(SDLKey_SDLK_LEFT)))
+            && (self.left_pressed() || self.key_is_pressed(u32_to_u16(SDLKey_SDLK_LEFT)))
         {
             self.menu.menu_action_directions.left = true;
             self.menu.last_movekey_time = self.sdl.ticks_ms();
             action |= MenuAction::LEFT;
         }
         if !self.menu.menu_action_directions.right
-            && (self.right_pressed() || self.key_is_pressed(u32_to_i32(SDLKey_SDLK_RIGHT)))
+            && (self.right_pressed() || self.key_is_pressed(u32_to_u16(SDLKey_SDLK_RIGHT)))
         {
             self.menu.menu_action_directions.right = true;
             self.menu.last_movekey_time = self.sdl.ticks_ms();
             action |= MenuAction::RIGHT;
         }
 
-        if !(self.up_pressed() || self.key_is_pressed(u32_to_i32(SDLKey_SDLK_UP))) {
+        if !(self.up_pressed() || self.key_is_pressed(u32_to_u16(SDLKey_SDLK_UP))) {
             self.menu.menu_action_directions.up = false;
         }
-        if !(self.down_pressed() || self.key_is_pressed(u32_to_i32(SDLKey_SDLK_DOWN))) {
+        if !(self.down_pressed() || self.key_is_pressed(u32_to_u16(SDLKey_SDLK_DOWN))) {
             self.menu.menu_action_directions.down = false;
         }
-        if !(self.left_pressed() || self.key_is_pressed(u32_to_i32(SDLKey_SDLK_LEFT))) {
+        if !(self.left_pressed() || self.key_is_pressed(u32_to_u16(SDLKey_SDLK_LEFT))) {
             self.menu.menu_action_directions.left = false;
         }
-        if !(self.right_pressed() || self.key_is_pressed(u32_to_i32(SDLKey_SDLK_RIGHT))) {
+        if !(self.right_pressed() || self.key_is_pressed(u32_to_u16(SDLKey_SDLK_RIGHT))) {
             self.menu.menu_action_directions.right = false;
         }
 

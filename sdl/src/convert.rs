@@ -1,6 +1,19 @@
 use std::mem;
 
 #[must_use]
+pub const fn u32_to_u16(value: u32) -> u16 {
+    assert!(
+        value <= u16::MAX as u32,
+        "u32 too big to being converted to u16"
+    );
+
+    // Checked above
+    #[allow(clippy::cast_possible_truncation)]
+    let value = value as u16;
+    value
+}
+
+#[must_use]
 pub const fn u32_to_u8(value: u32) -> u8 {
     assert!(
         value <= u8::MAX as u32,

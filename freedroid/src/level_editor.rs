@@ -10,7 +10,7 @@ use crate::{
 
 use log::{info, warn};
 use nom::Finish;
-use sdl::{convert::u32_to_i32, Pixel};
+use sdl::{convert::u32_to_u16, Pixel};
 use sdl_sys::{
     SDLKey_SDLK_F1, SDLKey_SDLK_KP0, SDLKey_SDLK_KP1, SDLKey_SDLK_KP2, SDLKey_SDLK_KP3,
     SDLKey_SDLK_KP4, SDLKey_SDLK_KP5, SDLKey_SDLK_KP6, SDLKey_SDLK_KP7, SDLKey_SDLK_KP8,
@@ -433,57 +433,57 @@ impl crate::Data<'_> {
         if self.key_is_pressed_r(b'l'.into()) {
             map_tile = Some(MapTile::Lift);
         }
-        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP_PLUS)) {
+        if self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_KP_PLUS)) {
             map_tile = Some(MapTile::VWall);
         }
-        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP0)) {
+        if self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_KP0)) {
             map_tile = Some(MapTile::HWall);
         }
-        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP1)) {
+        if self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_KP1)) {
             map_tile = Some(MapTile::EckLu);
         }
-        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP2)) {
+        if self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_KP2)) {
             if self.shift_pressed() {
                 map_tile = Some(MapTile::KonsoleU);
             } else {
                 map_tile = Some(MapTile::Tu);
             }
         }
-        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP3)) {
+        if self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_KP3)) {
             map_tile = Some(MapTile::EckRu);
         }
-        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP4)) {
+        if self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_KP4)) {
             if self.shift_pressed() {
                 map_tile = Some(MapTile::KonsoleL);
             } else {
                 map_tile = Some(MapTile::Tl);
             }
         }
-        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP5)) {
+        if self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_KP5)) {
             if self.shift_pressed() {
                 map_tile = Some(MapTile::Void);
             } else {
                 map_tile = Some(MapTile::Kreuz);
             }
         }
-        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP6)) {
+        if self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_KP6)) {
             if self.shift_pressed() {
                 map_tile = Some(MapTile::KonsoleR);
             } else {
                 map_tile = Some(MapTile::Tr);
             }
         }
-        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP7)) {
+        if self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_KP7)) {
             map_tile = Some(MapTile::EckLo);
         }
-        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP8)) {
+        if self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_KP8)) {
             if self.shift_pressed() {
                 map_tile = Some(MapTile::KonsoleO);
             } else {
                 map_tile = Some(MapTile::To);
             }
         }
-        if self.key_is_pressed_r(u32_to_i32(SDLKey_SDLK_KP9)) {
+        if self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_KP9)) {
             map_tile = Some(MapTile::EckRo);
         }
         if self.key_is_pressed_r(b'm'.into()) {

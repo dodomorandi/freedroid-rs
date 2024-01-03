@@ -250,7 +250,7 @@ impl crate::Data<'_> {
     /// Should do roughly what getchar() does, but in raw (SLD) keyboard mode.
     ///
     /// Return the `SDLKey` of the next key-pressed event cast to
-    pub fn getchar_raw(&mut self) -> i32 {
+    pub fn getchar_raw(&mut self) -> u16 {
         let mut return_key = 0;
 
         loop {
@@ -261,9 +261,9 @@ impl crate::Data<'_> {
                      * "The keyboard syms have been cleverly chosen to map to ASCII"
                      * ... I hope that this design feature is portable, and durable ;)
                      */
-                    return_key = event.keysym.symbol as i32;
+                    return_key = event.keysym.symbol.to_u16();
                     if event.keysym.mod_.is_shift() {
-                        return_key = u8::try_from(event.keysym.symbol as isize)
+                        return_key = u8::try_from(event.keysym.symbol.to_u16())
                             .unwrap()
                             .to_ascii_uppercase()
                             .into();
@@ -272,13 +272,13 @@ impl crate::Data<'_> {
 
                 Event::JoyButton(event) if matches!(event.ty, JoyButtonEventType::Down) => {
                     if event.button == 0 {
-                        return_key = PointerStates::JoyButton1 as i32;
+                        return_key = PointerStates::JoyButton1.to_u16();
                     } else if event.button == 1 {
-                        return_key = PointerStates::JoyButton2 as i32;
+                        return_key = PointerStates::JoyButton2.to_u16();
                     } else if event.button == 2 {
-                        return_key = PointerStates::JoyButton3 as i32;
+                        return_key = PointerStates::JoyButton3.to_u16();
                     } else if event.button == 3 {
-                        return_key = PointerStates::JoyButton4 as i32;
+                        return_key = PointerStates::JoyButton4.to_u16();
                     }
                 }
 
@@ -290,32 +290,32 @@ impl crate::Data<'_> {
                         if self.input.joy_sensitivity * i32::from(event.value) > 10000
                         /* about half tilted */
                         {
-                            return_key = PointerStates::JoyRight as i32;
+                            return_key = PointerStates::JoyRight.to_u16();
                         } else if self.input.joy_sensitivity * i32::from(event.value) < -10000 {
-                            return_key = PointerStates::JoyLeft as i32;
+                            return_key = PointerStates::JoyLeft.to_u16();
                         }
                     } else if (axis == 1) || ((self.input.joy_num_axes >= 5) && (axis == 4))
                     /* y-axis */
                     {
                         if self.input.joy_sensitivity * i32::from(event.value) > 10000 {
-                            return_key = PointerStates::JoyDown as i32;
+                            return_key = PointerStates::JoyDown.to_u16();
                         } else if self.input.joy_sensitivity * i32::from(event.value) < -10000 {
-                            return_key = PointerStates::JoyUp as i32;
+                            return_key = PointerStates::JoyUp.to_u16();
                         }
                     }
                 }
 
                 Event::MouseButton(event) if matches!(event.ty, MouseButtonEventType::Down) => {
                     if event.button == i32_to_u8(SDL_BUTTON_LEFT) {
-                        return_key = PointerStates::MouseButton1 as i32;
+                        return_key = PointerStates::MouseButton1.to_u16();
                     } else if event.button == i32_to_u8(SDL_BUTTON_RIGHT) {
-                        return_key = PointerStates::MouseButton2 as i32;
+                        return_key = PointerStates::MouseButton2.to_u16();
                     } else if event.button == i32_to_u8(SDL_BUTTON_MIDDLE) {
-                        return_key = PointerStates::MouseButton3 as i32;
+                        return_key = PointerStates::MouseButton3.to_u16();
                     } else if event.button == i32_to_u8(SDL_BUTTON_WHEELUP) {
-                        return_key = PointerStates::MouseWheelup as i32;
+                        return_key = PointerStates::MouseWheelup.to_u16();
                     } else if event.button == i32_to_u8(SDL_BUTTON_WHEELDOWN) {
-                        return_key = PointerStates::MouseWheeldown as i32;
+                        return_key = PointerStates::MouseWheeldown.to_u16();
                     }
                 }
 
