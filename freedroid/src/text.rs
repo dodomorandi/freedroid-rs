@@ -140,10 +140,10 @@ impl crate::Data<'_> {
             #[cfg(feature = "arcade-input")]
             {
                 if inputchar < 0 {
-                    inputchar += ARCADE_INPUT_CHARS.len() as i32;
+                    inputchar += i32::try_from(ARCADE_INPUT_CHARS.len()).unwrap();
                 }
-                if inputchar >= ARCADE_INPUT_CHARS.len() as i32 {
-                    inputchar -= ARCADE_INPUT_CHARS.len() as i32;
+                if inputchar >= i32::try_from(ARCADE_INPUT_CHARS.len()).unwrap() {
+                    inputchar -= i32::try_from(ARCADE_INPUT_CHARS.len()).unwrap();
                 }
                 let key = ARCADE_INPUT_CHARS[usize::try_from(inputchar).unwrap()];
 
@@ -187,9 +187,7 @@ impl crate::Data<'_> {
                         // else if ... other functions to consider: SPACE
                         // Or any othe key we choose for the GCW0!
                         input[curpos] = empty_char;
-                        if curpos > 0 {
-                            curpos -= 1
-                        };
+                        curpos = curpos.saturating_sub(1);
                     }
                 }
             }
