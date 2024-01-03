@@ -800,10 +800,7 @@ impl<'sdl> crate::Data<'sdl> {
                         col,
                         start_y + (posy) * lheight,
                         "{}",
-                        KEY_STRINGS[usize::try_from(key_cmd).unwrap()]
-                            .unwrap()
-                            .to_str()
-                            .unwrap(),
+                        KEY_STRINGS[usize::from(key_cmd)].unwrap().to_str().unwrap(),
                     );
                 });
             posy += 1;

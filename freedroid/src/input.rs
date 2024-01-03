@@ -908,7 +908,7 @@ impl Input {
     }
 
     pub fn release_key(&mut self, key: u16) {
-        self.input_state[usize::try_from(key).unwrap()].set_released();
+        self.input_state[usize::from(key)].set_released();
     }
 }
 
