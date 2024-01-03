@@ -747,7 +747,7 @@ impl crate::Data<'_> {
             ..
         } = self;
 
-        Self::wait_for_all_keys_released_static(input, sdl, graphics)
+        Self::wait_for_all_keys_released_static(input, sdl, graphics);
     }
 
     #[cfg(not(target_os = "android"))]

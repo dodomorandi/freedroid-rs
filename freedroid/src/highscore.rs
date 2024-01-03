@@ -261,7 +261,9 @@ impl crate::Data<'_> {
         let date = format!("{}", chrono::Local::now().format("%Y/%m/%d"));
 
         #[cfg(target_os = "android")]
+        #[allow(clippy::cast_possible_truncation)]
         let new_entry = Entry::new("Player", score as i64, &*date);
+
         #[cfg(not(target_os = "android"))]
         #[allow(clippy::cast_possible_truncation)]
         let new_entry = Entry::new(
