@@ -1,4 +1,3 @@
-#![deny(unsafe_op_in_unsafe_fn)]
 #![allow(clippy::missing_panics_doc, clippy::missing_errors_doc)]
 
 pub mod convert;
