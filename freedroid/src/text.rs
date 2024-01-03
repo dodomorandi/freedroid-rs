@@ -32,7 +32,10 @@ use std::{
 };
 
 #[cfg(feature = "arcade-input")]
-const ARCADE_INPUT_CHARS: [i32; 70] = [
+const ARCADE_INPUT_CHARS_LEN: u8 = 70;
+
+#[cfg(feature = "arcade-input")]
+const ARCADE_INPUT_CHARS: [u8; ARCADE_INPUT_CHARS_LEN as usize] = [
     48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 61, 42, 43, 44, 45, 46, 47, 65, 66, 67, 68, 69, 70, 71,
     72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 32, 97, 98, 99,
     100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118,
@@ -167,16 +170,16 @@ impl crate::Data<'_> {
         const BLINK_TIME: u8 = 200; // For adjusting fast <->slow blink; in ms
 
         if *inputchar < 0 {
-            *inputchar += i32::try_from(ARCADE_INPUT_CHARS.len()).unwrap();
+            *inputchar += i32::from(ARCADE_INPUT_CHARS_LEN);
         }
-        if *inputchar >= i32::try_from(ARCADE_INPUT_CHARS.len()).unwrap() {
-            *inputchar -= i32::try_from(ARCADE_INPUT_CHARS.len()).unwrap();
+        if *inputchar >= i32::from(ARCADE_INPUT_CHARS_LEN) {
+            *inputchar -= i32::from(ARCADE_INPUT_CHARS_LEN);
         }
         let key = ARCADE_INPUT_CHARS[usize::try_from(*inputchar).unwrap()];
 
         let frame_duration = self.sdl.ticks_ms() - self.text.last_frame_time;
         if frame_duration > u32::from(BLINK_TIME / 2) {
-            input[*curpos] = key.try_into().unwrap(); // We want to show the currently chosen character
+            input[*curpos] = key; // We want to show the currently chosen character
             if frame_duration > u32::from(BLINK_TIME) {
                 self.text.last_frame_time = self.sdl.ticks_ms();
             } else {
@@ -197,7 +200,7 @@ impl crate::Data<'_> {
                 *inputchar -= 1;
             } else if self.fire_pressed_r() {
                 // ADVANCE CURSOR
-                input[*curpos] = key.try_into().unwrap(); // Needed in case character has just blinked out...
+                input[*curpos] = key; // Needed in case character has just blinked out...
                 *curpos += 1;
             } else if self.left_pressed_r() {
                 *inputchar -= 5;
