@@ -80,13 +80,6 @@ impl crate::Data<'_> {
     ///
     /// (*) `SHOW_FULL_MAP` = 0x04: show complete map, disregard visibility
     pub fn assemble_combat_picture(&mut self, mask: c_int) {
-        thread_local! {
-            static TIME_SINCE_LAST_FPS_UPDATE: Cell<f32> = Cell::new(10.);
-            static FPS_DISPLAYED: Cell<i32>=Cell::new(1);
-        }
-
-        const UPDATE_FPS_HOW_OFTEN: f32 = 0.75;
-
         trace!("\nvoid Assemble_Combat_Picture(...): Real function call confirmed.");
 
         self.graphics
@@ -121,60 +114,18 @@ impl crate::Data<'_> {
                 (upleft, downright)
             };
 
-        let mut pos = Finepoint::default();
-        let mut vect = Finepoint::default();
-        let mut len = -1f32;
-        let mut map_brick = 0;
-        let mut target_rectangle = Rect::default();
         (upleft.y..downright.y)
             .flat_map(|line| (upleft.x..downright.x).map(move |col| (line, col)))
-            .for_each(|(line, col)| {
-                if self.global.game_config.all_map_visible == 0
-                    && ((mask & i32::from(AssembleCombatWindowFlags::SHOW_FULL_MAP.bits())) == 0x0)
-                {
-                    pos.x = col.into();
-                    pos.y = line.into();
-                    vect.x = self.vars.me.pos.x - pos.x;
-                    vect.y = self.vars.me.pos.y - pos.y;
-                    len = (vect.x * vect.x + vect.y * vect.y).sqrt() + 0.01;
-                    vect.x /= len;
-                    vect.y /= len;
-                    if len > 0.5 {
-                        pos.x += vect.x;
-                        pos.y += vect.y;
-                    }
-                    if self.is_visible(pos) == 0 {
-                        return;
-                    }
-                }
-
-                map_brick = get_map_brick(self.main.cur_level(), col.into(), line.into());
-                let user_center = self.vars.get_user_center();
-                #[allow(clippy::cast_possible_truncation)]
-                target_rectangle.set_x(
-                    user_center.x()
-                        + ((-self.vars.me.pos.x + 1.0 * f32::from(col) - 0.5)
-                            * f32::from(self.vars.block_rect.width()))
-                        .round() as i16,
-                );
-                #[allow(clippy::cast_possible_truncation)]
-                target_rectangle.set_y(
-                    user_center.y()
-                        + ((-self.vars.me.pos.y + 1.0 * f32::from(line) - 0.5)
-                            * f32::from(self.vars.block_rect.height()))
-                        .round() as i16,
-                );
-
-                let mut surface = self.graphics.map_block_surface_pointer
-                    [usize::try_from(self.main.cur_level().color).unwrap()][usize::from(map_brick)]
-                .as_mut()
-                .unwrap()
-                .borrow_mut();
-                surface.blit_to(
-                    self.graphics.ne_screen.as_mut().unwrap(),
-                    &mut target_rectangle,
-                );
-            });
+            .fold(
+                BlitCombatCellState {
+                    pos: Finepoint::default(),
+                    vect: Finepoint::default(),
+                    len: -1.,
+                    map_brick: 0,
+                    target_rectangle: Rect::default(),
+                },
+                |state, (line, col)| self.blit_combat_cell(line, col, mask, state),
+            );
 
         // if we don't use Fullscreen mode, we have to clear the text-background manually
         // for the info-line text:
@@ -229,123 +180,7 @@ impl crate::Data<'_> {
         }
 
         if mask & i32::from(AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits()) == 0 {
-            if self.global.game_config.draw_framerate != 0 {
-                TIME_SINCE_LAST_FPS_UPDATE.with(|time_cell| {
-                    let mut time = time_cell.get();
-                    time += self.frame_time();
-
-                    if time > UPDATE_FPS_HOW_OFTEN {
-                        #[allow(clippy::cast_possible_truncation)]
-                        FPS_DISPLAYED.with(|fps_displayed| {
-                            fps_displayed.set((1.0 / self.frame_time()) as i32);
-                        });
-                        time_cell.set(0.);
-                    } else {
-                        time_cell.set(time);
-                    }
-                });
-
-                let font0_b_font = self
-                    .global
-                    .font0_b_font
-                    .as_ref()
-                    .unwrap()
-                    .rw(&mut self.font_owner);
-                FPS_DISPLAYED.with(|fps_displayed| {
-                    print_string_font(
-                        self.graphics.ne_screen.as_mut().unwrap(),
-                        font0_b_font,
-                        self.vars.full_user_rect.x().into(),
-                        i32::from(self.vars.full_user_rect.y())
-                            + i32::from(self.vars.full_user_rect.height())
-                            - font_height(font0_b_font),
-                        format_args!("FPS: {} ", fps_displayed.get()),
-                    );
-                });
-            }
-            let font0_b_font = self
-                .global
-                .font0_b_font
-                .as_ref()
-                .unwrap()
-                .rw(&mut self.font_owner);
-
-            if self.global.game_config.draw_energy != 0 {
-                print_string_font(
-                    self.graphics.ne_screen.as_mut().unwrap(),
-                    font0_b_font,
-                    i32::from(self.vars.full_user_rect.x())
-                        + i32::from(self.vars.full_user_rect.width()) / 2,
-                    i32::from(self.vars.full_user_rect.y())
-                        + i32::from(self.vars.full_user_rect.height())
-                        - font_height(font0_b_font),
-                    format_args!("Energy: {:.0}", self.vars.me.energy),
-                );
-            }
-            if self.global.game_config.draw_death_count != 0 {
-                print_string_font(
-                    self.graphics.ne_screen.as_mut().unwrap(),
-                    font0_b_font,
-                    i32::from(self.vars.full_user_rect.x())
-                        + 2 * i32::from(self.vars.full_user_rect.width()) / 3,
-                    i32::from(self.vars.full_user_rect.y())
-                        + i32::from(self.vars.full_user_rect.height())
-                        - font_height(font0_b_font),
-                    format_args!("Deathcount: {:.0}", self.main.death_count,),
-                );
-            }
-
-            self.graphics
-                .ne_screen
-                .as_mut()
-                .unwrap()
-                .set_clip_rect(&self.vars.user_rect);
-
-            // make sure Ashes are displayed _before_ droids, so that they are _under_ them!
-            for enemy_index in 0..usize::try_from(self.main.num_enemys).unwrap() {
-                let enemy = &self.main.all_enemys[enemy_index];
-                if (enemy.status == Status::Terminated as i32)
-                    && (enemy.levelnum == self.main.cur_level().levelnum)
-                    && self.is_visible(enemy.pos) != 0
-                {
-                    let x = enemy.pos.x;
-                    let y = enemy.pos.y;
-                    self.put_ashes(x, y);
-                }
-            }
-
-            let levelnum = self.main.cur_level().levelnum;
-            for enemy_index in 0..usize::try_from(self.main.num_enemys).unwrap() {
-                let enemy = &self.main.all_enemys[enemy_index];
-                if !((enemy.levelnum != levelnum)
-                    || (enemy.status == Status::Out as i32)
-                    || (enemy.status == Status::Terminated as i32))
-                {
-                    self.put_enemy(enemy_index.try_into().unwrap(), -1, -1);
-                }
-            }
-
-            if self.vars.me.energy > 0. {
-                self.put_influence(-1, -1);
-            }
-
-            for bullet_index in 0..MAXBULLETS {
-                if self.main.all_bullets[bullet_index].ty != Status::Out as u8 {
-                    self.put_bullet(bullet_index.try_into().unwrap());
-                }
-            }
-
-            let &mut crate::Data {
-                main: Main { ref all_blasts, .. },
-                ref mut vars,
-                ref mut graphics,
-                ..
-            } = self;
-            all_blasts
-                .iter()
-                .take(MAXBLASTS)
-                .filter(|blast| blast.ty != Status::Out as i32)
-                .for_each(|blast| put_blast(blast, vars, graphics));
+            self.assemble_combat_window_draw();
         }
 
         // At this point we are done with the drawing procedure
@@ -942,6 +777,214 @@ impl crate::Data<'_> {
             self.graphics.banner_is_destroyed = false.into();
         }
     }
+
+    fn blit_combat_cell(
+        &mut self,
+        line: i8,
+        col: i8,
+        mask: i32,
+        state: BlitCombatCellState,
+    ) -> BlitCombatCellState {
+        let BlitCombatCellState {
+            mut pos,
+            mut vect,
+            mut len,
+            mut map_brick,
+            mut target_rectangle,
+        } = state;
+
+        if self.global.game_config.all_map_visible == 0
+            && ((mask & i32::from(AssembleCombatWindowFlags::SHOW_FULL_MAP.bits())) == 0x0)
+        {
+            pos.x = col.into();
+            pos.y = line.into();
+            vect.x = self.vars.me.pos.x - pos.x;
+            vect.y = self.vars.me.pos.y - pos.y;
+            len = (vect.x * vect.x + vect.y * vect.y).sqrt() + 0.01;
+            vect.x /= len;
+            vect.y /= len;
+            if len > 0.5 {
+                pos.x += vect.x;
+                pos.y += vect.y;
+            }
+            if self.is_visible(pos) == 0 {
+                return BlitCombatCellState {
+                    pos,
+                    vect,
+                    len,
+                    map_brick,
+                    target_rectangle,
+                };
+            }
+        }
+
+        map_brick = get_map_brick(self.main.cur_level(), col.into(), line.into());
+        let user_center = self.vars.get_user_center();
+        #[allow(clippy::cast_possible_truncation)]
+        target_rectangle.set_x(
+            user_center.x()
+                + ((-self.vars.me.pos.x + 1.0 * f32::from(col) - 0.5)
+                    * f32::from(self.vars.block_rect.width()))
+                .round() as i16,
+        );
+        #[allow(clippy::cast_possible_truncation)]
+        target_rectangle.set_y(
+            user_center.y()
+                + ((-self.vars.me.pos.y + 1.0 * f32::from(line) - 0.5)
+                    * f32::from(self.vars.block_rect.height()))
+                .round() as i16,
+        );
+
+        let mut surface = self.graphics.map_block_surface_pointer
+            [usize::try_from(self.main.cur_level().color).unwrap()][usize::from(map_brick)]
+        .as_mut()
+        .unwrap()
+        .borrow_mut();
+        surface.blit_to(
+            self.graphics.ne_screen.as_mut().unwrap(),
+            &mut target_rectangle,
+        );
+
+        BlitCombatCellState {
+            pos,
+            vect,
+            len,
+            map_brick,
+            target_rectangle,
+        }
+    }
+
+    fn assemble_combat_window_draw(&mut self) {
+        if self.global.game_config.draw_framerate != 0 {
+            self.assemble_combat_window_draw_framerate();
+        }
+
+        let font0_b_font = self
+            .global
+            .font0_b_font
+            .as_ref()
+            .unwrap()
+            .rw(&mut self.font_owner);
+
+        if self.global.game_config.draw_energy != 0 {
+            print_string_font(
+                self.graphics.ne_screen.as_mut().unwrap(),
+                font0_b_font,
+                i32::from(self.vars.full_user_rect.x())
+                    + i32::from(self.vars.full_user_rect.width()) / 2,
+                i32::from(self.vars.full_user_rect.y())
+                    + i32::from(self.vars.full_user_rect.height())
+                    - font_height(font0_b_font),
+                format_args!("Energy: {:.0}", self.vars.me.energy),
+            );
+        }
+        if self.global.game_config.draw_death_count != 0 {
+            print_string_font(
+                self.graphics.ne_screen.as_mut().unwrap(),
+                font0_b_font,
+                i32::from(self.vars.full_user_rect.x())
+                    + 2 * i32::from(self.vars.full_user_rect.width()) / 3,
+                i32::from(self.vars.full_user_rect.y())
+                    + i32::from(self.vars.full_user_rect.height())
+                    - font_height(font0_b_font),
+                format_args!("Deathcount: {:.0}", self.main.death_count,),
+            );
+        }
+
+        self.graphics
+            .ne_screen
+            .as_mut()
+            .unwrap()
+            .set_clip_rect(&self.vars.user_rect);
+
+        // make sure Ashes are displayed _before_ droids, so that they are _under_ them!
+        for enemy_index in 0..usize::try_from(self.main.num_enemys).unwrap() {
+            let enemy = &self.main.all_enemys[enemy_index];
+            if (enemy.status == Status::Terminated as i32)
+                && (enemy.levelnum == self.main.cur_level().levelnum)
+                && self.is_visible(enemy.pos) != 0
+            {
+                let x = enemy.pos.x;
+                let y = enemy.pos.y;
+                self.put_ashes(x, y);
+            }
+        }
+
+        let levelnum = self.main.cur_level().levelnum;
+        for enemy_index in 0..usize::try_from(self.main.num_enemys).unwrap() {
+            let enemy = &self.main.all_enemys[enemy_index];
+            if !((enemy.levelnum != levelnum)
+                || (enemy.status == Status::Out as i32)
+                || (enemy.status == Status::Terminated as i32))
+            {
+                self.put_enemy(enemy_index.try_into().unwrap(), -1, -1);
+            }
+        }
+
+        if self.vars.me.energy > 0. {
+            self.put_influence(-1, -1);
+        }
+
+        for bullet_index in 0..MAXBULLETS {
+            if self.main.all_bullets[bullet_index].ty != Status::Out as u8 {
+                self.put_bullet(bullet_index.try_into().unwrap());
+            }
+        }
+
+        let &mut crate::Data {
+            main: Main { ref all_blasts, .. },
+            ref mut vars,
+            ref mut graphics,
+            ..
+        } = self;
+        all_blasts
+            .iter()
+            .take(MAXBLASTS)
+            .filter(|blast| blast.ty != Status::Out as i32)
+            .for_each(|blast| put_blast(blast, vars, graphics));
+    }
+
+    fn assemble_combat_window_draw_framerate(&mut self) {
+        thread_local! {
+            static TIME_SINCE_LAST_FPS_UPDATE: Cell<f32> = Cell::new(10.);
+            static FPS_DISPLAYED: Cell<i32> = Cell::new(1);
+        }
+
+        const UPDATE_FPS_HOW_OFTEN: f32 = 0.75;
+
+        TIME_SINCE_LAST_FPS_UPDATE.with(|time_cell| {
+            let mut time = time_cell.get();
+            time += self.frame_time();
+
+            if time > UPDATE_FPS_HOW_OFTEN {
+                #[allow(clippy::cast_possible_truncation)]
+                FPS_DISPLAYED.with(|fps_displayed| {
+                    fps_displayed.set((1.0 / self.frame_time()) as i32);
+                });
+                time_cell.set(0.);
+            } else {
+                time_cell.set(time);
+            }
+        });
+
+        let font0_b_font = self
+            .global
+            .font0_b_font
+            .as_ref()
+            .unwrap()
+            .rw(&mut self.font_owner);
+        FPS_DISPLAYED.with(|fps_displayed| {
+            print_string_font(
+                self.graphics.ne_screen.as_mut().unwrap(),
+                font0_b_font,
+                self.vars.full_user_rect.x().into(),
+                i32::from(self.vars.full_user_rect.y())
+                    + i32::from(self.vars.full_user_rect.height())
+                    - font_height(font0_b_font),
+                format_args!("FPS: {} ", fps_displayed.get()),
+            );
+        });
+    }
 }
 
 pub fn put_blast(blast: &Blast, vars: &mut Vars, graphics: &mut Graphics) {
@@ -971,4 +1014,13 @@ pub fn put_blast(blast: &Blast, vars: &mut Vars, graphics: &mut Graphics) {
         .unwrap()
         .blit_to(graphics.ne_screen.as_mut().unwrap(), &mut dst);
     trace!("PutBlast: end of function reached.");
+}
+
+#[derive(Debug, Clone, Copy)]
+struct BlitCombatCellState {
+    pos: Finepoint,
+    vect: Finepoint,
+    len: f32,
+    map_brick: u8,
+    target_rectangle: Rect,
 }
