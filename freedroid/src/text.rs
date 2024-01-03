@@ -10,12 +10,6 @@ use crate::{
     FontCellOwner, Sdl,
 };
 
-#[cfg(feature = "arcade-input")]
-use crate::{
-    defs::{down_pressed_r, left_pressed_r, right_pressed_r, up_pressed_r},
-    input::{cmd_is_active_r, key_is_pressed_r},
-};
-
 use cstr::cstr;
 use log::{error, info, trace};
 use sdl::{
@@ -162,34 +156,34 @@ impl crate::Data<'_> {
                         input[curpos] = empty_char; // Hmm., how to get character widht? If using '.', or any fill character, we'd need to know
                     }
 
-                    if KeyIsPressedR(SDLKey_SDLK_RETURN.try_into().unwrap()) {
+                    if self.key_is_pressed_r(SDLKey_SDLK_RETURN.try_into().unwrap()) {
                         // For GCW0, maybe we need a prompt to say [PRESS ENTER WHEN FINISHED], or any other key we may choose...
                         input[curpos] = 0; // The last char is currently shown but, not entered into the string...
                                            // 	  input[curpos] = key; // Not sure which one would be expected by most users; the last blinking char is input or not?
                         finished = true;
-                    } else if UpPressedR() {
+                    } else if self.up_pressed_r() {
                         /* Currently, the key will work ON RELEASE; we might change this to
                          * ON PRESS and add a counter / delay after which while holding, will
                          * scroll trough the chars */
                         inputchar += 1;
-                    } else if DownPressedR() {
+                    } else if self.down_pressed_r() {
                         inputchar -= 1;
-                    } else if FirePressedR() {
+                    } else if self.fire_pressed_r() {
                         // ADVANCE CURSOR
                         input[curpos] = key.try_into().unwrap(); // Needed in case character has just blinked out...
                         curpos += 1;
-                    } else if LeftPressedR() {
+                    } else if self.left_pressed_r() {
                         inputchar -= 5;
-                    } else if RightPressedR() {
+                    } else if self.right_pressed_r() {
                         inputchar += 5;
-                    } else if cmd_is_activeR(Cmds::Activate) {
+                    } else if self.cmd_is_active_r(Cmds::Activate) {
                         // CAPITAL <-> small
                         if (17..=42).contains(&inputchar) {
                             inputchar = 44 + (inputchar - 17);
                         } else if (44..=69).contains(&inputchar) {
                             inputchar = 17 + (inputchar - 44);
                         }
-                    } else if KeyIsPressedR(SDLKey_SDLK_BACKSPACE.try_into().unwrap()) {
+                    } else if self.key_is_pressed_r(SDLKey_SDLK_BACKSPACE.try_into().unwrap()) {
                         // else if ... other functions to consider: SPACE
                         // Or any othe key we choose for the GCW0!
                         input[curpos] = empty_char;
