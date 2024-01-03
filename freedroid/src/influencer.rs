@@ -12,10 +12,7 @@ use crate::{
 use cstr::cstr;
 use defs::{Cmds, BLINKENERGY, MAX_INFLU_POSITION_HISTORY, WAIT_TRANSFERMODE};
 use log::{info, warn};
-use std::{
-    ops::Not,
-    os::raw::{c_float, c_int},
-};
+use std::ops::Not;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Influencer {
@@ -103,7 +100,7 @@ impl crate::Data<'_> {
             if enemy.levelnum != cur_level!(main).levelnum {
                 continue;
             }
-            if enemy.status == Status::Out as c_int || enemy.status == Status::Terminated as c_int {
+            if enemy.status == Status::Out as i32 || enemy.status == Status::Terminated as i32 {
                 continue;
             }
 
@@ -122,7 +119,7 @@ impl crate::Data<'_> {
                 continue;
             }
 
-            if vars.me.status == Status::Transfermode as c_int {
+            if vars.me.status == Status::Transfermode as i32 {
                 self.takeover(enemy_index.try_into().unwrap());
 
                 if self.level_empty() != 0 {
@@ -179,7 +176,7 @@ impl crate::Data<'_> {
         }
     }
 
-    pub fn influ_enemy_collision_lose_energy(&mut self, enemy_num: c_int) {
+    pub fn influ_enemy_collision_lose_energy(&mut self, enemy_num: i32) {
         let enemy_type = self.main.all_enemys[usize::try_from(enemy_num).unwrap()].ty;
 
         #[allow(clippy::cast_precision_loss)]
@@ -205,13 +202,13 @@ impl crate::Data<'_> {
     }
 
     pub fn explode_influencer(&mut self) {
-        self.vars.me.status = Status::Terminated as c_int;
+        self.vars.me.status = Status::Terminated as i32;
 
         for i in 0..10 {
             /* freien Blast finden */
             let mut counter = 0;
             loop {
-                let check = self.main.all_blasts[counter].ty != Status::Out as c_int;
+                let check = self.main.all_blasts[counter].ty != Status::Out as i32;
                 counter += 1;
                 if check.not() {
                     break;
@@ -223,7 +220,7 @@ impl crate::Data<'_> {
                 "Went out of blasts in ExplodeInfluencer..."
             );
             let blast = &mut self.main.all_blasts[counter];
-            blast.ty = Explosion::Druidblast as c_int;
+            blast.ty = Explosion::Druidblast as i32;
             #[allow(clippy::cast_precision_loss)]
             {
                 blast.px = self.vars.me.pos.x - self.global.droid_radius / 2.
@@ -234,7 +231,7 @@ impl crate::Data<'_> {
             }
         }
 
-        self.play_sound(SoundType::Influexplosion as c_int);
+        self.play_sound(SoundType::Influexplosion as i32);
     }
 
     /// This function checks for collisions of the influencer with walls,
@@ -368,7 +365,7 @@ impl crate::Data<'_> {
     }
 
     pub fn animate_influence(&mut self) {
-        if self.vars.me.ty == Droid::Droid001 as c_int {
+        if self.vars.me.ty == Droid::Droid001 as i32 {
             self.vars.me.phase += (self.vars.me.energy
                 / (self.vars.droidmap[Droid::Droid001 as usize].maxenergy))
                 * self.frame_time()
@@ -409,25 +406,25 @@ impl crate::Data<'_> {
 
         // check, if the influencer is still ok
         if self.vars.me.energy <= 0. {
-            if self.vars.me.ty == Droid::Droid001 as c_int {
-                self.vars.me.status = Status::Terminated as c_int;
+            if self.vars.me.ty == Droid::Droid001 as i32 {
+                self.vars.me.status = Status::Terminated as i32;
                 self.thou_art_defeated();
                 return;
             }
 
-            self.vars.me.ty = Droid::Droid001 as c_int;
+            self.vars.me.ty = Droid::Droid001 as i32;
             self.vars.me.energy = BLINKENERGY;
             self.vars.me.health = BLINKENERGY;
             self.start_blast(
                 self.vars.me.pos.x,
                 self.vars.me.pos.y,
-                Explosion::Rejectblast as c_int,
+                Explosion::Rejectblast as i32,
             );
         }
 
         /* Time passed before entering Transfermode ?? */
         if self.influencer.transfer_counter >= WAIT_TRANSFERMODE {
-            self.vars.me.status = Status::Transfermode as c_int;
+            self.vars.me.status = Status::Transfermode as i32;
             self.influencer.transfer_counter = 0.;
         }
 
@@ -447,24 +444,24 @@ impl crate::Data<'_> {
         //  We only need this check if we want held fire to cause activate
         if !self.any_cmd_active() {
             // Used to be !SpacePressed, which causes any fire button != SPACE behave differently than space
-            self.vars.me.status = Status::Mobile as c_int;
+            self.vars.me.status = Status::Mobile as i32;
         }
 
         if (self.influencer.transfer_counter - 1.).abs() <= f32::EPSILON {
-            self.vars.me.status = Status::Transfermode as c_int;
+            self.vars.me.status = Status::Transfermode as i32;
             self.influencer.transfer_counter = 0.;
         }
 
         if self.cmd_is_active(Cmds::Activate) {
             // activate mode for Konsole and Lifts
-            self.vars.me.status = Status::Activate as c_int;
+            self.vars.me.status = Status::Activate as i32;
         }
 
         if self.global.game_config.fire_hold_takeover != 0
             && self.fire_pressed()
             && self.no_direction_pressed()
-            && self.vars.me.status != Status::Weapon as c_int
-            && self.vars.me.status != Status::Transfermode as c_int
+            && self.vars.me.status != Status::Weapon as i32
+            && self.vars.me.status != Status::Transfermode as i32
         {
             // Proposed FireActivatePressed here...
             self.influencer.transfer_counter += self.frame_time(); // Or make it an option!
@@ -472,21 +469,21 @@ impl crate::Data<'_> {
 
         if self.fire_pressed()
             && !self.no_direction_pressed()
-            && self.vars.me.status != Status::Transfermode as c_int
+            && self.vars.me.status != Status::Transfermode as i32
         {
-            self.vars.me.status = Status::Weapon as c_int;
+            self.vars.me.status = Status::Weapon as i32;
         }
 
         if self.fire_pressed()
             && !self.no_direction_pressed()
-            && self.vars.me.status == Status::Weapon as c_int
+            && self.vars.me.status == Status::Weapon as i32
             && self.vars.me.firewait == 0.
         {
             self.fire_bullet();
         }
 
-        if self.vars.me.status != Status::Weapon as c_int && self.cmd_is_active(Cmds::Takeover) {
-            self.vars.me.status = Status::Transfermode as c_int;
+        if self.vars.me.status != Status::Weapon as i32 && self.cmd_is_active(Cmds::Takeover) {
+            self.vars.me.status = Status::Transfermode as i32;
         }
 
         self.influence_friction_with_air(); // The influ should lose some of his speed when no key is pressed
@@ -654,7 +651,7 @@ impl crate::Data<'_> {
         self.vars.me.speed.y = self.vars.me.speed.y.clamp(-maxspeed, maxspeed);
     }
 
-    pub fn get_position_history(&self, how_long_past: c_int) -> &Gps {
+    pub fn get_position_history(&self, how_long_past: i32) -> &Gps {
         let ring_position = self.influencer.current_zero_ring_index + MAX_INFLU_POSITION_HISTORY
             - usize::try_from(how_long_past).unwrap();
 
@@ -663,11 +660,11 @@ impl crate::Data<'_> {
         &self.vars.me.position_history_ring_buffer[ring_position]
     }
 
-    pub fn get_influ_position_history_x(&self, how_long_past: c_int) -> c_float {
+    pub fn get_influ_position_history_x(&self, how_long_past: i32) -> f32 {
         self.get_position_history(how_long_past).x
     }
 
-    pub fn get_influ_position_history_y(&self, how_long_past: c_int) -> c_float {
+    pub fn get_influ_position_history_y(&self, how_long_past: i32) -> f32 {
         self.get_position_history(how_long_past).y
     }
 

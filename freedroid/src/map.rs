@@ -24,12 +24,7 @@ use log::{error, info, warn};
 use nom::{Finish, Parser};
 #[cfg(not(target_os = "android"))]
 use std::ffi::CStr;
-use std::{
-    ffi::CString,
-    ops::Not,
-    os::raw::{c_float, c_int, c_uchar},
-    path::Path,
-};
+use std::{ffi::CString, ops::Not, path::Path};
 
 #[cfg(not(target_os = "android"))]
 pub const COLOR_NAMES: [&CStr; 7] = [
@@ -68,14 +63,14 @@ pub struct Map {
     inner_wait_counter: f32,
 }
 
-pub fn get_map_brick(deck: &Level, x: f32, y: f32) -> c_uchar {
+pub fn get_map_brick(deck: &Level, x: f32, y: f32) -> u8 {
     #[allow(clippy::cast_possible_truncation)]
     let [x, y] = [x.round() as i32, y.round() as i32];
     usize::try_from(y)
         .ok()
         .filter(|_| y < deck.ylen)
         .zip(usize::try_from(x).ok().filter(|_| x < deck.xlen))
-        .map_or(MapTile::Void as c_uchar, |(y, x)| deck.map[y][x] as c_uchar)
+        .map_or(MapTile::Void as u8, |(y, x)| deck.map[y][x] as u8)
 }
 
 pub fn free_level_memory(level: &mut Level) {
@@ -126,7 +121,7 @@ fn reset_level_map(level: &mut Level) {
 }
 
 /// initialize doors, refreshes and lifts for the given level-data
-pub fn interpret(level: &mut Level) -> c_int {
+pub fn interpret(level: &mut Level) -> i32 {
     /* Get Doors Array */
     get_doors(level);
 
@@ -142,7 +137,7 @@ pub fn interpret(level: &mut Level) -> c_int {
 /// initializes the Doors array of the given level structure
 /// Of course the level data must be in the structure already!!
 /// Returns the number of doors found or ERR
-pub fn get_doors(level: &mut Level) -> c_int {
+pub fn get_doors(level: &mut Level) -> i32 {
     let mut curdoor = 0;
 
     let x_len = i8::try_from(level.xlen).unwrap();
@@ -196,7 +191,7 @@ Sorry...\n\
 /// This function initialized the array of Refreshes for animation
 /// within the level
 /// Returns the number of refreshes found or ERR
-pub fn get_refreshes(level: &mut Level) -> c_int {
+pub fn get_refreshes(level: &mut Level) -> i32 {
     let x_len = u8::try_from(level.xlen).unwrap();
     let y_len = u8::try_from(level.ylen).unwrap();
 
@@ -470,7 +465,7 @@ fn parse_waypoint_x_y(data: &[u8]) -> [i32; 2] {
 
 impl crate::Data<'_> {
     /// Determines wether object on x/y is visible to the 001 or not
-    pub fn is_visible(&self, objpos: Finepoint) -> c_int {
+    pub fn is_visible(&self, objpos: Finepoint) -> i32 {
         let influ_x = self.vars.me.pos.x;
         let influ_y = self.vars.me.pos.y;
 
@@ -534,7 +529,7 @@ impl crate::Data<'_> {
 
                 cur_level.map[y][x] = MapTile::refresh(
                     #[allow(clippy::cast_possible_truncation)]
-                    (self.map.inner_wait_counter.round() as c_int % 4)
+                    (self.map.inner_wait_counter.round() as i32 % 4)
                         .try_into()
                         .unwrap(),
                 )
@@ -543,7 +538,7 @@ impl crate::Data<'_> {
     }
 
     #[allow(clippy::too_many_lines)]
-    pub fn is_passable(&self, x: c_float, y: c_float, check_pos: c_int) -> Option<Direction> {
+    pub fn is_passable(&self, x: f32, y: f32, check_pos: i32) -> Option<Direction> {
         use Direction as D;
         use MapTile as M;
 
@@ -708,7 +703,7 @@ impl crate::Data<'_> {
 
     /// Saves ship-data to disk
     #[cfg(not(target_os = "android"))]
-    pub fn save_ship(&mut self, shipname: &str) -> c_int {
+    pub fn save_ship(&mut self, shipname: &str) -> i32 {
         use std::{fs::File, io::Write, path::PathBuf};
 
         trace!("SaveShip(): real function call confirmed.");
@@ -906,7 +901,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         }
     }
 
-    pub fn druid_passable(&self, x: c_float, y: c_float) -> Option<Direction> {
+    pub fn druid_passable(&self, x: f32, y: f32) -> Option<Direction> {
         let testpos: [Finepoint; DIRECTIONS] = [
             Finepoint {
                 x,
@@ -949,7 +944,7 @@ freedroid-discussion@lists.sourceforge.net\n\
                 self.is_passable(
                     test_pos.x,
                     test_pos.y,
-                    c_int::try_from(direction_index).unwrap(),
+                    i32::try_from(direction_index).unwrap(),
                 )
             })
             .find(|&is_passable| is_passable != Some(Direction::Center))
@@ -981,7 +976,7 @@ freedroid-discussion@lists.sourceforge.net\n\
 
         let mut different_random_types = 0;
         let mut search_pos_opt = section_data.find(ALLOWED_TYPE_INDICATION_STRING);
-        let mut list_of_types_allowed: [c_int; 1000] = [0; 1000];
+        let mut list_of_types_allowed: [i32; 1000] = [0; 1000];
         while let Some(mut search_pos) = search_pos_opt {
             search_pos += ALLOWED_TYPE_INDICATION_STRING.len();
             let remaining_data = &section_data[search_pos..];
@@ -1035,7 +1030,7 @@ freedroid-discussion@lists.sourceforge.net\n\
 
             let mut free_all_enemys_position = 0;
             while free_all_enemys_position < MAX_ENEMYS_ON_SHIP {
-                if self.main.all_enemys[free_all_enemys_position].status == Status::Out as c_int {
+                if self.main.all_enemys[free_all_enemys_position].status == Status::Out as i32 {
                     break;
                 }
                 free_all_enemys_position += 1;
@@ -1048,16 +1043,16 @@ freedroid-discussion@lists.sourceforge.net\n\
 
             self.main.all_enemys[free_all_enemys_position].ty = list_of_types_allowed
                 [usize::try_from(my_random(
-                    c_int::try_from(different_random_types).unwrap() - 1,
+                    i32::try_from(different_random_types).unwrap() - 1,
                 ))
                 .unwrap()];
             self.main.all_enemys[free_all_enemys_position].levelnum = our_level_number;
-            self.main.all_enemys[free_all_enemys_position].status = Status::Mobile as c_int;
+            self.main.all_enemys[free_all_enemys_position].status = Status::Mobile as i32;
         }
     }
 
     /// This function initializes all enemys
-    pub fn get_crew(&mut self, filename: &[u8]) -> c_int {
+    pub fn get_crew(&mut self, filename: &[u8]) -> i32 {
         const END_OF_DROID_DATA_STRING: &[u8] = b"*** End of Droid Data ***";
         const DROIDS_LEVEL_DESCRIPTION_START_STRING: &[u8] = b"** Beginning of new Level **";
         const DROIDS_LEVEL_DESCRIPTION_END_STRING: &[u8] = b"** End of this levels droid data **";
@@ -1072,8 +1067,8 @@ freedroid-discussion@lists.sourceforge.net\n\
             .find_file(
                 filename,
                 Some(MAP_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
+                Themed::NoTheme as i32,
+                Criticality::Critical as i32,
             )
             .unwrap();
         let fpath = Path::new(
@@ -1116,7 +1111,7 @@ freedroid-discussion@lists.sourceforge.net\n\
                 continue;
             }
             enemy.energy = self.vars.droidmap[usize::try_from(ty).unwrap()].maxenergy;
-            enemy.status = Status::Mobile as c_int;
+            enemy.status = Status::Mobile as i32;
             self.main.num_enemys += 1;
         }
 
@@ -1124,7 +1119,7 @@ freedroid-discussion@lists.sourceforge.net\n\
     }
 
     /// loads lift-connctions to cur-ship struct
-    pub fn get_lift_connections(&mut self, filename: &[u8]) -> c_int {
+    pub fn get_lift_connections(&mut self, filename: &[u8]) -> i32 {
         const END_OF_LIFT_DATA_STRING: &[u8] = b"*** End of elevator specification file ***";
         const START_OF_LIFT_DATA_STRING: &[u8] = b"*** Beginning of Lift Data ***";
         const START_OF_LIFT_RECTANGLE_DATA_STRING: &[u8] =
@@ -1135,8 +1130,8 @@ freedroid-discussion@lists.sourceforge.net\n\
             .find_file(
                 filename,
                 Some(MAP_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
+                Themed::NoTheme as i32,
+                Criticality::Critical as i32,
             )
             .unwrap();
         let fpath = Path::new(
@@ -1223,7 +1218,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         let mut entry_slice = &data[find_subslice(&data, START_OF_LIFT_DATA_STRING)
             .expect("START OF LIFT DATA STRING NOT FOUND!  Terminating...")..];
 
-        let mut label: c_int = 0;
+        let mut label: i32 = 0;
         loop {
             let next_entry_slice = split_at_subslice(entry_slice, b"Label=").map(|(_, s)| s);
 
@@ -1252,7 +1247,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         defs::OK.into()
     }
 
-    pub fn load_ship(&mut self, filename: &[u8]) -> c_int {
+    pub fn load_ship(&mut self, filename: &[u8]) -> i32 {
         const END_OF_SHIP_DATA_STRING: &[u8] = b"*** End of Ship Data ***";
 
         let mut level_start: [Option<&[u8]>; MAX_LEVELS] = [None; MAX_LEVELS];
@@ -1263,8 +1258,8 @@ freedroid-discussion@lists.sourceforge.net\n\
             .find_file(
                 filename,
                 Some(MAP_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
+                Themed::NoTheme as i32,
+                Criticality::Critical as i32,
             )
             .unwrap();
         let fpath = Path::new(
@@ -1329,7 +1324,7 @@ freedroid-discussion@lists.sourceforge.net\n\
     }
 
     /// Checks Influencer on `SpecialFields` like Lifts and Konsoles and acts on it
-    pub fn act_special_field(&mut self, x: c_float, y: c_float) {
+    pub fn act_special_field(&mut self, x: f32, y: f32) {
         let map_tile = get_map_brick(self.main.cur_level(), x, y);
 
         let myspeed2 = self.vars.me.speed.x * self.vars.me.speed.x
@@ -1341,9 +1336,9 @@ freedroid-discussion@lists.sourceforge.net\n\
             match map_tile {
                 M::Lift => {
                     if myspeed2 <= 1.0
-                        && (self.vars.me.status == Status::Activate as c_int
+                        && (self.vars.me.status == Status::Activate as i32
                             || (self.global.game_config.takeover_activates != 0
-                                && self.vars.me.status == Status::Transfermode as c_int))
+                                && self.vars.me.status == Status::Transfermode as i32))
                     {
                         let cx = x.round() - x;
                         let cy = y.round() - y;
@@ -1356,9 +1351,9 @@ freedroid-discussion@lists.sourceforge.net\n\
 
                 M::KonsoleR | M::KonsoleL | M::KonsoleO | M::KonsoleU => {
                     if myspeed2 <= 1.0
-                        && (self.vars.me.status == Status::Activate as c_int
+                        && (self.vars.me.status == Status::Activate as i32
                             || (self.global.game_config.takeover_activates != 0
-                                && self.vars.me.status == Status::Transfermode as c_int))
+                                && self.vars.me.status == Status::Transfermode as i32))
                     {
                         self.enter_konsole();
                     }
@@ -1369,13 +1364,13 @@ freedroid-discussion@lists.sourceforge.net\n\
         }
     }
 
-    pub fn get_current_lift(&self) -> c_int {
+    pub fn get_current_lift(&self) -> i32 {
         let curlev = self.main.cur_level().levelnum;
 
         #[allow(clippy::cast_possible_truncation)]
         let [gx, gy] = {
-            let gx = self.vars.me.pos.x.round() as c_int;
-            let gy = self.vars.me.pos.y.round() as c_int;
+            let gx = self.vars.me.pos.x.round() as i32;
+            let gy = self.vars.me.pos.y.round() as i32;
             [gx, gy]
         };
 

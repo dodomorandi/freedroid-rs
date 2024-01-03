@@ -29,11 +29,10 @@ use std::{
     fmt,
     io::Cursor,
     ops::{ControlFlow, Not},
-    os::raw::{c_int, c_uchar},
 };
 
 #[cfg(feature = "arcade-input")]
-const ARCADE_INPUT_CHARS: [c_int; 70] = [
+const ARCADE_INPUT_CHARS: [i32; 70] = [
     48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 61, 42, 43, 44, 45, 46, 47, 65, 66, 67, 68, 69, 70, 71,
     72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 32, 97, 98, 99,
     100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118,
@@ -42,8 +41,8 @@ const ARCADE_INPUT_CHARS: [c_int; 70] = [
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Text {
-    my_cursor_x: c_int,
-    my_cursor_y: c_int,
+    my_cursor_x: i32,
+    my_cursor_y: i32,
     text_buffer: [u8; 10000],
 
     #[cfg(feature = "arcade-input")]
@@ -72,7 +71,7 @@ impl crate::Data<'_> {
     /// * echo=2    print using graphics-text
     ///
     /// values of echo > 2 are ignored and treated like echo=0
-    pub fn get_string(&mut self, max_len: c_int, echo: c_int) -> Option<CString> {
+    pub fn get_string(&mut self, max_len: i32, echo: i32) -> Option<CString> {
         //for "empty" input line / backspace etc...
         #[cfg(feature = "arcade-input")]
         const EMPTY_CHAR: u8 = b' ';
@@ -117,7 +116,7 @@ impl crate::Data<'_> {
             .blit_from(&store_rect, &mut store);
 
         #[cfg(feature = "arcade-input")]
-        let mut inputchar: c_int = 17; // initial char = A
+        let mut inputchar: i32 = 17; // initial char = A
 
         let mut input = vec![EMPTY_CHAR; max_len + 5];
         input[max_len] = 0;
@@ -162,7 +161,7 @@ impl crate::Data<'_> {
         input: &mut [u8],
         curpos: &mut usize,
         finished: &mut bool,
-        inputchar: &mut c_int,
+        inputchar: &mut i32,
     ) {
         const EMPTY_CHAR: u8 = b' ';
         const BLINK_TIME: u8 = 200; // For adjusting fast <->slow blink; in ms
@@ -251,7 +250,7 @@ impl crate::Data<'_> {
     /// Should do roughly what getchar() does, but in raw (SLD) keyboard mode.
     ///
     /// Return the `SDLKey` of the next key-pressed event cast to
-    pub fn getchar_raw(&mut self) -> c_int {
+    pub fn getchar_raw(&mut self) -> i32 {
         let mut return_key = 0;
 
         loop {
@@ -262,7 +261,7 @@ impl crate::Data<'_> {
                      * "The keyboard syms have been cleverly chosen to map to ASCII"
                      * ... I hope that this design feature is portable, and durable ;)
                      */
-                    return_key = event.keysym.symbol as c_int;
+                    return_key = event.keysym.symbol as i32;
                     if event.keysym.mod_.is_shift() {
                         return_key = u8::try_from(event.keysym.symbol as isize)
                             .unwrap()
@@ -273,13 +272,13 @@ impl crate::Data<'_> {
 
                 Event::JoyButton(event) if matches!(event.ty, JoyButtonEventType::Down) => {
                     if event.button == 0 {
-                        return_key = PointerStates::JoyButton1 as c_int;
+                        return_key = PointerStates::JoyButton1 as i32;
                     } else if event.button == 1 {
-                        return_key = PointerStates::JoyButton2 as c_int;
+                        return_key = PointerStates::JoyButton2 as i32;
                     } else if event.button == 2 {
-                        return_key = PointerStates::JoyButton3 as c_int;
+                        return_key = PointerStates::JoyButton3 as i32;
                     } else if event.button == 3 {
-                        return_key = PointerStates::JoyButton4 as c_int;
+                        return_key = PointerStates::JoyButton4 as i32;
                     }
                 }
 
@@ -291,32 +290,32 @@ impl crate::Data<'_> {
                         if self.input.joy_sensitivity * i32::from(event.value) > 10000
                         /* about half tilted */
                         {
-                            return_key = PointerStates::JoyRight as c_int;
+                            return_key = PointerStates::JoyRight as i32;
                         } else if self.input.joy_sensitivity * i32::from(event.value) < -10000 {
-                            return_key = PointerStates::JoyLeft as c_int;
+                            return_key = PointerStates::JoyLeft as i32;
                         }
                     } else if (axis == 1) || ((self.input.joy_num_axes >= 5) && (axis == 4))
                     /* y-axis */
                     {
                         if self.input.joy_sensitivity * i32::from(event.value) > 10000 {
-                            return_key = PointerStates::JoyDown as c_int;
+                            return_key = PointerStates::JoyDown as i32;
                         } else if self.input.joy_sensitivity * i32::from(event.value) < -10000 {
-                            return_key = PointerStates::JoyUp as c_int;
+                            return_key = PointerStates::JoyUp as i32;
                         }
                     }
                 }
 
                 Event::MouseButton(event) if matches!(event.ty, MouseButtonEventType::Down) => {
                     if event.button == i32_to_u8(SDL_BUTTON_LEFT) {
-                        return_key = PointerStates::MouseButton1 as c_int;
+                        return_key = PointerStates::MouseButton1 as i32;
                     } else if event.button == i32_to_u8(SDL_BUTTON_RIGHT) {
-                        return_key = PointerStates::MouseButton2 as c_int;
+                        return_key = PointerStates::MouseButton2 as i32;
                     } else if event.button == i32_to_u8(SDL_BUTTON_MIDDLE) {
-                        return_key = PointerStates::MouseButton3 as c_int;
+                        return_key = PointerStates::MouseButton3 as i32;
                     } else if event.button == i32_to_u8(SDL_BUTTON_WHEELUP) {
-                        return_key = PointerStates::MouseWheelup as c_int;
+                        return_key = PointerStates::MouseWheelup as i32;
                     } else if event.button == i32_to_u8(SDL_BUTTON_WHEELDOWN) {
-                        return_key = PointerStates::MouseWheeldown as c_int;
+                        return_key = PointerStates::MouseWheeldown as i32;
                     }
                 }
 
@@ -351,8 +350,8 @@ impl crate::Data<'_> {
     pub fn printf_sdl<const F: bool>(
         &mut self,
         screen: &mut sdl::surface::Generic<F>,
-        x: c_int,
-        y: c_int,
+        x: i32,
+        y: i32,
         format_args: fmt::Arguments,
     ) {
         Self::printf_sdl_static::<F>(
@@ -371,8 +370,8 @@ impl crate::Data<'_> {
         b_font: &BFont,
         font_owner: &mut FontCellOwner,
         screen: &mut sdl::surface::Generic<F>,
-        mut x: c_int,
-        mut y: c_int,
+        mut x: i32,
+        mut y: i32,
         format_args: fmt::Arguments,
     ) {
         use std::io::Write;
@@ -393,7 +392,7 @@ impl crate::Data<'_> {
         cursor.write_fmt(format_args).unwrap();
         let cursor_pos = cursor.position();
         let text_buffer = &text.text_buffer[..usize::try_from(cursor_pos).unwrap()];
-        let textlen: c_int = text_buffer
+        let textlen: i32 = text_buffer
             .iter()
             .map(|&c| char_width(b_font.current_font.as_ref().unwrap().ro(font_owner), c))
             .sum();
@@ -412,7 +411,7 @@ impl crate::Data<'_> {
         #[allow(clippy::cast_possible_truncation)]
         if *text_buffer.last().unwrap() == b'\n' {
             text.my_cursor_x = x;
-            text.my_cursor_y = (f64::from(y) + 1.1 * f64::from(h)) as c_int;
+            text.my_cursor_y = (f64::from(y) + 1.1 * f64::from(h)) as i32;
         } else {
             text.my_cursor_x += textlen;
             text.my_cursor_y = y;
@@ -436,10 +435,10 @@ impl crate::Data<'_> {
     pub fn display_text(
         &mut self,
         text: &[u8],
-        start_x: c_int,
-        start_y: c_int,
+        start_x: i32,
+        start_y: i32,
         clip: Option<Rect>,
-    ) -> c_int {
+    ) -> i32 {
         let Self {
             text: data_text,
             graphics,
@@ -470,7 +469,7 @@ impl crate::Data<'_> {
         text: &mut Text,
         b_font: &BFont,
         font_owner: &mut FontCellOwner,
-        c: c_uchar,
+        c: u8,
     ) {
         // don't accept non-printable characters
         assert!(
@@ -526,9 +525,7 @@ impl crate::Data<'_> {
         for c in iter {
             let w = char_width(b_font.current_font.as_ref().unwrap().ro(font_owner), c);
             needed_space += w;
-            if text.my_cursor_x + needed_space
-                > c_int::from(clip.x()) + c_int::from(clip.width()) - w
-            {
+            if text.my_cursor_x + needed_space > i32::from(clip.x()) + i32::from(clip.width()) - w {
                 return true;
             }
         }
@@ -536,7 +533,7 @@ impl crate::Data<'_> {
         false
     }
 
-    pub fn enemy_hit_by_bullet_text(&mut self, enemy: c_int) {
+    pub fn enemy_hit_by_bullet_text(&mut self, enemy: i32) {
         let robot = &mut self.main.all_enemys[usize::try_from(enemy).unwrap()];
 
         if self.global.game_config.droid_talk == 0 {
@@ -555,7 +552,7 @@ impl crate::Data<'_> {
         robot.text_to_be_displayed = text;
     }
 
-    pub fn enemy_influ_collision_text(&mut self, enemy: c_int) {
+    pub fn enemy_influ_collision_text(&mut self, enemy: i32) {
         let robot = &mut self.main.all_enemys[usize::try_from(enemy).unwrap()];
 
         if self.global.game_config.droid_talk == 0 {
@@ -608,7 +605,7 @@ impl crate::Data<'_> {
     /// Scrolls a given text down inside the given rect
     ///
     /// returns 0 if end of text was scolled out, 1 if user pressed fire
-    pub fn scroll_text(&mut self, text: &[u8], rect: &mut Rect) -> c_int {
+    pub fn scroll_text(&mut self, text: &[u8], rect: &mut Rect) -> i32 {
         let Self {
             sdl,
             b_font,
@@ -654,8 +651,8 @@ pub struct Scroll<'a, 'sdl: 'a> {
 }
 
 impl Scroll<'_, '_> {
-    pub fn run(mut self) -> c_int {
-        const MAX_SPEED: c_int = 150;
+    pub fn run(mut self) -> i32 {
+        const MAX_SPEED: i32 = 150;
 
         let mut insert_line: f32 = self.rect.y().into();
         let mut speed = 30; // in pixel / sec
@@ -692,7 +689,7 @@ impl Scroll<'_, '_> {
                 text: self.text,
                 start_x: self.rect.x().into(),
                 #[allow(clippy::cast_possible_truncation)]
-                start_y: insert_line as c_int,
+                start_y: insert_line as i32,
                 clip: Some(*self.rect),
             }
             .run())
@@ -767,7 +764,7 @@ impl Scroll<'_, '_> {
         &mut self,
         just_started: &mut bool,
         prev_tick: &mut u32,
-    ) -> ControlFlow<c_int> {
+    ) -> ControlFlow<i32> {
         if *just_started {
             *just_started = false;
             let now = self.sdl.ticks_ms();
@@ -809,13 +806,13 @@ pub struct Displayer<'a, 'sdl: 'a> {
     pub b_font: &'a BFont<'sdl>,
     pub font_owner: &'a mut FontCellOwner,
     pub text: &'a [u8],
-    pub start_x: c_int,
-    pub start_y: c_int,
+    pub start_x: i32,
+    pub start_y: i32,
     pub clip: Option<Rect>,
 }
 
 impl Displayer<'_, '_> {
-    pub fn run(self) -> c_int {
+    pub fn run(self) -> i32 {
         let Self {
             data_text,
             graphics,
@@ -851,7 +848,7 @@ impl Displayer<'_, '_> {
         };
 
         while let Some((&first, rest)) = text.split_first() {
-            if data_text.my_cursor_y >= c_int::from(clip.y()) + c_int::from(clip.height()) {
+            if data_text.my_cursor_y >= i32::from(clip.y()) + i32::from(clip.height()) {
                 break;
             }
 
@@ -860,15 +857,9 @@ impl Displayer<'_, '_> {
                 data_text.my_cursor_x = clip.x().into();
                 data_text.my_cursor_y += (f64::from(font_height(
                     b_font.current_font.as_ref().unwrap().ro(font_owner),
-                )) * TEXT_STRETCH) as c_int;
+                )) * TEXT_STRETCH) as i32;
             } else {
-                crate::Data::display_char(
-                    graphics,
-                    data_text,
-                    b_font,
-                    font_owner,
-                    first as c_uchar,
-                );
+                crate::Data::display_char(graphics, data_text, b_font, font_owner, first);
             }
 
             text = rest;
@@ -878,7 +869,7 @@ impl Displayer<'_, '_> {
                 data_text.my_cursor_x = clip.x().into();
                 data_text.my_cursor_y += (f64::from(font_height(
                     b_font.current_font.as_ref().unwrap().ro(font_owner),
-                )) * TEXT_STRETCH) as c_int;
+                )) * TEXT_STRETCH) as i32;
             }
         }
 
@@ -893,7 +884,7 @@ impl Displayer<'_, '_> {
          * clip-rectangle, of if the Text has been scrolled out
          */
         if data_text.my_cursor_y < clip.y().into()
-            || start_y > c_int::from(clip.y()) + c_int::from(clip.height())
+            || start_y > i32::from(clip.y()) + i32::from(clip.height())
         {
             i32::from(false)
         } else {

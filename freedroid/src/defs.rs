@@ -13,12 +13,12 @@ use sdl_sys::{
     SDLKey_SDLK_LAST, SDLKey_SDLK_RETURN, SDLMod_KMOD_LALT, SDLMod_KMOD_LCTRL, SDLMod_KMOD_LSHIFT,
     SDLMod_KMOD_RALT, SDLMod_KMOD_RCTRL, SDLMod_KMOD_RSHIFT,
 };
-use std::{cell::Cell, ffi::CStr, fmt, os::raw::c_int};
+use std::{cell::Cell, ffi::CStr, fmt};
 
 pub const MAX_THEMES: usize = 100;
 
-pub const RESET: c_int = 0x01;
-pub const UPDATE: c_int = 0x02;
+pub const RESET: i32 = 0x01;
+pub const UPDATE: i32 = 0x02;
 pub const INIT_ONLY: u8 = 0x04;
 pub const FREE_ONLY: u8 = 0x08;
 
@@ -113,12 +113,12 @@ impl crate::Data<'_> {
     #[cfg(not(target_os = "android"))]
     #[inline]
     pub fn mouse_left_pressed(&mut self) -> bool {
-        self.key_is_pressed(PointerStates::MouseButton1 as c_int)
+        self.key_is_pressed(PointerStates::MouseButton1 as i32)
     }
 
     #[inline]
     pub fn mouse_left_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(PointerStates::MouseButton1 as c_int)
+        self.key_is_pressed_r(PointerStates::MouseButton1 as i32)
     }
 
     #[cfg(not(target_os = "android"))]
@@ -614,9 +614,9 @@ pub const WAIT_TRANSFERMODE: f32 = 0.3; /* this is a "float" indicating the numb
                                         This variable describes the amount in SECONDS */
 pub const WAIT_COLLISION: u8 = 1; // after a little collision with influ, enemys hold position for a while
                                   // this variable describes the amount of time in SECONDS
-pub const ENEMYMAXWAIT: c_int = 2; // after each robot has reached its current destination waypoint is waits a
-                                   // while.  This variable describes the amount of time in SECONDS.  However,
-                                   // the final wait time is a random number within [0,ENEMYMAXWAIT].
+pub const ENEMYMAXWAIT: i32 = 2; // after each robot has reached its current destination waypoint is waits a
+                                 // while.  This variable describes the amount of time in SECONDS.  However,
+                                 // the final wait time is a random number within [0,ENEMYMAXWAIT].
 pub const FLASH_DURATION: f32 = 0.1; // in seconds
 
 /* direction definitions (fireing bullets and testing blockedness of positions) */
@@ -679,7 +679,7 @@ pub const ALLBLASTTYPES: usize = 2; /* number of different exposions */
 
 pub const MAXBULLETS: usize = 100; /* maximum possible Bullets in the air */
 pub const MAXBLASTS: usize = 100; /* max. possible Blasts visible */
-pub const AGGRESSIONMAX: c_int = 100;
+pub const AGGRESSIONMAX: i32 = 100;
 pub const ROBOT_MAX_WAIT_BETWEEN_SHOTS: f32 = 5.; // how long shoud each droid wait at most until
                                                   // is considers fireing again?
 
@@ -749,10 +749,10 @@ impl TryFrom<u8> for BulletKind {
     }
 }
 
-impl TryFrom<c_int> for BulletKind {
-    type Error = InvalidBulletKind<c_int>;
+impl TryFrom<i32> for BulletKind {
+    type Error = InvalidBulletKind<i32>;
 
-    fn try_from(value: c_int) -> Result<Self, Self::Error> {
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
         u8::try_from(value)
             .map_err(|_| InvalidBulletKind(value))
             .and_then(|value| {
@@ -1056,4 +1056,4 @@ macro_rules! impl_try_from_map_tile {
     };
 }
 
-impl_try_from_map_tile!(i8, u8, c_int);
+impl_try_from_map_tile!(i8, u8, i32);

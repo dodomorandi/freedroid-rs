@@ -16,14 +16,14 @@ use sdl_sys::{
     SDLKey_SDLK_KP4, SDLKey_SDLK_KP5, SDLKey_SDLK_KP6, SDLKey_SDLK_KP7, SDLKey_SDLK_KP8,
     SDLKey_SDLK_KP9, SDLKey_SDLK_KP_PLUS,
 };
-use std::{cmp::Ordering, ops::Not, os::raw::c_int};
+use std::{cmp::Ordering, ops::Not};
 
 const HIGHLIGHTCOLOR: Pixel = Pixel::from_u8(255);
 const HIGHLIGHTCOLOR2: Pixel = Pixel::from_u8(100);
 
 /// create a new empty waypoint on position x/y
-fn create_waypoint(level: &mut Level, block_x: c_int, block_y: c_int) {
-    if level.num_waypoints == c_int::try_from(MAXWAYPOINTS).unwrap() {
+fn create_waypoint(level: &mut Level, block_x: i32, block_y: i32) {
+    if level.num_waypoints == i32::try_from(MAXWAYPOINTS).unwrap() {
         warn!(
             "Maximal number of waypoints ({}) reached on this level. Cannot insert any more.",
             MAXWAYPOINTS,
@@ -40,7 +40,7 @@ fn create_waypoint(level: &mut Level, block_x: c_int, block_y: c_int) {
 }
 
 /// delete given waypoint num (and all its connections) on level Lev
-fn delete_waypoint(level: &mut Level, num: c_int) {
+fn delete_waypoint(level: &mut Level, num: i32) {
     let wp_list = &mut level.all_waypoints;
     let wpmax = level.num_waypoints - 1;
 
@@ -96,7 +96,7 @@ impl crate::Data<'_> {
     /// change level name and quit from level editing.
     pub fn level_editor(&mut self) {
         let mut done = false;
-        let mut origin_waypoint: c_int = -1;
+        let mut origin_waypoint: i32 = -1;
 
         let rect = self.vars.user_rect;
         self.vars.user_rect = self.vars.screen_rect; // level editor can use the full screen!
@@ -116,8 +116,8 @@ impl crate::Data<'_> {
 
             #[allow(clippy::cast_possible_truncation)]
             let [block_x, block_y] = [
-                (self.vars.me.pos.x).round() as c_int,
-                (self.vars.me.pos.y).round() as c_int,
+                (self.vars.me.pos.x).round() as i32,
+                (self.vars.me.pos.y).round() as i32,
             ];
 
             self.fill_rect(self.vars.user_rect, BLACK);
@@ -233,7 +233,7 @@ impl crate::Data<'_> {
 
         #[allow(clippy::cast_possible_truncation)]
         if self.right_pressed_r()
-            && (self.vars.me.pos.x.round() as c_int) < self.main.cur_level().xlen - 1
+            && (self.vars.me.pos.x.round() as i32) < self.main.cur_level().xlen - 1
         {
             self.vars.me.pos.x += 1.;
         }
@@ -244,7 +244,7 @@ impl crate::Data<'_> {
 
         #[allow(clippy::cast_possible_truncation)]
         if self.down_pressed_r()
-            && (self.vars.me.pos.y.round() as c_int) < self.main.cur_level().ylen - 1
+            && (self.vars.me.pos.y.round() as i32) < self.main.cur_level().ylen - 1
         {
             self.vars.me.pos.y += 1.;
         }
@@ -300,7 +300,7 @@ impl crate::Data<'_> {
         }
     }
 
-    fn handle_level_editor_tile_by_number(&mut self, block_x: c_int, block_y: c_int) {
+    fn handle_level_editor_tile_by_number(&mut self, block_x: i32, block_y: i32) {
         use nom::{
             character::complete::{i32, space0},
             sequence::preceded,
@@ -337,7 +337,7 @@ impl crate::Data<'_> {
             [usize::try_from(block_x).unwrap()] = special_map_value.try_into().unwrap();
     }
 
-    fn handle_level_editor_toggle_waypoint(&mut self, block_x: c_int, block_y: c_int) {
+    fn handle_level_editor_toggle_waypoint(&mut self, block_x: i32, block_y: i32) {
         // find out if there is a waypoint on the current square
         let mut i = 0;
         while i < usize::try_from(self.main.cur_level().num_waypoints).unwrap() {
@@ -361,8 +361,8 @@ impl crate::Data<'_> {
 
     fn handle_level_editor_waypoint_connection(
         &mut self,
-        block_x: c_int,
-        block_y: c_int,
+        block_x: i32,
+        block_y: i32,
         origin_waypoint: &mut i32,
         src_wp_index: &mut Option<usize>,
     ) {
@@ -383,7 +383,7 @@ impl crate::Data<'_> {
         } else if *origin_waypoint == -1 {
             *origin_waypoint = i.try_into().unwrap();
             let waypoint = &mut cur_level!(mut self.main).all_waypoints[i];
-            if waypoint.num_connections < c_int::try_from(MAX_WP_CONNECTIONS).unwrap() {
+            if waypoint.num_connections < i32::try_from(MAX_WP_CONNECTIONS).unwrap() {
                 info!("Waypoint nr. {}. selected as origin", i);
                 *src_wp_index = Some(i);
             } else {
@@ -395,7 +395,7 @@ impl crate::Data<'_> {
                 *origin_waypoint = -1;
                 *src_wp_index = None;
             }
-        } else if *origin_waypoint == c_int::try_from(i).unwrap() {
+        } else if *origin_waypoint == i32::try_from(i).unwrap() {
             info!("Origin==Target --> Connection Operation cancelled.");
             *origin_waypoint = -1;
             *src_wp_index = None;

@@ -1,12 +1,7 @@
 use crate::{graphics::scale_pic, FontCell, FontCellOwner, Sdl};
 
 use sdl::{ColorKeyFlag, Rect};
-use std::{
-    ffi::CStr,
-    fmt,
-    os::raw::{c_float, c_int},
-    rc::Rc,
-};
+use std::{ffi::CStr, fmt, rc::Rc};
 
 #[derive(Default)]
 pub struct BFont<'sdl> {
@@ -29,7 +24,7 @@ impl fmt::Debug for BFont<'_> {
 #[derive(Debug)]
 pub struct Info<'sdl> {
     /// font height
-    pub h: c_int,
+    pub h: i32,
 
     /// font surface
     pub surface: Option<sdl::Surface<'sdl>>,
@@ -38,15 +33,15 @@ pub struct Info<'sdl> {
     pub chars: [Rect; 256],
 }
 
-pub fn font_height(font: &Info) -> c_int {
+pub fn font_height(font: &Info) -> i32 {
     font.h
 }
 
 pub fn put_string_font<const F: bool>(
     surface: &mut sdl::surface::Generic<F>,
     font: &mut Info,
-    mut x: c_int,
-    y: c_int,
+    mut x: i32,
+    y: i32,
     text: &[u8],
 ) {
     for &c in text {
@@ -58,10 +53,10 @@ pub fn put_string_font<const F: bool>(
 fn put_char_font<const F: bool>(
     surface: &mut sdl::surface::Generic<F>,
     font: &mut Info,
-    x: c_int,
-    y: c_int,
+    x: i32,
+    y: i32,
     c: u8,
-) -> c_int {
+) -> i32 {
     let mut dest = Rect::new(
         x.try_into().unwrap(),
         y.try_into().unwrap(),
@@ -80,15 +75,15 @@ fn put_char_font<const F: bool>(
 }
 
 /// Return the width of the "c" character
-pub fn char_width(font: &Info, c: u8) -> c_int {
+pub fn char_width(font: &Info, c: u8) -> i32 {
     font.chars[usize::from(c)].width().into()
 }
 
 pub fn print_string_font<const F: bool>(
     surface: &mut sdl::surface::Generic<F>,
     font: &mut Info,
-    x: c_int,
-    y: c_int,
+    x: i32,
+    y: i32,
     format_args: fmt::Arguments,
 ) {
     use std::{io::Cursor, io::Write};
@@ -149,13 +144,13 @@ pub fn init_font(font: &mut Info) {
 pub fn centered_put_string_font<const F: bool>(
     surface: &mut sdl::surface::Generic<F>,
     font: &mut Info,
-    y: c_int,
+    y: i32,
     text: &[u8],
 ) {
     put_string_font(
         surface,
         font,
-        c_int::from(surface.width() / 2) - text_width_font(&*font, text) / 2,
+        i32::from(surface.width() / 2) - text_width_font(&*font, text) / 2,
         y,
         text,
     );
@@ -165,8 +160,8 @@ impl<'sdl> crate::Data<'sdl> {
     pub fn put_string<const F: bool>(
         &mut self,
         surface: &mut sdl::surface::Generic<F>,
-        x: c_int,
-        y: c_int,
+        x: i32,
+        y: i32,
         text: &[u8],
     ) {
         Self::put_string_static(&self.b_font, &mut self.font_owner, surface, x, y, text);
@@ -176,8 +171,8 @@ impl<'sdl> crate::Data<'sdl> {
         b_font: &BFont,
         font_owner: &mut FontCellOwner,
         surface: &mut sdl::surface::Generic<F>,
-        x: c_int,
-        y: c_int,
+        x: i32,
+        y: i32,
         text: &[u8],
     ) {
         put_string_font(
@@ -194,10 +189,10 @@ impl<'sdl> crate::Data<'sdl> {
         b_font: &BFont,
         font_owner: &mut FontCellOwner,
         surface: &mut sdl::surface::Generic<F>,
-        x: c_int,
-        y: c_int,
+        x: i32,
+        y: i32,
         c: u8,
-    ) -> c_int {
+    ) -> i32 {
         put_char_font(
             surface,
             b_font.current_font.as_ref().unwrap().rw(font_owner),
@@ -212,7 +207,7 @@ impl<'sdl> crate::Data<'sdl> {
         sdl: &'sdl Sdl,
         b_font: &mut BFont<'sdl>,
         filename: &CStr,
-        scale: c_float,
+        scale: f32,
     ) -> Rc<FontCell<'sdl>> {
         let mut surface = sdl.load_image_from_c_str_path(filename).unwrap();
         scale_pic(&mut surface, scale);
@@ -235,7 +230,7 @@ impl<'sdl> crate::Data<'sdl> {
         b_font: &BFont,
         font_owner: &mut FontCellOwner,
         surface: &mut sdl::surface::Generic<F>,
-        y: c_int,
+        y: i32,
         format_args: fmt::Arguments,
     ) {
         use std::{io::Cursor, io::Write};
@@ -250,8 +245,8 @@ impl<'sdl> crate::Data<'sdl> {
     pub fn print_string<const F: bool>(
         &mut self,
         surface: &mut sdl::surface::Generic<F>,
-        x: c_int,
-        y: c_int,
+        x: i32,
+        y: i32,
         format_args: fmt::Arguments,
     ) {
         use std::{io::Cursor, io::Write};
@@ -277,7 +272,7 @@ impl<'sdl> crate::Data<'sdl> {
     pub fn centered_put_string<const F: bool>(
         &mut self,
         surface: &mut sdl::surface::Generic<F>,
-        y: c_int,
+        y: i32,
         text: &[u8],
     ) {
         centered_put_string_font(
@@ -296,7 +291,7 @@ impl<'sdl> crate::Data<'sdl> {
         b_font: &BFont,
         font_owner: &mut FontCellOwner,
         surface: &mut sdl::surface::Generic<F>,
-        y: c_int,
+        y: i32,
         text: &[u8],
     ) {
         centered_put_string_font(
@@ -307,7 +302,7 @@ impl<'sdl> crate::Data<'sdl> {
         );
     }
 
-    pub fn text_width(&self, text: &[u8]) -> c_int {
+    pub fn text_width(&self, text: &[u8]) -> i32 {
         text_width_font(
             self.b_font
                 .current_font
@@ -319,6 +314,6 @@ impl<'sdl> crate::Data<'sdl> {
     }
 }
 
-pub fn text_width_font(font: &Info, text: &[u8]) -> c_int {
+pub fn text_width_font(font: &Info, text: &[u8]) -> i32 {
     text.iter().map(|&c| char_width(font, c)).sum()
 }

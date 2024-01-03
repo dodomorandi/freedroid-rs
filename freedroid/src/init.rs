@@ -32,7 +32,6 @@ use std::{
     ffi::CString,
     fs::{self, DirEntry},
     ops::Not,
-    os::raw::{c_float, c_int},
     path::Path,
 };
 
@@ -55,10 +54,10 @@ For more information about these matters, see the file named COPYING.";
 pub fn win32_disclaimer() {
     self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
     display_image(find_file(
-        TITLE_PIC_FILE_C.as_ptr() as *mut c_char,
-        GRAPHICS_DIR_C.as_ptr() as *mut c_char,
-        Themed::NoTheme as c_int,
-        Criticality::Critical as c_int,
+        TITLE_PIC_FILE_C.as_ptr() as *mut i8,
+        GRAPHICS_DIR_C.as_ptr() as *mut i8,
+        Themed::NoTheme as i32,
+        Criticality::Critical as i32,
     )); // show title pic
     make_grid_on_screen(Some(&Screen_Rect));
 
@@ -159,7 +158,7 @@ impl crate::Data<'_> {
             .iter()
             .take(self.main.num_enemys.try_into().unwrap())
         {
-            if enemy.status != Status::Out as c_int && enemy.status != Status::Terminated as c_int {
+            if enemy.status != Status::Out as i32 && enemy.status != Status::Terminated as i32 {
                 return;
             }
         }
@@ -186,7 +185,7 @@ impl crate::Data<'_> {
         {
             self.main.show_score = self.main.real_score.max(0.) as u32;
         }
-        self.vars.me.status = Status::Victory as c_int;
+        self.vars.me.status = Status::Victory as i32;
         self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
 
         self.wait_for_all_keys_released();
@@ -303,8 +302,8 @@ impl crate::Data<'_> {
             &mut self.misc,
             TITLE_PIC_FILE,
             Some(GRAPHICS_DIR_C),
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
+            Themed::NoTheme as i32,
+            Criticality::Critical as i32,
         )
         .unwrap();
         Self::display_image(self.sdl, &self.global, &mut self.graphics, image); // show title pic
@@ -581,11 +580,11 @@ impl crate::Data<'_> {
         info!("InitNewMission: All bullets have been deleted.");
         for blast in &mut self.main.all_blasts {
             blast.phase = (Status::Out as u8).into();
-            blast.ty = Status::Out as c_int;
+            blast.ty = Status::Out as i32;
         }
         info!("InitNewMission: All blasts have been deleted.");
         for enemy in &mut self.main.all_enemys {
-            enemy.ty = Status::Out as c_int;
+            enemy.ty = Status::Out as i32;
             enemy.energy = -1.;
         }
         info!("InitNewMission: All enemys have been deleted...");
@@ -664,12 +663,12 @@ impl crate::Data<'_> {
         // Now that the briefing and all that is done,
         // the influence structure can be initialized for
         // the new mission:
-        self.vars.me.ty = Droid::Droid001 as c_int;
+        self.vars.me.ty = Droid::Droid001 as i32;
         self.vars.me.speed.x = 0.;
         self.vars.me.speed.y = 0.;
         self.vars.me.energy = self.vars.droidmap[Droid::Droid001 as usize].maxenergy;
         self.vars.me.health = self.vars.me.energy; /* start with max. health */
-        self.vars.me.status = Status::Mobile as c_int;
+        self.vars.me.status = Status::Mobile as i32;
         self.vars.me.phase = 0.;
         self.vars.me.timer = 0.0; // set clock to 0
 
@@ -701,13 +700,13 @@ impl crate::Data<'_> {
             &mut self.misc,
             pic_title,
             Some(GRAPHICS_DIR_C),
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
+            Themed::NoTheme as i32,
+            Criticality::Critical as i32,
         )
         .unwrap();
         Self::display_image(self.sdl, &self.global, &mut self.graphics, image);
         self.make_grid_on_screen(Some(&self.vars.screen_rect.clone()));
-        self.vars.me.status = Status::Briefing as c_int;
+        self.vars.me.status = Status::Briefing as i32;
 
         self.b_font.current_font = self.global.para_b_font.clone();
 
@@ -746,8 +745,8 @@ impl crate::Data<'_> {
             .find_file(
                 data_filename,
                 Some(MAP_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
+                Themed::NoTheme as i32,
+                Criticality::Critical as i32,
             )
             .unwrap();
         let fpath = Path::new(
@@ -939,8 +938,8 @@ impl crate::Data<'_> {
             assert!(droid.aggression < 2i32.pow(f32::MANTISSA_DIGITS));
             assert!(droid.score < 2i32.pow(f32::MANTISSA_DIGITS));
 
-            droid.aggression = (droid.aggression as f32 * aggression_calibrator) as c_int;
-            droid.score = (droid.score as f32 * score_calibrator) as c_int;
+            droid.aggression = (droid.aggression as f32 * aggression_calibrator) as i32;
+            droid.score = (droid.score as f32 * score_calibrator) as i32;
         }
     }
 
@@ -1058,7 +1057,7 @@ impl crate::Data<'_> {
         for bullet in &mut self.vars.bulletmap {
             bullet.speed *= bullet_speed_calibrator;
             assert!(bullet.damage < 2i32.pow(f32::MANTISSA_DIGITS));
-            bullet.damage = (bullet.damage as f32 * bullet_damage_calibrator) as c_int;
+            bullet.damage = (bullet.damage as f32 * bullet_damage_calibrator) as i32;
         }
     }
 
@@ -1112,7 +1111,7 @@ impl crate::Data<'_> {
 
     /// Show end-screen
     pub(crate) fn thou_art_defeated(&mut self) {
-        self.vars.me.status = Status::Terminated as c_int;
+        self.vars.me.status = Status::Terminated as i32;
         self.sdl.cursor().hide();
 
         self.explode_influencer();
@@ -1225,8 +1224,8 @@ impl MainMissionData {
             .find_file(
                 mission_name.as_bytes(),
                 Some(MAP_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
+                Themed::NoTheme as i32,
+                Criticality::Critical as i32,
             )
             .unwrap();
         let fpath = Path::new(
@@ -1344,7 +1343,7 @@ impl MainMissionData {
         assert!(x_pos <= 2i32.pow(f32::MANTISSA_DIGITS));
         #[allow(clippy::cast_precision_loss)]
         {
-            data.vars.me.pos.x = x_pos as c_float;
+            data.vars.me.pos.x = x_pos as f32;
         }
 
         let start_point_slice = split_at_subslice(start_point_slice, b"YPos=").unwrap().1;
@@ -1355,7 +1354,7 @@ impl MainMissionData {
 
         #[allow(clippy::cast_precision_loss)]
         {
-            data.vars.me.pos.y = y_pos as c_float;
+            data.vars.me.pos.y = y_pos as f32;
         }
 
         info!(

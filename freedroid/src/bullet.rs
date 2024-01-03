@@ -8,7 +8,6 @@ use crate::{
 };
 
 use log::info;
-use std::os::raw::{c_float, c_int};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Data {
@@ -21,7 +20,7 @@ impl crate::Data<'_> {
         (0.3 + 4. / 64.) * (self.global.droid_radius + 4. / 64.)
     }
 
-    pub fn check_bullet_collisions(&mut self, num: c_int) {
+    pub fn check_bullet_collisions(&mut self, num: i32) {
         let bullet_index = usize::try_from(num).unwrap();
         let cur_bullet = &mut self.main.all_bullets[bullet_index];
 
@@ -127,15 +126,12 @@ impl crate::Data<'_> {
             cur_bullet.pos.y += step.y;
 
             let cur_bullet = &self.main.all_bullets[cur_bullet_index];
-            if self.is_passable(
-                cur_bullet.pos.x,
-                cur_bullet.pos.y,
-                Direction::Center as c_int,
-            ) != Some(Direction::Center)
+            if self.is_passable(cur_bullet.pos.x, cur_bullet.pos.y, Direction::Center as i32)
+                != Some(Direction::Center)
             {
                 let pos_x = cur_bullet.pos.x;
                 let pos_y = cur_bullet.pos.y;
-                self.start_blast(pos_x, pos_y, Explosion::Bulletblast as c_int);
+                self.start_blast(pos_x, pos_y, Explosion::Bulletblast as i32);
                 self.delete_bullet(cur_bullet_index.try_into().unwrap());
                 return;
             }
@@ -165,8 +161,8 @@ impl crate::Data<'_> {
                 .iter()
                 .enumerate()
             {
-                if enemy.status == Status::Out as c_int
-                    || enemy.status == Status::Terminated as c_int
+                if enemy.status == Status::Out as i32
+                    || enemy.status == Status::Terminated as i32
                     || enemy.levelnum != level
                 {
                     continue;
@@ -222,7 +218,7 @@ impl crate::Data<'_> {
 
                 let pos_x = cur_bullet.pos.x;
                 let pos_y = cur_bullet.pos.y;
-                self.start_blast(pos_x, pos_y, Explosion::Druidblast as c_int);
+                self.start_blast(pos_x, pos_y, Explosion::Druidblast as i32);
 
                 self.delete_bullet(cur_bullet_index.try_into().unwrap());
                 self.delete_bullet(bullet_index.try_into().unwrap());
@@ -230,16 +226,16 @@ impl crate::Data<'_> {
         }
     }
 
-    pub fn delete_blast(&mut self, num: c_int) {
-        self.main.all_blasts[usize::try_from(num).unwrap()].ty = Status::Out as c_int;
+    pub fn delete_blast(&mut self, num: i32) {
+        self.main.all_blasts[usize::try_from(num).unwrap()].ty = Status::Out as i32;
     }
 
     pub fn explode_blasts(&mut self) {
         for blast_index in 0..MAXBLASTS {
             let cur_blast = &self.main.all_blasts[blast_index];
             #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
-            if cur_blast.ty != Status::Out as c_int {
-                if cur_blast.ty == Explosion::Druidblast as c_int {
+            if cur_blast.ty != Status::Out as i32 {
+                if cur_blast.ty == Explosion::Druidblast as i32 {
                     self.check_blast_collisions(blast_index.try_into().unwrap());
                 }
 
@@ -256,14 +252,14 @@ impl crate::Data<'_> {
                 let blast_spec = &vars.blastmap[usize::try_from(cur_blast.ty).unwrap()];
                 cur_blast.phase +=
                     frame_time * blast_spec.phases as f32 / blast_spec.total_animation_time;
-                if cur_blast.phase.floor() as c_int >= blast_spec.phases {
+                if cur_blast.phase.floor() as i32 >= blast_spec.phases {
                     self.delete_blast(blast_index.try_into().unwrap());
                 }
             }
         }
     }
 
-    pub fn check_blast_collisions(&mut self, num: c_int) {
+    pub fn check_blast_collisions(&mut self, num: i32) {
         let level = self.main.cur_level().levelnum;
         /* check Blast-Bullet Collisions and kill hit Bullets */
         for bullet_index in 0..MAXBULLETS {
@@ -281,7 +277,7 @@ impl crate::Data<'_> {
             if dist < self.global.blast_radius {
                 let pos_x = cur_bullet.pos.x;
                 let pos_y = cur_bullet.pos.y;
-                self.start_blast(pos_x, pos_y, Explosion::Bulletblast as c_int);
+                self.start_blast(pos_x, pos_y, Explosion::Bulletblast as i32);
                 self.delete_bullet(bullet_index.try_into().unwrap());
             }
         }
@@ -292,7 +288,7 @@ impl crate::Data<'_> {
         } = self;
         let cur_blast = &main.all_blasts[usize::try_from(num).unwrap()];
         for enemy in &mut main.all_enemys[..usize::try_from(main.num_enemys).unwrap()] {
-            if enemy.status == Status::Out as c_int || enemy.levelnum != level {
+            if enemy.status == Status::Out as i32 || enemy.levelnum != level {
                 continue;
             }
 
@@ -320,7 +316,7 @@ impl crate::Data<'_> {
         };
         let dist = (v_dist.x * v_dist.x + v_dist.y * v_dist.y).sqrt();
 
-        if self.vars.me.status != Status::Out as c_int
+        if self.vars.me.status != Status::Out as i32
             && !cur_blast.mine
             && dist < self.global.blast_radius + self.global.droid_radius
         {
@@ -345,10 +341,10 @@ impl crate::Data<'_> {
         }
     }
 
-    pub fn start_blast(&mut self, x: c_float, y: c_float, mut ty: c_int) {
+    pub fn start_blast(&mut self, x: f32, y: f32, mut ty: i32) {
         let mut i = 0;
         while i < MAXBLASTS {
-            if self.main.all_blasts[i].ty == Status::Out as c_int {
+            if self.main.all_blasts[i].ty == Status::Out as i32 {
                 break;
             }
 
@@ -362,9 +358,9 @@ impl crate::Data<'_> {
         /* Get Pointer to it: more comfortable */
         let new_blast = &mut self.main.all_blasts[i];
 
-        if ty == Explosion::Rejectblast as c_int {
+        if ty == Explosion::Rejectblast as i32 {
             new_blast.mine = true;
-            ty = Explosion::Druidblast as c_int; // not really a different type, just avoid damaging influencer
+            ty = Explosion::Druidblast as i32; // not really a different type, just avoid damaging influencer
         } else {
             new_blast.mine = false;
         }
@@ -377,14 +373,14 @@ impl crate::Data<'_> {
 
         new_blast.message_was_done = 0;
 
-        if ty == Explosion::Druidblast as c_int {
+        if ty == Explosion::Druidblast as i32 {
             self.druid_blast_sound();
         }
     }
 
     /// delete bullet of given number, set it type=OUT, put it at x/y=-1/-1
     /// and create a Bullet-blast if `with_blast==TRUE`
-    pub fn delete_bullet(&mut self, bullet_number: c_int) {
+    pub fn delete_bullet(&mut self, bullet_number: i32) {
         let cur_bullet = &mut self.main.all_bullets[usize::try_from(bullet_number).unwrap()];
 
         if cur_bullet.ty == Status::Out as u8 {

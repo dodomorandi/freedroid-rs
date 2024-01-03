@@ -6,7 +6,7 @@ use crate::{
 use array_init::array_init;
 use cstr::cstr;
 use sdl::Rect;
-use std::{ffi::CStr, os::raw::c_int};
+use std::ffi::CStr;
 
 #[derive(Debug)]
 pub struct Vars<'sdl> {
@@ -35,7 +35,7 @@ pub struct Vars<'sdl> {
     pub progress_text_rect: Rect,
 
     /* counter to Message: you have won(this ship */
-    pub ship_empty_counter: c_int,
+    pub ship_empty_counter: i32,
     pub me: Influence,
 
     pub droidmap: Vec<DruidSpec>,

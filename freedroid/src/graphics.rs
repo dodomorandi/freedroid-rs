@@ -32,7 +32,6 @@ use std::{
     cell::RefCell,
     ffi::{CStr, CString},
     ops::Not,
-    os::raw::{c_char, c_float, c_int},
     path::Path,
     pin::Pin,
     rc::Rc,
@@ -41,8 +40,8 @@ use tinyvec_string::ArrayString;
 
 #[derive(Debug)]
 pub struct Graphics<'sdl> {
-    pub vid_bpp: c_int,
-    fonts_loaded: c_int,
+    pub vid_bpp: i32,
+    fonts_loaded: i32,
     // A pointer to the surfaces containing the map-pics, which may be rescaled with respect to
     pub map_block_surface_pointer:
         [[Option<Rc<RefCell<Surface<'sdl>>>>; NUM_MAP_BLOCKS]; NUM_COLORS],
@@ -131,12 +130,7 @@ impl Default for Graphics<'_> {
     }
 }
 
-pub fn apply_filter(
-    surface: &mut Surface,
-    fred: c_float,
-    fgreen: c_float,
-    fblue: c_float,
-) -> c_int {
+pub fn apply_filter(surface: &mut Surface, fred: f32, fgreen: f32, fblue: f32) -> i32 {
     let w = surface.width();
     (0..surface.height())
         .flat_map(move |y| (0..w).map(move |x| (x, y)))
@@ -178,10 +172,10 @@ impl<'sdl> Graphics<'sdl> {
     pub fn load_block(
         &mut self,
         fpath: Option<&CStr>,
-        line: c_int,
-        col: c_int,
+        line: i32,
+        col: i32,
         block: Option<Rect>,
-        flags: c_int,
+        flags: i32,
         sdl: &'sdl Sdl,
     ) -> Option<Surface<'sdl>> {
         let &mut Self {
@@ -204,7 +198,7 @@ impl<'sdl> Graphics<'sdl> {
     }
 }
 
-pub fn scale_pic(pic: &mut Surface, scale: c_float) {
+pub fn scale_pic(pic: &mut Surface, scale: f32) {
     if (scale - 1.0).abs() <= f32::EPSILON {
         return;
     }
@@ -453,7 +447,7 @@ impl crate::Data<'_> {
     }
 
     /// scale all "static" rectangles, which are theme-independent
-    pub fn scale_stat_rects(&mut self, scale: c_float) {
+    pub fn scale_stat_rects(&mut self, scale: f32) {
         macro_rules! scale {
             ($rect:expr) => {
                 $rect.scale(scale);
@@ -534,7 +528,7 @@ impl crate::Data<'_> {
         scale!(self.takeover.column_rect);
     }
 
-    pub fn scale_graphics(&mut self, scale: c_float) {
+    pub fn scale_graphics(&mut self, scale: f32) {
         static INIT: std::sync::Once = std::sync::Once::new();
 
         /* For some reason we need to SetAlpha every time on OS X */
@@ -682,7 +676,7 @@ impl crate::Data<'_> {
     /// Greg Knauss's "xteevee" hack in xscreensavers.
     ///
     /// timeout is in ms
-    pub fn white_noise(&mut self, frame_buffer: &mut FrameBuffer, rect: &mut Rect, timeout: c_int) {
+    pub fn white_noise(&mut self, frame_buffer: &mut FrameBuffer, rect: &mut Rect, timeout: i32) {
         use rand::{
             seq::{IteratorRandom, SliceRandom},
             Rng,
@@ -733,10 +727,9 @@ impl crate::Data<'_> {
         });
         drop(tmp);
 
-        let mut used_tiles: [c_char; NOISE_TILES as usize / 2 + 1] =
-            [-1; NOISE_TILES as usize / 2 + 1];
+        let mut used_tiles: [i8; NOISE_TILES as usize / 2 + 1] = [-1; NOISE_TILES as usize / 2 + 1];
         // let's go
-        self.play_sound(SoundType::WhiteNoise as c_int);
+        self.play_sound(SoundType::WhiteNoise as i32);
 
         let now = self.sdl.ticks_ms();
 
@@ -783,7 +776,7 @@ impl crate::Data<'_> {
         frame_buffer.set_clip_rect(&clip_rect);
     }
 
-    pub fn load_fonts(&mut self) -> c_int {
+    pub fn load_fonts(&mut self) -> i32 {
         let Self {
             global,
             sdl,
@@ -797,8 +790,8 @@ impl crate::Data<'_> {
             misc,
             PARA_FONT_FILE.as_bytes(),
             Some(GRAPHICS_DIR_C),
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
+            Themed::NoTheme as i32,
+            Criticality::Critical as i32,
         )
         .unwrap_or_else(|| panic!("font file named {PARA_FONT_FILE} was not found."));
 
@@ -814,8 +807,8 @@ impl crate::Data<'_> {
             misc,
             FONT0_FILE.as_bytes(),
             Some(GRAPHICS_DIR_C),
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
+            Themed::NoTheme as i32,
+            Criticality::Critical as i32,
         )
         .unwrap_or_else(|| panic!("font file named {FONT0_FILE} was not found."));
         global.font0_b_font = Some(Self::load_font(
@@ -830,8 +823,8 @@ impl crate::Data<'_> {
             misc,
             FONT1_FILE.as_bytes(),
             Some(GRAPHICS_DIR_C),
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
+            Themed::NoTheme as i32,
+            Criticality::Critical as i32,
         )
         .unwrap_or_else(|| panic!("font file named {FONT1_FILE} was not found."));
         global.font1_b_font = Some(Self::load_font(
@@ -846,8 +839,8 @@ impl crate::Data<'_> {
             misc,
             FONT2_FILE.as_bytes(),
             Some(GRAPHICS_DIR_C),
-            Themed::NoTheme as c_int,
-            Criticality::Critical as c_int,
+            Themed::NoTheme as i32,
+            Criticality::Critical as i32,
         )
         .unwrap_or_else(|| panic!("font file named {FONT2_FILE} was not found."));
         global.font2_b_font = Some(Self::load_font(
@@ -917,8 +910,8 @@ impl crate::Data<'_> {
                 misc,
                 ICON_FILE.as_bytes(),
                 Some(GRAPHICS_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::WarnOnly as c_int,
+                Themed::NoTheme as i32,
+                Criticality::WarnOnly as i32,
             );
 
             if let Some(fpath) = fpath {
@@ -999,7 +992,7 @@ impl crate::Data<'_> {
     /// the various structs
     ///
     /// Returns true/false
-    pub fn init_pictures(&mut self) -> c_int {
+    pub fn init_pictures(&mut self) -> i32 {
         use std::sync::Once;
 
         static DO_ONCE: Once = Once::new();
@@ -1011,8 +1004,8 @@ impl crate::Data<'_> {
                     &mut self.misc,
                     $file_name,
                     Some(GRAPHICS_DIR_C),
-                    Themed::UseTheme as c_int,
-                    Criticality::Critical as c_int,
+                    Themed::UseTheme as i32,
+                    Criticality::Critical as i32,
                 )
             };
         }
@@ -1112,8 +1105,8 @@ impl crate::Data<'_> {
                     &mut self.misc,
                     $file_name,
                     Some(GRAPHICS_DIR_C),
-                    Themed::NoTheme as c_int,
-                    $criticality as c_int,
+                    Themed::NoTheme as i32,
+                    $criticality as i32,
                 )
             };
 
@@ -1233,8 +1226,8 @@ impl crate::Data<'_> {
             &mut self.misc,
             b"config.theme",
             Some(GRAPHICS_DIR_C),
-            Themed::UseTheme as c_int,
-            Criticality::Critical as c_int,
+            Themed::UseTheme as i32,
+            Criticality::Critical as i32,
         )
         .expect("Unable to read file config.theme");
         let fpath = Path::new(
@@ -1318,7 +1311,7 @@ impl crate::Data<'_> {
     ///
     /// in the first call we assume the `Block_Rect` to be the original game-size
     /// and store this value for future rescalings
-    pub fn set_combat_scale_to(&mut self, scale: c_float) {
+    pub fn set_combat_scale_to(&mut self, scale: f32) {
         use once_cell::sync::OnceCell;
 
         static ORIG_BLOCK: OnceCell<Rect> = OnceCell::new();
@@ -1359,7 +1352,7 @@ impl crate::Data<'_> {
             )
         });
 
-        if (global.game_config.scale - 1.).abs() > c_float::EPSILON {
+        if (global.game_config.scale - 1.).abs() > f32::EPSILON {
             scale_pic(&mut image, global.game_config.scale);
         }
 
@@ -1368,14 +1361,7 @@ impl crate::Data<'_> {
 
     #[cfg(not(target_os = "android"))]
     #[inline]
-    pub fn draw_line_between_tiles(
-        &mut self,
-        x1: c_float,
-        y1: c_float,
-        x2: c_float,
-        y2: c_float,
-        color: Pixel,
-    ) {
+    pub fn draw_line_between_tiles(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, color: Pixel) {
         Self::draw_line_between_tiles_static(&self.vars, &mut self.graphics, x1, y1, x2, y2, color);
     }
 
@@ -1383,10 +1369,10 @@ impl crate::Data<'_> {
     pub fn draw_line_between_tiles_static(
         vars: &Vars,
         graphics: &mut Graphics,
-        mut x1: c_float,
-        mut y1: c_float,
-        mut x2: c_float,
-        mut y2: c_float,
+        mut x1: f32,
+        mut y1: f32,
+        mut x2: f32,
+        mut y2: f32,
         color: Pixel,
     ) {
         if (x1 - x2).abs() <= f32::EPSILON && (y1 - y2).abs() <= f32::EPSILON {
@@ -1698,10 +1684,10 @@ struct LoadBlockVidBppPic<'a, 'sdl: 'a> {
     pub vid_bpp: i32,
     pub pic: &'a mut Option<Surface<'sdl>>,
     pub fpath: Option<&'a CStr>,
-    pub line: c_int,
-    pub col: c_int,
+    pub line: i32,
+    pub col: i32,
     pub block: Option<Rect>,
-    pub flags: c_int,
+    pub flags: i32,
     pub sdl: &'sdl Sdl,
 }
 

@@ -15,7 +15,6 @@ use std::{
     convert::Infallible,
     ffi::CStr,
     ops::{Deref, DerefMut, Not},
-    os::raw::c_int,
 };
 
 #[derive(Debug)]
@@ -209,8 +208,8 @@ type CapsulesCountdown = Map<Option<u8>>;
 
 #[derive(Debug)]
 pub struct Takeover<'sdl> {
-    capsule_cur_row: [c_int; COLORS],
-    num_capsules: [c_int; COLORS],
+    capsule_cur_row: [i32; COLORS],
+    num_capsules: [i32; COLORS],
     playground: Playground,
     activation_map: ActivationMap,
     capsules_countdown: CapsulesCountdown,
@@ -218,8 +217,8 @@ pub struct Takeover<'sdl> {
     leader_color: Color,
     your_color: Color,
     opponent_color: Color,
-    droid_num: c_int,
-    opponent_type: c_int,
+    droid_num: i32,
+    opponent_type: i32,
     pub to_game_blocks: [Rect; NUM_TO_BLOCKS],
     pub to_ground_blocks: [Rect; NUM_GROUND_BLOCKS],
     pub column_block: Rect,
@@ -246,7 +245,7 @@ pub struct Takeover<'sdl> {
     direction: i32,
     flicker_color: i32,
     // your energy if you're rejected
-    reject_energy: c_int,
+    reject_energy: i32,
 }
 
 impl Default for Takeover<'_> {
@@ -645,7 +644,7 @@ fn process_playground_row(
 
 /// Define all the Rects for the takeover-game
 impl crate::Data<'_> {
-    pub fn set_takeover_rects(&mut self) -> c_int {
+    pub fn set_takeover_rects(&mut self) -> i32 {
         let Self {
             takeover:
                 Takeover {
@@ -1662,7 +1661,7 @@ impl crate::Data<'_> {
     /// play takeover-game against a druid
     ///
     /// Returns true if the user won, false otherwise
-    pub fn takeover(&mut self, enemynum: c_int) -> c_int {
+    pub fn takeover(&mut self, enemynum: i32) -> i32 {
         const BG_COLOR: SDL_Color = SDL_Color {
             r: 130,
             g: 130,
@@ -1750,7 +1749,7 @@ impl crate::Data<'_> {
         (self.takeover.leader_color == self.takeover.your_color).into()
     }
 
-    fn takeover_round(&mut self, enemynum: c_int, enemy_index: usize, finish_takeover: &mut bool) {
+    fn takeover_round(&mut self, enemynum: i32, enemy_index: usize, finish_takeover: &mut bool) {
         /* Init Color-column and Capsule-Number for each opponenet and your color */
         self.takeover
             .display_column
@@ -1799,12 +1798,12 @@ impl crate::Data<'_> {
 
             self.takeover_game_lost_sound();
             #[allow(clippy::cast_precision_loss)]
-            if self.vars.me.ty == Droid::Droid001 as c_int {
+            if self.vars.me.ty == Droid::Droid001 as i32 {
                 message = cstr!("Burnt Out");
                 self.vars.me.energy = 0.;
             } else {
                 message = cstr!("Rejected");
-                self.vars.me.ty = Droid::Droid001 as c_int;
+                self.vars.me.ty = Droid::Droid001 as i32;
                 self.vars.me.energy = self.takeover.reject_energy as f32;
             }
             *finish_takeover = true;
@@ -1832,9 +1831,9 @@ impl crate::Data<'_> {
     fn takeover_win(&mut self, enemy_index: usize, finish_takeover: &mut bool) -> &'static CStr {
         self.takeover_game_won_sound();
         #[allow(clippy::cast_possible_truncation)]
-        if self.vars.me.ty == Droid::Droid001 as c_int {
-            self.takeover.reject_energy = self.vars.me.energy as c_int;
-            self.main.pre_take_energy = self.vars.me.energy as c_int;
+        if self.vars.me.ty == Droid::Droid001 as i32 {
+            self.takeover.reject_energy = self.vars.me.energy as i32;
+            self.main.pre_take_energy = self.vars.me.energy as i32;
         }
 
         // We provide some security agains too high energy/health values gained
@@ -1866,7 +1865,7 @@ impl crate::Data<'_> {
             // quadratic "importance", max=529
         }
 
-        self.main.all_enemys[enemy_index].status = Status::Out as c_int; // removed droid silently (no blast!)
+        self.main.all_enemys[enemy_index].status = Status::Out as i32; // removed droid silently (no blast!)
 
         let message = if self.takeover.leader_color == self.takeover.your_color {
             /* won the proper way */

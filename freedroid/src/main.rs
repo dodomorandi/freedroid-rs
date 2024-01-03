@@ -57,13 +57,12 @@ use std::{
     cell::Cell,
     fs::File,
     ops::{ControlFlow, Not},
-    os::raw::c_float,
     path::Path,
 };
 
 struct Main<'sdl> {
-    last_got_into_blast_sound: c_float,
-    last_refresh_sound: c_float,
+    last_got_into_blast_sound: f32,
+    last_refresh_sound: f32,
     // Toggle TRUE/FALSE for turning sounds on/off
     sound_on: i32,
     // the current level data

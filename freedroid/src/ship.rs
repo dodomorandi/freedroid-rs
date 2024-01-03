@@ -15,18 +15,15 @@ use crate::{
 use log::{error, warn};
 use sdl::{rwops::RwOpsCapability, Rect, Rgba, Surface};
 use sdl_sys::SDL_Color;
-use std::{
-    ops::Not,
-    os::raw::{c_float, c_int},
-};
+use std::ops::Not;
 use tinyvec_string::ArrayString;
 
 const UPDATE_ONLY: u8 = 0x01;
 
 pub struct Data<'sdl> {
     last_siren: u32,
-    frame_num: c_int,
-    last_droid_type: c_int,
+    frame_num: i32,
+    last_droid_type: i32,
     last_frame_time: u32,
     src_rect: Rect,
     enter_console_last_move_tick: u32,
@@ -79,7 +76,7 @@ impl crate::Data<'_> {
                     > (SIREN_WAIT * 1000.0 / (self.main.alert_level as f32)) as u32
                 {
                     // higher alert-> faster sirens!
-                    self.play_sound(SoundType::Alert as c_int);
+                    self.play_sound(SoundType::Alert as i32);
                     self.ship.last_siren = self.sdl.ticks_ms();
                 }
 
@@ -89,7 +86,7 @@ impl crate::Data<'_> {
                 warn!(
                     "illegal AlertLevel = {} > {}.. something's gone wrong!!\n",
                     self.main.alert_level,
-                    AlertNames::Red as c_int
+                    AlertNames::Red as i32
                 );
                 return;
             }
@@ -133,9 +130,9 @@ impl crate::Data<'_> {
     pub fn show_droid_portrait(
         &mut self,
         mut dst: Rect,
-        droid_type: c_int,
-        cycle_time: c_float,
-        flags: c_int,
+        droid_type: i32,
+        cycle_time: f32,
+        flags: i32,
     ) {
         let mut need_new_frame = false;
 
@@ -254,7 +251,7 @@ impl crate::Data<'_> {
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
     }
 
-    fn unpack_droid_pics(&mut self, droid_type: c_int) {
+    fn unpack_droid_pics(&mut self, droid_type: i32) {
         // we need to unpack the droid-pics into our local storage
         self.ship.droid_pics = None;
         let packed_portrait = self.graphics.packed_portraits[usize::try_from(droid_type).unwrap()]
@@ -303,7 +300,7 @@ impl crate::Data<'_> {
     ///                           only  update the text-regions
     ///
     ///  does update the screen: all if flags=0, text-rect if `flags=UPDATE_ONLY`
-    pub fn show_droid_info(&mut self, droid_type: c_int, page: c_int, flags: c_int) {
+    pub fn show_droid_info(&mut self, droid_type: i32, page: i32, flags: i32) {
         use std::fmt::Write;
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
@@ -442,7 +439,7 @@ impl crate::Data<'_> {
         }
     }
 
-    fn show_arrows(&mut self, droid_type: c_int, page: c_int) {
+    fn show_arrows(&mut self, droid_type: i32, page: i32) {
         let Self {
             graphics:
                 Graphics {
@@ -536,7 +533,7 @@ impl crate::Data<'_> {
 
         self.wait_for_all_keys_released();
 
-        self.vars.me.status = Status::Console as c_int;
+        self.vars.me.status = Status::Console as i32;
 
         if cfg!(target_os = "android") {
             self.input.show_cursor = false;
@@ -547,7 +544,7 @@ impl crate::Data<'_> {
         self.b_font.current_font = self.global.para_b_font.clone();
 
         let mut pos = 0; // starting menu position
-        self.paint_console_menu(c_int::try_from(pos).unwrap(), 0);
+        self.paint_console_menu(i32::try_from(pos).unwrap(), 0);
 
         let wait_move_ticks: u32 = 100;
         let mut finished = false;
@@ -590,7 +587,7 @@ impl crate::Data<'_> {
 
         self.vars.user_rect = tmp_rect;
 
-        self.vars.me.status = Status::Mobile as c_int;
+        self.vars.me.status = Status::Mobile as i32;
 
         self.clear_graph_mem();
 
@@ -828,7 +825,7 @@ impl crate::Data<'_> {
     }
 
     /// This function should check if the mouse cursor is in the given Rectangle
-    pub fn cursor_is_on_rect(&self, rect: Rect) -> c_int {
+    pub fn cursor_is_on_rect(&self, rect: Rect) -> i32 {
         let user_center = self.vars.get_user_center();
         let cur_pos = Point {
             x: self.input.input_axis.x + (i32::from(user_center.x()) - 16),
@@ -847,7 +844,7 @@ impl crate::Data<'_> {
     ///
     ///  if level==-1: don't highlight any level
     ///  if liftrow==-1: dont' highlight any liftrows
-    pub fn show_lifts(&mut self, level: c_int, liftrow: c_int) {
+    pub fn show_lifts(&mut self, level: i32, liftrow: i32) {
         let lift_bg_color = SDL_Color {
             r: 0,
             g: 0,
@@ -920,7 +917,7 @@ impl crate::Data<'_> {
     ///       to call `SDL_Flip`() to display the result!
     /// pos  : 0<=pos<=3: which menu-position is currently active?
     /// flag : `UPDATE_ONLY`  only update the console-menu bar, not text & background
-    pub fn paint_console_menu(&mut self, pos: c_int, flag: c_int) {
+    pub fn paint_console_menu(&mut self, pos: i32, flag: i32) {
         use std::fmt::Write;
 
         if (flag & i32::from(UPDATE_ONLY)) == 0 {
@@ -964,7 +961,7 @@ impl crate::Data<'_> {
             self.display_text(
                 b"Logout from console\n\nDroid info\n\nDeck map\n\nShip map",
                 self.vars.cons_text_rect.x().into(),
-                c_int::from(self.vars.cons_text_rect.y()) + 25,
+                i32::from(self.vars.cons_text_rect.y()) + 25,
                 Some(self.vars.cons_text_rect),
             );
         } // only if not UPDATE_ONLY was required
@@ -1006,7 +1003,7 @@ impl crate::Data<'_> {
 
         /* Prevent the influ from coming out of the lift in transfer mode
          * by turning off transfer mode as soon as the influ enters the lift */
-        self.vars.me.status = Status::Elevator as c_int;
+        self.vars.me.status = Status::Elevator as i32;
 
         self.sdl.cursor().hide();
 
@@ -1090,10 +1087,10 @@ impl crate::Data<'_> {
                 self.vars.me.pos.y = self.main.cur_ship.all_lifts[cur_lift].y as f32;
             }
 
-            for i in 0..c_int::try_from(MAXBLASTS).unwrap() {
+            for i in 0..i32::try_from(MAXBLASTS).unwrap() {
                 self.delete_blast(i);
             }
-            for i in 0..c_int::try_from(MAXBULLETS).unwrap() {
+            for i in 0..i32::try_from(MAXBULLETS).unwrap() {
                 self.delete_bullet(i);
             }
         }
@@ -1110,7 +1107,7 @@ impl crate::Data<'_> {
         self.clear_graph_mem();
         self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
 
-        self.vars.me.status = Status::Mobile as c_int;
+        self.vars.me.status = Status::Mobile as i32;
         self.vars.me.text_visible_time = 0.;
         self.vars.me.text_to_be_displayed = TextToBeDisplayed::LevelEnterComment;
     }
@@ -1120,7 +1117,7 @@ impl crate::Data<'_> {
         up_lift: &mut i32,
         down_lift: &mut i32,
         cur_lift: &mut usize,
-        liftrow: c_int,
+        liftrow: i32,
         cur_level: &mut i32,
     ) {
         self.ship.enter_lift_last_move_tick = self.sdl.ticks_ms();
@@ -1143,7 +1140,7 @@ impl crate::Data<'_> {
         up_lift: &mut i32,
         down_lift: &mut i32,
         cur_lift: &mut usize,
-        liftrow: c_int,
+        liftrow: i32,
         cur_level: &mut i32,
     ) {
         self.ship.enter_lift_last_move_tick = self.sdl.ticks_ms();
@@ -1161,7 +1158,7 @@ impl crate::Data<'_> {
         }
     }
 
-    pub fn level_empty(&self) -> c_int {
+    pub fn level_empty(&self) -> i32 {
         let cur_level = self.main.cur_level();
         if cur_level.empty != 0 {
             return true.into();
@@ -1173,8 +1170,8 @@ impl crate::Data<'_> {
             .iter()
             .any(|enemy| {
                 enemy.levelnum == levelnum
-                    && enemy.status != Status::Out as c_int
-                    && enemy.status != Status::Terminated as c_int
+                    && enemy.status != Status::Out as i32
+                    && enemy.status != Status::Terminated as i32
             })
             .not()
             .into()
@@ -1185,7 +1182,7 @@ fn show_droid_page_info(
     page: i32,
     info_text: &mut ArrayString<[u8; 1000]>,
     show_arrows: &mut bool,
-    droid_type: c_int,
+    droid_type: i32,
     droid: &DruidSpec,
 ) {
     use std::fmt::Write;

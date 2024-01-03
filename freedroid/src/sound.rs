@@ -12,10 +12,7 @@ use sdl::{
     rwops::RwOps,
     Mixer,
 };
-use std::{
-    ffi::CStr,
-    os::raw::{c_float, c_int},
-};
+use std::ffi::CStr;
 
 const MIX_MAX_VOLUME: u8 = 128;
 
@@ -79,7 +76,7 @@ const MUSIC_FILES: [&[u8]; NUM_COLORS] = [
 
 #[derive(Debug)]
 pub struct Sound<'a> {
-    prev_color: c_int,
+    prev_color: i32,
     paused: bool,
     loaded_wav_files: [Option<Chunk<'a>>; SoundType::All as usize],
     _opened_audio: OpenAudio<'a>,
@@ -97,7 +94,7 @@ impl crate::Data<'_> {
     }
 
     #[inline]
-    pub fn play_sound(&self, tune: c_int) {
+    pub fn play_sound(&self, tune: i32) {
         Self::play_sound_static(
             self.main.sound_on,
             self.sdl,
@@ -106,7 +103,7 @@ impl crate::Data<'_> {
         );
     }
 
-    pub fn play_sound_static(sound_on: c_int, sdl: &Sdl, sound: &Sound, tune: c_int) {
+    pub fn play_sound_static(sound_on: i32, sdl: &Sdl, sound: &Sound, tune: i32) {
         if sound_on == 0 {
             return;
         }
@@ -228,7 +225,7 @@ impl crate::Data<'_> {
         Self::move_lift_sound_static(self.main.sound_on, self.sdl, self.sound.as_ref().unwrap());
     }
 
-    pub fn move_lift_sound_static(sound_on: c_int, sdl: &Sdl, sound: &Sound) {
+    pub fn move_lift_sound_static(sound_on: i32, sdl: &Sdl, sound: &Sound) {
         if sound_on == 0 {
             return;
         }
@@ -278,7 +275,7 @@ impl crate::Data<'_> {
 }
 
 impl<'sdl> crate::Data<'sdl> {
-    pub fn fire_bullet_sound(&self, bullet_type: c_int) {
+    pub fn fire_bullet_sound(&self, bullet_type: i32) {
         use BulletKind as K;
 
         if self.main.sound_on == 0 {
@@ -363,8 +360,8 @@ impl<'sdl> crate::Data<'sdl> {
                 misc,
                 filename_raw,
                 Some(SOUND_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::WarnOnly as c_int,
+                Themed::NoTheme as i32,
+                Criticality::WarnOnly as i32,
             ) else {
                 error!(
                     "Error loading sound-file: {}",
@@ -402,7 +399,7 @@ impl<'sdl> crate::Data<'sdl> {
         self.play_sound(SoundType::Endcountdown as i32);
     }
 
-    pub fn set_bg_music_volume(&self, new_volume: c_float) {
+    pub fn set_bg_music_volume(&self, new_volume: f32) {
         if self.main.sound_on == 0 {
             return;
         }
@@ -471,8 +468,8 @@ impl<'a> Sound<'a> {
                 misc,
                 sample_filename.as_bytes(),
                 Some(SOUND_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::WarnOnly as c_int,
+                Themed::NoTheme as i32,
+                Criticality::WarnOnly as i32,
             );
 
             let loaded_wav_file = &mut loaded_wav_files[sound_file_index];
@@ -502,8 +499,8 @@ impl<'a> Sound<'a> {
                 misc,
                 music_file,
                 Some(SOUND_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::WarnOnly as c_int,
+                Themed::NoTheme as i32,
+                Criticality::WarnOnly as i32,
             );
             let music_song = &mut music_songs[music_file_index];
             if let Some(fpath) = fpath {
@@ -548,7 +545,7 @@ impl<'a> Sound<'a> {
         Some(sound)
     }
 
-    pub(crate) fn set_sound_f_x_volume(&self, main: &Main, mixer: &Mixer, new_volume: c_float) {
+    pub(crate) fn set_sound_f_x_volume(&self, main: &Main, mixer: &Mixer, new_volume: f32) {
         if main.sound_on == 0 {
             return;
         }

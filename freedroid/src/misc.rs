@@ -19,7 +19,6 @@ use std::{
     env,
     ffi::{CStr, CString},
     fs::{self, File},
-    os::raw::{c_float, c_int, c_long},
     path::Path,
 };
 
@@ -28,10 +27,10 @@ pub struct Misc {
     previous_time: f32,
     current_time_factor: f32,
     file_path: ArrayCString<1024>,
-    frame_nr: c_int,
+    frame_nr: i32,
     one_frame_sdl_ticks: u32,
     now_sdl_ticks: u32,
-    one_frame_delay: c_long,
+    one_frame_delay: i64,
 }
 
 impl Default for Misc {
@@ -50,7 +49,7 @@ impl Default for Misc {
 
 /// This function is used to generate a random integer in the range
 /// from [0 to `upper_bound`] (inclusive), distributed uniformly.
-pub fn my_random(upper_bound: c_int) -> c_int {
+pub fn my_random(upper_bound: i32) -> i32 {
     thread_rng().gen_range(0..=upper_bound)
 }
 
@@ -267,7 +266,7 @@ pub fn read_and_malloc_string_from_data(
 }
 
 impl crate::Data<'_> {
-    pub fn update_progress(&mut self, percent: c_int) {
+    pub fn update_progress(&mut self, percent: i32) {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let h =
             (f64::from(self.vars.progress_bar_rect.height()) * f64::from(percent) / 100.) as u16;
@@ -322,7 +321,7 @@ impl crate::Data<'_> {
     ///
     /// This counter is most conveniently set via the function
     /// `Activate_Conservative_Frame_Computation`, which can be conveniently called from eveywhere.
-    pub fn frame_time(&mut self) -> c_float {
+    pub fn frame_time(&mut self) -> f32 {
         let Self {
             global, misc, main, ..
         } = self;
@@ -331,7 +330,7 @@ impl crate::Data<'_> {
     }
 
     /// Update the factor affecting the current speed of 'time flow'
-    pub fn set_time_factor(&mut self, time_factor: c_float) {
+    pub fn set_time_factor(&mut self, time_factor: f32) {
         self.misc.current_time_factor = time_factor;
     }
 
@@ -384,7 +383,7 @@ impl crate::Data<'_> {
         }
     }
 
-    pub fn save_game_config(&self) -> c_int {
+    pub fn save_game_config(&self) -> i32 {
         use std::io::Write;
         if self.main.config_dir.is_empty() {
             return defs::ERR.into();
@@ -492,7 +491,7 @@ impl crate::Data<'_> {
         } = &mut self.misc;
 
         *now_sdl_ticks = self.sdl.ticks_ms();
-        *one_frame_delay = c_long::from(*now_sdl_ticks) - c_long::from(*one_frame_sdl_ticks);
+        *one_frame_delay = i64::from(*now_sdl_ticks) - i64::from(*one_frame_sdl_ticks);
         *one_frame_delay = if *one_frame_delay > 0 {
             *one_frame_delay
         } else {
@@ -533,8 +532,8 @@ impl crate::Data<'_> {
         &'a mut self,
         fname: &[u8],
         subdir: Option<&CStr>,
-        use_theme: c_int,
-        critical: c_int,
+        use_theme: i32,
+        critical: i32,
     ) -> Option<&'a CStr> {
         let Self { global, misc, .. } = self;
         Self::find_file_static(global, misc, fname, subdir, use_theme, critical)
@@ -545,25 +544,25 @@ impl crate::Data<'_> {
         misc: &'a mut Misc,
         fname: &[u8],
         subdir: Option<&CStr>,
-        use_theme: c_int,
-        mut critical: c_int,
+        use_theme: i32,
+        mut critical: i32,
     ) -> Option<&'a CStr> {
         use std::fmt::Write;
 
-        if critical != Criticality::Ignore as c_int
-            && critical != Criticality::WarnOnly as c_int
-            && critical != Criticality::Critical as c_int
+        if critical != Criticality::Ignore as i32
+            && critical != Criticality::WarnOnly as i32
+            && critical != Criticality::Critical as i32
         {
             warn!(
                 "WARNING: unknown critical-value passed to find_file(): {}. Assume CRITICAL",
                 critical
             );
-            critical = Criticality::Critical as c_int;
+            critical = Criticality::Critical as i32;
         }
 
         let fname: &BStr = fname.into();
         let mut inner = |datadir| {
-            let theme_dir = if use_theme == Themed::UseTheme as c_int {
+            let theme_dir = if use_theme == Themed::UseTheme as i32 {
                 Cow::Owned(format!(
                     "{}_theme/",
                     global.game_config.theme_name.to_string_lossy(),
@@ -597,7 +596,7 @@ impl crate::Data<'_> {
             // how critical is this file for the game:
             match critical {
                 Criticality::WarnOnly => {
-                    if use_theme == Themed::UseTheme as c_int {
+                    if use_theme == Themed::UseTheme as i32 {
                         warn!(
                             "file {} not found in theme-dir: graphics/{}_theme/",
                             fname,
@@ -610,7 +609,7 @@ impl crate::Data<'_> {
                 }
                 Criticality::Ignore => return None,
                 Criticality::Critical => {
-                    if use_theme == Themed::UseTheme as c_int {
+                    if use_theme == Themed::UseTheme as i32 {
                         panic!(
                         "file {} not found in theme-dir: graphics/{}_theme/, cannot run without it!",
                         fname,
@@ -634,8 +633,8 @@ impl crate::Data<'_> {
                 &mut self.misc,
                 PROGRESS_METER_FILE,
                 Some(GRAPHICS_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
+                Themed::NoTheme as i32,
+                Criticality::Critical as i32,
             );
             self.graphics.progress_meter_pic =
                 self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
@@ -648,8 +647,8 @@ impl crate::Data<'_> {
                 &mut self.misc,
                 PROGRESS_FILLER_FILE,
                 Some(GRAPHICS_DIR_C),
-                Themed::NoTheme as c_int,
-                Criticality::Critical as c_int,
+                Themed::NoTheme as i32,
+                Criticality::Critical as i32,
             );
             self.graphics.progress_filler_pic =
                 self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
@@ -702,7 +701,7 @@ impl crate::Data<'_> {
 
     /// This function teleports the influencer to a new position on the
     /// ship.  THIS CAN BE A POSITION ON A DIFFERENT LEVEL.
-    pub fn teleport(&mut self, level_num: c_int, x: c_int, y: c_int) {
+    pub fn teleport(&mut self, level_num: i32, x: i32, y: i32) {
         let cur_level = level_num;
         let mut array_num = 0;
 
@@ -754,7 +753,7 @@ impl crate::Data<'_> {
             .take(self.main.num_enemys.try_into().unwrap())
             .for_each(|enemy| {
                 enemy.energy = 0.;
-                enemy.status = Status::Out as c_int;
+                enemy.status = Status::Out as i32;
             });
     }
 
@@ -762,7 +761,7 @@ impl crate::Data<'_> {
     ///
     /// this should be the first of all load/save functions called
     /// as here we read the $HOME-dir and create the config-subdir if neccessary
-    pub fn load_game_config(&mut self) -> c_int {
+    pub fn load_game_config(&mut self) -> i32 {
         use std::fmt::Write;
 
         // ----------------------------------------------------------------------
@@ -912,7 +911,7 @@ fn read_variable<'a>(data: &'a [u8], var_name: &str) -> Option<&'a [u8]> {
 }
 
 impl Misc {
-    pub fn frame_time(&mut self, global: &Global, f_p_sover1: f32) -> c_float {
+    pub fn frame_time(&mut self, global: &Global, f_p_sover1: f32) -> f32 {
         if global.skip_a_few_frames != 0 {
             return self.previous_time;
         }

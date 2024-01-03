@@ -19,7 +19,7 @@ use crate::{
 use log::{info, trace};
 use sdl::{Pixel, Rect};
 use sdl_sys::SDL_Color;
-use std::{cell::Cell, ffi::CStr, ops::Deref, os::raw::c_int};
+use std::{cell::Cell, ffi::CStr, ops::Deref};
 use tinyvec_string::ArrayString;
 
 const BLINK_LEN: f32 = 1.0;
@@ -75,7 +75,7 @@ impl crate::Data<'_> {
     ///     that has been modified
     ///
     /// (*) `SHOW_FULL_MAP` = 0x04: show complete map, disregard visibility
-    pub fn assemble_combat_picture(&mut self, mask: c_int) {
+    pub fn assemble_combat_picture(&mut self, mask: i32) {
         trace!("\nvoid Assemble_Combat_Picture(...): Real function call confirmed.");
 
         self.graphics
@@ -221,7 +221,7 @@ impl crate::Data<'_> {
             .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
     }
 
-    pub fn put_enemy(&mut self, enemy_index: c_int, x: c_int, y: c_int) {
+    pub fn put_enemy(&mut self, enemy_index: i32, x: i32, y: i32) {
         let droid = &self.main.all_enemys[usize::try_from(enemy_index).unwrap()];
         let ty = droid.ty;
         let phase = droid.phase;
@@ -351,7 +351,7 @@ impl crate::Data<'_> {
     /// to the center of the combat window if (-1,-1) was specified, or
     /// to the specified coordinates anywhere on the screen, useful e.g.
     /// for using the influencer as a cursor in the menus.
-    pub fn put_influence(&mut self, x: c_int, y: c_int) {
+    pub fn put_influence(&mut self, x: i32, y: i32) {
         trace!("PutInfluence real function call confirmed.");
 
         // Now we draw the hat and shoes of the influencer
@@ -513,7 +513,7 @@ impl crate::Data<'_> {
     /// `PutBullet`: draws a Bullet into the combat window.  The only
     /// parameter given is the number of the bullet in the `AllBullets`
     /// array. Everything else is computed in here.
-    pub fn put_bullet(&mut self, bullet_number: c_int) {
+    pub fn put_bullet(&mut self, bullet_number: i32) {
         let cur_bullet = &mut self.main.all_bullets[usize::try_from(bullet_number).unwrap()];
 
         trace!("PutBullet: real function call confirmed.");
@@ -623,7 +623,7 @@ impl crate::Data<'_> {
     /// text.
     ///
     /// `BANNER_NO_SDL_UPDATE=4`: Prevents any `SDL_Update` calls.
-    pub fn display_banner(&mut self, left: Option<&CStr>, right: Option<&CStr>, flags: c_int) {
+    pub fn display_banner(&mut self, left: Option<&CStr>, right: Option<&CStr>, flags: i32) {
         // --------------------
         // At first the text is prepared.  This can't hurt.
         // we will decide whether to display it or not later...
@@ -936,7 +936,7 @@ impl<const N: usize> Deref for CStrFixedCow<'_, N> {
 }
 
 mod screen_updater {
-    use std::{cell::RefCell, ffi::c_int};
+    use std::cell::RefCell;
 
     use sdl::Rect;
     use tinyvec_string::ArrayString;
@@ -960,7 +960,7 @@ mod screen_updater {
         data: &crate::Data,
         left_box: ArrayString<[u8; LEFT_TEXT_LEN]>,
         right_box: ArrayString<[u8; RIGHT_TEXT_LEN]>,
-        flags: c_int,
+        flags: i32,
     ) -> bool {
         data.graphics.banner_is_destroyed != 0
             || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
@@ -974,7 +974,7 @@ mod screen_updater {
         data: &mut crate::Data,
         left_box: ArrayString<[u8; LEFT_TEXT_LEN]>,
         right_box: ArrayString<[u8; RIGHT_TEXT_LEN]>,
-        flags: c_int,
+        flags: i32,
     ) {
         // Redraw the whole background of the top status bar
         let Graphics {

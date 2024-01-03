@@ -10,7 +10,7 @@ use crate::{
 };
 
 use log::warn;
-use std::{ops::Not, os::raw::c_int};
+use std::ops::Not;
 
 /// according to the intro, the laser can be "focused on any target
 /// within a range of eight metres"
@@ -19,7 +19,7 @@ const FIREDIST2: f32 = 8.;
 const COL_SPEED: f32 = 3.;
 
 impl crate::Data<'_> {
-    pub fn class_of_druid(&self, druid_type: c_int) -> c_int {
+    pub fn class_of_druid(&self, druid_type: i32) -> i32 {
         /* first digit is class */
         let class_char = self.vars.droidmap[usize::try_from(druid_type).unwrap()].druidname[0];
         match class_char {
@@ -88,7 +88,7 @@ impl crate::Data<'_> {
     /// AttackInfluence(): This function sometimes fires a bullet from
     /// enemy number enemynum directly into the direction of the influencer,
     /// but of course only if the odds are good i.e. requirements are met.
-    pub fn attack_influence(&mut self, enemy_num: c_int) {
+    pub fn attack_influence(&mut self, enemy_num: i32) {
         let this_robot = &self.main.all_enemys[usize::try_from(enemy_num).unwrap()];
         // At first, we check for a lot of cases in which we do not
         // need to move anything for this reason or for that
@@ -100,7 +100,7 @@ impl crate::Data<'_> {
         }
 
         // ignore dead robots as well...
-        if this_robot.status == Status::Out as c_int {
+        if this_robot.status == Status::Out as i32 {
             return;
         }
 
@@ -203,15 +203,15 @@ impl crate::Data<'_> {
         cur_bullet.time_in_seconds = 0.;
     }
 
-    pub fn move_this_enemy(&mut self, enemy_num: c_int) {
+    pub fn move_this_enemy(&mut self, enemy_num: i32) {
         let this_robot = &mut self.main.all_enemys[usize::try_from(enemy_num).unwrap()];
 
         // Now check if the robot is still alive
         // if the robot just got killed, initiate the
         // explosion and all that...
         #[allow(clippy::cast_precision_loss)]
-        if this_robot.energy <= 0. && (this_robot.status != Status::Terminated as c_int) {
-            this_robot.status = Status::Terminated as c_int;
+        if this_robot.energy <= 0. && (this_robot.status != Status::Terminated as i32) {
+            this_robot.status = Status::Terminated as i32;
             self.main.real_score +=
                 self.vars.droidmap[usize::try_from(this_robot.ty).unwrap()].score as f32;
 
@@ -219,7 +219,7 @@ impl crate::Data<'_> {
 
             let pos_x = this_robot.pos.x;
             let pos_y = this_robot.pos.y;
-            self.start_blast(pos_x, pos_y, Explosion::Druidblast as c_int);
+            self.start_blast(pos_x, pos_y, Explosion::Druidblast as i32);
             if self.level_empty() != 0 {
                 self.main.real_score += DECKCOMPLETEBONUS;
 
@@ -246,7 +246,7 @@ impl crate::Data<'_> {
         self.select_next_waypoint_classical(enemy_num);
     }
 
-    pub fn check_enemy_enemy_collision(&mut self, enemy_num: c_int) -> c_int {
+    pub fn check_enemy_enemy_collision(&mut self, enemy_num: i32) -> i32 {
         let Self {
             main, misc, global, ..
         } = self;
@@ -262,8 +262,8 @@ impl crate::Data<'_> {
 
         for enemy in enemys_before.iter_mut().chain(enemys_after) {
             // check only collisions of LIVING enemys on this level
-            if enemy.status == Status::Out as c_int
-                || enemy.status == Status::Terminated as c_int
+            if enemy.status == Status::Out as i32
+                || enemy.status == Status::Terminated as i32
                 || enemy.levelnum != curlev
             {
                 continue;
@@ -324,7 +324,7 @@ impl crate::Data<'_> {
     /// droids.
     ///
     /// Map tiles are not taken into consideration, only droids.
-    pub fn select_next_waypoint_classical(&mut self, enemy_num: c_int) {
+    pub fn select_next_waypoint_classical(&mut self, enemy_num: i32) {
         let this_robot = &mut self.main.all_enemys[usize::try_from(enemy_num).unwrap()];
 
         // We do some definitions to save us some more typing later...
@@ -366,7 +366,7 @@ impl crate::Data<'_> {
         let mut nth_enemy = 0;
 
         for enemy in &mut self.main.all_enemys[..usize::try_from(self.main.num_enemys).unwrap()] {
-            if enemy.status == Status::Out as c_int || enemy.levelnum != cur_level_num {
+            if enemy.status == Status::Out as i32 || enemy.levelnum != cur_level_num {
                 /* dont handle dead enemys or on other level */
                 continue;
             }
@@ -382,7 +382,7 @@ impl crate::Data<'_> {
                 }
 
                 warned = true;
-                enemy.status = Status::Out as c_int;
+                enemy.status = Status::Out as i32;
                 continue;
             }
 
@@ -405,7 +405,7 @@ impl crate::Data<'_> {
 
     /// This function moves one robot thowards his next waypoint.  If already
     /// there, the function does nothing more.
-    pub fn move_this_robot_thowards_his_waypoint(&mut self, enemy_num: c_int) {
+    pub fn move_this_robot_thowards_his_waypoint(&mut self, enemy_num: i32) {
         let Self {
             main,
             misc,
@@ -457,7 +457,7 @@ impl crate::Data<'_> {
             enemy.phase = 0.;
             enemy.nextwaypoint = 0;
             enemy.lastwaypoint = 0;
-            enemy.status = Status::Out as c_int;
+            enemy.status = Status::Out as i32;
             enemy.warten = 0.;
             enemy.firewait = 0.;
             enemy.energy = -1.;
@@ -481,7 +481,7 @@ impl crate::Data<'_> {
         main.all_enemys[0..usize::try_from(main.num_enemys).unwrap()]
             .iter_mut()
             .filter(|enemy| {
-                enemy.status != Status::Out as c_int
+                enemy.status != Status::Out as i32
                     && enemy.energy > 0.
                     && enemy.energy < vars.droidmap[usize::try_from(enemy.ty).unwrap()].maxenergy
             })

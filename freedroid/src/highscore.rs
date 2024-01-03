@@ -15,7 +15,6 @@ use std::{
     fs::File,
     io::{BufReader, Read, Write},
     mem::{self, align_of, size_of},
-    os::raw::{c_int, c_long},
     path::Path,
     rc::Rc,
 };
@@ -180,7 +179,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        self.vars.me.status = Status::Debriefing as c_int;
+        self.vars.me.status = Status::Debriefing as i32;
 
         #[allow(clippy::cast_possible_truncation)]
         let Some(entry_pos) = self
@@ -189,7 +188,7 @@ impl crate::Data<'_> {
             .as_ref()
             .unwrap()
             .iter()
-            .position(|entry| entry.score < score as c_long)
+            .position(|entry| entry.score < score as i64)
         else {
             return;
         };
@@ -290,7 +289,7 @@ impl crate::Data<'_> {
             .init_highscores_inner(self.main.get_config_dir());
     }
 
-    pub fn save_highscores(&mut self) -> c_int {
+    pub fn save_highscores(&mut self) -> i32 {
         match self
             .highscore
             .save_highscores_inner(self.main.get_config_dir())
@@ -308,8 +307,8 @@ impl crate::Data<'_> {
             &mut self.misc,
             HS_BACKGROUND_FILE,
             Some(GRAPHICS_DIR_C),
-            Themed::NoTheme as c_int,
-            Criticality::WarnOnly as c_int,
+            Themed::NoTheme as i32,
+            Criticality::WarnOnly as i32,
         );
         if let Some(fpath) = fpath {
             Self::display_image(self.sdl, &self.global, &mut self.graphics, fpath);

@@ -29,7 +29,6 @@ use std::{
     ffi::CStr,
     io::Cursor,
     ops::{AddAssign, SubAssign},
-    os::raw::{c_float, c_int},
 };
 
 #[derive(Debug, Default)]
@@ -635,7 +634,7 @@ impl<'sdl> crate::Data<'sdl> {
         #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
         self.put_influence(
             influ_x,
-            menu_y + ((menu_pos as f64 - 0.5) * f64::from(self.menu.font_height)) as c_int,
+            menu_y + ((menu_pos as f64 - 0.5) * f64::from(self.menu.font_height)) as i32,
         );
 
         #[cfg(not(target_os = "android"))]
@@ -715,7 +714,7 @@ impl<'sdl> crate::Data<'sdl> {
 
     /// subroutine to display the current key-config and highlight current selection
     #[cfg(not(target_os = "android"))]
-    pub fn display_key_config(&mut self, sel_x: c_int, sel_y: c_int) {
+    pub fn display_key_config(&mut self, sel_x: i32, sel_y: i32) {
         macro_rules! print_string_font {
             ($font:expr, $col:expr, $row:expr, $($args:tt)+) => {
                 {
@@ -1200,7 +1199,7 @@ impl<'sdl> crate::Data<'sdl> {
             val: &mut cur_level.color,
             step: 1,
             min_value: 0,
-            max_value: c_int::try_from(COLOR_NAMES.len()).unwrap() - 1,
+            max_value: i32::try_from(COLOR_NAMES.len()).unwrap() - 1,
         }
         .run();
         self.switch_background_music_to(Some(BYCOLOR));
@@ -1557,10 +1556,10 @@ impl<'sdl> crate::Data<'sdl> {
     pub fn menu_change_float(
         &self,
         action: MenuAction,
-        val: &mut c_float,
-        step: c_float,
-        min_value: c_float,
-        max_value: c_float,
+        val: &mut f32,
+        step: f32,
+        min_value: f32,
+        max_value: f32,
     ) {
         self.menu_change(action, val, step, min_value, max_value);
     }
@@ -1569,24 +1568,24 @@ impl<'sdl> crate::Data<'sdl> {
     pub fn menu_change_int(
         &self,
         action: MenuAction,
-        val: &mut c_int,
-        step: c_int,
-        min_value: c_int,
-        max_value: c_int,
+        val: &mut i32,
+        step: i32,
+        min_value: i32,
+        max_value: i32,
     ) {
         self.menu_change(action, val, step, min_value, max_value);
     }
 
     pub fn flip_toggle<F>(&mut self, mut get_toggle: F)
     where
-        F: for<'a> FnMut(&'a mut crate::Data) -> &'a mut c_int,
+        F: for<'a> FnMut(&'a mut crate::Data) -> &'a mut i32,
     {
         self.menu_item_selected_sound();
         let toggle = get_toggle(self);
         *toggle = !*toggle;
     }
 
-    pub fn set_theme(&mut self, theme_index: c_int) {
+    pub fn set_theme(&mut self, theme_index: i32) {
         assert!(theme_index >= 0 && theme_index < self.graphics.all_themes.num_themes);
 
         self.graphics.all_themes.cur_tnum = theme_index;
@@ -1598,7 +1597,7 @@ impl<'sdl> crate::Data<'sdl> {
     }
 }
 
-pub fn is_toggle_on(toggle: c_int) -> &'static CStr {
+pub fn is_toggle_on(toggle: i32) -> &'static CStr {
     if toggle == 0 {
         cstr!("NO")
     } else {
@@ -1608,7 +1607,7 @@ pub fn is_toggle_on(toggle: c_int) -> &'static CStr {
 
 #[must_use]
 struct MenuChange<'a, 'b, T> {
-    sound_on: c_int,
+    sound_on: i32,
     sdl: &'a Sdl,
     sound: &'a Sound<'b>,
     action: MenuAction,
