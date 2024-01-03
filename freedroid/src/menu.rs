@@ -15,8 +15,6 @@ use crate::{
 use crate::{
     b_font::print_string_font,
     defs::{MapTile, BYCOLOR, MAX_MAP_COLS, MAX_MAP_ROWS},
-    global::Global,
-    graphics::Graphics,
     input::{CMD_STRINGS, KEY_STRINGS},
     map::COLOR_NAMES,
 };
@@ -718,6 +716,104 @@ impl<'sdl> crate::Data<'sdl> {
     /// subroutine to display the current key-config and highlight current selection
     #[cfg(not(target_os = "android"))]
     pub fn display_key_config(&mut self, sel_x: c_int, sel_y: c_int) {
+        macro_rules! print_string_font {
+            ($font:expr, $col:expr, $row:expr, $($args:tt)+) => {
+                {
+                    print_string_font(
+                        self.graphics.ne_screen.as_mut().unwrap(),
+                        $font.as_ref().unwrap().rw(&mut self.font_owner),
+                        $col,
+                        $row,
+                        format_args!($($args)+),
+                    );
+                }
+            };
+        }
+
+        macro_rules! print_string_font0 {
+            ($col:expr, $row:expr, $($args:tt)+) => {
+                print_string_font!(
+                    self.global.font0_b_font,
+                    $col, $row, $($args)+
+                );
+            };
+        }
+
+        let DisplayKeyConfigPositions {
+            start_x,
+            start_y,
+            col1,
+            col2,
+            col3,
+            lheight,
+        } = self.display_key_config_get_positions();
+
+        let Self { menu, graphics, .. } = self;
+        menu.menu_background
+            .as_mut()
+            .unwrap()
+            .blit(graphics.ne_screen.as_mut().unwrap());
+
+        #[cfg(feature = "gcw0")]
+        print_string_font0!(col1, start_y, "(RShldr to clear an entry)");
+
+        #[cfg(not(feature = "gcw0"))]
+        {
+            print_string_font0!(col1, start_y, "(RShldr to clear an entry)");
+            print_string_font0!(col1, start_y, "(Backspace to clear an entry)");
+        }
+
+        let mut posy = 1;
+        print_string_font0!(start_x, start_y + posy * lheight, "Command");
+        print_string_font0!(col1, start_y + posy * lheight, "Key1");
+        print_string_font0!(col2, start_y + posy * lheight, "Key2");
+        print_string_font0!(col3, start_y + posy * lheight, "Key3");
+        posy += 1;
+
+        for (i, cmd_string) in CMD_STRINGS[0..Cmds::Last as usize]
+            .iter()
+            .copied()
+            .enumerate()
+        {
+            let global = &self.global;
+            let pos_font = |x, y| {
+                if x != sel_x || i32::try_from(y).unwrap() != sel_y {
+                    &global.font1_b_font
+                } else {
+                    &global.font2_b_font
+                }
+            };
+
+            print_string_font!(
+                global.font0_b_font,
+                start_x,
+                start_y + (posy) * lheight,
+                "{cmd_string}",
+            );
+            self.input.key_cmds[i]
+                .iter()
+                .take(3)
+                .zip([col1, col2, col3])
+                .zip([1, 2, 3])
+                .for_each(|((&key_cmd, col), pos_font_x)| {
+                    print_string_font!(
+                        pos_font(pos_font_x, 1 + i),
+                        col,
+                        start_y + (posy) * lheight,
+                        "{}",
+                        KEY_STRINGS[usize::try_from(key_cmd).unwrap()]
+                            .unwrap()
+                            .to_str()
+                            .unwrap(),
+                    );
+                });
+            posy += 1;
+        }
+
+        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
+    }
+
+    fn display_key_config_get_positions(&self) -> DisplayKeyConfigPositions {
         let current_font = self
             .b_font
             .current_font
@@ -742,163 +838,14 @@ impl<'sdl> crate::Data<'sdl> {
                 .ro(&self.font_owner),
         ) + 2;
 
-        let Self { menu, graphics, .. } = self;
-        menu.menu_background
-            .as_mut()
-            .unwrap()
-            .blit(graphics.ne_screen.as_mut().unwrap());
-
-        let font0_b_font = self
-            .global
-            .font0_b_font
-            .as_ref()
-            .unwrap()
-            .rw(&mut self.font_owner);
-
-        #[cfg(feature = "gcw0")]
-        print_string_font(
-            self.graphics.ne_screen.as_mut().unwrap(),
-            font0_b_font,
-            col1,
-            start_y,
-            format_args!("(RShldr to clear an entry)"),
-        );
-
-        #[cfg(not(feature = "gcw0"))]
-        {
-            print_string_font(
-                self.graphics.ne_screen.as_mut().unwrap(),
-                font0_b_font,
-                col1,
-                start_y,
-                format_args!("(RShldr to clear an entry)"),
-            );
-            print_string_font(
-                self.graphics.ne_screen.as_mut().unwrap(),
-                font0_b_font,
-                col1,
-                start_y,
-                format_args!("(Backspace to clear an entry)"),
-            );
-        }
-
-        let mut posy = 1;
-        print_string_font(
-            self.graphics.ne_screen.as_mut().unwrap(),
-            font0_b_font,
+        DisplayKeyConfigPositions {
             start_x,
-            start_y + (posy) * lheight,
-            format_args!("Command"),
-        );
-        print_string_font(
-            self.graphics.ne_screen.as_mut().unwrap(),
-            font0_b_font,
+            start_y,
             col1,
-            start_y + (posy) * lheight,
-            format_args!("Key1"),
-        );
-        print_string_font(
-            self.graphics.ne_screen.as_mut().unwrap(),
-            font0_b_font,
             col2,
-            start_y + (posy) * lheight,
-            format_args!("Key2"),
-        );
-        print_string_font(
-            self.graphics.ne_screen.as_mut().unwrap(),
-            font0_b_font,
             col3,
-            start_y + (posy) * lheight,
-            format_args!("Key3"),
-        );
-        posy += 1;
-
-        for (i, cmd_string) in CMD_STRINGS[0..Cmds::Last as usize]
-            .iter()
-            .copied()
-            .enumerate()
-        {
-            let &mut Self {
-                graphics: Graphics {
-                    ref mut ne_screen, ..
-                },
-                global:
-                    Global {
-                        ref font0_b_font,
-                        ref font1_b_font,
-                        ref font2_b_font,
-                        ..
-                    },
-                ..
-            } = self;
-
-            let pos_font = |x, y| {
-                if x != sel_x || i32::try_from(y).unwrap() != sel_y {
-                    font1_b_font
-                } else {
-                    font2_b_font
-                }
-            };
-
-            print_string_font(
-                ne_screen.as_mut().unwrap(),
-                font0_b_font.as_ref().unwrap().rw(&mut self.font_owner),
-                start_x,
-                start_y + (posy) * lheight,
-                format_args!("{cmd_string}"),
-            );
-            print_string_font(
-                ne_screen.as_mut().unwrap(),
-                pos_font(1, 1 + i)
-                    .as_ref()
-                    .unwrap()
-                    .rw(&mut self.font_owner),
-                col1,
-                start_y + (posy) * lheight,
-                format_args!(
-                    "{}",
-                    KEY_STRINGS[usize::try_from(self.input.key_cmds[i][0]).unwrap()]
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                ),
-            );
-            print_string_font(
-                ne_screen.as_mut().unwrap(),
-                pos_font(2, 1 + i)
-                    .as_ref()
-                    .unwrap()
-                    .rw(&mut self.font_owner),
-                col2,
-                start_y + (posy) * lheight,
-                format_args!(
-                    "{}",
-                    KEY_STRINGS[usize::try_from(self.input.key_cmds[i][1]).unwrap()]
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                ),
-            );
-            print_string_font(
-                ne_screen.as_mut().unwrap(),
-                pos_font(3, 1 + i)
-                    .as_ref()
-                    .unwrap()
-                    .rw(&mut self.font_owner),
-                col3,
-                start_y + (posy) * lheight,
-                format_args!(
-                    "{}",
-                    KEY_STRINGS[usize::try_from(self.input.key_cmds[i][2]).unwrap()]
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                ),
-            );
-            posy += 1;
+            lheight,
         }
-
-        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
     }
 
     #[cfg(not(target_os = "android"))]
@@ -1700,4 +1647,13 @@ where
             }
         }
     }
+}
+
+struct DisplayKeyConfigPositions {
+    start_x: i32,
+    start_y: i32,
+    col1: i32,
+    col2: i32,
+    col3: i32,
+    lheight: i32,
 }
