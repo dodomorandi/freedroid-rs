@@ -916,16 +916,14 @@ fn handle_keyboard_event(event: &event::Keyboard, input: &mut Input) {
     input.current_modifiers = event.keysym.mod_.bits();
     match event.ty {
         KeyboardEventType::KeyDown => {
-            input.input_state[usize::try_from(event.keysym.symbol as isize).unwrap()]
-                .set_just_pressed();
+            input.input_state[event.keysym.symbol.to_usize()].set_just_pressed();
             #[cfg(feature = "gcw0")]
             if input.input_axis.x != 0 || input.input_axis.y != 0 {
                 input.axis_is_active = true.into(); // 4 GCW-0 ; breaks cursor keys after axis has been active...
             }
         }
         KeyboardEventType::KeyUp => {
-            input.input_state[usize::try_from(event.keysym.symbol as isize).unwrap()]
-                .set_just_released();
+            input.input_state[event.keysym.symbol.to_usize()].set_just_released();
             #[cfg(feature = "gcw0")]
             {
                 input.axis_is_active = false.into();

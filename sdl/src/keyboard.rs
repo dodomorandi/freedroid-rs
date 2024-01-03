@@ -588,6 +588,12 @@ impl Key {
     pub const fn to_u16(self) -> u16 {
         self as u16
     }
+
+    #[inline]
+    #[must_use]
+    pub const fn to_usize(self) -> usize {
+        self as usize
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, thiserror::Error)]
