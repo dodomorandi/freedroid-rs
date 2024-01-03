@@ -470,8 +470,6 @@ impl<'sdl> crate::Data<'sdl> {
 
     /// Generic menu handler
     pub fn show_menu(&mut self, menu_entries: &[Entry<'sdl>]) {
-        use std::io::Write;
-
         self.initiate_menu(false);
         self.wait_for_all_keys_released();
 
@@ -510,46 +508,7 @@ impl<'sdl> crate::Data<'sdl> {
             let submenu = menu_entries[menu_pos].submenu;
 
             if need_update {
-                let Self { menu, graphics, .. } = self;
-
-                menu.menu_background
-                    .as_mut()
-                    .unwrap()
-                    .blit(graphics.ne_screen.as_mut().unwrap());
-                // print menu
-                menu_entries.iter().enumerate().for_each(|(i, entry)| {
-                    let arg = entry
-                        .handler
-                        .and_then(|handler| (handler)(self, MenuAction::INFO))
-                        .unwrap_or(cstr!(""));
-
-                    let mut full_name: [u8; 256] = [0; 256];
-                    let mut cursor = Cursor::new(full_name.as_mut());
-                    write!(
-                        cursor,
-                        "{}{}",
-                        entry.name.as_ref().unwrap(),
-                        arg.to_str().unwrap()
-                    )
-                    .unwrap();
-                    let position = usize::try_from(cursor.position()).unwrap();
-                    let mut ne_screen = self.graphics.ne_screen.take().unwrap();
-                    self.put_string(
-                        &mut ne_screen,
-                        menu_x,
-                        menu_y + i32::try_from(i).unwrap() * self.menu.font_height,
-                        &full_name[..position],
-                    );
-                    self.graphics.ne_screen = Some(ne_screen);
-                });
-                #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
-                self.put_influence(
-                    influ_x,
-                    menu_y + ((menu_pos as f64 - 0.5) * f64::from(self.menu.font_height)) as c_int,
-                );
-
-                #[cfg(not(target_os = "android"))]
-                assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
+                self.update_menu(menu_entries, menu_pos, menu_x, menu_y, influ_x);
 
                 need_update = false;
             }
@@ -568,23 +527,12 @@ impl<'sdl> crate::Data<'sdl> {
                 }
 
                 MenuAction::CLICK => {
-                    if handler.is_none() && submenu.is_none() {
-                        self.menu_item_selected_sound();
-                        finished = true;
-                    } else {
-                        if let Some(handler) = handler {
-                            self.wait_for_all_keys_released();
-                            (handler)(self, action);
-                        }
-
-                        if let Some(submenu) = submenu {
-                            self.menu_item_selected_sound();
-                            self.wait_for_all_keys_released();
-                            self.show_menu(submenu);
-                            self.initiate_menu(false);
-                        }
-                        need_update = true;
-                    }
+                    self.handle_menu_action_click(
+                        handler,
+                        submenu,
+                        &mut finished,
+                        &mut need_update,
+                    );
                 }
 
                 MenuAction::RIGHT | MenuAction::LEFT => {
@@ -592,11 +540,7 @@ impl<'sdl> crate::Data<'sdl> {
                         continue;
                     }
 
-                    if let Some(handler) = handler {
-                        (handler)(self, action);
-                    }
-                    self.menu.show_menu_last_move_tick = self.sdl.ticks_ms();
-                    need_update = true;
+                    self.handle_menu_action_right_left(action, handler, &mut need_update);
                 }
 
                 MenuAction::UP | MenuAction::UP_WHEEL => {
@@ -604,14 +548,11 @@ impl<'sdl> crate::Data<'sdl> {
                         continue;
                     }
 
-                    self.move_menu_position_sound();
-                    if menu_pos > 0 {
-                        menu_pos -= 1;
-                    } else {
-                        menu_pos = num_entries - 1;
-                    }
-                    self.menu.show_menu_last_move_tick = self.sdl.ticks_ms();
-                    need_update = true;
+                    self.handle_menu_action_up_up_wheel(
+                        &mut need_update,
+                        &mut menu_pos,
+                        num_entries,
+                    );
                 }
 
                 MenuAction::DOWN | MenuAction::DOWN_WHEEL => {
@@ -619,14 +560,11 @@ impl<'sdl> crate::Data<'sdl> {
                         continue;
                     }
 
-                    self.move_menu_position_sound();
-                    if menu_pos < num_entries - 1 {
-                        menu_pos += 1;
-                    } else {
-                        menu_pos = 0;
-                    }
-                    self.menu.show_menu_last_move_tick = self.sdl.ticks_ms();
-                    need_update = true;
+                    self.handle_menu_action_down_down_wheel(
+                        &mut need_update,
+                        &mut menu_pos,
+                        num_entries,
+                    );
                 }
 
                 _ => {}
@@ -652,6 +590,129 @@ impl<'sdl> crate::Data<'sdl> {
         {
             self.sdl.delay_ms(1);
         }
+    }
+
+    fn update_menu(
+        &mut self,
+        menu_entries: &[Entry<'sdl>],
+        menu_pos: usize,
+        menu_x: i32,
+        menu_y: i32,
+        influ_x: i32,
+    ) {
+        use std::io::Write;
+
+        let Self { menu, graphics, .. } = self;
+
+        menu.menu_background
+            .as_mut()
+            .unwrap()
+            .blit(graphics.ne_screen.as_mut().unwrap());
+        // print menu
+        menu_entries.iter().enumerate().for_each(|(i, entry)| {
+            let arg = entry
+                .handler
+                .and_then(|handler| (handler)(self, MenuAction::INFO))
+                .unwrap_or(cstr!(""));
+
+            let mut full_name: [u8; 256] = [0; 256];
+            let mut cursor = Cursor::new(full_name.as_mut());
+            write!(
+                cursor,
+                "{}{}",
+                entry.name.as_ref().unwrap(),
+                arg.to_str().unwrap()
+            )
+            .unwrap();
+            let position = usize::try_from(cursor.position()).unwrap();
+            let mut ne_screen = self.graphics.ne_screen.take().unwrap();
+            self.put_string(
+                &mut ne_screen,
+                menu_x,
+                menu_y + i32::try_from(i).unwrap() * self.menu.font_height,
+                &full_name[..position],
+            );
+            self.graphics.ne_screen = Some(ne_screen);
+        });
+        #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
+        self.put_influence(
+            influ_x,
+            menu_y + ((menu_pos as f64 - 0.5) * f64::from(self.menu.font_height)) as c_int,
+        );
+
+        #[cfg(not(target_os = "android"))]
+        assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
+    }
+
+    fn handle_menu_action_click(
+        &mut self,
+        handler: Option<for<'a> fn(&'a mut crate::Data<'sdl>, MenuAction) -> Option<&'a CStr>>,
+        submenu: Option<&[Entry<'sdl>]>,
+        finished: &mut bool,
+        need_update: &mut bool,
+    ) {
+        if handler.is_none() && submenu.is_none() {
+            self.menu_item_selected_sound();
+            *finished = true;
+        } else {
+            if let Some(handler) = handler {
+                self.wait_for_all_keys_released();
+                (handler)(self, MenuAction::CLICK);
+            }
+
+            if let Some(submenu) = submenu {
+                self.menu_item_selected_sound();
+                self.wait_for_all_keys_released();
+                self.show_menu(submenu);
+                self.initiate_menu(false);
+            }
+            *need_update = true;
+        }
+    }
+
+    fn handle_menu_action_right_left(
+        &mut self,
+        action: MenuAction,
+        handler: Option<for<'a> fn(&'a mut crate::Data<'sdl>, MenuAction) -> Option<&'a CStr>>,
+        need_update: &mut bool,
+    ) {
+        if let Some(handler) = handler {
+            (handler)(self, action);
+        }
+        self.menu.show_menu_last_move_tick = self.sdl.ticks_ms();
+        *need_update = true;
+    }
+
+    fn handle_menu_action_up_up_wheel(
+        &mut self,
+        need_update: &mut bool,
+        menu_pos: &mut usize,
+        num_entries: usize,
+    ) {
+        self.move_menu_position_sound();
+        if *menu_pos > 0 {
+            *menu_pos -= 1;
+        } else {
+            *menu_pos = num_entries - 1;
+        }
+        self.menu.show_menu_last_move_tick = self.sdl.ticks_ms();
+        *need_update = true;
+    }
+
+    fn handle_menu_action_down_down_wheel(
+        &mut self,
+        need_update: &mut bool,
+        menu_pos: &mut usize,
+        num_entries: usize,
+    ) {
+        self.move_menu_position_sound();
+        if *menu_pos < num_entries - 1 {
+            *menu_pos += 1;
+        } else {
+            *menu_pos = 0;
+        }
+        self.menu.show_menu_last_move_tick = self.sdl.ticks_ms();
+        *need_update = true;
     }
 
     /// subroutine to display the current key-config and highlight current selection
