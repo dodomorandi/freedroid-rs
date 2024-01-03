@@ -301,7 +301,7 @@ impl Default for Input {
     fn default() -> Self {
         #[cfg(feature = "gcw0")]
         let key_cmds = [
-            [SDLKey_SDLK_UP as c_int, PointerStates::JoyUp as c_int, 0], // CMD_UP
+            [u32_to_i32(SDLKey_SDLK_UP), PointerStates::JoyUp as c_int, 0], // CMD_UP
             [
                 u32_to_i32(SDLKey_SDLK_DOWN),
                 PointerStates::JoyDown as c_int,
@@ -332,10 +332,10 @@ impl Default for Input {
                 u32_to_i32(SDLKey_SDLK_TAB),
                 0,
             ], // CMD_TAKEOVER
-            [0, 0, 0],                                                   // CMD_QUIT,
-            [u32_to_i32(SDLKey_SDLK_RETURN), 0, 0],                      // CMD_PAUSE,
-            [0, 0, 0],                                                   // CMD_SCREENSHOT
-            [0, 0, 0],                                                   // CMD_FULLSCREEN,
+            [0, 0, 0],                                                      // CMD_QUIT,
+            [u32_to_i32(SDLKey_SDLK_RETURN), 0, 0],                         // CMD_PAUSE,
+            [0, 0, 0],                                                      // CMD_SCREENSHOT
+            [0, 0, 0],                                                      // CMD_FULLSCREEN,
             [
                 u32_to_i32(SDLKey_SDLK_ESCAPE),
                 PointerStates::JoyButton4 as c_int,
