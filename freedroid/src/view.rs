@@ -9,7 +9,7 @@ use crate::{
     global::INFLUENCE_MODE_NAMES,
     graphics::{apply_filter, Graphics},
     map::get_map_brick,
-    structs::{Blast, Finepoint, GrobPoint, TextToBeDisplayed},
+    structs::{Blast, CoarsePoint, Finepoint, TextToBeDisplayed},
     text,
     vars::Vars,
     view::screen_updater::{screen_needs_update, update_screen},
@@ -90,19 +90,19 @@ impl crate::Data<'_> {
         let (upleft, downright) =
             if (mask & i32::from(AssembleCombatWindowFlags::SHOW_FULL_MAP.bits())) == 0 {
                 #[allow(clippy::cast_possible_truncation)]
-                let upleft = GrobPoint {
+                let upleft = CoarsePoint {
                     x: self.vars.me.pos.x as i8 - 6,
                     y: self.vars.me.pos.y as i8 - 5,
                 };
                 #[allow(clippy::cast_possible_truncation)]
-                let downright = GrobPoint {
+                let downright = CoarsePoint {
                     x: self.vars.me.pos.x as i8 + 7,
                     y: self.vars.me.pos.y as i8 + 5,
                 };
                 (upleft, downright)
             } else {
-                let upleft = GrobPoint { x: -5, y: -5 };
-                let downright = GrobPoint {
+                let upleft = CoarsePoint { x: -5, y: -5 };
+                let downright = CoarsePoint {
                     x: i8::try_from(self.main.cur_level().xlen.checked_add(5).unwrap()).unwrap(),
                     y: i8::try_from(self.main.cur_level().ylen.checked_add(5).unwrap()).unwrap(),
                 };

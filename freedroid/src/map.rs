@@ -11,7 +11,7 @@ use crate::{
         read_u8_from_string,
     },
     read_and_malloc_and_terminate_file, split_at_subslice, split_at_subslice_mut,
-    structs::{Finepoint, GrobPoint, Level, Waypoint},
+    structs::{CoarsePoint, Finepoint, Level, Waypoint},
 };
 
 use array_init::array_init;
@@ -227,7 +227,7 @@ pub fn get_doors(level: &mut Level) -> i32 {
     let y_len = i8::try_from(level.ylen).unwrap();
 
     /* init Doors- Array to 0 */
-    level.doors.fill(GrobPoint { x: -1, y: -1 });
+    level.doors.fill(CoarsePoint { x: -1, y: -1 });
 
     /* now find the doors */
     for line in 0..y_len {
@@ -279,7 +279,7 @@ pub fn get_refreshes(level: &mut Level) -> i32 {
     let y_len = level.ylen;
 
     /* init refreshes array to -1 */
-    level.refreshes.fill(GrobPoint { x: -1, y: -1 });
+    level.refreshes.fill(CoarsePoint { x: -1, y: -1 });
 
     let mut curref = 0;
     /* now find all the refreshes */
@@ -329,7 +329,7 @@ pub fn get_alerts(level: &mut Level) {
     let y_len = level.ylen;
 
     // init alert array to -1
-    level.alerts.fill(GrobPoint { x: -1, y: -1 });
+    level.alerts.fill(CoarsePoint { x: -1, y: -1 });
 
     // now find all the alerts
     let mut curref = 0;
@@ -386,9 +386,9 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
         ylen: 0,
         color: Color::default(),
         map: array_init(|_| Vec::default()),
-        refreshes: [GrobPoint { x: 0, y: 0 }; MAX_REFRESHES_ON_LEVEL],
-        doors: [GrobPoint { x: 0, y: 0 }; MAX_DOORS_ON_LEVEL],
-        alerts: [GrobPoint { x: 0, y: 0 }; MAX_ALERTS_ON_LEVEL],
+        refreshes: [CoarsePoint { x: 0, y: 0 }; MAX_REFRESHES_ON_LEVEL],
+        doors: [CoarsePoint { x: 0, y: 0 }; MAX_DOORS_ON_LEVEL],
+        alerts: [CoarsePoint { x: 0, y: 0 }; MAX_ALERTS_ON_LEVEL],
         num_waypoints: 0,
         all_waypoints: [Waypoint {
             x: 0,
