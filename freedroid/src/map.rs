@@ -223,19 +223,14 @@ pub fn interpret(level: &mut Level) -> i32 {
 pub fn get_doors(level: &mut Level) -> i32 {
     let mut curdoor = 0;
 
-    let x_len = i8::try_from(level.xlen).unwrap();
-    let y_len = i8::try_from(level.ylen).unwrap();
-
-    /* init Doors- Array to 0 */
-    level.doors.fill(CoarsePoint { x: -1, y: -1 });
+    level.doors.fill(None);
 
     /* now find the doors */
-    for line in 0..y_len {
-        for col in 0..x_len {
+    for line in 0..level.ylen {
+        for col in 0..level.xlen {
             let brick = level.map[usize::try_from(line).unwrap()][usize::try_from(col).unwrap()];
             if brick == MapTile::VZutuere || brick == MapTile::HZutuere {
-                level.doors[curdoor].x = col;
-                level.doors[curdoor].y = line;
+                level.doors[curdoor] = Some(CoarsePoint { x: col, y: line });
                 curdoor += 1;
 
                 assert!(
@@ -385,7 +380,7 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
         color: Color::default(),
         map: array_init(|_| Vec::default()),
         refreshes: [CoarsePoint { x: 0, y: 0 }; MAX_REFRESHES_ON_LEVEL],
-        doors: [CoarsePoint { x: 0, y: 0 }; MAX_DOORS_ON_LEVEL],
+        doors: [None; MAX_DOORS_ON_LEVEL],
         alerts: [None; MAX_ALERTS_ON_LEVEL],
         num_waypoints: 0,
         all_waypoints: [Waypoint {
@@ -915,23 +910,18 @@ freedroid-discussion@lists.sourceforge.net\n\
         for i in 0..MAX_DOORS_ON_LEVEL {
             const DOOROPENDIST2: f32 = 1.;
 
-            let door_x = cur_level.doors[i].x;
-            let door_y = cur_level.doors[i].y;
-
-            /* Keine weiteren Tueren */
-            if door_x == -1 && door_y == -1 {
+            let Some(door) = cur_level.doors[i] else {
                 break;
-            }
+            };
 
-            let pos = &mut cur_level.map[usize::try_from(door_y).unwrap()]
-                [usize::try_from(door_x).unwrap()];
+            let pos = &mut cur_level.map[usize::from(door.y)][usize::from(door.x)];
 
             // NORMALISATION doorx = doorx * Block_Rect.w + Block_Rect.w / 2;
             // NORMALISATION doory = doory * Block_Rect.h + Block_Rect.h / 2;
 
             /* first check Influencer gegen Tuer */
-            let x_dist = self.vars.me.pos.x - f32::from(door_x);
-            let y_dist = self.vars.me.pos.y - f32::from(door_y);
+            let x_dist = self.vars.me.pos.x - f32::from(door.x);
+            let y_dist = self.vars.me.pos.y - f32::from(door.y);
             let dist2 = x_dist * x_dist + y_dist * y_dist;
 
             if dist2 < DOOROPENDIST2 {
@@ -951,11 +941,11 @@ freedroid-discussion@lists.sourceforge.net\n\
                         continue;
                     }
 
-                    let x_dist = (self.main.all_enemys[j].pos.x - f32::from(door_x))
+                    let x_dist = (self.main.all_enemys[j].pos.x - f32::from(door.x))
                         .trunc()
                         .abs();
                     if x_dist < self.vars.block_rect.width().into() {
-                        let y_dist = (self.main.all_enemys[j].pos.y - f32::from(door_y))
+                        let y_dist = (self.main.all_enemys[j].pos.y - f32::from(door.y))
                             .trunc()
                             .abs();
                         if y_dist < self.vars.block_rect.height().into() {
