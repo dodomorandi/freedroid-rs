@@ -280,7 +280,7 @@ pub struct Level {
     pub ylen: u8,
     pub color: map::Color,
     pub map: [Vec<MapTile>; u8_to_usize(MAX_MAP_ROWS)],
-    pub refreshes: [CoarsePoint<i8>; MAX_REFRESHES_ON_LEVEL],
+    pub refreshes: [Option<CoarsePoint<u8>>; MAX_REFRESHES_ON_LEVEL],
     pub doors: [Option<CoarsePoint<u8>>; MAX_DOORS_ON_LEVEL],
     pub alerts: [Option<CoarsePoint<u8>>; MAX_ALERTS_ON_LEVEL],
     pub num_waypoints: i32,

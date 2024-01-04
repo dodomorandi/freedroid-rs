@@ -26,6 +26,7 @@ use nom::{Finish, Parser};
 #[cfg(not(target_os = "android"))]
 use std::ffi::CStr;
 use std::{
+    convert::identity,
     ffi::CString,
     fmt::{self, Display},
     ops::Not,
@@ -273,16 +274,14 @@ pub fn get_refreshes(level: &mut Level) -> i32 {
     let x_len = level.xlen;
     let y_len = level.ylen;
 
-    /* init refreshes array to -1 */
-    level.refreshes.fill(CoarsePoint { x: -1, y: -1 });
+    level.refreshes.fill(None);
 
     let mut curref = 0;
     /* now find all the refreshes */
     for row in 0..y_len {
         for col in 0..x_len {
             if level.map[usize::from(row)][usize::from(col)] == MapTile::Refresh1 {
-                level.refreshes[curref].x = col.try_into().unwrap();
-                level.refreshes[curref].y = row.try_into().unwrap();
+                level.refreshes[curref] = Some(CoarsePoint { x: col, y: row });
                 curref += 1;
 
                 assert!(
@@ -379,7 +378,7 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
         ylen: 0,
         color: Color::default(),
         map: array_init(|_| Vec::default()),
-        refreshes: [CoarsePoint { x: 0, y: 0 }; MAX_REFRESHES_ON_LEVEL],
+        refreshes: [None; MAX_REFRESHES_ON_LEVEL],
         doors: [None; MAX_DOORS_ON_LEVEL],
         alerts: [None; MAX_ALERTS_ON_LEVEL],
         num_waypoints: 0,
@@ -598,10 +597,11 @@ impl crate::Data<'_> {
             .refreshes
             .iter()
             .take(MAX_REFRESHES_ON_LEVEL)
-            .take_while(|refresh| refresh.x != -1 && refresh.y != -1)
+            .copied()
+            .map_while(identity)
             .for_each(|refresh| {
-                let x = usize::try_from(refresh.x).unwrap();
-                let y = usize::try_from(refresh.y).unwrap();
+                let x = usize::from(refresh.x);
+                let y = usize::from(refresh.y);
 
                 cur_level.map[y][x] = MapTile::refresh(
                     #[allow(clippy::cast_possible_truncation)]
