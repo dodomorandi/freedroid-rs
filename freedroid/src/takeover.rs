@@ -217,7 +217,7 @@ pub struct Takeover<'sdl> {
     leader_color: Color,
     your_color: Color,
     opponent_color: Color,
-    droid_num: i32,
+    droid_num: u16,
     opponent_type: i32,
     pub to_game_blocks: [Rect; NUM_TO_BLOCKS],
     pub to_ground_blocks: [Rect; NUM_GROUND_BLOCKS],
@@ -1041,9 +1041,7 @@ impl crate::Data<'_> {
             i32::from(y_offs) + self.takeover.droid_starts[your_color].y,
         );
 
-        if self.main.all_enemys[usize::try_from(self.takeover.droid_num).unwrap()].status
-            != Status::Out as i32
-        {
+        if self.main.all_enemys[usize::from(self.takeover.droid_num)].status != Status::Out as i32 {
             self.put_enemy(
                 self.takeover.droid_num,
                 i32::from(x_offs) + self.takeover.droid_starts[opponent_color].x,
@@ -1661,7 +1659,7 @@ impl crate::Data<'_> {
     /// play takeover-game against a druid
     ///
     /// Returns true if the user won, false otherwise
-    pub fn takeover(&mut self, enemynum: i32) -> i32 {
+    pub fn takeover(&mut self, enemynum: u16) -> i32 {
         const BG_COLOR: SDL_Color = SDL_Color {
             r: 130,
             g: 130,
@@ -1749,7 +1747,7 @@ impl crate::Data<'_> {
         (self.takeover.leader_color == self.takeover.your_color).into()
     }
 
-    fn takeover_round(&mut self, enemynum: i32, enemy_index: usize, finish_takeover: &mut bool) {
+    fn takeover_round(&mut self, enemynum: u16, enemy_index: usize, finish_takeover: &mut bool) {
         /* Init Color-column and Capsule-Number for each opponenet and your color */
         self.takeover
             .display_column

@@ -221,8 +221,8 @@ impl crate::Data<'_> {
             .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
     }
 
-    pub fn put_enemy(&mut self, enemy_index: i32, x: i32, y: i32) {
-        let droid = &self.main.all_enemys[usize::try_from(enemy_index).unwrap()];
+    pub fn put_enemy(&mut self, enemy_index: u16, x: i32, y: i32) {
+        let droid = &self.main.all_enemys[usize::from(enemy_index)];
         let ty = droid.ty;
         let phase = droid.phase;
         let name = &self.vars.droidmap[usize::try_from(ty).unwrap()].druidname;
