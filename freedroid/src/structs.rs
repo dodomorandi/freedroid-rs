@@ -291,7 +291,7 @@ pub struct Level {
 pub struct Ship {
     pub num_levels: u8,
     pub num_lifts: i32,
-    pub num_lift_rows: i32,
+    pub num_lift_rows: u8,
     pub area_name: ArrayCString<100>,
     pub all_levels: [Option<Level>; MAX_LEVELS],
     pub all_lifts: [Lift; MAX_LIFTS],
