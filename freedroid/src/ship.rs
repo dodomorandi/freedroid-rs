@@ -94,27 +94,23 @@ impl crate::Data<'_> {
 
         // so much to the sirens, now make sure the alert-tiles are updated correctly:
         let cur_level = cur_level!(mut self.main);
-        let pos_x = cur_level.alerts[0].x;
-        let pos_y = cur_level.alerts[0].y;
-        if pos_x == -1 {
+        let Some(pos) = cur_level.alerts[0] else {
             // no alerts here...
             return;
-        }
+        };
 
         // check if alert-tiles are up-to-date
-        if get_map_brick(cur_level, pos_x.into(), pos_y.into()) == cur_alert.to_tile() as u8 {
+        if get_map_brick(cur_level, pos.x.into(), pos.y.into()) == cur_alert.to_tile() as u8 {
             // ok
             return;
         }
 
-        for alert in &mut cur_level.alerts {
-            let pos_x = alert.x;
-            let pos_y = alert.y;
-            if pos_x == -1 {
+        for alert in &cur_level.alerts {
+            let Some(pos) = alert else {
                 break;
-            }
+            };
 
-            cur_level.map[usize::try_from(pos_y).unwrap()][usize::try_from(pos_x).unwrap()] =
+            cur_level.map[usize::from(pos.y)][usize::from(pos.x)] =
                 (cur_alert as i8).try_into().unwrap();
         }
     }

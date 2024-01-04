@@ -328,16 +328,14 @@ pub fn get_alerts(level: &mut Level) {
     let x_len = level.xlen;
     let y_len = level.ylen;
 
-    // init alert array to -1
-    level.alerts.fill(CoarsePoint { x: -1, y: -1 });
+    level.alerts.fill(None);
 
     // now find all the alerts
     let mut curref = 0;
     for row in 0..y_len {
         for col in 0..x_len {
             if level.map[usize::from(row)][usize::from(col)] == MapTile::AlertGreen {
-                level.alerts[curref].x = col.try_into().unwrap();
-                level.alerts[curref].y = row.try_into().unwrap();
+                level.alerts[curref] = Some(CoarsePoint { x: col, y: row });
                 curref += 1;
 
                 if curref > MAX_ALERTS_ON_LEVEL {
@@ -388,7 +386,7 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
         map: array_init(|_| Vec::default()),
         refreshes: [CoarsePoint { x: 0, y: 0 }; MAX_REFRESHES_ON_LEVEL],
         doors: [CoarsePoint { x: 0, y: 0 }; MAX_DOORS_ON_LEVEL],
-        alerts: [CoarsePoint { x: 0, y: 0 }; MAX_ALERTS_ON_LEVEL],
+        alerts: [None; MAX_ALERTS_ON_LEVEL],
         num_waypoints: 0,
         all_waypoints: [Waypoint {
             x: 0,
