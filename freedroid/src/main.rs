@@ -87,7 +87,7 @@ struct Main<'sdl> {
     show_all_droids: i32,
     /* for bullet debugging: stop where u are */
     stop_influencer: i32,
-    num_enemys: i32,
+    num_enemys: u16,
     number_of_droid_types: u8,
     pre_take_energy: i32,
     all_bullets: [Bullet<'sdl>; MAXBULLETS + 10],
@@ -435,7 +435,7 @@ impl Data<'_> {
         let Self {
             main, misc, global, ..
         } = self;
-        for enemy in &mut main.all_enemys[..usize::try_from(main.num_enemys).unwrap()] {
+        for enemy in &mut main.all_enemys[..usize::from(main.num_enemys)] {
             if enemy.status == Status::Out as i32 {
                 continue;
             }

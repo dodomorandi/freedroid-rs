@@ -945,7 +945,7 @@ freedroid-discussion@lists.sourceforge.net\n\
             } else {
                 /* alle Enemys checken */
                 let mut j = 0;
-                while j < usize::try_from(self.main.num_enemys).unwrap() {
+                while j < usize::from(self.main.num_enemys) {
                     /* ignore druids that are dead or on other levels */
                     if self.main.all_enemys[j].status == Status::Out as i32
                         || self.main.all_enemys[j].status == Status::Terminated as i32
@@ -978,7 +978,7 @@ freedroid-discussion@lists.sourceforge.net\n\
                 }
 
                 /* No druid near: close door if it isnt closed */
-                if j == usize::try_from(self.main.num_enemys).unwrap()
+                if j == usize::from(self.main.num_enemys)
                     && *pos != MapTile::VZutuere
                     && *pos != MapTile::HZutuere
                 {

@@ -38,7 +38,7 @@ impl crate::Data<'_> {
         } = self;
 
         let cur_level = cur_level!(mut main);
-        for enemy in &mut main.all_enemys[..usize::try_from(main.num_enemys).unwrap()] {
+        for enemy in &mut main.all_enemys[..usize::from(main.num_enemys)] {
             /* ignore enemys that are dead or on other levels or dummys */
             if enemy.levelnum != cur_level.levelnum {
                 continue;
@@ -66,7 +66,7 @@ impl crate::Data<'_> {
 
         self.animate_enemys(); // move the "phase" of the rotation of enemys
 
-        for enemy_index in 0..usize::try_from(self.main.num_enemys).unwrap() {
+        for enemy_index in 0..usize::from(self.main.num_enemys) {
             let enemy = &self.main.all_enemys[enemy_index];
             if enemy.status == Status::Out as i32
                 || enemy.status == Status::Terminated as i32
@@ -255,7 +255,7 @@ impl crate::Data<'_> {
 
         let enemy_num: usize = enemy_num.try_into().unwrap();
         let (enemys_before, rest) =
-            main.all_enemys[..usize::try_from(main.num_enemys).unwrap()].split_at_mut(enemy_num);
+            main.all_enemys[..usize::from(main.num_enemys)].split_at_mut(enemy_num);
         let (cur_enemy, enemys_after) = rest.split_first_mut().unwrap();
         let check_x = cur_enemy.pos.x;
         let check_y = cur_enemy.pos.y;
@@ -365,7 +365,7 @@ impl crate::Data<'_> {
         let num_wp = cur_level.num_waypoints;
         let mut nth_enemy = 0;
 
-        for enemy in &mut self.main.all_enemys[..usize::try_from(self.main.num_enemys).unwrap()] {
+        for enemy in &mut self.main.all_enemys[..usize::from(self.main.num_enemys)] {
             if enemy.status == Status::Out as i32 || enemy.levelnum != cur_level_num {
                 /* dont handle dead enemys or on other level */
                 continue;
@@ -478,7 +478,7 @@ impl crate::Data<'_> {
         } = self;
 
         let f_p_sover1 = main.f_p_sover1;
-        main.all_enemys[0..usize::try_from(main.num_enemys).unwrap()]
+        main.all_enemys[0..usize::from(main.num_enemys)]
             .iter_mut()
             .filter(|enemy| {
                 enemy.status != Status::Out as i32

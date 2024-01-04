@@ -156,7 +156,7 @@ impl crate::Data<'_> {
             .main
             .all_enemys
             .iter()
-            .take(self.main.num_enemys.try_into().unwrap())
+            .take(self.main.num_enemys.into())
         {
             if enemy.status != Status::Out as i32 && enemy.status != Status::Terminated as i32 {
                 return;

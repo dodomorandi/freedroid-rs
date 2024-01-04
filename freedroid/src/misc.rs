@@ -766,7 +766,7 @@ impl crate::Data<'_> {
         self.main
             .all_enemys
             .iter_mut()
-            .take(self.main.num_enemys.try_into().unwrap())
+            .take(self.main.num_enemys.into())
             .for_each(|enemy| {
                 enemy.energy = 0.;
                 enemy.status = Status::Out as i32;

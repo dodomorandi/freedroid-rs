@@ -791,7 +791,7 @@ impl crate::Data<'_> {
             .set_clip_rect(&self.vars.user_rect);
 
         // make sure Ashes are displayed _before_ droids, so that they are _under_ them!
-        for enemy_index in 0..usize::try_from(self.main.num_enemys).unwrap() {
+        for enemy_index in 0..usize::from(self.main.num_enemys) {
             let enemy = &self.main.all_enemys[enemy_index];
             if (enemy.status == Status::Terminated as i32)
                 && (enemy.levelnum == self.main.cur_level().levelnum)
@@ -804,7 +804,7 @@ impl crate::Data<'_> {
         }
 
         let levelnum = self.main.cur_level().levelnum;
-        for enemy_index in 0..usize::try_from(self.main.num_enemys).unwrap() {
+        for enemy_index in 0..usize::from(self.main.num_enemys) {
             let enemy = &self.main.all_enemys[enemy_index];
             if !((enemy.levelnum != levelnum)
                 || (enemy.status == Status::Out as i32)

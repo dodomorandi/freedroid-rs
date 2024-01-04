@@ -69,7 +69,7 @@ impl crate::Data<'_> {
             return;
         } // we only do the damage once and thats at frame nr. 1 of the flash
 
-        for enemy_index in 0..usize::try_from(self.main.num_enemys).unwrap() {
+        for enemy_index in 0..usize::from(self.main.num_enemys) {
             let enemy = &self.main.all_enemys[enemy_index];
             // !! dont't forget: Only droids on our level are harmed!! (bugfix)
             if enemy.levelnum != level {
@@ -156,8 +156,7 @@ impl crate::Data<'_> {
             }
 
             // check for collision with enemys
-            for (enemy_index, enemy) in self.main.all_enemys
-                [..usize::try_from(self.main.num_enemys).unwrap()]
+            for (enemy_index, enemy) in self.main.all_enemys[..usize::from(self.main.num_enemys)]
                 .iter()
                 .enumerate()
             {
@@ -287,7 +286,7 @@ impl crate::Data<'_> {
             main, global, misc, ..
         } = self;
         let cur_blast = &main.all_blasts[usize::try_from(num).unwrap()];
-        for enemy in &mut main.all_enemys[..usize::try_from(main.num_enemys).unwrap()] {
+        for enemy in &mut main.all_enemys[..usize::from(main.num_enemys)] {
             if enemy.status == Status::Out as i32 || enemy.levelnum != level {
                 continue;
             }

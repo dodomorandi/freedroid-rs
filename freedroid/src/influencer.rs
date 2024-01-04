@@ -86,7 +86,7 @@ impl crate::Data<'_> {
     }
 
     pub fn check_influence_enemy_collision(&mut self) {
-        for enemy_index in 0..usize::try_from(self.main.num_enemys).unwrap() {
+        for enemy_index in 0..usize::from(self.main.num_enemys) {
             let Self {
                 vars,
                 main,

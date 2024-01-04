@@ -113,7 +113,7 @@ impl<'sdl> crate::Data<'sdl> {
         mut ne_screen: FrameBuffer<'sdl>,
     ) -> FrameBuffer<'sdl> {
         let mut l = 0; /* line counter for enemy output */
-        for i in 0..usize::try_from(self.main.num_enemys).unwrap() {
+        for i in 0..usize::from(self.main.num_enemys) {
             if self.main.all_enemys[i].levelnum == cur_level!(self.main).levelnum {
                 if l != 0 && l % 20 == 0 {
                     Self::printf_sdl_static(
@@ -195,7 +195,7 @@ impl<'sdl> crate::Data<'sdl> {
         &mut self,
         mut ne_screen: FrameBuffer<'sdl>,
     ) -> FrameBuffer<'sdl> {
-        for i in 0..usize::try_from(self.main.num_enemys).unwrap() {
+        for i in 0..usize::from(self.main.num_enemys) {
             if self.main.all_enemys[i].ty == -1 {
                 continue;
             }

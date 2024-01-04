@@ -1162,7 +1162,7 @@ impl crate::Data<'_> {
 
         let levelnum = cur_level.levelnum;
 
-        self.main.all_enemys[0..usize::try_from(self.main.num_enemys).unwrap()]
+        self.main.all_enemys[0..usize::from(self.main.num_enemys)]
             .iter()
             .any(|enemy| {
                 enemy.levelnum == levelnum
