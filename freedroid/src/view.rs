@@ -87,28 +87,7 @@ impl crate::Data<'_> {
             self.fill_rect(self.vars.user_rect, BLACK);
         }
 
-        let (upleft, downright) =
-            if (mask & i32::from(AssembleCombatWindowFlags::SHOW_FULL_MAP.bits())) == 0 {
-                #[allow(clippy::cast_possible_truncation)]
-                let upleft = CoarsePoint {
-                    x: self.vars.me.pos.x as i8 - 6,
-                    y: self.vars.me.pos.y as i8 - 5,
-                };
-                #[allow(clippy::cast_possible_truncation)]
-                let downright = CoarsePoint {
-                    x: self.vars.me.pos.x as i8 + 7,
-                    y: self.vars.me.pos.y as i8 + 5,
-                };
-                (upleft, downright)
-            } else {
-                let upleft = CoarsePoint { x: -5, y: -5 };
-                let downright = CoarsePoint {
-                    x: i8::try_from(self.main.cur_level().xlen.checked_add(5).unwrap()).unwrap(),
-                    y: i8::try_from(self.main.cur_level().ylen.checked_add(5).unwrap()).unwrap(),
-                };
-                (upleft, downright)
-            };
-
+        let [upleft, downright] = self.assemble_combat_picture_get_upleft_downright(mask);
         (upleft.y..downright.y)
             .flat_map(|line| (upleft.x..downright.x).map(move |col| (line, col)))
             .fold(
@@ -188,6 +167,29 @@ impl crate::Data<'_> {
         }
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
+    }
+
+    fn assemble_combat_picture_get_upleft_downright(&self, mask: i32) -> [CoarsePoint<i8>; 2] {
+        if (mask & i32::from(AssembleCombatWindowFlags::SHOW_FULL_MAP.bits())) == 0 {
+            #[allow(clippy::cast_possible_truncation)]
+            let upleft = CoarsePoint {
+                x: self.vars.me.pos.x as i8 - 6,
+                y: self.vars.me.pos.y as i8 - 5,
+            };
+            #[allow(clippy::cast_possible_truncation)]
+            let downright = CoarsePoint {
+                x: self.vars.me.pos.x as i8 + 7,
+                y: self.vars.me.pos.y as i8 + 5,
+            };
+            [upleft, downright]
+        } else {
+            let upleft = CoarsePoint { x: -5, y: -5 };
+            let downright = CoarsePoint {
+                x: i8::try_from(self.main.cur_level().xlen.checked_add(5).unwrap()).unwrap(),
+                y: i8::try_from(self.main.cur_level().ylen.checked_add(5).unwrap()).unwrap(),
+            };
+            [upleft, downright]
+        }
     }
 
     /// put some ashes at (x,y)
