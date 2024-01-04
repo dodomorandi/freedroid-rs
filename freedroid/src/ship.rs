@@ -881,8 +881,7 @@ impl crate::Data<'_> {
             .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
 
         for i in 0..self.main.cur_ship.num_level_rects[usize::from(level)] {
-            let src =
-                self.main.cur_ship.level_rects[usize::from(level)][usize::try_from(i).unwrap()];
+            let src = self.main.cur_ship.level_rects[usize::from(level)][usize::from(i)];
             dst = src;
             dst.inc_x(self.vars.user_rect.x() + x_offs); /* offset respective to User-Rectangle */
             dst.inc_y(self.vars.user_rect.y() + y_offs);

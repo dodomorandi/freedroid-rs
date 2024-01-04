@@ -297,7 +297,7 @@ pub struct Ship {
     pub all_lifts: [Lift; MAX_LIFTS],
     pub lift_row_rect: [Rect; MAX_LIFT_ROWS], /* the lift-row rectangles */
     pub level_rects: [[Rect; MAX_LEVEL_RECTS]; MAX_LEVELS], /* level rectangles */
-    pub num_level_rects: [i32; MAX_LEVELS],   /* how many rects has a level */
+    pub num_level_rects: [u8; MAX_LEVELS],    /* how many rects has a level */
 }
 
 impl Default for Ship {
