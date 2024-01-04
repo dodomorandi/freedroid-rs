@@ -494,8 +494,8 @@ impl crate::Data<'_> {
         let cur_level = self.main.cur_level();
         #[allow(clippy::cast_precision_loss)]
         {
-            self.vars.me.pos.x = (cur_level.xlen / 2) as f32;
-            self.vars.me.pos.y = (cur_level.ylen / 2) as f32;
+            self.vars.me.pos.x = (cur_level.xlen / 2).into();
+            self.vars.me.pos.y = (cur_level.ylen / 2).into();
         }
 
         self.sdl.cursor().hide();

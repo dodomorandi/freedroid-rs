@@ -61,11 +61,13 @@ pub struct Map {
 pub fn get_map_brick(deck: &Level, x: f32, y: f32) -> u8 {
     #[allow(clippy::cast_possible_truncation)]
     let [x, y] = [x.round() as i32, y.round() as i32];
-    usize::try_from(y)
+    u8::try_from(y)
         .ok()
-        .filter(|_| y < deck.ylen)
-        .zip(usize::try_from(x).ok().filter(|_| x < deck.xlen))
-        .map_or(MapTile::Void as u8, |(y, x)| deck.map[y][x] as u8)
+        .filter(|&y| y < deck.ylen)
+        .zip(u8::try_from(x).ok().filter(|&x| x < deck.xlen))
+        .map_or(MapTile::Void as u8, |(y, x)| {
+            deck.map[usize::from(y)][usize::from(x)] as u8
+        })
 }
 
 pub fn free_level_memory(level: &mut Level) {
@@ -273,8 +275,8 @@ Sorry...\n\
 /// within the level
 /// Returns the number of refreshes found or ERR
 pub fn get_refreshes(level: &mut Level) -> i32 {
-    let x_len = u8::try_from(level.xlen).unwrap();
-    let y_len = u8::try_from(level.ylen).unwrap();
+    let x_len = level.xlen;
+    let y_len = level.ylen;
 
     /* init refreshes array to -1 */
     level.refreshes.fill(GrobPoint { x: -1, y: -1 });
@@ -323,8 +325,8 @@ Sorry...\n\
 
 /// Find all alerts on this level and initialize their position-array
 pub fn get_alerts(level: &mut Level) {
-    let x_len = u8::try_from(level.xlen).unwrap();
-    let y_len = u8::try_from(level.ylen).unwrap();
+    let x_len = level.xlen;
+    let y_len = level.ylen;
 
     // init alert array to -1
     level.alerts.fill(GrobPoint { x: -1, y: -1 });
@@ -499,12 +501,8 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
     Some(loadlevel)
 }
 
-fn parse_levelnum_xlen_ylen_color(data: &[u8]) -> (u8, i32, i32, map::Color) {
-    use nom::{
-        bytes::complete::tag,
-        character::complete::{i32, u8},
-        sequence::tuple,
-    };
+fn parse_levelnum_xlen_ylen_color(data: &[u8]) -> (u8, u8, u8, map::Color) {
+    use nom::{bytes::complete::tag, character::complete::u8, sequence::tuple};
 
     let (_, (_, _, levelnum, _, _, x_len, _, _, y_len, _, _, color)) = tuple::<_, _, (), _>((
         tag("Levelnumber: "),
@@ -512,10 +510,10 @@ fn parse_levelnum_xlen_ylen_color(data: &[u8]) -> (u8, i32, i32, map::Color) {
         u8,
         tag("\nxlen of this level: "),
         whitespace,
-        i32,
+        u8,
         tag("\nylen of this level: "),
         whitespace,
-        i32,
+        u8,
         tag("\ncolor of this level: "),
         whitespace,
         u8,

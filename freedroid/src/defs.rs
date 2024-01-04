@@ -709,9 +709,9 @@ pub const ROBOT_MAX_WAIT_BETWEEN_SHOTS: f32 = 5.; // how long shoud each droid w
     WARNING leave them here, they are required in struct.h
 */
 pub const MAX_WP_CONNECTIONS: usize = 12;
-pub const MAX_MAP_ROWS: usize = 255;
+pub const MAX_MAP_ROWS: u8 = 255;
 #[cfg(not(target_os = "android"))]
-pub const MAX_MAP_COLS: usize = 255;
+pub const MAX_MAP_COLS: u8 = 255;
 pub const MAX_ENEMYS_ON_SHIP: usize = 300;
 pub const MAX_INFLU_POSITION_HISTORY: usize = 100;
 

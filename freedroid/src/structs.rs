@@ -276,10 +276,10 @@ pub struct Level {
     pub levelname: CString, /* Name of this level */
     pub background_song_name: CString,
     pub level_enter_comment: CString,
-    pub xlen: i32, /* X dimension */
-    pub ylen: i32,
+    pub xlen: u8, /* X dimension */
+    pub ylen: u8,
     pub color: map::Color,
-    pub map: [Vec<MapTile>; MAX_MAP_ROWS],
+    pub map: [Vec<MapTile>; u8_to_usize(MAX_MAP_ROWS)],
     pub refreshes: [GrobPoint; MAX_REFRESHES_ON_LEVEL],
     pub doors: [GrobPoint; MAX_DOORS_ON_LEVEL],
     pub alerts: [GrobPoint; MAX_ALERTS_ON_LEVEL],

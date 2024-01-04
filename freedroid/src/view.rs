@@ -102,10 +102,9 @@ impl crate::Data<'_> {
                 (upleft, downright)
             } else {
                 let upleft = GrobPoint { x: -5, y: -5 };
-                #[allow(clippy::cast_possible_truncation)]
                 let downright = GrobPoint {
-                    x: self.main.cur_level().xlen as i8 + 5,
-                    y: self.main.cur_level().ylen as i8 + 5,
+                    x: i8::try_from(self.main.cur_level().xlen.checked_add(5).unwrap()).unwrap(),
+                    y: i8::try_from(self.main.cur_level().ylen.checked_add(5).unwrap()).unwrap(),
                 };
                 (upleft, downright)
             };

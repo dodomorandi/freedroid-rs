@@ -1223,7 +1223,7 @@ impl<'sdl> crate::Data<'sdl> {
             action,
             val: &mut cur_level.xlen,
         }
-        .run(1, 0..=(i32::try_from(MAX_MAP_COLS).unwrap() - 1));
+        .run(1, 0..=(MAX_MAP_COLS - 1));
 
         let newmem = usize::try_from(cur_level.xlen).unwrap();
         // adjust memory sizes for new value
@@ -1250,6 +1250,9 @@ impl<'sdl> crate::Data<'sdl> {
         }
 
         let oldylen = cur_level.ylen;
+
+        // Cannot do that
+        #[allow(clippy::range_minus_one)]
         MenuChange {
             sound_on: self.main.sound_on,
             sdl: self.sdl,
@@ -1257,7 +1260,8 @@ impl<'sdl> crate::Data<'sdl> {
             action,
             val: &mut cur_level.ylen,
         }
-        .run(1, 0..=i32::try_from(MAX_MAP_ROWS - 1).unwrap());
+        .run(1, 0..=(MAX_MAP_ROWS - 1));
+
         match oldylen.cmp(&cur_level.ylen) {
             Ordering::Greater => cur_level.map[usize::try_from(oldylen - 1).unwrap()].clear(),
             Ordering::Less => cur_level.map[usize::try_from(cur_level.ylen - 1).unwrap()]
