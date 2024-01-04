@@ -78,9 +78,9 @@ impl Finepoint {
 pub type Vect = Finepoint;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct CoarsePoint {
-    pub x: i8,
-    pub y: i8,
+pub struct CoarsePoint<T> {
+    pub x: T,
+    pub y: T,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -280,9 +280,9 @@ pub struct Level {
     pub ylen: u8,
     pub color: map::Color,
     pub map: [Vec<MapTile>; u8_to_usize(MAX_MAP_ROWS)],
-    pub refreshes: [CoarsePoint; MAX_REFRESHES_ON_LEVEL],
-    pub doors: [CoarsePoint; MAX_DOORS_ON_LEVEL],
-    pub alerts: [CoarsePoint; MAX_ALERTS_ON_LEVEL],
+    pub refreshes: [CoarsePoint<i8>; MAX_REFRESHES_ON_LEVEL],
+    pub doors: [CoarsePoint<i8>; MAX_DOORS_ON_LEVEL],
+    pub alerts: [CoarsePoint<i8>; MAX_ALERTS_ON_LEVEL],
     pub num_waypoints: i32,
     pub all_waypoints: [Waypoint; MAXWAYPOINTS],
 }
