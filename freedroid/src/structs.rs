@@ -149,7 +149,6 @@ pub struct Enemy {
     pub lastwaypoint: i32, /* Waypoint, von dem ausgegangen wurde */
     pub status: Status,    /* gibt z.B. an ob der Robotter abgeschossen wurde */
     pub warten: f32,       // time till the droid will start to move again
-    pub passable: u8,      /* Zeit (counter), in der druid passable ist */
     pub firewait: f32,     /* gibt die Zeit bis zum naechsten Schuss an */
     pub text_visible_time: f32,
     pub text_to_be_displayed: &'static str,
@@ -168,7 +167,6 @@ impl Enemy {
             lastwaypoint: 0,
             status: Status::Mobile,
             warten: 0.,
-            passable: 0,
             firewait: 0.,
             text_visible_time: 0.,
             text_to_be_displayed: "",
