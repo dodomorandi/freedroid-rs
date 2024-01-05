@@ -439,7 +439,7 @@ impl Data<'_> {
             .iter_mut()
             .filter_map(Option::as_mut)
         {
-            if enemy.status == Status::Out as i32 {
+            if enemy.status == Status::Out {
                 continue;
             }
 

@@ -102,7 +102,7 @@ impl crate::Data<'_> {
             if enemy.levelnum != cur_level!(main).levelnum {
                 continue;
             }
-            if enemy.status == Status::Out as i32 || enemy.status == Status::Terminated as i32 {
+            if matches!(enemy.status, Status::Out | Status::Terminated) {
                 continue;
             }
 
@@ -121,7 +121,7 @@ impl crate::Data<'_> {
                 continue;
             }
 
-            if vars.me.status == Status::Transfermode as i32 {
+            if vars.me.status == Status::Transfermode {
                 self.takeover(enemy_index.try_into().unwrap());
 
                 if self.level_empty() != 0 {
@@ -205,7 +205,7 @@ impl crate::Data<'_> {
     }
 
     pub fn explode_influencer(&mut self) {
-        self.vars.me.status = Status::Terminated as i32;
+        self.vars.me.status = Status::Terminated;
 
         for i in 0..10 {
             /* freien Blast finden */
@@ -409,7 +409,7 @@ impl crate::Data<'_> {
         // check, if the influencer is still ok
         if self.vars.me.energy <= 0. {
             if self.vars.me.ty == Droid::Droid001 {
-                self.vars.me.status = Status::Terminated as i32;
+                self.vars.me.status = Status::Terminated;
                 self.thou_art_defeated();
                 return;
             }
@@ -426,7 +426,7 @@ impl crate::Data<'_> {
 
         /* Time passed before entering Transfermode ?? */
         if self.influencer.transfer_counter >= WAIT_TRANSFERMODE {
-            self.vars.me.status = Status::Transfermode as i32;
+            self.vars.me.status = Status::Transfermode;
             self.influencer.transfer_counter = 0.;
         }
 
@@ -446,24 +446,23 @@ impl crate::Data<'_> {
         //  We only need this check if we want held fire to cause activate
         if !self.any_cmd_active() {
             // Used to be !SpacePressed, which causes any fire button != SPACE behave differently than space
-            self.vars.me.status = Status::Mobile as i32;
+            self.vars.me.status = Status::Mobile;
         }
 
         if (self.influencer.transfer_counter - 1.).abs() <= f32::EPSILON {
-            self.vars.me.status = Status::Transfermode as i32;
+            self.vars.me.status = Status::Transfermode;
             self.influencer.transfer_counter = 0.;
         }
 
         if self.cmd_is_active(Cmds::Activate) {
             // activate mode for Konsole and Lifts
-            self.vars.me.status = Status::Activate as i32;
+            self.vars.me.status = Status::Activate;
         }
 
         if self.global.game_config.fire_hold_takeover != 0
             && self.fire_pressed()
             && self.no_direction_pressed()
-            && self.vars.me.status != Status::Weapon as i32
-            && self.vars.me.status != Status::Transfermode as i32
+            && matches!(self.vars.me.status, Status::Weapon | Status::Transfermode).not()
         {
             // Proposed FireActivatePressed here...
             self.influencer.transfer_counter += self.frame_time(); // Or make it an option!
@@ -471,21 +470,21 @@ impl crate::Data<'_> {
 
         if self.fire_pressed()
             && !self.no_direction_pressed()
-            && self.vars.me.status != Status::Transfermode as i32
+            && self.vars.me.status != Status::Transfermode
         {
-            self.vars.me.status = Status::Weapon as i32;
+            self.vars.me.status = Status::Weapon;
         }
 
         if self.fire_pressed()
             && !self.no_direction_pressed()
-            && self.vars.me.status == Status::Weapon as i32
+            && self.vars.me.status == Status::Weapon
             && self.vars.me.firewait == 0.
         {
             self.fire_bullet();
         }
 
-        if self.vars.me.status != Status::Weapon as i32 && self.cmd_is_active(Cmds::Takeover) {
-            self.vars.me.status = Status::Transfermode as i32;
+        if self.vars.me.status != Status::Weapon && self.cmd_is_active(Cmds::Takeover) {
+            self.vars.me.status = Status::Transfermode;
         }
 
         self.influence_friction_with_air(); // The influ should lose some of his speed when no key is pressed

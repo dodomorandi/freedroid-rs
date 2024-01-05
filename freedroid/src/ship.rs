@@ -509,7 +509,7 @@ impl crate::Data<'_> {
 
         self.wait_for_all_keys_released();
 
-        self.vars.me.status = Status::Console as i32;
+        self.vars.me.status = Status::Console;
 
         if cfg!(target_os = "android") {
             self.input.show_cursor = false;
@@ -563,7 +563,7 @@ impl crate::Data<'_> {
 
         self.vars.user_rect = tmp_rect;
 
-        self.vars.me.status = Status::Mobile as i32;
+        self.vars.me.status = Status::Mobile;
 
         self.clear_graph_mem();
 
@@ -975,7 +975,7 @@ impl crate::Data<'_> {
 
         /* Prevent the influ from coming out of the lift in transfer mode
          * by turning off transfer mode as soon as the influ enters the lift */
-        self.vars.me.status = Status::Elevator as i32;
+        self.vars.me.status = Status::Elevator;
 
         self.sdl.cursor().hide();
 
@@ -1079,7 +1079,7 @@ impl crate::Data<'_> {
         self.clear_graph_mem();
         self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
 
-        self.vars.me.status = Status::Mobile as i32;
+        self.vars.me.status = Status::Mobile;
         self.vars.me.text_visible_time = 0.;
         self.vars.me.text_to_be_displayed = TextToBeDisplayed::LevelEnterComment;
     }
@@ -1143,8 +1143,7 @@ impl crate::Data<'_> {
             .filter_map(Option::as_ref)
             .any(|enemy| {
                 enemy.levelnum == levelnum
-                    && enemy.status != Status::Out as i32
-                    && enemy.status != Status::Terminated as i32
+                    && matches!(enemy.status, Status::Out | Status::Terminated).not()
             })
             .not()
             .into()

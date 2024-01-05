@@ -356,7 +356,7 @@ impl crate::Data<'_> {
     /// a feature from the original program that should probably
     /// allow for better screenshots.
     pub fn pause(&mut self) {
-        self.vars.me.status = Status::Pause as i32;
+        self.vars.me.status = Status::Pause;
         self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
 
         let mut cheese = false;
@@ -382,10 +382,10 @@ impl crate::Data<'_> {
             let cond = self.key_is_pressed_r(b'c'.into());
 
             if cond {
-                if self.vars.me.status == Status::Cheese as i32 {
-                    self.vars.me.status = Status::Pause as i32;
+                if self.vars.me.status == Status::Cheese {
+                    self.vars.me.status = Status::Pause;
                 } else {
-                    self.vars.me.status = Status::Cheese as i32;
+                    self.vars.me.status = Status::Cheese;
                 }
                 cheese = !cheese;
             }
@@ -770,7 +770,7 @@ impl crate::Data<'_> {
             .take(self.main.num_enemys.into())
             .for_each(|enemy| {
                 enemy.energy = 0.;
-                enemy.status = Status::Out as i32;
+                enemy.status = Status::Out;
             });
     }
 

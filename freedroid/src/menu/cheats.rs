@@ -1,4 +1,4 @@
-use crate::{cur_level, defs::Status, global::INFLUENCE_MODE_NAMES};
+use crate::{cur_level, defs::Status};
 
 use nom::Finish;
 use sdl::FrameBuffer;
@@ -158,9 +158,9 @@ impl<'sdl> crate::Data<'sdl> {
 
                 l += 1;
                 let enemy = self.main.all_enemys[i].as_ref().unwrap();
-                let status = if enemy.status == Status::Out as i32 {
+                let status = if enemy.status == Status::Out {
                     "OUT"
-                } else if enemy.status == Status::Terminated as i32 {
+                } else if enemy.status == Status::Terminated {
                     "DEAD"
                 } else {
                     "ACTIVE"
@@ -250,9 +250,7 @@ impl<'sdl> crate::Data<'sdl> {
                         .to_str()
                         .unwrap(),
                     enemy.energy.clone(),
-                    INFLUENCE_MODE_NAMES[usize::try_from(enemy.status).unwrap()]
-                        .to_str()
-                        .unwrap(),
+                    enemy.status.name(),
                 ),
             );
         }

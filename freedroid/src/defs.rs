@@ -947,14 +947,10 @@ impl Display for InvalidDroid {
 impl std::error::Error for InvalidDroid {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[allow(dead_code)]
 pub enum Status {
     Mobile,
     Transfermode,
     Weapon,
-    Captured,
-    Complete,
-    Rejected,
     Console,
     Debriefing,
     Terminated,
@@ -966,6 +962,46 @@ pub enum Status {
     Victory,
     Activate,
     Out,
+}
+
+impl Status {
+    pub const fn c_name(self) -> &'static CStr {
+        match self {
+            Self::Mobile => cstr!("Mobile"),
+            Self::Transfermode => cstr!("Transfer"),
+            Self::Weapon => cstr!("Weapon"),
+            Self::Console => cstr!("Logged In"),
+            Self::Debriefing => cstr!("Debriefing"),
+            Self::Terminated => cstr!("Terminated"),
+            Self::Pause => cstr!("Pause"),
+            Self::Cheese => cstr!("Cheese"),
+            Self::Elevator => cstr!("Elevator"),
+            Self::Briefing => cstr!("Briefing"),
+            Self::Menu => cstr!("Menu"),
+            Self::Victory => cstr!("Victory"),
+            Self::Activate => cstr!("Activate"),
+            Self::Out => cstr!("-- OUT --"),
+        }
+    }
+
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Mobile => "Mobile",
+            Self::Transfermode => "Transfer",
+            Self::Weapon => "Weapon",
+            Self::Console => "Logged In",
+            Self::Debriefing => "Debriefing",
+            Self::Terminated => "Terminated",
+            Self::Pause => "Pause",
+            Self::Cheese => "Cheese",
+            Self::Elevator => "Elevator",
+            Self::Briefing => "Briefing",
+            Self::Menu => "Menu",
+            Self::Victory => "Victory",
+            Self::Activate => "Activate",
+            Self::Out => "-- OUT --",
+        }
+    }
 }
 
 pub const DECKCOMPLETEBONUS: f32 = 500.;

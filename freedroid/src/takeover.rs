@@ -1042,7 +1042,7 @@ impl crate::Data<'_> {
         );
 
         if self.main.all_enemys[usize::from(self.takeover.droid_num)]
-            .map_or(false, |enemy| enemy.status != Status::Out as i32)
+            .map_or(false, |enemy| enemy.status != Status::Out)
         {
             self.put_enemy(
                 self.takeover.droid_num,
@@ -1682,7 +1682,7 @@ impl crate::Data<'_> {
 
         self.fill_rect(self.vars.user_rect, BG_COLOR);
 
-        self.vars.me.status = Status::Mobile as i32; /* the new status _after_ the takeover game */
+        self.vars.me.status = Status::Mobile; /* the new status _after_ the takeover game */
 
         self.sdl.cursor().hide(); // no mouse-cursor in takeover game!
 
@@ -1867,7 +1867,7 @@ impl crate::Data<'_> {
             // quadratic "importance", max=529
         }
 
-        enemy.status = Status::Out as i32; // removed droid silently (no blast!)
+        enemy.status = Status::Out; // removed droid silently (no blast!)
 
         let message = if self.takeover.leader_color == self.takeover.your_color {
             /* won the proper way */

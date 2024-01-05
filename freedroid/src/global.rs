@@ -1,27 +1,6 @@
 use crate::{array_c_string::ArrayCString, structs::Config, FontCell};
 
-use cstr::cstr;
-use std::{ffi::CStr, fmt, rc::Rc};
-
-pub const INFLUENCE_MODE_NAMES: [&CStr; 17] = [
-    cstr!("Mobile"),
-    cstr!("Transfer"),
-    cstr!("Weapon"),
-    cstr!("Captured"),
-    cstr!("Complete"),
-    cstr!("Rejected"),
-    cstr!("Logged In"),
-    cstr!("Debriefing"),
-    cstr!("Terminated"),
-    cstr!("Pause"),
-    cstr!("Cheese"),
-    cstr!("Elevator"),
-    cstr!("Briefing"),
-    cstr!("Menu"),
-    cstr!("Victory"),
-    cstr!("Activate"),
-    cstr!("-- OUT --"),
-];
+use std::{fmt, rc::Rc};
 
 pub struct Global<'sdl> {
     pub menu_b_font: Option<Rc<FontCell<'sdl>>>,

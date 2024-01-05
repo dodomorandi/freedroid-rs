@@ -6,7 +6,6 @@ use crate::{
         FLASH_DURATION, LEFT_TEXT_LEN, MAXBLASTS, MAXBULLETS, RIGHT_TEXT_LEN,
         TRANSFER_SOUND_INTERVAL,
     },
-    global::INFLUENCE_MODE_NAMES,
     graphics::{apply_filter, Graphics},
     map::get_map_brick,
     structs::{Blast, CoarsePoint, Finepoint, TextToBeDisplayed},
@@ -19,7 +18,11 @@ use crate::{
 use log::{info, trace};
 use sdl::{Pixel, Rect};
 use sdl_sys::SDL_Color;
-use std::{cell::Cell, ffi::CStr, ops::Deref};
+use std::{
+    cell::Cell,
+    ffi::CStr,
+    ops::{Deref, Not},
+};
 use tinyvec_string::ArrayString;
 
 const BLINK_LEN: f32 = 1.0;
@@ -229,8 +232,7 @@ impl crate::Data<'_> {
         let phase = droid.phase;
         let name = &self.vars.droidmap[droid.ty.to_usize()].druidname;
 
-        if (droid.status == Status::Terminated as i32)
-            || (droid.status == Status::Out as i32)
+        if matches!(droid.status, Status::Out | Status::Terminated)
             || (droid.levelnum != self.main.cur_level().levelnum)
         {
             return;
@@ -412,7 +414,7 @@ impl crate::Data<'_> {
         // In case of transfer mode, we produce the transfer mode sound
         // but of course only in some periodic intervall...
 
-        if self.vars.me.status == Status::Transfermode as i32 && x == -1 {
+        if self.vars.me.status == Status::Transfermode && x == -1 {
             apply_filter(self.graphics.build_block.as_mut().unwrap(), 1.0, 0.0, 0.0);
 
             if self.vars.me.last_transfer_sound_time > TRANSFER_SOUND_INTERVAL {
@@ -622,8 +624,7 @@ impl crate::Data<'_> {
         // we will decide whether to display it or not later...
         //
 
-        #[allow(clippy::cast_sign_loss)]
-        let left = left.unwrap_or(INFLUENCE_MODE_NAMES[self.vars.me.status as usize]);
+        let left = left.unwrap_or(self.vars.me.status.c_name());
 
         let right = right.map_or_else(
             || {
@@ -788,7 +789,7 @@ impl crate::Data<'_> {
             let Some(enemy) = &self.main.all_enemys[enemy_index] else {
                 continue;
             };
-            if (enemy.status == Status::Terminated as i32)
+            if enemy.status == Status::Terminated
                 && (enemy.levelnum == self.main.cur_level().levelnum)
                 && self.is_visible(enemy.pos) != 0
             {
@@ -803,9 +804,8 @@ impl crate::Data<'_> {
             let Some(enemy) = &self.main.all_enemys[enemy_index] else {
                 continue;
             };
-            if !((enemy.levelnum != levelnum)
-                || (enemy.status == Status::Out as i32)
-                || (enemy.status == Status::Terminated as i32))
+            if enemy.levelnum == levelnum
+                && matches!(enemy.status, Status::Out | Status::Terminated).not()
             {
                 self.put_enemy(enemy_index.try_into().unwrap(), -1, -1);
             }

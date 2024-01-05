@@ -938,8 +938,7 @@ freedroid-discussion@lists.sourceforge.net\n\
                     };
 
                     /* ignore druids that are dead or on other levels */
-                    if enemy.status == Status::Out as i32
-                        || enemy.status == Status::Terminated as i32
+                    if matches!(enemy.status, Status::Out | Status::Terminated)
                         || enemy.levelnum != cur_level.levelnum
                     {
                         j += 1;
@@ -1106,7 +1105,7 @@ freedroid-discussion@lists.sourceforge.net\n\
             while free_all_enemys_position < MAX_ENEMYS_ON_SHIP {
                 if self.main.all_enemys[free_all_enemys_position]
                     .as_ref()
-                    .map_or(true, |enemy| enemy.status == Status::Out as i32)
+                    .map_or(true, |enemy| enemy.status == Status::Out)
                 {
                     break;
                 }
@@ -1182,7 +1181,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         self.main.num_enemys = 0;
         for enemy in self.main.all_enemys.iter_mut().filter_map(Option::as_mut) {
             enemy.energy = self.vars.droidmap[enemy.ty.to_usize()].maxenergy;
-            enemy.status = Status::Mobile as i32;
+            enemy.status = Status::Mobile;
             self.main.num_enemys += 1;
         }
 
@@ -1407,9 +1406,9 @@ freedroid-discussion@lists.sourceforge.net\n\
             match map_tile {
                 M::Lift => {
                     if myspeed2 <= 1.0
-                        && (self.vars.me.status == Status::Activate as i32
+                        && (self.vars.me.status == Status::Activate
                             || (self.global.game_config.takeover_activates != 0
-                                && self.vars.me.status == Status::Transfermode as i32))
+                                && self.vars.me.status == Status::Transfermode))
                     {
                         let cx = x.round() - x;
                         let cy = y.round() - y;
@@ -1422,9 +1421,9 @@ freedroid-discussion@lists.sourceforge.net\n\
 
                 M::KonsoleR | M::KonsoleL | M::KonsoleO | M::KonsoleU => {
                     if myspeed2 <= 1.0
-                        && (self.vars.me.status == Status::Activate as i32
+                        && (self.vars.me.status == Status::Activate
                             || (self.global.game_config.takeover_activates != 0
-                                && self.vars.me.status == Status::Transfermode as i32))
+                                && self.vars.me.status == Status::Transfermode))
                     {
                         self.enter_konsole();
                     }

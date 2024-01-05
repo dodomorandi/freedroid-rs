@@ -75,7 +75,7 @@ impl Default for Vars<'_> {
             ship_empty_counter: 0,
             me: Influence {
                 ty: Droid::Droid001,
-                status: Status::Transfermode as i32,
+                status: Status::Transfermode,
                 speed: Finepoint { x: 0., y: 0. },
                 pos: Finepoint { x: 120., y: 48. },
                 health: 100.,

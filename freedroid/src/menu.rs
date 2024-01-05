@@ -269,7 +269,7 @@ impl<'sdl> crate::Data<'sdl> {
         self.activate_conservative_frame_computation();
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
-        self.vars.me.status = Status::Menu as i32;
+        self.vars.me.status = Status::Menu;
         self.clear_graph_mem();
         self.display_banner(
             None,
@@ -579,7 +579,7 @@ impl<'sdl> crate::Data<'sdl> {
                                   // to have the top status bar redrawn...
 
         self.graphics.banner_is_destroyed = true.into();
-        self.vars.me.status = Status::Mobile as i32;
+        self.vars.me.status = Status::Mobile;
 
         while self.any_key_is_pressed_r()
         // wait for all key/controller-release

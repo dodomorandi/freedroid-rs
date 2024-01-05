@@ -122,7 +122,7 @@ pub enum TextToBeDisplayed {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Influence {
     pub ty: Droid,        /* what kind of druid is this ? */
-    pub status: i32,      /* attacking, defense, dead, ... */
+    pub status: Status,   /* attacking, defense, dead, ... */
     pub speed: Finepoint, /* the current speed of the druid */
     pub pos: Finepoint,   /* current position in level levelnum */
     pub health: f32,      /* the max. possible energy in the moment */
@@ -147,7 +147,7 @@ pub struct Enemy {
     pub phase: f32,        /* gibt die Phase an in der der Feind gedreht ist */
     pub nextwaypoint: i32, /* gibt den naechsten Zielpunkt an */
     pub lastwaypoint: i32, /* Waypoint, von dem ausgegangen wurde */
-    pub status: i32,       /* gibt z.B. an ob der Robotter abgeschossen wurde */
+    pub status: Status,    /* gibt z.B. an ob der Robotter abgeschossen wurde */
     pub warten: f32,       // time till the droid will start to move again
     pub passable: u8,      /* Zeit (counter), in der druid passable ist */
     pub firewait: f32,     /* gibt die Zeit bis zum naechsten Schuss an */
@@ -166,7 +166,7 @@ impl Enemy {
             phase: 0.,
             nextwaypoint: 0,
             lastwaypoint: 0,
-            status: Status::Mobile as i32,
+            status: Status::Mobile,
             warten: 0.,
             passable: 0,
             firewait: 0.,

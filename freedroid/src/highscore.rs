@@ -179,7 +179,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        self.vars.me.status = Status::Debriefing as i32;
+        self.vars.me.status = Status::Debriefing;
 
         #[allow(clippy::cast_possible_truncation)]
         let Some(entry_pos) = self

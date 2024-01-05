@@ -163,8 +163,7 @@ impl crate::Data<'_> {
                 .enumerate()
                 .filter_map(|(index, enemy)| enemy.as_ref().map(|enemy| (index, enemy)))
             {
-                if enemy.status == Status::Out as i32
-                    || enemy.status == Status::Terminated as i32
+                if matches!(enemy.status, Status::Out | Status::Terminated)
                     || enemy.levelnum != level
                 {
                     continue;
@@ -293,7 +292,7 @@ impl crate::Data<'_> {
             .iter_mut()
             .filter_map(Option::as_mut)
         {
-            if enemy.status == Status::Out as i32 || enemy.levelnum != level {
+            if enemy.status == Status::Out || enemy.levelnum != level {
                 continue;
             }
 
@@ -321,7 +320,7 @@ impl crate::Data<'_> {
         };
         let dist = (v_dist.x * v_dist.x + v_dist.y * v_dist.y).sqrt();
 
-        if self.vars.me.status != Status::Out as i32
+        if self.vars.me.status != Status::Out
             && !cur_blast.mine
             && dist < self.global.blast_radius + self.global.droid_radius
         {

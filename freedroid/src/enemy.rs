@@ -46,7 +46,7 @@ impl crate::Data<'_> {
             if enemy.levelnum != cur_level.levelnum {
                 continue;
             }
-            if enemy.status == Status::Out as i32 {
+            if enemy.status == Status::Out {
                 continue;
             }
 
@@ -72,8 +72,7 @@ impl crate::Data<'_> {
             let Some(enemy) = &self.main.all_enemys[enemy_index] else {
                 continue;
             };
-            if enemy.status == Status::Out as i32
-                || enemy.status == Status::Terminated as i32
+            if matches!(enemy.status, Status::Out | Status::Terminated)
                 || enemy.levelnum != self.main.cur_level().levelnum
             {
                 continue;
@@ -105,7 +104,7 @@ impl crate::Data<'_> {
         }
 
         // ignore dead robots as well...
-        if this_robot.status == Status::Out as i32 {
+        if this_robot.status == Status::Out {
             return;
         }
 
@@ -216,8 +215,8 @@ impl crate::Data<'_> {
         // if the robot just got killed, initiate the
         // explosion and all that...
         #[allow(clippy::cast_precision_loss)]
-        if this_robot.energy <= 0. && (this_robot.status != Status::Terminated as i32) {
-            this_robot.status = Status::Terminated as i32;
+        if this_robot.energy <= 0. && (this_robot.status != Status::Terminated) {
+            this_robot.status = Status::Terminated;
             self.main.real_score += self.vars.droidmap[this_robot.ty.to_usize()].score as f32;
 
             self.main.death_count += f32::from(this_robot.ty.to_u16().pow(2)); // quadratic "importance", max=529
@@ -272,9 +271,7 @@ impl crate::Data<'_> {
             .filter_map(Option::as_mut)
         {
             // check only collisions of LIVING enemys on this level
-            if enemy.status == Status::Out as i32
-                || enemy.status == Status::Terminated as i32
-                || enemy.levelnum != curlev
+            if matches!(enemy.status, Status::Out | Status::Terminated) || enemy.levelnum != curlev
             {
                 continue;
             }
@@ -381,7 +378,7 @@ impl crate::Data<'_> {
             .iter_mut()
             .filter_map(Option::as_mut)
         {
-            if enemy.status == Status::Out as i32 || enemy.levelnum != cur_level_num {
+            if enemy.status == Status::Out || enemy.levelnum != cur_level_num {
                 /* dont handle dead enemys or on other level */
                 continue;
             }
@@ -397,7 +394,7 @@ impl crate::Data<'_> {
                 }
 
                 warned = true;
-                enemy.status = Status::Out as i32;
+                enemy.status = Status::Out;
                 continue;
             }
 
@@ -486,7 +483,7 @@ impl crate::Data<'_> {
             .iter_mut()
             .filter_map(Option::as_mut)
             .filter(|enemy| {
-                enemy.status != Status::Out as i32
+                enemy.status != Status::Out
                     && enemy.energy > 0.
                     && enemy.energy < vars.droidmap[enemy.ty.to_usize()].maxenergy
             })

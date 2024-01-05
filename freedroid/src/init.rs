@@ -159,7 +159,7 @@ impl crate::Data<'_> {
             .filter_map(Option::as_ref)
             .take(self.main.num_enemys.into())
         {
-            if enemy.status != Status::Out as i32 && enemy.status != Status::Terminated as i32 {
+            if matches!(enemy.status, Status::Out | Status::Terminated).not() {
                 return;
             }
         }
@@ -186,7 +186,7 @@ impl crate::Data<'_> {
         {
             self.main.show_score = self.main.real_score.max(0.) as u32;
         }
-        self.vars.me.status = Status::Victory as i32;
+        self.vars.me.status = Status::Victory;
         self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
 
         self.wait_for_all_keys_released();
@@ -666,7 +666,7 @@ impl crate::Data<'_> {
         self.vars.me.speed.y = 0.;
         self.vars.me.energy = self.vars.droidmap[Droid::Droid001 as usize].maxenergy;
         self.vars.me.health = self.vars.me.energy; /* start with max. health */
-        self.vars.me.status = Status::Mobile as i32;
+        self.vars.me.status = Status::Mobile;
         self.vars.me.phase = 0.;
         self.vars.me.timer = 0.0; // set clock to 0
 
@@ -704,7 +704,7 @@ impl crate::Data<'_> {
         .unwrap();
         Self::display_image(self.sdl, &self.global, &mut self.graphics, image);
         self.make_grid_on_screen(Some(&self.vars.screen_rect.clone()));
-        self.vars.me.status = Status::Briefing as i32;
+        self.vars.me.status = Status::Briefing;
 
         self.b_font.current_font = self.global.para_b_font.clone();
 
@@ -1109,7 +1109,7 @@ impl crate::Data<'_> {
 
     /// Show end-screen
     pub(crate) fn thou_art_defeated(&mut self) {
-        self.vars.me.status = Status::Terminated as i32;
+        self.vars.me.status = Status::Terminated;
         self.sdl.cursor().hide();
 
         self.explode_influencer();
