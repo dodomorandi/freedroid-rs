@@ -80,7 +80,7 @@ struct Main<'sdl> {
     alert_threshold: i32,
     // bonus/sec for FIRST Alert-color, the others are 2*, 3*,...
     alert_bonus_per_sec: f32,
-    all_enemys: [Enemy; MAX_ENEMYS_ON_SHIP],
+    all_enemys: [Option<Enemy>; MAX_ENEMYS_ON_SHIP],
     config_dir: ArrayCString<255>,
     invincible_mode: i32,
     /* display enemys regardless of IsVisible() */
@@ -113,7 +113,7 @@ impl Default for Main<'_> {
             alert_level: 0,
             alert_threshold: 0,
             alert_bonus_per_sec: 0.,
-            all_enemys: [Enemy::default(); MAX_ENEMYS_ON_SHIP],
+            all_enemys: [Option::default(); MAX_ENEMYS_ON_SHIP],
             config_dir: ArrayCString::default(),
             invincible_mode: 0,
             show_all_droids: 0,
@@ -435,7 +435,10 @@ impl Data<'_> {
         let Self {
             main, misc, global, ..
         } = self;
-        for enemy in &mut main.all_enemys[..usize::from(main.num_enemys)] {
+        for enemy in main.all_enemys[..usize::from(main.num_enemys)]
+            .iter_mut()
+            .filter_map(Option::as_mut)
+        {
             if enemy.status == Status::Out as i32 {
                 continue;
             }

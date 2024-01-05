@@ -218,7 +218,7 @@ pub struct Takeover<'sdl> {
     your_color: Color,
     opponent_color: Color,
     droid_num: u16,
-    opponent_type: i32,
+    opponent_type: Droid,
     pub to_game_blocks: [Rect; NUM_TO_BLOCKS],
     pub to_ground_blocks: [Rect; NUM_GROUND_BLOCKS],
     pub column_block: Rect,
@@ -274,7 +274,7 @@ impl Default for Takeover<'_> {
             your_color: Color::Yellow,
             opponent_color: Color::Violet,
             droid_num: 0,
-            opponent_type: 0,
+            opponent_type: Droid::Droid001,
             to_game_blocks: [Rect::default(); NUM_TO_BLOCKS],
             to_ground_blocks: [Rect::default(); NUM_GROUND_BLOCKS],
             column_block: Rect::default(),
@@ -1041,7 +1041,9 @@ impl crate::Data<'_> {
             i32::from(y_offs) + self.takeover.droid_starts[your_color].y,
         );
 
-        if self.main.all_enemys[usize::from(self.takeover.droid_num)].status != Status::Out as i32 {
+        if self.main.all_enemys[usize::from(self.takeover.droid_num)]
+            .map_or(false, |enemy| enemy.status != Status::Out as i32)
+        {
             self.put_enemy(
                 self.takeover.droid_num,
                 i32::from(x_offs) + self.takeover.droid_starts[opponent_color].x,
@@ -1704,10 +1706,11 @@ impl crate::Data<'_> {
         }
 
         let enemy_index: usize = enemynum.try_into().unwrap();
-        self.show_droid_info(self.main.all_enemys[enemy_index].ty, -2, 0);
+        let enemy_type = self.main.all_enemys[enemy_index].unwrap().ty;
+        self.show_droid_info(enemy_type, -2, 0);
         self.show_droid_portrait(
             self.vars.cons_droid_rect,
-            self.main.all_enemys[enemy_index].ty,
+            enemy_type,
             DROID_ROTATION_TIME,
             UPDATE,
         );
@@ -1715,7 +1718,7 @@ impl crate::Data<'_> {
         while !self.fire_pressed_r() {
             self.show_droid_portrait(
                 self.vars.cons_droid_rect,
-                self.main.all_enemys[enemy_index].ty,
+                enemy_type,
                 DROID_ROTATION_TIME,
                 0,
             );
@@ -1748,6 +1751,8 @@ impl crate::Data<'_> {
     }
 
     fn takeover_round(&mut self, enemynum: u16, enemy_index: usize, finish_takeover: &mut bool) {
+        let enemy = self.main.all_enemys[enemy_index].as_ref().unwrap();
+
         /* Init Color-column and Capsule-Number for each opponenet and your color */
         self.takeover
             .display_column
@@ -1767,7 +1772,7 @@ impl crate::Data<'_> {
         self.takeover.capsule_cur_row[usize::from(Color::Violet)] = 0;
 
         self.takeover.droid_num = enemynum;
-        self.takeover.opponent_type = self.main.all_enemys[enemy_index].ty;
+        self.takeover.opponent_type = enemy.ty;
         self.takeover.num_capsules[Opponents::You as usize] =
             3 + self.class_of_druid(self.vars.me.ty);
         self.takeover.num_capsules[Opponents::Enemy as usize] =
@@ -1792,16 +1797,16 @@ impl crate::Data<'_> {
         } else if self.takeover.leader_color == self.takeover.opponent_color {
             /* self.takeover.leader_color == self.takeover.your_color */
             // you lost, but enemy is killed too --> blast it!
-            self.main.all_enemys[enemy_index].energy = -1.0; /* to be sure */
+            self.main.all_enemys[enemy_index].as_mut().unwrap().energy = -1.0; /* to be sure */
 
             self.takeover_game_lost_sound();
             #[allow(clippy::cast_precision_loss)]
-            if self.vars.me.ty == Droid::Droid001 as i32 {
+            if self.vars.me.ty == Droid::Droid001 {
                 message = cstr!("Burnt Out");
                 self.vars.me.energy = 0.;
             } else {
                 message = cstr!("Rejected");
-                self.vars.me.ty = Droid::Droid001 as i32;
+                self.vars.me.ty = Droid::Droid001;
                 self.vars.me.energy = self.takeover.reject_energy as f32;
             }
             *finish_takeover = true;
@@ -1829,7 +1834,7 @@ impl crate::Data<'_> {
     fn takeover_win(&mut self, enemy_index: usize, finish_takeover: &mut bool) -> &'static CStr {
         self.takeover_game_won_sound();
         #[allow(clippy::cast_possible_truncation)]
-        if self.vars.me.ty == Droid::Droid001 as i32 {
+        if self.vars.me.ty == Droid::Droid001 {
             self.takeover.reject_energy = self.vars.me.energy as i32;
             self.main.pre_take_energy = self.vars.me.energy as i32;
         }
@@ -1844,26 +1849,25 @@ impl crate::Data<'_> {
             self.vars.me.health = droid_map[Droid::Droid001 as usize].maxenergy;
         }
 
+        let enemy = self.main.all_enemys[enemy_index].as_mut().unwrap();
+
         // We allow to gain the current energy/full health that was still in the
         // other droid, since all previous damage must be due to fighting damage,
         // and this is exactly the sort of damage can usually be cured in refreshes.
-        self.vars.me.energy += self.main.all_enemys[enemy_index].energy;
-        self.vars.me.health +=
-            droid_map[usize::try_from(self.takeover.opponent_type).unwrap()].maxenergy;
+        self.vars.me.energy += enemy.energy;
+        self.vars.me.health += droid_map[self.takeover.opponent_type.to_usize()].maxenergy;
 
-        self.vars.me.ty = self.main.all_enemys[enemy_index].ty;
+        self.vars.me.ty = enemy.ty;
 
         #[allow(clippy::cast_precision_loss)]
         {
-            self.main.real_score +=
-                droid_map[usize::try_from(self.takeover.opponent_type).unwrap()].score as f32;
+            self.main.real_score += droid_map[self.takeover.opponent_type.to_usize()].score as f32;
 
-            self.main.death_count +=
-                (self.takeover.opponent_type * self.takeover.opponent_type) as f32;
+            self.main.death_count += f32::from(self.takeover.opponent_type.to_u16().pow(2));
             // quadratic "importance", max=529
         }
 
-        self.main.all_enemys[enemy_index].status = Status::Out as i32; // removed droid silently (no blast!)
+        enemy.status = Status::Out as i32; // removed droid silently (no blast!)
 
         let message = if self.takeover.leader_color == self.takeover.your_color {
             /* won the proper way */

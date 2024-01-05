@@ -2,8 +2,8 @@
 use crate::menu::SHIP_EXT;
 use crate::{
     defs::{
-        self, Criticality, Direction, MapTile, Status, Themed, DIRECTIONS, MAP_DIR_C, MAXWAYPOINTS,
-        MAX_ALERTS_ON_LEVEL, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_REFRESHES_ON_LEVEL,
+        self, Criticality, Direction, Droid, MapTile, Status, Themed, DIRECTIONS, MAP_DIR_C,
+        MAXWAYPOINTS, MAX_ALERTS_ON_LEVEL, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_REFRESHES_ON_LEVEL,
     },
     find_subslice, map,
     misc::{
@@ -11,7 +11,7 @@ use crate::{
         read_u8_from_string,
     },
     read_and_malloc_and_terminate_file, split_at_subslice, split_at_subslice_mut,
-    structs::{CoarsePoint, Finepoint, Level, Waypoint},
+    structs::{CoarsePoint, Enemy, Finepoint, Level, Waypoint},
 };
 
 use array_init::array_init;
@@ -932,22 +932,23 @@ freedroid-discussion@lists.sourceforge.net\n\
                 /* alle Enemys checken */
                 let mut j = 0;
                 while j < usize::from(self.main.num_enemys) {
+                    let Some(enemy) = self.main.all_enemys[j].as_ref() else {
+                        j += 1;
+                        continue;
+                    };
+
                     /* ignore druids that are dead or on other levels */
-                    if self.main.all_enemys[j].status == Status::Out as i32
-                        || self.main.all_enemys[j].status == Status::Terminated as i32
-                        || self.main.all_enemys[j].levelnum != cur_level.levelnum
+                    if enemy.status == Status::Out as i32
+                        || enemy.status == Status::Terminated as i32
+                        || enemy.levelnum != cur_level.levelnum
                     {
                         j += 1;
                         continue;
                     }
 
-                    let x_dist = (self.main.all_enemys[j].pos.x - f32::from(door.x))
-                        .trunc()
-                        .abs();
+                    let x_dist = (enemy.pos.x - f32::from(door.x)).trunc().abs();
                     if x_dist < self.vars.block_rect.width().into() {
-                        let y_dist = (self.main.all_enemys[j].pos.y - f32::from(door.y))
-                            .trunc()
-                            .abs();
+                        let y_dist = (enemy.pos.y - f32::from(door.y)).trunc().abs();
                         if y_dist < self.vars.block_rect.height().into() {
                             let dist2 = x_dist * x_dist + y_dist * y_dist;
                             if dist2 < DOOROPENDIST2 {
@@ -1049,7 +1050,7 @@ freedroid-discussion@lists.sourceforge.net\n\
 
         let mut different_random_types = 0;
         let mut search_pos_opt = section_data.find(ALLOWED_TYPE_INDICATION_STRING);
-        let mut list_of_types_allowed: [i32; 1000] = [0; 1000];
+        let mut list_of_types_allowed: [Droid; 1000] = [Droid::Droid001; 1000];
         while let Some(mut search_pos) = search_pos_opt {
             search_pos += ALLOWED_TYPE_INDICATION_STRING.len();
             let remaining_data = &section_data[search_pos..];
@@ -1078,7 +1079,7 @@ freedroid-discussion@lists.sourceforge.net\n\
                     list_index,
                 );
             }
-            list_of_types_allowed[different_random_types] = list_index.into();
+            list_of_types_allowed[different_random_types] = list_index.try_into().unwrap();
             different_random_types += 1;
 
             search_pos_opt = remaining_data
@@ -1103,7 +1104,10 @@ freedroid-discussion@lists.sourceforge.net\n\
 
             let mut free_all_enemys_position = 0;
             while free_all_enemys_position < MAX_ENEMYS_ON_SHIP {
-                if self.main.all_enemys[free_all_enemys_position].status == Status::Out as i32 {
+                if self.main.all_enemys[free_all_enemys_position]
+                    .as_ref()
+                    .map_or(true, |enemy| enemy.status == Status::Out as i32)
+                {
                     break;
                 }
                 free_all_enemys_position += 1;
@@ -1114,13 +1118,12 @@ freedroid-discussion@lists.sourceforge.net\n\
                 "No more free position to fill random droids into in GetCrew...Terminating...."
             );
 
-            self.main.all_enemys[free_all_enemys_position].ty = list_of_types_allowed
-                [usize::try_from(my_random(
-                    i32::try_from(different_random_types).unwrap() - 1,
-                ))
-                .unwrap()];
-            self.main.all_enemys[free_all_enemys_position].levelnum = our_level_number;
-            self.main.all_enemys[free_all_enemys_position].status = Status::Mobile as i32;
+            let random_droid_type = list_of_types_allowed[usize::try_from(my_random(
+                i32::try_from(different_random_types).unwrap() - 1,
+            ))
+            .unwrap()];
+            self.main.all_enemys[free_all_enemys_position] =
+                Some(Enemy::new(random_droid_type, our_level_number));
         }
     }
 
@@ -1177,13 +1180,8 @@ freedroid-discussion@lists.sourceforge.net\n\
         // right structure, it's time to set the energy of the corresponding
         // droids to "full" which means to the maximum of each type.
         self.main.num_enemys = 0;
-        for enemy in &mut self.main.all_enemys {
-            let ty = enemy.ty;
-            if ty == -1 {
-                // Do nothing to unused entries
-                continue;
-            }
-            enemy.energy = self.vars.droidmap[usize::try_from(ty).unwrap()].maxenergy;
+        for enemy in self.main.all_enemys.iter_mut().filter_map(Option::as_mut) {
+            enemy.energy = self.vars.droidmap[enemy.ty.to_usize()].maxenergy;
             enemy.status = Status::Mobile as i32;
             self.main.num_enemys += 1;
         }

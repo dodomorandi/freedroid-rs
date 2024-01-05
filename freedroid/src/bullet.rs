@@ -70,7 +70,9 @@ impl crate::Data<'_> {
         } // we only do the damage once and thats at frame nr. 1 of the flash
 
         for enemy_index in 0..usize::from(self.main.num_enemys) {
-            let enemy = &self.main.all_enemys[enemy_index];
+            let Some(enemy) = &self.main.all_enemys[enemy_index] else {
+                continue;
+            };
             // !! dont't forget: Only droids on our level are harmed!! (bugfix)
             if enemy.levelnum != level {
                 continue;
@@ -78,9 +80,9 @@ impl crate::Data<'_> {
 
             #[allow(clippy::cast_precision_loss)]
             if self.is_visible(enemy.pos) != 0
-                && self.vars.droidmap[usize::try_from(enemy.ty).unwrap()].flashimmune == 0
+                && self.vars.droidmap[enemy.ty.to_usize()].flashimmune == 0
             {
-                let enemy = &mut self.main.all_enemys[enemy_index];
+                let enemy = self.main.all_enemys[enemy_index].as_mut().unwrap();
                 enemy.energy -= self.vars.bulletmap[BulletKind::Flash as usize].damage as f32;
 
                 // Since the enemy just got hit, it might as well say so :)
@@ -92,7 +94,7 @@ impl crate::Data<'_> {
         // -> we don't get hurt by our own flashes!
         #[allow(clippy::cast_precision_loss)]
         if self.main.invincible_mode == 0
-            && self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].flashimmune == 0
+            && self.vars.droidmap[self.vars.me.ty.to_usize()].flashimmune == 0
         {
             self.vars.me.energy -= self.vars.bulletmap[BulletKind::Flash as usize].damage as f32;
         }
@@ -159,6 +161,7 @@ impl crate::Data<'_> {
             for (enemy_index, enemy) in self.main.all_enemys[..usize::from(self.main.num_enemys)]
                 .iter()
                 .enumerate()
+                .filter_map(|(index, enemy)| enemy.as_ref().map(|enemy| (index, enemy)))
             {
                 if enemy.status == Status::Out as i32
                     || enemy.status == Status::Terminated as i32
@@ -174,7 +177,7 @@ impl crate::Data<'_> {
                 #[allow(clippy::cast_precision_loss)]
                 if (x_dist * x_dist + y_dist * y_dist) < self.get_druid_hit_dist_squared() {
                     // The enemy who was hit, loses some energy, depending on the bullet
-                    self.main.all_enemys[enemy_index].energy -=
+                    self.main.all_enemys[enemy_index].as_mut().unwrap().energy -=
                         self.vars.bulletmap[usize::from(cur_bullet.ty)].damage as f32;
 
                     self.delete_bullet(cur_bullet_index.try_into().unwrap());
@@ -286,7 +289,10 @@ impl crate::Data<'_> {
             main, global, misc, ..
         } = self;
         let cur_blast = &main.all_blasts[usize::try_from(num).unwrap()];
-        for enemy in &mut main.all_enemys[..usize::from(main.num_enemys)] {
+        for enemy in main.all_enemys[..usize::from(main.num_enemys)]
+            .iter_mut()
+            .filter_map(Option::as_mut)
+        {
             if enemy.status == Status::Out as i32 || enemy.levelnum != level {
                 continue;
             }

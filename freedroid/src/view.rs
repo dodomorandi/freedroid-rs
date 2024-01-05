@@ -223,10 +223,11 @@ impl crate::Data<'_> {
     }
 
     pub fn put_enemy(&mut self, enemy_index: u16, x: i32, y: i32) {
-        let droid = &self.main.all_enemys[usize::from(enemy_index)];
-        let ty = droid.ty;
+        let Some(droid) = &self.main.all_enemys[usize::from(enemy_index)] else {
+            return;
+        };
         let phase = droid.phase;
-        let name = &self.vars.droidmap[usize::try_from(ty).unwrap()].druidname;
+        let name = &self.vars.droidmap[droid.ty.to_usize()].druidname;
 
         if (droid.status == Status::Terminated as i32)
             || (droid.status == Status::Out as i32)
@@ -240,14 +241,6 @@ impl crate::Data<'_> {
             trace!("ONSCREEN=FALSE --> usual end of function reached.");
             return;
         }
-
-        // We check for incorrect droid types, which sometimes might occor, especially after
-        // heavy editing of the crew initialisation functions ;)
-        assert!(
-            droid.ty < self.main.number_of_droid_types.into(),
-            "nonexistant droid-type encountered: {}",
-            droid.ty
-        );
 
         //--------------------
         // First blit just the enemy hat and shoes.
@@ -380,7 +373,7 @@ impl crate::Data<'_> {
             self.main.third_digit_rect,
         ]
         .into_iter()
-        .zip(vars.droidmap[usize::try_from(vars.me.ty).unwrap()].druidname)
+        .zip(vars.droidmap[vars.me.ty.to_usize()].druidname)
         .for_each(|(mut dst, name_char)| {
             influ_digit_surface_pointer[usize::from(name_char + 1 - b'1')]
                 .as_mut()
@@ -388,8 +381,7 @@ impl crate::Data<'_> {
                 .blit_to(build_block.as_mut().unwrap(), &mut dst);
         });
 
-        if self.vars.me.energy * 100.
-            / self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxenergy
+        if self.vars.me.energy * 100. / self.vars.droidmap[self.vars.me.ty.to_usize()].maxenergy
             <= BLINKENERGY
             && x == -1
         {
@@ -793,7 +785,9 @@ impl crate::Data<'_> {
 
         // make sure Ashes are displayed _before_ droids, so that they are _under_ them!
         for enemy_index in 0..usize::from(self.main.num_enemys) {
-            let enemy = &self.main.all_enemys[enemy_index];
+            let Some(enemy) = &self.main.all_enemys[enemy_index] else {
+                continue;
+            };
             if (enemy.status == Status::Terminated as i32)
                 && (enemy.levelnum == self.main.cur_level().levelnum)
                 && self.is_visible(enemy.pos) != 0
@@ -806,7 +800,9 @@ impl crate::Data<'_> {
 
         let levelnum = self.main.cur_level().levelnum;
         for enemy_index in 0..usize::from(self.main.num_enemys) {
-            let enemy = &self.main.all_enemys[enemy_index];
+            let Some(enemy) = &self.main.all_enemys[enemy_index] else {
+                continue;
+            };
             if !((enemy.levelnum != levelnum)
                 || (enemy.status == Status::Out as i32)
                 || (enemy.status == Status::Terminated as i32))

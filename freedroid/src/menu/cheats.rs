@@ -114,7 +114,10 @@ impl<'sdl> crate::Data<'sdl> {
     ) -> FrameBuffer<'sdl> {
         let mut l = 0; /* line counter for enemy output */
         for i in 0..usize::from(self.main.num_enemys) {
-            if self.main.all_enemys[i].levelnum == cur_level!(self.main).levelnum {
+            let Some(enemy) = &self.main.all_enemys[i] else {
+                continue;
+            };
+            if enemy.levelnum == cur_level!(self.main).levelnum {
                 if l != 0 && l % 20 == 0 {
                     Self::printf_sdl_static(
                         &mut self.text,
@@ -154,9 +157,10 @@ impl<'sdl> crate::Data<'sdl> {
                 }
 
                 l += 1;
-                let status = if self.main.all_enemys[i].status == Status::Out as i32 {
+                let enemy = self.main.all_enemys[i].as_ref().unwrap();
+                let status = if enemy.status == Status::Out as i32 {
                     "OUT"
-                } else if self.main.all_enemys[i].status == Status::Terminated as i32 {
+                } else if enemy.status == Status::Terminated as i32 {
                     "DEAD"
                 } else {
                     "ACTIVE"
@@ -172,13 +176,13 @@ impl<'sdl> crate::Data<'sdl> {
                     format_args!(
                         "{}.   {}   {:.0}   {:.0}   {:.0}    {}.\n",
                         i,
-                        self.vars.droidmap[usize::try_from(self.main.all_enemys[i].ty).unwrap()]
+                        self.vars.droidmap[enemy.ty.to_usize()]
                             .druidname
                             .to_str()
                             .unwrap(),
-                        self.main.all_enemys[i].pos.x.clone(),
-                        self.main.all_enemys[i].pos.y.clone(),
-                        self.main.all_enemys[i].energy.clone(),
+                        enemy.pos.x.clone(),
+                        enemy.pos.y.clone(),
+                        enemy.energy.clone(),
                         status,
                     ),
                 );
@@ -196,9 +200,9 @@ impl<'sdl> crate::Data<'sdl> {
         mut ne_screen: FrameBuffer<'sdl>,
     ) -> FrameBuffer<'sdl> {
         for i in 0..usize::from(self.main.num_enemys) {
-            if self.main.all_enemys[i].ty == -1 {
+            if self.main.all_enemys[i].is_none() {
                 continue;
-            }
+            };
 
             if i != 0 && !i % 13 == 0 {
                 self.printf_sdl(
@@ -229,6 +233,7 @@ impl<'sdl> crate::Data<'sdl> {
                 );
             }
 
+            let enemy = self.main.all_enemys[i].as_ref().unwrap();
             Self::printf_sdl_static(
                 &mut self.text,
                 &self.b_font,
@@ -239,13 +244,13 @@ impl<'sdl> crate::Data<'sdl> {
                 format_args!(
                     "{}  {}  {}  {:.0}  {}\n",
                     i,
-                    self.main.all_enemys[i].levelnum.clone(),
-                    self.vars.droidmap[usize::try_from(self.main.all_enemys[i].ty).unwrap()]
+                    enemy.levelnum.clone(),
+                    self.vars.droidmap[enemy.ty.to_usize()]
                         .druidname
                         .to_str()
                         .unwrap(),
-                    self.main.all_enemys[i].energy.clone(),
-                    INFLUENCE_MODE_NAMES[usize::try_from(self.main.all_enemys[i].status).unwrap()]
+                    enemy.energy.clone(),
+                    INFLUENCE_MODE_NAMES[usize::try_from(enemy.status).unwrap()]
                         .to_str()
                         .unwrap(),
                 ),
@@ -260,7 +265,7 @@ impl<'sdl> crate::Data<'sdl> {
 
     pub fn level_robots_destroy(&mut self, ne_screen: &mut FrameBuffer<'sdl>) {
         let cur_level = cur_level!(self.main);
-        for enemy in &mut self.main.all_enemys {
+        for enemy in self.main.all_enemys.iter_mut().filter_map(Option::as_mut) {
             if enemy.levelnum == cur_level.levelnum {
                 enemy.energy = -100.;
             }
@@ -323,15 +328,15 @@ impl<'sdl> crate::Data<'sdl> {
         self.graphics.ne_screen = Some(ne_screen);
         let input = self.get_string(40, 2).unwrap();
         ne_screen = self.graphics.ne_screen.take().unwrap();
-        let mut i = 0;
-        for _ in 0..u32::from(self.main.number_of_droid_types) {
-            if self.vars.droidmap[i].druidname != *input {
+        let mut i = 0u8;
+        for _ in 0..self.main.number_of_droid_types {
+            if self.vars.droidmap[usize::from(i)].druidname != *input {
                 break;
             }
             i += 1;
         }
 
-        if i == usize::from(self.main.number_of_droid_types) {
+        if i == self.main.number_of_droid_types {
             self.printf_sdl(
                 &mut ne_screen,
                 X0,
@@ -344,8 +349,7 @@ impl<'sdl> crate::Data<'sdl> {
             ne_screen = self.graphics.ne_screen.take().unwrap();
         } else {
             self.vars.me.ty = i.try_into().unwrap();
-            self.vars.me.energy =
-                self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxenergy;
+            self.vars.me.energy = self.vars.droidmap[self.vars.me.ty.to_usize()].maxenergy;
             self.vars.me.health = self.vars.me.energy;
             self.printf_sdl(
                 &mut ne_screen,

@@ -1,7 +1,7 @@
 use crate::{
     array_c_string::ArrayCString,
     defs::{
-        MapTile, DATE_LEN, MAXWAYPOINTS, MAX_ALERTS_ON_LEVEL, MAX_DOORS_ON_LEVEL,
+        Droid, MapTile, Status, DATE_LEN, MAXWAYPOINTS, MAX_ALERTS_ON_LEVEL, MAX_DOORS_ON_LEVEL,
         MAX_INFLU_POSITION_HISTORY, MAX_LEVELS, MAX_LEVEL_RECTS, MAX_LIFTS, MAX_LIFT_ROWS,
         MAX_MAP_ROWS, MAX_NAME_LEN, MAX_PHASES_IN_A_BULLET, MAX_REFRESHES_ON_LEVEL, MAX_THEMES,
         MAX_WP_CONNECTIONS,
@@ -121,7 +121,7 @@ pub enum TextToBeDisplayed {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Influence {
-    pub ty: i32,          /* what kind of druid is this ? */
+    pub ty: Droid,        /* what kind of druid is this ? */
     pub status: i32,      /* attacking, defense, dead, ... */
     pub speed: Finepoint, /* the current speed of the druid */
     pub pos: Finepoint,   /* current position in level levelnum */
@@ -137,9 +137,9 @@ pub struct Influence {
     pub position_history_ring_buffer: [Gps; MAX_INFLU_POSITION_HISTORY],
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Enemy {
-    pub ty: i32,           /* gibt die Nummer in Druidmap an */
+    pub ty: Droid,         /* gibt die Nummer in Druidmap an */
     pub levelnum: u8,      /* Level in dem sich enemy befindet */
     pub pos: Finepoint,    /* gibt die Koordinaten der Momentanposition an */
     pub speed: Finepoint,  /* current speed  */
@@ -153,6 +153,27 @@ pub struct Enemy {
     pub firewait: f32,     /* gibt die Zeit bis zum naechsten Schuss an */
     pub text_visible_time: f32,
     pub text_to_be_displayed: &'static str,
+}
+
+impl Enemy {
+    pub fn new(ty: Droid, levelnum: u8) -> Self {
+        Self {
+            ty,
+            levelnum,
+            pos: Finepoint::default(),
+            speed: Finepoint::default(),
+            energy: 0.,
+            phase: 0.,
+            nextwaypoint: 0,
+            lastwaypoint: 0,
+            status: Status::Mobile as i32,
+            warten: 0.,
+            passable: 0,
+            firewait: 0.,
+            text_visible_time: 0.,
+            text_to_be_displayed: "",
+        }
+    }
 }
 
 #[derive(Debug, Default)]

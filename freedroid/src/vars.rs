@@ -74,7 +74,7 @@ impl Default for Vars<'_> {
             progress_text_rect: Rect::new(213, 390, 157, 30),
             ship_empty_counter: 0,
             me: Influence {
-                ty: Droid::Droid001 as i32,
+                ty: Droid::Droid001,
                 status: Status::Transfermode as i32,
                 speed: Finepoint { x: 0., y: 0. },
                 pos: Finepoint { x: 120., y: 48. },

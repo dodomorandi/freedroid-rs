@@ -156,6 +156,7 @@ impl crate::Data<'_> {
             .main
             .all_enemys
             .iter()
+            .filter_map(Option::as_ref)
             .take(self.main.num_enemys.into())
         {
             if enemy.status != Status::Out as i32 && enemy.status != Status::Terminated as i32 {
@@ -583,10 +584,7 @@ impl crate::Data<'_> {
             blast.ty = Status::Out as i32;
         }
         info!("InitNewMission: All blasts have been deleted.");
-        for enemy in &mut self.main.all_enemys {
-            enemy.ty = Status::Out as i32;
-            enemy.energy = -1.;
-        }
+        self.main.all_enemys.fill(None);
         info!("InitNewMission: All enemys have been deleted...");
 
         //Now its time to start decoding the mission file.
@@ -663,7 +661,7 @@ impl crate::Data<'_> {
         // Now that the briefing and all that is done,
         // the influence structure can be initialized for
         // the new mission:
-        self.vars.me.ty = Droid::Droid001 as i32;
+        self.vars.me.ty = Droid::Droid001;
         self.vars.me.speed.x = 0.;
         self.vars.me.speed.y = 0.;
         self.vars.me.energy = self.vars.droidmap[Droid::Droid001 as usize].maxenergy;

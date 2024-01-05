@@ -2,8 +2,8 @@ use crate::{
     b_font::font_height,
     cur_level,
     defs::{
-        AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, MenuAction, SoundType, Status,
-        DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET, TEXT_STRETCH, UPDATE,
+        AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Droid, MenuAction, SoundType,
+        Status, DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET, TEXT_STRETCH, UPDATE,
     },
     graphics::{scale_pic, Graphics},
     map::get_map_brick,
@@ -20,10 +20,11 @@ use tinyvec_string::ArrayString;
 
 const UPDATE_ONLY: u8 = 0x01;
 
+#[derive(Default)]
 pub struct Data<'sdl> {
     last_siren: u32,
     frame_num: i32,
-    last_droid_type: i32,
+    last_droid_type: Option<Droid>,
     last_frame_time: u32,
     src_rect: Rect,
     enter_console_last_move_tick: u32,
@@ -35,27 +36,6 @@ pub struct Data<'sdl> {
     down_rect: Rect,
     left_rect: Rect,
     right_rect: Rect,
-}
-
-impl Default for Data<'_> {
-    fn default() -> Self {
-        Self {
-            last_siren: 0,
-            frame_num: 0,
-            last_droid_type: -1,
-            last_frame_time: 0,
-            src_rect: Rect::default(),
-            enter_console_last_move_tick: 0,
-            great_droid_show_last_move_tick: 0,
-            enter_lift_last_move_tick: 0,
-            droid_background: None,
-            droid_pics: None,
-            up_rect: Rect::default(),
-            down_rect: Rect::default(),
-            left_rect: Rect::default(),
-            right_rect: Rect::default(),
-        }
-    }
 }
 
 impl crate::Data<'_> {
@@ -126,7 +106,7 @@ impl crate::Data<'_> {
     pub fn show_droid_portrait(
         &mut self,
         mut dst: Rect,
-        droid_type: i32,
+        droid_type: Droid,
         cycle_time: f32,
         flags: i32,
     ) {
@@ -179,7 +159,7 @@ impl crate::Data<'_> {
             self.ship.last_frame_time = self.sdl.ticks_ms();
         }
 
-        if droid_type != self.ship.last_droid_type || self.ship.droid_pics.is_none() {
+        if Some(droid_type) != self.ship.last_droid_type || self.ship.droid_pics.is_none() {
             self.unpack_droid_pics(droid_type);
         }
 
@@ -247,10 +227,10 @@ impl crate::Data<'_> {
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
     }
 
-    fn unpack_droid_pics(&mut self, droid_type: i32) {
+    fn unpack_droid_pics(&mut self, droid_type: Droid) {
         // we need to unpack the droid-pics into our local storage
         self.ship.droid_pics = None;
-        let packed_portrait = self.graphics.packed_portraits[usize::try_from(droid_type).unwrap()]
+        let packed_portrait = self.graphics.packed_portraits[droid_type.to_usize()]
             .as_mut()
             .unwrap();
         let tmp = packed_portrait.image_load();
@@ -260,7 +240,7 @@ impl crate::Data<'_> {
             .expect("unable to seek rw_ops");
         let Some(mut tmp) = tmp else {
             error!(
-                "failed to unpack droid-portraits of droid-type {}",
+                "failed to unpack droid-portraits of droid-type {:?}",
                 droid_type,
             );
             return; // ok, so no pic but we continue ;)
@@ -287,7 +267,7 @@ impl crate::Data<'_> {
             );
         }
 
-        self.ship.last_droid_type = droid_type;
+        self.ship.last_droid_type = Some(droid_type);
     }
 
     /// display infopage page of droidtype
@@ -296,7 +276,7 @@ impl crate::Data<'_> {
     ///                           only  update the text-regions
     ///
     ///  does update the screen: all if flags=0, text-rect if `flags=UPDATE_ONLY`
-    pub fn show_droid_info(&mut self, droid_type: i32, page: i32, flags: i32) {
+    pub fn show_droid_info(&mut self, droid_type: Droid, page: i32, flags: i32) {
         use std::fmt::Write;
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
@@ -315,7 +295,7 @@ impl crate::Data<'_> {
         self.set_ship_rects(lastline, lineskip);
 
         let mut droid_name = ArrayString::<[u8; 80]>::default();
-        let droid = &self.vars.droidmap[usize::try_from(droid_type).unwrap()];
+        let droid = &self.vars.droidmap[droid_type.to_usize()];
         write!(
             droid_name,
             "  Unit type {} - {}",
@@ -435,7 +415,7 @@ impl crate::Data<'_> {
         }
     }
 
-    fn show_arrows(&mut self, droid_type: i32, page: i32) {
+    fn show_arrows(&mut self, droid_type: Droid, page: i32) {
         let Self {
             graphics:
                 Graphics {
@@ -458,7 +438,7 @@ impl crate::Data<'_> {
                 .blit_to(ne_screen.as_mut().unwrap(), &mut ship.up_rect);
         }
 
-        if droid_type > 0 {
+        if droid_type > Droid::Droid001 {
             arrow_down
                 .as_mut()
                 .unwrap()
@@ -769,7 +749,7 @@ impl crate::Data<'_> {
 
                     if droidtype < self.vars.me.ty {
                         self.move_menu_position_sound();
-                        droidtype += 1;
+                        droidtype = droidtype.next().unwrap();
                         need_update = true;
                         self.ship.great_droid_show_last_move_tick = self.sdl.ticks_ms();
                     }
@@ -780,9 +760,9 @@ impl crate::Data<'_> {
                         continue;
                     }
 
-                    if droidtype > 0 {
+                    if let Some(prev_droid) = droidtype.previous() {
                         self.move_menu_position_sound();
-                        droidtype -= 1;
+                        droidtype = prev_droid;
                         need_update = true;
                         self.ship.great_droid_show_last_move_tick = self.sdl.ticks_ms();
                     }
@@ -1160,6 +1140,7 @@ impl crate::Data<'_> {
 
         self.main.all_enemys[0..usize::from(self.main.num_enemys)]
             .iter()
+            .filter_map(Option::as_ref)
             .any(|enemy| {
                 enemy.levelnum == levelnum
                     && enemy.status != Status::Out as i32
@@ -1174,7 +1155,7 @@ fn show_droid_page_info(
     page: i32,
     info_text: &mut ArrayString<[u8; 1000]>,
     show_arrows: &mut bool,
-    droid_type: i32,
+    droid_type: Droid,
     droid: &DruidSpec,
 ) {
     use std::fmt::Write;
@@ -1211,7 +1192,7 @@ fn show_droid_page_info(
                  Weight: {} kg\n\
                  Drive : {} \n\
                  Brain : {}",
-                droid_type + 1,
+                droid_type.to_usize() + 1,
                 CLASSES[usize::try_from(droid.class).unwrap()]
                     .to_str()
                     .unwrap(),

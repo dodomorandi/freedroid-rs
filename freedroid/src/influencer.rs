@@ -94,7 +94,9 @@ impl crate::Data<'_> {
                 global,
                 ..
             } = self;
-            let enemy = &mut main.all_enemys[enemy_index];
+            let Some(enemy) = &mut main.all_enemys[enemy_index] else {
+                continue;
+            };
 
             /* ignore enemy that are not on this level or dead */
             if enemy.levelnum != cur_level!(main).levelnum {
@@ -162,7 +164,7 @@ impl crate::Data<'_> {
                 self.check_influence_wall_collisions();
 
                 // shortly stop this enemy, then send him back to previous waypoint
-                let enemy = &mut self.main.all_enemys[enemy_index];
+                let enemy = self.main.all_enemys[enemy_index].as_mut().unwrap();
                 if enemy.warten == 0. {
                     enemy.warten = f32::from(WAIT_COLLISION);
                     std::mem::swap(&mut enemy.nextwaypoint, &mut enemy.lastwaypoint);
@@ -177,12 +179,13 @@ impl crate::Data<'_> {
     }
 
     pub fn influ_enemy_collision_lose_energy(&mut self, enemy_num: i32) {
-        let enemy_type = self.main.all_enemys[usize::try_from(enemy_num).unwrap()].ty;
+        let enemy = self.main.all_enemys[usize::try_from(enemy_num).unwrap()]
+            .as_mut()
+            .expect("collision must be with a valid enemy");
 
         #[allow(clippy::cast_precision_loss)]
-        let damage = (self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].class
-            - self.vars.droidmap[usize::try_from(enemy_type).unwrap()].class)
-            as f32
+        let damage = (self.vars.droidmap[self.vars.me.ty.to_usize()].class
+            - self.vars.droidmap[enemy.ty.to_usize()].class) as f32
             * self.global.collision_lose_energy_calibrator;
 
         if damage < 0. {
@@ -196,7 +199,7 @@ impl crate::Data<'_> {
             self.bounce_sound();
         } else {
             // damage > 0: enemy got damaged
-            self.main.all_enemys[usize::try_from(enemy_num).unwrap()].energy -= damage;
+            enemy.energy -= damage;
             self.collision_damaged_enemy_sound();
         }
     }
@@ -365,7 +368,7 @@ impl crate::Data<'_> {
     }
 
     pub fn animate_influence(&mut self) {
-        if self.vars.me.ty == Droid::Droid001 as i32 {
+        if self.vars.me.ty == Droid::Droid001 {
             self.vars.me.phase += (self.vars.me.energy
                 / (self.vars.droidmap[Droid::Droid001 as usize].maxenergy))
                 * self.frame_time()
@@ -373,7 +376,7 @@ impl crate::Data<'_> {
                 * 3.;
         } else {
             self.vars.me.phase += (self.vars.me.energy
-                / (self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxenergy
+                / (self.vars.droidmap[self.vars.me.ty.to_usize()].maxenergy
                     + self.vars.droidmap[Droid::Droid001 as usize].maxenergy))
                 * self.frame_time()
                 * f32::from(ENEMYPHASES)
@@ -388,8 +391,7 @@ impl crate::Data<'_> {
     /// This function moves the influencer, adjusts his speed according to
     /// keys pressed and also adjusts his status and current "phase" of his rotation.
     pub(crate) fn move_influence(&mut self) {
-        let accel =
-            self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].accel * self.frame_time();
+        let accel = self.vars.droidmap[self.vars.me.ty.to_usize()].accel * self.frame_time();
 
         // We store the influencers position for the history record and so that others
         // can follow his trail.
@@ -406,13 +408,13 @@ impl crate::Data<'_> {
 
         // check, if the influencer is still ok
         if self.vars.me.energy <= 0. {
-            if self.vars.me.ty == Droid::Droid001 as i32 {
+            if self.vars.me.ty == Droid::Droid001 {
                 self.vars.me.status = Status::Terminated as i32;
                 self.thou_art_defeated();
                 return;
             }
 
-            self.vars.me.ty = Droid::Droid001 as i32;
+            self.vars.me.ty = Droid::Droid001;
             self.vars.me.energy = BLINKENERGY;
             self.vars.me.health = BLINKENERGY;
             self.start_blast(
@@ -531,9 +533,8 @@ impl crate::Data<'_> {
         }
 
         /* health decreases with time */
-        self.vars.me.health -= self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()]
-            .lose_health
-            * self.frame_time();
+        self.vars.me.health -=
+            self.vars.droidmap[self.vars.me.ty.to_usize()].lose_health * self.frame_time();
 
         /* you cant have more energy than health */
         if self.vars.me.energy > self.vars.me.health {
@@ -543,7 +544,7 @@ impl crate::Data<'_> {
 
     /// Fire-Routine for the Influencer only !! (should be changed)
     pub fn fire_bullet(&mut self) {
-        let guntype = self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].gun; /* which gun do we have ? */
+        let guntype = self.vars.droidmap[self.vars.me.ty.to_usize()].gun; /* which gun do we have ? */
         let bullet_speed = self.vars.bulletmap[usize::try_from(guntype).unwrap()].speed;
 
         if self.vars.me.firewait > 0. {
@@ -646,7 +647,7 @@ impl crate::Data<'_> {
     }
 
     pub fn adjust_speed(&mut self) {
-        let maxspeed = self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed;
+        let maxspeed = self.vars.droidmap[self.vars.me.ty.to_usize()].maxspeed;
         self.vars.me.speed.x = self.vars.me.speed.x.clamp(-maxspeed, maxspeed);
         self.vars.me.speed.y = self.vars.me.speed.y.clamp(-maxspeed, maxspeed);
     }
@@ -679,13 +680,11 @@ impl crate::Data<'_> {
     fn is_north_south_axis_blocked(&mut self, lastpos: Finepoint) -> bool {
         if {
             let pos_y = lastpos.y
-                + self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed
-                    * self.frame_time();
+                + self.vars.droidmap[self.vars.me.ty.to_usize()].maxspeed * self.frame_time();
             self.druid_passable(lastpos.x, pos_y) != Some(Direction::Center)
         } || {
             let pos_y = lastpos.y
-                - self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed
-                    * self.frame_time();
+                - self.vars.droidmap[self.vars.me.ty.to_usize()].maxspeed * self.frame_time();
             self.druid_passable(lastpos.x, pos_y) != Some(Direction::Center)
         } {
             true
@@ -698,13 +697,11 @@ impl crate::Data<'_> {
     fn is_east_west_axis_blocked(&mut self, lastpos: Finepoint) -> bool {
         ({
             let pos_x = lastpos.x
-                + self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed
-                    * self.frame_time();
+                + self.vars.droidmap[self.vars.me.ty.to_usize()].maxspeed * self.frame_time();
             self.druid_passable(pos_x, lastpos.y) == Some(Direction::Center)
         } && {
             let pos_x = lastpos.x
-                - self.vars.droidmap[usize::try_from(self.vars.me.ty).unwrap()].maxspeed
-                    * self.frame_time();
+                - self.vars.droidmap[self.vars.me.ty.to_usize()].maxspeed * self.frame_time();
             self.druid_passable(pos_x, lastpos.y) == Some(Direction::Center)
         })
         .not()

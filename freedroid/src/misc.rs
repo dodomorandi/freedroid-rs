@@ -766,6 +766,7 @@ impl crate::Data<'_> {
         self.main
             .all_enemys
             .iter_mut()
+            .filter_map(Option::as_mut)
             .take(self.main.num_enemys.into())
             .for_each(|enemy| {
                 enemy.energy = 0.;

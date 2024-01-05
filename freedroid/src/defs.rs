@@ -13,7 +13,11 @@ use sdl_sys::{
     SDLKey_SDLK_LAST, SDLKey_SDLK_RETURN, SDLMod_KMOD_LALT, SDLMod_KMOD_LCTRL, SDLMod_KMOD_LSHIFT,
     SDLMod_KMOD_RALT, SDLMod_KMOD_RCTRL, SDLMod_KMOD_RSHIFT,
 };
-use std::{cell::Cell, ffi::CStr, fmt};
+use std::{
+    cell::Cell,
+    ffi::CStr,
+    fmt::{self, Display},
+};
 
 pub const MAX_THEMES: usize = 100;
 
@@ -821,6 +825,126 @@ pub enum Droid {
     Droid999 = 23,
     NumDroids,
 }
+
+impl Droid {
+    #[inline]
+    #[must_use]
+    pub const fn to_usize(self) -> usize {
+        self as usize
+    }
+
+    #[inline]
+    #[must_use]
+    pub const fn to_u16(self) -> u16 {
+        self as u16
+    }
+
+    #[must_use]
+    pub const fn next(self) -> Option<Self> {
+        match self {
+            Droid::Droid001 => Some(Droid::Droid123),
+            Droid::Droid123 => Some(Droid::Droid139),
+            Droid::Droid139 => Some(Droid::Droid247),
+            Droid::Droid247 => Some(Droid::Droid249),
+            Droid::Droid249 => Some(Droid::Droid296),
+            Droid::Droid296 => Some(Droid::Droid302),
+            Droid::Droid302 => Some(Droid::Droid329),
+            Droid::Droid329 => Some(Droid::Droid420),
+            Droid::Droid420 => Some(Droid::Droid476),
+            Droid::Droid476 => Some(Droid::Droid493),
+            Droid::Droid493 => Some(Droid::Droid516),
+            Droid::Droid516 => Some(Droid::Droid571),
+            Droid::Droid571 => Some(Droid::Droid598),
+            Droid::Droid598 => Some(Droid::Droid614),
+            Droid::Droid614 => Some(Droid::Droid615),
+            Droid::Droid615 => Some(Droid::Droid629),
+            Droid::Droid629 => Some(Droid::Droid711),
+            Droid::Droid711 => Some(Droid::Droid742),
+            Droid::Droid742 => Some(Droid::Droid751),
+            Droid::Droid751 => Some(Droid::Droid821),
+            Droid::Droid821 => Some(Droid::Droid834),
+            Droid::Droid834 => Some(Droid::Droid883),
+            Droid::Droid883 => Some(Droid::Droid999),
+            Droid::Droid999 => None,
+            Droid::NumDroids => panic!("invalid droid"),
+        }
+    }
+
+    pub const fn previous(self) -> Option<Self> {
+        match self {
+            Droid::Droid001 => None,
+            Droid::Droid123 => Some(Droid::Droid001),
+            Droid::Droid139 => Some(Droid::Droid123),
+            Droid::Droid247 => Some(Droid::Droid139),
+            Droid::Droid249 => Some(Droid::Droid247),
+            Droid::Droid296 => Some(Droid::Droid249),
+            Droid::Droid302 => Some(Droid::Droid296),
+            Droid::Droid329 => Some(Droid::Droid302),
+            Droid::Droid420 => Some(Droid::Droid329),
+            Droid::Droid476 => Some(Droid::Droid420),
+            Droid::Droid493 => Some(Droid::Droid476),
+            Droid::Droid516 => Some(Droid::Droid493),
+            Droid::Droid571 => Some(Droid::Droid516),
+            Droid::Droid598 => Some(Droid::Droid571),
+            Droid::Droid614 => Some(Droid::Droid598),
+            Droid::Droid615 => Some(Droid::Droid614),
+            Droid::Droid629 => Some(Droid::Droid615),
+            Droid::Droid711 => Some(Droid::Droid629),
+            Droid::Droid742 => Some(Droid::Droid711),
+            Droid::Droid751 => Some(Droid::Droid742),
+            Droid::Droid821 => Some(Droid::Droid751),
+            Droid::Droid834 => Some(Droid::Droid821),
+            Droid::Droid883 => Some(Droid::Droid834),
+            Droid::Droid999 => Some(Droid::Droid883),
+            Droid::NumDroids => panic!("invalid droid"),
+        }
+    }
+}
+
+impl TryFrom<u8> for Droid {
+    type Error = InvalidDroid;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::Droid001),
+            1 => Ok(Self::Droid123),
+            2 => Ok(Self::Droid139),
+            3 => Ok(Self::Droid247),
+            4 => Ok(Self::Droid249),
+            5 => Ok(Self::Droid296),
+            6 => Ok(Self::Droid302),
+            7 => Ok(Self::Droid329),
+            8 => Ok(Self::Droid420),
+            9 => Ok(Self::Droid476),
+            10 => Ok(Self::Droid493),
+            11 => Ok(Self::Droid516),
+            12 => Ok(Self::Droid571),
+            13 => Ok(Self::Droid598),
+            14 => Ok(Self::Droid614),
+            15 => Ok(Self::Droid615),
+            16 => Ok(Self::Droid629),
+            17 => Ok(Self::Droid711),
+            18 => Ok(Self::Droid742),
+            19 => Ok(Self::Droid751),
+            20 => Ok(Self::Droid821),
+            21 => Ok(Self::Droid834),
+            22 => Ok(Self::Droid883),
+            23 => Ok(Self::Droid999),
+            _ => Err(InvalidDroid),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct InvalidDroid;
+
+impl Display for InvalidDroid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("raw droid index is invalid")
+    }
+}
+
+impl std::error::Error for InvalidDroid {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(dead_code)]
