@@ -11,7 +11,7 @@ use crate::{
     misc::{
         count_string_occurences, locate_string_in_data, my_random,
         read_and_malloc_string_from_data, read_float_from_string, read_i32_from_string,
-        read_string_from_string,
+        read_string_from_string, read_u8_from_string,
     },
     read_and_malloc_and_terminate_file,
     sound::Sound,
@@ -876,7 +876,7 @@ impl crate::Data<'_> {
             droid.maxspeed = read_float_from_string(robot_slice, MAXSPEED_BEGIN_STRING);
 
             // Now we read in the class of this droid.
-            droid.class = read_i32_from_string(robot_slice, CLASS_BEGIN_STRING);
+            droid.class = read_u8_from_string(robot_slice, CLASS_BEGIN_STRING);
 
             // Now we read in the maximal acceleration this droid can go.
             droid.accel = read_float_from_string(robot_slice, ACCELERATION_BEGIN_STRING);

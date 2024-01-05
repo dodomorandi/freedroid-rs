@@ -94,7 +94,7 @@ pub struct Gps {
 pub struct DruidSpec {
     pub druidname: ArrayCString<20>,
     pub maxspeed: f32, /* the maximum of speed it can go */
-    pub class: i32,
+    pub class: u8,
     pub accel: f32,       /* its acceleration */
     pub maxenergy: f32,   /* the maximum energy the batteries can carry */
     pub lose_health: f32, /* the energy/time the duid loses under influence-control */

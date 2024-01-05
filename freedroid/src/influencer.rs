@@ -183,10 +183,10 @@ impl crate::Data<'_> {
             .as_mut()
             .expect("collision must be with a valid enemy");
 
-        #[allow(clippy::cast_precision_loss)]
-        let damage = (self.vars.droidmap[self.vars.me.ty.to_usize()].class
-            - self.vars.droidmap[enemy.ty.to_usize()].class) as f32
-            * self.global.collision_lose_energy_calibrator;
+        let damage = f32::from(
+            self.vars.droidmap[self.vars.me.ty.to_usize()].class
+                - self.vars.droidmap[enemy.ty.to_usize()].class,
+        ) * self.global.collision_lose_energy_calibrator;
 
         if damage < 0. {
             // we took damage
