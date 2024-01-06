@@ -154,17 +154,6 @@ pub const BRAIN_NAMES: [&CStr; 4] = [
     cstr!("error"),
 ];
 
-// Bullet-names:
-pub const WEAPON_NAMES: [&CStr; 7] = [
-    cstr!("none"),         // pulse
-    cstr!("lasers"),       // single
-    cstr!("lasers"),       // Military
-    cstr!("disruptor"),    // flash
-    cstr!("exterminator"), // exterminator
-    cstr!("laser rifle"),  // laser-rifle
-    cstr!("error"),
-];
-
 impl Vars<'_> {
     #[inline]
     pub fn get_user_center(&self) -> Rect {

@@ -2,11 +2,11 @@ use crate::{
     cur_level,
     defs::{
         self, Direction, Droid, Explosion, MapTile, SoundType, Status, ENEMYPHASES, MAXBLASTS,
-        MAXBULLETS, PUSHSPEED, WAIT_COLLISION,
+        PUSHSPEED, WAIT_COLLISION,
     },
     map::get_map_brick,
     misc::my_random,
-    structs::{Finepoint, Gps, TextToBeDisplayed},
+    structs::{Bullet, Finepoint, Gps, TextToBeDisplayed},
 };
 
 use cstr::cstr;
@@ -544,27 +544,27 @@ impl crate::Data<'_> {
     /// Fire-Routine for the Influencer only !! (should be changed)
     pub fn fire_bullet(&mut self) {
         let guntype = self.vars.droidmap[self.vars.me.ty.to_usize()].gun; /* which gun do we have ? */
-        let bullet_speed = self.vars.bulletmap[usize::try_from(guntype).unwrap()].speed;
+        let bullet_speed = self.vars.bulletmap[guntype.to_usize()].speed;
 
         if self.vars.me.firewait > 0. {
             return;
         }
-        self.vars.me.firewait =
-            self.vars.bulletmap[usize::try_from(guntype).unwrap()].recharging_time;
+        self.vars.me.firewait = self.vars.bulletmap[guntype.to_usize()].recharging_time;
 
         self.fire_bullet_sound(guntype);
 
-        let cur_bullet_index = self.main.all_bullets[..MAXBULLETS]
+        let cur_bullet_index = self
+            .main
+            .all_bullets
             .iter()
-            .position(|bullet| bullet.ty == Status::Out as u8)
+            .position(Option::is_none)
             .unwrap_or(0);
-        let cur_bullet = &mut self.main.all_bullets[cur_bullet_index];
-
-        cur_bullet.pos.x = self.vars.me.pos.x;
-        cur_bullet.pos.y = self.vars.me.pos.y;
-        cur_bullet.ty = guntype.try_into().unwrap();
-        cur_bullet.mine = true;
-        cur_bullet.owner = -1;
+        self.main.all_bullets[cur_bullet_index] = Some(Bullet {
+            pos: self.vars.me.pos,
+            ty: guntype,
+            mine: true,
+            ..Bullet::default_const()
+        });
 
         let mut speed = Finepoint { x: 0., y: 0. };
 
@@ -594,7 +594,7 @@ impl crate::Data<'_> {
             speed.y = self.input.input_axis.y as f32 / max_val;
         }
 
-        let cur_bullet = &mut self.main.all_bullets[cur_bullet_index];
+        let cur_bullet = self.main.all_bullets[cur_bullet_index].as_mut().unwrap();
         let speed_norm = (speed.x * speed.x + speed.y * speed.y).sqrt();
         cur_bullet.speed.x = speed.x / speed_norm;
         cur_bullet.speed.y = speed.y / speed_norm;

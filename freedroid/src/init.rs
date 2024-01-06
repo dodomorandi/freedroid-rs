@@ -2,9 +2,9 @@ use crate::{
     array_c_string::ArrayCString,
     b_font::font_height,
     defs::{
-        self, AssembleCombatWindowFlags, Criticality, DisplayBannerFlags, Droid, Status, Themed,
-        FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAP_DIR_C, MAXBULLETS, SHOW_WAIT, SLOWMO_FACTOR,
-        TITLE_PIC_FILE, WAIT_AFTER_KILLED,
+        self, AssembleCombatWindowFlags, BulletKind, Criticality, DisplayBannerFlags, Droid,
+        Status, Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAP_DIR_C, MAXBULLETS,
+        SHOW_WAIT, SLOWMO_FACTOR, TITLE_PIC_FILE, WAIT_AFTER_KILLED,
     },
     global::Global,
     graphics::Graphics,
@@ -245,9 +245,7 @@ impl crate::Data<'_> {
     pub fn init_freedroid(&mut self) {
         self.vars.bulletmap.clear(); // That will cause the memory to be allocated later
 
-        for bullet in &mut self.main.all_bullets[..MAXBULLETS] {
-            bullet.surfaces_were_generated = false.into();
-        }
+        self.main.all_bullets.fill_with(|| None);
 
         self.global.skip_a_few_frames = false.into();
         self.vars.me.text_visible_time = 0.;
@@ -781,30 +779,7 @@ impl crate::Data<'_> {
         const SCORE_CALIBRATOR_STRING: &[u8] = b"Common factor for all droids score values: ";
 
         const ROBOT_SECTION_BEGIN_STRING: &[u8] = b"*** Start of Robot Data Section: ***";
-        // const ROBOT_SECTION_END_STRING: &CStr = cstr!("*** End of Robot Data Section: ***");
         const NEW_ROBOT_BEGIN_STRING: &[u8] = b"** Start of new Robot: **";
-        const DROIDNAME_BEGIN_STRING: &[u8] = b"Droidname: ";
-        const MAXSPEED_BEGIN_STRING: &[u8] = b"Maximum speed of this droid: ";
-        const CLASS_BEGIN_STRING: &[u8] = b"Class of this droid: ";
-        const ACCELERATION_BEGIN_STRING: &[u8] = b"Maximum acceleration of this droid: ";
-        const MAXENERGY_BEGIN_STRING: &[u8] = b"Maximum energy of this droid: ";
-        const LOSEHEALTH_BEGIN_STRING: &[u8] = b"Rate of energyloss under influence control: ";
-        const GUN_BEGIN_STRING: &[u8] = b"Weapon type this droid uses: ";
-        const AGGRESSION_BEGIN_STRING: &[u8] = b"Aggression rate of this droid: ";
-        const FLASHIMMUNE_BEGIN_STRING: &[u8] = b"Is this droid immune to disruptor blasts? ";
-        const SCORE_BEGIN_STRING: &[u8] = b"Score gained for destroying one of this type: ";
-        const HEIGHT_BEGIN_STRING: &[u8] = b"Height of this droid : ";
-        const WEIGHT_BEGIN_STRING: &[u8] = b"Weight of this droid : ";
-        const DRIVE_BEGIN_STRING: &[u8] = b"Drive of this droid : ";
-        const BRAIN_BEGIN_STRING: &[u8] = b"Brain of this droid : ";
-        const SENSOR1_BEGIN_STRING: &[u8] = b"Sensor 1 of this droid : ";
-        const SENSOR2_BEGIN_STRING: &[u8] = b"Sensor 2 of this droid : ";
-        const SENSOR3_BEGIN_STRING: &[u8] = b"Sensor 3 of this droid : ";
-        // const ADVANCED_FIGHTING_BEGIN_STRING: &CStr =
-        //     cstr!("Advanced Fighting present in this droid : ");
-        // const GO_REQUEST_REINFORCEMENTS_BEGIN_STRING: &CStr =
-        //     cstr!("Going to request reinforcements typical for this droid : ");
-        const NOTES_BEGIN_STRING: &[u8] = b"Notes concerning this droid : ";
 
         let mut robot_slice =
             &data_slice[locate_string_in_data(data_slice, ROBOT_SECTION_BEGIN_STRING)..];
@@ -865,62 +840,7 @@ impl crate::Data<'_> {
             };
 
             info!("Found another Robot specification entry!  Lets add that to the others!");
-
-            // Now we read in the Name of this droid.  We consider as a name the rest of the
-            let mut droid = DruidSpec::default();
-            droid
-                .druidname
-                .set_slice(read_string_from_string(robot_slice, DROIDNAME_BEGIN_STRING));
-
-            // Now we read in the maximal speed this droid can go.
-            droid.maxspeed = read_float_from_string(robot_slice, MAXSPEED_BEGIN_STRING);
-
-            // Now we read in the class of this droid.
-            droid.class = read_u8_from_string(robot_slice, CLASS_BEGIN_STRING);
-
-            // Now we read in the maximal acceleration this droid can go.
-            droid.accel = read_float_from_string(robot_slice, ACCELERATION_BEGIN_STRING);
-
-            // Now we read in the maximal energy this droid can store.
-            droid.maxenergy = read_float_from_string(robot_slice, MAXENERGY_BEGIN_STRING);
-
-            // Now we read in the lose_health rate.
-            droid.lose_health = read_float_from_string(robot_slice, LOSEHEALTH_BEGIN_STRING);
-
-            // Now we read in the class of this droid.
-            droid.gun = read_i32_from_string(robot_slice, GUN_BEGIN_STRING);
-
-            // Now we read in the aggression rate of this droid.
-            droid.aggression = read_i32_from_string(robot_slice, AGGRESSION_BEGIN_STRING);
-
-            // Now we read in the flash immunity of this droid.
-            droid.flashimmune = read_i32_from_string(robot_slice, FLASHIMMUNE_BEGIN_STRING);
-
-            // Now we score to be had for destroying one droid of this type
-            droid.score = read_i32_from_string(robot_slice, SCORE_BEGIN_STRING);
-
-            // Now we read in the height of this droid of this type
-            droid.height = read_float_from_string(robot_slice, HEIGHT_BEGIN_STRING);
-
-            // Now we read in the weight of this droid type
-            droid.weight = read_i32_from_string(robot_slice, WEIGHT_BEGIN_STRING);
-
-            // Now we read in the drive of this droid of this type
-            droid.drive = read_i32_from_string(robot_slice, DRIVE_BEGIN_STRING);
-
-            // Now we read in the brain of this droid of this type
-            droid.brain = read_i32_from_string(robot_slice, BRAIN_BEGIN_STRING);
-
-            // Now we read in the sensor 1, 2 and 3 of this droid type
-            droid.sensor1 = read_i32_from_string(robot_slice, SENSOR1_BEGIN_STRING);
-            droid.sensor2 = read_i32_from_string(robot_slice, SENSOR2_BEGIN_STRING);
-            droid.sensor3 = read_i32_from_string(robot_slice, SENSOR3_BEGIN_STRING);
-
-            // Now we read in the notes concerning this droid.  We consider as notes all the rest of the
-            // line after the NOTES_BEGIN_STRING until the "\n" is found.
-            droid.notes = read_and_malloc_string_from_data(robot_slice, NOTES_BEGIN_STRING, b"\n");
-
-            self.vars.droidmap.push(droid);
+            self.vars.droidmap.push(read_droid_spec(robot_slice));
         }
 
         info!("That must have been the last robot.  We're done reading the robot data.");
@@ -1369,5 +1289,100 @@ impl MainMissionData {
 
         let briefing_section_pos = locate_string_in_data(&self.0, MISSION_BRIEFING_BEGIN_STRING);
         data.title(&self.0[briefing_section_pos..]);
+    }
+}
+
+#[allow(clippy::similar_names)]
+fn read_droid_spec(robot_slice: &[u8]) -> DruidSpec {
+    const DROIDNAME_BEGIN_STRING: &[u8] = b"Droidname: ";
+    const MAXSPEED_BEGIN_STRING: &[u8] = b"Maximum speed of this droid: ";
+    const CLASS_BEGIN_STRING: &[u8] = b"Class of this droid: ";
+    const ACCELERATION_BEGIN_STRING: &[u8] = b"Maximum acceleration of this droid: ";
+    const MAXENERGY_BEGIN_STRING: &[u8] = b"Maximum energy of this droid: ";
+    const LOSEHEALTH_BEGIN_STRING: &[u8] = b"Rate of energyloss under influence control: ";
+    const GUN_BEGIN_STRING: &[u8] = b"Weapon type this droid uses: ";
+    const AGGRESSION_BEGIN_STRING: &[u8] = b"Aggression rate of this droid: ";
+    const FLASHIMMUNE_BEGIN_STRING: &[u8] = b"Is this droid immune to disruptor blasts? ";
+    const SCORE_BEGIN_STRING: &[u8] = b"Score gained for destroying one of this type: ";
+    const HEIGHT_BEGIN_STRING: &[u8] = b"Height of this droid : ";
+    const WEIGHT_BEGIN_STRING: &[u8] = b"Weight of this droid : ";
+    const DRIVE_BEGIN_STRING: &[u8] = b"Drive of this droid : ";
+    const BRAIN_BEGIN_STRING: &[u8] = b"Brain of this droid : ";
+    const SENSOR1_BEGIN_STRING: &[u8] = b"Sensor 1 of this droid : ";
+    const SENSOR2_BEGIN_STRING: &[u8] = b"Sensor 2 of this droid : ";
+    const SENSOR3_BEGIN_STRING: &[u8] = b"Sensor 3 of this droid : ";
+    const NOTES_BEGIN_STRING: &[u8] = b"Notes concerning this droid : ";
+
+    // Now we read in the Name of this droid.  We consider as a name the rest of the
+    let mut druidname = ArrayCString::new();
+    druidname.set_slice(read_string_from_string(robot_slice, DROIDNAME_BEGIN_STRING));
+
+    // Now we read in the maximal speed this droid can go.
+    let maxspeed = read_float_from_string(robot_slice, MAXSPEED_BEGIN_STRING);
+
+    // Now we read in the class of this droid.
+    let class = read_u8_from_string(robot_slice, CLASS_BEGIN_STRING);
+
+    // Now we read in the maximal acceleration this droid can go.
+    let accel = read_float_from_string(robot_slice, ACCELERATION_BEGIN_STRING);
+
+    // Now we read in the maximal energy this droid can store.
+    let maxenergy = read_float_from_string(robot_slice, MAXENERGY_BEGIN_STRING);
+
+    // Now we read in the lose_health rate.
+    let lose_health = read_float_from_string(robot_slice, LOSEHEALTH_BEGIN_STRING);
+
+    // Now we read in the class of this droid.
+    let gun = BulletKind::try_from(read_u8_from_string(robot_slice, GUN_BEGIN_STRING)).unwrap();
+
+    // Now we read in the aggression rate of this droid.
+    let aggression = read_i32_from_string(robot_slice, AGGRESSION_BEGIN_STRING);
+
+    // Now we read in the flash immunity of this droid.
+    let flashimmune = read_i32_from_string(robot_slice, FLASHIMMUNE_BEGIN_STRING);
+
+    // Now we score to be had for destroying one droid of this type
+    let score = read_i32_from_string(robot_slice, SCORE_BEGIN_STRING);
+
+    // Now we read in the height of this droid of this type
+    let height = read_float_from_string(robot_slice, HEIGHT_BEGIN_STRING);
+
+    // Now we read in the weight of this droid type
+    let weight = read_i32_from_string(robot_slice, WEIGHT_BEGIN_STRING);
+
+    // Now we read in the drive of this droid of this type
+    let drive = read_i32_from_string(robot_slice, DRIVE_BEGIN_STRING);
+
+    // Now we read in the brain of this droid of this type
+    let brain = read_i32_from_string(robot_slice, BRAIN_BEGIN_STRING);
+
+    // Now we read in the sensor 1, 2 and 3 of this droid type
+    let sensor1 = read_i32_from_string(robot_slice, SENSOR1_BEGIN_STRING);
+    let sensor2 = read_i32_from_string(robot_slice, SENSOR2_BEGIN_STRING);
+    let sensor3 = read_i32_from_string(robot_slice, SENSOR3_BEGIN_STRING);
+
+    // Now we read in the notes concerning this droid.  We consider as notes all the rest of the
+    // line after the NOTES_BEGIN_STRING until the "\n" is found.
+    let notes = read_and_malloc_string_from_data(robot_slice, NOTES_BEGIN_STRING, b"\n");
+
+    DruidSpec {
+        druidname,
+        maxspeed,
+        class,
+        accel,
+        maxenergy,
+        lose_health,
+        gun,
+        aggression,
+        flashimmune,
+        score,
+        height,
+        weight,
+        drive,
+        brain,
+        sensor1,
+        sensor2,
+        sensor3,
+        notes,
     }
 }

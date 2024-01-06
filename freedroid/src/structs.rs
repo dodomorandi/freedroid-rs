@@ -1,10 +1,10 @@
 use crate::{
     array_c_string::ArrayCString,
     defs::{
-        Droid, MapTile, Status, DATE_LEN, MAXWAYPOINTS, MAX_ALERTS_ON_LEVEL, MAX_DOORS_ON_LEVEL,
-        MAX_INFLU_POSITION_HISTORY, MAX_LEVELS, MAX_LEVEL_RECTS, MAX_LIFTS, MAX_LIFT_ROWS,
-        MAX_MAP_ROWS, MAX_NAME_LEN, MAX_PHASES_IN_A_BULLET, MAX_REFRESHES_ON_LEVEL, MAX_THEMES,
-        MAX_WP_CONNECTIONS,
+        BulletKind, Droid, MapTile, Status, DATE_LEN, MAXWAYPOINTS, MAX_ALERTS_ON_LEVEL,
+        MAX_DOORS_ON_LEVEL, MAX_INFLU_POSITION_HISTORY, MAX_LEVELS, MAX_LEVEL_RECTS, MAX_LIFTS,
+        MAX_LIFT_ROWS, MAX_MAP_ROWS, MAX_NAME_LEN, MAX_PHASES_IN_A_BULLET, MAX_REFRESHES_ON_LEVEL,
+        MAX_THEMES, MAX_WP_CONNECTIONS,
     },
     map,
 };
@@ -93,7 +93,7 @@ pub struct Gps {
     pub z: u8,
 }
 
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DruidSpec {
     pub druidname: ArrayCString<20>,
     pub maxspeed: f32, /* the maximum of speed it can go */
@@ -101,7 +101,7 @@ pub struct DruidSpec {
     pub accel: f32,       /* its acceleration */
     pub maxenergy: f32,   /* the maximum energy the batteries can carry */
     pub lose_health: f32, /* the energy/time the duid loses under influence-control */
-    pub gun: i32,         /* Which gun does this druid use */
+    pub gun: BulletKind,  /* Which gun does this druid use */
     pub aggression: i32,  /* The aggressiveness of this druidtype */
     pub flashimmune: i32, /* is the droid immune to FLASH-bullets */
     pub score: i32,       /* score for the elimination of one droid of this type */
@@ -194,12 +194,11 @@ pub struct Bullet<'sdl> {
     pub pos: Finepoint,
     pub prev_pos: Finepoint, // use this for improved collision checks (for low FPS machines)
     pub speed: Finepoint,
-    pub ty: u8,
+    pub ty: BulletKind,
     pub phase: u8,
     pub time_in_frames: i32, // how i64 does the bullet exist, measured in number of frames
     pub time_in_seconds: f32, // how i64 does the bullet exist in seconds
     pub mine: bool,
-    pub owner: i32,
     pub angle: f32,
     pub surfaces_were_generated: i32,
     pub surfaces: [Option<Surface<'sdl>>; MAX_PHASES_IN_A_BULLET],
@@ -211,12 +210,11 @@ impl Bullet<'_> {
             pos: Finepoint::default_const(),
             prev_pos: Finepoint::default_const(),
             speed: Finepoint::default_const(),
-            ty: 0,
+            ty: BulletKind::Pulse,
             phase: 0,
             time_in_frames: 0,
             time_in_seconds: 0.,
             mine: false,
-            owner: 0,
             angle: 0.,
             surfaces_were_generated: 0,
             surfaces: [

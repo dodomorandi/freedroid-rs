@@ -8,7 +8,7 @@ use crate::{
     graphics::{scale_pic, Graphics},
     map::get_map_brick,
     structs::{DruidSpec, Point, TextToBeDisplayed},
-    vars::{BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES, WEAPON_NAMES},
+    vars::{BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES},
     ArrayIndex,
 };
 
@@ -1214,9 +1214,7 @@ fn show_droid_page_info(
                  Sensors  1: {}\n\
                     2: {}\n\
                     3: {}",
-                WEAPON_NAMES[usize::try_from(droid.gun).unwrap()]
-                    .to_str()
-                    .unwrap(),
+                droid.gun.name(),
                 SENSOR_NAMES[usize::try_from(droid.sensor1).unwrap()]
                     .to_str()
                     .unwrap(),

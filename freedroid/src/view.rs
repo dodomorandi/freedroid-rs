@@ -509,7 +509,9 @@ impl crate::Data<'_> {
     /// parameter given is the number of the bullet in the `AllBullets`
     /// array. Everything else is computed in here.
     pub fn put_bullet(&mut self, bullet_number: i32) {
-        let cur_bullet = &mut self.main.all_bullets[usize::try_from(bullet_number).unwrap()];
+        let cur_bullet = self.main.all_bullets[usize::try_from(bullet_number).unwrap()]
+            .as_mut()
+            .unwrap();
 
         trace!("PutBullet: real function call confirmed.");
 
@@ -518,7 +520,7 @@ impl crate::Data<'_> {
         // draw a big white or black rectangle right over the
         // combat window, white for even frames and black for
         // odd frames.
-        if cur_bullet.ty == BulletKind::Flash as u8 {
+        if cur_bullet.ty == BulletKind::Flash {
             // Now the whole window will be filled with either white
             // or black each frame until the flash is over.  (Flash
             // deletion after some time is done in CheckBulletCollisions.)
@@ -535,7 +537,7 @@ impl crate::Data<'_> {
             return;
         }
 
-        let bullet = &mut self.vars.bulletmap[usize::from(cur_bullet.ty)];
+        let bullet = &mut self.vars.bulletmap[cur_bullet.ty.to_usize()];
         #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
         let mut phase_of_bullet =
             (cur_bullet.time_in_seconds * bullet.phase_changes_per_second) as usize;
@@ -573,7 +575,9 @@ impl crate::Data<'_> {
         // This has to be taken into account when calculating the target position for the
         // blit of these surfaces!!!!
         let user_center = self.vars.get_user_center();
-        let cur_bullet = &mut self.main.all_bullets[usize::try_from(bullet_number).unwrap()];
+        let cur_bullet = self.main.all_bullets[usize::try_from(bullet_number).unwrap()]
+            .as_mut()
+            .unwrap();
         #[allow(clippy::cast_possible_truncation)]
         let mut dst = Rect::new(
             (f32::from(user_center.x())
@@ -816,7 +820,7 @@ impl crate::Data<'_> {
         }
 
         for bullet_index in 0..MAXBULLETS {
-            if self.main.all_bullets[bullet_index].ty != Status::Out as u8 {
+            if self.main.all_bullets[bullet_index].is_some() {
                 self.put_bullet(bullet_index.try_into().unwrap());
             }
         }

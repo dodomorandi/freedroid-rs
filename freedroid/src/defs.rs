@@ -747,6 +747,25 @@ pub enum BulletKind {
     LaserRifle,
 }
 
+impl BulletKind {
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Pulse => "none",
+            Self::SinglePulse | Self::Military => "lasers",
+            Self::Flash => "disruptor",
+            Self::Exterminator => "exterminator",
+            Self::LaserRifle => "laser rifle",
+        }
+    }
+
+    #[inline]
+    #[must_use]
+    pub const fn to_usize(self) -> usize {
+        self as usize
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct InvalidBulletKind<T>(T);
 

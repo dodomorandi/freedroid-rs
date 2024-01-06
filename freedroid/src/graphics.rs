@@ -6,8 +6,8 @@ use crate::{
         BANNER_BLOCK_FILE, BLAST_BLOCK_FILE, BULLET_BLOCK_FILE, CONSOLE_BG_PIC1_FILE,
         CONSOLE_BG_PIC2_FILE, CONSOLE_PIC_FILE, DIGITNUMBER, DIGIT_BLOCK_FILE, DROID_BLOCK_FILE,
         ENEMYPHASES, FONT0_FILE, FONT1_FILE, FONT2_FILE, FREE_ONLY, GRAPHICS_DIR_C, ICON_FILE,
-        INIT_ONLY, MAP_BLOCK_FILE, MAXBULLETS, NUM_COLORS, NUM_DECAL_PICS, NUM_MAP_BLOCKS,
-        PARA_FONT_FILE, SHIP_OFF_PIC_FILE, SHIP_ON_PIC_FILE, TAKEOVER_BG_PIC_FILE,
+        INIT_ONLY, MAP_BLOCK_FILE, NUM_COLORS, NUM_DECAL_PICS, NUM_MAP_BLOCKS, PARA_FONT_FILE,
+        SHIP_OFF_PIC_FILE, SHIP_ON_PIC_FILE, TAKEOVER_BG_PIC_FILE,
     },
     global::Global,
     misc::{read_float_from_string, read_i16_from_string, read_i32_from_string},
@@ -1089,7 +1089,7 @@ impl crate::Data<'_> {
         self.main
             .all_bullets
             .iter_mut()
-            .take(MAXBULLETS)
+            .filter_map(Option::as_mut)
             .for_each(|bullet| bullet.surfaces_were_generated = false.into());
 
         self.b_font.current_font = oldfont;

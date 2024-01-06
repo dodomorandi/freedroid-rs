@@ -275,22 +275,12 @@ impl crate::Data<'_> {
 }
 
 impl<'sdl> crate::Data<'sdl> {
-    pub fn fire_bullet_sound(&self, bullet_type: i32) {
+    pub fn fire_bullet_sound(&self, bullet_type: BulletKind) {
         use BulletKind as K;
 
         if self.main.sound_on == 0 {
             return;
         }
-
-        let bullet_type = match bullet_type {
-            0 => K::Pulse,
-            1 => K::SinglePulse,
-            2 => K::Military,
-            3 => K::Flash,
-            4 => K::Exterminator,
-            5 => K::LaserRifle,
-            _ => panic!("invalid bullet type {bullet_type}"),
-        };
 
         match bullet_type {
             K::Pulse => self.play_sound(SoundType::FireBulletPulse),

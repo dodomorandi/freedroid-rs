@@ -6,7 +6,7 @@ use crate::{
         WAIT_LEVELEMPTY,
     },
     misc::my_random,
-    structs::Finepoint,
+    structs::{Bullet, Finepoint},
 };
 
 use log::warn;
@@ -151,7 +151,7 @@ impl crate::Data<'_> {
         // find a bullet entry, that isn't currently used...
         let mut j = 0;
         while j < MAXBULLETS {
-            if self.main.all_bullets[j].ty == Status::Out as u8 {
+            if self.main.all_bullets[j].is_none() {
                 break;
             }
 
@@ -163,48 +163,47 @@ impl crate::Data<'_> {
             return;
         }
 
-        let cur_bullet = &mut self.main.all_bullets[j];
         // determine the direction of the shot, so that it will go into the direction of
         // the target
 
+        let mut speed = Finepoint::default_const();
         if x_dist.abs() > y_dist.abs() {
-            cur_bullet.speed.x = self.vars.bulletmap[usize::try_from(guntype).unwrap()].speed;
-            cur_bullet.speed.y = y_dist * cur_bullet.speed.x / x_dist;
+            speed.x = self.vars.bulletmap[guntype.to_usize()].speed;
+            speed.y = y_dist * speed.x / x_dist;
             if x_dist < 0. {
-                cur_bullet.speed.x = -cur_bullet.speed.x;
-                cur_bullet.speed.y = -cur_bullet.speed.y;
+                speed.x = -speed.x;
+                speed.y = -speed.y;
             }
         }
 
         if x_dist.abs() < y_dist.abs() {
-            cur_bullet.speed.y = self.vars.bulletmap[usize::try_from(guntype).unwrap()].speed;
-            cur_bullet.speed.x = x_dist * cur_bullet.speed.y / y_dist;
+            speed.y = self.vars.bulletmap[guntype.to_usize()].speed;
+            speed.x = x_dist * speed.y / y_dist;
             if y_dist < 0. {
-                cur_bullet.speed.x = -cur_bullet.speed.x;
-                cur_bullet.speed.y = -cur_bullet.speed.y;
+                speed.x = -speed.x;
+                speed.y = -speed.y;
             }
         }
 
-        cur_bullet.angle = -(90.
-            + 180. * f32::atan2(cur_bullet.speed.y, cur_bullet.speed.x) / std::f32::consts::PI);
+        let angle = -(90. + 180. * f32::atan2(speed.y, speed.x) / std::f32::consts::PI);
 
-        cur_bullet.pos.x = this_robot.pos.x;
-        cur_bullet.pos.y = this_robot.pos.y;
-
-        cur_bullet.pos.x += (cur_bullet.speed.x)
-            / (self.vars.bulletmap[usize::try_from(guntype).unwrap()].speed).abs()
-            * 0.5;
-        cur_bullet.pos.y += (cur_bullet.speed.y)
-            / (self.vars.bulletmap[usize::try_from(guntype).unwrap()].speed).abs()
-            * 0.5;
+        let mut pos = this_robot.pos;
+        pos.x += speed.x / (self.vars.bulletmap[guntype.to_usize()].speed).abs() * 0.5;
+        pos.y += speed.y / (self.vars.bulletmap[guntype.to_usize()].speed).abs() * 0.5;
 
         this_robot.firewait = self.vars.bulletmap
-            [usize::try_from(self.vars.droidmap[this_robot.ty.to_usize()].gun).unwrap()]
+            [self.vars.droidmap[this_robot.ty.to_usize()].gun.to_usize()]
         .recharging_time;
 
-        cur_bullet.ty = guntype.try_into().unwrap();
-        cur_bullet.time_in_frames = 0;
-        cur_bullet.time_in_seconds = 0.;
+        self.main.all_bullets[j] = Some(Bullet {
+            pos,
+            speed,
+            ty: guntype,
+            angle,
+            time_in_frames: 0,
+            time_in_seconds: 0.,
+            ..Bullet::default_const()
+        });
     }
 
     pub fn move_this_enemy(&mut self, enemy_num: i32) {
