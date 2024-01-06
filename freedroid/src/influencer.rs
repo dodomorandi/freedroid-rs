@@ -184,8 +184,8 @@ impl crate::Data<'_> {
             .expect("collision must be with a valid enemy");
 
         let damage = f32::from(
-            self.vars.droidmap[self.vars.me.ty.to_usize()].class
-                - self.vars.droidmap[enemy.ty.to_usize()].class,
+            i16::from(self.vars.droidmap[self.vars.me.ty.to_usize()].class)
+                - i16::from(self.vars.droidmap[enemy.ty.to_usize()].class),
         ) * self.global.collision_lose_energy_calibrator;
 
         if damage < 0. {
