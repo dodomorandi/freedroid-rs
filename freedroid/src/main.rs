@@ -230,12 +230,6 @@ fn main() {
     info!("Writing highscores to disk");
     data.save_highscores();
 
-    // ----- free memory
-    data.free_graphics();
-    data.sound = None;
-    data.free_menu_data();
-    data.free_game_mem();
-
     info!("Thank you for playing Freedroid.");
 }
 

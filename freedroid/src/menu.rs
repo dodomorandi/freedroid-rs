@@ -258,10 +258,6 @@ impl<'sdl> crate::Data<'sdl> {
         self.show_menu(&Self::MAIN_MENU);
     }
 
-    pub fn free_menu_data(&mut self) {
-        self.menu.menu_background = None;
-    }
-
     pub fn initiate_menu(&mut self, with_droids: bool) {
         // Here comes the standard initializer for all the menus and submenus
         // of the big escape menu.  This prepares the screen, so that we can

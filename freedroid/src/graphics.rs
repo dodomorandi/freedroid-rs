@@ -393,59 +393,6 @@ impl crate::Data<'_> {
         self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
     }
 
-    pub fn free_graphics(&mut self) {
-        // free RWops structures
-        self.graphics.packed_portraits.fill_with(|| None);
-
-        self.graphics.enemy_surface_pointer = array_init(|_| None);
-        self.graphics.influencer_surface_pointer = array_init(|_| None);
-        self.graphics.influ_digit_surface_pointer = array_init(|_| None);
-        self.graphics.enemy_digit_surface_pointer = array_init(|_| None);
-        self.graphics.decal_pics = array_init(|_| None);
-
-        self.graphics
-            .orig_map_block_surface_pointer
-            .iter_mut()
-            .flat_map(|arr| arr.iter_mut())
-            .for_each(|surface| *surface = None);
-
-        self.graphics.build_block = None;
-        self.graphics.banner_pic = None;
-        self.graphics.pic999 = None;
-        // SDL_RWops *packed_portraits[NUM_DROIDS];
-        self.graphics.takeover_bg_pic = None;
-        self.graphics.console_pic = None;
-        self.graphics.console_bg_pic1 = None;
-        self.graphics.console_bg_pic2 = None;
-
-        self.graphics.arrow_up = None;
-        self.graphics.arrow_down = None;
-        self.graphics.arrow_right = None;
-        self.graphics.arrow_left = None;
-
-        self.graphics.ship_off_pic = None;
-        self.graphics.ship_on_pic = None;
-        self.graphics.progress_meter_pic = None;
-        self.graphics.progress_filler_pic = None;
-        self.takeover.to_blocks = None;
-
-        // free fonts
-        self.global.menu_b_font = None;
-        self.global.para_b_font = None;
-        self.global.highscore_b_font = None;
-        self.global.font0_b_font = None;
-        self.global.font1_b_font = None;
-        self.global.font2_b_font = None;
-
-        // free Load_Block()-internal buffer
-        self.graphics
-            .load_block(None, 0, 0, None, i32::from(FREE_ONLY), self.sdl);
-
-        // free cursors
-        self.graphics.crosshair_cursor = None;
-        self.graphics.arrow_cursor = None;
-    }
-
     /// scale all "static" rectangles, which are theme-independent
     pub fn scale_stat_rects(&mut self, scale: f32) {
         macro_rules! scale {

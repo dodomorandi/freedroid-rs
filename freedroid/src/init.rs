@@ -109,24 +109,6 @@ struct Opt {
 }
 
 impl crate::Data<'_> {
-    pub fn free_game_mem(&mut self) {
-        // free blast map
-        for blast_type in &mut self.vars.blastmap {
-            for surface in &mut blast_type.surfaces {
-                *surface = None;
-            }
-        }
-
-        // free droid map
-        self.free_druidmap();
-
-        // free highscores list
-        drop(self.highscore.entries.take());
-
-        // free constant text blobs
-        self.init.debriefing_text = CString::default();
-    }
-
     pub fn free_druidmap(&mut self) {
         if self.vars.droidmap.is_empty() {
             return;
