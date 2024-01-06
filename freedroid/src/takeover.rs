@@ -1042,6 +1042,7 @@ impl crate::Data<'_> {
         );
 
         if self.main.all_enemys[usize::from(self.takeover.droid_num)]
+            .as_ref()
             .map_or(false, |enemy| enemy.status != Status::Out)
         {
             self.put_enemy(
@@ -1706,7 +1707,7 @@ impl crate::Data<'_> {
         }
 
         let enemy_index: usize = enemynum.try_into().unwrap();
-        let enemy_type = self.main.all_enemys[enemy_index].unwrap().ty;
+        let enemy_type = self.main.all_enemys[enemy_index].as_ref().unwrap().ty;
         self.show_droid_info(enemy_type, -2, 0);
         self.show_droid_portrait(
             self.vars.cons_droid_rect,

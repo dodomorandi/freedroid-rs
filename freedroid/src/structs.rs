@@ -11,7 +11,10 @@ use crate::{
 
 use array_init::array_init;
 use sdl::{convert::u8_to_usize, Rect, Surface};
-use std::ffi::{CStr, CString};
+use std::{
+    array,
+    ffi::{CStr, CString},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Point {
@@ -26,7 +29,7 @@ pub struct ThemeList {
     pub theme_name: [CString; MAX_THEMES],
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct HighscoreEntry {
     pub name: [i8; u8_to_usize(MAX_NAME_LEN) + 5],
     pub score: i64, /* use -1 for an empty entry */
@@ -40,7 +43,7 @@ pub struct Color {
     pub blau: u8,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Config {
     pub wanted_text_visible_time: f32,
     pub draw_framerate: i32,
@@ -119,7 +122,7 @@ pub enum TextToBeDisplayed {
     LevelEnterComment,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Influence {
     pub ty: Droid,        /* what kind of druid is this ? */
     pub status: Status,   /* attacking, defense, dead, ... */
@@ -137,7 +140,7 @@ pub struct Influence {
     pub position_history_ring_buffer: [Gps; MAX_INFLU_POSITION_HISTORY],
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Enemy {
     pub ty: Droid,         /* gibt die Nummer in Druidmap an */
     pub levelnum: u8,      /* Level in dem sich enemy befindet */
@@ -243,7 +246,7 @@ impl BlastSpec<'_> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Blast {
     pub px: f32, /* PosX */
     pub py: f32, /* PosY */
@@ -266,7 +269,7 @@ impl Default for Blast {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Lift {
     pub level: u8, // The level, where this elevtor entrance is located
     pub x: i32,    // The position in x of this elevator entrance within the level
@@ -327,14 +330,14 @@ impl Default for Ship {
             num_lift_rows: 0,
             area_name: ArrayCString::default(),
             all_levels: array_init(|_| None),
-            all_lifts: [Lift {
+            all_lifts: array::from_fn(|_| Lift {
                 level: 0,
                 x: 0,
                 y: 0,
                 up: 0,
                 down: 0,
                 lift_row: 0,
-            }; MAX_LIFTS],
+            }),
             lift_row_rect: [Rect::default(); MAX_LIFT_ROWS],
             level_rects: [[Rect::default(); MAX_LEVEL_RECTS]; MAX_LEVELS],
             num_level_rects: [0; MAX_LEVELS],
@@ -342,7 +345,7 @@ impl Default for Ship {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Bar {
     pub pos: Point,
     pub len: i32,

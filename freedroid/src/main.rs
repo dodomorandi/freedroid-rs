@@ -54,6 +54,7 @@ use text::Text;
 use vars::Vars;
 
 use std::{
+    array,
     cell::Cell,
     fs::File,
     ops::{ControlFlow, Not},
@@ -113,7 +114,7 @@ impl Default for Main<'_> {
             alert_level: 0,
             alert_threshold: 0,
             alert_bonus_per_sec: 0.,
-            all_enemys: [Option::default(); MAX_ENEMYS_ON_SHIP],
+            all_enemys: array::from_fn(|_| None),
             config_dir: ArrayCString::default(),
             invincible_mode: 0,
             show_all_droids: 0,
@@ -122,7 +123,7 @@ impl Default for Main<'_> {
             number_of_droid_types: 0,
             pre_take_energy: 0,
             all_bullets: array_init(|_| Bullet::default_const()),
-            all_blasts: [Blast::default(); MAXBLASTS + 10],
+            all_blasts: array::from_fn(|_| Blast::default()),
             first_digit_rect: Rect::default(),
             second_digit_rect: Rect::default(),
             third_digit_rect: Rect::default(),

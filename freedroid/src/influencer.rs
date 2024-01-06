@@ -14,7 +14,7 @@ use defs::{Cmds, BLINKENERGY, MAX_INFLU_POSITION_HISTORY, WAIT_TRANSFERMODE};
 use log::{info, warn};
 use std::ops::Not;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Influencer {
     current_zero_ring_index: usize,
     time_counter: u32,
