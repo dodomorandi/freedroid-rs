@@ -16,7 +16,7 @@ use crate::{
     read_and_malloc_and_terminate_file,
     sound::Sound,
     split_at_subslice,
-    structs::{BulletSpec, DruidSpec, TextToBeDisplayed},
+    structs::{DruidSpec, TextToBeDisplayed},
     text, ArrayIndex,
 };
 
@@ -110,17 +110,6 @@ struct Opt {
 
 impl crate::Data<'_> {
     pub fn free_game_mem(&mut self) {
-        // free bullet map
-        if self.vars.bulletmap.is_empty().not() {
-            let bullet_map = &mut *self.vars.bulletmap;
-            for bullet in bullet_map {
-                for surface in &mut bullet.surfaces {
-                    *surface = None;
-                }
-            }
-            self.vars.bulletmap.clear();
-        }
-
         // free blast map
         for blast_type in &mut self.vars.blastmap {
             for surface in &mut blast_type.surfaces {
@@ -243,8 +232,6 @@ impl crate::Data<'_> {
     /// This must not be confused with initnewgame, which
     /// only initializes a new mission for the game.
     pub fn init_freedroid(&mut self) {
-        self.vars.bulletmap.clear(); // That will cause the memory to be allocated later
-
         self.main.all_bullets.fill_with(|| None);
 
         self.global.skip_a_few_frames = false.into();
@@ -892,34 +879,20 @@ impl crate::Data<'_> {
         // How much?  That depends on the number of droids defined in freedroid.ruleset.
         // So we have to count those first.  ok.  lets do it.
 
-        self.graphics.number_of_bullet_types =
-            count_string_occurences(data_slice, NEW_BULLET_TYPE_BEGIN_STRING)
-                .try_into()
-                .unwrap();
+        let number_of_bullet_types =
+            count_string_occurences(data_slice, NEW_BULLET_TYPE_BEGIN_STRING);
 
-        // Now that we know how many bullets are defined in freedroid.ruleset, we can allocate
-        // a fitting amount of memory, but of course only if the memory hasn't been allocated
-        // aready!!!
-        //
-        // If we would do that in any case, every Init_Game_Data call would destroy the loaded
-        // image files AND MOST LIKELY CAUSE A SEGFAULT!!!
-        //
-        if self.vars.bulletmap.is_empty() {
-            self.vars
-                .bulletmap
-                .reserve(usize::try_from(self.graphics.number_of_bullet_types).unwrap());
-            info!(
-                "We have counted {} different bullet types in the game data file.",
-                self.graphics.number_of_bullet_types
-            );
-            info!("MEMORY HAS BEEN ALLOCATED. THE READING CAN BEGIN.");
-        }
+        assert_eq!(
+            number_of_bullet_types,
+            self.vars.bulletmap.len(),
+            "Invalid number of bullets type found in config",
+        );
 
         //--------------------
         // Now we start to read the values for each bullet type:
         //
         let mut bullet_slice = data_slice;
-        loop {
+        for cur_bullet in &mut self.vars.bulletmap {
             bullet_slice = match bullet_slice.find(NEW_BULLET_TYPE_BEGIN_STRING) {
                 Some(pos) => &bullet_slice[(pos + 1)..],
                 None => break,
@@ -928,14 +901,14 @@ impl crate::Data<'_> {
             info!("Found another Bullet specification entry!  Lets add that to the others!");
 
             // Now we read in the recharging time for this bullettype(=weapontype)
-            let recharging_time =
+            cur_bullet.recharging_time =
                 read_float_from_string(bullet_slice, BULLET_RECHARGE_TIME_BEGIN_STRING);
 
             // Now we read in the maximal speed this type of bullet can go.
-            let speed = read_float_from_string(bullet_slice, BULLET_SPEED_BEGIN_STRING);
+            cur_bullet.speed = read_float_from_string(bullet_slice, BULLET_SPEED_BEGIN_STRING);
 
             // Now we read in the damage this bullet can do
-            let damage = read_i32_from_string(bullet_slice, BULLET_DAMAGE_BEGIN_STRING);
+            cur_bullet.damage = read_i32_from_string(bullet_slice, BULLET_DAMAGE_BEGIN_STRING);
 
             // Now we read in the number of phases that are designed for this bullet type
             // THIS IS NOW SPECIFIED IN THE THEME CONFIG FILE
@@ -943,15 +916,8 @@ impl crate::Data<'_> {
             // &(*Bulletmap.add(BulletIndex)).phases , EndOfBulletData );
 
             // Now we read in the type of blast this bullet will cause when crashing e.g. against the wall
-            let blast = read_i32_from_string(bullet_slice, BULLET_BLAST_TYPE_CAUSED_BEGIN_STRING);
-
-            self.vars.bulletmap.push(BulletSpec {
-                recharging_time,
-                speed,
-                damage,
-                blast,
-                ..Default::default()
-            });
+            cur_bullet.blast =
+                read_i32_from_string(bullet_slice, BULLET_BLAST_TYPE_CAUSED_BEGIN_STRING);
         }
 
         //--------------------

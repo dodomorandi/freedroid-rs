@@ -6,7 +6,7 @@ use crate::{
 use array_init::array_init;
 use cstr::cstr;
 use sdl::Rect;
-use std::ffi::CStr;
+use std::{array, ffi::CStr};
 
 #[derive(Debug)]
 pub struct Vars<'sdl> {
@@ -39,7 +39,7 @@ pub struct Vars<'sdl> {
     pub me: Influence,
 
     pub droidmap: Vec<DruidSpec>,
-    pub bulletmap: Vec<BulletSpec<'sdl>>,
+    pub bulletmap: [BulletSpec<'sdl>; 6],
     pub blastmap: [BlastSpec<'sdl>; ALLBLASTTYPES],
 }
 
@@ -91,7 +91,7 @@ impl Default for Vars<'_> {
                     MAX_INFLU_POSITION_HISTORY],
             },
             droidmap: Vec::default(),
-            bulletmap: Vec::default(),
+            bulletmap: array::from_fn(|_| BulletSpec::default()),
             blastmap: array_init(|_| BlastSpec::default_const()),
         }
     }

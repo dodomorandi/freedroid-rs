@@ -10,7 +10,9 @@ use crate::{
         SHIP_OFF_PIC_FILE, SHIP_ON_PIC_FILE, TAKEOVER_BG_PIC_FILE,
     },
     global::Global,
-    misc::{read_float_from_string, read_i16_from_string, read_i32_from_string},
+    misc::{
+        read_float_from_string, read_i16_from_string, read_i32_from_string, read_u8_from_string,
+    },
     read_and_malloc_and_terminate_file,
     structs::ThemeList,
     takeover::TO_BLOCK_FILE,
@@ -1253,9 +1255,9 @@ impl crate::Data<'_> {
         let mut reader = &*data;
         while let Some(read_start) = reader.find(b"For Bullettype Nr.=") {
             let read = &reader[read_start..];
-            let bullet_index = read_i32_from_string(read, b"For Bullettype Nr.=");
+            let bullet_index = usize::from(read_u8_from_string(read, b"For Bullettype Nr.="));
             assert!(
-                bullet_index < self.graphics.number_of_bullet_types,
+                bullet_index < self.vars.bulletmap.len(),
                 "----------------------------------------------------------------------\n\
                  Freedroid has encountered a problem:\n\
                  In function 'char* LoadThemeConfigurationFile ( ... ):\n\
@@ -1276,9 +1278,9 @@ impl crate::Data<'_> {
                  not resolve.... Sorry, if that interrupts a major game of yours.....\n\
                  ----------------------------------------------------------------------\n"
             );
-            self.vars.bulletmap[usize::try_from(bullet_index).unwrap()].phases =
+            self.vars.bulletmap[bullet_index].phases =
                 read_i32_from_string(read, b"we will use number of phases=");
-            self.vars.bulletmap[usize::try_from(bullet_index).unwrap()].phase_changes_per_second =
+            self.vars.bulletmap[bullet_index].phase_changes_per_second =
                 read_float_from_string(read, b"and number of phase changes per second=");
             reader = &reader[read_start + 1..];
         }
