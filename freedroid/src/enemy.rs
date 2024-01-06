@@ -144,7 +144,9 @@ impl crate::Data<'_> {
         }
 
         self.fire_bullet_sound(guntype);
-        let this_robot = &mut self.main.all_enemys[usize::try_from(enemy_num).unwrap()].unwrap();
+        let this_robot = self.main.all_enemys[usize::try_from(enemy_num).unwrap()]
+            .as_mut()
+            .unwrap();
 
         // find a bullet entry, that isn't currently used...
         let mut j = 0;
