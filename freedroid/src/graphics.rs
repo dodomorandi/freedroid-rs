@@ -80,7 +80,6 @@ pub struct Graphics<'sdl> {
     pub enemy_digit_surface_pointer: [Option<Surface<'sdl>>; DIGITNUMBER],
     pub crosshair_cursor: Option<Cursor<'sdl, 'static>>,
     pub arrow_cursor: Option<Cursor<'sdl, 'static>>,
-    pub number_of_bullet_types: i32,
     pub all_themes: ThemeList,
     pub classic_theme_index: i32,
     number_of_screenshot: u32,
@@ -119,7 +118,6 @@ impl Default for Graphics<'_> {
             enemy_digit_surface_pointer: array_init(|_| None),
             crosshair_cursor: None,
             arrow_cursor: None,
-            number_of_bullet_types: 0,
             all_themes: ThemeList {
                 num_themes: 0,
                 cur_tnum: 0,
