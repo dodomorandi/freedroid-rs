@@ -73,7 +73,7 @@ impl crate::Data<'_> {
                 && self.vars.droidmap[enemy.ty.to_usize()].flashimmune == 0
             {
                 let enemy = self.main.all_enemys[enemy_index].as_mut().unwrap();
-                enemy.energy -= self.vars.bulletmap[BulletKind::Flash as usize].damage as f32;
+                enemy.energy -= f32::from(self.vars.bulletmap[BulletKind::Flash as usize].damage);
 
                 // Since the enemy just got hit, it might as well say so :)
                 self.enemy_hit_by_bullet_text(enemy_index.try_into().unwrap());
@@ -86,7 +86,8 @@ impl crate::Data<'_> {
         if self.main.invincible_mode == 0
             && self.vars.droidmap[self.vars.me.ty.to_usize()].flashimmune == 0
         {
-            self.vars.me.energy -= self.vars.bulletmap[BulletKind::Flash as usize].damage as f32;
+            self.vars.me.energy -=
+                f32::from(self.vars.bulletmap[BulletKind::Flash as usize].damage);
         }
     }
 
@@ -139,7 +140,7 @@ impl crate::Data<'_> {
                     #[allow(clippy::cast_precision_loss)]
                     if self.main.invincible_mode == 0 {
                         self.vars.me.energy -=
-                            self.vars.bulletmap[cur_bullet.ty.to_usize()].damage as f32;
+                            f32::from(self.vars.bulletmap[cur_bullet.ty.to_usize()].damage);
                     }
 
                     self.delete_bullet(cur_bullet_index.try_into().unwrap());
@@ -167,7 +168,7 @@ impl crate::Data<'_> {
                 if (x_dist * x_dist + y_dist * y_dist) < self.get_druid_hit_dist_squared() {
                     // The enemy who was hit, loses some energy, depending on the bullet
                     self.main.all_enemys[enemy_index].as_mut().unwrap().energy -=
-                        self.vars.bulletmap[cur_bullet.ty.to_usize()].damage as f32;
+                        f32::from(self.vars.bulletmap[cur_bullet.ty.to_usize()].damage);
 
                     self.delete_bullet(cur_bullet_index.try_into().unwrap());
                     self.got_hit_sound();

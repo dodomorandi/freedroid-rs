@@ -11,7 +11,7 @@ use crate::{
     misc::{
         count_string_occurences, locate_string_in_data, my_random,
         read_and_malloc_string_from_data, read_float_from_string, read_i32_from_string,
-        read_string_from_string, read_u8_from_string,
+        read_string_from_string, read_u16_from_string, read_u8_from_string,
     },
     read_and_malloc_and_terminate_file,
     sound::Sound,
@@ -888,7 +888,7 @@ impl crate::Data<'_> {
             cur_bullet.speed = read_float_from_string(bullet_slice, BULLET_SPEED_BEGIN_STRING);
 
             // Now we read in the damage this bullet can do
-            cur_bullet.damage = read_i32_from_string(bullet_slice, BULLET_DAMAGE_BEGIN_STRING);
+            cur_bullet.damage = read_u16_from_string(bullet_slice, BULLET_DAMAGE_BEGIN_STRING);
 
             // Now we read in the number of phases that are designed for this bullet type
             // THIS IS NOW SPECIFIED IN THE THEME CONFIG FILE
@@ -916,8 +916,13 @@ impl crate::Data<'_> {
         #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
         for bullet in &mut self.vars.bulletmap {
             bullet.speed *= bullet_speed_calibrator;
-            assert!(bullet.damage < 2i32.pow(f32::MANTISSA_DIGITS));
-            bullet.damage = (bullet.damage as f32 * bullet_damage_calibrator) as i32;
+            let damage = f32::from(bullet.damage) * bullet_damage_calibrator;
+            assert!(damage > 0., "calibrated damage must be greater than zero");
+
+            #[allow(clippy::cast_sign_loss)]
+            {
+                bullet.damage = damage as u16;
+            }
         }
     }
 

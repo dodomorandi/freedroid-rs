@@ -181,7 +181,7 @@ impl Enemy {
 pub struct BulletSpec<'sdl> {
     pub recharging_time: f32, // time until the next shot can be made, measures in seconds
     pub speed: f32,           /* speed of the bullet */
-    pub damage: i32,          /* damage done by this bullettype */
+    pub damage: u16,          /* damage done by this bullettype */
     pub phases: u8,           /* how many phases in motion to show */
     pub phase_changes_per_second: u16, // how many different phases to display every second
     pub surfaces: [Option<Surface<'sdl>>; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
