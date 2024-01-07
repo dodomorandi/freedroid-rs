@@ -10,9 +10,7 @@ use crate::{
         SHIP_OFF_PIC_FILE, SHIP_ON_PIC_FILE, TAKEOVER_BG_PIC_FILE,
     },
     global::Global,
-    misc::{
-        read_float_from_string, read_i16_from_string, read_i32_from_string, read_u8_from_string,
-    },
+    misc::{read_i16_from_string, read_i32_from_string, read_u16_from_string, read_u8_from_string},
     read_and_malloc_and_terminate_file,
     structs::ThemeList,
     takeover::TO_BLOCK_FILE,
@@ -1224,9 +1222,9 @@ impl crate::Data<'_> {
                  ----------------------------------------------------------------------\n"
             );
             self.vars.bulletmap[bullet_index].phases =
-                read_i32_from_string(read, b"we will use number of phases=");
+                read_u8_from_string(read, b"we will use number of phases=");
             self.vars.bulletmap[bullet_index].phase_changes_per_second =
-                read_float_from_string(read, b"and number of phase changes per second=");
+                read_u16_from_string(read, b"and number of phase changes per second=");
             reader = &reader[read_start + 1..];
         }
 

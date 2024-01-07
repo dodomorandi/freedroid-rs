@@ -540,7 +540,7 @@ impl crate::Data<'_> {
         let bullet = &mut self.vars.bulletmap[cur_bullet.ty.to_usize()];
         #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
         let mut phase_of_bullet =
-            (cur_bullet.time_in_seconds * bullet.phase_changes_per_second) as usize;
+            (cur_bullet.time_in_seconds * f32::from(bullet.phase_changes_per_second)) as usize;
 
         phase_of_bullet %= usize::try_from(bullet.phases).unwrap();
 

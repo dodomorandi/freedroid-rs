@@ -117,6 +117,7 @@ macro_rules! make_read_from_string_fn {
 make_read_from_string_fn! {
     read_u8_from_string => u8,
     read_i16_from_string => i16,
+    read_u16_from_string => u16,
     read_i32_from_string => i32,
 }
 
