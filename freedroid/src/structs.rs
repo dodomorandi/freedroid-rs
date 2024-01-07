@@ -184,7 +184,6 @@ pub struct BulletSpec<'sdl> {
     pub damage: i32,          /* damage done by this bullettype */
     pub phases: u8,           /* how many phases in motion to show */
     pub phase_changes_per_second: u16, // how many different phases to display every second
-    pub blast: i32,           /* which blast does this bullet create */
     pub surfaces: [Option<Surface<'sdl>>; MAX_PHASES_IN_A_BULLET], // A pointer to the surfaces containing
                                                                    // the bullet images of this bullet
 }

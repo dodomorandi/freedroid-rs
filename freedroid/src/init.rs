@@ -847,8 +847,6 @@ impl crate::Data<'_> {
         // #define BULLET_NUMBER_OF_PHASES_BEGIN_STRING "Number of different phases that were designed for this bullet type :"
         // const BULLET_ONE_SHOT_ONLY_AT_A_TIME: &CStr =
         //     cstr!("Cannot fire until previous bullet has been deleted : ");
-        const BULLET_BLAST_TYPE_CAUSED_BEGIN_STRING: &[u8] =
-            b"Type of blast this bullet causes when crashing e.g. against a wall :";
 
         const BULLET_SPEED_CALIBRATOR_STRING: &[u8] =
             b"Common factor for all bullet's speed values: ";
@@ -896,10 +894,6 @@ impl crate::Data<'_> {
             // THIS IS NOW SPECIFIED IN THE THEME CONFIG FILE
             // ReadValueFromString( BulletPointer ,  BULLET_NUMBER_OF_PHASES_BEGIN_STRING , "%d" ,
             // &(*Bulletmap.add(BulletIndex)).phases , EndOfBulletData );
-
-            // Now we read in the type of blast this bullet will cause when crashing e.g. against the wall
-            cur_bullet.blast =
-                read_i32_from_string(bullet_slice, BULLET_BLAST_TYPE_CAUSED_BEGIN_STRING);
         }
 
         //--------------------
