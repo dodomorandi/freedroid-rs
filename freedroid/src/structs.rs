@@ -25,9 +25,9 @@ pub struct Point {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ThemeList {
-    pub num_themes: NonZeroU8,
-    pub cur_tnum: u8,
-    pub theme_name: [CString; MAX_THEMES],
+    pub len: NonZeroU8,
+    pub current: u8,
+    pub names: [CString; MAX_THEMES],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

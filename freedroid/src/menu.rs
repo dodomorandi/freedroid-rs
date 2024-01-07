@@ -1317,21 +1317,19 @@ impl<'sdl> crate::Data<'sdl> {
 
     pub fn handle_theme(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
-            let all_themes = self.graphics.all_themes.as_ref().unwrap();
-            return Some(&*all_themes.theme_name[usize::from(all_themes.cur_tnum)]);
+            let all_themes = self.graphics.theme_list.as_ref().unwrap();
+            return Some(&*all_themes.names[usize::from(all_themes.current)]);
         }
 
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
             self.move_lift_sound();
-            let all_themes = self.graphics.all_themes.as_ref().unwrap();
-            let mut tnum = all_themes.cur_tnum;
+            let all_themes = self.graphics.theme_list.as_ref().unwrap();
+            let mut tnum = all_themes.current;
             if action == MenuAction::CLICK && action == MenuAction::RIGHT {
-                tnum = tnum.saturating_add(1) % all_themes.num_themes.get();
+                tnum = tnum.saturating_add(1) % all_themes.len.get();
             } else {
-                tnum = tnum
-                    .checked_sub(1)
-                    .unwrap_or(all_themes.num_themes.get() - 1);
+                tnum = tnum.checked_sub(1).unwrap_or(all_themes.len.get() - 1);
             }
 
             self.set_theme(tnum);
@@ -1550,14 +1548,14 @@ impl<'sdl> crate::Data<'sdl> {
     }
 
     pub fn set_theme(&mut self, theme_index: u8) {
-        let all_themes = self.graphics.all_themes.as_mut().unwrap();
-        assert!(theme_index < all_themes.num_themes.get());
+        let all_themes = self.graphics.theme_list.as_mut().unwrap();
+        assert!(theme_index < all_themes.len.get());
 
-        all_themes.cur_tnum = theme_index;
+        all_themes.current = theme_index;
         self.global
             .game_config
             .theme_name
-            .set(&all_themes.theme_name[usize::from(all_themes.cur_tnum)]);
+            .set(&all_themes.names[usize::from(all_themes.current)]);
         self.init_pictures();
     }
 }
