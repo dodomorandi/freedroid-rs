@@ -11,10 +11,11 @@ use crate::{
 use bstr::{BStr, ByteSlice};
 use defs::MAXBULLETS;
 use log::{error, info, trace, warn};
-use nom::{Finish, Parser};
+use nom::{Finish, IResult, Parser};
 use rand::{thread_rng, Rng};
 use sdl::Rect;
 use std::{
+    any::type_name,
     borrow::Cow,
     env,
     ffi::{CStr, CString},
@@ -74,68 +75,49 @@ const VID_SCALE_FACTOR: &str = "Vid_ScaleFactor";
 const HOG_CPU: &str = "Hog_Cpu";
 const EMPTY_LEVEL_SPEEDUP: &str = "EmptyLevelSpeedup";
 
+type IntegralParserFn<'a, T> = fn(&'a [u8]) -> IResult<&'a [u8], T, ()>;
+
+pub fn read_integral_from_string<'a, T>(
+    data: &'a [u8],
+    label: &'a [u8],
+    f: IntegralParserFn<'a, T>,
+) -> T {
+    use nom::character::complete::space0;
+
+    let pos = locate_string_in_data(data, label) + label.len();
+    let data = &data[pos..];
+
+    let Ok((_, (_, out))) = space0::<_, ()>.and(f).parse(data).finish() else {
+        panic!(
+            concat!("could not read {} {} of label {}"),
+            type_name::<T>(),
+            <&BStr>::from(data),
+            <&BStr>::from(label),
+        );
+    };
+    out
+}
+
+#[inline]
 pub fn read_float_from_string(data: &[u8], label: &[u8]) -> f32 {
-    use nom::{character::complete::space0, number::complete::float};
-
-    let pos = locate_string_in_data(data, label) + label.len();
-    let data = &data[pos..];
-
-    let Ok((_, (_, out))) = space0::<_, ()>.and(float).parse(data).finish() else {
-        panic!(
-            "ReadValueFromString(): could not read float {} of label {}",
-            <&BStr>::from(data),
-            <&BStr>::from(label),
-        );
-    };
-    out
+    read_integral_from_string(data, label, nom::number::complete::float)
 }
 
-pub fn read_i32_from_string(data: &[u8], label: &[u8]) -> i32 {
-    use nom::character::complete::{i32, space0};
-
-    let pos = locate_string_in_data(data, label) + label.len();
-    let data = &data[pos..];
-
-    let Ok((_, (_, out))) = space0::<_, ()>.and(i32).parse(data).finish() else {
-        panic!(
-            "could not read float {} of label {}",
-            <&BStr>::from(data),
-            <&BStr>::from(label),
-        );
+macro_rules! make_read_from_string_fn {
+    ($($fn_name:ident => $ty:ident),+ $(,)?) => {
+        $(
+            #[inline]
+            pub fn $fn_name(data: &[u8], label: &[u8]) -> $ty {
+                read_integral_from_string(data, label, nom::character::complete::$ty)
+            }
+        )+
     };
-    out
 }
 
-pub fn read_u8_from_string(data: &[u8], label: &[u8]) -> u8 {
-    use nom::character::complete::{space0, u8};
-
-    let pos = locate_string_in_data(data, label) + label.len();
-    let data = &data[pos..];
-
-    let Ok((_, (_, out))) = space0::<_, ()>.and(u8).parse(data).finish() else {
-        panic!(
-            "could not read u8 {} of label {}",
-            <&BStr>::from(data),
-            <&BStr>::from(label),
-        );
-    };
-    out
-}
-
-pub fn read_i16_from_string(data: &[u8], label: &[u8]) -> i16 {
-    use nom::character::complete::{i16, space0};
-
-    let pos = locate_string_in_data(data, label) + label.len();
-    let data = &data[pos..];
-
-    let Ok((_, (_, out))) = space0::<_, ()>.and(i16).parse(data).finish() else {
-        panic!(
-            "could not read float {} of label {}",
-            <&BStr>::from(data),
-            <&BStr>::from(label),
-        );
-    };
-    out
+make_read_from_string_fn! {
+    read_u8_from_string => u8,
+    read_i16_from_string => i16,
+    read_i32_from_string => i32,
 }
 
 pub fn read_string_from_string<'a>(data: &'a [u8], label: &[u8]) -> &'a [u8] {
