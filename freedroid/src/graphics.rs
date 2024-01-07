@@ -27,15 +27,7 @@ use sdl::{
     rwops::{self, RwOps},
     ColorKeyFlag, Cursor, FrameBuffer, Pixel, Rect, Rgba, RwOpsOwned, Surface, VideoModeFlags,
 };
-use std::{
-    borrow::Cow,
-    cell::RefCell,
-    ffi::{CStr, CString},
-    ops::Not,
-    path::Path,
-    pin::Pin,
-    rc::Rc,
-};
+use std::{borrow::Cow, cell::RefCell, ffi::CStr, ops::Not, path::Path, pin::Pin, rc::Rc};
 use tinyvec_string::ArrayString;
 
 #[derive(Debug)]
@@ -78,8 +70,8 @@ pub struct Graphics<'sdl> {
     pub enemy_digit_surface_pointer: [Option<Surface<'sdl>>; DIGITNUMBER],
     pub crosshair_cursor: Option<Cursor<'sdl, 'static>>,
     pub arrow_cursor: Option<Cursor<'sdl, 'static>>,
-    pub all_themes: ThemeList,
-    pub classic_theme_index: i32,
+    pub all_themes: Option<ThemeList>,
+    pub classic_theme_index: u8,
     number_of_screenshot: u32,
     pic: Option<Surface<'sdl>>,
 }
@@ -116,11 +108,7 @@ impl Default for Graphics<'_> {
             enemy_digit_surface_pointer: array_init(|_| None),
             crosshair_cursor: None,
             arrow_cursor: None,
-            all_themes: ThemeList {
-                num_themes: 0,
-                cur_tnum: 0,
-                theme_name: array_init(|_| CString::default()),
-            },
+            all_themes: None,
             classic_theme_index: 0,
             number_of_screenshot: 0,
             pic: None,

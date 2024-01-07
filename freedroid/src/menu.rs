@@ -1317,27 +1317,21 @@ impl<'sdl> crate::Data<'sdl> {
 
     pub fn handle_theme(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
-            return Some(
-                &*self.graphics.all_themes.theme_name
-                    [usize::try_from(self.graphics.all_themes.cur_tnum).unwrap()],
-            );
+            let all_themes = self.graphics.all_themes.as_ref().unwrap();
+            return Some(&*all_themes.theme_name[usize::from(all_themes.cur_tnum)]);
         }
 
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
             self.move_lift_sound();
-            let mut tnum = self.graphics.all_themes.cur_tnum;
+            let all_themes = self.graphics.all_themes.as_ref().unwrap();
+            let mut tnum = all_themes.cur_tnum;
             if action == MenuAction::CLICK && action == MenuAction::RIGHT {
-                tnum += 1;
+                tnum = tnum.saturating_add(1) % all_themes.num_themes.get();
             } else {
-                tnum -= 1;
-            }
-
-            if tnum < 0 {
-                tnum = self.graphics.all_themes.num_themes - 1;
-            }
-            if tnum > self.graphics.all_themes.num_themes - 1 {
-                tnum = 0;
+                tnum = tnum
+                    .checked_sub(1)
+                    .unwrap_or(all_themes.num_themes.get() - 1);
             }
 
             self.set_theme(tnum);
@@ -1555,14 +1549,15 @@ impl<'sdl> crate::Data<'sdl> {
         *toggle = !*toggle;
     }
 
-    pub fn set_theme(&mut self, theme_index: i32) {
-        assert!(theme_index >= 0 && theme_index < self.graphics.all_themes.num_themes);
+    pub fn set_theme(&mut self, theme_index: u8) {
+        let all_themes = self.graphics.all_themes.as_mut().unwrap();
+        assert!(theme_index < all_themes.num_themes.get());
 
-        self.graphics.all_themes.cur_tnum = theme_index;
-        self.global.game_config.theme_name.set(
-            &self.graphics.all_themes.theme_name
-                [usize::try_from(self.graphics.all_themes.cur_tnum).unwrap()],
-        );
+        all_themes.cur_tnum = theme_index;
+        self.global
+            .game_config
+            .theme_name
+            .set(&all_themes.theme_name[usize::from(all_themes.cur_tnum)]);
         self.init_pictures();
     }
 }

@@ -16,7 +16,7 @@ use crate::{
     read_and_malloc_and_terminate_file,
     sound::Sound,
     split_at_subslice,
-    structs::{DruidSpec, TextToBeDisplayed},
+    structs::{DruidSpec, TextToBeDisplayed, ThemeList},
     text, ArrayIndex,
 };
 
@@ -29,8 +29,10 @@ use cstr::cstr;
 use log::{error, info, warn};
 use nom::Finish;
 use std::{
+    array,
     ffi::CString,
     fs::{self, DirEntry},
+    num::NonZeroU8,
     ops::Not,
     path::Path,
 };
@@ -365,11 +367,10 @@ impl crate::Data<'_> {
 
     /// find all themes and put them in `AllThemes`
     pub fn find_all_themes(&mut self) {
-        let mut classic_theme_index: usize = 0; // default: override when we actually find 'classic' theme
+        let mut classic_theme_index = 0; // default: override when we actually find 'classic' theme
 
         // just to make sure...
-        self.graphics.all_themes.num_themes = 0;
-        self.graphics.all_themes.theme_name.fill(CString::default());
+        self.graphics.all_themes = None;
 
         let mut add_theme_from_dir = |dir_name: &Path| {
             let dir_name = dir_name.join("graphics");
@@ -402,18 +403,16 @@ impl crate::Data<'_> {
         add_theme_from_dir(Path::new(LOCAL_DATADIR));
 
         // now have a look at what we found:
-        assert!(
-            self.graphics.all_themes.num_themes != 0,
-            "No valid graphic-themes found!! You need to install at least one to run Freedroid!!"
+        let all_themes = self.graphics.all_themes.as_mut().expect(
+            "No valid graphic-themes found!! You need to install at least one to run Freedroid!!",
         );
 
         let Self {
-            graphics: Graphics { all_themes, .. },
             global: Global { game_config, .. },
             ..
         } = self;
         let selected_theme_index = all_themes.theme_name
-            [..usize::try_from(all_themes.num_themes).unwrap()]
+            [..usize::from(all_themes.num_themes.get())]
             .iter()
             .position(|theme_name| **theme_name == game_config.theme_name);
 
@@ -422,7 +421,7 @@ impl crate::Data<'_> {
                 "Found selected theme {} from GameConfig.",
                 self.global.game_config.theme_name.to_string_lossy(),
             );
-            self.graphics.all_themes.cur_tnum = index.try_into().unwrap();
+            all_themes.cur_tnum = index.try_into().unwrap();
         } else {
             warn!(
                 "selected theme {} not valid! Using classic theme.",
@@ -431,8 +430,8 @@ impl crate::Data<'_> {
             self.global
                 .game_config
                 .theme_name
-                .set(&self.graphics.all_themes.theme_name[classic_theme_index]);
-            self.graphics.all_themes.cur_tnum = classic_theme_index.try_into().unwrap();
+                .set(&all_themes.theme_name[usize::from(classic_theme_index)]);
+            all_themes.cur_tnum = classic_theme_index;
         }
 
         info!(
@@ -441,7 +440,7 @@ impl crate::Data<'_> {
         );
     }
 
-    fn find_theme_on_dir_entry(&mut self, entry: &DirEntry, classic_theme_index: &mut usize) {
+    fn find_theme_on_dir_entry(&mut self, entry: &DirEntry, classic_theme_index: &mut u8) {
         let file_type = match entry.file_type() {
             Ok(file_type) => file_type,
             Err(err) => {
@@ -487,10 +486,14 @@ impl crate::Data<'_> {
                 let theme_exists = self
                     .graphics
                     .all_themes
-                    .theme_name
-                    .iter()
-                    .filter_map(|s| s.to_str().ok())
-                    .any(|theme| theme == theme_name);
+                    .as_ref()
+                    .map_or(false, |all_themes| {
+                        all_themes
+                            .theme_name
+                            .iter()
+                            .filter_map(|s| s.to_str().ok())
+                            .any(|theme| theme == theme_name)
+                    });
 
                 if theme_exists {
                     info!("Theme '{}' is already listed", theme_name);
@@ -499,13 +502,34 @@ impl crate::Data<'_> {
 
                 info!("Found new graphics-theme: {}", theme_name);
                 if theme_name == "classic" {
-                    *classic_theme_index = self.graphics.all_themes.num_themes.try_into().unwrap();
+                    *classic_theme_index = self
+                        .graphics
+                        .all_themes
+                        .as_ref()
+                        .map_or(0, |all_themes| all_themes.num_themes.get());
                 }
-                self.graphics.all_themes.theme_name
-                    [usize::try_from(self.graphics.all_themes.num_themes).unwrap()] =
-                    CString::new(theme_name).unwrap();
 
-                self.graphics.all_themes.num_themes += 1;
+                match &mut self.graphics.all_themes {
+                    Some(all_themes) => {
+                        all_themes.theme_name[usize::from(all_themes.num_themes.get())] =
+                            CString::new(theme_name).unwrap();
+
+                        all_themes.num_themes = all_themes
+                            .num_themes
+                            .checked_add(1)
+                            .expect("reached maximum number of possible themes");
+                    }
+
+                    None => {
+                        let mut theme_names = array::from_fn(|_| CString::default());
+                        theme_names[0] = CString::new(theme_name).unwrap();
+                        self.graphics.all_themes = Some(ThemeList {
+                            num_themes: NonZeroU8::new(1).unwrap(),
+                            cur_tnum: 0,
+                            theme_name: theme_names,
+                        });
+                    }
+                }
             }
             Err(err) => {
                 warn!(

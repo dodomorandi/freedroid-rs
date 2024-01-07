@@ -14,6 +14,7 @@ use sdl::{convert::u8_to_usize, Rect, Surface};
 use std::{
     array,
     ffi::{CStr, CString},
+    num::NonZeroU8,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -24,8 +25,8 @@ pub struct Point {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ThemeList {
-    pub num_themes: i32,
-    pub cur_tnum: i32,
+    pub num_themes: NonZeroU8,
+    pub cur_tnum: u8,
     pub theme_name: [CString; MAX_THEMES],
 }
 
