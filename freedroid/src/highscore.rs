@@ -325,7 +325,7 @@ impl crate::Data<'_> {
         let x0 = i32::from(self.vars.screen_rect.width()) / 8;
         let x1 = x0 + 2 * len;
         let x2 = x1 + 11 * len;
-        let x3 = x2 + i32::try_from(MAX_NAME_LEN).unwrap() * len;
+        let x3 = x2 + i32::from(MAX_NAME_LEN) * len;
 
         let height = font_height(highscore_font);
 

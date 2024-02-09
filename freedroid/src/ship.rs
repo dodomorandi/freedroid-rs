@@ -300,9 +300,7 @@ impl crate::Data<'_> {
             droid_name,
             "  Unit type {} - {}",
             droid.druidname.to_str().unwrap(),
-            CLASS_NAMES[usize::try_from(droid.class).unwrap()]
-                .to_str()
-                .unwrap()
+            CLASS_NAMES[usize::from(droid.class)].to_str().unwrap()
         )
         .unwrap();
 
@@ -804,8 +802,8 @@ impl crate::Data<'_> {
     pub fn cursor_is_on_rect(&self, rect: Rect) -> i32 {
         let user_center = self.vars.get_user_center();
         let cur_pos = Point {
-            x: self.input.input_axis.x + (i32::from(user_center.x()) - 16),
-            y: self.input.input_axis.y + (i32::from(user_center.y()) - 16),
+            x: self.input.axis.x + (i32::from(user_center.x()) - 16),
+            y: self.input.axis.y + (i32::from(user_center.y()) - 16),
         };
 
         (cur_pos.x >= rect.x().into()
@@ -994,7 +992,7 @@ impl crate::Data<'_> {
         let mut up_lift = self.main.cur_ship.all_lifts[cur_lift].up;
         let mut down_lift = self.main.cur_ship.all_lifts[cur_lift].down;
 
-        let liftrow = self.main.cur_ship.all_lifts[cur_lift].lift_row;
+        let liftrow = self.main.cur_ship.all_lifts[cur_lift].row;
 
         // clear the whole screen
         self.clear_graph_mem();
@@ -1192,9 +1190,7 @@ fn show_droid_page_info(
                  Drive : {} \n\
                  Brain : {}",
                 droid_type.to_usize() + 1,
-                CLASSES[usize::try_from(droid.class).unwrap()]
-                    .to_str()
-                    .unwrap(),
+                CLASSES[usize::from(droid.class)].to_str().unwrap(),
                 droid.height,
                 droid.weight,
                 DRIVE_NAMES[usize::try_from(droid.drive).unwrap()]

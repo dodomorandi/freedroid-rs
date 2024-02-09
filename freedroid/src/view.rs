@@ -463,9 +463,7 @@ impl crate::Data<'_> {
         let text_to_display = match &self.vars.me.text_to_be_displayed {
             TextToBeDisplayed::None => b"",
             TextToBeDisplayed::String(s) => s.to_bytes(),
-            TextToBeDisplayed::LevelEnterComment => {
-                self.main.cur_level().level_enter_comment.to_bytes()
-            }
+            TextToBeDisplayed::LevelEnterComment => self.main.cur_level().enter_comment.to_bytes(),
         };
 
         let Self {
@@ -542,7 +540,7 @@ impl crate::Data<'_> {
         let mut phase_of_bullet =
             (cur_bullet.time_in_seconds * f32::from(bullet.phase_changes_per_second)) as usize;
 
-        phase_of_bullet %= usize::try_from(bullet.phases).unwrap();
+        phase_of_bullet %= usize::from(bullet.phases);
 
         // DebugPrintf( 0 , "\nPhaseOfBullet: %d.", PhaseOfBullet );
 
@@ -553,7 +551,7 @@ impl crate::Data<'_> {
         //
         //if ( cur_bullet.time_in_frames == 1 )
         if cur_bullet.surfaces_were_generated == 0 {
-            for i in 0..usize::try_from(bullet.phases).unwrap() {
+            for i in 0..usize::from(bullet.phases) {
                 cur_bullet.surfaces[i] = Some(
                     bullet.surfaces[i]
                         .as_mut()

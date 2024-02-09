@@ -74,12 +74,12 @@ pub fn get_map_brick(deck: &Level, x: f32, y: f32) -> u8 {
 pub fn free_level_memory(level: &mut Level) {
     level.levelname = CString::default();
     level.background_song_name = CString::default();
-    level.level_enter_comment = CString::default();
+    level.enter_comment = CString::default();
 
     level
         .map
         .iter_mut()
-        .take(level.ylen.try_into().unwrap())
+        .take(level.ylen.into())
         .for_each(Vec::clear);
 }
 
@@ -188,7 +188,7 @@ fn reset_level_map(level: &mut Level) {
     // be closed first.
 
     use MapTile as M;
-    level.map[0..usize::try_from(level.ylen).unwrap()]
+    level.map[0..usize::from(level.ylen)]
         .iter_mut()
         .flatten()
         .for_each(|tile| match tile {
@@ -229,7 +229,7 @@ pub fn get_doors(level: &mut Level) -> i32 {
     /* now find the doors */
     for line in 0..level.ylen {
         for col in 0..level.xlen {
-            let brick = level.map[usize::try_from(line).unwrap()][usize::try_from(col).unwrap()];
+            let brick = level.map[usize::from(line)][usize::from(col)];
             if brick == MapTile::VZutuere || brick == MapTile::HZutuere {
                 level.doors[curdoor] = Some(CoarsePoint { x: col, y: line });
                 curdoor += 1;
@@ -373,7 +373,7 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
         levelnum: 0,
         levelname: CString::default(),
         background_song_name: CString::default(),
-        level_enter_comment: CString::default(),
+        enter_comment: CString::default(),
         xlen: 0,
         ylen: 0,
         color: Color::default(),
@@ -413,7 +413,7 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
         read_and_malloc_string_from_data(data, LEVEL_NAME_STRING.as_bytes(), b"\n");
     loadlevel.background_song_name =
         read_and_malloc_string_from_data(data, BACKGROUND_SONG_NAME_STRING.as_bytes(), b"\n");
-    loadlevel.level_enter_comment =
+    loadlevel.enter_comment =
         read_and_malloc_string_from_data(data, LEVEL_ENTER_COMMENT_STRING.as_bytes(), b"\n");
 
     // find the map data
@@ -429,12 +429,12 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
     let mut lines = data[map_begin..].lines().skip(1);
 
     /* read MapData */
-    for i in 0..usize::try_from(loadlevel.ylen).unwrap() {
+    for i in 0..usize::from(loadlevel.ylen) {
         let this_line = lines.next()?;
-        loadlevel.map[i].resize(usize::try_from(loadlevel.xlen).unwrap(), MapTile::Void);
+        loadlevel.map[i].resize(usize::from(loadlevel.xlen), MapTile::Void);
         let mut pos = this_line.trim_start();
 
-        for k in 0..usize::try_from(loadlevel.xlen).unwrap() {
+        for k in 0..usize::from(loadlevel.xlen) {
             if pos.is_empty() {
                 return None;
             }
@@ -1277,7 +1277,7 @@ freedroid-discussion@lists.sourceforge.net\n\
             let w = read_tagged_i32(entry_slice, "DeckW=");
             let h = read_tagged_i32(entry_slice, "DeckH=");
 
-            let rect = &mut self.main.cur_ship.level_rects[usize::try_from(deck_index).unwrap()]
+            let rect = &mut self.main.cur_ship.level_rects[usize::from(deck_index)]
                 [usize::try_from(rect_index).unwrap()];
             rect.set_x(x.try_into().unwrap());
             rect.set_y(y.try_into().unwrap());
@@ -1309,7 +1309,7 @@ freedroid-discussion@lists.sourceforge.net\n\
             cur_lift.y = read_tagged_i32(entry_slice, "PosY=");
             cur_lift.up = read_tagged_i32(entry_slice, "LevelUp=");
             cur_lift.down = read_tagged_i32(entry_slice, "LevelDown=");
-            cur_lift.lift_row = read_tagged_i32(entry_slice, "LiftRow=");
+            cur_lift.row = read_tagged_i32(entry_slice, "LiftRow=");
         }
 
         self.main.cur_ship.num_lifts = label;
@@ -1526,9 +1526,8 @@ pub fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
     let anz_wp = usize::try_from(level.num_waypoints).unwrap();
 
     /* estimate the amount of memory needed */
-    let mem_amount = usize::try_from(x_len + 1).unwrap() * usize::try_from(y_len).unwrap()
-        + anz_wp * MAX_WP_CONNECTIONS * 4
-        + 50000; /* Map-memory; Puffer fuer Dimensionen, mark-strings .. */
+    let mem_amount =
+        usize::from(x_len + 1) * usize::from(y_len) + anz_wp * MAX_WP_CONNECTIONS * 4 + 50000; /* Map-memory; Puffer fuer Dimensionen, mark-strings .. */
 
     /* allocate some memory */
     let mut level_mem = vec![0; mem_amount].into_boxed_slice();
@@ -1551,7 +1550,7 @@ pub fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
         level_cursor,
         "{}{}",
         LEVEL_ENTER_COMMENT_STRING,
-        level.level_enter_comment.to_str().unwrap()
+        level.enter_comment.to_str().unwrap()
     )
     .unwrap();
     writeln!(
@@ -1566,9 +1565,9 @@ pub fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
     writeln!(level_cursor, "{MAP_BEGIN_STRING}").unwrap();
 
     // Now in the loop each line of map data should be saved as a whole
-    for i in 0..usize::try_from(y_len).unwrap() {
+    for i in 0..usize::from(y_len) {
         reset_level_map(level); // make sure all doors are closed
-        for j in 0..usize::try_from(x_len).unwrap() {
+        for j in 0..usize::from(x_len) {
             write!(level_cursor, "{:02} ", level.map[i][j] as u8).unwrap();
         }
         writeln!(level_cursor).unwrap();

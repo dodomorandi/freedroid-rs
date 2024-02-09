@@ -46,7 +46,7 @@ const ARCADE_INPUT_CHARS: [u8; ARCADE_INPUT_CHARS_LEN as usize] = [
 pub struct Text {
     my_cursor_x: i32,
     my_cursor_y: i32,
-    text_buffer: [u8; 10000],
+    buffer: [u8; 10000],
 
     #[cfg(feature = "arcade-input")]
     last_frame_time: u32,
@@ -57,7 +57,7 @@ impl Default for Text {
         Self {
             my_cursor_x: 0,
             my_cursor_y: 0,
-            text_buffer: [0; 10000],
+            buffer: [0; 10000],
 
             #[cfg(feature = "arcade-input")]
             last_frame_time: 0,
@@ -391,10 +391,10 @@ impl crate::Data<'_> {
             text.my_cursor_y = y;
         }
 
-        let mut cursor = Cursor::new(text.text_buffer.as_mut());
+        let mut cursor = Cursor::new(text.buffer.as_mut());
         cursor.write_fmt(format_args).unwrap();
         let cursor_pos = cursor.position();
-        let text_buffer = &text.text_buffer[..usize::try_from(cursor_pos).unwrap()];
+        let text_buffer = &text.buffer[..usize::try_from(cursor_pos).unwrap()];
         let textlen: i32 = text_buffer
             .iter()
             .map(|&c| char_width(b_font.current_font.as_ref().unwrap().ro(font_owner), c))

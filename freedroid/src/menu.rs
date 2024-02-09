@@ -33,11 +33,11 @@ use std::{
 #[derive(Debug, Default)]
 pub struct Menu<'sdl> {
     font_height: i32,
-    menu_background: Option<Surface<'sdl>>,
-    quit_menu: bool,
+    background: Option<Surface<'sdl>>,
+    quit: bool,
     pub quit_level_editor: bool,
     last_movekey_time: u32,
-    menu_action_directions: MenuActionDirections,
+    action_directions: MenuActionDirections,
     show_menu_last_move_tick: u32,
     #[cfg(not(target_os = "android"))]
     key_config_menu_last_move_tick: u32,
@@ -284,7 +284,7 @@ impl<'sdl> crate::Data<'sdl> {
         self.make_grid_on_screen(None);
 
         // keep a global copy of background
-        self.menu.menu_background = Some(
+        self.menu.background = Some(
             self.graphics
                 .ne_screen
                 .as_mut()
@@ -392,60 +392,60 @@ impl<'sdl> crate::Data<'sdl> {
         }
 
         // we register if there have been key-press events in the "waiting period" between move-ticks
-        if !self.menu.menu_action_directions.up
+        if !self.menu.action_directions.up
             && (self.up_pressed() || self.key_is_pressed(u32_to_u16(SDLKey_SDLK_UP)))
         {
-            self.menu.menu_action_directions.up = true;
+            self.menu.action_directions.up = true;
             self.menu.last_movekey_time = self.sdl.ticks_ms();
             action |= MenuAction::UP;
         }
-        if !self.menu.menu_action_directions.down
+        if !self.menu.action_directions.down
             && (self.down_pressed() || self.key_is_pressed(u32_to_u16(SDLKey_SDLK_DOWN)))
         {
-            self.menu.menu_action_directions.down = true;
+            self.menu.action_directions.down = true;
             self.menu.last_movekey_time = self.sdl.ticks_ms();
             action |= MenuAction::DOWN;
         }
-        if !self.menu.menu_action_directions.left
+        if !self.menu.action_directions.left
             && (self.left_pressed() || self.key_is_pressed(u32_to_u16(SDLKey_SDLK_LEFT)))
         {
-            self.menu.menu_action_directions.left = true;
+            self.menu.action_directions.left = true;
             self.menu.last_movekey_time = self.sdl.ticks_ms();
             action |= MenuAction::LEFT;
         }
-        if !self.menu.menu_action_directions.right
+        if !self.menu.action_directions.right
             && (self.right_pressed() || self.key_is_pressed(u32_to_u16(SDLKey_SDLK_RIGHT)))
         {
-            self.menu.menu_action_directions.right = true;
+            self.menu.action_directions.right = true;
             self.menu.last_movekey_time = self.sdl.ticks_ms();
             action |= MenuAction::RIGHT;
         }
 
         if !(self.up_pressed() || self.key_is_pressed(u32_to_u16(SDLKey_SDLK_UP))) {
-            self.menu.menu_action_directions.up = false;
+            self.menu.action_directions.up = false;
         }
         if !(self.down_pressed() || self.key_is_pressed(u32_to_u16(SDLKey_SDLK_DOWN))) {
-            self.menu.menu_action_directions.down = false;
+            self.menu.action_directions.down = false;
         }
         if !(self.left_pressed() || self.key_is_pressed(u32_to_u16(SDLKey_SDLK_LEFT))) {
-            self.menu.menu_action_directions.left = false;
+            self.menu.action_directions.left = false;
         }
         if !(self.right_pressed() || self.key_is_pressed(u32_to_u16(SDLKey_SDLK_RIGHT))) {
-            self.menu.menu_action_directions.right = false;
+            self.menu.action_directions.right = false;
         }
 
         // check if enough time since we registered last new move-action
         if self.sdl.ticks_ms() - self.menu.last_movekey_time > wait_repeat_ticks {
-            if self.menu.menu_action_directions.up {
+            if self.menu.action_directions.up {
                 action |= MenuAction::UP;
             }
-            if self.menu.menu_action_directions.down {
+            if self.menu.action_directions.down {
                 action |= MenuAction::DOWN;
             }
-            if self.menu.menu_action_directions.left {
+            if self.menu.action_directions.left {
                 action |= MenuAction::LEFT;
             }
-            if self.menu.menu_action_directions.right {
+            if self.menu.action_directions.right {
                 action |= MenuAction::RIGHT;
             }
         }
@@ -493,7 +493,7 @@ impl<'sdl> crate::Data<'sdl> {
 
         let wait_move_ticks: u32 = 100;
         let mut finished = false;
-        self.menu.quit_menu = false;
+        self.menu.quit = false;
         let mut need_update = true;
         while !finished {
             let handler = menu_entries[menu_pos].handler;
@@ -562,7 +562,7 @@ impl<'sdl> crate::Data<'sdl> {
                 _ => {}
             }
 
-            if self.quit.get() || self.menu.quit_menu {
+            if self.quit.get() || self.menu.quit {
                 finished = true;
             }
 
@@ -596,7 +596,7 @@ impl<'sdl> crate::Data<'sdl> {
 
         let Self { menu, graphics, .. } = self;
 
-        menu.menu_background
+        menu.background
             .as_mut()
             .unwrap()
             .blit(graphics.ne_screen.as_mut().unwrap());
@@ -743,7 +743,7 @@ impl<'sdl> crate::Data<'sdl> {
         } = self.display_key_config_get_positions();
 
         let Self { menu, graphics, .. } = self;
-        menu.menu_background
+        menu.background
             .as_mut()
             .unwrap()
             .blit(graphics.ne_screen.as_mut().unwrap());
@@ -1146,7 +1146,7 @@ impl<'sdl> crate::Data<'sdl> {
         if action == MenuAction::CLICK {
             self.menu_item_selected_sound();
             self.menu.quit_level_editor = true;
-            self.menu.quit_menu = true;
+            self.menu.quit = true;
         }
         None
     }
@@ -1221,13 +1221,13 @@ impl<'sdl> crate::Data<'sdl> {
         }
         .run(1, 0..=(MAX_MAP_COLS - 1));
 
-        let newmem = usize::try_from(cur_level.xlen).unwrap();
+        let newmem = usize::from(cur_level.xlen);
         // adjust memory sizes for new value
-        for row in 0..usize::try_from(cur_level.ylen).unwrap() {
+        for row in 0..usize::from(cur_level.ylen) {
             cur_level.map[row].resize(newmem, MapTile::Void);
             if cur_level.xlen > oldxlen {
                 // fill new map area with VOID
-                cur_level.map[row][usize::try_from(cur_level.xlen - 1).unwrap()] = MapTile::Void;
+                cur_level.map[row][usize::from(cur_level.xlen - 1)] = MapTile::Void;
             }
         }
         self.initiate_menu(false);
@@ -1259,9 +1259,9 @@ impl<'sdl> crate::Data<'sdl> {
         .run(1, 0..=(MAX_MAP_ROWS - 1));
 
         match oldylen.cmp(&cur_level.ylen) {
-            Ordering::Greater => cur_level.map[usize::try_from(oldylen - 1).unwrap()].clear(),
-            Ordering::Less => cur_level.map[usize::try_from(cur_level.ylen - 1).unwrap()]
-                .resize(usize::try_from(cur_level.xlen).unwrap(), MapTile::Void),
+            Ordering::Greater => cur_level.map[usize::from(oldylen - 1)].clear(),
+            Ordering::Less => cur_level.map[usize::from(cur_level.ylen - 1)]
+                .resize(usize::from(cur_level.xlen), MapTile::Void),
             Ordering::Equal => {}
         }
 

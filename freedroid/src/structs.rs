@@ -277,7 +277,7 @@ pub struct Lift {
     pub up: i32,
     pub down: i32,
 
-    pub lift_row: i32, // which lift column does this lift entrance belong to?
+    pub row: i32, // which lift column does this lift entrance belong to?
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -295,7 +295,7 @@ pub struct Level {
     pub levelnum: u8,       /* Number of this level */
     pub levelname: CString, /* Name of this level */
     pub background_song_name: CString,
-    pub level_enter_comment: CString,
+    pub enter_comment: CString,
     pub xlen: u8, /* X dimension */
     pub ylen: u8,
     pub color: map::Color,
@@ -334,7 +334,7 @@ impl Default for Ship {
                 y: 0,
                 up: 0,
                 down: 0,
-                lift_row: 0,
+                row: 0,
             }),
             lift_row_rect: [Rect::default(); MAX_LIFT_ROWS],
             level_rects: [[Rect::default(); MAX_LEVEL_RECTS]; MAX_LEVELS],

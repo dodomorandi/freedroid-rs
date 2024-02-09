@@ -584,14 +584,9 @@ impl crate::Data<'_> {
         /* if using a joystick/mouse, allow exact directional shots! */
         #[allow(clippy::cast_precision_loss)]
         if self.input.axis_is_active != 0 {
-            let max_val = self
-                .input
-                .input_axis
-                .x
-                .abs()
-                .max(self.input.input_axis.y.abs()) as f32;
-            speed.x = self.input.input_axis.x as f32 / max_val;
-            speed.y = self.input.input_axis.y as f32 / max_val;
+            let max_val = self.input.axis.x.abs().max(self.input.axis.y.abs()) as f32;
+            speed.x = self.input.axis.x as f32 / max_val;
+            speed.y = self.input.axis.y as f32 / max_val;
         }
 
         let cur_bullet = self.main.all_bullets[cur_bullet_index].as_mut().unwrap();

@@ -388,7 +388,7 @@ impl crate::Data<'_> {
         if cur_bullet.surfaces_were_generated != 0 {
             info!("DeleteBullet: freeing this bullets attached surfaces...");
             let bullet_spec = &self.vars.bulletmap[cur_bullet.ty.to_usize()];
-            for phase in 0..usize::try_from(bullet_spec.phases).unwrap() {
+            for phase in 0..usize::from(bullet_spec.phases) {
                 cur_bullet.surfaces[phase] = None;
             }
             cur_bullet.surfaces_were_generated = false.into();
