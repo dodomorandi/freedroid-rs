@@ -9,9 +9,9 @@ use crate::{
     global::Global,
     graphics::Graphics,
     misc::{
-        count_string_occurences, locate_string_in_data, my_random,
-        read_and_malloc_string_from_data, read_float_from_string, read_i32_from_string,
-        read_string_from_string, read_u16_from_string, read_u8_from_string,
+        count_string_occurences, locate_string_in_data, read_and_malloc_string_from_data,
+        read_float_from_string, read_i32_from_string, read_string_from_string,
+        read_u16_from_string, read_u8_from_string,
     },
     read_and_malloc_and_terminate_file,
     sound::Sound,
@@ -28,6 +28,7 @@ use clap::{crate_version, ArgAction, Parser};
 use cstr::cstr;
 use log::{error, info, warn};
 use nom::Finish;
+use rand::{seq::IteratorRandom, thread_rng};
 use std::{
     array,
     ffi::CString,
@@ -1187,6 +1188,7 @@ impl MainMissionData {
     fn set_cur_level_index_x_y(&self, data: &mut crate::Data<'_>) -> u8 {
         const MISSION_START_POINT_STRING: &[u8] = b"Possible Start Point : ";
 
+        let mut rng = thread_rng();
         let number_of_start_points = count_string_occurences(&self.0, MISSION_START_POINT_STRING);
 
         assert!(
@@ -1205,10 +1207,7 @@ impl MainMissionData {
             .enumerate()
             .filter(|&(_, slice)| slice == MISSION_START_POINT_STRING)
             .map(|(index, _)| index)
-            .nth(
-                usize::try_from(my_random((number_of_start_points - 1).try_into().unwrap()))
-                    .unwrap(),
-            )
+            .choose(&mut rng)
             .unwrap();
 
         let start_point_slice = split_at_subslice(

@@ -4,12 +4,15 @@ use crate::{
         self, DisplayBannerFlags, Droid, MenuAction, Status, DROID_ROTATION_TIME, SHOW_WAIT, UPDATE,
     },
     graphics::Graphics,
-    misc::my_random,
     structs::Point,
 };
 
 use cstr::cstr;
-use sdl::{Rect, Surface};
+use rand::{
+    seq::{IteratorRandom, SliceRandom},
+    thread_rng,
+};
+use sdl::{convert::u8_to_usize, Rect, Surface};
 use sdl_sys::SDL_Color;
 use std::{
     convert::Infallible,
@@ -350,7 +353,7 @@ const NUM_PHASES: usize =		5       /* number of color-phases for current "flow" 
 const TO_BLOCKS_N: usize = 11; /* anzahl versch. Game- blocks */
 
 const NUM_TO_BLOCKS: usize = 2 * NUM_PHASES * TO_BLOCKS_N; // total number of takover blocks
-const TO_ELEMENTS: usize = 6;
+const TO_ELEMENTS: u8 = 6;
 
 /* Dimensions of the fill-blocks (in led-column */
 const NUM_FILL_BLOCKS: usize = 3; // yellow, violet and black
@@ -739,10 +742,16 @@ impl crate::Data<'_> {
     }
 
     fn enemy_movements(&mut self) {
-        const ACTIONS: i32 = 3;
         const MOVE_PROBABILITY: i32 = 100;
         const TURN_PROBABILITY: i32 = 10;
         const SET_PROBABILITY: i32 = 80;
+
+        enum Action {
+            Move,
+            Turn,
+            SetCapsule,
+            Nothing,
+        }
 
         let opponent_color = self.takeover.opponent_color as usize;
         let mut row = self.takeover.capsule_cur_row[opponent_color] - 1;
@@ -751,10 +760,18 @@ impl crate::Data<'_> {
             return;
         }
 
-        let next_row = match my_random(ACTIONS) {
-            0 => {
-                /* Move along */
-                if my_random(100) <= MOVE_PROBABILITY {
+        let mut rng = thread_rng();
+        let next_row = match [
+            Action::Move,
+            Action::Turn,
+            Action::SetCapsule,
+            Action::Nothing,
+        ]
+        .choose(&mut rng)
+        .unwrap()
+        {
+            Action::Move => {
+                if (0..=100).choose(&mut rng).unwrap() <= MOVE_PROBABILITY {
                     row += self.takeover.direction;
                     if row > i32::try_from(NUM_LINES).unwrap() - 1 {
                         1
@@ -768,19 +785,19 @@ impl crate::Data<'_> {
                 }
             }
 
-            1 => {
+            Action::Turn => {
                 /* Turn around */
-                if my_random(100) <= TURN_PROBABILITY {
+                if (0..=100).choose(&mut rng).unwrap() <= TURN_PROBABILITY {
                     self.takeover.direction *= -1;
                 }
                 row + 1
             }
 
-            2 => {
+            Action::SetCapsule => {
                 /* Try to set  capsule */
                 match usize::try_from(row) {
                     Ok(row)
-                        if my_random(100) <= SET_PROBABILITY
+                        if (0..=100).choose(&mut rng).unwrap() <= SET_PROBABILITY
                             && self.takeover.playground[opponent_color][0][row]
                                 != Block::CableEnd
                             && self.takeover.activation_map[opponent_color][0][row]
@@ -797,7 +814,8 @@ impl crate::Data<'_> {
                     _ => row + 1,
                 }
             }
-            _ => row + 1,
+
+            Action::Nothing => row + 1,
         };
 
         self.takeover.capsule_cur_row[opponent_color] = next_row;
@@ -934,7 +952,7 @@ impl crate::Data<'_> {
     /// generate a random Playground
     fn invent_playground(&mut self) {
         const MAX_PROB: i32 = 100;
-        const ELEMENTS_PROBABILITIES: [i32; TO_ELEMENTS] = [
+        const ELEMENTS_PROBABILITIES: [i32; u8_to_usize(TO_ELEMENTS)] = [
             100, /* Cable */
             2,   /* CableEnd */
             5,   /* Repeater */
@@ -946,6 +964,7 @@ impl crate::Data<'_> {
         /* first clear the playground: we depend on this !! */
         self.clear_playground();
 
+        let mut rng = thread_rng();
         self.takeover
             .playground
             .iter_mut()
@@ -964,9 +983,10 @@ impl crate::Data<'_> {
                             continue;
                         }
 
-                        let new_element =
-                            u8::try_from(my_random((TO_ELEMENTS - 1).try_into().unwrap())).unwrap();
-                        if my_random(MAX_PROB) > ELEMENTS_PROBABILITIES[usize::from(new_element)] {
+                        let new_element = (0..TO_ELEMENTS).choose(&mut rng).unwrap();
+                        if (0..=MAX_PROB).choose(&mut rng).unwrap()
+                            > ELEMENTS_PROBABILITIES[usize::from(new_element)]
+                        {
                             continue;
                         }
 

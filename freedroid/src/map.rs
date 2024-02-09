@@ -7,7 +7,7 @@ use crate::{
     },
     find_subslice, map,
     misc::{
-        locate_string_in_data, my_random, read_and_malloc_string_from_data, read_i32_from_string,
+        locate_string_in_data, read_and_malloc_string_from_data, read_i32_from_string,
         read_u8_from_string,
     },
     read_and_malloc_and_terminate_file, split_at_subslice, split_at_subslice_mut,
@@ -23,6 +23,8 @@ use defs::{MAX_DOORS_ON_LEVEL, MAX_WP_CONNECTIONS};
 use log::trace;
 use log::{error, info, warn};
 use nom::{Finish, Parser};
+use rand::{seq::SliceRandom, thread_rng, Rng};
+use sdl::convert::u8_to_usize;
 #[cfg(not(target_os = "android"))]
 use std::ffi::CStr;
 use std::{
@@ -364,7 +366,7 @@ where
 ///
 /// Doors and Waypoints Arrays are initialized too
 pub fn level_to_struct(data: &[u8]) -> Option<Level> {
-    use nom::{character::complete::i32, sequence::tuple};
+    use nom::{character::complete::u8, sequence::tuple};
 
     /* Get the memory for one level */
     let mut loadlevel = Level {
@@ -386,8 +388,8 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
             x: 0,
             y: 0,
             num_connections: 0,
-            connections: [0; MAX_WP_CONNECTIONS],
-        }; MAXWAYPOINTS],
+            connections: [0; u8_to_usize(MAX_WP_CONNECTIONS)],
+        }; u8_to_usize(MAXWAYPOINTS)],
     };
 
     info!("Starting to process information for another level:");
@@ -458,13 +460,13 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
 
     for i in 0..MAXWAYPOINTS {
         let Some(this_line) = lines.next() else {
-            loadlevel.num_waypoints = i.try_into().unwrap();
+            loadlevel.num_waypoints = i;
             break;
         };
 
         let [x, y] = parse_waypoint_x_y(this_line);
-        loadlevel.all_waypoints[i].x = x.try_into().unwrap();
-        loadlevel.all_waypoints[i].y = y.try_into().unwrap();
+        loadlevel.all_waypoints[usize::from(i)].x = x.try_into().unwrap();
+        loadlevel.all_waypoints[usize::from(i)].y = y.try_into().unwrap();
 
         let mut pos = this_line
             [this_line.find(CONNECTION_STRING).unwrap() + CONNECTION_STRING.len()..]
@@ -476,9 +478,10 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
                 break;
             }
 
-            match tuple((whitespace, i32))(pos).finish() {
+            match tuple((whitespace, u8))(pos).finish() {
                 Ok((rest, (_, connection))) => {
-                    loadlevel.all_waypoints[i].connections[k] = connection;
+                    loadlevel.all_waypoints[usize::from(i)].connections[usize::from(k)] =
+                        connection;
                     pos = rest.trim_start();
 
                     k += 1;
@@ -487,7 +490,7 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
             }
         }
 
-        loadlevel.all_waypoints[i].num_connections = k.try_into().unwrap();
+        loadlevel.all_waypoints[usize::from(i)].num_connections = k;
     }
 
     Some(loadlevel)
@@ -1096,7 +1099,8 @@ freedroid-discussion@lists.sourceforge.net\n\
         // That means that now we can add the apropriate droid types into the list of existing
         // droids in that mission.
 
-        let mut real_number_of_random_droids = my_random(max_rand - min_rand) + min_rand;
+        let mut rng = thread_rng();
+        let mut real_number_of_random_droids = rng.gen_range(min_rand..=max_rand);
 
         while real_number_of_random_droids > 0 {
             real_number_of_random_droids -= 1;
@@ -1117,10 +1121,10 @@ freedroid-discussion@lists.sourceforge.net\n\
                 "No more free position to fill random droids into in GetCrew...Terminating...."
             );
 
-            let random_droid_type = list_of_types_allowed[usize::try_from(my_random(
-                i32::try_from(different_random_types).unwrap() - 1,
-            ))
-            .unwrap()];
+            let random_droid_type = list_of_types_allowed[0..different_random_types]
+                .choose(&mut rng)
+                .copied()
+                .unwrap();
             self.main.all_enemys[free_all_enemys_position] =
                 Some(Enemy::new(random_droid_type, our_level_number));
         }
@@ -1523,11 +1527,12 @@ pub fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
     let x_len = level.xlen;
     let y_len = level.ylen;
 
-    let anz_wp = usize::try_from(level.num_waypoints).unwrap();
+    let anz_wp = usize::from(level.num_waypoints);
 
     /* estimate the amount of memory needed */
-    let mem_amount =
-        usize::from(x_len + 1) * usize::from(y_len) + anz_wp * MAX_WP_CONNECTIONS * 4 + 50000; /* Map-memory; Puffer fuer Dimensionen, mark-strings .. */
+    let mem_amount = usize::from(x_len + 1) * usize::from(y_len)
+        + anz_wp * usize::from(MAX_WP_CONNECTIONS) * 4
+        + 50000; /* Map-memory; Puffer fuer Dimensionen, mark-strings .. */
 
     /* allocate some memory */
     let mut level_mem = vec![0; mem_amount].into_boxed_slice();
@@ -1578,7 +1583,7 @@ pub fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
 
     writeln!(level_cursor, "{WP_BEGIN_STRING}").unwrap();
 
-    for i in 0..usize::try_from(level.num_waypoints).unwrap() {
+    for i in 0..usize::from(level.num_waypoints) {
         write!(
             level_cursor,
             "Nr.={:3} x={:4} y={:4}\t {}",
@@ -1587,7 +1592,7 @@ pub fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
         .unwrap();
 
         let this_wp = &level.all_waypoints[i];
-        for j in 0..usize::try_from(this_wp.num_connections).unwrap() {
+        for j in 0..usize::from(this_wp.num_connections) {
             write!(level_cursor, "{:2} ", this_wp.connections[j]).unwrap();
         }
         writeln!(level_cursor).unwrap();

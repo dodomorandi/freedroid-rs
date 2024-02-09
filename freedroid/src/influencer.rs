@@ -5,13 +5,13 @@ use crate::{
         PUSHSPEED, WAIT_COLLISION,
     },
     map::get_map_brick,
-    misc::my_random,
     structs::{Bullet, Finepoint, Gps, TextToBeDisplayed},
 };
 
 use cstr::cstr;
 use defs::{Cmds, BLINKENERGY, MAX_INFLU_POSITION_HISTORY, WAIT_TRANSFERMODE};
 use log::{info, warn};
+use rand::{thread_rng, Rng};
 use std::ops::Not;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -206,6 +206,7 @@ impl crate::Data<'_> {
 
     pub fn explode_influencer(&mut self) {
         self.vars.me.status = Status::Terminated;
+        let mut rng = thread_rng();
 
         for i in 0..10 {
             /* freien Blast finden */
@@ -227,9 +228,9 @@ impl crate::Data<'_> {
             #[allow(clippy::cast_precision_loss)]
             {
                 blast.px = self.vars.me.pos.x - self.global.droid_radius / 2.
-                    + my_random(10) as f32 * 0.05;
+                    + f32::from(rng.gen_range(0u8..=10)) * 0.05;
                 blast.py = self.vars.me.pos.y - self.global.droid_radius / 2.
-                    + my_random(10) as f32 * 0.05;
+                    + f32::from(rng.gen_range(0u8..=10)) * 0.05;
                 blast.phase = 0.2 * i as f32;
             }
         }

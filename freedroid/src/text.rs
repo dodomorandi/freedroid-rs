@@ -4,7 +4,6 @@ use crate::{
     global::Global,
     graphics::Graphics,
     input::Input,
-    misc::my_random,
     structs::TextToBeDisplayed,
     vars::Vars,
     FontCellOwner, Sdl,
@@ -12,6 +11,7 @@ use crate::{
 
 use cstr::cstr;
 use log::{error, info, trace};
+use rand::{seq::SliceRandom, thread_rng};
 use sdl::{
     convert::i32_to_u8,
     event::{JoyButtonEventType, KeyboardEventType, MouseButtonEventType},
@@ -546,14 +546,15 @@ impl crate::Data<'_> {
         }
 
         robot.text_visible_time = 0.;
-        let text = match my_random(4) {
-            0 => "Unhandled exception fault.  Press ok to reboot.",
-            1 => "System fault. Please buy a newer version.",
-            2 => "System error. Might be a virus.",
-            3 => "System error. Pleae buy an upgrade from MS.",
-            4 => "System error. Press any key to reboot.",
-            _ => unreachable!(),
-        };
+        let text = [
+            "Unhandled exception fault.  Press ok to reboot.",
+            "System fault. Please buy a newer version.",
+            "System error. Might be a virus.",
+            "System error. Pleae buy an upgrade from MS.",
+            "System error. Press any key to reboot.",
+        ]
+        .choose(&mut thread_rng())
+        .unwrap();
         robot.text_to_be_displayed = text;
     }
 
@@ -567,11 +568,12 @@ impl crate::Data<'_> {
         }
 
         robot.text_visible_time = 0.;
-        let text = match my_random(1) {
-            0 => "Hey, I'm from MS! Walk outa my way!",
-            1 => "Hey, I know the big MS boss! You better go.",
-            _ => unreachable!(),
-        };
+        let text = [
+            "Hey, I'm from MS! Walk outa my way!",
+            "Hey, I know the big MS boss! You better go.",
+        ]
+        .choose(&mut thread_rng())
+        .unwrap();
         robot.text_to_be_displayed = text;
     }
 
@@ -582,30 +584,18 @@ impl crate::Data<'_> {
 
         self.vars.me.text_visible_time = 0.;
 
-        let new_text = match my_random(6) {
-            0 => {
-                cstr!("Aaarrgh, aah, that burnt me!")
-            }
-            1 => {
-                cstr!("Hell, that blast was hot!")
-            }
-            2 => {
-                cstr!("Ghaart, I hate to stain my chassis like that.")
-            }
-            3 => {
-                cstr!("Oh no!  I think I've burnt a cable!")
-            }
-            4 => {
-                cstr!("Oh no, my poor transfer connectors smolder!")
-            }
-            5 => {
-                cstr!("I hope that didn't melt any circuits!")
-            }
-            6 => {
-                cstr!("So that gives some more black scars on me ol' dented chassis!")
-            }
-            _ => unreachable!(),
-        };
+        let new_text = [
+            cstr!("Aaarrgh, aah, that burnt me!"),
+            cstr!("Hell, that blast was hot!"),
+            cstr!("Ghaart, I hate to stain my chassis like that."),
+            cstr!("Oh no!  I think I've burnt a cable!"),
+            cstr!("Oh no, my poor transfer connectors smolder!"),
+            cstr!("I hope that didn't melt any circuits!"),
+            cstr!("So that gives some more black scars on me ol' dented chassis!"),
+        ]
+        .choose(&mut thread_rng())
+        .copied()
+        .unwrap();
         self.vars.me.text_to_be_displayed = TextToBeDisplayed::String(new_text);
     }
 

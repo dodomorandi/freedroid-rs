@@ -12,7 +12,6 @@ use bstr::{BStr, ByteSlice};
 use defs::MAXBULLETS;
 use log::{error, info, trace, warn};
 use nom::{Finish, IResult, Parser};
-use rand::{thread_rng, Rng};
 use sdl::Rect;
 use std::{
     any::type_name,
@@ -46,12 +45,6 @@ impl Default for Misc {
             one_frame_delay: 0,
         }
     }
-}
-
-/// This function is used to generate a random integer in the range
-/// from [0 to `upper_bound`] (inclusive), distributed uniformly.
-pub fn my_random(upper_bound: i32) -> i32 {
-    thread_rng().gen_range(0..=upper_bound)
 }
 
 const VERSION_STRING: &str = "Freedroid Version";

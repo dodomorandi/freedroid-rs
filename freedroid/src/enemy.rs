@@ -1,3 +1,5 @@
+use std::ops::Not;
+
 use crate::{
     cur_level,
     defs::{
@@ -5,12 +7,15 @@ use crate::{
         MAXBULLETS, MAXWAYPOINTS, ROBOT_MAX_WAIT_BETWEEN_SHOTS, SLOWMO_FACTOR, WAIT_COLLISION,
         WAIT_LEVELEMPTY,
     },
-    misc::my_random,
     structs::{Bullet, Finepoint},
 };
 
 use log::warn;
-use std::ops::Not;
+use rand::{
+    seq::{IteratorRandom, SliceRandom},
+    thread_rng, Rng,
+};
+use sdl::convert::u8_to_usize;
 
 /// according to the intro, the laser can be "focused on any target
 /// within a range of eight metres"
@@ -134,12 +139,15 @@ impl crate::Data<'_> {
             return;
         }
 
+        let mut rng = thread_rng();
         #[allow(clippy::cast_precision_loss)]
-        if my_random(AGGRESSIONMAX) >= self.vars.droidmap[this_robot.ty.to_usize()].aggression {
+        if (0..=AGGRESSIONMAX).choose(&mut rng).unwrap()
+            >= self.vars.droidmap[this_robot.ty.to_usize()].aggression
+        {
             self.main.all_enemys[usize::try_from(enemy_num).unwrap()]
                 .as_mut()
                 .unwrap()
-                .firewait += my_random(1000) as f32 * ROBOT_MAX_WAIT_BETWEEN_SHOTS / 1000.0;
+                .firewait += rng.gen_range(0f32..=1f32) * ROBOT_MAX_WAIT_BETWEEN_SHOTS;
             return;
         }
 
@@ -266,6 +274,7 @@ impl crate::Data<'_> {
         let check_x = cur_enemy.pos.x;
         let check_y = cur_enemy.pos.y;
 
+        let mut rng = thread_rng();
         for enemy in enemys_before
             .iter_mut()
             .chain(enemys_after)
@@ -286,17 +295,12 @@ impl crate::Data<'_> {
             // Is there a Collision?
             if dist <= (2. * global.droid_radius) {
                 // am I waiting already?  If so, keep waiting...
-                #[allow(clippy::cast_precision_loss)]
                 if cur_enemy.warten != 0. {
-                    cur_enemy.warten = my_random(2 * i32::from(WAIT_COLLISION)) as f32;
+                    cur_enemy.warten = rng.gen_range(0..=(WAIT_COLLISION * 2)).into();
                     continue;
                 }
 
-                enemy.warten = {
-                    #[allow(clippy::cast_precision_loss)]
-                    let warten = my_random(2 * i32::from(WAIT_COLLISION)) as f32;
-                    warten
-                };
+                enemy.warten = rng.gen_range(0..=(WAIT_COLLISION * 2)).into();
 
                 if x_dist != 0. {
                     enemy.pos.x -= x_dist / x_dist.abs() * misc.frame_time(global, main.f_p_sover1);
@@ -339,7 +343,7 @@ impl crate::Data<'_> {
 
         // We do some definitions to save us some more typing later...
         let wp_list = cur_level!(self.main).all_waypoints;
-        let nextwp = usize::try_from(this_robot.nextwaypoint).unwrap();
+        let nextwp = usize::from(this_robot.nextwaypoint);
 
         // determine the remaining way until the target point is reached
         let restweg = Finepoint {
@@ -351,17 +355,16 @@ impl crate::Data<'_> {
         // then it might be time to set a new waypoint.
         //
         if restweg.x == 0. && restweg.y == 0. {
+            let mut rng = thread_rng();
             this_robot.lastwaypoint = this_robot.nextwaypoint;
-            this_robot.warten = {
-                #[allow(clippy::cast_precision_loss)]
-                let warten = my_random(ENEMYMAXWAIT) as f32;
-                warten
-            };
+            this_robot.warten = rng.gen_range(0..=ENEMYMAXWAIT).into();
 
-            let num_con = wp_list[nextwp].num_connections;
-            if num_con > 0 {
-                this_robot.nextwaypoint =
-                    wp_list[nextwp].connections[usize::try_from(my_random(num_con - 1)).unwrap()];
+            let num_con = usize::from(wp_list[nextwp].num_connections);
+            if let Some(connection) = wp_list[nextwp].connections[0..num_con]
+                .choose(&mut rng)
+                .copied()
+            {
+                this_robot.nextwaypoint = connection;
             }
         }
     }
@@ -369,12 +372,13 @@ impl crate::Data<'_> {
     pub fn shuffle_enemys(&mut self) {
         let cur_level = cur_level!(self.main);
         let cur_level_num = cur_level.levelnum;
-        let mut used_wp: [bool; MAXWAYPOINTS] = [false; MAXWAYPOINTS];
+        let mut used_wp = [false; u8_to_usize(MAXWAYPOINTS)];
         let mut warned = false;
 
         let num_wp = cur_level.num_waypoints;
         let mut nth_enemy = 0;
 
+        let mut rng = thread_rng();
         for enemy in self.main.all_enemys[..usize::from(self.main.num_enemys)]
             .iter_mut()
             .filter_map(Option::as_mut)
@@ -401,18 +405,18 @@ impl crate::Data<'_> {
 
             let mut wp;
             loop {
-                wp = usize::try_from(my_random(num_wp - 1)).unwrap();
-                if used_wp[wp].not() {
+                wp = rng.gen_range(0..num_wp);
+                if used_wp[usize::from(wp)].not() {
                     break;
                 }
             }
 
-            used_wp[wp] = true;
-            enemy.pos.x = cur_level.all_waypoints[wp].x.into();
-            enemy.pos.y = cur_level.all_waypoints[wp].y.into();
+            used_wp[usize::from(wp)] = true;
+            enemy.pos.x = cur_level.all_waypoints[usize::from(wp)].x.into();
+            enemy.pos.y = cur_level.all_waypoints[usize::from(wp)].y.into();
 
-            enemy.lastwaypoint = wp.try_into().unwrap();
-            enemy.nextwaypoint = wp.try_into().unwrap();
+            enemy.lastwaypoint = wp;
+            enemy.nextwaypoint = wp;
         }
     }
 
@@ -432,7 +436,7 @@ impl crate::Data<'_> {
 
         // We do some definitions to save us some more typing later...
         let wp_list = &cur_level!(main).all_waypoints;
-        let nextwp: usize = this_robot.nextwaypoint.try_into().unwrap();
+        let nextwp: usize = this_robot.nextwaypoint.into();
         let maxspeed = vars.droidmap[this_robot.ty.to_usize()].maxspeed;
 
         let nextwp_pos = Finepoint {

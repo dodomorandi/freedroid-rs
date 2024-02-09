@@ -143,17 +143,17 @@ pub struct Influence {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Enemy {
-    pub ty: Droid,         /* gibt die Nummer in Druidmap an */
-    pub levelnum: u8,      /* Level in dem sich enemy befindet */
-    pub pos: Finepoint,    /* gibt die Koordinaten der Momentanposition an */
-    pub speed: Finepoint,  /* current speed  */
-    pub energy: f32,       /* gibt die Energie dieses Robots an */
-    pub phase: f32,        /* gibt die Phase an in der der Feind gedreht ist */
-    pub nextwaypoint: i32, /* gibt den naechsten Zielpunkt an */
-    pub lastwaypoint: i32, /* Waypoint, von dem ausgegangen wurde */
-    pub status: Status,    /* gibt z.B. an ob der Robotter abgeschossen wurde */
-    pub warten: f32,       // time till the droid will start to move again
-    pub firewait: f32,     /* gibt die Zeit bis zum naechsten Schuss an */
+    pub ty: Droid,        /* gibt die Nummer in Druidmap an */
+    pub levelnum: u8,     /* Level in dem sich enemy befindet */
+    pub pos: Finepoint,   /* gibt die Koordinaten der Momentanposition an */
+    pub speed: Finepoint, /* current speed  */
+    pub energy: f32,      /* gibt die Energie dieses Robots an */
+    pub phase: f32,       /* gibt die Phase an in der der Feind gedreht ist */
+    pub nextwaypoint: u8, /* gibt den naechsten Zielpunkt an */
+    pub lastwaypoint: u8, /* Waypoint, von dem ausgegangen wurde */
+    pub status: Status,   /* gibt z.B. an ob der Robotter abgeschossen wurde */
+    pub warten: f32,      // time till the droid will start to move again
+    pub firewait: f32,    /* gibt die Zeit bis zum naechsten Schuss an */
     pub text_visible_time: f32,
     pub text_to_be_displayed: &'static str,
 }
@@ -284,8 +284,8 @@ pub struct Lift {
 pub struct Waypoint {
     pub x: u8, /* Grob */
     pub y: u8,
-    pub num_connections: i32,
-    pub connections: [i32; MAX_WP_CONNECTIONS],
+    pub num_connections: u8,
+    pub connections: [u8; u8_to_usize(MAX_WP_CONNECTIONS)],
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -303,8 +303,8 @@ pub struct Level {
     pub refreshes: [Option<CoarsePoint<u8>>; MAX_REFRESHES_ON_LEVEL],
     pub doors: [Option<CoarsePoint<u8>>; MAX_DOORS_ON_LEVEL],
     pub alerts: [Option<CoarsePoint<u8>>; MAX_ALERTS_ON_LEVEL],
-    pub num_waypoints: i32,
-    pub all_waypoints: [Waypoint; MAXWAYPOINTS],
+    pub num_waypoints: u8,
+    pub all_waypoints: [Waypoint; u8_to_usize(MAXWAYPOINTS)],
 }
 
 #[derive(Debug, Clone, PartialEq)]

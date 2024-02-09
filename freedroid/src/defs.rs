@@ -640,9 +640,9 @@ pub const WAIT_TRANSFERMODE: f32 = 0.3; /* this is a "float" indicating the numb
                                         This variable describes the amount in SECONDS */
 pub const WAIT_COLLISION: u8 = 1; // after a little collision with influ, enemys hold position for a while
                                   // this variable describes the amount of time in SECONDS
-pub const ENEMYMAXWAIT: i32 = 2; // after each robot has reached its current destination waypoint is waits a
-                                 // while.  This variable describes the amount of time in SECONDS.  However,
-                                 // the final wait time is a random number within [0,ENEMYMAXWAIT].
+pub const ENEMYMAXWAIT: u8 = 2; // after each robot has reached its current destination waypoint is waits a
+                                // while.  This variable describes the amount of time in SECONDS.  However,
+                                // the final wait time is a random number within [0,ENEMYMAXWAIT].
 pub const FLASH_DURATION: f32 = 0.1; // in seconds
 
 /* direction definitions (fireing bullets and testing blockedness of positions) */
@@ -712,7 +712,7 @@ pub const ROBOT_MAX_WAIT_BETWEEN_SHOTS: f32 = 5.; // how long shoud each droid w
 /* Map-related defines:
     WARNING leave them here, they are required in struct.h
 */
-pub const MAX_WP_CONNECTIONS: usize = 12;
+pub const MAX_WP_CONNECTIONS: u8 = 12;
 pub const MAX_MAP_ROWS: u8 = 255;
 #[cfg(not(target_os = "android"))]
 pub const MAX_MAP_COLS: u8 = 255;
@@ -727,7 +727,7 @@ pub const MAX_LIFT_ROWS: usize = 15; /* the different lift "rows" */
 /* corresponds to a reserved palette range !*/
 pub const MAX_LEVEL_RECTS: usize = 20; // how many rects compose a level
 
-pub const MAXWAYPOINTS: usize = 100;
+pub const MAXWAYPOINTS: u8 = 100;
 pub const MAX_DOORS_ON_LEVEL: usize = 60;
 pub const MAX_REFRESHES_ON_LEVEL: usize = 40;
 pub const MAX_ALERTS_ON_LEVEL: usize = 40;
