@@ -281,7 +281,7 @@ pub struct Lift {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Waypoint {
-    pub x: u8, /* Grob */
+    pub x: u8, /* Coarse */
     pub y: u8,
     pub num_connections: u8,
     pub connections: [u8; u8_to_usize(MAX_WP_CONNECTIONS)],
