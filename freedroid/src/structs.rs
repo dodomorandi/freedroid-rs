@@ -9,6 +9,7 @@ use crate::{
     map,
 };
 
+use arrayvec::ArrayVec;
 use sdl::{convert::u8_to_usize, Rect, Surface};
 use std::{
     array,
@@ -279,12 +280,11 @@ pub struct Lift {
     pub row: i32, // which lift column does this lift entrance belong to?
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Waypoint {
     pub x: u8, /* Coarse */
     pub y: u8,
-    pub num_connections: u8,
-    pub connections: [u8; u8_to_usize(MAX_WP_CONNECTIONS)],
+    pub connections: ArrayVec<u8, { u8_to_usize(MAX_WP_CONNECTIONS) }>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

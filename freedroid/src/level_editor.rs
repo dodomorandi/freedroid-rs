@@ -36,7 +36,7 @@ fn create_waypoint(level: &mut Level, block_x: i32, block_y: i32) {
 
     level.all_waypoints[num].x = block_x.try_into().unwrap();
     level.all_waypoints[num].y = block_y.try_into().unwrap();
-    level.all_waypoints[num].num_connections = 0;
+    level.all_waypoints[num].connections.clear();
 }
 
 /// delete given waypoint num (and all its connections) on level Lev
@@ -46,11 +46,13 @@ fn delete_waypoint(level: &mut Level, num: u8) {
 
     // is this the last one? then just delete
     if num == wpmax {
-        wp_list[usize::from(num)].num_connections = 0;
+        wp_list[usize::from(num)].connections.clear();
     } else {
         // otherwise shift down all higher waypoints
         let num: usize = num.into();
-        wp_list.copy_within((num + 1)..=usize::from(wpmax), num);
+        for index in (num + 1)..usize::from(wpmax) {
+            wp_list[index - 1] = wp_list[index].clone();
+        }
     }
 
     // now there's one less:
@@ -58,24 +60,15 @@ fn delete_waypoint(level: &mut Level, num: u8) {
 
     // now adjust the remaining wp-list to the changes:
     for waypoint in &mut wp_list[..usize::from(level.num_waypoints)] {
-        let Waypoint {
-            connections,
-            num_connections,
-            ..
-        } = waypoint;
+        let Waypoint { connections, .. } = waypoint;
 
         let mut connection_index = 0;
-        while connection_index < usize::from(*num_connections) {
+        while connection_index < connections.len() {
             let connection = &mut connections[connection_index];
             // eliminate all references to this waypoint
             match (*connection).cmp(&num) {
                 Ordering::Equal => {
-                    // move all connections after this one down
-                    connections.copy_within(
-                        (connection_index + 1)..usize::from(*num_connections),
-                        connection_index,
-                    );
-                    *num_connections -= 1;
+                    connections.remove(connection_index);
                 }
                 Ordering::Greater => {
                     // adjust all connections to the shifted waypoint-numbers
@@ -385,7 +378,7 @@ impl crate::Data<'_> {
         } else if *origin_waypoint == -1 {
             *origin_waypoint = i.try_into().unwrap();
             let waypoint = &mut cur_level!(mut self.main).all_waypoints[i];
-            if waypoint.num_connections < MAX_WP_CONNECTIONS {
+            if waypoint.connections.len() < usize::from(MAX_WP_CONNECTIONS) {
                 info!("Waypoint nr. {}. selected as origin", i);
                 *src_wp_index = Some(i);
             } else {
@@ -405,8 +398,7 @@ impl crate::Data<'_> {
             info!("Target-waypoint {} selected. Connection established!", i);
             let waypoint_index = src_wp_index.take().unwrap();
             let waypoint = &mut cur_level!(mut self.main).all_waypoints[waypoint_index];
-            waypoint.connections[usize::from(waypoint.num_connections)] = i.try_into().unwrap();
-            waypoint.num_connections += 1;
+            waypoint.connections.push(i.try_into().unwrap());
             *origin_waypoint = -1;
         }
     }
@@ -607,7 +599,7 @@ impl crate::Data<'_> {
 
             // Draw the connections to other waypoints, BUT ONLY FOR THE WAYPOINT CURRENTLY TARGETED
             if (block_x - wp_x).abs() <= f32::EPSILON && (block_y - wp_y).abs() <= f32::EPSILON {
-                for &connection in &this_wp.connections[0..usize::from(this_wp.num_connections)] {
+                for &connection in &this_wp.connections {
                     let connection = usize::from(connection);
                     let waypoint = &cur_level!(self.main).all_waypoints[connection];
                     Self::draw_line_between_tiles_static(

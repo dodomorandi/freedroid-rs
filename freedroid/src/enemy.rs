@@ -342,7 +342,7 @@ impl crate::Data<'_> {
             .unwrap();
 
         // We do some definitions to save us some more typing later...
-        let wp_list = cur_level!(self.main).all_waypoints;
+        let wp_list = &cur_level!(self.main).all_waypoints;
         let nextwp = usize::from(this_robot.nextwaypoint);
 
         // determine the remaining way until the target point is reached
@@ -359,11 +359,7 @@ impl crate::Data<'_> {
             this_robot.lastwaypoint = this_robot.nextwaypoint;
             this_robot.warten = rng.gen_range(0..=ENEMYMAXWAIT).into();
 
-            let num_con = usize::from(wp_list[nextwp].num_connections);
-            if let Some(connection) = wp_list[nextwp].connections[0..num_con]
-                .choose(&mut rng)
-                .copied()
-            {
+            if let Some(connection) = wp_list[nextwp].connections.choose(&mut rng).copied() {
                 this_robot.nextwaypoint = connection;
             }
         }

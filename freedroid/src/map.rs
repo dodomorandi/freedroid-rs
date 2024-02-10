@@ -14,16 +14,18 @@ use crate::{
     structs::{CoarsePoint, Enemy, Finepoint, Level, Waypoint},
 };
 
+use arrayvec::ArrayVec;
 use bstr::ByteSlice;
 #[cfg(not(target_os = "android"))]
 use cstr::cstr;
-use defs::{MAX_DOORS_ON_LEVEL, MAX_WP_CONNECTIONS};
+use defs::MAX_DOORS_ON_LEVEL;
+#[cfg(not(target_os = "android"))]
+use defs::MAX_WP_CONNECTIONS;
 #[cfg(not(target_os = "android"))]
 use log::trace;
 use log::{error, info, warn};
 use nom::{Finish, Parser};
 use rand::{seq::SliceRandom, thread_rng, Rng};
-use sdl::convert::u8_to_usize;
 #[cfg(not(target_os = "android"))]
 use std::ffi::CStr;
 use std::{
@@ -384,12 +386,11 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
         doors: [None; MAX_DOORS_ON_LEVEL],
         alerts: [None; MAX_ALERTS_ON_LEVEL],
         num_waypoints: 0,
-        all_waypoints: [Waypoint {
+        all_waypoints: array::from_fn(|_| Waypoint {
             x: 0,
             y: 0,
-            num_connections: 0,
-            connections: [0; u8_to_usize(MAX_WP_CONNECTIONS)],
-        }; u8_to_usize(MAXWAYPOINTS)],
+            connections: ArrayVec::default(),
+        }),
     };
 
     info!("Starting to process information for another level:");
@@ -472,25 +473,25 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
             [this_line.find(CONNECTION_STRING).unwrap() + CONNECTION_STRING.len()..]
             .trim_start();
 
-        let mut k = 0;
-        while k < MAX_WP_CONNECTIONS {
+        loop {
             if pos.is_empty() {
                 break;
             }
 
             match tuple((whitespace, u8))(pos).finish() {
                 Ok((rest, (_, connection))) => {
-                    loadlevel.all_waypoints[usize::from(i)].connections[usize::from(k)] =
-                        connection;
+                    if loadlevel.all_waypoints[usize::from(i)]
+                        .connections
+                        .try_push(connection)
+                        .is_err()
+                    {
+                        break;
+                    };
                     pos = rest.trim_start();
-
-                    k += 1;
                 }
                 Err(()) => break,
             }
         }
-
-        loadlevel.all_waypoints[usize::from(i)].num_connections = k;
     }
 
     Some(loadlevel)
@@ -1592,8 +1593,8 @@ pub fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
         .unwrap();
 
         let this_wp = &level.all_waypoints[i];
-        for j in 0..usize::from(this_wp.num_connections) {
-            write!(level_cursor, "{:2} ", this_wp.connections[j]).unwrap();
+        for &connection in &this_wp.connections {
+            write!(level_cursor, "{connection:2} ").unwrap();
         }
         writeln!(level_cursor).unwrap();
     }
