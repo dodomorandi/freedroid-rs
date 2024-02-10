@@ -15,6 +15,7 @@ use crate::{
     Main,
 };
 
+use arrayvec::ArrayString;
 use log::{info, trace};
 use sdl::{Pixel, Rect};
 use sdl_sys::SDL_Color;
@@ -23,7 +24,6 @@ use std::{
     ffi::CStr,
     ops::{Deref, Not},
 };
-use tinyvec_string::ArrayString;
 
 const BLINK_LEN: f32 = 1.0;
 
@@ -655,10 +655,11 @@ impl crate::Data<'_> {
 
         /* Now prepare the left/right text-boxes */
         let left_box =
-            ArrayString::<[u8; LEFT_TEXT_LEN]>::from(std::str::from_utf8(left.to_bytes()).unwrap());
-        let right_box = ArrayString::<[u8; RIGHT_TEXT_LEN]>::from(
-            std::str::from_utf8(right.to_bytes()).unwrap(),
-        );
+            ArrayString::<LEFT_TEXT_LEN>::from(std::str::from_utf8(left.to_bytes()).unwrap())
+                .unwrap();
+        let right_box =
+            ArrayString::<RIGHT_TEXT_LEN>::from(std::str::from_utf8(right.to_bytes()).unwrap())
+                .unwrap();
         // --------------------
         // No we see if the screen need an update...
 
@@ -937,8 +938,8 @@ impl<const N: usize> Deref for CStrFixedCow<'_, N> {
 mod screen_updater {
     use std::cell::RefCell;
 
+    use arrayvec::ArrayString;
     use sdl::Rect;
-    use tinyvec_string::ArrayString;
 
     use crate::{
         b_font::{font_height, print_string_font},
@@ -947,32 +948,32 @@ mod screen_updater {
     };
 
     thread_local! {
-        static PREVIOUS_LEFT_BOX: RefCell<ArrayString::<[u8; LEFT_TEXT_LEN]>>={
-          RefCell::new(ArrayString::from("NOUGHT"))
+        static PREVIOUS_LEFT_BOX: RefCell<ArrayString::<LEFT_TEXT_LEN>>={
+          RefCell::new(ArrayString::from("NOUGHT").unwrap())
         };
-        static PREVIOUS_RIGHT_BOX: RefCell<ArrayString::<[u8; RIGHT_TEXT_LEN]>>= {
-          RefCell::new(ArrayString::from("NOUGHT"))
+        static PREVIOUS_RIGHT_BOX: RefCell<ArrayString::<RIGHT_TEXT_LEN>>= {
+          RefCell::new(ArrayString::from("NOUGHT").unwrap())
         };
     }
 
     pub fn screen_needs_update(
         data: &crate::Data,
-        left_box: ArrayString<[u8; LEFT_TEXT_LEN]>,
-        right_box: ArrayString<[u8; RIGHT_TEXT_LEN]>,
+        left_box: ArrayString<LEFT_TEXT_LEN>,
+        right_box: ArrayString<RIGHT_TEXT_LEN>,
         flags: i32,
     ) -> bool {
         data.graphics.banner_is_destroyed != 0
             || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
             || PREVIOUS_LEFT_BOX
-                .with(|previous_left_box| left_box != previous_left_box.borrow().as_ref())
+                .with(|previous_left_box| &left_box != previous_left_box.borrow().as_ref())
             || PREVIOUS_RIGHT_BOX
-                .with(|previous_right_box| right_box != previous_right_box.borrow().as_ref())
+                .with(|previous_right_box| &right_box != previous_right_box.borrow().as_ref())
     }
 
     pub fn update_screen(
         data: &mut crate::Data,
-        left_box: ArrayString<[u8; LEFT_TEXT_LEN]>,
-        right_box: ArrayString<[u8; RIGHT_TEXT_LEN]>,
+        left_box: ArrayString<LEFT_TEXT_LEN>,
+        right_box: ArrayString<RIGHT_TEXT_LEN>,
         flags: i32,
     ) {
         // Redraw the whole background of the top status bar
@@ -991,9 +992,9 @@ mod screen_updater {
         // Now the text should be ready and its
         // time to display it...
         let previous_left_check = PREVIOUS_LEFT_BOX
-            .with(|previous_left_box| left_box != previous_left_box.borrow().as_ref());
+            .with(|previous_left_box| &left_box != previous_left_box.borrow().as_ref());
         let previous_right_check = PREVIOUS_RIGHT_BOX
-            .with(|previous_right_box| right_box != previous_right_box.borrow().as_ref());
+            .with(|previous_right_box| &right_box != previous_right_box.borrow().as_ref());
         if previous_left_check
             || previous_right_check
             || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0

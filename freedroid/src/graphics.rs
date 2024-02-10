@@ -18,6 +18,7 @@ use crate::{
     Sdl,
 };
 
+use arrayvec::ArrayString;
 use cstr::cstr;
 use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
@@ -27,7 +28,6 @@ use sdl::{
     ColorKeyFlag, Cursor, FrameBuffer, Pixel, Rect, Rgba, RwOpsOwned, Surface, VideoModeFlags,
 };
 use std::{array, borrow::Cow, cell::RefCell, ffi::CStr, ops::Not, path::Path, pin::Pin, rc::Rc};
-use tinyvec_string::ArrayString;
 
 #[derive(Debug)]
 pub struct Graphics<'sdl> {
@@ -1098,7 +1098,7 @@ impl crate::Data<'_> {
         self.update_progress(90);
         //---------- get Droid images ----------
         let droids = &mut self.vars.droidmap;
-        let mut fname = ArrayString::<[u8; 500]>::new();
+        let mut fname = ArrayString::<500>::new();
         droids
             .iter()
             .zip(self.graphics.packed_portraits.iter_mut())
@@ -1107,12 +1107,12 @@ impl crate::Data<'_> {
                 fname.clear();
                 fname.push_str(droid.druidname.to_str().unwrap());
                 fname.push_str(".jpg");
-                let mut fpath = find_file!(fname.as_ref(), Criticality::Ignore);
+                let mut fpath = find_file!(fname.as_bytes(), Criticality::Ignore);
                 // then try with .png
                 if fpath.is_none() {
                     fname.truncate(droid.druidname.len());
                     fname.push_str(".png");
-                    fpath = find_file!(fname.as_ref());
+                    fpath = find_file!(fname.as_bytes());
                 }
 
                 let fpath = fpath.expect("unable to find droid imag");
@@ -1125,7 +1125,7 @@ impl crate::Data<'_> {
         fname.clear();
         fname.push_str(droids[Droid::Droid999 as usize].druidname.to_str().unwrap());
         fname.push_str(".png");
-        self.graphics.pic999 = load_block_from_file!(fname.as_ref());
+        self.graphics.pic999 = load_block_from_file!(fname.as_bytes());
 
         // get the Ashes pics
         let fpath = find_file!(b"Ashes.png", Criticality::WarnOnly);

@@ -306,7 +306,6 @@ dependencies = [
  "rand",
  "sdl",
  "sdl-sys",
- "tinyvec_string",
 ]
 
 [[package]]
@@ -809,21 +808,6 @@ checksum = "3fdd6f064ccff2d6567adcb3873ca630700f00b5ad3f060c25b5dcfd9a4ce152"
 dependencies = [
  "cfg-if",
  "once_cell",
-]
-
-[[package]]
-name = "tinyvec"
-version = "1.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87cc5ceb3875bb20c2890005a4e226a4651264a5c75edb2421b52861a0a0cb50"
-
-[[package]]
-name = "tinyvec_string"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be28110ab94064f103a2a24597ed8f556f831d7334751ab991967de16c12d18f"
-dependencies = [
- "tinyvec",
 ]
 
 [[package]]

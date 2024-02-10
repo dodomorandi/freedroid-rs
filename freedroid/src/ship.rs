@@ -12,11 +12,11 @@ use crate::{
     ArrayIndex,
 };
 
+use arrayvec::ArrayString;
 use log::{error, warn};
 use sdl::{rwops::RwOpsCapability, Rect, Rgba, Surface};
 use sdl_sys::SDL_Color;
 use std::ops::Not;
-use tinyvec_string::ArrayString;
 
 const UPDATE_ONLY: u8 = 0x01;
 
@@ -294,7 +294,7 @@ impl crate::Data<'_> {
             + i16::try_from(self.vars.cons_header_rect.height()).unwrap();
         self.set_ship_rects(lastline, lineskip);
 
-        let mut droid_name = ArrayString::<[u8; 80]>::default();
+        let mut droid_name = ArrayString::<80>::default();
         let droid = &self.vars.droidmap[droid_type.to_usize()];
         write!(
             droid_name,
@@ -304,7 +304,7 @@ impl crate::Data<'_> {
         )
         .unwrap();
 
-        let mut info_text = ArrayString::<[u8; 1000]>::default();
+        let mut info_text = ArrayString::<1000>::default();
         let mut show_arrows = false;
         show_droid_page_info(page, &mut info_text, &mut show_arrows, droid_type, droid);
 
@@ -355,7 +355,7 @@ impl crate::Data<'_> {
         }
 
         self.display_text(
-            info_text.as_ref(),
+            info_text.as_bytes(),
             self.vars.cons_text_rect.x().into(),
             self.vars.cons_text_rect.y().into(),
             Some(self.vars.cons_text_rect),
@@ -363,7 +363,7 @@ impl crate::Data<'_> {
 
         #[allow(clippy::cast_possible_truncation)]
         self.display_text(
-            droid_name.as_ref(),
+            droid_name.as_bytes(),
             i32::from(self.vars.cons_header_rect.x()) + i32::from(lineskip),
             (f32::from(lastline) - 0.9 * f32::from(lineskip)) as i32,
             None,
@@ -910,7 +910,7 @@ impl crate::Data<'_> {
 
             self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
 
-            let mut menu_text = ArrayString::<[u8; 200]>::default();
+            let mut menu_text = ArrayString::<200>::default();
             write!(
                 menu_text,
                 "Area : {}\nDeck : {}    Alert: {}",
@@ -922,7 +922,7 @@ impl crate::Data<'_> {
             )
             .unwrap();
             self.display_text(
-                menu_text.as_ref(),
+                menu_text.as_bytes(),
                 self.vars.cons_header_rect.x().into(),
                 self.vars.cons_header_rect.y().into(),
                 Some(self.vars.cons_header_rect),
@@ -1150,7 +1150,7 @@ impl crate::Data<'_> {
 
 fn show_droid_page_info(
     page: i32,
-    info_text: &mut ArrayString<[u8; 1000]>,
+    info_text: &mut ArrayString<1000>,
     show_arrows: &mut bool,
     droid_type: Droid,
     droid: &DruidSpec,
