@@ -14,7 +14,6 @@ use crate::{
     structs::{CoarsePoint, Enemy, Finepoint, Level, Waypoint},
 };
 
-use array_init::array_init;
 use bstr::ByteSlice;
 #[cfg(not(target_os = "android"))]
 use cstr::cstr;
@@ -28,6 +27,7 @@ use sdl::convert::u8_to_usize;
 #[cfg(not(target_os = "android"))]
 use std::ffi::CStr;
 use std::{
+    array,
     convert::identity,
     ffi::CString,
     fmt::{self, Display},
@@ -379,7 +379,7 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
         xlen: 0,
         ylen: 0,
         color: Color::default(),
-        map: array_init(|_| Vec::default()),
+        map: array::from_fn(|_| Vec::default()),
         refreshes: [None; MAX_REFRESHES_ON_LEVEL],
         doors: [None; MAX_DOORS_ON_LEVEL],
         alerts: [None; MAX_ALERTS_ON_LEVEL],

@@ -6,14 +6,13 @@ use crate::{
     Main, Sdl,
 };
 
-use array_init::array_init;
 use log::{error, info, warn};
 use sdl::{
     mixer::{Chunk, Music, OpenAudio},
     rwops::RwOps,
     Mixer,
 };
-use std::ffi::CStr;
+use std::{array, ffi::CStr};
 
 const MIX_MAX_VOLUME: u8 = 128;
 
@@ -449,7 +448,7 @@ impl<'a> Sound<'a> {
         // WAV files into memory, something we NEVER did while using the yiff,
         // because the yiff did all the loading, analyzing and playing...
 
-        let mut loaded_wav_files: [_; SoundType::All as usize] = array_init(|_| None);
+        let mut loaded_wav_files: [_; SoundType::All as usize] = array::from_fn(|_| None);
 
         let iter = SOUND_SAMPLE_FILENAMES.iter().copied().enumerate().skip(1);
         for (sound_file_index, sample_filename) in iter {
@@ -481,7 +480,7 @@ impl<'a> Sound<'a> {
             info!("Successfully loaded file {}.", sample_filename);
         }
 
-        let mut music_songs: [_; NUM_COLORS] = array_init(|_| None);
+        let mut music_songs: [_; NUM_COLORS] = array::from_fn(|_| None);
         let iter = MUSIC_FILES.iter().copied().enumerate();
         for (music_file_index, music_file) in iter {
             let fpath = crate::Data::find_file_static(

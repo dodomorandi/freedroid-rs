@@ -27,7 +27,6 @@ mod view;
 
 use array_c_string::ArrayCString;
 pub use array_index::ArrayIndex;
-use array_init::array_init;
 use b_font::BFont;
 use defs::{
     AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Status, BYCOLOR,
@@ -122,7 +121,7 @@ impl Default for Main<'_> {
             num_enemys: 0,
             number_of_droid_types: 0,
             pre_take_energy: 0,
-            all_bullets: array_init(|_| None),
+            all_bullets: array::from_fn(|_| None),
             all_blasts: array::from_fn(|_| Blast::default()),
             first_digit_rect: Rect::default(),
             second_digit_rect: Rect::default(),

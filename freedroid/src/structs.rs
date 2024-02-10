@@ -9,7 +9,6 @@ use crate::{
     map,
 };
 
-use array_init::array_init;
 use sdl::{convert::u8_to_usize, Rect, Surface};
 use std::{
     array,
@@ -327,7 +326,7 @@ impl Default for Ship {
             num_lifts: 0,
             num_lift_rows: 0,
             area_name: ArrayCString::default(),
-            all_levels: array_init(|_| None),
+            all_levels: array::from_fn(|_| None),
             all_lifts: array::from_fn(|_| Lift {
                 level: 0,
                 x: 0,

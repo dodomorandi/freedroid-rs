@@ -18,7 +18,6 @@ use crate::{
     Sdl,
 };
 
-use array_init::array_init;
 use cstr::cstr;
 use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
@@ -27,7 +26,7 @@ use sdl::{
     rwops::{self, RwOps},
     ColorKeyFlag, Cursor, FrameBuffer, Pixel, Rect, Rgba, RwOpsOwned, Surface, VideoModeFlags,
 };
-use std::{borrow::Cow, cell::RefCell, ffi::CStr, ops::Not, path::Path, pin::Pin, rc::Rc};
+use std::{array, borrow::Cow, cell::RefCell, ffi::CStr, ops::Not, path::Path, pin::Pin, rc::Rc};
 use tinyvec_string::ArrayString;
 
 #[derive(Debug)]
@@ -81,14 +80,14 @@ impl Default for Graphics<'_> {
         Self {
             vid_bpp: 0,
             fonts_loaded: 0,
-            map_block_surface_pointer: array_init(|_| array_init(|_| None)),
-            orig_map_block_surface_pointer: array_init(|_| array_init(|_| None)),
+            map_block_surface_pointer: array::from_fn(|_| array::from_fn(|_| None)),
+            orig_map_block_surface_pointer: array::from_fn(|_| array::from_fn(|_| None)),
             build_block: None,
             banner_is_destroyed: 0,
             banner_pic: None,
             pic999: None,
-            packed_portraits: array_init(|_| None),
-            decal_pics: array_init(|_| None),
+            packed_portraits: array::from_fn(|_| None),
+            decal_pics: array::from_fn(|_| None),
             takeover_bg_pic: None,
             console_pic: None,
             console_bg_pic1: None,
@@ -102,10 +101,10 @@ impl Default for Graphics<'_> {
             progress_meter_pic: None,
             progress_filler_pic: None,
             ne_screen: None,
-            enemy_surface_pointer: array_init(|_| None),
-            influencer_surface_pointer: array_init(|_| None),
-            influ_digit_surface_pointer: array_init(|_| None),
-            enemy_digit_surface_pointer: array_init(|_| None),
+            enemy_surface_pointer: array::from_fn(|_| None),
+            influencer_surface_pointer: array::from_fn(|_| None),
+            influ_digit_surface_pointer: array::from_fn(|_| None),
+            enemy_digit_surface_pointer: array::from_fn(|_| None),
             crosshair_cursor: None,
             arrow_cursor: None,
             theme_list: None,
@@ -624,7 +623,7 @@ impl crate::Data<'_> {
             clippy::cast_sign_loss,
             clippy::cast_possible_truncation
         )]
-        let grey: [Pixel; NOISE_COLORS as usize] = array_init(|index| {
+        let grey: [Pixel; NOISE_COLORS as usize] = array::from_fn(|index| {
             let color = (((index as f64 + 1.0) / f64::from(NOISE_COLORS)) * 255.0) as u8;
             frame_buffer.format().map_rgb(color, color, color)
         });
@@ -643,7 +642,7 @@ impl crate::Data<'_> {
         frame_buffer.blit_from(&*rect, &mut tmp);
 
         let mut rng = rand::thread_rng();
-        let mut noise_tiles: [Surface; NOISE_TILES as usize] = array_init(|_| {
+        let mut noise_tiles: [Surface; NOISE_TILES as usize] = array::from_fn(|_| {
             let mut tile = tmp.display_format().unwrap();
             let mut lock = tile.lock().unwrap();
             (0..rect.width())
