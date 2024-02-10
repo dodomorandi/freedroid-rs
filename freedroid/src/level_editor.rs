@@ -8,6 +8,7 @@ use crate::{
     view::BLACK,
 };
 
+use arrayvec::ArrayVec;
 use log::{info, warn};
 use nom::Finish;
 use sdl::{convert::u32_to_u16, Pixel};
@@ -23,7 +24,7 @@ const HIGHLIGHTCOLOR2: Pixel = Pixel::from_u8(100);
 
 /// create a new empty waypoint on position x/y
 fn create_waypoint(level: &mut Level, block_x: i32, block_y: i32) {
-    if level.num_waypoints == MAXWAYPOINTS {
+    if level.waypoints.is_full() {
         warn!(
             "Maximal number of waypoints ({}) reached on this level. Cannot insert any more.",
             MAXWAYPOINTS,
@@ -31,35 +32,20 @@ fn create_waypoint(level: &mut Level, block_x: i32, block_y: i32) {
         return;
     }
 
-    let num = usize::from(level.num_waypoints);
-    level.num_waypoints += 1;
-
-    level.all_waypoints[num].x = block_x.try_into().unwrap();
-    level.all_waypoints[num].y = block_y.try_into().unwrap();
-    level.all_waypoints[num].connections.clear();
+    level.waypoints.push(Waypoint {
+        x: block_x.try_into().unwrap(),
+        y: block_y.try_into().unwrap(),
+        connections: ArrayVec::new(),
+    });
 }
 
 /// delete given waypoint num (and all its connections) on level Lev
 fn delete_waypoint(level: &mut Level, num: u8) {
-    let wp_list = &mut level.all_waypoints;
-    let wpmax = level.num_waypoints - 1;
-
-    // is this the last one? then just delete
-    if num == wpmax {
-        wp_list[usize::from(num)].connections.clear();
-    } else {
-        // otherwise shift down all higher waypoints
-        let num: usize = num.into();
-        for index in (num + 1)..usize::from(wpmax) {
-            wp_list[index - 1] = wp_list[index].clone();
-        }
-    }
-
-    // now there's one less:
-    level.num_waypoints -= 1;
+    let wp_list = &mut level.waypoints;
+    wp_list.remove(usize::from(num));
 
     // now adjust the remaining wp-list to the changes:
-    for waypoint in &mut wp_list[..usize::from(level.num_waypoints)] {
+    for waypoint in wp_list {
         let Waypoint { connections, .. } = waypoint;
 
         let mut connection_index = 0;
@@ -124,10 +110,10 @@ impl crate::Data<'_> {
                 self.draw_line_between_tiles(
                     block_x as f32,
                     block_y as f32,
-                    self.main.cur_level().all_waypoints[usize::try_from(origin_waypoint).unwrap()]
+                    self.main.cur_level().waypoints[usize::try_from(origin_waypoint).unwrap()]
                         .x
                         .into(),
-                    self.main.cur_level().all_waypoints[usize::try_from(origin_waypoint).unwrap()]
+                    self.main.cur_level().waypoints[usize::try_from(origin_waypoint).unwrap()]
                         .y
                         .into(),
                     HIGHLIGHTCOLOR2,
@@ -334,19 +320,12 @@ impl crate::Data<'_> {
 
     fn handle_level_editor_toggle_waypoint(&mut self, block_x: i32, block_y: i32) {
         // find out if there is a waypoint on the current square
-        let mut i = 0;
-        while i < usize::from(self.main.cur_level().num_waypoints) {
-            if i32::from(self.main.cur_level().all_waypoints[i].x) == block_x
-                && i32::from(self.main.cur_level().all_waypoints[i].y) == block_y
-            {
-                break;
-            }
-
-            i += 1;
-        }
+        let i = self.main.cur_level().waypoints.iter().position(|waypoint| {
+            i32::from(waypoint.x) == block_x && i32::from(waypoint.y) == block_y
+        });
 
         // if its waypoint already, this waypoint must be deleted.
-        if i < usize::from(self.main.cur_level().num_waypoints) {
+        if let Some(i) = i {
             delete_waypoint(self.main.cur_level_mut(), i.try_into().unwrap());
         } else {
             // if its not a waypoint already, it must be made into one
@@ -362,22 +341,16 @@ impl crate::Data<'_> {
         src_wp_index: &mut Option<usize>,
     ) {
         // Determine which waypoint is currently targeted
-        let mut i = 0;
-        while i < usize::from(self.main.cur_level().num_waypoints) {
-            if i32::from(self.main.cur_level().all_waypoints[i].x) == block_x
-                && i32::from(self.main.cur_level().all_waypoints[i].y) == block_y
-            {
-                break;
-            }
-
-            i += 1;
-        }
-
-        if i == usize::from(self.main.cur_level().num_waypoints) {
+        let Some(i) = self.main.cur_level().waypoints.iter().position(|waypoint| {
+            i32::from(waypoint.x) == block_x && i32::from(waypoint.y) == block_y
+        }) else {
             warn!("Sorry, no waypoint here to connect.");
-        } else if *origin_waypoint == -1 {
+            return;
+        };
+
+        if *origin_waypoint == -1 {
             *origin_waypoint = i.try_into().unwrap();
-            let waypoint = &mut cur_level!(mut self.main).all_waypoints[i];
+            let waypoint = &mut cur_level!(mut self.main).waypoints[i];
             if waypoint.connections.len() < usize::from(MAX_WP_CONNECTIONS) {
                 info!("Waypoint nr. {}. selected as origin", i);
                 *src_wp_index = Some(i);
@@ -397,7 +370,7 @@ impl crate::Data<'_> {
         } else {
             info!("Target-waypoint {} selected. Connection established!", i);
             let waypoint_index = src_wp_index.take().unwrap();
-            let waypoint = &mut cur_level!(mut self.main).all_waypoints[waypoint_index];
+            let waypoint = &mut cur_level!(mut self.main).waypoints[waypoint_index];
             waypoint.connections.push(i.try_into().unwrap());
             *origin_waypoint = -1;
         }
@@ -512,10 +485,9 @@ impl crate::Data<'_> {
         let block_rect_width_f = f32::from(self.vars.block_rect.width());
         let block_rect_height_f = f32::from(self.vars.block_rect.height());
 
-        for wp in 0..usize::from(self.main.cur_level().num_waypoints) {
-            let this_wp = &cur_level!(self.main).all_waypoints[wp];
-            let wp_x = f32::from(this_wp.x);
-            let wp_y = f32::from(this_wp.y);
+        for waypoint in &self.main.cur_level().waypoints {
+            let wp_x = f32::from(waypoint.x);
+            let wp_y = f32::from(waypoint.y);
 
             // Draw the cross in the middle of the middle of the tile
             for i in i32::from(self.vars.block_rect.width() / 4)
@@ -599,14 +571,14 @@ impl crate::Data<'_> {
 
             // Draw the connections to other waypoints, BUT ONLY FOR THE WAYPOINT CURRENTLY TARGETED
             if (block_x - wp_x).abs() <= f32::EPSILON && (block_y - wp_y).abs() <= f32::EPSILON {
-                for &connection in &this_wp.connections {
+                for &connection in &waypoint.connections {
                     let connection = usize::from(connection);
-                    let waypoint = &cur_level!(self.main).all_waypoints[connection];
+                    let waypoint = &cur_level!(self.main).waypoints[connection];
                     Self::draw_line_between_tiles_static(
                         &self.vars,
                         &mut self.graphics,
-                        this_wp.x.into(),
-                        this_wp.y.into(),
+                        waypoint.x.into(),
+                        waypoint.y.into(),
                         waypoint.x.into(),
                         waypoint.y.into(),
                         HIGHLIGHTCOLOR,

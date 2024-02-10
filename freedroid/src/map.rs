@@ -385,12 +385,7 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
         refreshes: [None; MAX_REFRESHES_ON_LEVEL],
         doors: [None; MAX_DOORS_ON_LEVEL],
         alerts: [None; MAX_ALERTS_ON_LEVEL],
-        num_waypoints: 0,
-        all_waypoints: array::from_fn(|_| Waypoint {
-            x: 0,
-            y: 0,
-            connections: ArrayVec::default(),
-        }),
+        waypoints: ArrayVec::default(),
     };
 
     info!("Starting to process information for another level:");
@@ -459,15 +454,17 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
     /* Get Waypoints */
     let mut lines = data[wp_begin..level_end].lines().skip(1);
 
-    for i in 0..MAXWAYPOINTS {
+    for _ in 0..MAXWAYPOINTS {
         let Some(this_line) = lines.next() else {
-            loadlevel.num_waypoints = i;
             break;
         };
 
         let [x, y] = parse_waypoint_x_y(this_line);
-        loadlevel.all_waypoints[usize::from(i)].x = x.try_into().unwrap();
-        loadlevel.all_waypoints[usize::from(i)].y = y.try_into().unwrap();
+        let mut waypoint = Waypoint {
+            x: x.try_into().unwrap(),
+            y: y.try_into().unwrap(),
+            connections: ArrayVec::new(),
+        };
 
         let mut pos = this_line
             [this_line.find(CONNECTION_STRING).unwrap() + CONNECTION_STRING.len()..]
@@ -480,11 +477,7 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
 
             match tuple((whitespace, u8))(pos).finish() {
                 Ok((rest, (_, connection))) => {
-                    if loadlevel.all_waypoints[usize::from(i)]
-                        .connections
-                        .try_push(connection)
-                        .is_err()
-                    {
+                    if waypoint.connections.try_push(connection).is_err() {
                         break;
                     };
                     pos = rest.trim_start();
@@ -492,6 +485,7 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
                 Err(()) => break,
             }
         }
+        loadlevel.waypoints.push(waypoint);
     }
 
     Some(loadlevel)
@@ -1528,7 +1522,7 @@ pub fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
     let x_len = level.xlen;
     let y_len = level.ylen;
 
-    let anz_wp = usize::from(level.num_waypoints);
+    let anz_wp = level.waypoints.len();
 
     /* estimate the amount of memory needed */
     let mem_amount = usize::from(x_len + 1) * usize::from(y_len)
@@ -1584,16 +1578,15 @@ pub fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
 
     writeln!(level_cursor, "{WP_BEGIN_STRING}").unwrap();
 
-    for i in 0..usize::from(level.num_waypoints) {
+    for (i, waypoint) in level.waypoints.iter().enumerate() {
         write!(
             level_cursor,
             "Nr.={:3} x={:4} y={:4}\t {}",
-            i, level.all_waypoints[i].x, level.all_waypoints[i].y, CONNECTION_STRING
+            i, waypoint.x, waypoint.y, CONNECTION_STRING
         )
         .unwrap();
 
-        let this_wp = &level.all_waypoints[i];
-        for &connection in &this_wp.connections {
+        for &connection in &waypoint.connections {
             write!(level_cursor, "{connection:2} ").unwrap();
         }
         writeln!(level_cursor).unwrap();

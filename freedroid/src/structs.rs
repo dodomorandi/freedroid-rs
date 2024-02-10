@@ -302,8 +302,7 @@ pub struct Level {
     pub refreshes: [Option<CoarsePoint<u8>>; MAX_REFRESHES_ON_LEVEL],
     pub doors: [Option<CoarsePoint<u8>>; MAX_DOORS_ON_LEVEL],
     pub alerts: [Option<CoarsePoint<u8>>; MAX_ALERTS_ON_LEVEL],
-    pub num_waypoints: u8,
-    pub all_waypoints: [Waypoint; u8_to_usize(MAXWAYPOINTS)],
+    pub waypoints: ArrayVec<Waypoint, { u8_to_usize(MAXWAYPOINTS) }>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -420,7 +420,7 @@ impl<'sdl> crate::Data<'sdl> {
         &mut self,
         mut ne_screen: FrameBuffer<'sdl>,
     ) -> FrameBuffer<'sdl> {
-        for i in 0..cur_level!(self.main).all_waypoints.len() {
+        for i in 0..cur_level!(self.main).waypoints.len() {
             if i != 0 && i % 20 == 0 {
                 self.printf_sdl(&mut ne_screen, -1, -1, format_args!(" ---- MORE -----\n"));
                 if self.getchar_raw() == b'q'.into() {
@@ -445,7 +445,7 @@ impl<'sdl> crate::Data<'sdl> {
                 );
             }
             let cur_level = cur_level!(self.main);
-            let waypoint = &cur_level.all_waypoints[i];
+            let waypoint = &cur_level.waypoints[i];
             Self::printf_sdl_static(
                 &mut self.text,
                 &self.b_font,

@@ -342,7 +342,7 @@ impl crate::Data<'_> {
             .unwrap();
 
         // We do some definitions to save us some more typing later...
-        let wp_list = &cur_level!(self.main).all_waypoints;
+        let wp_list = &cur_level!(self.main).waypoints;
         let nextwp = usize::from(this_robot.nextwaypoint);
 
         // determine the remaining way until the target point is reached
@@ -371,7 +371,7 @@ impl crate::Data<'_> {
         let mut used_wp = [false; u8_to_usize(MAXWAYPOINTS)];
         let mut warned = false;
 
-        let num_wp = cur_level.num_waypoints;
+        let num_wp = u8::try_from(cur_level.waypoints.len()).unwrap();
         let mut nth_enemy = 0;
 
         let mut rng = thread_rng();
@@ -408,8 +408,8 @@ impl crate::Data<'_> {
             }
 
             used_wp[usize::from(wp)] = true;
-            enemy.pos.x = cur_level.all_waypoints[usize::from(wp)].x.into();
-            enemy.pos.y = cur_level.all_waypoints[usize::from(wp)].y.into();
+            enemy.pos.x = cur_level.waypoints[usize::from(wp)].x.into();
+            enemy.pos.y = cur_level.waypoints[usize::from(wp)].y.into();
 
             enemy.lastwaypoint = wp;
             enemy.nextwaypoint = wp;
@@ -431,7 +431,7 @@ impl crate::Data<'_> {
             .unwrap();
 
         // We do some definitions to save us some more typing later...
-        let wp_list = &cur_level!(main).all_waypoints;
+        let wp_list = &cur_level!(main).waypoints;
         let nextwp: usize = this_robot.nextwaypoint.into();
         let maxspeed = vars.droidmap[this_robot.ty.to_usize()].maxspeed;
 
