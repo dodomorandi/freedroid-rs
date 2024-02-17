@@ -3,7 +3,7 @@ use crate::menu::SHIP_EXT;
 use crate::{
     defs::{
         self, Criticality, Direction, Droid, MapTile, Status, Themed, DIRECTIONS, MAP_DIR_C,
-        MAXWAYPOINTS, MAX_ALERTS_ON_LEVEL, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, MAX_REFRESHES_ON_LEVEL,
+        MAXWAYPOINTS, MAX_ALERTS_ON_LEVEL, MAX_LEVELS, MAX_REFRESHES_ON_LEVEL,
     },
     find_subslice, map,
     misc::{
@@ -927,45 +927,32 @@ freedroid-discussion@lists.sourceforge.net\n\
                     *pos = pos.next().unwrap();
                 }
             } else {
-                /* alle Enemys checken */
-                let mut j = 0;
-                while j < usize::from(self.main.num_enemys) {
-                    let Some(enemy) = self.main.all_enemys[j].as_ref() else {
-                        j += 1;
-                        continue;
-                    };
-
-                    /* ignore druids that are dead or on other levels */
-                    if matches!(enemy.status, Status::Out | Status::Terminated)
-                        || enemy.levelnum != cur_level.levelnum
-                    {
-                        j += 1;
-                        continue;
-                    }
-
-                    let x_dist = (enemy.pos.x - f32::from(door.x)).trunc().abs();
-                    if x_dist < self.vars.block_rect.width().into() {
-                        let y_dist = (enemy.pos.y - f32::from(door.y)).trunc().abs();
-                        if y_dist < self.vars.block_rect.height().into() {
-                            let dist2 = x_dist * x_dist + y_dist * y_dist;
-                            if dist2 < DOOROPENDIST2 {
-                                if *pos != MapTile::HGanztuere && *pos != MapTile::VGanztuere {
-                                    *pos = pos.next().unwrap();
-                                }
-
-                                break; /* one druid is enough to open a door */
+                let droid_is_nearby = self
+                    .main
+                    .enemys
+                    .iter()
+                    .filter(|enemy| {
+                        (matches!(enemy.status, Status::Out | Status::Terminated)
+                            || enemy.levelnum != cur_level.levelnum)
+                            .not()
+                    })
+                    .any(|enemy| {
+                        let x_dist = (enemy.pos.x - f32::from(door.x)).trunc().abs();
+                        if x_dist < self.vars.block_rect.width().into() {
+                            let y_dist = (enemy.pos.y - f32::from(door.y)).trunc().abs();
+                            if y_dist < self.vars.block_rect.height().into() {
+                                let dist2 = x_dist * x_dist + y_dist * y_dist;
+                                return dist2 < DOOROPENDIST2;
                             }
                         }
+                        false
+                    });
+
+                if droid_is_nearby {
+                    if *pos != MapTile::HGanztuere && *pos != MapTile::VGanztuere {
+                        *pos = pos.next().unwrap();
                     }
-
-                    j += 1;
-                }
-
-                /* No druid near: close door if it isnt closed */
-                if j == usize::from(self.main.num_enemys)
-                    && *pos != MapTile::VZutuere
-                    && *pos != MapTile::HZutuere
-                {
+                } else if *pos != MapTile::VZutuere && *pos != MapTile::HZutuere {
                     *pos = pos.prev().unwrap();
                 }
             }
@@ -1100,28 +1087,25 @@ freedroid-discussion@lists.sourceforge.net\n\
         while real_number_of_random_droids > 0 {
             real_number_of_random_droids -= 1;
 
-            let mut free_all_enemys_position = 0;
-            while free_all_enemys_position < MAX_ENEMYS_ON_SHIP {
-                if self.main.all_enemys[free_all_enemys_position]
-                    .as_ref()
-                    .map_or(true, |enemy| enemy.status == Status::Out)
-                {
-                    break;
-                }
-                free_all_enemys_position += 1;
-            }
-
-            assert!(
-                free_all_enemys_position != MAX_ENEMYS_ON_SHIP,
-                "No more free position to fill random droids into in GetCrew...Terminating...."
-            );
-
+            let enemy_slot = self
+                .main
+                .enemys
+                .iter_mut()
+                .find(|enemy| enemy.status == Status::Out);
             let random_droid_type = list_of_types_allowed[0..different_random_types]
                 .choose(&mut rng)
                 .copied()
                 .unwrap();
-            self.main.all_enemys[free_all_enemys_position] =
-                Some(Enemy::new(random_droid_type, our_level_number));
+
+            let new_enemy = Enemy::new(random_droid_type, our_level_number);
+            if let Some(enemy_slot) = enemy_slot {
+                *enemy_slot = new_enemy;
+            } else {
+                self.main
+                    .enemys
+                    .try_push(new_enemy)
+                    .expect("No more free position to fill random droids into in GetCrew");
+            }
         }
     }
 
@@ -1131,8 +1115,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         const DROIDS_LEVEL_DESCRIPTION_START_STRING: &[u8] = b"** Beginning of new Level **";
         const DROIDS_LEVEL_DESCRIPTION_END_STRING: &[u8] = b"** End of this levels droid data **";
 
-        /* Clear Enemy - Array */
-        self.clear_enemys();
+        self.main.enemys.clear();
 
         //Now its time to start decoding the droids file.
         //For that, we must get it into memory first.
@@ -1177,11 +1160,9 @@ freedroid-discussion@lists.sourceforge.net\n\
         // Now that the correct crew types have been filled into the
         // right structure, it's time to set the energy of the corresponding
         // droids to "full" which means to the maximum of each type.
-        self.main.num_enemys = 0;
-        for enemy in self.main.all_enemys.iter_mut().filter_map(Option::as_mut) {
+        for enemy in &mut self.main.enemys {
             enemy.energy = self.vars.droidmap[enemy.ty.to_usize()].maxenergy;
             enemy.status = Status::Mobile;
-            self.main.num_enemys += 1;
         }
 
         defs::OK.into()

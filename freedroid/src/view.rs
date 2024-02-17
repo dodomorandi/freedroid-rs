@@ -226,9 +226,7 @@ impl crate::Data<'_> {
     }
 
     pub fn put_enemy(&mut self, enemy_index: u16, x: i32, y: i32) {
-        let Some(droid) = &self.main.all_enemys[usize::from(enemy_index)] else {
-            return;
-        };
+        let droid = &self.main.enemys[usize::from(enemy_index)];
         let phase = droid.phase;
         let name = &self.vars.droidmap[droid.ty.to_usize()].druidname;
 
@@ -788,10 +786,8 @@ impl crate::Data<'_> {
             .set_clip_rect(&self.vars.user_rect);
 
         // make sure Ashes are displayed _before_ droids, so that they are _under_ them!
-        for enemy_index in 0..usize::from(self.main.num_enemys) {
-            let Some(enemy) = &self.main.all_enemys[enemy_index] else {
-                continue;
-            };
+        for enemy_index in 0..self.main.enemys.len() {
+            let enemy = &self.main.enemys[enemy_index];
             if enemy.status == Status::Terminated
                 && (enemy.levelnum == self.main.cur_level().levelnum)
                 && self.is_visible(enemy.pos) != 0
@@ -803,10 +799,8 @@ impl crate::Data<'_> {
         }
 
         let levelnum = self.main.cur_level().levelnum;
-        for enemy_index in 0..usize::from(self.main.num_enemys) {
-            let Some(enemy) = &self.main.all_enemys[enemy_index] else {
-                continue;
-            };
+        for enemy_index in 0..self.main.enemys.len() {
+            let enemy = &self.main.enemys[enemy_index];
             if enemy.levelnum == levelnum
                 && matches!(enemy.status, Status::Out | Status::Terminated).not()
             {

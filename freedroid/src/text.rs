@@ -537,9 +537,7 @@ impl crate::Data<'_> {
     }
 
     pub fn enemy_hit_by_bullet_text(&mut self, enemy: i32) {
-        let robot = self.main.all_enemys[usize::try_from(enemy).unwrap()]
-            .as_mut()
-            .unwrap();
+        let robot = &mut self.main.enemys[usize::try_from(enemy).unwrap()];
 
         if self.global.game_config.droid_talk == 0 {
             return;
@@ -559,9 +557,7 @@ impl crate::Data<'_> {
     }
 
     pub fn enemy_influ_collision_text(&mut self, enemy: i32) {
-        let robot = self.main.all_enemys[usize::try_from(enemy).unwrap()]
-            .as_mut()
-            .unwrap();
+        let robot = &mut self.main.enemys[usize::try_from(enemy).unwrap()];
 
         if self.global.game_config.droid_talk == 0 {
             return;

@@ -1061,10 +1061,7 @@ impl crate::Data<'_> {
             i32::from(y_offs) + self.takeover.droid_starts[your_color].y,
         );
 
-        if self.main.all_enemys[usize::from(self.takeover.droid_num)]
-            .as_ref()
-            .map_or(false, |enemy| enemy.status != Status::Out)
-        {
+        if self.main.enemys[usize::from(self.takeover.droid_num)].status != Status::Out {
             self.put_enemy(
                 self.takeover.droid_num,
                 i32::from(x_offs) + self.takeover.droid_starts[opponent_color].x,
@@ -1727,7 +1724,7 @@ impl crate::Data<'_> {
         }
 
         let enemy_index: usize = enemynum.into();
-        let enemy_type = self.main.all_enemys[enemy_index].as_ref().unwrap().ty;
+        let enemy_type = self.main.enemys[enemy_index].ty;
         self.show_droid_info(enemy_type, -2, 0);
         self.show_droid_portrait(
             self.vars.cons_droid_rect,
@@ -1772,7 +1769,7 @@ impl crate::Data<'_> {
     }
 
     fn takeover_round(&mut self, enemynum: u16, enemy_index: usize, finish_takeover: &mut bool) {
-        let enemy = self.main.all_enemys[enemy_index].as_ref().unwrap();
+        let enemy = &self.main.enemys[enemy_index];
 
         /* Init Color-column and Capsule-Number for each opponenet and your color */
         self.takeover
@@ -1818,7 +1815,7 @@ impl crate::Data<'_> {
         } else if self.takeover.leader_color == self.takeover.opponent_color {
             /* self.takeover.leader_color == self.takeover.your_color */
             // you lost, but enemy is killed too --> blast it!
-            self.main.all_enemys[enemy_index].as_mut().unwrap().energy = -1.0; /* to be sure */
+            self.main.enemys[enemy_index].energy = -1.0; /* to be sure */
 
             self.takeover_game_lost_sound();
             #[allow(clippy::cast_precision_loss)]
@@ -1870,7 +1867,7 @@ impl crate::Data<'_> {
             self.vars.me.health = droid_map[Droid::Droid001 as usize].maxenergy;
         }
 
-        let enemy = self.main.all_enemys[enemy_index].as_mut().unwrap();
+        let enemy = &mut self.main.enemys[enemy_index];
 
         // We allow to gain the current energy/full health that was still in the
         // other droid, since all previous damage must be due to fighting damage,

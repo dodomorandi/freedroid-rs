@@ -59,10 +59,8 @@ impl crate::Data<'_> {
             return;
         } // we only do the damage once and thats at frame nr. 1 of the flash
 
-        for enemy_index in 0..usize::from(self.main.num_enemys) {
-            let Some(enemy) = &self.main.all_enemys[enemy_index] else {
-                continue;
-            };
+        for enemy_index in 0..self.main.enemys.len() {
+            let enemy = &self.main.enemys[enemy_index];
             // !! dont't forget: Only droids on our level are harmed!! (bugfix)
             if enemy.levelnum != level {
                 continue;
@@ -72,7 +70,7 @@ impl crate::Data<'_> {
             if self.is_visible(enemy.pos) != 0
                 && self.vars.droidmap[enemy.ty.to_usize()].flashimmune == 0
             {
-                let enemy = self.main.all_enemys[enemy_index].as_mut().unwrap();
+                let enemy = &mut self.main.enemys[enemy_index];
                 enemy.energy -= f32::from(self.vars.bulletmap[BulletKind::Flash as usize].damage);
 
                 // Since the enemy just got hit, it might as well say so :)
@@ -149,11 +147,8 @@ impl crate::Data<'_> {
             }
 
             // check for collision with enemys
-            for (enemy_index, enemy) in self.main.all_enemys[..usize::from(self.main.num_enemys)]
-                .iter()
-                .enumerate()
-                .filter_map(|(index, enemy)| enemy.as_ref().map(|enemy| (index, enemy)))
-            {
+            for enemy_index in 0..self.main.enemys.len() {
+                let enemy = &self.main.enemys[enemy_index];
                 if matches!(enemy.status, Status::Out | Status::Terminated)
                     || enemy.levelnum != level
                 {
@@ -167,7 +162,7 @@ impl crate::Data<'_> {
                 #[allow(clippy::cast_precision_loss)]
                 if (x_dist * x_dist + y_dist * y_dist) < self.get_druid_hit_dist_squared() {
                     // The enemy who was hit, loses some energy, depending on the bullet
-                    self.main.all_enemys[enemy_index].as_mut().unwrap().energy -=
+                    self.main.enemys[enemy_index].energy -=
                         f32::from(self.vars.bulletmap[cur_bullet.ty.to_usize()].damage);
 
                     self.delete_bullet(cur_bullet_index.try_into().unwrap());
@@ -270,10 +265,7 @@ impl crate::Data<'_> {
             main, global, misc, ..
         } = self;
         let cur_blast = &main.all_blasts[usize::try_from(num).unwrap()];
-        for enemy in main.all_enemys[..usize::from(main.num_enemys)]
-            .iter_mut()
-            .filter_map(Option::as_mut)
-        {
+        for enemy in &mut main.enemys {
             if enemy.status == Status::Out || enemy.levelnum != level {
                 continue;
             }

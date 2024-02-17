@@ -43,10 +43,7 @@ impl crate::Data<'_> {
         } = self;
 
         let cur_level = cur_level!(mut main);
-        for enemy in main.all_enemys[..usize::from(main.num_enemys)]
-            .iter_mut()
-            .filter_map(Option::as_mut)
-        {
+        for enemy in &mut main.enemys {
             /* ignore enemys that are dead or on other levels or dummys */
             if enemy.levelnum != cur_level.levelnum {
                 continue;
@@ -73,10 +70,8 @@ impl crate::Data<'_> {
 
         self.animate_enemys(); // move the "phase" of the rotation of enemys
 
-        for enemy_index in 0..usize::from(self.main.num_enemys) {
-            let Some(enemy) = &self.main.all_enemys[enemy_index] else {
-                continue;
-            };
+        for enemy_index in 0..self.main.enemys.len() {
+            let enemy = &self.main.enemys[enemy_index];
             if matches!(enemy.status, Status::Out | Status::Terminated)
                 || enemy.levelnum != self.main.cur_level().levelnum
             {
@@ -97,9 +92,7 @@ impl crate::Data<'_> {
     /// enemy number enemynum directly into the direction of the influencer,
     /// but of course only if the odds are good i.e. requirements are met.
     pub fn attack_influence(&mut self, enemy_num: i32) {
-        let this_robot = self.main.all_enemys[usize::try_from(enemy_num).unwrap()]
-            .as_ref()
-            .unwrap();
+        let this_robot = &self.main.enemys[usize::try_from(enemy_num).unwrap()];
         // At first, we check for a lot of cases in which we do not
         // need to move anything for this reason or for that
 
@@ -144,17 +137,13 @@ impl crate::Data<'_> {
         if (0..=AGGRESSIONMAX).choose(&mut rng).unwrap()
             >= self.vars.droidmap[this_robot.ty.to_usize()].aggression
         {
-            self.main.all_enemys[usize::try_from(enemy_num).unwrap()]
-                .as_mut()
-                .unwrap()
-                .firewait += rng.gen_range(0f32..=1f32) * ROBOT_MAX_WAIT_BETWEEN_SHOTS;
+            self.main.enemys[usize::try_from(enemy_num).unwrap()].firewait +=
+                rng.gen_range(0f32..=1f32) * ROBOT_MAX_WAIT_BETWEEN_SHOTS;
             return;
         }
 
         self.fire_bullet_sound(guntype);
-        let this_robot = self.main.all_enemys[usize::try_from(enemy_num).unwrap()]
-            .as_mut()
-            .unwrap();
+        let this_robot = &mut self.main.enemys[usize::try_from(enemy_num).unwrap()];
 
         // find a bullet entry, that isn't currently used...
         let mut j = 0;
@@ -215,10 +204,7 @@ impl crate::Data<'_> {
     }
 
     pub fn move_this_enemy(&mut self, enemy_num: i32) {
-        let Some(this_robot) = &mut self.main.all_enemys[usize::try_from(enemy_num).unwrap()]
-        else {
-            return;
-        };
+        let this_robot = &mut self.main.enemys[usize::try_from(enemy_num).unwrap()];
 
         // Now check if the robot is still alive
         // if the robot just got killed, initiate the
@@ -267,19 +253,13 @@ impl crate::Data<'_> {
         let curlev = main.cur_level().levelnum;
 
         let enemy_num: usize = enemy_num.try_into().unwrap();
-        let (enemys_before, rest) =
-            main.all_enemys[..usize::from(main.num_enemys)].split_at_mut(enemy_num);
+        let (enemys_before, rest) = main.enemys.split_at_mut(enemy_num);
         let (cur_enemy, enemys_after) = rest.split_first_mut().unwrap();
-        let cur_enemy = cur_enemy.as_mut().unwrap();
         let check_x = cur_enemy.pos.x;
         let check_y = cur_enemy.pos.y;
 
         let mut rng = thread_rng();
-        for enemy in enemys_before
-            .iter_mut()
-            .chain(enemys_after)
-            .filter_map(Option::as_mut)
-        {
+        for enemy in enemys_before.iter_mut().chain(enemys_after) {
             // check only collisions of LIVING enemys on this level
             if matches!(enemy.status, Status::Out | Status::Terminated) || enemy.levelnum != curlev
             {
@@ -337,9 +317,7 @@ impl crate::Data<'_> {
     ///
     /// Map tiles are not taken into consideration, only droids.
     pub fn select_next_waypoint_classical(&mut self, enemy_num: i32) {
-        let this_robot = self.main.all_enemys[usize::try_from(enemy_num).unwrap()]
-            .as_mut()
-            .unwrap();
+        let this_robot = &mut self.main.enemys[usize::try_from(enemy_num).unwrap()];
 
         // We do some definitions to save us some more typing later...
         let wp_list = &cur_level!(self.main).waypoints;
@@ -375,10 +353,7 @@ impl crate::Data<'_> {
         let mut nth_enemy = 0;
 
         let mut rng = thread_rng();
-        for enemy in self.main.all_enemys[..usize::from(self.main.num_enemys)]
-            .iter_mut()
-            .filter_map(Option::as_mut)
-        {
+        for enemy in &mut self.main.enemys {
             if enemy.status == Status::Out || enemy.levelnum != cur_level_num {
                 /* dont handle dead enemys or on other level */
                 continue;
@@ -426,9 +401,7 @@ impl crate::Data<'_> {
             vars,
             ..
         } = self;
-        let this_robot = main.all_enemys[usize::try_from(enemy_num).unwrap()]
-            .as_mut()
-            .unwrap();
+        let this_robot = &mut main.enemys[usize::try_from(enemy_num).unwrap()];
 
         // We do some definitions to save us some more typing later...
         let wp_list = &cur_level!(main).waypoints;
@@ -465,11 +438,6 @@ impl crate::Data<'_> {
         }
     }
 
-    pub fn clear_enemys(&mut self) {
-        self.main.all_enemys.fill(None);
-        self.main.num_enemys = 0;
-    }
-
     pub fn permanent_heal_robots(&mut self) {
         let Self {
             vars,
@@ -480,9 +448,8 @@ impl crate::Data<'_> {
         } = self;
 
         let f_p_sover1 = main.f_p_sover1;
-        main.all_enemys[0..usize::from(main.num_enemys)]
+        main.enemys
             .iter_mut()
-            .filter_map(Option::as_mut)
             .filter(|enemy| {
                 enemy.status != Status::Out
                     && enemy.energy > 0.

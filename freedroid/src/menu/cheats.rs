@@ -113,10 +113,8 @@ impl<'sdl> crate::Data<'sdl> {
         mut ne_screen: FrameBuffer<'sdl>,
     ) -> FrameBuffer<'sdl> {
         let mut l = 0; /* line counter for enemy output */
-        for i in 0..usize::from(self.main.num_enemys) {
-            let Some(enemy) = &self.main.all_enemys[i] else {
-                continue;
-            };
+        for i in 0..self.main.enemys.len() {
+            let enemy = &self.main.enemys[i];
             if enemy.levelnum == cur_level!(self.main).levelnum {
                 if l != 0 && l % 20 == 0 {
                     Self::printf_sdl_static(
@@ -157,7 +155,7 @@ impl<'sdl> crate::Data<'sdl> {
                 }
 
                 l += 1;
-                let enemy = self.main.all_enemys[i].as_ref().unwrap();
+                let enemy = &self.main.enemys[i];
                 let status = if enemy.status == Status::Out {
                     "OUT"
                 } else if enemy.status == Status::Terminated {
@@ -199,11 +197,7 @@ impl<'sdl> crate::Data<'sdl> {
         &mut self,
         mut ne_screen: FrameBuffer<'sdl>,
     ) -> FrameBuffer<'sdl> {
-        for i in 0..usize::from(self.main.num_enemys) {
-            if self.main.all_enemys[i].is_none() {
-                continue;
-            };
-
+        for i in 0..self.main.enemys.len() {
             if i != 0 && !i % 13 == 0 {
                 self.printf_sdl(
                     &mut ne_screen,
@@ -233,7 +227,7 @@ impl<'sdl> crate::Data<'sdl> {
                 );
             }
 
-            let enemy = self.main.all_enemys[i].as_ref().unwrap();
+            let enemy = &self.main.enemys[i];
             Self::printf_sdl_static(
                 &mut self.text,
                 &self.b_font,
@@ -263,7 +257,7 @@ impl<'sdl> crate::Data<'sdl> {
 
     pub fn level_robots_destroy(&mut self, ne_screen: &mut FrameBuffer<'sdl>) {
         let cur_level = cur_level!(self.main);
-        for enemy in self.main.all_enemys.iter_mut().filter_map(Option::as_mut) {
+        for enemy in &mut self.main.enemys {
             if enemy.levelnum == cur_level.levelnum {
                 enemy.energy = -100.;
             }

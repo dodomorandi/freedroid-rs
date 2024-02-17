@@ -86,7 +86,7 @@ impl crate::Data<'_> {
     }
 
     pub fn check_influence_enemy_collision(&mut self) {
-        for enemy_index in 0..usize::from(self.main.num_enemys) {
+        for enemy_index in 0..self.main.enemys.len() {
             let Self {
                 vars,
                 main,
@@ -94,9 +94,7 @@ impl crate::Data<'_> {
                 global,
                 ..
             } = self;
-            let Some(enemy) = &mut main.all_enemys[enemy_index] else {
-                continue;
-            };
+            let enemy = &mut main.enemys[enemy_index];
 
             /* ignore enemy that are not on this level or dead */
             if enemy.levelnum != cur_level!(main).levelnum {
@@ -164,7 +162,7 @@ impl crate::Data<'_> {
                 self.check_influence_wall_collisions();
 
                 // shortly stop this enemy, then send him back to previous waypoint
-                let enemy = self.main.all_enemys[enemy_index].as_mut().unwrap();
+                let enemy = &mut self.main.enemys[enemy_index];
                 if enemy.warten == 0. {
                     enemy.warten = f32::from(WAIT_COLLISION);
                     std::mem::swap(&mut enemy.nextwaypoint, &mut enemy.lastwaypoint);
@@ -179,9 +177,7 @@ impl crate::Data<'_> {
     }
 
     pub fn influ_enemy_collision_lose_energy(&mut self, enemy_num: i32) {
-        let enemy = self.main.all_enemys[usize::try_from(enemy_num).unwrap()]
-            .as_mut()
-            .expect("collision must be with a valid enemy");
+        let enemy = &mut self.main.enemys[usize::try_from(enemy_num).unwrap()];
 
         let damage = f32::from(
             i16::from(self.vars.droidmap[self.vars.me.ty.to_usize()].class)

@@ -27,6 +27,7 @@ mod view;
 
 use array_c_string::ArrayCString;
 pub use array_index::ArrayIndex;
+use arrayvec::ArrayVec;
 use b_font::BFont;
 use defs::{
     AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Status, BYCOLOR,
@@ -80,14 +81,13 @@ struct Main<'sdl> {
     alert_threshold: i32,
     // bonus/sec for FIRST Alert-color, the others are 2*, 3*,...
     alert_bonus_per_sec: f32,
-    all_enemys: [Option<Enemy>; MAX_ENEMYS_ON_SHIP],
+    enemys: ArrayVec<Enemy, MAX_ENEMYS_ON_SHIP>,
     config_dir: ArrayCString<255>,
     invincible_mode: i32,
     /* display enemys regardless of IsVisible() */
     show_all_droids: i32,
     /* for bullet debugging: stop where u are */
     stop_influencer: i32,
-    num_enemys: u16,
     number_of_droid_types: u8,
     pre_take_energy: i32,
     all_bullets: [Option<Bullet<'sdl>>; MAXBULLETS],
@@ -113,12 +113,11 @@ impl Default for Main<'_> {
             alert_level: 0,
             alert_threshold: 0,
             alert_bonus_per_sec: 0.,
-            all_enemys: array::from_fn(|_| None),
+            enemys: ArrayVec::new(),
             config_dir: ArrayCString::default(),
             invincible_mode: 0,
             show_all_droids: 0,
             stop_influencer: 0,
-            num_enemys: 0,
             number_of_droid_types: 0,
             pre_take_energy: 0,
             all_bullets: array::from_fn(|_| None),
@@ -427,10 +426,7 @@ impl Data<'_> {
         let Self {
             main, misc, global, ..
         } = self;
-        for enemy in main.all_enemys[..usize::from(main.num_enemys)]
-            .iter_mut()
-            .filter_map(Option::as_mut)
-        {
+        for enemy in &mut main.enemys {
             if enemy.status == Status::Out {
                 continue;
             }

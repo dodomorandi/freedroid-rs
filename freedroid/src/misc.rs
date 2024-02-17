@@ -739,15 +739,10 @@ impl crate::Data<'_> {
     /// This function is kills all enemy robots on the whole ship.
     /// It querys the user once for safety.
     pub fn armageddon(&mut self) {
-        self.main
-            .all_enemys
-            .iter_mut()
-            .filter_map(Option::as_mut)
-            .take(self.main.num_enemys.into())
-            .for_each(|enemy| {
-                enemy.energy = 0.;
-                enemy.status = Status::Out;
-            });
+        self.main.enemys.iter_mut().for_each(|enemy| {
+            enemy.energy = 0.;
+            enemy.status = Status::Out;
+        });
     }
 
     /// LoadGameConfig(): load saved options from config-file

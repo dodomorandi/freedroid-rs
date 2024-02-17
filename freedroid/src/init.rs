@@ -126,13 +126,7 @@ impl crate::Data<'_> {
     /// This function checks, if the influencer has succeeded in his given
     /// mission.  If not it returns, if yes the Debriefing is started.
     pub(crate) fn check_if_mission_is_complete(&mut self) {
-        for enemy in self
-            .main
-            .all_enemys
-            .iter()
-            .filter_map(Option::as_ref)
-            .take(self.main.num_enemys.into())
-        {
+        for enemy in &self.main.enemys {
             if matches!(enemy.status, Status::Out | Status::Terminated).not() {
                 return;
             }
@@ -575,7 +569,7 @@ impl crate::Data<'_> {
             blast.ty = Status::Out as i32;
         }
         info!("InitNewMission: All blasts have been deleted.");
-        self.main.all_enemys.fill(None);
+        self.main.enemys.clear();
         info!("InitNewMission: All enemys have been deleted...");
 
         //Now its time to start decoding the mission file.

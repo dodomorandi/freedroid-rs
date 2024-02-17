@@ -1136,9 +1136,9 @@ impl crate::Data<'_> {
 
         let levelnum = cur_level.levelnum;
 
-        self.main.all_enemys[0..usize::from(self.main.num_enemys)]
+        self.main
+            .enemys
             .iter()
-            .filter_map(Option::as_ref)
             .any(|enemy| {
                 enemy.levelnum == levelnum
                     && matches!(enemy.status, Status::Out | Status::Terminated).not()
