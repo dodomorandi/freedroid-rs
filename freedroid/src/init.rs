@@ -17,7 +17,7 @@ use crate::{
     sound::Sound,
     split_at_subslice,
     structs::{DruidSpec, TextToBeDisplayed, ThemeList},
-    text, ArrayIndex,
+    text,
 };
 
 #[cfg(target_os = "windows")]
@@ -599,10 +599,8 @@ impl crate::Data<'_> {
         let starting_level = main_mission_data.set_cur_level_index_x_y(self);
 
         /* Reactivate the light on alle Levels, that might have been dark */
-        for level in
-            &mut self.main.cur_ship.all_levels[0..usize::from(self.main.cur_ship.num_levels)]
-        {
-            level.as_mut().unwrap().empty = false.into();
+        for level in &mut self.main.cur_ship.levels {
+            level.empty = false.into();
         }
 
         info!("InitNewMission: All levels have been set to 'active'...",);
@@ -636,12 +634,12 @@ impl crate::Data<'_> {
             Some(self.main.cur_level().background_song_name.to_bytes()),
         );
 
-        for level_index in 0..usize::from(self.main.cur_ship.num_levels) {
-            self.main.cur_level_index = Some(ArrayIndex::new(level_index));
+        for level_index in 0..self.main.cur_ship.levels.len() {
+            self.main.cur_level_index = Some(level_index);
             self.shuffle_enemys();
         }
 
-        self.main.cur_level_index = Some(ArrayIndex::new(usize::from(starting_level)));
+        self.main.cur_level_index = Some(usize::from(starting_level));
 
         // Now that the briefing and all that is done,
         // the influence structure can be initialized for
@@ -1214,7 +1212,7 @@ impl MainMissionData {
             .finish()
             .unwrap()
             .1;
-        data.main.cur_level_index = Some(ArrayIndex::new(usize::from(starting_level)));
+        data.main.cur_level_index = Some(usize::from(starting_level));
 
         let start_point_slice = split_at_subslice(start_point_slice, b"XPos=").unwrap().1;
         let x_pos = nom::character::complete::i32::<_, ()>(start_point_slice)

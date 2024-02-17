@@ -307,11 +307,10 @@ pub struct Level {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Ship {
-    pub num_levels: u8,
     pub num_lifts: i32,
     pub num_lift_rows: u8,
     pub area_name: ArrayCString<100>,
-    pub all_levels: [Option<Level>; MAX_LEVELS],
+    pub levels: ArrayVec<Level, MAX_LEVELS>,
     pub all_lifts: [Lift; MAX_LIFTS],
     pub lift_row_rect: [Rect; MAX_LIFT_ROWS], /* the lift-row rectangles */
     pub level_rects: [[Rect; MAX_LEVEL_RECTS]; MAX_LEVELS], /* level rectangles */
@@ -321,11 +320,10 @@ pub struct Ship {
 impl Default for Ship {
     fn default() -> Self {
         Self {
-            num_levels: 0,
             num_lifts: 0,
             num_lift_rows: 0,
             area_name: ArrayCString::default(),
-            all_levels: array::from_fn(|_| None),
+            levels: ArrayVec::new(),
             all_lifts: array::from_fn(|_| Lift {
                 level: 0,
                 x: 0,

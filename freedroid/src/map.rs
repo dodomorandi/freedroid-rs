@@ -575,16 +575,9 @@ impl crate::Data<'_> {
     }
 
     pub fn free_ship_memory(&mut self) {
-        self.main
-            .cur_ship
-            .all_levels
-            .iter_mut()
-            .take(self.main.cur_ship.num_levels.into())
-            .for_each(|level| {
-                if let Some(mut level) = level.take() {
-                    free_level_memory(&mut level);
-                }
-            });
+        self.main.cur_ship.levels.drain(..).for_each(|mut level| {
+            free_level_memory(&mut level);
+        });
     }
 
     pub fn animate_refresh(&mut self) {
@@ -785,15 +778,7 @@ impl crate::Data<'_> {
         let filename = PathBuf::from(format!("{shipname}{SHIP_EXT}"));
 
         /* count the levels */
-        let level_anz: u8 = self
-            .main
-            .cur_ship
-            .all_levels
-            .iter()
-            .take_while(|level| level.is_some())
-            .count()
-            .try_into()
-            .unwrap();
+        let level_anz: u8 = self.main.cur_ship.levels.iter().count().try_into().unwrap();
 
         trace!("SaveShip(): now opening the ship file...");
 
@@ -837,9 +822,8 @@ freedroid-discussion@lists.sourceforge.net\n\
                 let mut level_iter = self
                     .main
                     .cur_ship
-                    .all_levels
+                    .levels
                     .iter_mut()
-                    .map_while(|level| level.as_mut())
                     .filter(|level| level.levelnum == i);
 
                 let level = level_iter
@@ -1329,7 +1313,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         // This is done by searching for the LEVEL_END_STRING again and again
         // until it is no longer found in the ship file.  good.
 
-        let mut level_anz = 0u8;
+        let mut levels_count = 0u8;
         let mut ship_rest = &*ship_data;
         level_start[0] = Some(ship_rest);
 
@@ -1341,31 +1325,29 @@ freedroid-discussion@lists.sourceforge.net\n\
                 None => break,
             };
 
-            level_anz += 1;
-            level_start[usize::from(level_anz)] = Some(&ship_rest[1..]);
+            levels_count += 1;
+            level_start[usize::from(levels_count)] = Some(&ship_rest[1..]);
         }
 
-        /* init the level-structs */
-        self.main.cur_ship.num_levels = level_anz;
-
-        let result = self
-            .main
-            .cur_ship
-            .all_levels
-            .iter_mut()
-            .zip(level_start.iter().copied())
+        self.main.cur_ship.levels.clear();
+        let result = level_start
+            .iter()
+            .copied()
             .enumerate()
-            .take(level_anz.into())
-            .try_for_each(|(index, (level, start))| {
+            .take(levels_count.into())
+            .try_for_each(|(index, start)| {
                 if let Some(new_level) = level_to_struct(start.unwrap()) {
-                    let level = level.insert(new_level);
-                    map::interpret(level); // initialize doors, refreshes and lifts
+                    self.main.cur_ship.levels.push(new_level);
+
+                    // initialize doors, refreshes and lifts
+                    map::interpret(self.main.cur_ship.levels.last_mut().unwrap());
                     Some(())
                 } else {
                     error!("reading of level {} failed", index);
                     None
                 }
             });
+
         if result.is_none() {
             return defs::ERR.into();
         }

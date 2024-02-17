@@ -9,7 +9,6 @@ use crate::{
     map::get_map_brick,
     structs::{DruidSpec, Point, TextToBeDisplayed},
     vars::{BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES},
-    ArrayIndex,
 };
 
 use arrayvec::ArrayString;
@@ -1040,15 +1039,15 @@ impl crate::Data<'_> {
         if cur_level != self.main.cur_level().levelnum {
             let mut array_num = 0;
 
-            while let Some(level) = &self.main.cur_ship.all_levels[array_num] {
-                if level.levelnum == cur_level {
+            loop {
+                if self.main.cur_ship.levels[array_num].levelnum == cur_level {
                     break;
                 }
 
                 array_num += 1;
             }
 
-            self.main.cur_level_index = Some(ArrayIndex::new(array_num));
+            self.main.cur_level_index = Some(array_num);
 
             // set the position of the influencer to the correct locatiohn
             #[allow(clippy::cast_precision_loss)]

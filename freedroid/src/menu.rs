@@ -1168,7 +1168,7 @@ impl<'sdl> crate::Data<'sdl> {
             &mut cur_level,
             1,
             0,
-            self.main.cur_ship.num_levels - 1,
+            u8::try_from(self.main.cur_ship.levels.len()).unwrap() - 1,
         );
         self.teleport(cur_level, 3, 3);
         self.switch_background_music_to(Some(BYCOLOR));

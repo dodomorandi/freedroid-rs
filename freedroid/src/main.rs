@@ -1,7 +1,6 @@
 #![allow(clippy::missing_panics_doc, clippy::missing_errors_doc)]
 
 mod array_c_string;
-mod array_index;
 mod b_font;
 mod bullet;
 mod defs;
@@ -26,12 +25,11 @@ mod vars;
 mod view;
 
 use array_c_string::ArrayCString;
-pub use array_index::ArrayIndex;
 use arrayvec::ArrayVec;
 use b_font::BFont;
 use defs::{
     AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Status, BYCOLOR,
-    DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, MAX_LEVELS, RESET, SHOW_WAIT,
+    DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, RESET, SHOW_WAIT,
     STANDARD_MISSION,
 };
 use global::Global;
@@ -67,7 +65,7 @@ struct Main<'sdl> {
     // Toggle TRUE/FALSE for turning sounds on/off
     sound_on: i32,
     // the current level data
-    cur_level_index: Option<ArrayIndex<MAX_LEVELS>>,
+    cur_level_index: Option<usize>,
     // the current ship-data
     cur_ship: Ship,
     show_score: u32,
@@ -241,7 +239,7 @@ fn game_single_loop<'sdl>(data: &mut Data<'sdl>, sdl: &'sdl Sdl) -> ControlFlow<
     let scale = data.global.game_config.scale;
     #[allow(clippy::float_cmp)]
     if scale != 1.0 {
-        data.main.cur_ship.level_rects[0..usize::from(data.main.cur_ship.num_levels)]
+        data.main.cur_ship.level_rects[0..data.main.cur_ship.levels.len()]
             .iter_mut()
             .zip(data.main.cur_ship.num_level_rects.iter())
             .flat_map(|(rects, &num_rects)| &mut rects[0..usize::from(num_rects)])
@@ -605,19 +603,15 @@ impl Main<'_> {
 
 macro_rules! cur_level {
     (mut $main:expr) => {
-        $main.cur_ship.all_levels[$main
+        &mut $main.cur_ship.levels[$main
             .cur_level_index
             .expect("no current level index available")]
-        .as_mut()
-        .expect("current level is None")
     };
 
     ($main:expr) => {
-        $main.cur_ship.all_levels[$main
+        &$main.cur_ship.levels[$main
             .cur_level_index
             .expect("no current level index available")]
-        .as_ref()
-        .expect("current level is None")
     };
 }
 pub(crate) use cur_level;

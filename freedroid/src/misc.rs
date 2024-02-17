@@ -5,7 +5,7 @@ use crate::{
     },
     graphics::{scale_pic, Graphics},
     input::CMD_STRINGS,
-    ArrayCString, ArrayIndex, Global,
+    ArrayCString, Global,
 };
 
 use bstr::{BStr, ByteSlice};
@@ -710,14 +710,15 @@ impl crate::Data<'_> {
             // In case a real level change has happend,
             // we need to do a lot of work:
 
-            while let Some(level) = &self.main.cur_ship.all_levels[array_num] {
+            loop {
+                let level = &self.main.cur_ship.levels[array_num];
                 if level.levelnum == cur_level {
                     break;
                 }
                 array_num += 1;
             }
 
-            self.main.cur_level_index = Some(ArrayIndex::new(array_num));
+            self.main.cur_level_index = Some(array_num);
 
             self.shuffle_enemys();
 
