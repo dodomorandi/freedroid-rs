@@ -11,7 +11,7 @@ use crate::{
         read_u8_from_string,
     },
     read_and_malloc_and_terminate_file, split_at_subslice, split_at_subslice_mut,
-    structs::{CoarsePoint, Enemy, Finepoint, Level, Waypoint},
+    structs::{CoarsePoint, Enemy, Finepoint, Level, Lift, Waypoint},
 };
 
 use arrayvec::ArrayVec;
@@ -1155,7 +1155,6 @@ freedroid-discussion@lists.sourceforge.net\n\
     /// loads lift-connctions to cur-ship struct
     pub fn get_lift_connections(&mut self, filename: &[u8]) -> i32 {
         const END_OF_LIFT_DATA_STRING: &[u8] = b"*** End of elevator specification file ***";
-        const START_OF_LIFT_DATA_STRING: &[u8] = b"*** Beginning of Lift Data ***";
         const START_OF_LIFT_RECTANGLE_DATA_STRING: &[u8] =
             b"*** Beginning of elevator rectangles ***";
 
@@ -1249,10 +1248,17 @@ freedroid-discussion@lists.sourceforge.net\n\
             rect.set_height(h.try_into().unwrap());
         }
 
-        let mut entry_slice = &data[find_subslice(&data, START_OF_LIFT_DATA_STRING)
+        self.load_lifts_from_data(entry_slice);
+
+        defs::OK.into()
+    }
+
+    fn load_lifts_from_data(&mut self, data: &[u8]) {
+        const START_OF_LIFT_DATA_STRING: &[u8] = b"*** Beginning of Lift Data ***";
+
+        let mut entry_slice = &data[find_subslice(data, START_OF_LIFT_DATA_STRING)
             .expect("START OF LIFT DATA STRING NOT FOUND!  Terminating...")..];
 
-        let mut label: i32 = 0;
         loop {
             let next_entry_slice = split_at_subslice(entry_slice, b"Label=").map(|(_, s)| s);
 
@@ -1261,24 +1267,28 @@ freedroid-discussion@lists.sourceforge.net\n\
                 None => break,
             };
 
-            label = nom::character::complete::i32::<_, ()>(entry_slice)
+            let label = nom::character::complete::u16::<_, ()>(entry_slice)
                 .finish()
                 .unwrap()
                 .1;
-            let cur_lift = &mut self.main.cur_ship.all_lifts[usize::try_from(label).unwrap()];
             entry_slice = &entry_slice[1..];
 
-            cur_lift.level = read_tagged_u8(entry_slice, "Deck=");
-            cur_lift.x = read_tagged_i32(entry_slice, "PosX=");
-            cur_lift.y = read_tagged_i32(entry_slice, "PosY=");
-            cur_lift.up = read_tagged_i32(entry_slice, "LevelUp=");
-            cur_lift.down = read_tagged_i32(entry_slice, "LevelDown=");
-            cur_lift.row = read_tagged_i32(entry_slice, "LiftRow=");
+            assert_eq!(usize::from(label), self.main.cur_ship.lifts.len());
+            let level = read_tagged_u8(entry_slice, "Deck=");
+            let x = read_tagged_i32(entry_slice, "PosX=");
+            let y = read_tagged_i32(entry_slice, "PosY=");
+            let up = read_tagged_i32(entry_slice, "LevelUp=");
+            let down = read_tagged_i32(entry_slice, "LevelDown=");
+            let row = read_tagged_i32(entry_slice, "LiftRow=");
+            self.main.cur_ship.lifts.push(Lift {
+                level,
+                x,
+                y,
+                up,
+                down,
+                row,
+            });
         }
-
-        self.main.cur_ship.num_lifts = label;
-
-        defs::OK.into()
     }
 
     pub fn load_ship(&mut self, filename: &[u8]) -> i32 {
@@ -1408,38 +1418,19 @@ freedroid-discussion@lists.sourceforge.net\n\
 
         info!("curlev={} gx={} gy={}", curlev, gx, gy);
         info!("List of elevators:");
-        for i in 0..=usize::try_from(self.main.cur_ship.num_lifts).unwrap() {
+        for (i, lift) in self.main.cur_ship.lifts.iter().enumerate() {
             info!(
                 "Index={} level={} gx={} gy={}",
-                i,
-                self.main.cur_ship.all_lifts[i].level,
-                self.main.cur_ship.all_lifts[i].x,
-                self.main.cur_ship.all_lifts[i].y
+                i, lift.level, lift.x, lift.y
             );
         }
 
-        let mut i = 0;
-        while i < usize::try_from(self.main.cur_ship.num_lifts).unwrap() + 1
-        // we check for one more than present, so the last reached
-        // will really mean: NONE FOUND.
-        {
-            if self.main.cur_ship.all_lifts[i].level != curlev {
-                i += 1;
-                continue;
-            }
-            if self.main.cur_ship.all_lifts[i].x == gx && self.main.cur_ship.all_lifts[i].y == gy {
-                break;
-            }
-
-            i += 1;
-        }
-
-        if i == usize::try_from(self.main.cur_ship.num_lifts).unwrap() + 1 {
-            // none found
-            -1
-        } else {
-            i.try_into().unwrap()
-        }
+        self.main
+            .cur_ship
+            .lifts
+            .iter()
+            .position(|lift| lift.level == curlev && lift.x == gx && lift.y == gy)
+            .map_or(-1, |index| index.try_into().unwrap())
     }
 }
 

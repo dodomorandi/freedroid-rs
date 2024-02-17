@@ -988,10 +988,10 @@ impl crate::Data<'_> {
         self.enter_lift_sound();
         self.switch_background_music_to(None); // turn off Bg music
 
-        let mut up_lift = self.main.cur_ship.all_lifts[cur_lift].up;
-        let mut down_lift = self.main.cur_ship.all_lifts[cur_lift].down;
+        let mut up_lift = self.main.cur_ship.lifts[cur_lift].up;
+        let mut down_lift = self.main.cur_ship.lifts[cur_lift].down;
 
-        let liftrow = self.main.cur_ship.all_lifts[cur_lift].row;
+        let liftrow = self.main.cur_ship.lifts[cur_lift].row;
 
         // clear the whole screen
         self.clear_graph_mem();
@@ -1052,8 +1052,8 @@ impl crate::Data<'_> {
             // set the position of the influencer to the correct locatiohn
             #[allow(clippy::cast_precision_loss)]
             {
-                self.vars.me.pos.x = self.main.cur_ship.all_lifts[cur_lift].x as f32;
-                self.vars.me.pos.y = self.main.cur_ship.all_lifts[cur_lift].y as f32;
+                self.vars.me.pos.x = self.main.cur_ship.lifts[cur_lift].x as f32;
+                self.vars.me.pos.y = self.main.cur_ship.lifts[cur_lift].y as f32;
             }
 
             for i in 0..i32::try_from(MAXBLASTS).unwrap() {
@@ -1091,13 +1091,13 @@ impl crate::Data<'_> {
     ) {
         self.ship.enter_lift_last_move_tick = self.sdl.ticks_ms();
         if *up_lift != -1 {
-            if self.main.cur_ship.all_lifts[usize::try_from(*up_lift).unwrap()].x == 99 {
+            if self.main.cur_ship.lifts[usize::try_from(*up_lift).unwrap()].x == 99 {
                 error!("Lift out of order, so sorry ..");
             } else {
                 *down_lift = (*cur_lift).try_into().unwrap();
                 *cur_lift = (*up_lift).try_into().unwrap();
-                *cur_level = self.main.cur_ship.all_lifts[*cur_lift].level;
-                *up_lift = self.main.cur_ship.all_lifts[*cur_lift].up;
+                *cur_level = self.main.cur_ship.lifts[*cur_lift].level;
+                *up_lift = self.main.cur_ship.lifts[*cur_lift].up;
                 self.show_lifts(*cur_level, liftrow);
                 self.move_lift_sound();
             }
@@ -1114,13 +1114,13 @@ impl crate::Data<'_> {
     ) {
         self.ship.enter_lift_last_move_tick = self.sdl.ticks_ms();
         if *down_lift != -1 {
-            if self.main.cur_ship.all_lifts[usize::try_from(*down_lift).unwrap()].x == 99 {
+            if self.main.cur_ship.lifts[usize::try_from(*down_lift).unwrap()].x == 99 {
                 error!("Lift Out of order, so sorry ..");
             } else {
                 *up_lift = (*cur_lift).try_into().unwrap();
                 *cur_lift = (*down_lift).try_into().unwrap();
-                *cur_level = self.main.cur_ship.all_lifts[*cur_lift].level;
-                *down_lift = self.main.cur_ship.all_lifts[*cur_lift].down;
+                *cur_level = self.main.cur_ship.lifts[*cur_lift].level;
+                *down_lift = self.main.cur_ship.lifts[*cur_lift].down;
                 self.show_lifts(*cur_level, liftrow);
                 self.move_lift_sound();
             }

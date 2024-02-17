@@ -12,7 +12,6 @@ use crate::{
 use arrayvec::ArrayVec;
 use sdl::{convert::u8_to_usize, Rect, Surface};
 use std::{
-    array,
     ffi::{CStr, CString},
     num::NonZeroU8,
 };
@@ -307,11 +306,10 @@ pub struct Level {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Ship {
-    pub num_lifts: i32,
     pub num_lift_rows: u8,
     pub area_name: ArrayCString<100>,
     pub levels: ArrayVec<Level, MAX_LEVELS>,
-    pub all_lifts: [Lift; MAX_LIFTS],
+    pub lifts: ArrayVec<Lift, MAX_LIFTS>,
     pub lift_row_rect: [Rect; MAX_LIFT_ROWS], /* the lift-row rectangles */
     pub level_rects: [[Rect; MAX_LEVEL_RECTS]; MAX_LEVELS], /* level rectangles */
     pub num_level_rects: [u8; MAX_LEVELS],    /* how many rects has a level */
@@ -320,18 +318,10 @@ pub struct Ship {
 impl Default for Ship {
     fn default() -> Self {
         Self {
-            num_lifts: 0,
             num_lift_rows: 0,
             area_name: ArrayCString::default(),
             levels: ArrayVec::new(),
-            all_lifts: array::from_fn(|_| Lift {
-                level: 0,
-                x: 0,
-                y: 0,
-                up: 0,
-                down: 0,
-                row: 0,
-            }),
+            lifts: ArrayVec::new(),
             lift_row_rect: [Rect::default(); MAX_LIFT_ROWS],
             level_rects: [[Rect::default(); MAX_LEVEL_RECTS]; MAX_LEVELS],
             num_level_rects: [0; MAX_LEVELS],
