@@ -865,7 +865,7 @@ impl crate::Data<'_> {
         }
 
         if liftrow >= 0 {
-            let src = self.main.cur_ship.lift_row_rect[usize::try_from(liftrow).unwrap()];
+            let src = self.main.cur_ship.lift_row_rects[usize::try_from(liftrow).unwrap()];
             dst = src;
             dst.inc_x(self.vars.user_rect.x() + x_offs); /* offset respective to User-Rectangle */
             dst.inc_y(self.vars.user_rect.y() + y_offs);

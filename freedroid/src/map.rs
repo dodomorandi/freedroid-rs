@@ -24,8 +24,9 @@ use defs::MAX_WP_CONNECTIONS;
 #[cfg(not(target_os = "android"))]
 use log::trace;
 use log::{error, info, warn};
-use nom::{Finish, Parser};
+use nom::{Finish, IResult, Parser};
 use rand::{seq::SliceRandom, thread_rng, Rng};
+use sdl::Rect;
 #[cfg(not(target_os = "android"))]
 use std::ffi::CStr;
 use std::{
@@ -1177,7 +1178,7 @@ freedroid-discussion@lists.sourceforge.net\n\
 
         // At first we read in the rectangles that define where the colums of the
         // lift are, so that we can highlight them later.
-        self.main.cur_ship.num_lift_rows = 0;
+        self.main.cur_ship.lift_row_rects.clear();
         let mut entry_slice =
             &data[find_subslice(&data, START_OF_LIFT_RECTANGLE_DATA_STRING).unwrap()..];
         loop {
@@ -1188,25 +1189,25 @@ freedroid-discussion@lists.sourceforge.net\n\
                 None => break,
             };
 
-            let elevator_index = nom::character::complete::i32::<_, ()>(entry_slice)
+            let elevator_index = nom::character::complete::u16::<_, ()>(entry_slice)
                 .finish()
                 .unwrap()
                 .1;
+            assert_eq!(
+                usize::from(elevator_index),
+                self.main.cur_ship.lift_row_rects.len()
+            );
             entry_slice = &entry_slice[1..];
 
-            let x = read_tagged_i32(entry_slice, "ElRowX=");
-            let y = read_tagged_i32(entry_slice, "ElRowY=");
-            let w = read_tagged_i32(entry_slice, "ElRowW=");
-            let h = read_tagged_i32(entry_slice, "ElRowH=");
+            let x = read_tagged_i16(entry_slice, "ElRowX=");
+            let y = read_tagged_i16(entry_slice, "ElRowY=");
+            let w = read_tagged_u16(entry_slice, "ElRowW=");
+            let h = read_tagged_u16(entry_slice, "ElRowH=");
 
-            let rect =
-                &mut self.main.cur_ship.lift_row_rect[usize::try_from(elevator_index).unwrap()];
-            rect.set_x(x.try_into().unwrap());
-            rect.set_y(y.try_into().unwrap());
-            rect.set_width(w.try_into().unwrap());
-            rect.set_height(h.try_into().unwrap());
-
-            self.main.cur_ship.num_lift_rows += 1;
+            self.main
+                .cur_ship
+                .lift_row_rects
+                .push(Rect::new(x, y, w, h));
         }
 
         //--------------------
@@ -1434,9 +1435,10 @@ freedroid-discussion@lists.sourceforge.net\n\
     }
 }
 
-fn read_tagged_i32(s: &[u8], tag: &str) -> i32 {
-    use nom::character::complete;
-
+fn read_tagged_generic<'a, F, T>(s: &'a [u8], tag: &str, f: F) -> T
+where
+    F: Fn(&'a [u8]) -> IResult<&'a [u8], T, ()>,
+{
     let pos = s
         .windows(tag.len())
         .enumerate()
@@ -1445,27 +1447,30 @@ fn read_tagged_i32(s: &[u8], tag: &str) -> i32 {
         .0;
 
     whitespace::<_, ()>
-        .and(complete::i32)
+        .and(f)
         .parse(&s[(pos + tag.len())..])
         .map(|(_, (_, n))| n)
         .unwrap()
 }
 
+#[inline]
+fn read_tagged_i32(s: &[u8], tag: &str) -> i32 {
+    read_tagged_generic(s, tag, nom::character::complete::i32)
+}
+
+#[inline]
 fn read_tagged_u8(s: &[u8], tag: &str) -> u8 {
-    use nom::character::complete;
+    read_tagged_generic(s, tag, nom::character::complete::u8)
+}
 
-    let pos = s
-        .windows(tag.len())
-        .enumerate()
-        .find(|&(_, s)| s == tag.as_bytes())
-        .unwrap()
-        .0;
+#[inline]
+fn read_tagged_u16(s: &[u8], tag: &str) -> u16 {
+    read_tagged_generic(s, tag, nom::character::complete::u16)
+}
 
-    whitespace::<_, ()>
-        .and(complete::u8)
-        .parse(&s[(pos + tag.len())..])
-        .map(|(_, (_, n))| n)
-        .unwrap()
+#[inline]
+fn read_tagged_i16(s: &[u8], tag: &str) -> i16 {
+    read_tagged_generic(s, tag, nom::character::complete::i16)
 }
 
 /// Returns a pointer to Map in a memory field
