@@ -27,7 +27,9 @@ use sdl::{
     rwops::{self, RwOps},
     ColorKeyFlag, Cursor, FrameBuffer, Pixel, Rect, Rgba, RwOpsOwned, Surface, VideoModeFlags,
 };
-use std::{array, borrow::Cow, cell::RefCell, ffi::CStr, ops::Not, path::Path, pin::Pin, rc::Rc};
+use std::{
+    array, borrow::Cow, cell::RefCell, ffi::CStr, iter, ops::Not, path::Path, pin::Pin, rc::Rc,
+};
 
 #[derive(Debug)]
 pub struct Graphics<'sdl> {
@@ -609,10 +611,7 @@ impl crate::Data<'_> {
     ///
     /// timeout is in ms
     pub fn white_noise(&mut self, frame_buffer: &mut FrameBuffer, rect: &mut Rect, timeout: i32) {
-        use rand::{
-            seq::{IteratorRandom, SliceRandom},
-            Rng,
-        };
+        use rand::{seq::SliceRandom, Rng};
         const NOISE_COLORS: u8 = 6;
         const NOISE_TILES: u8 = 8;
 
@@ -659,7 +658,7 @@ impl crate::Data<'_> {
         });
         drop(tmp);
 
-        let mut used_tiles: [i8; NOISE_TILES as usize / 2 + 1] = [-1; NOISE_TILES as usize / 2 + 1];
+        let mut used_tiles = [None; NOISE_TILES as usize / 2 + 1];
         // let's go
         self.play_sound(SoundType::WhiteNoise);
 
@@ -668,30 +667,24 @@ impl crate::Data<'_> {
         self.wait_for_all_keys_released();
         let clip_rect = loop {
             // pick an old enough tile
-            let mut next_tile;
-            loop {
-                next_tile = (0..i8::try_from(NOISE_TILES).unwrap())
-                    .choose(&mut rng)
-                    .unwrap();
-                for &used_tile in &used_tiles {
-                    if next_tile == used_tile {
-                        next_tile = -1;
-                        break;
-                    }
-                }
+            let next_tile = iter::repeat_with(|| rng.gen_range(0..NOISE_TILES))
+                .find(|next_tile| {
+                    used_tiles
+                        .iter()
+                        .flatten()
+                        .any(|tile| tile == next_tile)
+                        .not()
+                })
+                .unwrap();
 
-                if next_tile != -1 {
-                    break;
-                }
-            }
             used_tiles.copy_within(1.., 0);
-            *used_tiles.last_mut().unwrap() = next_tile;
+            *used_tiles.last_mut().unwrap() = Some(next_tile);
 
             // make sure we can blit the full rect without clipping! (would change *rect!)
             let clip_rect = frame_buffer.get_clip_rect();
             frame_buffer.clear_clip_rect();
             // set it
-            noise_tiles[usize::try_from(next_tile).unwrap()].blit_to(frame_buffer, &mut *rect);
+            noise_tiles[usize::from(next_tile)].blit_to(frame_buffer, &mut *rect);
             frame_buffer.update_rect(rect);
             self.sdl.delay_ms(25);
 
