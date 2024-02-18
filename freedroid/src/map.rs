@@ -1259,6 +1259,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         let mut entry_slice = &data[find_subslice(data, START_OF_LIFT_DATA_STRING)
             .expect("START OF LIFT DATA STRING NOT FOUND!  Terminating...")..];
 
+        self.main.cur_ship.lifts.clear();
         loop {
             let next_entry_slice = split_at_subslice(entry_slice, b"Label=").map(|(_, s)| s);
 
