@@ -1215,7 +1215,11 @@ freedroid-discussion@lists.sourceforge.net\n\
         // current area system are, so that we can highlight them later in the
         // elevator and console functions.
         //
-        self.main.cur_ship.num_level_rects.fill(0); // this initializes zeros for the number
+        self.main
+            .cur_ship
+            .level_rects
+            .iter_mut()
+            .for_each(ArrayVec::clear);
         let mut entry_slice = &*data;
 
         loop {
@@ -1230,23 +1234,18 @@ freedroid-discussion@lists.sourceforge.net\n\
                 .finish()
                 .unwrap()
                 .1;
-            let rect_index = read_tagged_i32(entry_slice, "RectNumber=");
+
+            let deck = &mut self.main.cur_ship.level_rects[usize::from(deck_index)];
+            let rect_index = read_tagged_u16(entry_slice, "RectNumber=");
+            assert_eq!(usize::from(rect_index), deck.len());
             entry_slice = &entry_slice[1..];
 
-            // count the number of rects for this deck one up
-            self.main.cur_ship.num_level_rects[usize::from(deck_index)] += 1;
+            let x = read_tagged_i16(&entry_slice[1..], "DeckX=");
+            let y = read_tagged_i16(entry_slice, "DeckY=");
+            let w = read_tagged_u16(entry_slice, "DeckW=");
+            let h = read_tagged_u16(entry_slice, "DeckH=");
 
-            let x = read_tagged_i32(&entry_slice[1..], "DeckX=");
-            let y = read_tagged_i32(entry_slice, "DeckY=");
-            let w = read_tagged_i32(entry_slice, "DeckW=");
-            let h = read_tagged_i32(entry_slice, "DeckH=");
-
-            let rect = &mut self.main.cur_ship.level_rects[usize::from(deck_index)]
-                [usize::try_from(rect_index).unwrap()];
-            rect.set_x(x.try_into().unwrap());
-            rect.set_y(y.try_into().unwrap());
-            rect.set_width(w.try_into().unwrap());
-            rect.set_height(h.try_into().unwrap());
+            deck.push(Rect::new(x, y, w, h));
         }
 
         self.load_lifts_from_data(entry_slice);

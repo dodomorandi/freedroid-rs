@@ -304,27 +304,13 @@ pub struct Level {
     pub waypoints: ArrayVec<Waypoint, { u8_to_usize(MAXWAYPOINTS) }>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct Ship {
     pub area_name: ArrayCString<100>,
     pub levels: ArrayVec<Level, MAX_LEVELS>,
     pub lifts: ArrayVec<Lift, MAX_LIFTS>,
     pub lift_row_rects: ArrayVec<Rect, MAX_LIFT_ROWS>, /* the lift-row rectangles */
-    pub level_rects: [[Rect; MAX_LEVEL_RECTS]; MAX_LEVELS], /* level rectangles */
-    pub num_level_rects: [u8; MAX_LEVELS],             /* how many rects has a level */
-}
-
-impl Default for Ship {
-    fn default() -> Self {
-        Self {
-            area_name: ArrayCString::default(),
-            levels: ArrayVec::new(),
-            lifts: ArrayVec::new(),
-            lift_row_rects: ArrayVec::new(),
-            level_rects: [[Rect::default(); MAX_LEVEL_RECTS]; MAX_LEVELS],
-            num_level_rects: [0; MAX_LEVELS],
-        }
-    }
+    pub level_rects: [ArrayVec<Rect, MAX_LEVEL_RECTS>; MAX_LEVELS], /* level rectangles */
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

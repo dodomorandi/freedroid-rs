@@ -241,8 +241,7 @@ fn game_single_loop<'sdl>(data: &mut Data<'sdl>, sdl: &'sdl Sdl) -> ControlFlow<
     if scale != 1.0 {
         data.main.cur_ship.level_rects[0..data.main.cur_ship.levels.len()]
             .iter_mut()
-            .zip(data.main.cur_ship.num_level_rects.iter())
-            .flat_map(|(rects, &num_rects)| &mut rects[0..usize::from(num_rects)])
+            .flatten()
             .for_each(|rect| rect.scale(scale));
 
         for rect in &mut data.main.cur_ship.lift_row_rects {

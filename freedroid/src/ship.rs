@@ -853,15 +853,15 @@ impl crate::Data<'_> {
             .unwrap()
             .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
 
-        for i in 0..self.main.cur_ship.num_level_rects[usize::from(level)] {
-            let src = self.main.cur_ship.level_rects[usize::from(level)][usize::from(i)];
-            dst = src;
+        let level_rects = &self.main.cur_ship.level_rects[usize::from(level)];
+        for src in level_rects {
+            dst = *src;
             dst.inc_x(self.vars.user_rect.x() + x_offs); /* offset respective to User-Rectangle */
             dst.inc_y(self.vars.user_rect.y() + y_offs);
             ship_on_pic
                 .as_mut()
                 .unwrap()
-                .blit_from_to(&src, ne_screen.as_mut().unwrap(), &mut dst);
+                .blit_from_to(src, ne_screen.as_mut().unwrap(), &mut dst);
         }
 
         if liftrow >= 0 {
