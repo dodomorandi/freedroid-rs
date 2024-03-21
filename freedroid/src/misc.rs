@@ -746,7 +746,7 @@ impl crate::Data<'_> {
         });
     }
 
-    /// LoadGameConfig(): load saved options from config-file
+    /// `LoadGameConfig()`: load saved options from config-file
     ///
     /// this should be the first of all load/save functions called
     /// as here we read the $HOME-dir and create the config-subdir if neccessary

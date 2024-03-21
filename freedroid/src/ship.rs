@@ -490,7 +490,7 @@ impl crate::Data<'_> {
         self.set_combat_scale_to(1.0);
     }
 
-    /// EnterKonsole(): does all konsole- duties
+    /// `EnterKonsole()`: does all konsole- duties
     /// This function runs the consoles. This means the following duties:
     /// 2 * Show a small-scale plan of the current deck
     /// 3 * Show a side-elevation on the ship

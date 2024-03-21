@@ -1265,7 +1265,7 @@ impl crate::Data<'_> {
 
     /// This function load an image and displays it directly to the `self.graphics.ne_screen`
     /// but without updating it.
-    /// This might be very handy, especially in the Title() function to
+    /// This might be very handy, especially in the `Title()` function to
     /// display the title image and perhaps also for displaying the ship
     /// and that.
     pub fn display_image(sdl: &Sdl, global: &Global, graphics: &mut Graphics, datafile: &CStr) {
@@ -1439,7 +1439,7 @@ impl crate::Data<'_> {
                 }
                 .run()
                 .map(|surface| Rc::new(RefCell::new(surface)));
-                *surface = orig_surface.as_ref().map(Rc::clone);
+                *surface = orig_surface.clone();
             });
     }
 

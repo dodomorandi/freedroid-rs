@@ -88,7 +88,7 @@ impl crate::Data<'_> {
         }
     }
 
-    /// AttackInfluence(): This function sometimes fires a bullet from
+    /// `AttackInfluence()`: This function sometimes fires a bullet from
     /// enemy number enemynum directly into the direction of the influencer,
     /// but of course only if the odds are good i.e. requirements are met.
     pub fn attack_influence(&mut self, enemy_num: i32) {

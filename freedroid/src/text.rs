@@ -250,7 +250,7 @@ impl crate::Data<'_> {
         }
     }
 
-    /// Should do roughly what getchar() does, but in raw (SLD) keyboard mode.
+    /// Should do roughly what `getchar()` does, but in raw (SLD) keyboard mode.
     ///
     /// Return the `SDLKey` of the next key-pressed event cast to
     pub fn getchar_raw(&mut self) -> u16 {

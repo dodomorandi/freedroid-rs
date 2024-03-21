@@ -833,8 +833,8 @@ impl crate::Data<'_> {
 
     fn assemble_combat_window_draw_framerate(&mut self) {
         thread_local! {
-            static TIME_SINCE_LAST_FPS_UPDATE: Cell<f32> = Cell::new(10.);
-            static FPS_DISPLAYED: Cell<i32> = Cell::new(1);
+            static TIME_SINCE_LAST_FPS_UPDATE: Cell<f32> = const { Cell::new(10.) };
+            static FPS_DISPLAYED: Cell<i32> = const { Cell::new(1) };
         }
 
         const UPDATE_FPS_HOW_OFTEN: f32 = 0.75;
