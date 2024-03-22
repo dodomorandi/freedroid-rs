@@ -1,5 +1,3 @@
-#![allow(clippy::missing_panics_doc, clippy::missing_errors_doc)]
-
 pub mod convert;
 pub mod cursor;
 pub mod event;
