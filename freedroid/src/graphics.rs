@@ -610,7 +610,7 @@ impl crate::Data<'_> {
     /// Greg Knauss's "xteevee" hack in xscreensavers.
     ///
     /// timeout is in ms
-    pub fn white_noise(&mut self, frame_buffer: &mut FrameBuffer, rect: &mut Rect, timeout: i32) {
+    pub fn white_noise(&mut self, frame_buffer: &mut FrameBuffer, rect: &mut Rect, timeout: u32) {
         use rand::{seq::SliceRandom, Rng};
         const NOISE_COLORS: u8 = 6;
         const NOISE_TILES: u8 = 8;
@@ -688,7 +688,7 @@ impl crate::Data<'_> {
             frame_buffer.update_rect(rect);
             self.sdl.delay_ms(25);
 
-            if timeout != 0 && self.sdl.ticks_ms() - now > timeout.try_into().unwrap() {
+            if timeout != 0 && self.sdl.ticks_ms() - now > timeout {
                 break clip_rect;
             }
 

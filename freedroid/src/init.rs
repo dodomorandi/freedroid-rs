@@ -1026,11 +1026,7 @@ impl crate::Data<'_> {
         // TODO: avoid a temporary backup
         let mut user_rect = std::mem::take(&mut self.vars.user_rect);
         let mut ne_screen = self.graphics.ne_screen.take().unwrap();
-        self.white_noise(
-            &mut ne_screen,
-            &mut user_rect,
-            WAIT_AFTER_KILLED.try_into().unwrap(),
-        );
+        self.white_noise(&mut ne_screen, &mut user_rect, WAIT_AFTER_KILLED);
         self.vars.user_rect = user_rect;
         self.graphics.ne_screen = Some(ne_screen);
 
