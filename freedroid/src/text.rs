@@ -287,22 +287,25 @@ impl crate::Data<'_> {
 
                 Event::JoyAxis(event) => {
                     let axis = event.axis;
+                    let get_value =
+                        || i32::from(self.input.joy_sensitivity) * i32::from(event.value);
+
                     if axis == 0 || ((self.input.joy_num_axes >= 5) && (axis == 3))
                     /* x-axis */
                     {
-                        if self.input.joy_sensitivity * i32::from(event.value) > 10000
+                        if get_value() > 10000
                         /* about half tilted */
                         {
                             return_key = PointerStates::JoyRight.to_u16();
-                        } else if self.input.joy_sensitivity * i32::from(event.value) < -10000 {
+                        } else if get_value() < -10000 {
                             return_key = PointerStates::JoyLeft.to_u16();
                         }
                     } else if (axis == 1) || ((self.input.joy_num_axes >= 5) && (axis == 4))
                     /* y-axis */
                     {
-                        if self.input.joy_sensitivity * i32::from(event.value) > 10000 {
+                        if get_value() > 10000 {
                             return_key = PointerStates::JoyDown.to_u16();
-                        } else if self.input.joy_sensitivity * i32::from(event.value) < -10000 {
+                        } else if get_value() < -10000 {
                             return_key = PointerStates::JoyUp.to_u16();
                         }
                     }

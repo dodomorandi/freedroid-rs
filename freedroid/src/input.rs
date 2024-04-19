@@ -63,7 +63,7 @@ pub struct Input {
     current_modifiers: SDLMod,
     state: [InputState; PointerStates::Last.to_usize()],
     pub joy: Option<Joystick>,
-    pub joy_sensitivity: i32,
+    pub joy_sensitivity: u8,
     // joystick (and mouse) axis values
     pub axis: Point,
     // number of joystick axes
@@ -934,6 +934,7 @@ fn handle_keyboard_event(event: &event::Keyboard, input: &mut Input) {
 
 fn handle_joy_axis_event(event: event::JoyAxis, input: &mut Input) {
     let axis = event.axis;
+    let get_value = || i32::from(input.joy_sensitivity) * i32::from(event.value);
     if axis == 0 || ((input.joy_num_axes >= 5) && (axis == 3))
     /* x-axis */
     {
@@ -944,11 +945,11 @@ fn handle_joy_axis_event(event: event::JoyAxis, input: &mut Input) {
         // therefore have to make sure that this mapping only occurs when
         // and actual _change_ of the joystick-direction ('digital') occurs
         // so that it behaves like "set"/"release"
-        if input.joy_sensitivity * i32::from(event.value) > 10000 {
+        if get_value() > 10000 {
             /* about half tilted */
             input.state[PointerStates::JoyRight as usize].set_just_pressed();
             input.state[PointerStates::JoyLeft as usize].set_released();
-        } else if input.joy_sensitivity * i32::from(event.value) < -10000 {
+        } else if get_value() < -10000 {
             input.state[PointerStates::JoyLeft as usize].set_just_pressed();
             input.state[PointerStates::JoyRight as usize].set_released();
         } else {
@@ -959,10 +960,10 @@ fn handle_joy_axis_event(event: event::JoyAxis, input: &mut Input) {
         /* y-axis */
         input.axis.y = event.value.into();
 
-        if input.joy_sensitivity * i32::from(event.value) > 10000 {
+        if get_value() > 10000 {
             input.state[PointerStates::JoyDown as usize].set_just_pressed();
             input.state[PointerStates::JoyUp as usize].set_released();
-        } else if input.joy_sensitivity * i32::from(event.value) < -10000 {
+        } else if get_value() < -10000 {
             input.state[PointerStates::JoyUp as usize].set_just_pressed();
             input.state[PointerStates::JoyDown as usize].set_released();
         } else {

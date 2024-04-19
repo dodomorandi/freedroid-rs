@@ -332,7 +332,7 @@ impl crate::Data<'_> {
                 "\nJoystick sensitivity must lie in the range [0;32]"
             );
 
-            self.input.joy_sensitivity = sensitivity.into();
+            self.input.joy_sensitivity = sensitivity;
         }
 
         let log_level = match opt.debug {
