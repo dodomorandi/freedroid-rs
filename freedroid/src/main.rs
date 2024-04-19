@@ -81,7 +81,7 @@ struct Main<'sdl> {
     config_dir: ArrayCString<255>,
     invincible_mode: bool,
     /* display enemys regardless of IsVisible() */
-    show_all_droids: i32,
+    show_all_droids: bool,
     /* for bullet debugging: stop where u are */
     stop_influencer: i32,
     number_of_droid_types: u8,
@@ -112,7 +112,7 @@ impl Default for Main<'_> {
             enemys: ArrayVec::new(),
             config_dir: ArrayCString::default(),
             invincible_mode: false,
-            show_all_droids: 0,
+            show_all_droids: false,
             stop_influencer: 0,
             number_of_droid_types: 0,
             pre_take_energy: 0,

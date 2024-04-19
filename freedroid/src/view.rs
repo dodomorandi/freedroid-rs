@@ -237,7 +237,7 @@ impl crate::Data<'_> {
         }
 
         // if the enemy is out of sight, we need not do anything more here
-        if self.main.show_all_droids == 0 && self.is_visible(droid.pos) == 0 {
+        if self.main.show_all_droids.not() && self.is_visible(droid.pos) == 0 {
             trace!("ONSCREEN=FALSE --> usual end of function reached.");
             return;
         }

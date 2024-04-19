@@ -50,10 +50,10 @@ impl<'sdl> crate::Data<'sdl> {
         print_sdl!(" e. set energy\n");
         print_sdl!(
             " n. No hidden droids: {}\n",
-            if self.main.show_all_droids == 0 {
-                "OFF"
-            } else {
+            if self.main.show_all_droids {
                 "ON"
+            } else {
+                "OFF"
             },
         );
         print_sdl!(" m. Map of Deck xy\n");
