@@ -69,7 +69,7 @@ pub struct Input {
     // number of joystick axes
     pub joy_num_axes: u16,
     // is firing to use axis-values or not
-    pub axis_is_active: i32,
+    pub axis_is_active: bool,
     pub key_cmds: [[u16; 3]; Cmds::Last as usize],
 }
 
@@ -338,7 +338,7 @@ impl Default for Input {
             joy_sensitivity: 0,
             axis: Point { x: 0, y: 0 },
             joy_num_axes: 0,
-            axis_is_active: 0,
+            axis_is_active: false,
             key_cmds: default_key_cmds(),
         }
     }
@@ -831,7 +831,7 @@ impl crate::Data<'_> {
     }
 
     pub fn no_direction_pressed(&mut self) -> bool {
-        !((self.input.axis_is_active != 0 && (self.input.axis.x != 0 || self.input.axis.y != 0))
+        !((self.input.axis_is_active && (self.input.axis.x != 0 || self.input.axis.y != 0))
             || self.down_pressed()
             || self.up_pressed()
             || self.left_pressed()
@@ -919,14 +919,14 @@ fn handle_keyboard_event(event: &event::Keyboard, input: &mut Input) {
             input.state[event.keysym.symbol.to_usize()].set_just_pressed();
             #[cfg(feature = "gcw0")]
             if input.axis.x != 0 || input.axis.y != 0 {
-                input.axis_is_active = true.into(); // 4 GCW-0 ; breaks cursor keys after axis has been active...
+                input.axis_is_active = true; // 4 GCW-0 ; breaks cursor keys after axis has been active...
             }
         }
         KeyboardEventType::KeyUp => {
             input.state[event.keysym.symbol.to_usize()].set_just_released();
             #[cfg(feature = "gcw0")]
             {
-                input.axis_is_active = false.into();
+                input.axis_is_active = false;
             }
         }
     }
@@ -987,7 +987,7 @@ fn handle_joy_button_event(event: event::JoyButton, input: &mut Input) {
         input_state.pressed = is_pressed;
         input_state.fresh = true;
     }
-    input.axis_is_active = is_pressed.into();
+    input.axis_is_active = is_pressed;
 }
 
 fn handle_mouse_motion_event(event: event::MouseMotion, input: &mut Input, vars: &Vars, sdl: &Sdl) {
@@ -1008,7 +1008,7 @@ fn handle_mouse_button_event(event: event::MouseButton, input: &mut Input, sdl: 
     let is_pressed = event.state.is_pressed();
     let input_state_index = match event.button {
         BUTTON_LEFT => {
-            input.axis_is_active = is_pressed.into();
+            input.axis_is_active = is_pressed;
             Some(PointerStates::MouseButton1 as usize)
         }
         BUTTON_RIGHT => Some(PointerStates::MouseButton2 as usize),

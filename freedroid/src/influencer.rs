@@ -580,7 +580,7 @@ impl crate::Data<'_> {
 
         /* if using a joystick/mouse, allow exact directional shots! */
         #[allow(clippy::cast_precision_loss)]
-        if self.input.axis_is_active != 0 {
+        if self.input.axis_is_active {
             let max_val = self.input.axis.x.abs().max(self.input.axis.y.abs()) as f32;
             speed.x = self.input.axis.x as f32 / max_val;
             speed.y = self.input.axis.y as f32 / max_val;
