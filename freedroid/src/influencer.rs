@@ -187,7 +187,7 @@ impl crate::Data<'_> {
         if damage < 0. {
             // we took damage
             self.collision_got_damaged_sound();
-            if self.main.invincible_mode == 0 {
+            if self.main.invincible_mode.not() {
                 self.vars.me.energy += damage;
             }
         } else if damage == 0. {
@@ -524,7 +524,7 @@ impl crate::Data<'_> {
 
     pub fn permanent_lose_energy(&mut self) {
         // Of course if in invincible mode, no energy will ever be lost...
-        if self.main.invincible_mode != 0 {
+        if self.main.invincible_mode {
             return;
         }
 

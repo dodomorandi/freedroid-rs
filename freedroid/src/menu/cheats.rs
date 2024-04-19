@@ -41,10 +41,10 @@ impl<'sdl> crate::Data<'sdl> {
         print_sdl!(" r. change to new robot type\n");
         print_sdl!(
             " i. Invinciblemode: {}\n",
-            if self.main.invincible_mode == 0 {
-                "OFF"
-            } else {
+            if self.main.invincible_mode {
                 "ON"
+            } else {
+                "OFF"
             },
         );
         print_sdl!(" e. set energy\n");

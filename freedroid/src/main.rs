@@ -79,7 +79,7 @@ struct Main<'sdl> {
     alert_bonus_per_sec: f32,
     enemys: ArrayVec<Enemy, MAX_ENEMYS_ON_SHIP>,
     config_dir: ArrayCString<255>,
-    invincible_mode: i32,
+    invincible_mode: bool,
     /* display enemys regardless of IsVisible() */
     show_all_droids: i32,
     /* for bullet debugging: stop where u are */
@@ -111,7 +111,7 @@ impl Default for Main<'_> {
             alert_bonus_per_sec: 0.,
             enemys: ArrayVec::new(),
             config_dir: ArrayCString::default(),
-            invincible_mode: 0,
+            invincible_mode: false,
             show_all_droids: 0,
             stop_influencer: 0,
             number_of_droid_types: 0,

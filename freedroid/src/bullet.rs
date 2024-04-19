@@ -1,3 +1,5 @@
+use std::ops::Not;
+
 use crate::{
     defs::{
         BulletKind, Direction, Explosion, BULLET_COLL_DIST2, COLLISION_STEPSIZE, FLASH_DURATION,
@@ -81,7 +83,7 @@ impl crate::Data<'_> {
         // droids with flash are always flash-immune!
         // -> we don't get hurt by our own flashes!
         #[allow(clippy::cast_precision_loss)]
-        if self.main.invincible_mode == 0
+        if self.main.invincible_mode.not()
             && self.vars.droidmap[self.vars.me.ty.to_usize()].flashimmune == 0
         {
             self.vars.me.energy -=
@@ -136,7 +138,7 @@ impl crate::Data<'_> {
                     self.got_hit_sound();
 
                     #[allow(clippy::cast_precision_loss)]
-                    if self.main.invincible_mode == 0 {
+                    if self.main.invincible_mode.not() {
                         self.vars.me.energy -=
                             f32::from(self.vars.bulletmap[cur_bullet.ty.to_usize()].damage);
                     }
@@ -298,7 +300,7 @@ impl crate::Data<'_> {
             && !cur_blast.mine
             && dist < self.global.blast_radius + self.global.droid_radius
         {
-            if self.main.invincible_mode == 0 {
+            if self.main.invincible_mode.not() {
                 self.vars.me.energy -= self.global.blast_damage_per_second * self.frame_time();
                 let cur_blast = &self.main.all_blasts[usize::try_from(num).unwrap()];
 

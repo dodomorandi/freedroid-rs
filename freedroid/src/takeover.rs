@@ -1809,8 +1809,7 @@ impl crate::Data<'_> {
 
         let message;
         /* Ausgang beurteilen und returnen */
-        if self.main.invincible_mode != 0 || self.takeover.leader_color == self.takeover.your_color
-        {
+        if self.main.invincible_mode || self.takeover.leader_color == self.takeover.your_color {
             message = self.takeover_win(enemy_index, finish_takeover);
         } else if self.takeover.leader_color == self.takeover.opponent_color {
             /* self.takeover.leader_color == self.takeover.your_color */
