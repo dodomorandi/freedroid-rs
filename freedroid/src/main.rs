@@ -86,7 +86,6 @@ struct Main<'sdl> {
     /* for bullet debugging: stop where u are */
     stop_influencer: bool,
     number_of_droid_types: u8,
-    pre_take_energy: i32,
     all_bullets: [Option<Bullet<'sdl>>; MAXBULLETS],
     all_blasts: [Blast; MAXBLASTS + 10],
     first_digit_rect: Rect,
@@ -116,7 +115,6 @@ impl Default for Main<'_> {
             show_all_droids: false,
             stop_influencer: false,
             number_of_droid_types: 0,
-            pre_take_energy: 0,
             all_bullets: array::from_fn(|_| None),
             all_blasts: array::from_fn(|_| Blast::default()),
             first_digit_rect: Rect::default(),

@@ -1853,7 +1853,6 @@ impl crate::Data<'_> {
         #[allow(clippy::cast_possible_truncation)]
         if self.vars.me.ty == Droid::Droid001 {
             self.takeover.reject_energy = self.vars.me.energy as i32;
-            self.main.pre_take_energy = self.vars.me.energy as i32;
         }
 
         // We provide some security agains too high energy/health values gained
