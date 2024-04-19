@@ -74,7 +74,7 @@ struct Main<'sdl> {
     death_count_drain_speed: f32,
     alert_level: AlertNames,
     // threshold for FIRST Alert-color (yellow), the others are 2*, 3*..
-    alert_threshold: i32,
+    alert_threshold: u16,
     // bonus/sec for FIRST Alert-color, the others are 2*, 3*,...
     alert_bonus_per_sec: f32,
     enemys: ArrayVec<Enemy, MAX_ENEMYS_ON_SHIP>,

@@ -465,13 +465,9 @@ impl AlertNames {
         }
     }
 
-    pub fn from_death_count(death_count: f32, alert_threshold: i32) -> Self {
-        #[allow(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            clippy::cast_precision_loss
-        )]
-        let ratio = (death_count / alert_threshold as f32) as u8;
+    pub fn from_death_count(death_count: f32, alert_threshold: u16) -> Self {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let ratio = (death_count / f32::from(alert_threshold)) as u8;
         match ratio {
             0 => Self::Green,
             1 => Self::Yellow,

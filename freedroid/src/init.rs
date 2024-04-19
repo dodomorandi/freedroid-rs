@@ -968,7 +968,7 @@ impl crate::Data<'_> {
         // read in Alert-related parameters:
         self.main.death_count_drain_speed =
             read_float_from_string(data, DEATHCOUNT_DRAIN_SPEED_STRING);
-        self.main.alert_threshold = read_i32_from_string(data, ALERT_THRESHOLD_STRING);
+        self.main.alert_threshold = read_u16_from_string(data, ALERT_THRESHOLD_STRING);
         self.main.alert_bonus_per_sec = read_float_from_string(data, ALERT_BONUS_PER_SEC_STRING);
 
         // Now we read in the speed calibration factor for all bullets
