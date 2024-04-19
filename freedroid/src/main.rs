@@ -368,8 +368,8 @@ impl Data<'_> {
         self.vars.me.last_transfer_sound_time += self.frame_time();
         self.vars.me.text_visible_time += self.frame_time();
         self.global.level_doors_not_moved_time += self.frame_time();
-        if self.global.skip_a_few_frames != 0 {
-            self.global.skip_a_few_frames = 0;
+        if self.global.skip_a_few_frames {
+            self.global.skip_a_few_frames = false;
         }
 
         if self.vars.me.firewait > 0. {

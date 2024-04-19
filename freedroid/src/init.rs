@@ -213,7 +213,7 @@ impl crate::Data<'_> {
     pub fn init_freedroid(&mut self) {
         self.main.all_bullets.fill_with(|| None);
 
-        self.global.skip_a_few_frames = false.into();
+        self.global.skip_a_few_frames = false;
         self.vars.me.text_visible_time = 0.;
         self.vars.me.text_to_be_displayed = TextToBeDisplayed::None;
 

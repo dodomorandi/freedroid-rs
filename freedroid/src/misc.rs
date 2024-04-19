@@ -471,7 +471,7 @@ impl crate::Data<'_> {
         // SPACE KEY, SO PLEASE DO NOT ERASE EITHER METHOD.  PLEASE ASK JP FIRST.
         //
 
-        if self.global.skip_a_few_frames != 0 {
+        if self.global.skip_a_few_frames {
             return;
         }
 
@@ -496,7 +496,7 @@ impl crate::Data<'_> {
     }
 
     pub fn activate_conservative_frame_computation(&mut self) {
-        self.global.skip_a_few_frames = true.into();
+        self.global.skip_a_few_frames = true;
 
         // Now we are in some form of pause.  It can't
         // hurt to have the top status bar redrawn after that,
@@ -901,7 +901,7 @@ fn read_variable<'a>(data: &'a [u8], var_name: &str) -> Option<&'a [u8]> {
 
 impl Misc {
     pub fn frame_time(&mut self, global: &Global, f_p_sover1: f32) -> f32 {
-        if global.skip_a_few_frames != 0 {
+        if global.skip_a_few_frames {
             return self.previous_time;
         }
 
