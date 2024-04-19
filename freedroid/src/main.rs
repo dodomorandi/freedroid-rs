@@ -61,7 +61,7 @@ struct Main<'sdl> {
     last_got_into_blast_sound: f32,
     last_refresh_sound: f32,
     // Toggle TRUE/FALSE for turning sounds on/off
-    sound_on: i32,
+    sound_on: bool,
     // the current level data
     cur_level_index: Option<usize>,
     // the current ship-data
@@ -99,7 +99,7 @@ impl Default for Main<'_> {
         Self {
             last_got_into_blast_sound: 2.,
             last_refresh_sound: 2.,
-            sound_on: 1,
+            sound_on: true,
             cur_level_index: None,
             cur_ship: Ship::default(),
             show_score: 0,

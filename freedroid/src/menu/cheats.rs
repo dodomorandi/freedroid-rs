@@ -59,7 +59,7 @@ impl<'sdl> crate::Data<'sdl> {
         print_sdl!(" m. Map of Deck xy\n");
         print_sdl!(
             " s. Sound: {}\n",
-            if self.main.sound_on == 0 { "OFF" } else { "ON" }
+            if self.main.sound_on { "ON" } else { "OFF" }
         );
         print_sdl!(" w. Print current waypoints\n");
         print_sdl!(" z. change Zoom factor\n");

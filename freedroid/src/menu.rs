@@ -1570,7 +1570,7 @@ pub fn is_toggle_on(toggle: i32) -> &'static CStr {
 
 #[must_use]
 struct MenuChange<'a, 'b, T> {
-    sound_on: i32,
+    sound_on: bool,
     sdl: &'a Sdl,
     sound: &'a Sound<'b>,
     action: MenuAction,

@@ -12,7 +12,7 @@ use sdl::{
     rwops::RwOps,
     Mixer,
 };
-use std::{array, ffi::CStr};
+use std::{array, ffi::CStr, ops::Not};
 
 const MIX_MAX_VOLUME: u8 = 128;
 
@@ -103,8 +103,8 @@ impl crate::Data<'_> {
         );
     }
 
-    pub fn play_sound_static(sound_on: i32, sdl: &Sdl, sound: &Sound, tune: SoundType) {
-        if sound_on == 0 {
+    pub fn play_sound_static(sound_on: bool, sdl: &Sdl, sound: &Sound, tune: SoundType) {
+        if sound_on.not() {
             return;
         }
 
@@ -132,7 +132,7 @@ impl crate::Data<'_> {
     }
 
     pub fn takeover_set_capsule_sound(&self) {
-        if self.main.sound_on == 0 {
+        if self.main.sound_on.not() {
             return;
         }
 
@@ -140,7 +140,7 @@ impl crate::Data<'_> {
     }
 
     pub fn takeover_game_won_sound(&self) {
-        if self.main.sound_on == 0 {
+        if self.main.sound_on.not() {
             return;
         }
 
@@ -148,7 +148,7 @@ impl crate::Data<'_> {
     }
 
     pub fn takeover_game_deadlock_sound(&self) {
-        if self.main.sound_on == 0 {
+        if self.main.sound_on.not() {
             return;
         }
 
@@ -156,7 +156,7 @@ impl crate::Data<'_> {
     }
 
     pub fn takeover_game_lost_sound(&self) {
-        if self.main.sound_on == 0 {
+        if self.main.sound_on.not() {
             return;
         }
 
@@ -164,7 +164,7 @@ impl crate::Data<'_> {
     }
 
     pub fn collision_got_damaged_sound(&self) {
-        if self.main.sound_on == 0 {
+        if self.main.sound_on.not() {
             return;
         }
 
@@ -172,7 +172,7 @@ impl crate::Data<'_> {
     }
 
     pub fn collision_damaged_enemy_sound(&self) {
-        if self.main.sound_on == 0 {
+        if self.main.sound_on.not() {
             return;
         }
 
@@ -180,7 +180,7 @@ impl crate::Data<'_> {
     }
 
     pub fn bounce_sound(&self) {
-        if self.main.sound_on == 0 {
+        if self.main.sound_on.not() {
             return;
         }
 
@@ -188,7 +188,7 @@ impl crate::Data<'_> {
     }
 
     pub fn druid_blast_sound(&self) {
-        if self.main.sound_on == 0 {
+        if self.main.sound_on.not() {
             return;
         }
 
@@ -196,7 +196,7 @@ impl crate::Data<'_> {
     }
 
     pub fn got_hit_sound(&self) {
-        if self.main.sound_on == 0 {
+        if self.main.sound_on.not() {
             return;
         }
 
@@ -204,7 +204,7 @@ impl crate::Data<'_> {
     }
 
     pub fn got_into_blast_sound(&self) {
-        if self.main.sound_on == 0 {
+        if self.main.sound_on.not() {
             return;
         }
 
@@ -212,7 +212,7 @@ impl crate::Data<'_> {
     }
 
     pub fn refresh_sound(&self) {
-        if self.main.sound_on == 0 {
+        if self.main.sound_on.not() {
             return;
         }
 
@@ -224,8 +224,8 @@ impl crate::Data<'_> {
         Self::move_lift_sound_static(self.main.sound_on, self.sdl, self.sound.as_ref().unwrap());
     }
 
-    pub fn move_lift_sound_static(sound_on: i32, sdl: &Sdl, sound: &Sound) {
-        if sound_on == 0 {
+    pub fn move_lift_sound_static(sound_on: bool, sdl: &Sdl, sound: &Sound) {
+        if sound_on.not() {
             return;
         }
 
@@ -233,7 +233,7 @@ impl crate::Data<'_> {
     }
 
     pub fn menu_item_selected_sound(&self) {
-        if self.main.sound_on == 0 {
+        if self.main.sound_on.not() {
             return;
         }
 
@@ -241,7 +241,7 @@ impl crate::Data<'_> {
     }
 
     pub fn move_menu_position_sound(&self) {
-        if self.main.sound_on == 0 {
+        if self.main.sound_on.not() {
             return;
         }
 
@@ -249,7 +249,7 @@ impl crate::Data<'_> {
     }
 
     pub fn thou_art_defeated_sound(&self) {
-        if self.main.sound_on == 0 {
+        if self.main.sound_on.not() {
             return;
         }
 
@@ -257,7 +257,7 @@ impl crate::Data<'_> {
     }
 
     pub fn enter_lift_sound(&self) {
-        if self.main.sound_on == 0 {
+        if self.main.sound_on.not() {
             return;
         }
 
@@ -265,7 +265,7 @@ impl crate::Data<'_> {
     }
 
     pub fn leave_lift_sound(&self) {
-        if self.main.sound_on == 0 {
+        if self.main.sound_on.not() {
             return;
         }
 
@@ -277,7 +277,7 @@ impl<'sdl> crate::Data<'sdl> {
     pub fn fire_bullet_sound(&self, bullet_type: BulletKind) {
         use BulletKind as K;
 
-        if self.main.sound_on == 0 {
+        if self.main.sound_on.not() {
             return;
         }
 
@@ -313,7 +313,7 @@ impl<'sdl> crate::Data<'sdl> {
         sdl: &'a Sdl,
         filename_raw: Option<&[u8]>,
     ) {
-        if main.sound_on == 0 {
+        if main.sound_on.not() {
             return;
         }
 
@@ -389,7 +389,7 @@ impl<'sdl> crate::Data<'sdl> {
     }
 
     pub fn set_bg_music_volume(&self, new_volume: f32) {
-        if self.main.sound_on == 0 {
+        if self.main.sound_on.not() {
             return;
         }
 
@@ -411,7 +411,7 @@ impl<'a> Sound<'a> {
     ) -> Option<Self> {
         info!("Initializing SDL Audio Systems");
 
-        if main.sound_on == 0 {
+        if main.sound_on.not() {
             return None;
         }
 
@@ -422,7 +422,7 @@ impl<'a> Sound<'a> {
                 "SDL Sound subsystem could not be initialized. \
                 Continuing with sound disabled",
             );
-            main.sound_on = false.into();
+            main.sound_on = false;
             return None;
         };
         info!("SDL Audio initialisation successful.");
@@ -435,7 +435,7 @@ impl<'a> Sound<'a> {
                 "SDL Mixer Error: {}. Continuing with sound disabled",
                 sdl.get_error().to_string_lossy(),
             );
-            main.sound_on = false.into();
+            main.sound_on = false;
             return None;
         };
         info!("Successfully opened SDL audio channel.");
@@ -473,7 +473,7 @@ impl<'a> Sound<'a> {
                     "Continuing with sound disabled. Error = {}",
                     sdl.get_error().to_string_lossy()
                 );
-                main.sound_on = false.into();
+                main.sound_on = false;
                 return None;
             }
 
@@ -504,7 +504,7 @@ impl<'a> Sound<'a> {
                     "SDL Mixer Error: {}. Continuing with sound disabled",
                     sdl.get_error().to_string_lossy()
                 );
-                main.sound_on = false.into();
+                main.sound_on = false;
                 return None;
             }
 
@@ -535,7 +535,7 @@ impl<'a> Sound<'a> {
     }
 
     pub(crate) fn set_sound_f_x_volume(&self, main: &Main, mixer: &Mixer, new_volume: f32) {
-        if main.sound_on == 0 {
+        if main.sound_on.not() {
             return;
         }
 

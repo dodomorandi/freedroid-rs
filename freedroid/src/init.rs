@@ -321,9 +321,9 @@ impl crate::Data<'_> {
         let opt = Opt::parse();
 
         if opt.nosound {
-            self.main.sound_on = false.into();
+            self.main.sound_on = false;
         } else if opt.sound {
-            self.main.sound_on = true.into();
+            self.main.sound_on = true;
         }
 
         if let Some(sensitivity) = opt.sensitivity {
