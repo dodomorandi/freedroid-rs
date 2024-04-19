@@ -2,7 +2,7 @@ use crate::{
     b_font::font_height,
     cur_level,
     defs::{
-        AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Droid, MenuAction, SoundType,
+        AlertLevel, AssembleCombatWindowFlags, DisplayBannerFlags, Droid, MenuAction, SoundType,
         Status, DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET, TEXT_STRETCH, UPDATE,
     },
     graphics::{scale_pic, Graphics},
@@ -40,7 +40,7 @@ pub struct Data<'sdl> {
 impl crate::Data<'_> {
     /// do all alert-related agitations: alert-sirens and alert-lights
     pub fn alert_level_warning(&mut self) {
-        use AlertNames as A;
+        use AlertLevel as A;
 
         const SIREN_WAIT: f32 = 2.5;
 

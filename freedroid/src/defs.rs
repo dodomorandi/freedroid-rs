@@ -443,7 +443,7 @@ bitflags! {
 
 // symbolic Alert-names
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum AlertNames {
+pub enum AlertLevel {
     #[default]
     Green = 0,
     Yellow,
@@ -451,17 +451,17 @@ pub enum AlertNames {
     Red,
 }
 
-impl AlertNames {
+impl AlertLevel {
     pub fn to_str(self) -> &'static str {
         self.into()
     }
 
     pub const fn to_tile(self) -> MapTile {
         match self {
-            AlertNames::Green => MapTile::AlertGreen,
-            AlertNames::Yellow => MapTile::AlertYellow,
-            AlertNames::Amber => MapTile::AlertAmber,
-            AlertNames::Red => MapTile::AlertRed,
+            AlertLevel::Green => MapTile::AlertGreen,
+            AlertLevel::Yellow => MapTile::AlertYellow,
+            AlertLevel::Amber => MapTile::AlertAmber,
+            AlertLevel::Red => MapTile::AlertRed,
         }
     }
 
@@ -477,25 +477,25 @@ impl AlertNames {
     }
 }
 
-impl From<AlertNames> for &'static str {
-    fn from(alert_name: AlertNames) -> Self {
+impl From<AlertLevel> for &'static str {
+    fn from(alert_name: AlertLevel) -> Self {
         match alert_name {
-            AlertNames::Green => "green",
-            AlertNames::Yellow => "yellow",
-            AlertNames::Amber => "amber",
-            AlertNames::Red => "red",
+            AlertLevel::Green => "green",
+            AlertLevel::Yellow => "yellow",
+            AlertLevel::Amber => "amber",
+            AlertLevel::Red => "red",
         }
     }
 }
 
-impl From<AlertNames> for f32 {
+impl From<AlertLevel> for f32 {
     #[inline]
-    fn from(value: AlertNames) -> Self {
+    fn from(value: AlertLevel) -> Self {
         f32::from(value as u8)
     }
 }
 
-impl Display for AlertNames {
+impl Display for AlertLevel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.to_str())
     }
@@ -504,15 +504,15 @@ impl Display for AlertNames {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct InvalidAlertName;
 
-impl TryFrom<i32> for AlertNames {
+impl TryFrom<i32> for AlertLevel {
     type Error = InvalidAlertName;
 
     fn try_from(value: i32) -> Result<Self, Self::Error> {
         Ok(match value {
-            0 => AlertNames::Green,
-            1 => AlertNames::Yellow,
-            2 => AlertNames::Amber,
-            3 => AlertNames::Red,
+            0 => AlertLevel::Green,
+            1 => AlertLevel::Yellow,
+            2 => AlertLevel::Amber,
+            3 => AlertLevel::Red,
             _ => return Err(InvalidAlertName),
         })
     }

@@ -26,7 +26,7 @@ use array_c_string::ArrayCString;
 use arrayvec::ArrayVec;
 use b_font::BFont;
 use defs::{
-    AlertNames, AssembleCombatWindowFlags, DisplayBannerFlags, Status, BYCOLOR,
+    AlertLevel, AssembleCombatWindowFlags, DisplayBannerFlags, Status, BYCOLOR,
     DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, RESET, SHOW_WAIT,
     STANDARD_MISSION,
 };
@@ -72,7 +72,7 @@ struct Main<'sdl> {
     death_count: f32,
     // drain per second
     death_count_drain_speed: f32,
-    alert_level: AlertNames,
+    alert_level: AlertLevel,
     // threshold for FIRST Alert-color (yellow), the others are 2*, 3*..
     alert_threshold: u16,
     // bonus/sec for FIRST Alert-color, the others are 2*, 3*,...
@@ -106,7 +106,7 @@ impl Default for Main<'_> {
             real_score: 0.,
             death_count: 0.,
             death_count_drain_speed: 0.,
-            alert_level: AlertNames::default(),
+            alert_level: AlertLevel::default(),
             alert_threshold: 0,
             alert_bonus_per_sec: 0.,
             enemys: ArrayVec::new(),
@@ -407,7 +407,7 @@ impl Data<'_> {
         {
             // and switch Alert-level according to DeathCount
             self.main.alert_level =
-                AlertNames::from_death_count(self.main.death_count, self.main.alert_threshold);
+                AlertLevel::from_death_count(self.main.death_count, self.main.alert_threshold);
             // player gets a bonus/second in AlertLevel
             self.main.real_score += f32::from(self.main.alert_level)
                 * self.main.alert_bonus_per_sec
