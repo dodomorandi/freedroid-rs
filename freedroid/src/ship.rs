@@ -40,36 +40,25 @@ pub struct Data<'sdl> {
 impl crate::Data<'_> {
     /// do all alert-related agitations: alert-sirens and alert-lights
     pub fn alert_level_warning(&mut self) {
+        use AlertNames as A;
+
         const SIREN_WAIT: f32 = 2.5;
 
-        use AlertNames as A;
-        let cur_alert = match AlertNames::try_from(self.main.alert_level).ok() {
-            Some(A::Green) => A::Green,
-            Some(alert @ (A::Yellow | A::Amber | A::Red)) => {
-                #[allow(
-                    clippy::cast_possible_truncation,
-                    clippy::cast_sign_loss,
-                    clippy::cast_precision_loss
-                )]
-                if self.sdl.ticks_ms() - self.ship.last_siren
-                    > (SIREN_WAIT * 1000.0 / (self.main.alert_level as f32)) as u32
-                {
-                    // higher alert-> faster sirens!
-                    self.play_sound(SoundType::Alert);
-                    self.ship.last_siren = self.sdl.ticks_ms();
-                }
-
-                alert
+        let cur_alert = self.main.alert_level;
+        if matches!(cur_alert, A::Yellow | A::Amber | A::Red) {
+            #[allow(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                clippy::cast_precision_loss
+            )]
+            if self.sdl.ticks_ms() - self.ship.last_siren
+                > (SIREN_WAIT * 1000.0 / f32::from(self.main.alert_level)) as u32
+            {
+                // higher alert-> faster sirens!
+                self.play_sound(SoundType::Alert);
+                self.ship.last_siren = self.sdl.ticks_ms();
             }
-            Some(A::Last) | None => {
-                warn!(
-                    "illegal AlertLevel = {} > {}.. something's gone wrong!!\n",
-                    self.main.alert_level,
-                    AlertNames::Red as i32
-                );
-                return;
-            }
-        };
+        }
 
         // so much to the sirens, now make sure the alert-tiles are updated correctly:
         let cur_level = cur_level!(mut self.main);
@@ -915,9 +904,7 @@ impl crate::Data<'_> {
                 "Area : {}\nDeck : {}    Alert: {}",
                 self.main.cur_ship.area_name.to_str().unwrap(),
                 self.main.cur_level().levelname.to_str().unwrap(),
-                AlertNames::try_from(self.main.alert_level)
-                    .unwrap()
-                    .to_str(),
+                self.main.alert_level,
             )
             .unwrap();
             self.display_text(

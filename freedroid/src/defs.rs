@@ -442,13 +442,13 @@ bitflags! {
 }
 
 // symbolic Alert-names
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AlertNames {
+    #[default]
     Green = 0,
     Yellow,
     Amber,
     Red,
-    Last,
 }
 
 impl AlertNames {
@@ -462,7 +462,21 @@ impl AlertNames {
             AlertNames::Yellow => MapTile::AlertYellow,
             AlertNames::Amber => MapTile::AlertAmber,
             AlertNames::Red => MapTile::AlertRed,
-            AlertNames::Last => panic!("invalid alert name"),
+        }
+    }
+
+    pub fn from_death_count(death_count: f32, alert_threshold: i32) -> Self {
+        #[allow(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            clippy::cast_precision_loss
+        )]
+        let ratio = (death_count / alert_threshold as f32) as u8;
+        match ratio {
+            0 => Self::Green,
+            1 => Self::Yellow,
+            2 => Self::Amber,
+            _ => Self::Red,
         }
     }
 }
@@ -474,8 +488,20 @@ impl From<AlertNames> for &'static str {
             AlertNames::Yellow => "yellow",
             AlertNames::Amber => "amber",
             AlertNames::Red => "red",
-            AlertNames::Last => panic!("invalid alert name"),
         }
+    }
+}
+
+impl From<AlertNames> for f32 {
+    #[inline]
+    fn from(value: AlertNames) -> Self {
+        f32::from(value as u8)
+    }
+}
+
+impl Display for AlertNames {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.to_str())
     }
 }
 

@@ -72,7 +72,7 @@ struct Main<'sdl> {
     death_count: f32,
     // drain per second
     death_count_drain_speed: f32,
-    alert_level: i32,
+    alert_level: AlertNames,
     // threshold for FIRST Alert-color (yellow), the others are 2*, 3*..
     alert_threshold: i32,
     // bonus/sec for FIRST Alert-color, the others are 2*, 3*,...
@@ -106,7 +106,7 @@ impl Default for Main<'_> {
             real_score: 0.,
             death_count: 0.,
             death_count_drain_speed: 0.,
-            alert_level: 0,
+            alert_level: AlertNames::default(),
             alert_threshold: 0,
             alert_bonus_per_sec: 0.,
             enemys: ArrayVec::new(),
@@ -407,13 +407,11 @@ impl Data<'_> {
         {
             // and switch Alert-level according to DeathCount
             self.main.alert_level =
-                (self.main.death_count / self.main.alert_threshold as f32) as i32;
-            if self.main.alert_level > AlertNames::Red as i32 {
-                self.main.alert_level = AlertNames::Red as i32;
-            }
+                AlertNames::from_death_count(self.main.death_count, self.main.alert_threshold);
             // player gets a bonus/second in AlertLevel
-            self.main.real_score +=
-                self.main.alert_level as f32 * self.main.alert_bonus_per_sec * self.frame_time();
+            self.main.real_score += f32::from(self.main.alert_level)
+                * self.main.alert_bonus_per_sec
+                * self.frame_time();
         }
 
         let Self {
