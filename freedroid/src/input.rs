@@ -57,8 +57,8 @@ impl InputState {
 
 pub struct Input {
     pub show_cursor: bool,
-    wheel_up_events: i32,
-    wheel_down_events: i32,
+    wheel_up_events: u32,
+    wheel_down_events: u32,
     pub last_mouse_event: u32,
     current_modifiers: SDLMod,
     state: [InputState; PointerStates::Last.to_usize()],
