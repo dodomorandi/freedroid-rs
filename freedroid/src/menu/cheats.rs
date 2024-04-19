@@ -65,10 +65,10 @@ impl<'sdl> crate::Data<'sdl> {
         print_sdl!(" z. change Zoom factor\n");
         print_sdl!(
             " f. Freeze on this positon: {}\n",
-            if self.main.stop_influencer == 0 {
-                "OFF"
-            } else {
+            if self.main.stop_influencer {
                 "ON"
+            } else {
+                "OFF"
             },
         );
         print_sdl!(" q. RESUME game\n");

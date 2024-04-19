@@ -57,6 +57,7 @@ use std::{
     path::Path,
 };
 
+#[allow(clippy::struct_excessive_bools)]
 struct Main<'sdl> {
     last_got_into_blast_sound: f32,
     last_refresh_sound: f32,
@@ -83,7 +84,7 @@ struct Main<'sdl> {
     /* display enemys regardless of IsVisible() */
     show_all_droids: bool,
     /* for bullet debugging: stop where u are */
-    stop_influencer: i32,
+    stop_influencer: bool,
     number_of_droid_types: u8,
     pre_take_energy: i32,
     all_bullets: [Option<Bullet<'sdl>>; MAXBULLETS],
@@ -113,7 +114,7 @@ impl Default for Main<'_> {
             config_dir: ArrayCString::default(),
             invincible_mode: false,
             show_all_droids: false,
-            stop_influencer: 0,
+            stop_influencer: false,
             number_of_droid_types: 0,
             pre_take_energy: 0,
             all_bullets: array::from_fn(|_| None),
