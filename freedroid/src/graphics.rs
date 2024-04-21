@@ -5,9 +5,9 @@ use crate::{
         self, scale_point, Cmds, Criticality, DisplayBannerFlags, Droid, SoundType, Themed,
         BANNER_BLOCK_FILE, BLAST_BLOCK_FILE, BULLET_BLOCK_FILE, CONSOLE_BG_PIC1_FILE,
         CONSOLE_BG_PIC2_FILE, CONSOLE_PIC_FILE, DIGITNUMBER, DIGIT_BLOCK_FILE, DROID_BLOCK_FILE,
-        ENEMYPHASES, FONT0_FILE, FONT1_FILE, FONT2_FILE, FREE_ONLY, GRAPHICS_DIR_C, ICON_FILE,
-        INIT_ONLY, MAP_BLOCK_FILE, NUM_COLORS, NUM_DECAL_PICS, NUM_MAP_BLOCKS, PARA_FONT_FILE,
-        SHIP_OFF_PIC_FILE, SHIP_ON_PIC_FILE, TAKEOVER_BG_PIC_FILE,
+        ENEMYPHASES, FONT0_FILE, FONT1_FILE, FONT2_FILE, GRAPHICS_DIR_C, ICON_FILE, MAP_BLOCK_FILE,
+        NUM_COLORS, NUM_DECAL_PICS, NUM_MAP_BLOCKS, PARA_FONT_FILE, SHIP_OFF_PIC_FILE,
+        SHIP_ON_PIC_FILE, TAKEOVER_BG_PIC_FILE,
     },
     global::Global,
     misc::{read_i16_from_string, read_i32_from_string, read_u16_from_string, read_u8_from_string},
@@ -19,6 +19,7 @@ use crate::{
 };
 
 use arrayvec::ArrayString;
+use bitflags::bitflags;
 use cstr::cstr;
 use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
@@ -162,7 +163,7 @@ impl<'sdl> Graphics<'sdl> {
         line: i32,
         col: i32,
         block: Option<Rect>,
-        flags: i32,
+        flags: LoadBlockVidBppPicFlags,
         sdl: &'sdl Sdl,
     ) -> Option<Surface<'sdl>> {
         let &mut Self {
@@ -936,8 +937,14 @@ impl crate::Data<'_> {
         macro_rules! load_block_from_file {
             ($file_name:expr) => {{
                 let fpath = find_file!($file_name);
-                self.graphics
-                    .load_block(fpath, 0, 0, None, i32::from(INIT_ONLY), self.sdl);
+                self.graphics.load_block(
+                    fpath,
+                    0,
+                    0,
+                    None,
+                    LoadBlockVidBppPicFlags::INIT_ONLY,
+                    self.sdl,
+                );
             }};
         }
 
@@ -990,7 +997,14 @@ impl crate::Data<'_> {
 
         //---------- get Takeover pics
         let fpath = find_file!(TO_BLOCK_FILE);
-        self.takeover.to_blocks = self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
+        self.takeover.to_blocks = self.graphics.load_block(
+            fpath,
+            0,
+            0,
+            None,
+            LoadBlockVidBppPicFlags::empty(),
+            self.sdl,
+        );
 
         self.update_progress(60);
 
@@ -1020,6 +1034,7 @@ impl crate::Data<'_> {
         true.into()
     }
 
+    #[allow(clippy::too_many_lines)]
     fn init_pictures_once(&mut self) {
         macro_rules! find_file {
             ($file_name:expr, $criticality:expr) => {
@@ -1041,7 +1056,14 @@ impl crate::Data<'_> {
         macro_rules! load_block_from_file {
             ($file_name:expr) => {{
                 let fpath = find_file!($file_name);
-                self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl)
+                self.graphics.load_block(
+                    fpath,
+                    0,
+                    0,
+                    None,
+                    LoadBlockVidBppPicFlags::empty(),
+                    self.sdl,
+                )
             }};
         }
 
@@ -1121,14 +1143,30 @@ impl crate::Data<'_> {
         // get the Ashes pics
         let fpath = find_file!(b"Ashes.png", Criticality::WarnOnly);
 
-        self.graphics
-            .load_block(fpath, 0, 0, None, i32::from(INIT_ONLY), self.sdl);
-        self.graphics.decal_pics[0] =
-            self.graphics
-                .load_block(None, 0, 0, Some(ORIG_BLOCK_RECT), 0, self.sdl);
-        self.graphics.decal_pics[1] =
-            self.graphics
-                .load_block(None, 0, 1, Some(ORIG_BLOCK_RECT), 0, self.sdl);
+        self.graphics.load_block(
+            fpath,
+            0,
+            0,
+            None,
+            LoadBlockVidBppPicFlags::INIT_ONLY,
+            self.sdl,
+        );
+        self.graphics.decal_pics[0] = self.graphics.load_block(
+            None,
+            0,
+            0,
+            Some(ORIG_BLOCK_RECT),
+            LoadBlockVidBppPicFlags::empty(),
+            self.sdl,
+        );
+        self.graphics.decal_pics[1] = self.graphics.load_block(
+            None,
+            0,
+            1,
+            Some(ORIG_BLOCK_RECT),
+            LoadBlockVidBppPicFlags::empty(),
+            self.sdl,
+        );
     }
 
     pub fn load_theme_configuration_file(&mut self) {
@@ -1432,7 +1470,7 @@ impl crate::Data<'_> {
                     line: color_index.try_into().unwrap(),
                     col: block_index.try_into().unwrap(),
                     block: Some(ORIG_BLOCK_RECT),
-                    flags: 0,
+                    flags: LoadBlockVidBppPicFlags::empty(),
                     sdl,
                 }
                 .run()
@@ -1463,7 +1501,7 @@ impl crate::Data<'_> {
                     line: 0,
                     col: index.try_into().unwrap(),
                     block: Some(ORIG_BLOCK_RECT),
-                    flags: 0,
+                    flags: LoadBlockVidBppPicFlags::empty(),
                     sdl: self.sdl,
                 }
                 .run();
@@ -1491,7 +1529,7 @@ impl crate::Data<'_> {
                     line: 1,
                     col: index.try_into().unwrap(),
                     block: Some(ORIG_BLOCK_RECT),
-                    flags: 0,
+                    flags: LoadBlockVidBppPicFlags::empty(),
                     sdl: self.sdl,
                 }
                 .run();
@@ -1526,7 +1564,7 @@ impl crate::Data<'_> {
                     bullet_type_index.try_into().unwrap(),
                     phase_index.try_into().unwrap(),
                     Some(ORIG_BLOCK_RECT),
-                    0,
+                    LoadBlockVidBppPicFlags::empty(),
                     self.sdl,
                 );
             });
@@ -1550,7 +1588,7 @@ impl crate::Data<'_> {
                     blast_type_index.try_into().unwrap(),
                     surface_index.try_into().unwrap(),
                     Some(ORIG_BLOCK_RECT),
-                    0,
+                    LoadBlockVidBppPicFlags::empty(),
                     self.sdl,
                 );
             });
@@ -1579,7 +1617,7 @@ impl crate::Data<'_> {
                     line: 0,
                     col: index.try_into().unwrap(),
                     block: Some(ORIG_DIGIT_RECT),
-                    flags: 0,
+                    flags: LoadBlockVidBppPicFlags::empty(),
                     sdl: self.sdl,
                 }
                 .run();
@@ -1595,7 +1633,7 @@ impl crate::Data<'_> {
                     line: 0,
                     col: (index + 10).try_into().unwrap(),
                     block: Some(ORIG_DIGIT_RECT),
-                    flags: 0,
+                    flags: LoadBlockVidBppPicFlags::empty(),
                     sdl: self.sdl,
                 }
                 .run();
@@ -1610,8 +1648,16 @@ struct LoadBlockVidBppPic<'a, 'sdl: 'a> {
     pub line: i32,
     pub col: i32,
     pub block: Option<Rect>,
-    pub flags: i32,
+    pub flags: LoadBlockVidBppPicFlags,
     pub sdl: &'sdl Sdl,
+}
+
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct LoadBlockVidBppPicFlags: u8 {
+        const INIT_ONLY = 0x1;
+        const FREE_ONLY = 0x2;
+    }
 }
 
 impl<'sdl> LoadBlockVidBppPic<'_, 'sdl> {
@@ -1632,7 +1678,7 @@ impl<'sdl> LoadBlockVidBppPic<'_, 'sdl> {
             return None;
         }
 
-        if pic.is_some() && flags == i32::from(FREE_ONLY) {
+        if pic.is_some() && flags == LoadBlockVidBppPicFlags::FREE_ONLY {
             *pic = None;
             return None;
         }
@@ -1642,7 +1688,7 @@ impl<'sdl> LoadBlockVidBppPic<'_, 'sdl> {
             *pic = Some(sdl.load_image_from_c_str_path(fpath).unwrap());
         }
 
-        if (flags & i32::from(INIT_ONLY)) != 0 {
+        if flags.contains(LoadBlockVidBppPicFlags::INIT_ONLY) {
             return None; // that's it guys, only initialzing...
         }
 

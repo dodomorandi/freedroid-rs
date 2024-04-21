@@ -4,7 +4,7 @@ use crate::{
         FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE,
         PROGRESS_METER_FILE,
     },
-    graphics::{scale_pic, Graphics},
+    graphics::{scale_pic, Graphics, LoadBlockVidBppPicFlags},
     input::CMD_STRINGS,
     ArrayCString, Global,
 };
@@ -629,8 +629,14 @@ impl crate::Data<'_> {
                 Themed::NoTheme as i32,
                 Criticality::Critical as i32,
             );
-            self.graphics.progress_meter_pic =
-                self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
+            self.graphics.progress_meter_pic = self.graphics.load_block(
+                fpath,
+                0,
+                0,
+                None,
+                LoadBlockVidBppPicFlags::empty(),
+                self.sdl,
+            );
             scale_pic(
                 self.graphics.progress_meter_pic.as_mut().unwrap(),
                 self.global.game_config.scale,
@@ -643,8 +649,14 @@ impl crate::Data<'_> {
                 Themed::NoTheme as i32,
                 Criticality::Critical as i32,
             );
-            self.graphics.progress_filler_pic =
-                self.graphics.load_block(fpath, 0, 0, None, 0, self.sdl);
+            self.graphics.progress_filler_pic = self.graphics.load_block(
+                fpath,
+                0,
+                0,
+                None,
+                LoadBlockVidBppPicFlags::empty(),
+                self.sdl,
+            );
             scale_pic(
                 self.graphics.progress_filler_pic.as_mut().unwrap(),
                 self.global.game_config.scale,

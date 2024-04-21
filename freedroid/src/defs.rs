@@ -21,9 +21,6 @@ use std::{
 
 pub const MAX_THEMES: usize = 100;
 
-pub const INIT_ONLY: u8 = 0x04;
-pub const FREE_ONLY: u8 = 0x08;
-
 pub const DROID_ROTATION_TIME: f32 = 3.0;
 pub const NUM_DECAL_PICS: usize = 2;
 
