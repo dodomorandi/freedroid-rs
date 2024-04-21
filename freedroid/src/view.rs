@@ -78,7 +78,7 @@ impl crate::Data<'_> {
     ///     that has been modified
     ///
     /// (*) `SHOW_FULL_MAP` = 0x04: show complete map, disregard visibility
-    pub fn assemble_combat_picture(&mut self, mask: i32) {
+    pub fn assemble_combat_picture(&mut self, mask: AssembleCombatWindowFlags) {
         trace!("\nvoid Assemble_Combat_Picture(...): Real function call confirmed.");
 
         self.graphics
@@ -156,14 +156,17 @@ impl crate::Data<'_> {
             );
         }
 
-        if mask & i32::from(AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits()) == 0 {
+        if mask
+            .contains(AssembleCombatWindowFlags::ONLY_SHOW_MAP)
+            .not()
+        {
             self.assemble_combat_window_draw();
         }
 
         // At this point we are done with the drawing procedure
         // and all that remains to be done is updating the screen.
 
-        if mask & i32::from(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits()) != 0 {
+        if mask.contains(AssembleCombatWindowFlags::DO_SCREEN_UPDATE) {
             let screen = self.graphics.ne_screen.as_mut().unwrap();
             screen.update_rect(&self.vars.user_rect);
             screen.update_rect(&text_rect);
@@ -172,8 +175,14 @@ impl crate::Data<'_> {
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
     }
 
-    fn assemble_combat_picture_get_upleft_downright(&self, mask: i32) -> [CoarsePoint<i8>; 2] {
-        if (mask & i32::from(AssembleCombatWindowFlags::SHOW_FULL_MAP.bits())) == 0 {
+    fn assemble_combat_picture_get_upleft_downright(
+        &self,
+        mask: AssembleCombatWindowFlags,
+    ) -> [CoarsePoint<i8>; 2] {
+        if mask
+            .contains(AssembleCombatWindowFlags::SHOW_FULL_MAP)
+            .not()
+        {
             #[allow(clippy::cast_possible_truncation)]
             let upleft = CoarsePoint {
                 x: self.vars.me.pos.x as i8 - 6,
@@ -675,7 +684,7 @@ impl crate::Data<'_> {
         &mut self,
         line: i8,
         col: i8,
-        mask: i32,
+        mask: AssembleCombatWindowFlags,
         state: BlitCombatCellState,
     ) -> BlitCombatCellState {
         let BlitCombatCellState {
@@ -687,7 +696,9 @@ impl crate::Data<'_> {
         } = state;
 
         if self.global.game_config.all_map_visible == 0
-            && ((mask & i32::from(AssembleCombatWindowFlags::SHOW_FULL_MAP.bits())) == 0x0)
+            && mask
+                .contains(AssembleCombatWindowFlags::SHOW_FULL_MAP)
+                .not()
         {
             pos.x = col.into();
             pos.y = line.into();

@@ -100,7 +100,7 @@ impl crate::Data<'_> {
             ];
 
             self.fill_rect(self.vars.user_rect, BLACK);
-            self.assemble_combat_picture(AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits().into());
+            self.assemble_combat_picture(AssembleCombatWindowFlags::ONLY_SHOW_MAP);
             self.highlight_current_block();
             self.show_waypoints();
 

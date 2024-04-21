@@ -464,9 +464,7 @@ impl crate::Data<'_> {
         self.set_combat_scale_to(0.25);
 
         self.assemble_combat_picture(
-            (AssembleCombatWindowFlags::ONLY_SHOW_MAP | AssembleCombatWindowFlags::SHOW_FULL_MAP)
-                .bits()
-                .into(),
+            AssembleCombatWindowFlags::ONLY_SHOW_MAP | AssembleCombatWindowFlags::SHOW_FULL_MAP,
         );
 
         assert!(self.graphics.ne_screen.as_mut().unwrap().flip());

@@ -165,7 +165,7 @@ impl crate::Data<'_> {
             self.display_banner(None, None, DisplayBannerFlags::empty());
             self.explode_blasts();
             self.move_bullets();
-            self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+            self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE);
         }
 
         let mut rect = self.vars.full_user_rect;
@@ -1010,7 +1010,7 @@ impl crate::Data<'_> {
             self.explode_blasts();
             self.move_bullets();
             self.move_enemys();
-            self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+            self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE);
             self.compute_fps_for_this_frame();
             if self.any_key_just_pressed() != 0 {
                 break;
@@ -1030,7 +1030,7 @@ impl crate::Data<'_> {
         self.vars.user_rect = user_rect;
         self.graphics.ne_screen = Some(ne_screen);
 
-        self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+        self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE);
         self.make_grid_on_screen(Some(&self.vars.user_rect.clone()));
 
         let mut dst = self.vars.portrait_rect.with_xy(

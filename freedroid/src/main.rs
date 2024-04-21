@@ -300,7 +300,7 @@ fn game_single_loop<'sdl>(data: &mut Data<'sdl>, sdl: &'sdl Sdl) -> ControlFlow<
         data.alert_level_warning(); // tout tout, blink blink... Alert!!
         data.display_banner(None, None, DisplayBannerFlags::empty());
         data.move_bullets(); // leave this in front of graphics output: time_in_frames should start with 1
-        data.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+        data.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE);
 
         for bullet in 0..i32::try_from(MAXBULLETS).unwrap() {
             data.check_bullet_collisions(bullet);

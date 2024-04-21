@@ -273,9 +273,9 @@ impl<'sdl> crate::Data<'sdl> {
             DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE,
         );
         if with_droids {
-            self.assemble_combat_picture(0);
+            self.assemble_combat_picture(AssembleCombatWindowFlags::empty());
         } else {
-            self.assemble_combat_picture(AssembleCombatWindowFlags::ONLY_SHOW_MAP.bits().into());
+            self.assemble_combat_picture(AssembleCombatWindowFlags::ONLY_SHOW_MAP);
         }
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();

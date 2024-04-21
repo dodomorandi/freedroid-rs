@@ -334,7 +334,7 @@ impl crate::Data<'_> {
     /// allow for better screenshots.
     pub fn pause(&mut self) {
         self.vars.me.status = Status::Pause;
-        self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+        self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE);
 
         let mut cheese = false;
         loop {
@@ -347,7 +347,7 @@ impl crate::Data<'_> {
             }
 
             self.display_banner(None, None, DisplayBannerFlags::empty());
-            self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
+            self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE);
 
             self.sdl.delay_ms(1);
 

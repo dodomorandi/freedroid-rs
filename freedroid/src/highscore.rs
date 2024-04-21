@@ -2,8 +2,8 @@ use crate::{
     array_c_string::ArrayCString,
     b_font::{char_width, font_height},
     defs::{
-        self, Criticality, DisplayBannerFlags, Status, Themed, DATE_LEN, GRAPHICS_DIR_C,
-        HS_BACKGROUND_FILE, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
+        self, AssembleCombatWindowFlags, Criticality, DisplayBannerFlags, Status, Themed, DATE_LEN,
+        GRAPHICS_DIR_C, HS_BACKGROUND_FILE, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
     },
     graphics::Graphics,
 };
@@ -204,7 +204,7 @@ impl crate::Data<'_> {
         let user_center_y: i16 =
             self.vars.user_rect.y() + (self.vars.user_rect.height() / 2) as i16;
 
-        self.assemble_combat_picture(0);
+        self.assemble_combat_picture(AssembleCombatWindowFlags::empty());
         self.make_grid_on_screen(Some(&self.vars.user_rect.clone()));
         #[allow(clippy::cast_possible_wrap)]
         let mut dst = Rect::new(
