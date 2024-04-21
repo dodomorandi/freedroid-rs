@@ -27,8 +27,7 @@ use arrayvec::ArrayVec;
 use b_font::BFont;
 use defs::{
     AlertLevel, AssembleCombatWindowFlags, DisplayBannerFlags, Status, BYCOLOR,
-    DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, RESET, SHOW_WAIT,
-    STANDARD_MISSION,
+    DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, SHOW_WAIT, STANDARD_MISSION,
 };
 use global::Global;
 use graphics::Graphics;
@@ -254,7 +253,7 @@ fn game_single_loop<'sdl>(data: &mut Data<'sdl>, sdl: &'sdl Sdl) -> ControlFlow<
         data.vars.cons_droid_rect,
         data.vars.me.ty,
         DROID_ROTATION_TIME,
-        RESET,
+        ShowDroidPortraitFlags::RESET,
     );
     let now = sdl.ticks_ms();
     while data.quit.get().not() && sdl.ticks_ms() - now < SHOW_WAIT && !data.fire_pressed_r() {
@@ -262,7 +261,7 @@ fn game_single_loop<'sdl>(data: &mut Data<'sdl>, sdl: &'sdl Sdl) -> ControlFlow<
             data.vars.cons_droid_rect,
             data.vars.me.ty,
             DROID_ROTATION_TIME,
-            0,
+            ShowDroidPortraitFlags::empty(),
         );
         sdl.delay_ms(1);
     }
@@ -607,3 +606,5 @@ macro_rules! cur_level {
     };
 }
 pub(crate) use cur_level;
+
+use crate::ship::ShowDroidPortraitFlags;

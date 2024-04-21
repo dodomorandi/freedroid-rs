@@ -1,9 +1,8 @@
 use crate::{
     array_c_string::ArrayCString,
-    defs::{
-        self, DisplayBannerFlags, Droid, MenuAction, Status, DROID_ROTATION_TIME, SHOW_WAIT, UPDATE,
-    },
+    defs::{self, DisplayBannerFlags, Droid, MenuAction, Status, DROID_ROTATION_TIME, SHOW_WAIT},
     graphics::Graphics,
+    ship::ShowDroidPortraitFlags,
     structs::Point,
 };
 
@@ -1709,7 +1708,7 @@ impl crate::Data<'_> {
             self.vars.cons_droid_rect,
             self.vars.me.ty,
             DROID_ROTATION_TIME,
-            UPDATE,
+            ShowDroidPortraitFlags::UPDATE,
         );
 
         self.wait_for_all_keys_released();
@@ -1718,7 +1717,7 @@ impl crate::Data<'_> {
                 self.vars.cons_droid_rect,
                 self.vars.me.ty,
                 DROID_ROTATION_TIME,
-                0,
+                ShowDroidPortraitFlags::empty(),
             );
             self.sdl.delay_ms(1);
         }
@@ -1730,7 +1729,7 @@ impl crate::Data<'_> {
             self.vars.cons_droid_rect,
             enemy_type,
             DROID_ROTATION_TIME,
-            UPDATE,
+            ShowDroidPortraitFlags::UPDATE,
         );
         self.wait_for_all_keys_released();
         while !self.fire_pressed_r() {
@@ -1738,7 +1737,7 @@ impl crate::Data<'_> {
                 self.vars.cons_droid_rect,
                 enemy_type,
                 DROID_ROTATION_TIME,
-                0,
+                ShowDroidPortraitFlags::empty(),
             );
             self.sdl.delay_ms(1);
         }

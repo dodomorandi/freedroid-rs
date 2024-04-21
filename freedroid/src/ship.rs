@@ -3,7 +3,7 @@ use crate::{
     cur_level,
     defs::{
         AlertLevel, AssembleCombatWindowFlags, DisplayBannerFlags, Droid, MenuAction, SoundType,
-        Status, DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, RESET, TEXT_STRETCH, UPDATE,
+        Status, DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, TEXT_STRETCH,
     },
     graphics::{scale_pic, Graphics},
     map::get_map_brick,
@@ -12,6 +12,7 @@ use crate::{
 };
 
 use arrayvec::ArrayString;
+use bitflags::bitflags;
 use log::{error, warn};
 use sdl::{rwops::RwOpsCapability, Rect, Rgba, Surface};
 use sdl_sys::SDL_Color;
@@ -96,7 +97,7 @@ impl crate::Data<'_> {
         mut dst: Rect,
         droid_type: Droid,
         cycle_time: f32,
-        flags: i32,
+        flags: ShowDroidPortraitFlags,
     ) {
         let mut need_new_frame = false;
 
@@ -137,7 +138,7 @@ impl crate::Data<'_> {
             droid_background
         });
 
-        if flags & RESET != 0 {
+        if flags.contains(ShowDroidPortraitFlags::RESET) {
             self.graphics
                 .ne_screen
                 .as_mut()
@@ -177,7 +178,7 @@ impl crate::Data<'_> {
             self.ship.frame_num = 0;
         }
 
-        if flags & (RESET | UPDATE) != 0 || need_new_frame {
+        if flags.is_empty().not() || need_new_frame {
             self.ship.src_rect.set_x(
                 i16::try_from(self.ship.frame_num).unwrap()
                     * i16::try_from(self.ship.src_rect.width()).unwrap(),
@@ -684,14 +685,24 @@ impl crate::Data<'_> {
         let mut page = 0;
 
         self.show_droid_info(droidtype, page, 0);
-        self.show_droid_portrait(self.vars.cons_droid_rect, droidtype, 0.0, UPDATE | RESET);
+        self.show_droid_portrait(
+            self.vars.cons_droid_rect,
+            droidtype,
+            0.0,
+            ShowDroidPortraitFlags::UPDATE | ShowDroidPortraitFlags::RESET,
+        );
 
         self.wait_for_all_keys_released();
         let mut need_update = true;
         let wait_move_ticks: u32 = 100;
 
         while !finished {
-            self.show_droid_portrait(self.vars.cons_droid_rect, droidtype, DROID_ROTATION_TIME, 0);
+            self.show_droid_portrait(
+                self.vars.cons_droid_rect,
+                droidtype,
+                DROID_ROTATION_TIME,
+                ShowDroidPortraitFlags::empty(),
+            );
 
             if self.input.show_cursor {
                 self.sdl.cursor().show();
@@ -1220,5 +1231,13 @@ fn show_droid_page_info(
             )
             .unwrap();
         }
+    }
+}
+
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct ShowDroidPortraitFlags: u8 {
+        const RESET = 0x1;
+        const UPDATE = 0x2;
     }
 }

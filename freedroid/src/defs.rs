@@ -21,8 +21,6 @@ use std::{
 
 pub const MAX_THEMES: usize = 100;
 
-pub const RESET: i32 = 0x01;
-pub const UPDATE: i32 = 0x02;
 pub const INIT_ONLY: u8 = 0x04;
 pub const FREE_ONLY: u8 = 0x08;
 
