@@ -24,7 +24,7 @@ impl fmt::Debug for BFont<'_> {
 #[derive(Debug)]
 pub struct Info<'sdl> {
     /// font height
-    pub h: i32,
+    pub h: u16,
 
     /// font surface
     pub surface: Option<sdl::Surface<'sdl>>,
@@ -33,7 +33,7 @@ pub struct Info<'sdl> {
     pub chars: [Rect; 256],
 }
 
-pub fn font_height(font: &Info) -> i32 {
+pub fn font_height(font: &Info) -> u16 {
     font.h
 }
 
@@ -61,7 +61,7 @@ fn put_char_font<const F: bool>(
         x.try_into().unwrap(),
         y.try_into().unwrap(),
         char_width(font, b' ').try_into().unwrap(),
-        font_height(font).try_into().unwrap(),
+        font_height(font),
     );
 
     if c != b' ' {
@@ -133,7 +133,7 @@ pub fn init_font(font: &mut Info) {
     drop(surface);
     let surface = font.surface.as_mut().unwrap();
 
-    font.h = surface.height().into();
+    font.h = surface.height();
 
     assert!(
         surface.set_color_key(ColorKeyFlag::SRC_COLOR_KEY, last_row_pixel.into()),

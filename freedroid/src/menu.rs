@@ -295,13 +295,13 @@ impl<'sdl> crate::Data<'sdl> {
 
         self.sdl.cursor().hide();
         self.b_font.current_font = self.global.menu_b_font.clone();
-        self.menu.font_height = font_height(
+        self.menu.font_height = i32::from(font_height(
             self.b_font
                 .current_font
                 .as_ref()
                 .unwrap()
                 .ro(&self.font_owner),
-        ) + 2;
+        )) + 2;
     }
 
     pub fn cheatmenu(&mut self) {
@@ -815,20 +815,21 @@ impl<'sdl> crate::Data<'sdl> {
         #[allow(clippy::cast_possible_truncation)]
         let start_x = i32::from(self.vars.full_user_rect.x())
             + (1.2 * f32::from(self.vars.block_rect.width())) as i32;
-        let start_y = i32::from(self.vars.full_user_rect.y()) + font_height(current_font);
+        let start_y =
+            i32::from(self.vars.full_user_rect.y()) + i32::from(font_height(current_font));
         #[allow(clippy::cast_possible_truncation)]
         let col1 = start_x + (7.5 * f64::from(char_width(current_font, b'O'))) as i32;
         #[allow(clippy::cast_possible_truncation)]
         let col2 = col1 + (6.5 * f64::from(char_width(current_font, b'O'))) as i32;
         #[allow(clippy::cast_possible_truncation)]
         let col3 = col2 + (6.5 * f64::from(char_width(current_font, b'O'))) as i32;
-        let lheight = font_height(
+        let lheight = i32::from(font_height(
             self.global
                 .font0_b_font
                 .as_ref()
                 .unwrap()
                 .ro(&self.font_owner),
-        ) + 2;
+        )) + 2;
 
         DisplayKeyConfigPositions {
             start_x,
@@ -974,7 +975,7 @@ impl<'sdl> crate::Data<'sdl> {
         self.printf_sdl(
             &mut ne_screen,
             i32::from(self.vars.get_user_center().x()) - 2 * em,
-            h,
+            i32::from(h),
             format_args!("CREDITS\n"),
         );
 
@@ -1092,13 +1093,13 @@ impl<'sdl> crate::Data<'sdl> {
             let mut ne_screen = self.graphics.ne_screen.take().unwrap();
             self.centered_put_string(
                 &mut ne_screen,
-                3 * font_height(
+                3 * i32::from(font_height(
                     self.global
                         .menu_b_font
                         .as_ref()
                         .unwrap()
                         .ro(&self.font_owner),
-                ),
+                )),
                 &output[..position],
             );
             assert!(ne_screen.flip());

@@ -234,8 +234,8 @@ impl crate::Data<'_> {
         );
         self.display_text(
             b"Great Score !",
-            i32::from(dst.x()) - h,
-            i32::from(dst.y()) - h,
+            i32::from(dst.x()) - i32::from(h),
+            i32::from(dst.y()) - i32::from(h),
             Some(self.vars.user_rect),
         );
 
@@ -243,7 +243,7 @@ impl crate::Data<'_> {
         #[cfg(not(target_os = "android"))]
         self.display_text(
             b"Enter your name: ",
-            i32::from(dst.x()) - 5 * h,
+            i32::from(dst.x()) - 5 * i32::from(h),
             i32::from(dst.y()) + i32::from(dst.height()),
             Some(self.vars.user_rect),
         );
@@ -329,7 +329,7 @@ impl crate::Data<'_> {
 
         let height = font_height(highscore_font);
 
-        let y0 = i32::from(self.vars.full_user_rect.y()) + height;
+        let y0 = i32::from(self.vars.full_user_rect.y()) + i32::from(height);
 
         let mut ne_screen = self.graphics.ne_screen.take().unwrap();
         Self::centered_print_string(
@@ -346,28 +346,28 @@ impl crate::Data<'_> {
             self.print_string(
                 &mut ne_screen,
                 x0,
-                y0 + (i + 2) * height,
+                y0 + (i + 2) * i32::from(height),
                 format_args!("{}", i + 1),
             );
             if highscore.score >= 0 {
                 self.print_string(
                     &mut ne_screen,
                     x1,
-                    y0 + (i + 2) * height,
+                    y0 + (i + 2) * i32::from(height),
                     format_args!("{}", highscore.date.to_str().unwrap()),
                 );
             }
             self.print_string(
                 &mut ne_screen,
                 x2,
-                y0 + (i + 2) * height,
+                y0 + (i + 2) * i32::from(height),
                 format_args!("{}", highscore.name.to_str().unwrap()),
             );
             if highscore.score >= 0 {
                 self.print_string(
                     &mut ne_screen,
                     x3,
-                    y0 + (i + 2) * height,
+                    y0 + (i + 2) * i32::from(height),
                     format_args!("{}", highscore.score),
                 );
             }

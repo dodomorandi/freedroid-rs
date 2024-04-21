@@ -101,7 +101,7 @@ impl crate::Data<'_> {
 
         let mut store = Surface::create_rgb(
             self.vars.screen_rect.width().into(),
-            height.try_into().unwrap(),
+            height.into(),
             self.graphics.vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
             Rgba::default(),
         )
@@ -110,7 +110,7 @@ impl crate::Data<'_> {
             x0.try_into().unwrap(),
             y0.try_into().unwrap(),
             self.vars.screen_rect.width(),
-            height.try_into().unwrap(),
+            height,
         );
         self.graphics
             .ne_screen
@@ -411,7 +411,7 @@ impl crate::Data<'_> {
             x.try_into().unwrap(),
             y.try_into().unwrap(),
             textlen.try_into().unwrap(),
-            h.try_into().unwrap(),
+            h,
         ));
 
         #[allow(clippy::cast_possible_truncation)]

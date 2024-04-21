@@ -134,7 +134,7 @@ impl crate::Data<'_> {
                     + i32::from(self.vars.full_user_rect.width()) / 3,
                 i32::from(self.vars.full_user_rect.y())
                     + i32::from(self.vars.full_user_rect.height())
-                    - font_height(&*font0),
+                    - i32::from(font_height(&*font0)),
                 format_args!("Press F1 for keymap"),
             );
 
@@ -245,10 +245,19 @@ impl crate::Data<'_> {
             .ro(&self.font_owner);
         let font_height = font_height(menu_b_font);
 
-        self.centered_put_string(&mut ne_screen, k * font_height, b"Level Editor Keymap");
+        self.centered_put_string(
+            &mut ne_screen,
+            k * i32::from(font_height),
+            b"Level Editor Keymap",
+        );
         macro_rules! put_string {
             ($s:expr) => {
-                self.put_string(&mut ne_screen, KEYMAP_OFFSET, k * font_height, $s);
+                self.put_string(
+                    &mut ne_screen,
+                    KEYMAP_OFFSET,
+                    i32::from(k) * i32::from(font_height),
+                    $s,
+                );
             };
         }
 
@@ -300,7 +309,7 @@ impl crate::Data<'_> {
             &self.b_font,
             &mut self.font_owner,
             &mut ne_screen,
-            6 * font_height,
+            6 * i32::from(font_height),
             b"Please enter new value: ",
         );
         assert!(ne_screen.flip());

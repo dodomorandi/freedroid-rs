@@ -117,11 +117,11 @@ impl crate::Data<'_> {
             self.vars.full_user_rect.x(),
             (i32::from(self.vars.full_user_rect.y())
                 + i32::from(self.vars.full_user_rect.height())
-                - font_height(font0_b_font))
+                - i32::from(font_height(font0_b_font)))
             .try_into()
             .unwrap(),
             self.vars.full_user_rect.width(),
-            font_height(font0_b_font).try_into().unwrap(),
+            font_height(font0_b_font),
         );
         self.graphics
             .ne_screen
@@ -146,7 +146,7 @@ impl crate::Data<'_> {
                     .into(),
                 i32::from(self.vars.full_user_rect.y())
                     + i32::from(self.vars.full_user_rect.height())
-                    - font_height(font0_b_font),
+                    - i32::from(font_height(font0_b_font)),
                 format_args!(
                     "GPS: X={:.0} Y={:.0} Lev={}",
                     self.vars.me.pos.x.round(),
@@ -762,7 +762,7 @@ impl crate::Data<'_> {
                     + i32::from(self.vars.full_user_rect.width()) / 2,
                 i32::from(self.vars.full_user_rect.y())
                     + i32::from(self.vars.full_user_rect.height())
-                    - font_height(font0_b_font),
+                    - i32::from(font_height(font0_b_font)),
                 format_args!("Energy: {:.0}", self.vars.me.energy),
             );
         }
@@ -774,7 +774,7 @@ impl crate::Data<'_> {
                     + 2 * i32::from(self.vars.full_user_rect.width()) / 3,
                 i32::from(self.vars.full_user_rect.y())
                     + i32::from(self.vars.full_user_rect.height())
-                    - font_height(font0_b_font),
+                    - i32::from(font_height(font0_b_font)),
                 format_args!("Deathcount: {:.0}", self.main.death_count,),
             );
         }
@@ -867,7 +867,7 @@ impl crate::Data<'_> {
                 self.vars.full_user_rect.x().into(),
                 i32::from(self.vars.full_user_rect.y())
                     + i32::from(self.vars.full_user_rect.height())
-                    - font_height(font0_b_font),
+                    - i32::from(font_height(font0_b_font)),
                 format_args!("FPS: {} ", fps_displayed.get()),
             );
         });

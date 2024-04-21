@@ -1058,13 +1058,13 @@ impl crate::Data<'_> {
         );
         self.display_text(
             b"Transmission",
-            i32::from(dst.x()) - h,
-            i32::from(dst.y()) - h,
+            i32::from(dst.x()) - i32::from(h),
+            i32::from(dst.y()) - i32::from(h),
             Some(self.vars.user_rect),
         );
         self.display_text(
             b"Terminated",
-            i32::from(dst.x()) - h,
+            i32::from(dst.x()) - i32::from(h),
             i32::from(dst.y()) + i32::from(dst.height()),
             Some(self.vars.user_rect),
         );
