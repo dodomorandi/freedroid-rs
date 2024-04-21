@@ -18,8 +18,6 @@ use sdl::{rwops::RwOpsCapability, Rect, Rgba, Surface};
 use sdl_sys::SDL_Color;
 use std::ops::Not;
 
-const UPDATE_ONLY: u8 = 0x01;
-
 #[derive(Default)]
 pub struct Data<'sdl> {
     last_siren: u32,
@@ -261,11 +259,11 @@ impl crate::Data<'_> {
 
     /// display infopage page of droidtype
     ///
-    /// if flags == `UPDATE_ONLY` : don't blit a new background&banner,
-    ///                           only  update the text-regions
+    /// if `update_only` : don't blit a new background&banner,
+    ///                    only  update the text-regions
     ///
-    ///  does update the screen: all if flags=0, text-rect if `flags=UPDATE_ONLY`
-    pub fn show_droid_info(&mut self, droid_type: Droid, page: i32, flags: i32) {
+    ///  does update the screen: all if !`update_only`, text-rect if `update_only`
+    pub fn show_droid_info(&mut self, droid_type: Droid, page: i32, update_only: bool) {
         use std::fmt::Write;
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
@@ -308,20 +306,9 @@ impl crate::Data<'_> {
             ..
         } = self;
 
-        // if UPDATE_ONLY then the background has not been cleared, so we have do it
+        // if update_only then the background has not been cleared, so we have do it
         // it for each menu-rect:
-        if flags & i32::from(UPDATE_ONLY) == 0 {
-            // otherwise we just redraw the whole screen
-            console_bg_pic2
-                .as_mut()
-                .unwrap()
-                .blit(ne_screen.as_mut().unwrap());
-            self.display_banner(
-                None,
-                None,
-                DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE,
-            );
-        } else {
+        if update_only {
             ne_screen
                 .as_mut()
                 .unwrap()
@@ -339,6 +326,17 @@ impl crate::Data<'_> {
                 .unwrap()
                 .blit(ne_screen.as_mut().unwrap());
             ne_screen.as_mut().unwrap().clear_clip_rect();
+        } else {
+            // otherwise we just redraw the whole screen
+            console_bg_pic2
+                .as_mut()
+                .unwrap()
+                .blit(ne_screen.as_mut().unwrap());
+            self.display_banner(
+                None,
+                None,
+                DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE,
+            );
         }
 
         self.display_text(
@@ -360,12 +358,12 @@ impl crate::Data<'_> {
             self.show_arrows(droid_type, page);
         }
 
-        if flags & i32::from(UPDATE_ONLY) == 0 {
-            assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
-        } else {
+        if update_only {
             let screen = self.graphics.ne_screen.as_mut().unwrap();
             screen.update_rects(&[self.vars.cons_header_rect]);
             screen.update_rects(&[self.vars.cons_text_rect]);
+        } else {
+            assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
         }
     }
 
@@ -503,7 +501,7 @@ impl crate::Data<'_> {
         self.b_font.current_font = self.global.para_b_font.clone();
 
         let mut pos = 0; // starting menu position
-        self.paint_console_menu(i32::try_from(pos).unwrap(), 0);
+        self.paint_console_menu(i32::try_from(pos).unwrap(), false);
 
         let wait_move_ticks: u32 = 100;
         let mut finished = false;
@@ -529,7 +527,7 @@ impl crate::Data<'_> {
             }
 
             if need_update {
-                self.paint_console_menu(pos.try_into().unwrap(), UPDATE_ONLY.into());
+                self.paint_console_menu(pos.try_into().unwrap(), true);
                 if cfg!(not(target_os = "android")) {
                     assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
                 }
@@ -639,20 +637,20 @@ impl crate::Data<'_> {
                     }
                     1 => {
                         self.great_druid_show();
-                        self.paint_console_menu((*pos).try_into().unwrap(), 0);
+                        self.paint_console_menu((*pos).try_into().unwrap(), false);
                     }
                     2 => {
                         self.clear_graph_mem();
                         self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE);
                         self.show_deck_map();
-                        self.paint_console_menu((*pos).try_into().unwrap(), 0);
+                        self.paint_console_menu((*pos).try_into().unwrap(), false);
                     }
                     3 => {
                         self.clear_graph_mem();
                         self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE);
                         self.show_lifts(self.main.cur_level().levelnum, -1);
                         self.wait_for_key_pressed();
-                        self.paint_console_menu((*pos).try_into().unwrap(), 0);
+                        self.paint_console_menu((*pos).try_into().unwrap(), false);
                     }
                     _ => {
                         error!("Konsole menu out of bounds... pos = {}", *pos);
@@ -672,7 +670,7 @@ impl crate::Data<'_> {
         let mut droidtype = self.vars.me.ty;
         let mut page = 0;
 
-        self.show_droid_info(droidtype, page, 0);
+        self.show_droid_info(droidtype, page, false);
         self.show_droid_portrait(
             self.vars.cons_droid_rect,
             droidtype,
@@ -699,7 +697,7 @@ impl crate::Data<'_> {
             }
 
             if need_update {
-                self.show_droid_info(droidtype, page, UPDATE_ONLY.into());
+                self.show_droid_info(droidtype, page, true);
                 need_update = false;
             }
 
@@ -873,11 +871,11 @@ impl crate::Data<'_> {
     ///       it just prepares the display, so you need
     ///       to call `SDL_Flip`() to display the result!
     /// pos  : 0<=pos<=3: which menu-position is currently active?
-    /// flag : `UPDATE_ONLY`  only update the console-menu bar, not text & background
-    pub fn paint_console_menu(&mut self, pos: i32, flag: i32) {
+    /// `update_only`  only update the console-menu bar, not text & background
+    pub fn paint_console_menu(&mut self, pos: i32, update_only: bool) {
         use std::fmt::Write;
 
-        if (flag & i32::from(UPDATE_ONLY)) == 0 {
+        if update_only.not() {
             self.clear_graph_mem();
 
             let Self {
@@ -919,7 +917,7 @@ impl crate::Data<'_> {
                 i32::from(self.vars.cons_text_rect.y()) + 25,
                 Some(self.vars.cons_text_rect),
             );
-        } // only if not UPDATE_ONLY was required
+        } // only if not `update_only` was required
 
         #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
         let src = Rect::new(

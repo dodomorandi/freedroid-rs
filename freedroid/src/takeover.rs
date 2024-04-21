@@ -1703,7 +1703,7 @@ impl crate::Data<'_> {
 
         self.sdl.cursor().hide(); // no mouse-cursor in takeover game!
 
-        self.show_droid_info(self.vars.me.ty, -1, 0);
+        self.show_droid_info(self.vars.me.ty, -1, false);
         self.show_droid_portrait(
             self.vars.cons_droid_rect,
             self.vars.me.ty,
@@ -1724,7 +1724,7 @@ impl crate::Data<'_> {
 
         let enemy_index: usize = enemynum.into();
         let enemy_type = self.main.enemys[enemy_index].ty;
-        self.show_droid_info(enemy_type, -2, 0);
+        self.show_droid_info(enemy_type, -2, false);
         self.show_droid_portrait(
             self.vars.cons_droid_rect,
             enemy_type,
