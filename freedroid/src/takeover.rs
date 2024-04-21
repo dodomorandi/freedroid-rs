@@ -1541,7 +1541,7 @@ impl crate::Data<'_> {
             *countdown -= 1;
             count_text.clear();
             write!(count_text, "Finish-{countdown}").unwrap();
-            self.display_banner(Some(&*count_text), None, 0);
+            self.display_banner(Some(&*count_text), None, DisplayBannerFlags::empty());
 
             if *countdown != 0 && *countdown % 10 == 0 {
                 self.countdown_sound();
@@ -1662,7 +1662,7 @@ impl crate::Data<'_> {
                 count_text.clear();
                 write!(count_text, "Color-{countdown}").unwrap();
 
-                self.display_banner(Some(&*count_text), None, 0);
+                self.display_banner(Some(&*count_text), None, DisplayBannerFlags::empty());
                 self.show_playground();
             }
 
@@ -1695,7 +1695,7 @@ impl crate::Data<'_> {
         let buf = self.vars.user_rect;
         self.vars.user_rect = self.vars.classic_user_rect;
 
-        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
+        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE);
 
         self.fill_rect(self.vars.user_rect, BG_COLOR);
 
@@ -1751,7 +1751,7 @@ impl crate::Data<'_> {
             .as_mut()
             .unwrap()
             .blit(ne_screen.as_mut().unwrap());
-        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
+        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE);
 
         self.wait_for_all_keys_released();
         let mut finish_takeover = false;
@@ -1833,7 +1833,7 @@ impl crate::Data<'_> {
             message = cstr!("Deadlock");
         }
 
-        self.display_banner(Some(message), None, 0);
+        self.display_banner(Some(message), None, DisplayBannerFlags::empty());
         self.show_playground();
         assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 

@@ -319,9 +319,7 @@ impl crate::Data<'_> {
             self.display_banner(
                 None,
                 None,
-                (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
-                    .bits()
-                    .into(),
+                DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE,
             );
         } else {
             ne_screen
@@ -647,21 +645,13 @@ impl crate::Data<'_> {
                     }
                     2 => {
                         self.clear_graph_mem();
-                        self.display_banner(
-                            None,
-                            None,
-                            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-                        );
+                        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE);
                         self.show_deck_map();
                         self.paint_console_menu((*pos).try_into().unwrap(), 0);
                     }
                     3 => {
                         self.clear_graph_mem();
-                        self.display_banner(
-                            None,
-                            None,
-                            DisplayBannerFlags::FORCE_UPDATE.bits().into(),
-                        );
+                        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE);
                         self.show_lifts(self.main.cur_level().levelnum, -1);
                         self.wait_for_key_pressed();
                         self.paint_console_menu((*pos).try_into().unwrap(), 0);
@@ -907,7 +897,7 @@ impl crate::Data<'_> {
                 .unwrap()
                 .blit(ne_screen.as_mut().unwrap());
 
-            self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
+            self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE);
 
             let mut menu_text = ArrayString::<200>::default();
             write!(
@@ -993,7 +983,7 @@ impl crate::Data<'_> {
 
         // clear the whole screen
         self.clear_graph_mem();
-        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
+        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE);
 
         let wait_move_ticks: u32 = 100;
         let mut finished = false;
@@ -1072,7 +1062,7 @@ impl crate::Data<'_> {
             Some(self.main.cur_level().background_song_name.to_bytes()),
         );
         self.clear_graph_mem();
-        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
+        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE);
 
         self.vars.me.status = Status::Mobile;
         self.vars.me.text_visible_time = 0.;

@@ -155,14 +155,14 @@ impl crate::Data<'_> {
             self.main.show_score = self.main.real_score.max(0.) as u32;
         }
         self.vars.me.status = Status::Victory;
-        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
+        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE);
 
         self.wait_for_all_keys_released();
 
         let now = self.sdl.ticks_ms();
 
         while self.sdl.ticks_ms() - now < WAIT_AFTER_KILLED {
-            self.display_banner(None, None, 0);
+            self.display_banner(None, None, DisplayBannerFlags::empty());
             self.explode_blasts();
             self.move_bullets();
             self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
@@ -622,7 +622,7 @@ impl crate::Data<'_> {
 
         /* Den Banner fuer das Spiel anzeigen */
         self.clear_graph_mem();
-        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
+        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE);
 
         // Switch_Background_Music_To (COMBAT_BACKGROUND_MUSIC_SOUND);
         Self::switch_background_music_to_static(
@@ -691,7 +691,7 @@ impl crate::Data<'_> {
 
         self.b_font.current_font = self.global.para_b_font.clone();
 
-        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
+        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE);
 
         // Next we display all the subsections of the briefing section
         // with scrolling font
@@ -1006,7 +1006,7 @@ impl crate::Data<'_> {
             self.set_time_factor(SLOWMO_FACTOR);
 
             self.start_taking_time_for_fps_calculation();
-            self.display_banner(None, None, 0);
+            self.display_banner(None, None, DisplayBannerFlags::empty());
             self.explode_blasts();
             self.move_bullets();
             self.move_enemys();

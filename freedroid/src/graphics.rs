@@ -365,9 +365,7 @@ impl crate::Data<'_> {
         self.display_banner(
             Some(cstr!("Screenshot")),
             None,
-            (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
-                .bits()
-                .into(),
+            DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE,
         );
         self.make_grid_on_screen(None);
         assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
@@ -377,7 +375,7 @@ impl crate::Data<'_> {
             self.sdl.delay_ms(1);
         }
 
-        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE.bits().into());
+        self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE);
     }
 
     /// scale all "static" rectangles, which are theme-independent

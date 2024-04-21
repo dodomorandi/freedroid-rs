@@ -270,9 +270,7 @@ impl<'sdl> crate::Data<'sdl> {
         self.display_banner(
             None,
             None,
-            (DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE)
-                .bits()
-                .into(),
+            DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE,
         );
         if with_droids {
             self.assemble_combat_picture(0);

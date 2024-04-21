@@ -270,9 +270,7 @@ fn game_single_loop<'sdl>(data: &mut Data<'sdl>, sdl: &'sdl Sdl) -> ControlFlow<
     data.display_banner(
         None,
         None,
-        (DisplayBannerFlags::FORCE_UPDATE | DisplayBannerFlags::NO_SDL_UPDATE)
-            .bits()
-            .into(),
+        DisplayBannerFlags::FORCE_UPDATE | DisplayBannerFlags::NO_SDL_UPDATE,
     );
     assert!(data.graphics.ne_screen.as_mut().unwrap().flip());
 
@@ -300,7 +298,7 @@ fn game_single_loop<'sdl>(data: &mut Data<'sdl>, sdl: &'sdl Sdl) -> ControlFlow<
         data.animate_refresh();
         data.explode_blasts(); // move blasts to the right current "phase" of the blast
         data.alert_level_warning(); // tout tout, blink blink... Alert!!
-        data.display_banner(None, None, 0);
+        data.display_banner(None, None, DisplayBannerFlags::empty());
         data.move_bullets(); // leave this in front of graphics output: time_in_frames should start with 1
         data.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
 

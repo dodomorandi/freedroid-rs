@@ -1,7 +1,8 @@
 use crate::{
     defs::{
-        self, AssembleCombatWindowFlags, Cmds, Criticality, Status, Themed, FD_DATADIR,
-        GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE, PROGRESS_METER_FILE,
+        self, AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags, Status, Themed,
+        FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAXBLASTS, PROGRESS_FILLER_FILE,
+        PROGRESS_METER_FILE,
     },
     graphics::{scale_pic, Graphics},
     input::CMD_STRINGS,
@@ -345,7 +346,7 @@ impl crate::Data<'_> {
                 self.animate_enemys();
             }
 
-            self.display_banner(None, None, 0);
+            self.display_banner(None, None, DisplayBannerFlags::empty());
             self.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE.bits().into());
 
             self.sdl.delay_ms(1);

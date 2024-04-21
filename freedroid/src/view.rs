@@ -2,8 +2,8 @@ use crate::{
     array_c_string::ArrayCString,
     b_font::{font_height, print_string_font, put_string_font},
     defs::{
-        AssembleCombatWindowFlags, BulletKind, Status, BLINKENERGY, CRY_SOUND_INTERVAL,
-        FLASH_DURATION, LEFT_TEXT_LEN, MAXBLASTS, MAXBULLETS, RIGHT_TEXT_LEN,
+        AssembleCombatWindowFlags, BulletKind, DisplayBannerFlags, Status, BLINKENERGY,
+        CRY_SOUND_INTERVAL, FLASH_DURATION, LEFT_TEXT_LEN, MAXBLASTS, MAXBULLETS, RIGHT_TEXT_LEN,
         TRANSFER_SOUND_INTERVAL,
     },
     graphics::{apply_filter, Graphics},
@@ -618,7 +618,12 @@ impl crate::Data<'_> {
     /// text.
     ///
     /// `BANNER_NO_SDL_UPDATE=4`: Prevents any `SDL_Update` calls.
-    pub fn display_banner(&mut self, left: Option<&CStr>, right: Option<&CStr>, flags: i32) {
+    pub fn display_banner(
+        &mut self,
+        left: Option<&CStr>,
+        right: Option<&CStr>,
+        flags: DisplayBannerFlags,
+    ) {
         // --------------------
         // At first the text is prepared.  This can't hurt.
         // we will decide whether to display it or not later...
@@ -930,7 +935,7 @@ impl<const N: usize> Deref for CStrFixedCow<'_, N> {
 }
 
 mod screen_updater {
-    use std::cell::RefCell;
+    use std::{cell::RefCell, ops::Not};
 
     use arrayvec::ArrayString;
     use sdl::Rect;
@@ -954,10 +959,10 @@ mod screen_updater {
         data: &crate::Data,
         left_box: ArrayString<LEFT_TEXT_LEN>,
         right_box: ArrayString<RIGHT_TEXT_LEN>,
-        flags: i32,
+        flags: DisplayBannerFlags,
     ) -> bool {
         data.graphics.banner_is_destroyed != 0
-            || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
+            || flags.contains(DisplayBannerFlags::FORCE_UPDATE)
             || PREVIOUS_LEFT_BOX
                 .with(|previous_left_box| &left_box != previous_left_box.borrow().as_ref())
             || PREVIOUS_RIGHT_BOX
@@ -968,7 +973,7 @@ mod screen_updater {
         data: &mut crate::Data,
         left_box: ArrayString<LEFT_TEXT_LEN>,
         right_box: ArrayString<RIGHT_TEXT_LEN>,
-        flags: i32,
+        flags: DisplayBannerFlags,
     ) {
         // Redraw the whole background of the top status bar
         let Graphics {
@@ -991,7 +996,7 @@ mod screen_updater {
             .with(|previous_right_box| &right_box != previous_right_box.borrow().as_ref());
         if previous_left_check
             || previous_right_check
-            || (flags & i32::from(DisplayBannerFlags::FORCE_UPDATE.bits())) != 0
+            || flags.contains(DisplayBannerFlags::FORCE_UPDATE)
         {
             let para_b_font = data
                 .global
@@ -1033,7 +1038,7 @@ mod screen_updater {
         }
 
         // finally update the whole top status box
-        if (flags & i32::from(DisplayBannerFlags::NO_SDL_UPDATE.bits())) == 0 {
+        if flags.contains(DisplayBannerFlags::NO_SDL_UPDATE).not() {
             data.graphics
                 .ne_screen
                 .as_mut()
