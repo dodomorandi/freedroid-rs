@@ -744,7 +744,7 @@ impl crate::Data<'_> {
                 .iter_mut()
                 .take(MAXBLASTS)
                 .for_each(|blast| blast.ty = Status::Out as i32);
-            (0..MAXBULLETS).for_each(|bullet| self.delete_bullet(bullet.try_into().unwrap()));
+            (0..MAXBULLETS).for_each(|bullet| self.delete_bullet(bullet));
         }
 
         self.leave_lift_sound();

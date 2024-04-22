@@ -560,7 +560,7 @@ impl crate::Data<'_> {
 
         /* Delete all bullets and blasts */
         for bullet in 0..MAXBULLETS {
-            self.delete_bullet(bullet.try_into().unwrap());
+            self.delete_bullet(bullet);
         }
 
         info!("InitNewMission: All bullets have been deleted.");

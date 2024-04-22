@@ -148,7 +148,7 @@ impl crate::Data<'_> {
         // find a bullet entry, that isn't currently used...
         let mut j = 0;
         while j < MAXBULLETS {
-            if self.main.all_bullets[j].is_none() {
+            if self.main.all_bullets[usize::from(j)].is_none() {
                 break;
             }
 
@@ -192,7 +192,7 @@ impl crate::Data<'_> {
             [self.vars.droidmap[this_robot.ty.to_usize()].gun.to_usize()]
         .recharging_time;
 
-        self.main.all_bullets[j] = Some(Bullet {
+        self.main.all_bullets[usize::from(j)] = Some(Bullet {
             pos,
             speed,
             ty: guntype,

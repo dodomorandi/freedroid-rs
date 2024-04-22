@@ -720,7 +720,7 @@ pub const NUM_COLORS: usize = 7; // how many different level colorings?/differen
 // const #define: usize = ALLBULLETTYPES;		4	/* number of bullet-types */
 pub const ALLBLASTTYPES: usize = 2; /* number of different exposions */
 
-pub const MAXBULLETS: usize = 100; /* maximum possible Bullets in the air */
+pub const MAXBULLETS: u8 = 100; /* maximum possible Bullets in the air */
 pub const MAXBLASTS: usize = 100; /* max. possible Blasts visible */
 pub const AGGRESSIONMAX: i32 = 100;
 pub const ROBOT_MAX_WAIT_BETWEEN_SHOTS: f32 = 5.; // how long shoud each droid wait at most until

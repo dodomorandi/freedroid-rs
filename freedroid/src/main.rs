@@ -41,7 +41,7 @@ use menu::Menu;
 use misc::Misc;
 use once_cell::unsync::OnceCell;
 use qcell::{TCell, TCellOwner};
-use sdl::Rect;
+use sdl::{convert::u8_to_usize, Rect};
 use sound::Sound;
 use structs::{Blast, Bullet, Enemy, Level, Ship};
 use takeover::Takeover;
@@ -85,7 +85,7 @@ struct Main<'sdl> {
     /* for bullet debugging: stop where u are */
     stop_influencer: bool,
     number_of_droid_types: u8,
-    all_bullets: [Option<Bullet<'sdl>>; MAXBULLETS],
+    all_bullets: [Option<Bullet<'sdl>>; u8_to_usize(MAXBULLETS)],
     all_blasts: [Blast; MAXBLASTS + 10],
     first_digit_rect: Rect,
     second_digit_rect: Rect,
@@ -302,7 +302,7 @@ fn game_single_loop<'sdl>(data: &mut Data<'sdl>, sdl: &'sdl Sdl) -> ControlFlow<
         data.move_bullets(); // leave this in front of graphics output: time_in_frames should start with 1
         data.assemble_combat_picture(AssembleCombatWindowFlags::DO_SCREEN_UPDATE);
 
-        for bullet in 0..i32::try_from(MAXBULLETS).unwrap() {
+        for bullet in 0..MAXBULLETS {
             data.check_bullet_collisions(bullet);
         }
 

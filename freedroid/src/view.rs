@@ -513,8 +513,8 @@ impl crate::Data<'_> {
     /// `PutBullet`: draws a Bullet into the combat window.  The only
     /// parameter given is the number of the bullet in the `AllBullets`
     /// array. Everything else is computed in here.
-    pub fn put_bullet(&mut self, bullet_number: i32) {
-        let cur_bullet = self.main.all_bullets[usize::try_from(bullet_number).unwrap()]
+    pub fn put_bullet(&mut self, bullet_number: u8) {
+        let cur_bullet = self.main.all_bullets[usize::from(bullet_number)]
             .as_mut()
             .unwrap();
 
@@ -580,7 +580,7 @@ impl crate::Data<'_> {
         // This has to be taken into account when calculating the target position for the
         // blit of these surfaces!!!!
         let user_center = self.vars.get_user_center();
-        let cur_bullet = self.main.all_bullets[usize::try_from(bullet_number).unwrap()]
+        let cur_bullet = self.main.all_bullets[usize::from(bullet_number)]
             .as_mut()
             .unwrap();
         #[allow(clippy::cast_possible_truncation)]
@@ -829,8 +829,8 @@ impl crate::Data<'_> {
         }
 
         for bullet_index in 0..MAXBULLETS {
-            if self.main.all_bullets[bullet_index].is_some() {
-                self.put_bullet(bullet_index.try_into().unwrap());
+            if self.main.all_bullets[usize::from(bullet_index)].is_some() {
+                self.put_bullet(bullet_index);
             }
         }
 

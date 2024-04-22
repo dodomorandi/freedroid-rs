@@ -1043,7 +1043,7 @@ impl crate::Data<'_> {
             for i in 0..i32::try_from(MAXBLASTS).unwrap() {
                 self.delete_blast(i);
             }
-            for i in 0..i32::try_from(MAXBULLETS).unwrap() {
+            for i in 0..MAXBULLETS {
                 self.delete_bullet(i);
             }
         }

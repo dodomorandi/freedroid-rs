@@ -17,9 +17,8 @@ impl crate::Data<'_> {
         (0.3 + 4. / 64.) * (self.global.droid_radius + 4. / 64.)
     }
 
-    pub fn check_bullet_collisions(&mut self, num: i32) {
-        let bullet_index = usize::try_from(num).unwrap();
-        let Some(cur_bullet) = &self.main.all_bullets[bullet_index] else {
+    pub fn check_bullet_collisions(&mut self, bullet_index: u8) {
+        let Some(cur_bullet) = &self.main.all_bullets[usize::from(bullet_index)] else {
             return;
         };
 
@@ -39,13 +38,15 @@ impl crate::Data<'_> {
     }
 
     #[inline]
-    fn check_collision_with_flash(&mut self, bullet_index: usize) {
+    fn check_collision_with_flash(&mut self, bullet_index: u8) {
         let level = self.main.cur_level().levelnum;
-        let cur_bullet = self.main.all_bullets[bullet_index].as_mut().unwrap();
+        let cur_bullet = self.main.all_bullets[usize::from(bullet_index)]
+            .as_mut()
+            .unwrap();
 
         // if the flash is over, just delete it and return
         if cur_bullet.time_in_seconds >= FLASH_DURATION {
-            self.main.all_bullets[bullet_index] = None;
+            self.main.all_bullets[usize::from(bullet_index)] = None;
             return;
         }
 
@@ -92,9 +93,11 @@ impl crate::Data<'_> {
     }
 
     #[inline]
-    fn check_collision_with_normal(&mut self, cur_bullet_index: usize) {
+    fn check_collision_with_normal(&mut self, cur_bullet_index: u8) {
         let level = self.main.cur_level().levelnum;
-        let cur_bullet = self.main.all_bullets[cur_bullet_index].as_mut().unwrap();
+        let cur_bullet = self.main.all_bullets[usize::from(cur_bullet_index)]
+            .as_mut()
+            .unwrap();
 
         // first check for collision with background
         let mut step = Finepoint {
@@ -114,18 +117,22 @@ impl crate::Data<'_> {
 
         #[allow(clippy::cast_possible_truncation)]
         for _ in 0..(num_check_steps as i32) {
-            let cur_bullet = self.main.all_bullets[cur_bullet_index].as_mut().unwrap();
+            let cur_bullet = self.main.all_bullets[usize::from(cur_bullet_index)]
+                .as_mut()
+                .unwrap();
             cur_bullet.pos.x += step.x;
             cur_bullet.pos.y += step.y;
 
-            let cur_bullet = self.main.all_bullets[cur_bullet_index].as_ref().unwrap();
+            let cur_bullet = self.main.all_bullets[usize::from(cur_bullet_index)]
+                .as_ref()
+                .unwrap();
             if self.is_passable(cur_bullet.pos.x, cur_bullet.pos.y, Direction::Center as i32)
                 != Some(Direction::Center)
             {
                 let pos_x = cur_bullet.pos.x;
                 let pos_y = cur_bullet.pos.y;
                 self.start_blast(pos_x, pos_y, Explosion::Bulletblast as i32);
-                self.delete_bullet(cur_bullet_index.try_into().unwrap());
+                self.delete_bullet(cur_bullet_index);
                 return;
             }
 
@@ -143,7 +150,7 @@ impl crate::Data<'_> {
                             f32::from(self.vars.bulletmap[cur_bullet.ty.to_usize()].damage);
                     }
 
-                    self.delete_bullet(cur_bullet_index.try_into().unwrap());
+                    self.delete_bullet(cur_bullet_index);
                     return;
                 }
             }
@@ -167,7 +174,7 @@ impl crate::Data<'_> {
                     self.main.enemys[enemy_index].energy -=
                         f32::from(self.vars.bulletmap[cur_bullet.ty.to_usize()].damage);
 
-                    self.delete_bullet(cur_bullet_index.try_into().unwrap());
+                    self.delete_bullet(cur_bullet_index);
                     self.got_hit_sound();
                     return;
                 }
@@ -179,14 +186,16 @@ impl crate::Data<'_> {
                 if bullet_index == cur_bullet_index {
                     continue;
                 }
-                let Some(bullet) = &self.main.all_bullets[bullet_index] else {
+                let Some(bullet) = &self.main.all_bullets[usize::from(bullet_index)] else {
                     continue;
                 };
                 if bullet.ty == BulletKind::Flash {
                     continue;
                 } // never check for collisions with flashes bullets..
 
-                let cur_bullet = self.main.all_bullets[cur_bullet_index].as_ref().unwrap();
+                let cur_bullet = self.main.all_bullets[usize::from(cur_bullet_index)]
+                    .as_ref()
+                    .unwrap();
                 let x_dist = bullet.pos.x - cur_bullet.pos.x;
                 let y_dist = bullet.pos.y - cur_bullet.pos.y;
                 if x_dist * x_dist + y_dist * y_dist > BULLET_COLL_DIST2 {
@@ -201,8 +210,8 @@ impl crate::Data<'_> {
                 let pos_y = cur_bullet.pos.y;
                 self.start_blast(pos_x, pos_y, Explosion::Druidblast as i32);
 
-                self.delete_bullet(cur_bullet_index.try_into().unwrap());
-                self.delete_bullet(bullet_index.try_into().unwrap());
+                self.delete_bullet(cur_bullet_index);
+                self.delete_bullet(bullet_index);
             }
         }
     }
@@ -245,7 +254,7 @@ impl crate::Data<'_> {
         /* check Blast-Bullet Collisions and kill hit Bullets */
         for bullet_index in 0..MAXBULLETS {
             let cur_blast = &self.main.all_blasts[usize::try_from(num).unwrap()];
-            let Some(cur_bullet) = &self.main.all_bullets[bullet_index] else {
+            let Some(cur_bullet) = &self.main.all_bullets[usize::from(bullet_index)] else {
                 continue;
             };
 
@@ -258,7 +267,7 @@ impl crate::Data<'_> {
                 let pos_x = cur_bullet.pos.x;
                 let pos_y = cur_bullet.pos.y;
                 self.start_blast(pos_x, pos_y, Explosion::Bulletblast as i32);
-                self.delete_bullet(bullet_index.try_into().unwrap());
+                self.delete_bullet(bullet_index);
             }
         }
 
@@ -360,9 +369,8 @@ impl crate::Data<'_> {
 
     /// delete bullet of given number, set it type=OUT, put it at x/y=-1/-1
     /// and create a Bullet-blast if `with_blast==TRUE`
-    pub fn delete_bullet(&mut self, bullet_number: i32) {
-        let Some(cur_bullet) = &mut self.main.all_bullets[usize::try_from(bullet_number).unwrap()]
-        else {
+    pub fn delete_bullet(&mut self, bullet_number: u8) {
+        let Some(cur_bullet) = &mut self.main.all_bullets[usize::from(bullet_number)] else {
             return;
         };
 
@@ -388,7 +396,7 @@ impl crate::Data<'_> {
             cur_bullet.surfaces_were_generated = false.into();
         }
 
-        self.main.all_bullets[usize::try_from(bullet_number).unwrap()] = None;
+        self.main.all_bullets[usize::from(bullet_number)] = None;
     }
 
     /// This function moves all the bullets according to their speeds.
