@@ -1040,7 +1040,7 @@ impl crate::Data<'_> {
                 self.vars.me.pos.y = self.main.cur_ship.lifts[cur_lift].y as f32;
             }
 
-            for i in 0..i32::try_from(MAXBLASTS).unwrap() {
+            for i in 0..MAXBLASTS {
                 self.delete_blast(i);
             }
             for i in 0..MAXBULLETS {

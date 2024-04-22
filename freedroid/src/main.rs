@@ -86,7 +86,7 @@ struct Main<'sdl> {
     stop_influencer: bool,
     number_of_droid_types: u8,
     all_bullets: [Option<Bullet<'sdl>>; u8_to_usize(MAXBULLETS)],
-    all_blasts: [Blast; MAXBLASTS + 10],
+    all_blasts: [Blast; u8_to_usize(MAXBLASTS)],
     first_digit_rect: Rect,
     second_digit_rect: Rect,
     third_digit_rect: Rect,

@@ -3,7 +3,7 @@ use crate::{
     b_font::{font_height, print_string_font, put_string_font},
     defs::{
         AssembleCombatWindowFlags, BulletKind, DisplayBannerFlags, Status, BLINKENERGY,
-        CRY_SOUND_INTERVAL, FLASH_DURATION, LEFT_TEXT_LEN, MAXBLASTS, MAXBULLETS, RIGHT_TEXT_LEN,
+        CRY_SOUND_INTERVAL, FLASH_DURATION, LEFT_TEXT_LEN, MAXBULLETS, RIGHT_TEXT_LEN,
         TRANSFER_SOUND_INTERVAL,
     },
     graphics::{apply_filter, Graphics},
@@ -842,7 +842,6 @@ impl crate::Data<'_> {
         } = self;
         all_blasts
             .iter()
-            .take(MAXBLASTS)
             .filter(|blast| blast.ty != Status::Out as i32)
             .for_each(|blast| put_blast(blast, vars, graphics));
     }

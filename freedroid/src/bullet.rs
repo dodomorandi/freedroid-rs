@@ -216,17 +216,17 @@ impl crate::Data<'_> {
         }
     }
 
-    pub fn delete_blast(&mut self, num: i32) {
-        self.main.all_blasts[usize::try_from(num).unwrap()].ty = Status::Out as i32;
+    pub fn delete_blast(&mut self, blast_index: u8) {
+        self.main.all_blasts[usize::from(blast_index)].ty = Status::Out as i32;
     }
 
     pub fn explode_blasts(&mut self) {
         for blast_index in 0..MAXBLASTS {
-            let cur_blast = &self.main.all_blasts[blast_index];
+            let cur_blast = &self.main.all_blasts[usize::from(blast_index)];
             #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
             if cur_blast.ty != Status::Out as i32 {
                 if cur_blast.ty == Explosion::Druidblast as i32 {
-                    self.check_blast_collisions(blast_index.try_into().unwrap());
+                    self.check_blast_collisions(blast_index);
                 }
 
                 let Self {
@@ -238,22 +238,22 @@ impl crate::Data<'_> {
                 } = self;
 
                 let frame_time = misc.frame_time(global, main.f_p_sover1);
-                let cur_blast = &mut main.all_blasts[blast_index];
+                let cur_blast = &mut main.all_blasts[usize::from(blast_index)];
                 let blast_spec = &vars.blastmap[usize::try_from(cur_blast.ty).unwrap()];
                 cur_blast.phase +=
                     frame_time * blast_spec.phases as f32 / blast_spec.total_animation_time;
                 if cur_blast.phase.floor() as i32 >= blast_spec.phases {
-                    self.delete_blast(blast_index.try_into().unwrap());
+                    self.delete_blast(blast_index);
                 }
             }
         }
     }
 
-    pub fn check_blast_collisions(&mut self, num: i32) {
+    pub fn check_blast_collisions(&mut self, blast_index: u8) {
         let level = self.main.cur_level().levelnum;
         /* check Blast-Bullet Collisions and kill hit Bullets */
         for bullet_index in 0..MAXBULLETS {
-            let cur_blast = &self.main.all_blasts[usize::try_from(num).unwrap()];
+            let cur_blast = &self.main.all_blasts[usize::from(blast_index)];
             let Some(cur_bullet) = &self.main.all_bullets[usize::from(bullet_index)] else {
                 continue;
             };
@@ -275,7 +275,7 @@ impl crate::Data<'_> {
         let Self {
             main, global, misc, ..
         } = self;
-        let cur_blast = &main.all_blasts[usize::try_from(num).unwrap()];
+        let cur_blast = &main.all_blasts[usize::from(blast_index)];
         for enemy in &mut main.enemys {
             if enemy.status == Status::Out || enemy.levelnum != level {
                 continue;
@@ -311,13 +311,13 @@ impl crate::Data<'_> {
         {
             if self.main.invincible_mode.not() {
                 self.vars.me.energy -= self.global.blast_damage_per_second * self.frame_time();
-                let cur_blast = &self.main.all_blasts[usize::try_from(num).unwrap()];
+                let cur_blast = &self.main.all_blasts[usize::from(blast_index)];
 
                 // So the influencer got some damage from the hot blast
                 // Now most likely, he then will also say so :)
                 if cur_blast.message_was_done == 0 {
                     self.add_influ_burnt_text();
-                    let cur_blast = &mut self.main.all_blasts[usize::try_from(num).unwrap()];
+                    let cur_blast = &mut self.main.all_blasts[usize::from(blast_index)];
                     cur_blast.message_was_done = true.into();
                 }
             }
@@ -333,7 +333,7 @@ impl crate::Data<'_> {
     pub fn start_blast(&mut self, x: f32, y: f32, mut ty: i32) {
         let mut i = 0;
         while i < MAXBLASTS {
-            if self.main.all_blasts[i].ty == Status::Out as i32 {
+            if self.main.all_blasts[usize::from(i)].ty == Status::Out as i32 {
                 break;
             }
 
@@ -345,7 +345,7 @@ impl crate::Data<'_> {
         }
 
         /* Get Pointer to it: more comfortable */
-        let new_blast = &mut self.main.all_blasts[i];
+        let new_blast = &mut self.main.all_blasts[usize::from(i)];
 
         if ty == Explosion::Rejectblast as i32 {
             new_blast.mine = true;

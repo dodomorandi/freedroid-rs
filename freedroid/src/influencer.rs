@@ -208,7 +208,7 @@ impl crate::Data<'_> {
             /* freien Blast finden */
             let mut counter = 0;
             loop {
-                let check = self.main.all_blasts[counter].ty != Status::Out as i32;
+                let check = self.main.all_blasts[usize::from(counter)].ty != Status::Out as i32;
                 counter += 1;
                 if check.not() {
                     break;
@@ -219,7 +219,7 @@ impl crate::Data<'_> {
                 counter < MAXBLASTS,
                 "Went out of blasts in ExplodeInfluencer..."
             );
-            let blast = &mut self.main.all_blasts[counter];
+            let blast = &mut self.main.all_blasts[usize::from(counter)];
             blast.ty = Explosion::Druidblast as i32;
             #[allow(clippy::cast_precision_loss)]
             {
