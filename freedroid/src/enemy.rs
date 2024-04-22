@@ -218,7 +218,13 @@ impl crate::Data<'_> {
 
             let pos_x = this_robot.pos.x;
             let pos_y = this_robot.pos.y;
-            self.start_blast(pos_x, pos_y, Explosion::Druidblast as i32);
+            self.start_blast(
+                pos_x,
+                pos_y,
+                Explosion::Druidblast {
+                    from_influencer: false,
+                },
+            );
             if self.level_empty() != 0 {
                 self.main.real_score += DECKCOMPLETEBONUS;
 

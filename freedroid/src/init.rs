@@ -3,8 +3,8 @@ use crate::{
     b_font::font_height,
     defs::{
         self, AssembleCombatWindowFlags, BulletKind, Criticality, DisplayBannerFlags, Droid,
-        Status, Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAP_DIR_C, MAXBULLETS,
-        SHOW_WAIT, SLOWMO_FACTOR, TITLE_PIC_FILE, WAIT_AFTER_KILLED,
+        Explosion, Status, Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAP_DIR_C,
+        MAXBULLETS, SHOW_WAIT, SLOWMO_FACTOR, TITLE_PIC_FILE, WAIT_AFTER_KILLED,
     },
     global::Global,
     graphics::Graphics,
@@ -566,7 +566,7 @@ impl crate::Data<'_> {
         info!("InitNewMission: All bullets have been deleted.");
         for blast in &mut self.main.all_blasts {
             blast.phase = (Status::Out as u8).into();
-            blast.ty = Status::Out as i32;
+            blast.ty = None;
         }
         info!("InitNewMission: All blasts have been deleted.");
         self.main.enemys.clear();
@@ -743,9 +743,12 @@ impl crate::Data<'_> {
         self.get_bullet_data(&data);
 
         // Now we read in the total time amount for the blast animations
-        self.vars.blastmap[0].total_animation_time =
+        self.vars.blastmap[Explosion::Bulletblast].total_animation_time =
             read_float_from_string(&data, BLAST_ONE_TOTAL_AMOUNT_OF_TIME_STRING);
-        self.vars.blastmap[1].total_animation_time =
+        self.vars.blastmap[Explosion::Druidblast {
+            from_influencer: false,
+        }]
+        .total_animation_time =
             read_float_from_string(&data, BLAST_TWO_TOTAL_AMOUNT_OF_TIME_STRING);
     }
 

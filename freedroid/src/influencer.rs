@@ -208,7 +208,7 @@ impl crate::Data<'_> {
             /* freien Blast finden */
             let mut counter = 0;
             loop {
-                let check = self.main.all_blasts[usize::from(counter)].ty != Status::Out as i32;
+                let check = self.main.all_blasts[usize::from(counter)].ty.is_some();
                 counter += 1;
                 if check.not() {
                     break;
@@ -220,7 +220,9 @@ impl crate::Data<'_> {
                 "Went out of blasts in ExplodeInfluencer..."
             );
             let blast = &mut self.main.all_blasts[usize::from(counter)];
-            blast.ty = Explosion::Druidblast as i32;
+            blast.ty = Some(Explosion::Druidblast {
+                from_influencer: false,
+            });
             #[allow(clippy::cast_precision_loss)]
             {
                 blast.px = self.vars.me.pos.x - self.global.droid_radius / 2.
@@ -417,7 +419,9 @@ impl crate::Data<'_> {
             self.start_blast(
                 self.vars.me.pos.x,
                 self.vars.me.pos.y,
-                Explosion::Rejectblast as i32,
+                Explosion::Druidblast {
+                    from_influencer: true,
+                },
             );
         }
 

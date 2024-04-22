@@ -1,11 +1,15 @@
 use crate::{
-    defs::{Droid, Status, ALLBLASTTYPES, MAX_INFLU_POSITION_HISTORY},
+    defs::{Droid, Explosion, Status, ALLBLASTTYPES, MAX_INFLU_POSITION_HISTORY},
     structs::{BlastSpec, BulletSpec, DruidSpec, Finepoint, Gps, Influence, TextToBeDisplayed},
 };
 
 use cstr::cstr;
 use sdl::Rect;
-use std::{array, ffi::CStr};
+use std::{
+    array,
+    ffi::CStr,
+    ops::{Deref, DerefMut, Index, IndexMut},
+};
 
 #[derive(Debug)]
 pub struct Vars<'sdl> {
@@ -39,7 +43,57 @@ pub struct Vars<'sdl> {
 
     pub droidmap: Vec<DruidSpec>,
     pub bulletmap: [BulletSpec<'sdl>; 6],
-    pub blastmap: [BlastSpec<'sdl>; ALLBLASTTYPES],
+    pub blastmap: BlastMap<'sdl>,
+}
+
+#[derive(Debug)]
+#[repr(transparent)]
+pub struct BlastMap<'sdl>([BlastSpec<'sdl>; ALLBLASTTYPES]);
+
+impl<'sdl> Default for BlastMap<'sdl> {
+    fn default() -> Self {
+        Self(array::from_fn(|_| BlastSpec::default_const()))
+    }
+}
+
+impl<'sdl> AsRef<[BlastSpec<'sdl>; ALLBLASTTYPES]> for BlastMap<'sdl> {
+    fn as_ref(&self) -> &[BlastSpec<'sdl>; ALLBLASTTYPES] {
+        &self.0
+    }
+}
+
+impl<'sdl> AsMut<[BlastSpec<'sdl>; ALLBLASTTYPES]> for BlastMap<'sdl> {
+    fn as_mut(&mut self) -> &mut [BlastSpec<'sdl>; ALLBLASTTYPES] {
+        &mut self.0
+    }
+}
+
+impl<'sdl> Deref for BlastMap<'sdl> {
+    type Target = [BlastSpec<'sdl>; ALLBLASTTYPES];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'sdl> DerefMut for BlastMap<'sdl> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<'sdl> Index<Explosion> for BlastMap<'sdl> {
+    type Output = BlastSpec<'sdl>;
+
+    fn index(&self, index: Explosion) -> &Self::Output {
+        &self.0[usize::from(index.to_u8())]
+    }
+}
+
+impl<'sdl> IndexMut<Explosion> for BlastMap<'sdl> {
+    fn index_mut(&mut self, index: Explosion) -> &mut Self::Output {
+        &mut self.0[usize::from(index.to_u8())]
+    }
 }
 
 impl Default for Vars<'_> {
@@ -91,7 +145,7 @@ impl Default for Vars<'_> {
             },
             droidmap: Vec::default(),
             bulletmap: array::from_fn(|_| BulletSpec::default()),
-            blastmap: array::from_fn(|_| BlastSpec::default_const()),
+            blastmap: BlastMap::default(),
         }
     }
 }

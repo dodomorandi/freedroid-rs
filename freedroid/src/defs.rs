@@ -823,11 +823,30 @@ impl TryFrom<i32> for BulletKind {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(u8)]
 pub enum Explosion {
+    #[default]
     Bulletblast = 0,
-    Druidblast,
-    Rejectblast,
+    Druidblast {
+        from_influencer: bool,
+    },
+}
+
+impl Explosion {
+    pub const fn to_u8(self) -> u8 {
+        match self {
+            Explosion::Bulletblast => 0,
+            Explosion::Druidblast { .. } => 1,
+        }
+    }
+
+    pub const fn is_from_influencer(self) -> bool {
+        match self {
+            Explosion::Bulletblast => false,
+            Explosion::Druidblast { from_influencer } => from_influencer,
+        }
+    }
 }
 
 pub const BLINKENERGY: f32 = 25.;

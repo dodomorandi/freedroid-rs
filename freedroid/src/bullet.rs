@@ -131,7 +131,7 @@ impl crate::Data<'_> {
             {
                 let pos_x = cur_bullet.pos.x;
                 let pos_y = cur_bullet.pos.y;
-                self.start_blast(pos_x, pos_y, Explosion::Bulletblast as i32);
+                self.start_blast(pos_x, pos_y, Explosion::Bulletblast);
                 self.delete_bullet(cur_bullet_index);
                 return;
             }
@@ -208,7 +208,13 @@ impl crate::Data<'_> {
 
                 let pos_x = cur_bullet.pos.x;
                 let pos_y = cur_bullet.pos.y;
-                self.start_blast(pos_x, pos_y, Explosion::Druidblast as i32);
+                self.start_blast(
+                    pos_x,
+                    pos_y,
+                    Explosion::Druidblast {
+                        from_influencer: false,
+                    },
+                );
 
                 self.delete_bullet(cur_bullet_index);
                 self.delete_bullet(bullet_index);
@@ -217,15 +223,20 @@ impl crate::Data<'_> {
     }
 
     pub fn delete_blast(&mut self, blast_index: u8) {
-        self.main.all_blasts[usize::from(blast_index)].ty = Status::Out as i32;
+        self.main.all_blasts[usize::from(blast_index)].ty = None;
     }
 
     pub fn explode_blasts(&mut self) {
         for blast_index in 0..MAXBLASTS {
             let cur_blast = &self.main.all_blasts[usize::from(blast_index)];
             #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
-            if cur_blast.ty != Status::Out as i32 {
-                if cur_blast.ty == Explosion::Druidblast as i32 {
+            if let Some(cur_blast_ty) = cur_blast.ty {
+                if matches!(
+                    cur_blast_ty,
+                    Explosion::Druidblast {
+                        from_influencer: false
+                    }
+                ) {
                     self.check_blast_collisions(blast_index);
                 }
 
@@ -239,7 +250,7 @@ impl crate::Data<'_> {
 
                 let frame_time = misc.frame_time(global, main.f_p_sover1);
                 let cur_blast = &mut main.all_blasts[usize::from(blast_index)];
-                let blast_spec = &vars.blastmap[usize::try_from(cur_blast.ty).unwrap()];
+                let blast_spec = &vars.blastmap[cur_blast_ty];
                 cur_blast.phase +=
                     frame_time * blast_spec.phases as f32 / blast_spec.total_animation_time;
                 if cur_blast.phase.floor() as i32 >= blast_spec.phases {
@@ -266,7 +277,7 @@ impl crate::Data<'_> {
             if dist < self.global.blast_radius {
                 let pos_x = cur_bullet.pos.x;
                 let pos_y = cur_bullet.pos.y;
-                self.start_blast(pos_x, pos_y, Explosion::Bulletblast as i32);
+                self.start_blast(pos_x, pos_y, Explosion::Bulletblast);
                 self.delete_bullet(bullet_index);
             }
         }
@@ -306,7 +317,10 @@ impl crate::Data<'_> {
         let dist = (v_dist.x * v_dist.x + v_dist.y * v_dist.y).sqrt();
 
         if self.vars.me.status != Status::Out
-            && !cur_blast.mine
+            && cur_blast
+                .ty
+                .map_or(false, Explosion::is_from_influencer)
+                .not()
             && dist < self.global.blast_radius + self.global.droid_radius
         {
             if self.main.invincible_mode.not() {
@@ -330,10 +344,10 @@ impl crate::Data<'_> {
         }
     }
 
-    pub fn start_blast(&mut self, x: f32, y: f32, mut ty: i32) {
+    pub fn start_blast(&mut self, x: f32, y: f32, ty: Explosion) {
         let mut i = 0;
         while i < MAXBLASTS {
-            if self.main.all_blasts[usize::from(i)].ty == Status::Out as i32 {
+            if self.main.all_blasts[usize::from(i)].ty.is_none() {
                 break;
             }
 
@@ -347,22 +361,15 @@ impl crate::Data<'_> {
         /* Get Pointer to it: more comfortable */
         let new_blast = &mut self.main.all_blasts[usize::from(i)];
 
-        if ty == Explosion::Rejectblast as i32 {
-            new_blast.mine = true;
-            ty = Explosion::Druidblast as i32; // not really a different type, just avoid damaging influencer
-        } else {
-            new_blast.mine = false;
-        }
-
         new_blast.px = x;
         new_blast.py = y;
 
-        new_blast.ty = ty;
+        new_blast.ty = Some(ty);
         new_blast.phase = 0.;
 
         new_blast.message_was_done = 0;
 
-        if ty == Explosion::Druidblast as i32 {
+        if matches!(ty, Explosion::Druidblast { .. }) {
             self.druid_blast_sound();
         }
     }

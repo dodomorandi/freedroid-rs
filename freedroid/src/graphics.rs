@@ -2,8 +2,8 @@
 use crate::vars::Vars;
 use crate::{
     defs::{
-        self, scale_point, Cmds, Criticality, DisplayBannerFlags, Droid, SoundType, Themed,
-        BANNER_BLOCK_FILE, BLAST_BLOCK_FILE, BULLET_BLOCK_FILE, CONSOLE_BG_PIC1_FILE,
+        self, scale_point, Cmds, Criticality, DisplayBannerFlags, Droid, Explosion, SoundType,
+        Themed, BANNER_BLOCK_FILE, BLAST_BLOCK_FILE, BULLET_BLOCK_FILE, CONSOLE_BG_PIC1_FILE,
         CONSOLE_BG_PIC2_FILE, CONSOLE_PIC_FILE, DIGITNUMBER, DIGIT_BLOCK_FILE, DROID_BLOCK_FILE,
         ENEMYPHASES, FONT0_FILE, FONT1_FILE, FONT2_FILE, GRAPHICS_DIR_C, ICON_FILE, MAP_BLOCK_FILE,
         NUM_COLORS, NUM_DECAL_PICS, NUM_MAP_BLOCKS, PARA_FONT_FILE, SHIP_OFF_PIC_FILE,
@@ -1204,11 +1204,13 @@ impl crate::Data<'_> {
         // we can start to analyze its content,
         //
 
-        self.vars.blastmap[0].phases =
+        self.vars.blastmap[Explosion::Bulletblast].phases =
             read_i32_from_string(&data, BLAST_ONE_NUMBER_OF_PHASES_STRING);
 
-        self.vars.blastmap[1].phases =
-            read_i32_from_string(&data, BLAST_TWO_NUMBER_OF_PHASES_STRING);
+        self.vars.blastmap[Explosion::Druidblast {
+            from_influencer: false,
+        }]
+        .phases = read_i32_from_string(&data, BLAST_TWO_NUMBER_OF_PHASES_STRING);
 
         // Next we read in the number of phases that are to be used for each bullet type
         let mut reader = &*data;

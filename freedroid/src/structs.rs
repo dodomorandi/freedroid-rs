@@ -1,7 +1,7 @@
 use crate::{
     array_c_string::ArrayCString,
     defs::{
-        BulletKind, Droid, MapTile, Status, DATE_LEN, MAXWAYPOINTS, MAX_ALERTS_ON_LEVEL,
+        BulletKind, Droid, Explosion, MapTile, Status, DATE_LEN, MAXWAYPOINTS, MAX_ALERTS_ON_LEVEL,
         MAX_DOORS_ON_LEVEL, MAX_INFLU_POSITION_HISTORY, MAX_LEVELS, MAX_LEVEL_RECTS, MAX_LIFTS,
         MAX_LIFT_ROWS, MAX_MAP_ROWS, MAX_NAME_LEN, MAX_PHASES_IN_A_BULLET, MAX_REFRESHES_ON_LEVEL,
         MAX_THEMES, MAX_WP_CONNECTIONS,
@@ -247,10 +247,9 @@ impl BlastSpec<'_> {
 pub struct Blast {
     pub px: f32, /* PosX */
     pub py: f32, /* PosY */
-    pub ty: i32,
+    pub ty: Option<Explosion>,
     pub phase: f32,
     pub message_was_done: i32,
-    pub mine: bool,
 }
 
 impl Default for Blast {
@@ -258,10 +257,9 @@ impl Default for Blast {
         Self {
             px: 0.,
             py: 0.,
-            ty: 0,
+            ty: Some(Explosion::default()),
             phase: 0.,
             message_was_done: 0,
-            mine: false,
         }
     }
 }

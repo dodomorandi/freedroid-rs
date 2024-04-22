@@ -842,7 +842,7 @@ impl crate::Data<'_> {
         } = self;
         all_blasts
             .iter()
-            .filter(|blast| blast.ty != Status::Out as i32)
+            .filter(|blast| blast.ty.is_some())
             .for_each(|blast| put_blast(blast, vars, graphics));
     }
 
@@ -893,9 +893,9 @@ pub fn put_blast(blast: &Blast, vars: &mut Vars, graphics: &mut Graphics) {
     trace!("PutBlast: real function call confirmed.");
 
     // If the blast is already long deat, we need not do anything else here
-    if blast.ty == Status::Out as i32 {
+    let Some(blast_type) = blast.ty else {
         return;
-    }
+    };
 
     let user_center = vars.get_user_center();
     #[allow(clippy::cast_possible_truncation)]
@@ -911,7 +911,7 @@ pub fn put_blast(blast: &Blast, vars: &mut Vars, graphics: &mut Graphics) {
     );
 
     #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
-    vars.blastmap[usize::try_from(blast.ty).unwrap()].surfaces[(blast.phase).floor() as usize]
+    vars.blastmap[blast_type].surfaces[(blast.phase).floor() as usize]
         .as_mut()
         .unwrap()
         .blit_to(graphics.ne_screen.as_mut().unwrap(), &mut dst);
