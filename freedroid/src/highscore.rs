@@ -11,7 +11,7 @@ use crate::{
 use log::{info, warn};
 use sdl::{convert::u8_to_usize, Rect};
 use std::{
-    fmt,
+    array, fmt,
     fs::File,
     io::{BufReader, Read, Write},
     mem::{self, align_of, size_of},
@@ -21,8 +21,7 @@ use std::{
 
 #[derive(Debug, Default)]
 pub struct Highscore {
-    pub entries: Option<Box<[Entry]>>,
-    pub num: i32,
+    pub entries: Option<[Entry; u8_to_usize(MAX_HIGHSCORES)]>,
 }
 
 #[derive(Debug)]
@@ -90,47 +89,42 @@ impl Highscore {
             file
         });
 
-        self.num = MAX_HIGHSCORES.into();
         let highscores = match file {
-            Some(mut file) => (0..MAX_HIGHSCORES)
-                .map(|_| {
-                    const SCORE_PADDING: usize = Entry::score_padding();
-                    const END_PADDING: usize = Entry::end_padding();
+            Some(mut file) => array::from_fn(|_| {
+                const SCORE_PADDING: usize = Entry::score_padding();
+                const END_PADDING: usize = Entry::end_padding();
 
-                    let mut name = ArrayCString::new();
-                    name.use_slice_mut(|name| {
-                        file.read_exact(name)
-                            .expect("cannot read name from highscore file");
-                    });
+                let mut name = ArrayCString::new();
+                name.use_slice_mut(|name| {
+                    file.read_exact(name)
+                        .expect("cannot read name from highscore file");
+                });
 
-                    if SCORE_PADDING != 0 {
-                        file.seek_relative(SCORE_PADDING.try_into().unwrap())
-                            .expect("cannot skip padding bytes from highscore file");
+                if SCORE_PADDING != 0 {
+                    file.seek_relative(SCORE_PADDING.try_into().unwrap())
+                        .expect("cannot skip padding bytes from highscore file");
+                }
+                let score = {
+                    let mut raw_score = [0u8; size_of::<i64>()];
+                    file.read_exact(&mut raw_score)
+                        .expect("unable to read score from highscore file");
+
+                    i64::from_le_bytes(raw_score)
+                };
+
+                let mut get_rest = || {
+                    let mut date = ArrayCString::new();
+                    date.use_slice_mut(|date| file.read_exact(date).ok())?;
+
+                    if END_PADDING != 0 {
+                        file.seek_relative(END_PADDING.try_into().unwrap()).ok()?;
                     }
-                    let score = {
-                        let mut raw_score = [0u8; size_of::<i64>()];
-                        file.read_exact(&mut raw_score)
-                            .expect("unable to read score from highscore file");
 
-                        i64::from_le_bytes(raw_score)
-                    };
-
-                    let mut get_rest = || {
-                        let mut date = ArrayCString::new();
-                        date.use_slice_mut(|date| file.read_exact(date).ok())?;
-
-                        if END_PADDING != 0 {
-                            file.seek_relative(END_PADDING.try_into().unwrap()).ok()?;
-                        }
-
-                        Some(Entry { name, score, date })
-                    };
-                    get_rest().unwrap_or_default()
-                })
-                .collect(),
-            None => std::iter::repeat_with(Entry::default)
-                .take(MAX_HIGHSCORES.into())
-                .collect(),
+                    Some(Entry { name, score, date })
+                };
+                get_rest().unwrap_or_default()
+            }),
+            None => array::from_fn(|_| Entry::default()),
         };
         self.entries = Some(highscores);
     }
@@ -337,7 +331,7 @@ impl crate::Data<'_> {
             &mut self.font_owner,
             &mut ne_screen,
             y0,
-            format_args!("Top {}  scores\n", self.highscore.num),
+            format_args!("Top {MAX_HIGHSCORES}  scores\n"),
         );
 
         let highscore_entries = self.highscore.entries.take().unwrap();
