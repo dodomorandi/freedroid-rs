@@ -212,7 +212,7 @@ type CapsulesCountdown = Map<Option<u8>>;
 
 #[derive(Debug)]
 pub struct Takeover<'sdl> {
-    capsule_cur_row: [i32; COLORS],
+    capsule_cur_row: [CapsuleRow; COLORS],
     num_capsules: [i32; COLORS],
     playground: Playground,
     activation_map: ActivationMap,
@@ -255,7 +255,7 @@ pub struct Takeover<'sdl> {
 impl Default for Takeover<'_> {
     fn default() -> Self {
         Self {
-            capsule_cur_row: [0, 0],
+            capsule_cur_row: [CapsuleRow::default(), CapsuleRow::default()],
             num_capsules: [0, 0],
             playground: [[[Block::Cable; u8_to_usize(NUM_LINES)]; NUM_LAYERS]; COLORS].into(),
             activation_map: [[[Condition::Inactive; u8_to_usize(NUM_LINES)]; NUM_LAYERS]; COLORS]
@@ -352,13 +352,13 @@ enum Direction {
 }
 
 impl Direction {
-    fn apply_to(self, row: i32) -> i32 {
+    fn apply_to(self, row: u8) -> u8 {
         let value = match self {
             Direction::Up => -1,
             Direction::Down => 1,
         };
 
-        row + value
+        row.wrapping_add_signed(value)
     }
 
     fn invert(&mut self) {
@@ -366,6 +366,90 @@ impl Direction {
             Direction::Up => Direction::Down,
             Direction::Down => Direction::Up,
         };
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum CapsuleRow {
+    #[default]
+    Detached,
+    R1,
+    R2,
+    R3,
+    R4,
+    R5,
+    R6,
+    R7,
+    R8,
+    R9,
+    R10,
+    R11,
+    R12,
+}
+
+impl CapsuleRow {
+    fn move_toward(&mut self, direction: Direction) {
+        let new_row = direction.apply_to(*self as u8 + NUM_LINES - 1) % NUM_LINES;
+
+        *self = match new_row {
+            0 => Self::R1,
+            1 => Self::R2,
+            2 => Self::R3,
+            3 => Self::R4,
+            4 => Self::R5,
+            5 => Self::R6,
+            6 => Self::R7,
+            7 => Self::R8,
+            8 => Self::R9,
+            9 => Self::R10,
+            10 => Self::R11,
+            11 => Self::R12,
+            _ => unreachable!(),
+        }
+    }
+
+    fn move_up(&mut self) {
+        *self = match self {
+            CapsuleRow::Detached | CapsuleRow::R1 => CapsuleRow::R12,
+            CapsuleRow::R2 => CapsuleRow::R1,
+            CapsuleRow::R3 => CapsuleRow::R2,
+            CapsuleRow::R4 => CapsuleRow::R3,
+            CapsuleRow::R5 => CapsuleRow::R4,
+            CapsuleRow::R6 => CapsuleRow::R5,
+            CapsuleRow::R7 => CapsuleRow::R6,
+            CapsuleRow::R8 => CapsuleRow::R7,
+            CapsuleRow::R9 => CapsuleRow::R8,
+            CapsuleRow::R10 => CapsuleRow::R9,
+            CapsuleRow::R11 => CapsuleRow::R10,
+            CapsuleRow::R12 => CapsuleRow::R11,
+        }
+    }
+
+    fn move_down(&mut self) {
+        *self = match self {
+            CapsuleRow::R1 => CapsuleRow::R2,
+            CapsuleRow::R2 => CapsuleRow::R3,
+            CapsuleRow::R3 => CapsuleRow::R4,
+            CapsuleRow::R4 => CapsuleRow::R5,
+            CapsuleRow::R5 => CapsuleRow::R6,
+            CapsuleRow::R6 => CapsuleRow::R7,
+            CapsuleRow::R7 => CapsuleRow::R8,
+            CapsuleRow::R8 => CapsuleRow::R9,
+            CapsuleRow::R9 => CapsuleRow::R10,
+            CapsuleRow::R10 => CapsuleRow::R11,
+            CapsuleRow::R11 => CapsuleRow::R12,
+            CapsuleRow::R12 | CapsuleRow::Detached => CapsuleRow::R1,
+        }
+    }
+
+    const fn row_index(self) -> Option<u8> {
+        (self as u8).checked_sub(1)
+    }
+}
+
+impl From<CapsuleRow> for i16 {
+    fn from(value: CapsuleRow) -> Self {
+        value as i16
     }
 }
 
@@ -781,14 +865,14 @@ impl crate::Data<'_> {
         }
 
         let opponent_color = self.takeover.opponent_color as usize;
-        let row = self.takeover.capsule_cur_row[opponent_color];
+        let mut row = self.takeover.capsule_cur_row[opponent_color];
 
         if self.takeover.num_capsules[Opponents::Enemy as usize] == 0 {
             return;
         }
 
         let mut rng = thread_rng();
-        let next_row = match [
+        match [
             Action::Move,
             Action::Turn,
             Action::SetCapsule,
@@ -799,13 +883,7 @@ impl crate::Data<'_> {
         {
             Action::Move => {
                 if (0..=100).choose(&mut rng).unwrap() <= MOVE_PROBABILITY {
-                    self.takeover
-                        .direction
-                        .apply_to(row + i32::from(NUM_LINES) - 1)
-                        % i32::from(NUM_LINES)
-                        + 1
-                } else {
-                    row
+                    row.move_toward(self.takeover.direction);
                 }
             }
 
@@ -814,35 +892,37 @@ impl crate::Data<'_> {
                 if (0..=100).choose(&mut rng).unwrap() <= TURN_PROBABILITY {
                     self.takeover.direction.invert();
                 }
-                row
             }
 
             Action::SetCapsule => {
                 /* Try to set  capsule */
-                match usize::try_from(row - 1) {
-                    Ok(row)
+
+                match row.row_index().map(usize::from) {
+                    Some(row_index)
                         if (0..=100).choose(&mut rng).unwrap() <= SET_PROBABILITY
-                            && self.takeover.playground[opponent_color][0][row]
+                            && self.takeover.playground[opponent_color][0][row_index]
                                 != Block::CableEnd
-                            && self.takeover.activation_map[opponent_color][0][row]
+                            && self.takeover.activation_map[opponent_color][0][row_index]
                                 == Condition::Inactive =>
                     {
                         self.takeover.num_capsules[Opponents::Enemy as usize] -= 1;
                         self.takeover_set_capsule_sound();
-                        self.takeover.playground[opponent_color][0][row] = Block::Repeater;
-                        self.takeover.activation_map[opponent_color][0][row] = Condition::Active1;
-                        self.takeover.capsules_countdown[opponent_color][0][row] =
+                        self.takeover.playground[opponent_color][0][row_index] = Block::Repeater;
+                        self.takeover.activation_map[opponent_color][0][row_index] =
+                            Condition::Active1;
+                        self.takeover.capsules_countdown[opponent_color][0][row_index] =
                             Some(CAPSULE_COUNTDOWN * 2);
-                        0
+
+                        row = CapsuleRow::Detached;
                     }
-                    _ => row,
+                    _ => {}
                 }
             }
 
-            Action::Nothing => row,
+            Action::Nothing => {}
         };
 
-        self.takeover.capsule_cur_row[opponent_color] = next_row;
+        self.takeover.capsule_cur_row[opponent_color] = row;
     }
 
     /// Animate the active cables: this is done by cycling over
@@ -1450,7 +1530,7 @@ impl crate::Data<'_> {
                     x_offs + i16::try_from(cur_capsule_starts[color].x).unwrap(),
                     y_offs
                         + i16::try_from(cur_capsule_starts[color].y).unwrap()
-                        + i16::try_from(capsule_cur_row[color]).unwrap()
+                        + i16::from(capsule_cur_row[color])
                             * i16::try_from(capsule_rect.height()).unwrap(),
                     0,
                     0,
@@ -1597,27 +1677,24 @@ impl crate::Data<'_> {
             }
 
             if action.intersects(MenuAction::UP | MenuAction::UP_WHEEL) {
-                self.takeover.capsule_cur_row[your_color] -= 1;
-                if self.takeover.capsule_cur_row[your_color] < 1 {
-                    self.takeover.capsule_cur_row[your_color] = NUM_LINES.into();
-                }
+                self.takeover.capsule_cur_row[your_color].move_up();
             }
 
             if action.intersects(MenuAction::DOWN | MenuAction::DOWN_WHEEL) {
-                self.takeover.capsule_cur_row[your_color] += 1;
-                if self.takeover.capsule_cur_row[your_color] > NUM_LINES.into() {
-                    self.takeover.capsule_cur_row[your_color] = 1;
-                }
+                self.takeover.capsule_cur_row[your_color].move_down();
             }
 
             if action.intersects(MenuAction::CLICK) {
-                if let Ok(row) = usize::try_from(self.takeover.capsule_cur_row[your_color] - 1) {
+                if let Some(row) = self.takeover.capsule_cur_row[your_color]
+                    .row_index()
+                    .map(usize::from)
+                {
                     if self.takeover.num_capsules[Opponents::You as usize] > 0
                         && self.takeover.playground[your_color][0][row] != Block::CableEnd
                         && self.takeover.activation_map[your_color][0][row] == Condition::Inactive
                     {
                         self.takeover.num_capsules[Opponents::You as usize] -= 1;
-                        self.takeover.capsule_cur_row[your_color] = 0;
+                        self.takeover.capsule_cur_row[your_color] = CapsuleRow::Detached;
                         self.takeover.playground[your_color][0][row] = Block::Repeater;
                         self.takeover.activation_map[your_color][0][row] = Condition::Active1;
                         self.takeover.capsules_countdown[your_color][0][row] =
@@ -1810,8 +1887,8 @@ impl crate::Data<'_> {
         self.takeover.your_color = Color::Yellow;
         self.takeover.opponent_color = Color::Violet;
 
-        self.takeover.capsule_cur_row[usize::from(Color::Yellow)] = 0;
-        self.takeover.capsule_cur_row[usize::from(Color::Violet)] = 0;
+        self.takeover.capsule_cur_row[usize::from(Color::Yellow)] = CapsuleRow::Detached;
+        self.takeover.capsule_cur_row[usize::from(Color::Violet)] = CapsuleRow::Detached;
 
         self.takeover.droid_num = enemynum;
         self.takeover.opponent_type = enemy.ty;
