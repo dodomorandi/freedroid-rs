@@ -222,20 +222,20 @@ impl crate::Data<'_> {
         self.global.game_config.current_sound_fx_volume = 0.5;
 
         self.global.game_config.wanted_text_visible_time = 3.;
-        self.global.game_config.droid_talk = false.into();
+        self.global.game_config.droid_talk = false;
 
-        self.global.game_config.draw_framerate = false.into();
-        self.global.game_config.draw_energy = false.into();
-        self.global.game_config.draw_death_count = false.into();
-        self.global.game_config.draw_position = false.into();
+        self.global.game_config.draw_framerate = false;
+        self.global.game_config.draw_energy = false;
+        self.global.game_config.draw_death_count = false;
+        self.global.game_config.draw_position = false;
 
         self.global.game_config.theme_name.set_slice("classic");
-        self.global.game_config.full_user_rect = true.into();
-        self.global.game_config.use_fullscreen = false.into();
-        self.global.game_config.takeover_activates = true.into();
-        self.global.game_config.fire_hold_takeover = true.into();
-        self.global.game_config.show_decals = false.into();
-        self.global.game_config.all_map_visible = true.into(); // classic setting: map always visible
+        self.global.game_config.full_user_rect = true;
+        self.global.game_config.use_fullscreen = false;
+        self.global.game_config.takeover_activates = true;
+        self.global.game_config.fire_hold_takeover = true;
+        self.global.game_config.show_decals = false;
+        self.global.game_config.all_map_visible = true; // classic setting: map always visible
 
         let scale = if cfg!(feature = "gcw0") {
             0.5 // Default for 320x200 device (GCW0)
@@ -244,7 +244,7 @@ impl crate::Data<'_> {
         };
         self.global.game_config.scale = scale;
 
-        self.global.game_config.hog_cpu = false.into(); // default to being nice
+        self.global.game_config.hog_cpu = false; // default to being nice
         self.global.game_config.empty_level_speedup = 1.0; // speed up *time* in empty levels (ie also energy-loss rate)
 
         // now load saved options from the config-file
@@ -253,7 +253,7 @@ impl crate::Data<'_> {
         // call this _after_ default settings and LoadGameConfig() ==> cmdline has highest priority!
         self.parse_command_line();
 
-        self.vars.user_rect = if self.global.game_config.full_user_rect == 0 {
+        self.vars.user_rect = if self.global.game_config.full_user_rect.not() {
             self.vars.classic_user_rect
         } else {
             self.vars.full_user_rect
@@ -354,9 +354,9 @@ impl crate::Data<'_> {
         }
 
         if opt.fullscreen {
-            self.global.game_config.use_fullscreen = true.into();
+            self.global.game_config.use_fullscreen = true;
         } else if opt.window {
-            self.global.game_config.use_fullscreen = false.into();
+            self.global.game_config.use_fullscreen = false;
         }
     }
 
@@ -600,7 +600,7 @@ impl crate::Data<'_> {
 
         /* Reactivate the light on alle Levels, that might have been dark */
         for level in &mut self.main.cur_ship.levels {
-            level.empty = false.into();
+            level.empty = false;
         }
 
         info!("InitNewMission: All levels have been set to 'active'...",);

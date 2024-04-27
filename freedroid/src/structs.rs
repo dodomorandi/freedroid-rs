@@ -44,25 +44,26 @@ pub struct Color {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Config {
     pub wanted_text_visible_time: f32,
-    pub draw_framerate: i32,
-    pub draw_energy: i32,
-    pub draw_position: i32,
-    pub draw_death_count: i32,
-    pub droid_talk: i32,
+    pub draw_framerate: bool,
+    pub draw_energy: bool,
+    pub draw_position: bool,
+    pub draw_death_count: bool,
+    pub droid_talk: bool,
     pub current_bg_music_volume: f32,
     pub current_sound_fx_volume: f32,
     pub current_gamma_correction: f32,
     pub theme_name: ArrayCString<100>, // name of graphics-theme : dirname = graphics/TNAME_theme/
-    pub full_user_rect: i32,           // use "full" or "classic" (=small) User_Rect
-    pub use_fullscreen: i32,           // toggle for use of fullscreen vs. X11-window
-    pub takeover_activates: i32, // toggle if takeover-mode also does 'Activate' (i.e. lifts/consoles)
-    pub fire_hold_takeover: i32, // Activate Takeover-mode after a delay if fire is held without a direction
-    pub show_decals: i32,        // show dead droids-ashes...
-    pub all_map_visible: i32,    // complete map is visible?
-    pub scale: f32,              // scale the whole graphics by this at load-time
-    pub hog_cpu: i32,            // use 100% CPU or leave it some air to breathe?
+    pub full_user_rect: bool,          // use "full" or "classic" (=small) User_Rect
+    pub use_fullscreen: bool,          // toggle for use of fullscreen vs. X11-window
+    pub takeover_activates: bool, // toggle if takeover-mode also does 'Activate' (i.e. lifts/consoles)
+    pub fire_hold_takeover: bool, // Activate Takeover-mode after a delay if fire is held without a direction
+    pub show_decals: bool,        // show dead droids-ashes...
+    pub all_map_visible: bool,    // complete map is visible?
+    pub scale: f32,               // scale the whole graphics by this at load-time
+    pub hog_cpu: bool,            // use 100% CPU or leave it some air to breathe?
     pub empty_level_speedup: f32, // time speedup factor to use on empty levels
 }
 
@@ -199,7 +200,7 @@ pub struct Bullet<'sdl> {
     pub time_in_seconds: f32, // how i64 does the bullet exist in seconds
     pub mine: bool,
     pub angle: f32,
-    pub surfaces_were_generated: i32,
+    pub surfaces_were_generated: bool,
     pub surfaces: [Option<Surface<'sdl>>; MAX_PHASES_IN_A_BULLET],
 }
 
@@ -215,7 +216,7 @@ impl Bullet<'_> {
             time_in_seconds: 0.,
             mine: false,
             angle: 0.,
-            surfaces_were_generated: 0,
+            surfaces_were_generated: false,
             surfaces: [
                 None, None, None, None, None, None, None, None, None, None, None, None,
             ],
@@ -249,7 +250,7 @@ pub struct Blast {
     pub py: f32, /* PosY */
     pub ty: Option<Explosion>,
     pub phase: f32,
-    pub message_was_done: i32,
+    pub message_was_done: bool,
 }
 
 impl Default for Blast {
@@ -259,7 +260,7 @@ impl Default for Blast {
             py: 0.,
             ty: Some(Explosion::default()),
             phase: 0.,
-            message_was_done: 0,
+            message_was_done: false,
         }
     }
 }
@@ -286,7 +287,7 @@ pub struct Waypoint {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Level {
-    pub empty: i32,
+    pub empty: bool,
     pub timer: f32,
     pub levelnum: u8,       /* Number of this level */
     pub levelname: CString, /* Name of this level */

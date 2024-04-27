@@ -542,7 +542,7 @@ impl crate::Data<'_> {
     pub fn enemy_hit_by_bullet_text(&mut self, enemy: i32) {
         let robot = &mut self.main.enemys[usize::try_from(enemy).unwrap()];
 
-        if self.global.game_config.droid_talk == 0 {
+        if self.global.game_config.droid_talk.not() {
             return;
         }
 
@@ -562,7 +562,7 @@ impl crate::Data<'_> {
     pub fn enemy_influ_collision_text(&mut self, enemy: i32) {
         let robot = &mut self.main.enemys[usize::try_from(enemy).unwrap()];
 
-        if self.global.game_config.droid_talk == 0 {
+        if self.global.game_config.droid_talk.not() {
             return;
         }
 
@@ -577,7 +577,7 @@ impl crate::Data<'_> {
     }
 
     pub fn add_influ_burnt_text(&mut self) {
-        if self.global.game_config.droid_talk == 0 {
+        if self.global.game_config.droid_talk.not() {
             return;
         }
 
@@ -696,7 +696,7 @@ impl Scroll<'_, '_> {
             }
             assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
-            if self.global.game_config.hog_cpu != 0 {
+            if self.global.game_config.hog_cpu {
                 self.sdl.delay_ms(1);
             }
 

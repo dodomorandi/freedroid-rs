@@ -86,7 +86,7 @@ impl crate::Data<'_> {
             .as_mut()
             .unwrap()
             .set_clip_rect(&self.vars.user_rect);
-        if self.global.game_config.all_map_visible == 0 {
+        if self.global.game_config.all_map_visible.not() {
             self.fill_rect(self.vars.user_rect, BLACK);
         }
 
@@ -128,7 +128,7 @@ impl crate::Data<'_> {
             .as_mut()
             .unwrap()
             .set_clip_rect(&text_rect);
-        if self.global.game_config.full_user_rect == 0 {
+        if self.global.game_config.full_user_rect.not() {
             self.graphics
                 .ne_screen
                 .as_mut()
@@ -137,7 +137,7 @@ impl crate::Data<'_> {
                 .unwrap();
         }
 
-        if self.global.game_config.draw_position != 0 {
+        if self.global.game_config.draw_position {
             #[allow(clippy::cast_possible_wrap)]
             print_string_font(
                 self.graphics.ne_screen.as_mut().unwrap(),
@@ -206,7 +206,7 @@ impl crate::Data<'_> {
 
     /// put some ashes at (x,y)
     pub fn put_ashes(&mut self, x: f32, y: f32) {
-        if self.global.game_config.show_decals == 0 {
+        if self.global.game_config.show_decals.not() {
             return;
         }
 
@@ -324,7 +324,7 @@ impl crate::Data<'_> {
         //
         if x == -1
             && droid.text_visible_time < self.global.game_config.wanted_text_visible_time
-            && self.global.game_config.droid_talk != 0
+            && self.global.game_config.droid_talk
         {
             #[allow(clippy::cast_possible_truncation)]
             put_string_font(
@@ -457,7 +457,7 @@ impl crate::Data<'_> {
         //
         if x == -1
             && self.vars.me.text_visible_time < self.global.game_config.wanted_text_visible_time
-            && self.global.game_config.droid_talk != 0
+            && self.global.game_config.droid_talk
         {
             self.make_influencer_talk();
         }
@@ -557,7 +557,7 @@ impl crate::Data<'_> {
         // Then, we'll have to generate these
         //
         //if ( cur_bullet.time_in_frames == 1 )
-        if cur_bullet.surfaces_were_generated == 0 {
+        if cur_bullet.surfaces_were_generated.not() {
             for i in 0..usize::from(bullet.phases) {
                 cur_bullet.surfaces[i] = Some(
                     bullet.surfaces[i]
@@ -571,7 +571,7 @@ impl crate::Data<'_> {
                 "This was the first time for this bullet, so images were generated... angle={}",
                 cur_bullet.angle
             );
-            cur_bullet.surfaces_were_generated = true.into();
+            cur_bullet.surfaces_were_generated = true;
         }
 
         // WARNING!!! PAY ATTENTION HERE!! After the rotozoom was applied to the image, it is NO
@@ -695,7 +695,7 @@ impl crate::Data<'_> {
             mut target_rectangle,
         } = state;
 
-        if self.global.game_config.all_map_visible == 0
+        if self.global.game_config.all_map_visible.not()
             && mask
                 .contains(AssembleCombatWindowFlags::SHOW_FULL_MAP)
                 .not()
@@ -759,7 +759,7 @@ impl crate::Data<'_> {
     }
 
     fn assemble_combat_window_draw(&mut self) {
-        if self.global.game_config.draw_framerate != 0 {
+        if self.global.game_config.draw_framerate {
             self.assemble_combat_window_draw_framerate();
         }
 
@@ -770,7 +770,7 @@ impl crate::Data<'_> {
             .unwrap()
             .rw(&mut self.font_owner);
 
-        if self.global.game_config.draw_energy != 0 {
+        if self.global.game_config.draw_energy {
             print_string_font(
                 self.graphics.ne_screen.as_mut().unwrap(),
                 font0_b_font,
@@ -782,7 +782,7 @@ impl crate::Data<'_> {
                 format_args!("Energy: {:.0}", self.vars.me.energy),
             );
         }
-        if self.global.game_config.draw_death_count != 0 {
+        if self.global.game_config.draw_death_count {
             print_string_font(
                 self.graphics.ne_screen.as_mut().unwrap(),
                 font0_b_font,
@@ -971,7 +971,7 @@ mod screen_updater {
         right_box: ArrayString<RIGHT_TEXT_LEN>,
         flags: DisplayBannerFlags,
     ) -> bool {
-        data.graphics.banner_is_destroyed != 0
+        data.graphics.banner_is_destroyed
             || flags.contains(DisplayBannerFlags::FORCE_UPDATE)
             || PREVIOUS_LEFT_BOX
                 .with(|previous_left_box| &left_box != previous_left_box.borrow().as_ref())
@@ -1056,6 +1056,6 @@ mod screen_updater {
                 .update_rect(&data.vars.banner_rect.with_xy(0, 0));
         }
 
-        data.graphics.banner_is_destroyed = false.into();
+        data.graphics.banner_is_destroyed = false;
     }
 }

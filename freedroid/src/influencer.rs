@@ -70,14 +70,14 @@ impl crate::Data<'_> {
             }
 
             // since robots like the refresh, the influencer might also say so...
-            if self.global.game_config.droid_talk != 0 {
+            if self.global.game_config.droid_talk {
                 self.vars.me.text_to_be_displayed =
                     TextToBeDisplayed::String(cstr!("Ahhh, that feels so good..."));
                 self.vars.me.text_visible_time = 0.;
             }
         } else {
             // If nothing more is to be had, the influencer might also say so...
-            if self.global.game_config.droid_talk != 0 {
+            if self.global.game_config.droid_talk {
                 self.vars.me.text_to_be_displayed =
                     TextToBeDisplayed::String(cstr!("Oh, it seems that was it again."));
                 self.vars.me.text_visible_time = 0.;
@@ -123,7 +123,7 @@ impl crate::Data<'_> {
                 self.takeover(enemy_index.try_into().unwrap());
 
                 if self.level_empty() != 0 {
-                    self.main.cur_level_mut().empty = true.into();
+                    self.main.cur_level_mut().empty = true;
                 }
             } else {
                 vars.me.speed.x = -vars.me.speed.x;
@@ -460,7 +460,7 @@ impl crate::Data<'_> {
             self.vars.me.status = Status::Activate;
         }
 
-        if self.global.game_config.fire_hold_takeover != 0
+        if self.global.game_config.fire_hold_takeover
             && self.fire_pressed()
             && self.no_direction_pressed()
             && matches!(self.vars.me.status, Status::Weapon | Status::Transfermode).not()

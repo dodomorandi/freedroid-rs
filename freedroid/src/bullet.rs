@@ -329,10 +329,10 @@ impl crate::Data<'_> {
 
                 // So the influencer got some damage from the hot blast
                 // Now most likely, he then will also say so :)
-                if cur_blast.message_was_done == 0 {
+                if cur_blast.message_was_done.not() {
                     self.add_influ_burnt_text();
                     let cur_blast = &mut self.main.all_blasts[usize::from(blast_index)];
-                    cur_blast.message_was_done = true.into();
+                    cur_blast.message_was_done = true;
                 }
             }
             // In order to avoid a new sound EVERY frame we check for how long the previous blast
@@ -367,7 +367,7 @@ impl crate::Data<'_> {
         new_blast.ty = Some(ty);
         new_blast.phase = 0.;
 
-        new_blast.message_was_done = 0;
+        new_blast.message_was_done = false;
 
         if matches!(ty, Explosion::Druidblast { .. }) {
             self.druid_blast_sound();
@@ -394,13 +394,13 @@ impl crate::Data<'_> {
         // maybe, the bullet had several SDL_Surfaces attached to it.  Then we need to
         // free the SDL_Surfaces again as well...
         //
-        if cur_bullet.surfaces_were_generated != 0 {
+        if cur_bullet.surfaces_were_generated {
             info!("DeleteBullet: freeing this bullets attached surfaces...");
             let bullet_spec = &self.vars.bulletmap[cur_bullet.ty.to_usize()];
             for phase in 0..usize::from(bullet_spec.phases) {
                 cur_bullet.surfaces[phase] = None;
             }
-            cur_bullet.surfaces_were_generated = false.into();
+            cur_bullet.surfaces_were_generated = false;
         }
 
         self.main.all_bullets[usize::from(bullet_number)] = None;

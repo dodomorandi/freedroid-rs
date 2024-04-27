@@ -1113,7 +1113,7 @@ impl crate::Data<'_> {
 
     pub fn level_empty(&self) -> i32 {
         let cur_level = self.main.cur_level();
-        if cur_level.empty != 0 {
+        if cur_level.empty {
             return true.into();
         }
 

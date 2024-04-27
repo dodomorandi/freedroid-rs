@@ -229,7 +229,7 @@ impl crate::Data<'_> {
                 self.main.real_score += DECKCOMPLETEBONUS;
 
                 let cur_level = self.main.cur_level_mut();
-                cur_level.empty = true.into();
+                cur_level.empty = true;
                 cur_level.timer = WAIT_LEVELEMPTY;
                 self.set_time_factor(SLOWMO_FACTOR); // watch final explosion in slow-motion
             }

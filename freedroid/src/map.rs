@@ -373,7 +373,7 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
 
     /* Get the memory for one level */
     let mut loadlevel = Level {
-        empty: false.into(),
+        empty: false,
         timer: 0.,
         levelnum: 0,
         levelname: CString::default(),
@@ -1380,7 +1380,7 @@ freedroid-discussion@lists.sourceforge.net\n\
                 M::Lift => {
                     if myspeed2 <= 1.0
                         && (self.vars.me.status == Status::Activate
-                            || (self.global.game_config.takeover_activates != 0
+                            || (self.global.game_config.takeover_activates
                                 && self.vars.me.status == Status::Transfermode))
                     {
                         let cx = x.round() - x;
@@ -1395,7 +1395,7 @@ freedroid-discussion@lists.sourceforge.net\n\
                 M::KonsoleR | M::KonsoleL | M::KonsoleO | M::KonsoleU => {
                     if myspeed2 <= 1.0
                         && (self.vars.me.status == Status::Activate
-                            || (self.global.game_config.takeover_activates != 0
+                            || (self.global.game_config.takeover_activates
                                 && self.vars.me.status == Status::Transfermode))
                     {
                         self.enter_konsole();

@@ -44,7 +44,7 @@ pub struct Graphics<'sdl> {
         [[Option<Rc<RefCell<Surface<'sdl>>>>; NUM_MAP_BLOCKS]; NUM_COLORS],
     // a block for temporary pic-construction
     pub build_block: Option<Surface<'sdl>>,
-    pub banner_is_destroyed: i32,
+    pub banner_is_destroyed: bool,
     /* the banner pic */
     pub banner_pic: Option<Surface<'sdl>>,
     pub pic999: Option<Surface<'sdl>>,
@@ -86,7 +86,7 @@ impl Default for Graphics<'_> {
             map_block_surface_pointer: array::from_fn(|_| array::from_fn(|_| None)),
             orig_map_block_surface_pointer: array::from_fn(|_| array::from_fn(|_| None)),
             build_block: None,
-            banner_is_destroyed: 0,
+            banner_is_destroyed: false,
             banner_pic: None,
             pic999: None,
             packed_portraits: array::from_fn(|_| None),
@@ -301,7 +301,7 @@ impl crate::Data<'_> {
 
         vid_flags.set(
             VideoModeFlags::FULLSCREEN,
-            self.global.game_config.use_fullscreen == 0,
+            self.global.game_config.use_fullscreen.not(),
         );
 
         drop(ne_screen);
@@ -786,7 +786,7 @@ impl crate::Data<'_> {
         // One this function is done, the rahmen at the
         // top of the screen surely is destroyed.  We inform the
         // DisplayBanner function of the matter...
-        self.graphics.banner_is_destroyed = true.into();
+        self.graphics.banner_is_destroyed = true;
 
         let ne_screen = self.graphics.ne_screen.as_mut().unwrap();
         ne_screen.clear_clip_rect();
@@ -814,7 +814,7 @@ impl crate::Data<'_> {
 
         print_init_info(&vid_info, self.graphics.vid_bpp, vid_driver);
 
-        let vid_flags = if self.global.game_config.use_fullscreen == 0 {
+        let vid_flags = if self.global.game_config.use_fullscreen.not() {
             VideoModeFlags::empty()
         } else {
             VideoModeFlags::FULLSCREEN
@@ -1027,7 +1027,7 @@ impl crate::Data<'_> {
             .all_bullets
             .iter_mut()
             .filter_map(Option::as_mut)
-            .for_each(|bullet| bullet.surfaces_were_generated = false.into());
+            .for_each(|bullet| bullet.surfaces_were_generated = false);
 
         self.b_font.current_font = oldfont;
 

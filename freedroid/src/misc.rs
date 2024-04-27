@@ -501,7 +501,7 @@ impl crate::Data<'_> {
         // Now we are in some form of pause.  It can't
         // hurt to have the top status bar redrawn after that,
         // so we set this variable...
-        self.graphics.banner_is_destroyed = true.into();
+        self.graphics.banner_is_destroyed = true;
     }
 
     /// Find a given filename in subdir relative to `FD_DATADIR`,

@@ -316,7 +316,7 @@ fn game_single_loop<'sdl>(data: &mut Data<'sdl>, sdl: &'sdl Sdl) -> ControlFlow<
 
         // control speed of time-flow: dark-levels=emptyLevelSpeedup, normal-levels=1.0
         let cur_level = data.main.cur_level_mut();
-        if cur_level.empty == 0 {
+        if cur_level.empty.not() {
             data.set_time_factor(1.0);
         } else if cur_level.color == Color::Dark {
             // if level is already dark
@@ -329,7 +329,7 @@ fn game_single_loop<'sdl>(data: &mut Data<'sdl>, sdl: &'sdl Sdl) -> ControlFlow<
 
         data.check_if_mission_is_complete();
 
-        if data.global.game_config.hog_cpu == 0 {
+        if data.global.game_config.hog_cpu.not() {
             // don't use up 100% CPU unless requested
             sdl.delay_ms(1);
         }
@@ -373,10 +373,6 @@ impl Data<'_> {
             if self.vars.me.firewait < 0. {
                 self.vars.me.firewait = 0.;
             }
-        }
-        let cur_level = self.main.cur_level_mut();
-        if cur_level.empty > 2 {
-            cur_level.empty -= 1;
         }
         #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
         {

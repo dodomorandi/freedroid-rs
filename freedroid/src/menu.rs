@@ -27,7 +27,7 @@ use sdl_sys::{
 use std::{
     ffi::CStr,
     io::Cursor,
-    ops::{AddAssign, RangeInclusive, SubAssign},
+    ops::{AddAssign, Not, RangeInclusive, SubAssign},
 };
 
 #[derive(Debug, Default)]
@@ -572,7 +572,7 @@ impl<'sdl> crate::Data<'sdl> {
                                   // Since we've faded out the whole scren, it can't hurt
                                   // to have the top status bar redrawn...
 
-        self.graphics.banner_is_destroyed = true.into();
+        self.graphics.banner_is_destroyed = true;
         self.vars.me.status = Status::Mobile;
 
         while self.any_key_is_pressed_r()
@@ -1271,15 +1271,15 @@ impl<'sdl> crate::Data<'sdl> {
     pub fn handle_strictly_classic(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::CLICK {
             self.menu_item_selected_sound();
-            self.global.game_config.droid_talk = false.into();
-            self.global.game_config.show_decals = false.into();
-            self.global.game_config.takeover_activates = true.into();
-            self.global.game_config.fire_hold_takeover = true.into();
-            self.global.game_config.all_map_visible = true.into();
+            self.global.game_config.droid_talk = false;
+            self.global.game_config.show_decals = false;
+            self.global.game_config.takeover_activates = true;
+            self.global.game_config.fire_hold_takeover = true;
+            self.global.game_config.all_map_visible = true;
             self.global.game_config.empty_level_speedup = 1.0;
 
             // set window type
-            self.global.game_config.full_user_rect = false.into();
+            self.global.game_config.full_user_rect = false;
             self.vars.user_rect = self.vars.classic_user_rect;
             // set theme
             self.set_theme(self.graphics.classic_theme_index);
@@ -1291,7 +1291,7 @@ impl<'sdl> crate::Data<'sdl> {
 
     pub fn handle_window_type(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
-            let s = if self.global.game_config.full_user_rect == 0 {
+            let s = if self.global.game_config.full_user_rect.not() {
                 cstr!("Classic")
             } else {
                 cstr!("Full")
@@ -1303,7 +1303,7 @@ impl<'sdl> crate::Data<'sdl> {
         if action == MenuAction::CLICK || action == MenuAction::LEFT || action == MenuAction::RIGHT
         {
             self.flip_toggle(|data| &mut data.global.game_config.full_user_rect);
-            if self.global.game_config.full_user_rect == 0 {
+            if self.global.game_config.full_user_rect.not() {
                 self.vars.user_rect = self.vars.classic_user_rect;
             } else {
                 self.vars.user_rect = self.vars.full_user_rect;
@@ -1539,7 +1539,7 @@ impl<'sdl> crate::Data<'sdl> {
 
     pub fn flip_toggle<F>(&mut self, mut get_toggle: F)
     where
-        F: for<'a> FnMut(&'a mut crate::Data) -> &'a mut i32,
+        F: for<'a> FnMut(&'a mut crate::Data) -> &'a mut bool,
     {
         self.menu_item_selected_sound();
         let toggle = get_toggle(self);
@@ -1559,8 +1559,8 @@ impl<'sdl> crate::Data<'sdl> {
     }
 }
 
-pub fn is_toggle_on(toggle: i32) -> &'static CStr {
-    if toggle == 0 {
+pub fn is_toggle_on(toggle: bool) -> &'static CStr {
+    if toggle.not() {
         cstr!("NO")
     } else {
         cstr!("YES")
