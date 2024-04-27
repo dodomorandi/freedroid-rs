@@ -28,6 +28,8 @@ mod map {
         ops::{Deref, DerefMut, Index, IndexMut},
     };
 
+    use sdl::convert::u8_to_usize;
+
     use super::{NUM_LAYERS, NUM_LINES};
 
     macro_rules! impl_traits {
@@ -147,7 +149,7 @@ mod map {
         }
     }
 
-    type LayerInner<T> = [T; NUM_LINES];
+    type LayerInner<T> = [T; u8_to_usize(NUM_LINES)];
 
     #[derive(Debug)]
     pub struct Layer<T>(LayerInner<T>);
@@ -156,8 +158,8 @@ mod map {
     impl_traits!(Layer, LayerInner);
 }
 
-impl<T> From<[[[T; NUM_LINES]; NUM_LAYERS]; COLORS]> for Map<T> {
-    fn from(map: [[[T; NUM_LINES]; NUM_LAYERS]; COLORS]) -> Self {
+impl<T> From<[[[T; u8_to_usize(NUM_LINES)]; NUM_LAYERS]; COLORS]> for Map<T> {
+    fn from(map: [[[T; u8_to_usize(NUM_LINES)]; NUM_LAYERS]; COLORS]) -> Self {
         Self(map.map(|line| line.map(map::Layer::from).into()))
     }
 }
@@ -198,7 +200,7 @@ trait MapExt {
 
 impl<T> MapExt for Map<T> {
     type Item = T;
-    type Layer = [T; NUM_LINES];
+    type Layer = [T; u8_to_usize(NUM_LINES)];
     type Line = [Self::Layer; NUM_LAYERS];
     type Map = [map::Line<T>; COLORS];
     type RawMap = [Self::Line; COLORS];
@@ -215,7 +217,7 @@ pub struct Takeover<'sdl> {
     playground: Playground,
     activation_map: ActivationMap,
     capsules_countdown: CapsulesCountdown,
-    display_column: [Color; NUM_LINES],
+    display_column: [Color; u8_to_usize(NUM_LINES)],
     leader_color: Color,
     your_color: Color,
     opponent_color: Color,
@@ -255,9 +257,10 @@ impl Default for Takeover<'_> {
         Self {
             capsule_cur_row: [0, 0],
             num_capsules: [0, 0],
-            playground: [[[Block::Cable; NUM_LINES]; NUM_LAYERS]; COLORS].into(),
-            activation_map: [[[Condition::Inactive; NUM_LINES]; NUM_LAYERS]; COLORS].into(),
-            capsules_countdown: [[[None; NUM_LINES]; NUM_LAYERS]; COLORS].into(),
+            playground: [[[Block::Cable; u8_to_usize(NUM_LINES)]; NUM_LAYERS]; COLORS].into(),
+            activation_map: [[[Condition::Inactive; u8_to_usize(NUM_LINES)]; NUM_LAYERS]; COLORS]
+                .into(),
+            capsules_countdown: [[[None; u8_to_usize(NUM_LINES)]; NUM_LAYERS]; COLORS].into(),
             display_column: [
                 Color::Yellow,
                 Color::Violet,
@@ -369,7 +372,7 @@ const CAPSULE_COUNTDOWN: u8 = 40; /* 1/10 sec. Lebensdauer einer Kapsel */
 /* --------------- Playground layout --------------- */
 
 const NUM_LAYERS: usize = 4; /* dimension of the playground */
-const NUM_LINES: usize = 12;
+const NUM_LINES: u8 = 12;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum GroundBlock {
@@ -772,10 +775,10 @@ impl crate::Data<'_> {
             Action::Move => {
                 if (0..=100).choose(&mut rng).unwrap() <= MOVE_PROBABILITY {
                     row += self.takeover.direction;
-                    if row > i32::try_from(NUM_LINES).unwrap() - 1 {
+                    if row > i32::from(NUM_LINES) - 1 {
                         1
                     } else if row < 0 {
-                        i32::try_from(NUM_LINES).unwrap()
+                        i32::from(NUM_LINES)
                     } else {
                         row + 1
                     }
@@ -976,7 +979,7 @@ impl crate::Data<'_> {
 
                     let mut row = 0;
                     while row < NUM_LINES {
-                        let block = &mut playground_layer[row];
+                        let block = &mut playground_layer[usize::from(row)];
                         if !matches!(block, Block::Cable) {
                             row += 1;
                             continue;
@@ -1574,13 +1577,13 @@ impl crate::Data<'_> {
             if action.intersects(MenuAction::UP | MenuAction::UP_WHEEL) {
                 self.takeover.capsule_cur_row[your_color] -= 1;
                 if self.takeover.capsule_cur_row[your_color] < 1 {
-                    self.takeover.capsule_cur_row[your_color] = NUM_LINES.try_into().unwrap();
+                    self.takeover.capsule_cur_row[your_color] = NUM_LINES.into();
                 }
             }
 
             if action.intersects(MenuAction::DOWN | MenuAction::DOWN_WHEEL) {
                 self.takeover.capsule_cur_row[your_color] += 1;
-                if self.takeover.capsule_cur_row[your_color] > NUM_LINES.try_into().unwrap() {
+                if self.takeover.capsule_cur_row[your_color] > NUM_LINES.into() {
                     self.takeover.capsule_cur_row[your_color] = 1;
                 }
             }
@@ -1900,7 +1903,7 @@ impl crate::Data<'_> {
 #[inline]
 fn try_set_new_playground_element(
     new_element: u8,
-    row: &mut usize,
+    row: &mut u8,
     layer: usize,
     playground_layer: &mut map::Layer<Block>,
     playground_prev_layer: &mut map::Layer<Block>,
@@ -1911,8 +1914,9 @@ fn try_set_new_playground_element(
         }
     }
 
-    let block = &mut playground_layer[*row];
-    let prev_block = playground_prev_layer[*row];
+    let row_usize = usize::from(*row);
+    let block = &mut playground_layer[row_usize];
+    let prev_block = playground_prev_layer[row_usize];
     match ToElement::try_from(new_element).unwrap() {
         ToElement::Cable => {
             if prev_block.is_connector().not() {
@@ -1947,12 +1951,13 @@ fn try_set_new_playground_element(
             if *row > NUM_LINES - 3 {
                 return;
             }
-            let next_block = playground_prev_layer[*row + 1];
+            let next_block = playground_prev_layer[row_usize + 1];
             if next_block.is_connector().not() {
                 return;
             }
-            let (prev_layer_block, prev_layer_next_blocks) =
-                playground_prev_layer[*row..].split_first_mut().unwrap();
+            let (prev_layer_block, prev_layer_next_blocks) = playground_prev_layer[row_usize..]
+                .split_first_mut()
+                .unwrap();
             if matches!(prev_layer_block, Block::BranchAbove | Block::BranchBelow) {
                 return;
             }
@@ -1964,8 +1969,8 @@ fn try_set_new_playground_element(
             cut_cable(next_next_block);
 
             *block = Block::BranchAbove;
-            playground_layer[*row + 1] = Block::BranchMiddle;
-            playground_layer[*row + 2] = Block::BranchBelow;
+            playground_layer[row_usize + 1] = Block::BranchMiddle;
+            playground_layer[row_usize + 2] = Block::BranchBelow;
             *row += 2;
         }
         ToElement::Gate => {
@@ -1973,20 +1978,20 @@ fn try_set_new_playground_element(
                 return;
             }
 
-            let prev_layer_block = playground_prev_layer[*row];
+            let prev_layer_block = playground_prev_layer[row_usize];
             if prev_layer_block.is_connector().not() {
                 return;
             }
 
-            let next_next_block = playground_prev_layer[*row + 2];
+            let next_next_block = playground_prev_layer[row_usize + 2];
             if next_next_block.is_connector().not() {
                 return;
             }
-            cut_cable(&mut playground_prev_layer[*row + 1]);
+            cut_cable(&mut playground_prev_layer[row_usize + 1]);
 
             *block = Block::GateAbove;
-            playground_layer[*row + 1] = Block::GateMiddle;
-            playground_layer[*row + 2] = Block::GateBelow;
+            playground_layer[row_usize + 1] = Block::GateMiddle;
+            playground_layer[row_usize + 2] = Block::GateBelow;
             *row += 2;
         }
     }
