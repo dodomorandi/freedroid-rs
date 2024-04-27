@@ -246,7 +246,7 @@ pub struct Takeover<'sdl> {
     pub cur_capsule_starts: [Point; COLORS],
     pub playground_starts: [Point; COLORS],
     pub droid_starts: [Point; COLORS],
-    direction: i32,
+    direction: Direction,
     flicker_color: i32,
     // your energy if you're rejected
     reject_energy: i32,
@@ -337,10 +337,35 @@ impl Default for Takeover<'_> {
                 },
             ],
             droid_starts: [Point { x: 2 * 40, y: -4 }, Point { x: 2 * 220, y: -4 }],
-            direction: 1,
+            direction: Direction::default(),
             flicker_color: 0,
             reject_energy: 0,
         }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+enum Direction {
+    Up,
+    #[default]
+    Down,
+}
+
+impl Direction {
+    fn apply_to(self, row: i32) -> i32 {
+        let value = match self {
+            Direction::Up => -1,
+            Direction::Down => 1,
+        };
+
+        row + value
+    }
+
+    fn invert(&mut self) {
+        *self = match *self {
+            Direction::Up => Direction::Down,
+            Direction::Down => Direction::Up,
+        };
     }
 }
 
@@ -774,7 +799,9 @@ impl crate::Data<'_> {
         {
             Action::Move => {
                 if (0..=100).choose(&mut rng).unwrap() <= MOVE_PROBABILITY {
-                    (row + i32::from(NUM_LINES) - 1 + self.takeover.direction)
+                    self.takeover
+                        .direction
+                        .apply_to(row + i32::from(NUM_LINES) - 1)
                         % i32::from(NUM_LINES)
                         + 1
                 } else {
@@ -785,7 +812,7 @@ impl crate::Data<'_> {
             Action::Turn => {
                 /* Turn around */
                 if (0..=100).choose(&mut rng).unwrap() <= TURN_PROBABILITY {
-                    self.takeover.direction *= -1;
+                    self.takeover.direction.invert();
                 }
                 row
             }
