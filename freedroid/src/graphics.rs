@@ -34,7 +34,7 @@ use std::{
 
 #[derive(Debug)]
 pub struct Graphics<'sdl> {
-    pub vid_bpp: i32,
+    pub vid_bpp: u8,
     fonts_loaded: i32,
     // A pointer to the surfaces containing the map-pics, which may be rescaled with respect to
     pub map_block_surface_pointer:
@@ -562,7 +562,7 @@ impl crate::Data<'_> {
             let build_block = Surface::create_rgb(
                 self.vars.block_rect.width().into(),
                 self.vars.block_rect.height().into(),
-                self.graphics.vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
+                self.graphics.vid_bpp,
                 Rgba::default(),
             )
             .unwrap()
@@ -631,7 +631,7 @@ impl crate::Data<'_> {
         let mut tmp = Surface::create_rgb(
             rect.width().into(),
             rect.height().into(),
-            self.graphics.vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
+            self.graphics.vid_bpp,
             Rgba::default(),
         )
         .unwrap()
@@ -809,7 +809,7 @@ impl crate::Data<'_> {
         if cfg!(os_target = "android") {
             self.graphics.vid_bpp = 16; // Hardcoded Android default
         } else {
-            self.graphics.vid_bpp = u8::from(vid_info.format().bits_per_pixel()).into();
+            self.graphics.vid_bpp = vid_info.format().bits_per_pixel().into();
         }
 
         print_init_info(&vid_info, self.graphics.vid_bpp, vid_driver);
@@ -1071,7 +1071,7 @@ impl crate::Data<'_> {
         let build_block = Surface::create_rgb(
             self.vars.block_rect.width().into(),
             self.vars.block_rect.height().into(),
-            self.graphics.vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
+            self.graphics.vid_bpp,
             Rgba::default(),
         )
         .unwrap()
@@ -1644,7 +1644,7 @@ impl crate::Data<'_> {
 }
 
 struct LoadBlockVidBppPic<'a, 'sdl: 'a> {
-    pub vid_bpp: i32,
+    pub vid_bpp: u8,
     pub pic: &'a mut Option<Surface<'sdl>>,
     pub fpath: Option<&'a CStr>,
     pub line: i32,
@@ -1710,7 +1710,7 @@ impl<'sdl> LoadBlockVidBppPic<'_, 'sdl> {
         let mut tmp = Surface::create_rgb(
             dim.width().into(),
             dim.height().into(),
-            vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
+            vid_bpp,
             Rgba::default(),
         )
         .unwrap();
@@ -1738,7 +1738,7 @@ impl<'sdl> LoadBlockVidBppPic<'_, 'sdl> {
     }
 }
 
-fn print_init_info(vid_info: &sdl::video::InfoRef<'_>, vid_bpp: i32, vid_driver: Option<&CStr>) {
+fn print_init_info(vid_info: &sdl::video::InfoRef<'_>, vid_bpp: u8, vid_driver: Option<&CStr>) {
     const YN: [&str; 2] = ["no", "yes"];
 
     macro_rules! flag {

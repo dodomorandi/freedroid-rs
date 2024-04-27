@@ -102,7 +102,7 @@ impl crate::Data<'_> {
         let mut store = Surface::create_rgb(
             self.vars.screen_rect.width().into(),
             height.into(),
-            self.graphics.vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
+            self.graphics.vid_bpp,
             Rgba::default(),
         )
         .unwrap();

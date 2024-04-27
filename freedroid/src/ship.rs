@@ -121,7 +121,7 @@ impl crate::Data<'_> {
             let mut droid_background = Surface::create_rgb(
                 dst.width().into(),
                 dst.height().into(),
-                graphics.vid_bpp.max(0).try_into().unwrap_or(u8::MAX),
+                graphics.vid_bpp,
                 Rgba::default(),
             )
             .unwrap()
