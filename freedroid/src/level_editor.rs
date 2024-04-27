@@ -75,7 +75,7 @@ impl crate::Data<'_> {
     /// change level name and quit from level editing.
     pub fn level_editor(&mut self) {
         let mut done = false;
-        let mut origin_waypoint: i32 = -1;
+        let mut origin_waypoint: Option<usize> = None;
 
         let rect = self.vars.user_rect;
         self.vars.user_rect = self.vars.screen_rect; // level editor can use the full screen!
@@ -105,17 +105,13 @@ impl crate::Data<'_> {
             self.show_waypoints();
 
             // show line between a selected connection-origin and the current block
-            if origin_waypoint != -1 {
+            if let Some(origin_waypoint) = origin_waypoint {
                 #[allow(clippy::cast_precision_loss)]
                 self.draw_line_between_tiles(
                     block_x as f32,
                     block_y as f32,
-                    self.main.cur_level().waypoints[usize::try_from(origin_waypoint).unwrap()]
-                        .x
-                        .into(),
-                    self.main.cur_level().waypoints[usize::try_from(origin_waypoint).unwrap()]
-                        .y
-                        .into(),
+                    self.main.cur_level().waypoints[origin_waypoint].x.into(),
+                    self.main.cur_level().waypoints[origin_waypoint].y.into(),
                     HIGHLIGHTCOLOR2,
                 );
             }
@@ -346,7 +342,7 @@ impl crate::Data<'_> {
         &mut self,
         block_x: i32,
         block_y: i32,
-        origin_waypoint: &mut i32,
+        origin_waypoint: &mut Option<usize>,
         src_wp_index: &mut Option<usize>,
     ) {
         // Determine which waypoint is currently targeted
@@ -357,11 +353,11 @@ impl crate::Data<'_> {
             return;
         };
 
-        if *origin_waypoint == -1 {
-            *origin_waypoint = i.try_into().unwrap();
+        if origin_waypoint.is_none() {
             let waypoint = &mut cur_level!(mut self.main).waypoints[i];
             if waypoint.connections.len() < usize::from(MAX_WP_CONNECTIONS) {
                 info!("Waypoint nr. {}. selected as origin", i);
+                *origin_waypoint = Some(i);
                 *src_wp_index = Some(i);
             } else {
                 warn!(
@@ -369,19 +365,19 @@ impl crate::Data<'_> {
                              not possible.",
                     MAX_WP_CONNECTIONS,
                 );
-                *origin_waypoint = -1;
+                *origin_waypoint = None;
                 *src_wp_index = None;
             }
-        } else if *origin_waypoint == i32::try_from(i).unwrap() {
+        } else if *origin_waypoint == Some(i) {
             info!("Origin==Target --> Connection Operation cancelled.");
-            *origin_waypoint = -1;
+            *origin_waypoint = None;
             *src_wp_index = None;
         } else {
             info!("Target-waypoint {} selected. Connection established!", i);
             let waypoint_index = src_wp_index.take().unwrap();
             let waypoint = &mut cur_level!(mut self.main).waypoints[waypoint_index];
             waypoint.connections.push(i.try_into().unwrap());
-            *origin_waypoint = -1;
+            *origin_waypoint = None;
         }
     }
 
