@@ -35,7 +35,7 @@ use std::{
 #[derive(Debug)]
 pub struct Graphics<'sdl> {
     pub vid_bpp: u8,
-    fonts_loaded: i32,
+    fonts_loaded: bool,
     // A pointer to the surfaces containing the map-pics, which may be rescaled with respect to
     pub map_block_surface_pointer:
         [[Option<Rc<RefCell<Surface<'sdl>>>>; NUM_MAP_BLOCKS]; NUM_COLORS],
@@ -82,7 +82,7 @@ impl Default for Graphics<'_> {
     fn default() -> Self {
         Self {
             vid_bpp: 0,
-            fonts_loaded: 0,
+            fonts_loaded: false,
             map_block_surface_pointer: array::from_fn(|_| array::from_fn(|_| None)),
             orig_map_block_surface_pointer: array::from_fn(|_| array::from_fn(|_| None)),
             build_block: None,
@@ -777,7 +777,7 @@ impl crate::Data<'_> {
         global.menu_b_font = global.para_b_font.clone();
         global.highscore_b_font = global.para_b_font.clone();
 
-        self.graphics.fonts_loaded = true.into();
+        self.graphics.fonts_loaded = true;
 
         defs::OK.into()
     }
@@ -955,7 +955,7 @@ impl crate::Data<'_> {
 
         let oldfont = self.b_font.current_font.take();
 
-        if self.graphics.fonts_loaded == 0 {
+        if self.graphics.fonts_loaded.not() {
             self.load_fonts();
         }
 
