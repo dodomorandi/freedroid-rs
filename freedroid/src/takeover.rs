@@ -756,7 +756,7 @@ impl crate::Data<'_> {
         }
 
         let opponent_color = self.takeover.opponent_color as usize;
-        let mut row = self.takeover.capsule_cur_row[opponent_color] - 1;
+        let row = self.takeover.capsule_cur_row[opponent_color];
 
         if self.takeover.num_capsules[Opponents::Enemy as usize] == 0 {
             return;
@@ -774,16 +774,11 @@ impl crate::Data<'_> {
         {
             Action::Move => {
                 if (0..=100).choose(&mut rng).unwrap() <= MOVE_PROBABILITY {
-                    row += self.takeover.direction;
-                    if row > i32::from(NUM_LINES) - 1 {
-                        1
-                    } else if row < 0 {
-                        i32::from(NUM_LINES)
-                    } else {
-                        row + 1
-                    }
+                    (row + i32::from(NUM_LINES) - 1 + self.takeover.direction)
+                        % i32::from(NUM_LINES)
+                        + 1
                 } else {
-                    row + 1
+                    row
                 }
             }
 
@@ -792,12 +787,12 @@ impl crate::Data<'_> {
                 if (0..=100).choose(&mut rng).unwrap() <= TURN_PROBABILITY {
                     self.takeover.direction *= -1;
                 }
-                row + 1
+                row
             }
 
             Action::SetCapsule => {
                 /* Try to set  capsule */
-                match usize::try_from(row) {
+                match usize::try_from(row - 1) {
                     Ok(row)
                         if (0..=100).choose(&mut rng).unwrap() <= SET_PROBABILITY
                             && self.takeover.playground[opponent_color][0][row]
@@ -813,11 +808,11 @@ impl crate::Data<'_> {
                             Some(CAPSULE_COUNTDOWN * 2);
                         0
                     }
-                    _ => row + 1,
+                    _ => row,
                 }
             }
 
-            Action::Nothing => row + 1,
+            Action::Nothing => row,
         };
 
         self.takeover.capsule_cur_row[opponent_color] = next_row;
