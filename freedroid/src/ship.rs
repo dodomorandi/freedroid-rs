@@ -21,7 +21,7 @@ use std::ops::Not;
 #[derive(Default)]
 pub struct Data<'sdl> {
     last_siren: u32,
-    frame_num: i32,
+    frame_num: u16,
     last_droid_type: Option<Droid>,
     last_frame_time: u32,
     src_rect: Rect,
@@ -169,10 +169,10 @@ impl crate::Data<'_> {
         if cycle_time != 0. && (frame_duration as f32 > 1000.0 * cycle_time / f32::from(num_frames))
         {
             need_new_frame = true;
-            self.ship.frame_num += 1;
+            self.ship.frame_num = self.ship.frame_num.saturating_add(1);
         }
 
-        if self.ship.frame_num >= i32::from(num_frames) {
+        if self.ship.frame_num >= num_frames {
             self.ship.frame_num = 0;
         }
 
