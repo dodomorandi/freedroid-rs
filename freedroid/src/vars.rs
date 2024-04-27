@@ -37,8 +37,6 @@ pub struct Vars<'sdl> {
     pub progress_bar_rect: Rect,
     pub progress_text_rect: Rect,
 
-    /* counter to Message: you have won(this ship */
-    pub ship_empty_counter: i32,
     pub me: Influence,
 
     pub droidmap: Vec<DruidSpec>,
@@ -125,7 +123,6 @@ impl Default for Vars<'_> {
             progress_meter_rect: Rect::new(0, 0, 640, 480),
             progress_bar_rect: Rect::new(446, 155, 22, 111),
             progress_text_rect: Rect::new(213, 390, 157, 30),
-            ship_empty_counter: 0,
             me: Influence {
                 ty: Droid::Droid001,
                 status: Status::Transfermode,

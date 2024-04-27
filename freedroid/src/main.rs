@@ -374,9 +374,6 @@ impl Data<'_> {
                 self.vars.me.firewait = 0.;
             }
         }
-        if self.vars.ship_empty_counter > 1 {
-            self.vars.ship_empty_counter -= 1;
-        }
         let cur_level = self.main.cur_level_mut();
         if cur_level.empty > 2 {
             cur_level.empty -= 1;
