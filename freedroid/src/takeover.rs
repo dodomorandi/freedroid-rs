@@ -249,7 +249,7 @@ pub struct Takeover<'sdl> {
     direction: Direction,
     flicker_color: bool,
     // your energy if you're rejected
-    reject_energy: i32,
+    reject_energy: f32,
 }
 
 impl Default for Takeover<'_> {
@@ -339,7 +339,7 @@ impl Default for Takeover<'_> {
             droid_starts: [Point { x: 2 * 40, y: -4 }, Point { x: 2 * 220, y: -4 }],
             direction: Direction::default(),
             flicker_color: false,
-            reject_energy: 0,
+            reject_energy: 0.,
         }
     }
 }
@@ -1925,7 +1925,7 @@ impl crate::Data<'_> {
             } else {
                 message = cstr!("Rejected");
                 self.vars.me.ty = Droid::Droid001;
-                self.vars.me.energy = self.takeover.reject_energy as f32;
+                self.vars.me.energy = self.takeover.reject_energy;
             }
             *finish_takeover = true;
         } else {
@@ -1953,7 +1953,7 @@ impl crate::Data<'_> {
         self.takeover_game_won_sound();
         #[allow(clippy::cast_possible_truncation)]
         if self.vars.me.ty == Droid::Droid001 {
-            self.takeover.reject_energy = self.vars.me.energy as i32;
+            self.takeover.reject_energy = self.vars.me.energy;
         }
 
         // We provide some security agains too high energy/health values gained
