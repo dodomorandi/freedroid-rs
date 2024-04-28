@@ -32,7 +32,7 @@ use std::{
 
 #[derive(Debug, Default)]
 pub struct Menu<'sdl> {
-    font_height: i32,
+    font_height: u16,
     background: Option<Surface<'sdl>>,
     quit: bool,
     pub quit_level_editor: bool,
@@ -216,7 +216,7 @@ impl<'sdl> crate::Data<'sdl> {
         let text_x = i32::from(self.vars.user_rect.x())
             + (i32::from(self.vars.user_rect.width()) - text_width) / 2;
         let text_y = i32::from(self.vars.user_rect.y())
-            + (i32::from(self.vars.user_rect.height()) - self.menu.font_height) / 2;
+            + (i32::from(self.vars.user_rect.height()) - i32::from(self.menu.font_height)) / 2;
         let mut ne_screen = self.graphics.ne_screen.take().unwrap();
         self.put_string(&mut ne_screen, text_x, text_y, QUIT_STRING.as_bytes());
         assert!(ne_screen.flip());
@@ -295,13 +295,13 @@ impl<'sdl> crate::Data<'sdl> {
         self.b_font
             .current_font
             .clone_from(&self.global.menu_b_font);
-        self.menu.font_height = i32::from(font_height(
+        self.menu.font_height = font_height(
             self.b_font
                 .current_font
                 .as_ref()
                 .unwrap()
                 .ro(&self.font_owner),
-        )) + 2;
+        ) + 2;
     }
 
     pub fn cheatmenu(&mut self) {
@@ -482,12 +482,13 @@ impl<'sdl> crate::Data<'sdl> {
         let menu_entries = &menu_entries[..num_entries];
         let menu_width = menu_width.unwrap();
 
-        let menu_height = i32::try_from(num_entries).unwrap() * self.menu.font_height;
+        let menu_height = i32::try_from(num_entries).unwrap() * i32::from(self.menu.font_height);
         let menu_x = i32::from(self.vars.full_user_rect.x())
             + (i32::from(self.vars.full_user_rect.width()) - menu_width) / 2;
         let menu_y = i32::from(self.vars.full_user_rect.y())
             + (i32::from(self.vars.full_user_rect.height()) - menu_height) / 2;
-        let influ_x = menu_x - i32::from(self.vars.block_rect.width()) - self.menu.font_height;
+        let influ_x =
+            menu_x - i32::from(self.vars.block_rect.width()) - i32::from(self.menu.font_height);
 
         let mut menu_pos = 0;
 
@@ -621,7 +622,7 @@ impl<'sdl> crate::Data<'sdl> {
             self.put_string(
                 &mut ne_screen,
                 menu_x,
-                menu_y + i32::try_from(i).unwrap() * self.menu.font_height,
+                menu_y + i32::try_from(i).unwrap() * i32::from(self.menu.font_height),
                 &full_name[..position],
             );
             self.graphics.ne_screen = Some(ne_screen);
@@ -1120,8 +1121,8 @@ impl<'sdl> crate::Data<'sdl> {
         if action == MenuAction::CLICK {
             self.display_text(
                 b"New level name: ",
-                i32::from(self.vars.menu_rect.x()) - 2 * self.menu.font_height,
-                i32::from(self.vars.menu_rect.y()) - 3 * self.menu.font_height,
+                i32::from(self.vars.menu_rect.x()) - 2 * i32::from(self.menu.font_height),
+                i32::from(self.vars.menu_rect.y()) - 3 * i32::from(self.menu.font_height),
                 Some(self.vars.full_user_rect),
             );
             assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
