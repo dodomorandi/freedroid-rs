@@ -722,7 +722,7 @@ pub const ALLBLASTTYPES: usize = 2; /* number of different exposions */
 
 pub const MAXBULLETS: u8 = 100; /* maximum possible Bullets in the air */
 pub const MAXBLASTS: u8 = 100; /* max. possible Blasts visible */
-pub const AGGRESSIONMAX: i32 = 100;
+pub const AGGRESSIONMAX: u8 = 100;
 pub const ROBOT_MAX_WAIT_BETWEEN_SHOTS: f32 = 5.; // how long shoud each droid wait at most until
                                                   // is considers fireing again?
 

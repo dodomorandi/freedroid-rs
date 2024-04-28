@@ -103,7 +103,7 @@ pub struct DruidSpec {
     pub maxenergy: f32,   /* the maximum energy the batteries can carry */
     pub lose_health: f32, /* the energy/time the duid loses under influence-control */
     pub gun: BulletKind,  /* Which gun does this druid use */
-    pub aggression: i32,  /* The aggressiveness of this druidtype */
+    pub aggression: u8,   /* The aggressiveness of this druidtype */
     pub flashimmune: i32, /* is the droid immune to FLASH-bullets */
     pub score: i32,       /* score for the elimination of one droid of this type */
     pub height: f32,      // the height of this droid

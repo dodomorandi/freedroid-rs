@@ -838,17 +838,20 @@ impl crate::Data<'_> {
         info!("That must have been the last robot.  We're done reading the robot data.");
         info!("Applying the calibration factors to all droids...");
 
-        #[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
+        #[allow(
+            clippy::cast_possible_truncation,
+            clippy::cast_precision_loss,
+            clippy::cast_sign_loss
+        )]
         for droid in &mut self.vars.droidmap {
             droid.maxspeed *= maxspeed_calibrator;
             droid.accel *= acceleration_calibrator;
             droid.maxenergy *= maxenergy_calibrator;
             droid.lose_health *= energyloss_calibrator;
 
-            assert!(droid.aggression < 2i32.pow(f32::MANTISSA_DIGITS));
             assert!(droid.score < 2i32.pow(f32::MANTISSA_DIGITS));
 
-            droid.aggression = (droid.aggression as f32 * aggression_calibrator) as i32;
+            droid.aggression = (f32::from(droid.aggression) * aggression_calibrator) as u8;
             droid.score = (droid.score as f32 * score_calibrator) as i32;
         }
     }
@@ -1302,7 +1305,7 @@ fn read_droid_spec(robot_slice: &[u8]) -> DruidSpec {
     let gun = BulletKind::try_from(read_u8_from_string(robot_slice, GUN_BEGIN_STRING)).unwrap();
 
     // Now we read in the aggression rate of this droid.
-    let aggression = read_i32_from_string(robot_slice, AGGRESSION_BEGIN_STRING);
+    let aggression = read_u8_from_string(robot_slice, AGGRESSION_BEGIN_STRING);
 
     // Now we read in the flash immunity of this droid.
     let flashimmune = read_i32_from_string(robot_slice, FLASHIMMUNE_BEGIN_STRING);
