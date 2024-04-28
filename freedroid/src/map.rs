@@ -689,12 +689,21 @@ impl crate::Data<'_> {
                 || (fx > 1. - WALLPASS && (WALLPASS..=1. - WALLPASS).contains(&fy).not()))
             .then_some(D::Center),
 
-            M::HGanztuere | M::HHalbtuere3 | M::HHalbtuere2
+            M::HGanztuere
+            | M::HHalbtuere3
+            | M::HHalbtuere2
+            | M::VGanztuere
+            | M::VHalbtuere3
+            | M::VHalbtuere2
                 if (check_pos.try_into() == Ok(D::Light)) =>
             {
                 Some(D::Center)
             }
-            M::HHalbtuere1 | M::HZutuere if (check_pos.try_into() == Ok(D::Light)) => None,
+            M::HHalbtuere1 | M::HZutuere | M::VHalbtuere1 | M::VZutuere
+                if (check_pos.try_into() == Ok(D::Light)) =>
+            {
+                None
+            }
 
             M::HGanztuere | M::HHalbtuere3 | M::HHalbtuere2 | M::HHalbtuere1 | M::HZutuere => {
                 if (H_RANDBREITE..=1. - H_RANDBREITE).contains(&fx).not()
@@ -728,13 +737,7 @@ impl crate::Data<'_> {
                     None
                 }
             }
-            M::VGanztuere | M::VHalbtuere3 | M::VHalbtuere2
-                if (check_pos.try_into() == Ok(D::Light)) =>
-            {
-                Some(D::Center)
-            }
 
-            M::VHalbtuere1 | M::VZutuere if (check_pos.try_into() == Ok(D::Light)) => None,
             M::VGanztuere | M::VHalbtuere3 | M::VHalbtuere2 | M::VHalbtuere1 | M::VZutuere => {
                 if (V_RANDBREITE..=1. - V_RANDBREITE).contains(&fy).not()
                     && (V_RANDSPACE..=1. - V_RANDSPACE).contains(&fx)

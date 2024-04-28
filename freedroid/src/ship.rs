@@ -267,7 +267,9 @@ impl crate::Data<'_> {
         use std::fmt::Write;
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
-        self.b_font.current_font = self.global.para_b_font.clone();
+        self.b_font
+            .current_font
+            .clone_from(&self.global.para_b_font);
 
         #[allow(clippy::cast_possible_truncation)]
         let lineskip = ((f64::from(font_height(
@@ -498,7 +500,9 @@ impl crate::Data<'_> {
 
         self.graphics.arrow_cursor.as_ref().unwrap().set_active();
 
-        self.b_font.current_font = self.global.para_b_font.clone();
+        self.b_font
+            .current_font
+            .clone_from(&self.global.para_b_font);
 
         let mut pos = 0; // starting menu position
         self.paint_console_menu(i32::try_from(pos).unwrap(), false);

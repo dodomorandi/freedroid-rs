@@ -174,7 +174,9 @@ impl crate::Data<'_> {
         assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
         rect.inc_x(10);
         rect.dec_width(20); //leave some border
-        self.b_font.current_font = self.global.para_b_font.clone();
+        self.b_font
+            .current_font
+            .clone_from(&self.global.para_b_font);
 
         let Self {
             sdl,
@@ -689,7 +691,9 @@ impl crate::Data<'_> {
         self.make_grid_on_screen(Some(&self.vars.screen_rect.clone()));
         self.vars.me.status = Status::Briefing;
 
-        self.b_font.current_font = self.global.para_b_font.clone();
+        self.b_font
+            .current_font
+            .clone_from(&self.global.para_b_font);
 
         self.display_banner(None, None, DisplayBannerFlags::FORCE_UPDATE);
 
@@ -1051,7 +1055,9 @@ impl crate::Data<'_> {
             .blit_to(ne_screen.as_mut().unwrap(), &mut dst);
         self.thou_art_defeated_sound();
 
-        self.b_font.current_font = self.global.para_b_font.clone();
+        self.b_font
+            .current_font
+            .clone_from(&self.global.para_b_font);
         let h = font_height(
             self.global
                 .para_b_font

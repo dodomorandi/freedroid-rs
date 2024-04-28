@@ -51,7 +51,7 @@ pub enum Type {
     VideoResize = convert::u32_to_u8(SDL_EventType_SDL_VIDEORESIZE),
     /// Screen needs to be redrawn
     VideoExpose = convert::u32_to_u8(SDL_EventType_SDL_VIDEOEXPOSE),
-    /// Events SDL_USEREVENT through `MAX_EVENTS - 1` are for your use
+    /// Events `SDL_USEREVENT` through `MAX_EVENTS - 1` are for your use
     UserEvent1 = convert::u32_to_u8(SDL_EventType_SDL_USEREVENT),
     UserEvent2 = convert::u32_to_u8(SDL_EventType_SDL_USEREVENT + 1),
     UserEvent3 = convert::u32_to_u8(SDL_EventType_SDL_USEREVENT + 2),

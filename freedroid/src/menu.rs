@@ -292,7 +292,9 @@ impl<'sdl> crate::Data<'sdl> {
         );
 
         self.sdl.cursor().hide();
-        self.b_font.current_font = self.global.menu_b_font.clone();
+        self.b_font
+            .current_font
+            .clone_from(&self.global.menu_b_font);
         self.menu.font_height = i32::from(font_height(
             self.b_font
                 .current_font

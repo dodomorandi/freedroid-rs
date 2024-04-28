@@ -245,7 +245,7 @@ impl<'sdl, const FREEABLE: bool> Generic<'sdl, FREEABLE> {
             SDL_FillRect(
                 self.pointer.as_ptr(),
                 rect.map_or(null_mut(), |rect| {
-                    (rect.as_ref() as *const SDL_Rect).cast_mut()
+                    ptr::from_ref::<SDL_Rect>(rect.as_ref()).cast_mut()
                 }),
                 color.0,
             )

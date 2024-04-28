@@ -774,8 +774,8 @@ impl crate::Data<'_> {
             global.game_config.scale,
         ));
 
-        global.menu_b_font = global.para_b_font.clone();
-        global.highscore_b_font = global.para_b_font.clone();
+        global.menu_b_font.clone_from(&global.para_b_font);
+        global.highscore_b_font.clone_from(&global.para_b_font);
 
         self.graphics.fonts_loaded = true;
 
@@ -959,7 +959,9 @@ impl crate::Data<'_> {
             self.load_fonts();
         }
 
-        self.b_font.current_font = self.global.font0_b_font.clone();
+        self.b_font
+            .current_font
+            .clone_from(&self.global.font0_b_font);
 
         self.init_progress("Loading pictures");
 
@@ -1477,7 +1479,7 @@ impl crate::Data<'_> {
                 }
                 .run()
                 .map(|surface| Rc::new(RefCell::new(surface)));
-                *surface = orig_surface.clone();
+                surface.clone_from(orig_surface);
             });
     }
 

@@ -466,7 +466,9 @@ impl crate::Data<'_> {
     }
 
     fn make_influencer_talk(&mut self) {
-        self.b_font.current_font = self.global.font0_b_font.clone();
+        self.b_font
+            .current_font
+            .clone_from(&self.global.font0_b_font);
         let text_to_display = match &self.vars.me.text_to_be_displayed {
             TextToBeDisplayed::None => b"",
             TextToBeDisplayed::String(s) => s.to_bytes(),
