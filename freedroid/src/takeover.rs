@@ -247,7 +247,7 @@ pub struct Takeover<'sdl> {
     pub playground_starts: [Point; COLORS],
     pub droid_starts: [Point; COLORS],
     direction: Direction,
-    flicker_color: i32,
+    flicker_color: bool,
     // your energy if you're rejected
     reject_energy: i32,
 }
@@ -338,7 +338,7 @@ impl Default for Takeover<'_> {
             ],
             droid_starts: [Point { x: 2 * 40, y: -4 }, Point { x: 2 * 220, y: -4 }],
             direction: Direction::default(),
-            flicker_color: 0,
+            flicker_color: false,
             reject_energy: 0,
         }
     }
@@ -1021,7 +1021,7 @@ impl crate::Data<'_> {
                             *display = Color::Violet;
                         } else if (yellow_playground != Block::ColorSwapper
                             && violet_playground == Block::ColorSwapper)
-                            || *flicker_color == 0
+                            || flicker_color.not()
                         {
                             *display = Color::Yellow;
                         } else {
