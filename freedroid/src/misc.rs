@@ -27,7 +27,6 @@ pub struct Misc {
     previous_time: f32,
     current_time_factor: f32,
     file_path: ArrayCString<1024>,
-    frame_nr: i32,
     one_frame_sdl_ticks: u32,
     now_sdl_ticks: u32,
     one_frame_delay: i64,
@@ -39,7 +38,6 @@ impl Default for Misc {
             previous_time: 0.1,
             current_time_factor: 1.,
             file_path: ArrayCString::default(),
-            frame_nr: 0,
             one_frame_sdl_ticks: 0,
             now_sdl_ticks: 0,
             one_frame_delay: 0,
@@ -448,12 +446,6 @@ impl crate::Data<'_> {
     /// This function starts the time-taking process.  Later the results
     /// of this function will be used to calculate the current framerate
     pub fn start_taking_time_for_fps_calculation(&mut self) {
-        /* This ensures, that 0 is never an encountered framenr,
-         * therefore count to 100 here
-         * Take the time now for calculating the frame rate
-         * (DO NOT MOVE THIS COMMAND PLEASE!) */
-        self.misc.frame_nr += 1;
-
         self.misc.one_frame_sdl_ticks = self.sdl.ticks_ms();
     }
 
