@@ -248,7 +248,7 @@ fn game_single_loop<'sdl>(data: &mut Data<'sdl>, sdl: &'sdl Sdl) -> ControlFlow<
     // release all keys
     data.wait_for_all_keys_released();
 
-    data.show_droid_info(data.vars.me.ty, -3, false); // show unit-intro page
+    data.show_droid_info(data.vars.me.ty, Page::TitleScreen, false); // show unit-intro page
     data.show_droid_portrait(
         data.vars.cons_droid_rect,
         data.vars.me.ty,
@@ -598,4 +598,4 @@ macro_rules! cur_level {
 }
 pub(crate) use cur_level;
 
-use crate::ship::ShowDroidPortraitFlags;
+use crate::ship::{Page, ShowDroidPortraitFlags};

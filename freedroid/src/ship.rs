@@ -263,7 +263,7 @@ impl crate::Data<'_> {
     ///                    only  update the text-regions
     ///
     ///  does update the screen: all if !`update_only`, text-rect if `update_only`
-    pub fn show_droid_info(&mut self, droid_type: Droid, page: i32, update_only: bool) {
+    pub fn show_droid_info(&mut self, droid_type: Droid, page: Page, update_only: bool) {
         use std::fmt::Write;
 
         self.graphics.ne_screen.as_mut().unwrap().clear_clip_rect();
@@ -400,7 +400,7 @@ impl crate::Data<'_> {
         }
     }
 
-    fn show_arrows(&mut self, droid_type: Droid, page: i32) {
+    fn show_arrows(&mut self, droid_type: Droid, page: Page) {
         let Self {
             graphics:
                 Graphics {
@@ -430,14 +430,14 @@ impl crate::Data<'_> {
                 .blit_to(ne_screen.as_mut().unwrap(), &mut ship.down_rect);
         }
 
-        if page > 0 {
+        if page > Page::DroidInfoGeneric {
             arrow_left
                 .as_mut()
                 .unwrap()
                 .blit_to(ne_screen.as_mut().unwrap(), &mut ship.left_rect);
         }
 
-        if page < 2 {
+        if page < Page::DroidInfoNotes {
             arrow_right
                 .as_mut()
                 .unwrap()
@@ -672,7 +672,7 @@ impl crate::Data<'_> {
         let mut finished = false;
 
         let mut droidtype = self.vars.me.ty;
-        let mut page = 0;
+        let mut page = Page::DroidInfoGeneric;
 
         self.show_droid_info(droidtype, page, false);
         self.show_droid_portrait(
@@ -760,9 +760,8 @@ impl crate::Data<'_> {
                         continue;
                     }
 
-                    if page < 2 {
+                    if page.try_next() {
                         self.move_menu_position_sound();
-                        page += 1;
                         need_update = true;
                         self.ship.great_droid_show_last_move_tick = self.sdl.ticks_ms();
                     }
@@ -773,9 +772,7 @@ impl crate::Data<'_> {
                         continue;
                     }
 
-                    if page > 0 {
-                        self.move_menu_position_sound();
-                        page -= 1;
+                    if page.try_prev() {
                         need_update = true;
                         self.ship.great_droid_show_last_move_tick = self.sdl.ticks_ms();
                     }
@@ -1136,7 +1133,7 @@ impl crate::Data<'_> {
 }
 
 fn show_droid_page_info(
-    page: i32,
+    page: Page,
     info_text: &mut ArrayString<1000>,
     show_arrows: &mut bool,
     droid_type: Droid,
@@ -1145,7 +1142,7 @@ fn show_droid_page_info(
     use std::fmt::Write;
 
     match page {
-        -3 => {
+        Page::TitleScreen => {
             // Title screen: intro unit
             write!(
                 info_text,
@@ -1154,7 +1151,7 @@ fn show_droid_page_info(
             )
             .unwrap();
         }
-        -2 => {
+        Page::TakeoverAttacked => {
             // Takeover: unit that you wish to control
             write!(
                 info_text,
@@ -1162,11 +1159,11 @@ fn show_droid_page_info(
             )
             .unwrap();
         }
-        -1 => {
+        Page::TakeoverAttacker => {
             // Takeover: unit that you control
             write!(info_text, "This is the unit that you currently control.").unwrap();
         }
-        0 => {
+        Page::DroidInfoGeneric => {
             *show_arrows = true;
             write!(
                 info_text,
@@ -1189,7 +1186,7 @@ fn show_droid_page_info(
             )
             .unwrap();
         }
-        1 => {
+        Page::DroidInfoEquiment => {
             *show_arrows = true;
             write!(
                 info_text,
@@ -1210,16 +1207,58 @@ fn show_droid_page_info(
             )
             .unwrap();
         }
-        2 => {
+        Page::DroidInfoNotes => {
             *show_arrows = true;
             write!(info_text, "Notes: {}", droid.notes.to_str().unwrap()).unwrap();
         }
-        _ => {
-            write!(
-                info_text,
-                "ERROR: Page not implemented!! \nPlease report bug!",
-            )
-            .unwrap();
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Page {
+    /// Title screen: intro unit
+    TitleScreen = -3,
+    /// Takeover: unit that you wish to control
+    TakeoverAttacked,
+    /// Takeover: unit that you control
+    TakeoverAttacker,
+    DroidInfoGeneric,
+    DroidInfoEquiment,
+    DroidInfoNotes,
+}
+
+impl Page {
+    pub fn try_next(&mut self) -> bool {
+        match self {
+            Page::TitleScreen
+            | Page::TakeoverAttacked
+            | Page::TakeoverAttacker
+            | Page::DroidInfoNotes => false,
+            Page::DroidInfoGeneric => {
+                *self = Page::DroidInfoEquiment;
+                true
+            }
+            Page::DroidInfoEquiment => {
+                *self = Page::DroidInfoNotes;
+                true
+            }
+        }
+    }
+
+    pub fn try_prev(&mut self) -> bool {
+        match self {
+            Page::TitleScreen
+            | Page::TakeoverAttacked
+            | Page::TakeoverAttacker
+            | Page::DroidInfoGeneric => false,
+            Page::DroidInfoEquiment => {
+                *self = Page::DroidInfoGeneric;
+                true
+            }
+            Page::DroidInfoNotes => {
+                *self = Page::DroidInfoEquiment;
+                true
+            }
         }
     }
 }
