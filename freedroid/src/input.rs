@@ -896,6 +896,7 @@ impl crate::Data<'_> {
 
             /* aktivate Joystick event handling */
             joystick.enable_event_polling();
+            self.input.joy = Some(joy);
         }
     }
 }
