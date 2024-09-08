@@ -18,6 +18,7 @@ log = "0.4.14"
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "deny"
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(sdl_video_driver_x11)'] }
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
