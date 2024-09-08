@@ -806,7 +806,7 @@ impl crate::Data<'_> {
         let mut vid_driver = [0; 81];
         let vid_driver = self.sdl.video.get_driver_name(&mut vid_driver);
 
-        if cfg!(os_target = "android") {
+        if cfg!(target_os = "android") {
             self.graphics.vid_bpp = 16; // Hardcoded Android default
         } else {
             self.graphics.vid_bpp = vid_info.format().bits_per_pixel().into();
