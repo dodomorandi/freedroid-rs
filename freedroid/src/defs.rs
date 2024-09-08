@@ -519,10 +519,10 @@ impl TryFrom<i32> for AlertLevel {
 // if not, we set it here:
 // #ifndef FD_DATADIR
 
-#[cfg(target_os = "macosx")]
+#[cfg(target_os = "macos")]
 pub const FD_DATADIR: &str = "FreeDroid.app/Contents/Resources"; // our local fallback
 
-#[cfg(not(target_os = "macosx"))]
+#[cfg(not(target_os = "macos"))]
 pub const FD_DATADIR: &str = "."; // our local fallback
 
 // #endif // !FD_DATADIR
