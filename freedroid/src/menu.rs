@@ -18,7 +18,6 @@ use crate::{
     input::{CMD_STRINGS, KEY_STRINGS},
 };
 
-use cstr::cstr;
 use sdl::{convert::u32_to_u16, Surface};
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT,
@@ -65,11 +64,11 @@ struct MenuActionDirections {
 
 // const FILENAME_LEN: u8 = 128;
 #[cfg(not(target_os = "android"))]
-const SHIP_EXT_C: &CStr = cstr!(".shp");
+const SHIP_EXT_C: &CStr = c".shp";
 #[cfg(not(target_os = "android"))]
 pub const SHIP_EXT: &str = ".shp";
-// const ELEVEXT: &CStr = cstr!(".elv");
-// const CREWEXT: &CStr = cstr!(".crw");
+// const ELEVEXT: &CStr = c".elv";
+// const CREWEXT: &CStr = c".crw";
 
 macro_rules! menu_entry {
     () => {
@@ -606,7 +605,7 @@ impl<'sdl> crate::Data<'sdl> {
             let arg = entry
                 .handler
                 .and_then(|handler| (handler)(self, MenuAction::INFO))
-                .unwrap_or(cstr!(""));
+                .unwrap_or(c"");
 
             let mut full_name: [u8; 256] = [0; 256];
             let mut cursor = Cursor::new(full_name.as_mut());
@@ -1295,9 +1294,9 @@ impl<'sdl> crate::Data<'sdl> {
     pub fn handle_window_type(&mut self, action: MenuAction) -> Option<&CStr> {
         if action == MenuAction::INFO {
             let s = if self.global.game_config.full_user_rect.not() {
-                cstr!("Classic")
+                c"Classic"
             } else {
-                cstr!("Full")
+                c"Full"
             };
 
             return Some(s);
@@ -1564,9 +1563,9 @@ impl<'sdl> crate::Data<'sdl> {
 
 pub fn is_toggle_on(toggle: bool) -> &'static CStr {
     if toggle.not() {
-        cstr!("NO")
+        c"NO"
     } else {
-        cstr!("YES")
+        c"YES"
     }
 }
 

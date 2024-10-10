@@ -8,7 +8,6 @@ use crate::{
     structs::{Bullet, Finepoint, Gps, TextToBeDisplayed},
 };
 
-use cstr::cstr;
 use defs::{Cmds, BLINKENERGY, MAX_INFLU_POSITION_HISTORY, WAIT_TRANSFERMODE};
 use log::{info, warn};
 use rand::{thread_rng, Rng};
@@ -72,14 +71,14 @@ impl crate::Data<'_> {
             // since robots like the refresh, the influencer might also say so...
             if self.global.game_config.droid_talk {
                 self.vars.me.text_to_be_displayed =
-                    TextToBeDisplayed::String(cstr!("Ahhh, that feels so good..."));
+                    TextToBeDisplayed::String(c"Ahhh, that feels so good...");
                 self.vars.me.text_visible_time = 0.;
             }
         } else {
             // If nothing more is to be had, the influencer might also say so...
             if self.global.game_config.droid_talk {
                 self.vars.me.text_to_be_displayed =
-                    TextToBeDisplayed::String(cstr!("Oh, it seems that was it again."));
+                    TextToBeDisplayed::String(c"Oh, it seems that was it again.");
                 self.vars.me.text_visible_time = 0.;
             }
         }

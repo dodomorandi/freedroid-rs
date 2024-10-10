@@ -17,7 +17,6 @@ use crate::{
 use arrayvec::ArrayVec;
 use bstr::ByteSlice;
 #[cfg(not(target_os = "android"))]
-use cstr::cstr;
 use defs::MAX_DOORS_ON_LEVEL;
 #[cfg(not(target_os = "android"))]
 use defs::MAX_WP_CONNECTIONS;
@@ -105,13 +104,13 @@ impl Color {
     #[must_use]
     pub const fn c_name(self) -> &'static CStr {
         match self {
-            Color::Red => cstr!("Red"),
-            Color::Yellow => cstr!("Yellow"),
-            Color::Green => cstr!("Green"),
-            Color::Gray => cstr!("Grey"),
-            Color::Blue => cstr!("Blue"),
-            Color::Greenblue => cstr!("Turquoise"),
-            Color::Dark => cstr!("Dark"),
+            Color::Red => c"Red",
+            Color::Yellow => c"Yellow",
+            Color::Green => c"Green",
+            Color::Gray => c"Grey",
+            Color::Blue => c"Blue",
+            Color::Greenblue => c"Turquoise",
+            Color::Dark => c"Dark",
         }
     }
 

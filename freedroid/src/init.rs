@@ -25,7 +25,6 @@ use crate::input::wait_for_key_pressed;
 
 use bstr::ByteSlice;
 use clap::{crate_version, ArgAction, Parser};
-use cstr::cstr;
 use log::{error, info, warn};
 use nom::Finish;
 use rand::{seq::IteratorRandom, thread_rng};
@@ -70,11 +69,10 @@ pub fn win32_disclaimer() {
     rect.x += 10;
     rect.w -= 10; //leave some border
     DisplayText(
-        cstr!(
-        "Windows disclaimer:\n\nThis program is 100% Free (as in Freedom), licenced under the GPL.\
+        c"Windows disclaimer:\n\nThis program is 100% Free (as in Freedom), licenced under the GPL.\
          \nIt is developed on a free operating system (GNU/Linux) using exclusively free tools. \
          For more information about Free Software see the GPL licence (in the file COPYING)\n\
-         or visit http://www.gnu.org.\n\n\n Press fire to play.")
+         or visit http://www.gnu.org.\n\n\n Press fire to play."
         .as_ptr(),
         rect.x.into(),
         rect.y.into(),
@@ -593,7 +591,7 @@ impl crate::Data<'_> {
         //
 
         self.vars.me.text_to_be_displayed =
-            TextToBeDisplayed::String(cstr!("Ok. I'm on board.  Let's get to work.")); // taken from Paradroid.mission
+            TextToBeDisplayed::String(c"Ok. I'm on board.  Let's get to work."); // taken from Paradroid.mission
         self.vars.me.text_visible_time = 0.;
 
         main_mission_data.get_crew(self);
@@ -861,8 +859,8 @@ impl crate::Data<'_> {
     /// it only receives a pointer to the start of the bullet section from
     /// the calling function.
     pub fn get_bullet_data(&mut self, data_slice: &[u8]) {
-        // const BULLET_SECTION_BEGIN_STRING: &CStr = cstr!("*** Start of Bullet Data Section: ***");
-        // const BULLET_SECTION_END_STRING: &CStr = cstr!("*** End of Bullet Data Section: ***");
+        // const BULLET_SECTION_BEGIN_STRING: &CStr = c"*** Start of Bullet Data Section: ***";
+        // const BULLET_SECTION_END_STRING: &CStr = c"*** End of Bullet Data Section: ***";
         const NEW_BULLET_TYPE_BEGIN_STRING: &[u8] =
             b"** Start of new bullet specification subsection **";
 
@@ -872,7 +870,7 @@ impl crate::Data<'_> {
         const BULLET_DAMAGE_BEGIN_STRING: &[u8] = b"Damage cause by a hit of this bullet type :";
         // #define BULLET_NUMBER_OF_PHASES_BEGIN_STRING "Number of different phases that were designed for this bullet type :"
         // const BULLET_ONE_SHOT_ONLY_AT_A_TIME: &CStr =
-        //     cstr!("Cannot fire until previous bullet has been deleted : ");
+        //     c"Cannot fire until previous bullet has been deleted : ";
 
         const BULLET_SPEED_CALIBRATOR_STRING: &[u8] =
             b"Common factor for all bullet's speed values: ";
@@ -956,9 +954,9 @@ impl crate::Data<'_> {
     /// a dat file, that should be optimally human readable.
     pub fn get_general_game_constants(&mut self, data: &[u8]) {
         // const CONSTANTS_SECTION_BEGIN_STRING: &CStr =
-        //     cstr!("*** Start of General Game Constants Section: ***");
+        //     c"*** Start of General Game Constants Section: ***";
         // const CONSTANTS_SECTION_END_STRING: &CStr =
-        //     cstr!("*** End of General Game Constants Section: ***");
+        //     c"*** End of General Game Constants Section: ***";
         const COLLISION_LOSE_ENERGY_CALIBRATOR_STRING: &[u8] =
             b"Energy-Loss-factor for Collisions of Influ with hostile robots=";
         const BLAST_RADIUS_SPECIFICATION_STRING: &[u8] =

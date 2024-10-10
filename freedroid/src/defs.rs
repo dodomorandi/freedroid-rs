@@ -1,7 +1,6 @@
 use crate::{input::Input, structs::Point, vars::Vars, Sdl};
 
 use bitflags::bitflags;
-use cstr::cstr;
 use sdl::convert::{u32_to_isize, u32_to_u16};
 #[cfg(feature = "gcw0")]
 use sdl_sys::{
@@ -531,9 +530,9 @@ pub const FD_DATADIR: &str = "."; // our local fallback
 pub const LOCAL_DATADIR: &str = ".."; // local fallback
                                       // #endif
 
-pub const GRAPHICS_DIR_C: &CStr = cstr!("graphics/");
-pub const SOUND_DIR_C: &CStr = cstr!("sound/");
-pub const MAP_DIR_C: &CStr = cstr!("map/");
+pub const GRAPHICS_DIR_C: &CStr = c"graphics/";
+pub const SOUND_DIR_C: &CStr = c"sound/";
+pub const MAP_DIR_C: &CStr = c"map/";
 
 pub const MAP_BLOCK_FILE: &[u8] = b"map_blocks.png";
 pub const DROID_BLOCK_FILE: &[u8] = b"droids.png";
@@ -1022,20 +1021,20 @@ pub enum Status {
 impl Status {
     pub const fn c_name(self) -> &'static CStr {
         match self {
-            Self::Mobile => cstr!("Mobile"),
-            Self::Transfermode => cstr!("Transfer"),
-            Self::Weapon => cstr!("Weapon"),
-            Self::Console => cstr!("Logged In"),
-            Self::Debriefing => cstr!("Debriefing"),
-            Self::Terminated => cstr!("Terminated"),
-            Self::Pause => cstr!("Pause"),
-            Self::Cheese => cstr!("Cheese"),
-            Self::Elevator => cstr!("Elevator"),
-            Self::Briefing => cstr!("Briefing"),
-            Self::Menu => cstr!("Menu"),
-            Self::Victory => cstr!("Victory"),
-            Self::Activate => cstr!("Activate"),
-            Self::Out => cstr!("-- OUT --"),
+            Self::Mobile => c"Mobile",
+            Self::Transfermode => c"Transfer",
+            Self::Weapon => c"Weapon",
+            Self::Console => c"Logged In",
+            Self::Debriefing => c"Debriefing",
+            Self::Terminated => c"Terminated",
+            Self::Pause => c"Pause",
+            Self::Cheese => c"Cheese",
+            Self::Elevator => c"Elevator",
+            Self::Briefing => c"Briefing",
+            Self::Menu => c"Menu",
+            Self::Victory => c"Victory",
+            Self::Activate => c"Activate",
+            Self::Out => c"-- OUT --",
         }
     }
 

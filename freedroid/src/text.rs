@@ -9,7 +9,6 @@ use crate::{
     FontCellOwner, Sdl,
 };
 
-use cstr::cstr;
 use log::{error, info, trace};
 use rand::{seq::SliceRandom, thread_rng};
 use sdl::{
@@ -584,13 +583,13 @@ impl crate::Data<'_> {
         self.vars.me.text_visible_time = 0.;
 
         let new_text = [
-            cstr!("Aaarrgh, aah, that burnt me!"),
-            cstr!("Hell, that blast was hot!"),
-            cstr!("Ghaart, I hate to stain my chassis like that."),
-            cstr!("Oh no!  I think I've burnt a cable!"),
-            cstr!("Oh no, my poor transfer connectors smolder!"),
-            cstr!("I hope that didn't melt any circuits!"),
-            cstr!("So that gives some more black scars on me ol' dented chassis!"),
+            c"Aaarrgh, aah, that burnt me!",
+            c"Hell, that blast was hot!",
+            c"Ghaart, I hate to stain my chassis like that.",
+            c"Oh no!  I think I've burnt a cable!",
+            c"Oh no, my poor transfer connectors smolder!",
+            c"I hope that didn't melt any circuits!",
+            c"So that gives some more black scars on me ol' dented chassis!",
         ]
         .choose(&mut thread_rng())
         .copied()

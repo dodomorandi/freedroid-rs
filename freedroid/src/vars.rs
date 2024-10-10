@@ -3,7 +3,6 @@ use crate::{
     structs::{BlastSpec, BulletSpec, DruidSpec, Finepoint, Gps, Influence, TextToBeDisplayed},
 };
 
-use cstr::cstr;
 use sdl::Rect;
 use std::{
     array,
@@ -151,58 +150,53 @@ pub const ORIG_BLOCK_RECT: Rect = Rect::new(0, 0, 64, 64); // not to be rescaled
 pub const ORIG_DIGIT_RECT: Rect = Rect::new(0, 0, 16, 18); // not to be rescaled!
 
 pub const CLASS_NAMES: [&CStr; 10] = [
-    cstr!("Influence device"),
-    cstr!("Disposal robot"),
-    cstr!("Servant robot"),
-    cstr!("Messenger robot"),
-    cstr!("Maintenance robot"),
-    cstr!("Crew droid"),
-    cstr!("Sentinel droid"),
-    cstr!("Battle droid"),
-    cstr!("Security droid"),
-    cstr!("Command Cyborg"),
+    c"Influence device",
+    c"Disposal robot",
+    c"Servant robot",
+    c"Messenger robot",
+    c"Maintenance robot",
+    c"Crew droid",
+    c"Sentinel droid",
+    c"Battle droid",
+    c"Security droid",
+    c"Command Cyborg",
 ];
 
 pub const CLASSES: [&CStr; 11] = [
-    cstr!("influence"),
-    cstr!("disposal"),
-    cstr!("servant"),
-    cstr!("messenger"),
-    cstr!("maintenance"),
-    cstr!("crew"),
-    cstr!("sentinel"),
-    cstr!("battle"),
-    cstr!("security"),
-    cstr!("command"),
-    cstr!("error"),
+    c"influence",
+    c"disposal",
+    c"servant",
+    c"messenger",
+    c"maintenance",
+    c"crew",
+    c"sentinel",
+    c"battle",
+    c"security",
+    c"command",
+    c"error",
 ];
 
 pub const DRIVE_NAMES: [&CStr; 7] = [
-    cstr!("none"),
-    cstr!("tracks"),
-    cstr!("anti-grav"),
-    cstr!("tripedal"),
-    cstr!("wheels"),
-    cstr!("bipedal"),
-    cstr!("error"),
+    c"none",
+    c"tracks",
+    c"anti-grav",
+    c"tripedal",
+    c"wheels",
+    c"bipedal",
+    c"error",
 ];
 
 pub const SENSOR_NAMES: [&CStr; 7] = [
-    cstr!(" - "),
-    cstr!("spectral"),
-    cstr!("infra-red"),
-    cstr!("subsonic"),
-    cstr!("ultra-sonic"),
-    cstr!("radar"),
-    cstr!("error"),
+    c" - ",
+    c"spectral",
+    c"infra-red",
+    c"subsonic",
+    c"ultra-sonic",
+    c"radar",
+    c"error",
 ];
 
-pub const BRAIN_NAMES: [&CStr; 4] = [
-    cstr!("none"),
-    cstr!("neutronic"),
-    cstr!("primode"),
-    cstr!("error"),
-];
+pub const BRAIN_NAMES: [&CStr; 4] = [c"none", c"neutronic", c"primode", c"error"];
 
 impl Vars<'_> {
     #[inline]

@@ -8,7 +8,6 @@ use crate::{
 };
 
 #[cfg(not(target_os = "android"))]
-use cstr::cstr;
 use log::info;
 use sdl::{
     convert::{i32_to_u8, u32_to_u16},
@@ -85,221 +84,221 @@ const fn create_key_strings() -> [Option<&'static CStr>; PointerStates::Last.to_
     macro_rules! set_out {
         ($(ps::$key:ident = $str:literal);+ $(;)?) => {
             $(
-                out[PointerStates::$key.to_usize()] = Some(cstr!($str));
+                out[PointerStates::$key.to_usize()] = Some($str);
             )+
         };
 
         ($($key:ident = $str:literal);+ $(;)?) => {
             $(
-                out[::sdl::convert::u32_to_usize(sdl_sys::$key)] = Some(cstr!($str));
+                out[::sdl::convert::u32_to_usize(sdl_sys::$key)] = Some($str);
             )+
         };
     }
 
-    out[0] = Some(cstr!("None"));
+    out[0] = Some(c"None");
     if cfg!(feature = "gcw0") {
         set_out!(
-            SDLKey_SDLK_BACKSPACE = "RSldr";
-            SDLKey_SDLK_TAB = "LSldr";
-            SDLKey_SDLK_RETURN = "Start";
-            SDLKey_SDLK_SPACE = "Y";
-            SDLKey_SDLK_ESCAPE = "Select";
+            SDLKey_SDLK_BACKSPACE = c"RSldr";
+            SDLKey_SDLK_TAB = c"LSldr";
+            SDLKey_SDLK_RETURN = c"Start";
+            SDLKey_SDLK_SPACE = c"Y";
+            SDLKey_SDLK_ESCAPE = c"Select";
         );
     }
 
     if cfg!(not(feature = "gcw0")) {
         set_out!(
-            SDLKey_SDLK_BACKSPACE = "BS";
-            SDLKey_SDLK_TAB = "Tab";
-            SDLKey_SDLK_RETURN = "Return";
-            SDLKey_SDLK_SPACE = "Space";
-            SDLKey_SDLK_ESCAPE = "Esc";
+            SDLKey_SDLK_BACKSPACE = c"BS";
+            SDLKey_SDLK_TAB = c"Tab";
+            SDLKey_SDLK_RETURN = c"Return";
+            SDLKey_SDLK_SPACE = c"Space";
+            SDLKey_SDLK_ESCAPE = c"Esc";
         );
     }
 
     set_out!(
-        SDLKey_SDLK_CLEAR = "Clear";
-        SDLKey_SDLK_PAUSE = "Pause";
-        SDLKey_SDLK_EXCLAIM = "!";
-        SDLKey_SDLK_QUOTEDBL = "\"";
-        SDLKey_SDLK_HASH = "#";
-        SDLKey_SDLK_DOLLAR = "$";
-        SDLKey_SDLK_AMPERSAND = "&";
-        SDLKey_SDLK_QUOTE = "'";
-        SDLKey_SDLK_LEFTPAREN = "(";
-        SDLKey_SDLK_RIGHTPAREN = ")";
-        SDLKey_SDLK_ASTERISK = "*";
-        SDLKey_SDLK_PLUS = "+";
-        SDLKey_SDLK_COMMA = ",";
-        SDLKey_SDLK_MINUS = "-";
-        SDLKey_SDLK_PERIOD = ".";
-        SDLKey_SDLK_SLASH = "/";
-        SDLKey_SDLK_0 = "0";
-        SDLKey_SDLK_1 = "1";
-        SDLKey_SDLK_2 = "2";
-        SDLKey_SDLK_3 = "3";
-        SDLKey_SDLK_4 = "4";
-        SDLKey_SDLK_5 = "5";
-        SDLKey_SDLK_6 = "6";
-        SDLKey_SDLK_7 = "7";
-        SDLKey_SDLK_8 = "8";
-        SDLKey_SDLK_9 = "9";
-        SDLKey_SDLK_COLON = ":";
-        SDLKey_SDLK_SEMICOLON = ";";
-        SDLKey_SDLK_LESS = "<";
-        SDLKey_SDLK_EQUALS = "=";
-        SDLKey_SDLK_GREATER = ">";
-        SDLKey_SDLK_QUESTION = "?";
-        SDLKey_SDLK_AT = "@";
-        SDLKey_SDLK_LEFTBRACKET = "[";
-        SDLKey_SDLK_BACKSLASH = "\\";
-        SDLKey_SDLK_RIGHTBRACKET = "]";
-        SDLKey_SDLK_CARET = "^";
-        SDLKey_SDLK_UNDERSCORE = "_";
-        SDLKey_SDLK_BACKQUOTE = "`";
-        SDLKey_SDLK_a = "a";
-        SDLKey_SDLK_b = "b";
-        SDLKey_SDLK_c = "c";
-        SDLKey_SDLK_d = "d";
-        SDLKey_SDLK_e = "e";
-        SDLKey_SDLK_f = "f";
-        SDLKey_SDLK_g = "g";
-        SDLKey_SDLK_h = "h";
-        SDLKey_SDLK_i = "i";
-        SDLKey_SDLK_j = "j";
-        SDLKey_SDLK_k = "k";
-        SDLKey_SDLK_l = "l";
-        SDLKey_SDLK_m = "m";
-        SDLKey_SDLK_n = "n";
-        SDLKey_SDLK_o = "o";
-        SDLKey_SDLK_p = "p";
-        SDLKey_SDLK_q = "q";
-        SDLKey_SDLK_r = "r";
-        SDLKey_SDLK_s = "s";
-        SDLKey_SDLK_t = "t";
-        SDLKey_SDLK_u = "u";
-        SDLKey_SDLK_v = "v";
-        SDLKey_SDLK_w = "w";
-        SDLKey_SDLK_x = "x";
-        SDLKey_SDLK_y = "y";
-        SDLKey_SDLK_z = "z";
-        SDLKey_SDLK_DELETE = "Del";
+        SDLKey_SDLK_CLEAR = c"Clear";
+        SDLKey_SDLK_PAUSE = c"Pause";
+        SDLKey_SDLK_EXCLAIM = c"!";
+        SDLKey_SDLK_QUOTEDBL = c"\"";
+        SDLKey_SDLK_HASH = c"#";
+        SDLKey_SDLK_DOLLAR = c"$";
+        SDLKey_SDLK_AMPERSAND = c"&";
+        SDLKey_SDLK_QUOTE = c"'";
+        SDLKey_SDLK_LEFTPAREN = c"(";
+        SDLKey_SDLK_RIGHTPAREN = c")";
+        SDLKey_SDLK_ASTERISK = c"*";
+        SDLKey_SDLK_PLUS = c"+";
+        SDLKey_SDLK_COMMA = c",";
+        SDLKey_SDLK_MINUS = c"-";
+        SDLKey_SDLK_PERIOD = c".";
+        SDLKey_SDLK_SLASH = c"/";
+        SDLKey_SDLK_0 = c"0";
+        SDLKey_SDLK_1 = c"1";
+        SDLKey_SDLK_2 = c"2";
+        SDLKey_SDLK_3 = c"3";
+        SDLKey_SDLK_4 = c"4";
+        SDLKey_SDLK_5 = c"5";
+        SDLKey_SDLK_6 = c"6";
+        SDLKey_SDLK_7 = c"7";
+        SDLKey_SDLK_8 = c"8";
+        SDLKey_SDLK_9 = c"9";
+        SDLKey_SDLK_COLON = c":";
+        SDLKey_SDLK_SEMICOLON = c";";
+        SDLKey_SDLK_LESS = c"<";
+        SDLKey_SDLK_EQUALS = c"=";
+        SDLKey_SDLK_GREATER = c">";
+        SDLKey_SDLK_QUESTION = c"?";
+        SDLKey_SDLK_AT = c"@";
+        SDLKey_SDLK_LEFTBRACKET = c"[";
+        SDLKey_SDLK_BACKSLASH = c"\\";
+        SDLKey_SDLK_RIGHTBRACKET = c"]";
+        SDLKey_SDLK_CARET = c"^";
+        SDLKey_SDLK_UNDERSCORE = c"_";
+        SDLKey_SDLK_BACKQUOTE = c"`";
+        SDLKey_SDLK_a = c"a";
+        SDLKey_SDLK_b = c"b";
+        SDLKey_SDLK_c = c"c";
+        SDLKey_SDLK_d = c"d";
+        SDLKey_SDLK_e = c"e";
+        SDLKey_SDLK_f = c"f";
+        SDLKey_SDLK_g = c"g";
+        SDLKey_SDLK_h = c"h";
+        SDLKey_SDLK_i = c"i";
+        SDLKey_SDLK_j = c"j";
+        SDLKey_SDLK_k = c"k";
+        SDLKey_SDLK_l = c"l";
+        SDLKey_SDLK_m = c"m";
+        SDLKey_SDLK_n = c"n";
+        SDLKey_SDLK_o = c"o";
+        SDLKey_SDLK_p = c"p";
+        SDLKey_SDLK_q = c"q";
+        SDLKey_SDLK_r = c"r";
+        SDLKey_SDLK_s = c"s";
+        SDLKey_SDLK_t = c"t";
+        SDLKey_SDLK_u = c"u";
+        SDLKey_SDLK_v = c"v";
+        SDLKey_SDLK_w = c"w";
+        SDLKey_SDLK_x = c"x";
+        SDLKey_SDLK_y = c"y";
+        SDLKey_SDLK_z = c"z";
+        SDLKey_SDLK_DELETE = c"Del";
     );
 
     /* Numeric keypad */
     set_out!(
-        SDLKey_SDLK_KP0 = "Num[0 as usize]";
-        SDLKey_SDLK_KP1 = "Num[1 as usize]";
-        SDLKey_SDLK_KP2 = "Num[2 as usize]";
-        SDLKey_SDLK_KP3 = "Num[3 as usize]";
-        SDLKey_SDLK_KP4 = "Num[4 as usize]";
-        SDLKey_SDLK_KP5 = "Num[5 as usize]";
-        SDLKey_SDLK_KP6 = "Num[6 as usize]";
-        SDLKey_SDLK_KP7 = "Num[7 as usize]";
-        SDLKey_SDLK_KP8 = "Num[8 as usize]";
-        SDLKey_SDLK_KP9 = "Num[9 as usize]";
-        SDLKey_SDLK_KP_PERIOD = "Num[. as usize]";
-        SDLKey_SDLK_KP_DIVIDE = "Num[/ as usize]";
-        SDLKey_SDLK_KP_MULTIPLY = "Num[* as usize]";
-        SDLKey_SDLK_KP_MINUS = "Num[- as usize]";
-        SDLKey_SDLK_KP_PLUS = "Num[+ as usize]";
-        SDLKey_SDLK_KP_ENTER = "Num[Enter as usize]";
-        SDLKey_SDLK_KP_EQUALS = "Num[= as usize]";
+        SDLKey_SDLK_KP0 = c"Num[0 as usize]";
+        SDLKey_SDLK_KP1 = c"Num[1 as usize]";
+        SDLKey_SDLK_KP2 = c"Num[2 as usize]";
+        SDLKey_SDLK_KP3 = c"Num[3 as usize]";
+        SDLKey_SDLK_KP4 = c"Num[4 as usize]";
+        SDLKey_SDLK_KP5 = c"Num[5 as usize]";
+        SDLKey_SDLK_KP6 = c"Num[6 as usize]";
+        SDLKey_SDLK_KP7 = c"Num[7 as usize]";
+        SDLKey_SDLK_KP8 = c"Num[8 as usize]";
+        SDLKey_SDLK_KP9 = c"Num[9 as usize]";
+        SDLKey_SDLK_KP_PERIOD = c"Num[. as usize]";
+        SDLKey_SDLK_KP_DIVIDE = c"Num[/ as usize]";
+        SDLKey_SDLK_KP_MULTIPLY = c"Num[* as usize]";
+        SDLKey_SDLK_KP_MINUS = c"Num[- as usize]";
+        SDLKey_SDLK_KP_PLUS = c"Num[+ as usize]";
+        SDLKey_SDLK_KP_ENTER = c"Num[Enter as usize]";
+        SDLKey_SDLK_KP_EQUALS = c"Num[= as usize]";
     );
 
     /* Arrows + Home/End pad */
     set_out!(
-        SDLKey_SDLK_UP = "Up";
-        SDLKey_SDLK_DOWN = "Down";
-        SDLKey_SDLK_RIGHT = "Right";
-        SDLKey_SDLK_LEFT = "Left";
-        SDLKey_SDLK_INSERT = "Insert";
-        SDLKey_SDLK_HOME = "Home";
-        SDLKey_SDLK_END = "End";
-        SDLKey_SDLK_PAGEUP = "PageUp";
-        SDLKey_SDLK_PAGEDOWN = "PageDown";
+        SDLKey_SDLK_UP = c"Up";
+        SDLKey_SDLK_DOWN = c"Down";
+        SDLKey_SDLK_RIGHT = c"Right";
+        SDLKey_SDLK_LEFT = c"Left";
+        SDLKey_SDLK_INSERT = c"Insert";
+        SDLKey_SDLK_HOME = c"Home";
+        SDLKey_SDLK_END = c"End";
+        SDLKey_SDLK_PAGEUP = c"PageUp";
+        SDLKey_SDLK_PAGEDOWN = c"PageDown";
     );
 
     /* Function keys */
     set_out!(
-        SDLKey_SDLK_F1 = "F1";
-        SDLKey_SDLK_F2 = "F2";
-        SDLKey_SDLK_F3 = "F3";
-        SDLKey_SDLK_F4 = "F4";
-        SDLKey_SDLK_F5 = "F5";
-        SDLKey_SDLK_F6 = "F6";
-        SDLKey_SDLK_F7 = "F7";
-        SDLKey_SDLK_F8 = "F8";
-        SDLKey_SDLK_F9 = "F9";
-        SDLKey_SDLK_F10 = "F10";
-        SDLKey_SDLK_F11 = "F11";
-        SDLKey_SDLK_F12 = "F12";
-        SDLKey_SDLK_F13 = "F13";
-        SDLKey_SDLK_F14 = "F14";
-        SDLKey_SDLK_F15 = "F15";
+        SDLKey_SDLK_F1 = c"F1";
+        SDLKey_SDLK_F2 = c"F2";
+        SDLKey_SDLK_F3 = c"F3";
+        SDLKey_SDLK_F4 = c"F4";
+        SDLKey_SDLK_F5 = c"F5";
+        SDLKey_SDLK_F6 = c"F6";
+        SDLKey_SDLK_F7 = c"F7";
+        SDLKey_SDLK_F8 = c"F8";
+        SDLKey_SDLK_F9 = c"F9";
+        SDLKey_SDLK_F10 = c"F10";
+        SDLKey_SDLK_F11 = c"F11";
+        SDLKey_SDLK_F12 = c"F12";
+        SDLKey_SDLK_F13 = c"F13";
+        SDLKey_SDLK_F14 = c"F14";
+        SDLKey_SDLK_F15 = c"F15";
     );
 
     /* Key state modifier keys */
     set_out!(
-        SDLKey_SDLK_NUMLOCK = "NumLock";
-        SDLKey_SDLK_CAPSLOCK = "CapsLock";
-        SDLKey_SDLK_SCROLLOCK = "ScrlLock";
+        SDLKey_SDLK_NUMLOCK = c"NumLock";
+        SDLKey_SDLK_CAPSLOCK = c"CapsLock";
+        SDLKey_SDLK_SCROLLOCK = c"ScrlLock";
     );
     if cfg!(feature = "gcw0") {
         set_out!(
-            SDLKey_SDLK_LSHIFT = "X";
-            SDLKey_SDLK_LCTRL = "A";
-            SDLKey_SDLK_LALT = "B";
+            SDLKey_SDLK_LSHIFT = c"X";
+            SDLKey_SDLK_LCTRL = c"A";
+            SDLKey_SDLK_LALT = c"B";
         );
     }
 
     if cfg!(not(feature = "gcw0")) {
         set_out!(
-            SDLKey_SDLK_LSHIFT = "LShift";
-            SDLKey_SDLK_LCTRL = "LCtrl";
-            SDLKey_SDLK_LALT = "LAlt";
+            SDLKey_SDLK_LSHIFT = c"LShift";
+            SDLKey_SDLK_LCTRL = c"LCtrl";
+            SDLKey_SDLK_LALT = c"LAlt";
         );
     }
 
     set_out!(
-        SDLKey_SDLK_RSHIFT = "RShift";
-        SDLKey_SDLK_RCTRL = "RCtrl";
-        SDLKey_SDLK_RALT = "RAlt";
-        SDLKey_SDLK_RMETA = "RMeta";
-        SDLKey_SDLK_LMETA = "LMeta";
-        SDLKey_SDLK_LSUPER = "LSuper";
-        SDLKey_SDLK_RSUPER = "RSuper";
-        SDLKey_SDLK_MODE = "Mode";
-        SDLKey_SDLK_COMPOSE = "Compose";
+        SDLKey_SDLK_RSHIFT = c"RShift";
+        SDLKey_SDLK_RCTRL = c"RCtrl";
+        SDLKey_SDLK_RALT = c"RAlt";
+        SDLKey_SDLK_RMETA = c"RMeta";
+        SDLKey_SDLK_LMETA = c"LMeta";
+        SDLKey_SDLK_LSUPER = c"LSuper";
+        SDLKey_SDLK_RSUPER = c"RSuper";
+        SDLKey_SDLK_MODE = c"Mode";
+        SDLKey_SDLK_COMPOSE = c"Compose";
     );
 
     /* Miscellaneous function keys */
     set_out!(
-        SDLKey_SDLK_HELP = "Help";
-        SDLKey_SDLK_PRINT = "Print";
-        SDLKey_SDLK_SYSREQ = "SysReq";
-        SDLKey_SDLK_BREAK = "Break";
-        SDLKey_SDLK_MENU = "Menu";
-        SDLKey_SDLK_POWER = "Power";
-        SDLKey_SDLK_EURO = "Euro";
-        SDLKey_SDLK_UNDO = "Undo";
+        SDLKey_SDLK_HELP = c"Help";
+        SDLKey_SDLK_PRINT = c"Print";
+        SDLKey_SDLK_SYSREQ = c"SysReq";
+        SDLKey_SDLK_BREAK = c"Break";
+        SDLKey_SDLK_MENU = c"Menu";
+        SDLKey_SDLK_POWER = c"Power";
+        SDLKey_SDLK_EURO = c"Euro";
+        SDLKey_SDLK_UNDO = c"Undo";
     );
 
     /* Mouse und Joy buttons */
     set_out!(
-        ps::MouseButton1 = "Mouse1";
-        ps::MouseButton2 = "Mouse2";
-        ps::MouseButton3 = "Mouse3";
-        ps::MouseWheelup = "WheelUp";
-        ps::MouseWheeldown = "WheelDown";
-        ps::JoyUp = "JoyUp";
-        ps::JoyDown = "JoyDown";
-        ps::JoyLeft = "JoyLeft";
-        ps::JoyRight = "JoyRight";
-        ps::JoyButton1 = "Joy-A";
-        ps::JoyButton2 = "Joy-B";
-        ps::JoyButton3 = "Joy-X";
-        ps::JoyButton4 = "Joy-Y";
+        ps::MouseButton1 = c"Mouse1";
+        ps::MouseButton2 = c"Mouse2";
+        ps::MouseButton3 = c"Mouse3";
+        ps::MouseWheelup = c"WheelUp";
+        ps::MouseWheeldown = c"WheelDown";
+        ps::JoyUp = c"JoyUp";
+        ps::JoyDown = c"JoyDown";
+        ps::JoyLeft = c"JoyLeft";
+        ps::JoyRight = c"JoyRight";
+        ps::JoyButton1 = c"Joy-A";
+        ps::JoyButton2 = c"Joy-B";
+        ps::JoyButton3 = c"Joy-X";
+        ps::JoyButton4 = c"Joy-Y";
     );
 
     out

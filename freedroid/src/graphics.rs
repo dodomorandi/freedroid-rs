@@ -20,7 +20,6 @@ use crate::{
 
 use arrayvec::ArrayString;
 use bitflags::bitflags;
-use cstr::cstr;
 use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
 use sdl::{
@@ -364,7 +363,7 @@ impl crate::Data<'_> {
         drop(rw_ops);
         self.graphics.number_of_screenshot = self.graphics.number_of_screenshot.wrapping_add(1);
         self.display_banner(
-            Some(cstr!("Screenshot")),
+            Some(c"Screenshot"),
             None,
             DisplayBannerFlags::NO_SDL_UPDATE | DisplayBannerFlags::FORCE_UPDATE,
         );
@@ -826,9 +825,7 @@ impl crate::Data<'_> {
             } = self;
 
             /* if there's a window-manager */
-            sdl.video
-                .window_manager()
-                .set_caption(cstr!("Freedroid"), cstr!(""));
+            sdl.video.window_manager().set_caption(c"Freedroid", c"");
             let fpath = Self::find_file_static(
                 global,
                 misc,

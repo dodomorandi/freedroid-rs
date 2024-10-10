@@ -9,7 +9,6 @@ use std::{
     ptr::NonNull,
 };
 
-use cstr::cstr;
 use log::error;
 use sdl_sys::{IMG_Load_RW, IMG_isJPG, SDL_FreeRW, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops};
 
@@ -286,18 +285,18 @@ impl Mode {
         use ReadWriteMode::{Append, AppendRead, Read, ReadWrite, Truncate, Write};
 
         match (self.rw_mode, self.binary) {
-            (Read, false) => cstr!("r"),
-            (Read, true) => cstr!("rb"),
-            (Write, false) => cstr!("w"),
-            (Write, true) => cstr!("wb"),
-            (ReadWrite, false) => cstr!("r+"),
-            (ReadWrite, true) => cstr!("r+b"),
-            (Append, false) => cstr!("a"),
-            (Append, true) => cstr!("ab"),
-            (AppendRead, false) => cstr!("a+"),
-            (AppendRead, true) => cstr!("a+b"),
-            (Truncate, false) => cstr!("w+"),
-            (Truncate, true) => cstr!("w+b"),
+            (Read, false) => c"r",
+            (Read, true) => c"rb",
+            (Write, false) => c"w",
+            (Write, true) => c"wb",
+            (ReadWrite, false) => c"r+",
+            (ReadWrite, true) => c"r+b",
+            (Append, false) => c"a",
+            (Append, true) => c"ab",
+            (AppendRead, false) => c"a+",
+            (AppendRead, true) => c"a+b",
+            (Truncate, false) => c"w+",
+            (Truncate, true) => c"w+b",
         }
     }
 }

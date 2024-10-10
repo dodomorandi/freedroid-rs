@@ -6,7 +6,6 @@ use crate::{
     structs::Point,
 };
 
-use cstr::cstr;
 use rand::{
     seq::{IteratorRandom, SliceRandom},
     thread_rng,
@@ -1920,10 +1919,10 @@ impl crate::Data<'_> {
             self.takeover_game_lost_sound();
             #[allow(clippy::cast_precision_loss)]
             if self.vars.me.ty == Droid::Droid001 {
-                message = cstr!("Burnt Out");
+                message = c"Burnt Out";
                 self.vars.me.energy = 0.;
             } else {
-                message = cstr!("Rejected");
+                message = c"Rejected";
                 self.vars.me.ty = Droid::Droid001;
                 self.vars.me.energy = self.takeover.reject_energy;
             }
@@ -1932,7 +1931,7 @@ impl crate::Data<'_> {
             /* LeadColor == self.takeover.opponent_color */
 
             self.takeover_game_deadlock_sound();
-            message = cstr!("Deadlock");
+            message = c"Deadlock";
         }
 
         self.display_banner(Some(message), None, DisplayBannerFlags::empty());
@@ -1988,10 +1987,10 @@ impl crate::Data<'_> {
 
         let message = if self.takeover.leader_color == self.takeover.your_color {
             /* won the proper way */
-            cstr!("Complete")
+            c"Complete"
         } else {
             /* only won because of InvincibleMode */
-            cstr!("You cheat")
+            c"You cheat"
         };
 
         *finish_takeover = true;
