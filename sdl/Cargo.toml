@@ -3,6 +3,7 @@ name = "sdl"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
+rust-version.workspace = true
 build = "build/main.rs"
 
 [dependencies]
