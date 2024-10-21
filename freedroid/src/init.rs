@@ -503,26 +503,22 @@ impl crate::Data<'_> {
                         .map_or(0, |all_themes| all_themes.len.get());
                 }
 
-                match &mut self.graphics.theme_list {
-                    Some(all_themes) => {
-                        all_themes.names[usize::from(all_themes.len.get())] =
-                            CString::new(theme_name).unwrap();
+                if let Some(all_themes) = &mut self.graphics.theme_list {
+                    all_themes.names[usize::from(all_themes.len.get())] =
+                        CString::new(theme_name).unwrap();
 
-                        all_themes.len = all_themes
-                            .len
-                            .checked_add(1)
-                            .expect("reached maximum number of possible themes");
-                    }
-
-                    None => {
-                        let mut theme_names = array::from_fn(|_| CString::default());
-                        theme_names[0] = CString::new(theme_name).unwrap();
-                        self.graphics.theme_list = Some(ThemeList {
-                            len: NonZeroU8::new(1).unwrap(),
-                            current: 0,
-                            names: theme_names,
-                        });
-                    }
+                    all_themes.len = all_themes
+                        .len
+                        .checked_add(1)
+                        .expect("reached maximum number of possible themes");
+                } else {
+                    let mut theme_names = array::from_fn(|_| CString::default());
+                    theme_names[0] = CString::new(theme_name).unwrap();
+                    self.graphics.theme_list = Some(ThemeList {
+                        len: NonZeroU8::new(1).unwrap(),
+                        current: 0,
+                        names: theme_names,
+                    });
                 }
             }
             Err(err) => {
