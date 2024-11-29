@@ -43,7 +43,7 @@ impl<'a, 'sdl, const FREEABLE: bool> Deref for Guard<'a, 'sdl, FREEABLE> {
     }
 }
 
-impl<'a, const FREEABLE: bool> DerefMut for Guard<'a, '_, FREEABLE> {
+impl<const FREEABLE: bool> DerefMut for Guard<'_, '_, FREEABLE> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
@@ -116,7 +116,7 @@ impl<'a, 'sdl, const FREEABLE: bool> Deref for MaybeLockedSurface<'a, 'sdl, FREE
     }
 }
 
-impl<'a, 'sdl, const FREEABLE: bool> DerefMut for MaybeLockedSurface<'a, 'sdl, FREEABLE> {
+impl<const FREEABLE: bool> DerefMut for MaybeLockedSurface<'_, '_, FREEABLE> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.as_mut()
     }

@@ -47,7 +47,7 @@ pub struct Vars<'sdl> {
 #[repr(transparent)]
 pub struct BlastMap<'sdl>([BlastSpec<'sdl>; ALLBLASTTYPES]);
 
-impl<'sdl> Default for BlastMap<'sdl> {
+impl Default for BlastMap<'_> {
     fn default() -> Self {
         Self(array::from_fn(|_| BlastSpec::default_const()))
     }
@@ -73,7 +73,7 @@ impl<'sdl> Deref for BlastMap<'sdl> {
     }
 }
 
-impl<'sdl> DerefMut for BlastMap<'sdl> {
+impl DerefMut for BlastMap<'_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
@@ -87,7 +87,7 @@ impl<'sdl> Index<Explosion> for BlastMap<'sdl> {
     }
 }
 
-impl<'sdl> IndexMut<Explosion> for BlastMap<'sdl> {
+impl IndexMut<Explosion> for BlastMap<'_> {
     fn index_mut(&mut self, index: Explosion) -> &mut Self::Output {
         &mut self.0[usize::from(index.to_u8())]
     }

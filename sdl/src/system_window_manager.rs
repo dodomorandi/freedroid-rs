@@ -192,7 +192,7 @@ mod x11 {
         Generic(&'a XGenericEvent),
     }
 
-    impl<'a> PartialEq for XEventVariantRef<'a> {
+    impl PartialEq for XEventVariantRef<'_> {
         fn eq(&self, other: &Self) -> bool {
             use XEventVariantRef::{
                 Button, Circulate, CirculateRequest, Client, Colormap, Configure, ConfigureRequest,

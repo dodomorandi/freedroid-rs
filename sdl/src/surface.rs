@@ -470,7 +470,7 @@ impl<'a, 'sdl, const FREEABLE: bool> Usable<'a, 'sdl, FREEABLE> {
 #[derive(Debug)]
 pub struct UsableSurfaceRaw<'a, 'sdl, const FREEABLE: bool>(&'a Generic<'sdl, FREEABLE>);
 
-impl<'a, 'sdl, const FREEABLE: bool> UsableSurfaceRaw<'a, 'sdl, FREEABLE> {
+impl<const FREEABLE: bool> UsableSurfaceRaw<'_, '_, FREEABLE> {
     #[must_use]
     pub fn flags(&self) -> u32 {
         unsafe { self.0.pointer.as_ref().flags }

@@ -273,7 +273,7 @@ impl crate::Data<'_> {
     }
 }
 
-impl<'sdl> crate::Data<'sdl> {
+impl crate::Data<'_> {
     pub fn fire_bullet_sound(&self, bullet_type: BulletKind) {
         use BulletKind as K;
 
