@@ -22,6 +22,10 @@ pub struct Global<'sdl> {
 
 impl fmt::Debug for Global<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        #[expect(
+            clippy::ref_option,
+            reason = "this is an helper function to avoid boilerplate"
+        )]
         fn debug_opt_fontcell(fontcell: &Option<Rc<FontCell<'_>>>) -> &'static str {
             match fontcell {
                 Some(_) => "Some(Rc(FontCell))",
