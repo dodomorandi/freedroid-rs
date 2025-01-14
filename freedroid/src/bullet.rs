@@ -319,7 +319,7 @@ impl crate::Data<'_> {
         if self.vars.me.status != Status::Out
             && cur_blast
                 .ty
-                .map_or(false, Explosion::is_from_influencer)
+                .is_some_and(Explosion::is_from_influencer)
                 .not()
             && dist < self.global.blast_radius + self.global.droid_radius
         {

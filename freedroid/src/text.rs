@@ -236,8 +236,8 @@ impl crate::Data<'_> {
             input[*curpos] = 0;
             *finished = true;
         } else if key < SDLKey_SDLK_DELETE.try_into().unwrap()
-            && (u8::try_from(key).map_or(false, |key| key.is_ascii_graphic())
-                || (u8::try_from(key).map_or(false, |key| key.is_ascii_whitespace())))
+            && (u8::try_from(key).is_ok_and(|key| key.is_ascii_graphic())
+                || u8::try_from(key).is_ok_and(|key| key.is_ascii_whitespace()))
             && *curpos < max_len
         {
             /* printable characters are entered in string */

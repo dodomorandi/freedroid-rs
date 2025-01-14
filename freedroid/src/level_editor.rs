@@ -209,7 +209,7 @@ impl crate::Data<'_> {
         #[allow(clippy::cast_possible_truncation)]
         if self.right_pressed_r()
             && u8::try_from(self.vars.me.pos.x.round() as i32)
-                .map_or(false, |x| x < self.main.cur_level().xlen - 1)
+                .is_ok_and(|x| x < self.main.cur_level().xlen - 1)
         {
             self.vars.me.pos.x += 1.;
         }
@@ -221,7 +221,7 @@ impl crate::Data<'_> {
         #[allow(clippy::cast_possible_truncation)]
         if self.down_pressed_r()
             && u8::try_from(self.vars.me.pos.y.round() as i32)
-                .map_or(false, |y| y < self.main.cur_level().ylen - 1)
+                .is_ok_and(|y| y < self.main.cur_level().ylen - 1)
         {
             self.vars.me.pos.y += 1.;
         }

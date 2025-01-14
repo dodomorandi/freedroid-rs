@@ -477,17 +477,13 @@ impl crate::Data<'_> {
                 info!("The theme file is readable");
                 // last check: is this theme already in the list??
 
-                let theme_exists = self
-                    .graphics
-                    .theme_list
-                    .as_ref()
-                    .map_or(false, |all_themes| {
-                        all_themes
-                            .names
-                            .iter()
-                            .filter_map(|s| s.to_str().ok())
-                            .any(|theme| theme == theme_name)
-                    });
+                let theme_exists = self.graphics.theme_list.as_ref().is_some_and(|all_themes| {
+                    all_themes
+                        .names
+                        .iter()
+                        .filter_map(|s| s.to_str().ok())
+                        .any(|theme| theme == theme_name)
+                });
 
                 if theme_exists {
                     info!("Theme '{}' is already listed", theme_name);
