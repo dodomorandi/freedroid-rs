@@ -975,10 +975,9 @@ mod screen_updater {
     ) -> bool {
         data.graphics.banner_is_destroyed
             || flags.contains(DisplayBannerFlags::FORCE_UPDATE)
-            || PREVIOUS_LEFT_BOX
-                .with(|previous_left_box| &left_box != previous_left_box.borrow().as_ref())
+            || PREVIOUS_LEFT_BOX.with(|previous_left_box| left_box != *previous_left_box.borrow())
             || PREVIOUS_RIGHT_BOX
-                .with(|previous_right_box| &right_box != previous_right_box.borrow().as_ref())
+                .with(|previous_right_box| right_box != *previous_right_box.borrow())
     }
 
     pub fn update_screen(
@@ -1002,10 +1001,10 @@ mod screen_updater {
 
         // Now the text should be ready and its
         // time to display it...
-        let previous_left_check = PREVIOUS_LEFT_BOX
-            .with(|previous_left_box| &left_box != previous_left_box.borrow().as_ref());
-        let previous_right_check = PREVIOUS_RIGHT_BOX
-            .with(|previous_right_box| &right_box != previous_right_box.borrow().as_ref());
+        let previous_left_check =
+            PREVIOUS_LEFT_BOX.with(|previous_left_box| left_box != *previous_left_box.borrow());
+        let previous_right_check =
+            PREVIOUS_RIGHT_BOX.with(|previous_right_box| right_box != *previous_right_box.borrow());
         if previous_left_check
             || previous_right_check
             || flags.contains(DisplayBannerFlags::FORCE_UPDATE)
