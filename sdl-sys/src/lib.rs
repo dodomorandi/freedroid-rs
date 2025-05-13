@@ -1,10 +1,8 @@
-#![allow(non_upper_case_globals)]
-#![allow(non_camel_case_types)]
-#![allow(non_snake_case)]
-#![allow(deref_nullptr)]
-#![allow(clippy::redundant_static_lifetimes)]
-#![allow(clippy::too_many_arguments)]
-#![allow(clippy::useless_transmute)]
+#![expect(non_upper_case_globals)]
+#![expect(non_camel_case_types)]
+#![expect(non_snake_case)]
+#![expect(clippy::too_many_arguments)]
+#![expect(clippy::useless_transmute)]
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
