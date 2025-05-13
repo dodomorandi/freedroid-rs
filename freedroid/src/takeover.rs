@@ -919,7 +919,7 @@ impl crate::Data<'_> {
             }
 
             Action::Nothing => {}
-        };
+        }
 
         self.takeover.capsule_cur_row[opponent_color] = row;
     }

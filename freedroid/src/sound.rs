@@ -128,7 +128,7 @@ impl crate::Data<'_> {
                 "Successfully playing file {}.",
                 SOUND_SAMPLE_FILENAMES[tune.to_usize()]
             );
-        };
+        }
     }
 
     pub fn takeover_set_capsule_sound(&self) {

@@ -170,7 +170,7 @@ where
             let mut event = MaybeUninit::<sdl_sys::SDL_Event>::uninit();
             if sdl_sys::SDL_PollEvent(event.as_mut_ptr()) == 0 {
                 return None;
-            };
+            }
 
             event.assume_init()
         };

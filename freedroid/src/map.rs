@@ -479,7 +479,7 @@ pub fn level_to_struct(data: &[u8]) -> Option<Level> {
                 Ok((rest, (_, connection))) => {
                     if waypoint.connections.try_push(connection).is_err() {
                         break;
-                    };
+                    }
                     pos = rest.trim_start();
                 }
                 Err(()) => break,

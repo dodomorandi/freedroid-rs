@@ -870,7 +870,7 @@ impl crate::Data<'_> {
 
         if self.sdl.video.set_gamma(1., 1., 1.).not() {
             error!("Unable to set SDL gamma");
-        };
+        }
         self.global.game_config.current_gamma_correction = 1.;
     }
 
