@@ -24,7 +24,7 @@ const WIDTH: usize = 32 / 8;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Data<const HEIGHT: usize> {
-    data: [[u8; WIDTH]; HEIGHT],
+    values: [[u8; WIDTH]; HEIGHT],
     mask: [[u8; WIDTH]; HEIGHT],
     upper_left_corner: [c_int; 2],
 }
@@ -32,39 +32,39 @@ pub struct Data<const HEIGHT: usize> {
 impl<const HEIGHT: usize> Data<HEIGHT> {
     #[must_use]
     pub fn from_draw(draw: &[[u8; WIDTH * 8]; HEIGHT]) -> Self {
-        let mut data = [[0; WIDTH]; HEIGHT];
+        let mut values = [[0; WIDTH]; HEIGHT];
         let mut mask = [[0; WIDTH]; HEIGHT];
 
         draw.iter()
-            .zip(data.iter_mut())
+            .zip(values.iter_mut())
             .zip(mask.iter_mut())
-            .flat_map(|((draw_line, data_line), mask_line)| {
+            .flat_map(|((draw_line, values_line), mask_line)| {
                 draw_line
                     .chunks_exact(8)
-                    .zip(data_line.iter_mut())
+                    .zip(values_line.iter_mut())
                     .zip(mask_line.iter_mut())
             })
-            .for_each(|((draw_chunk, data_byte), mask_byte)| {
-                let [data, mask] =
+            .for_each(|((draw_chunk, value_byte), mask_byte)| {
+                let [value, mask] =
                     draw_chunk
                         .iter()
                         .copied()
-                        .fold([0, 0], |[acc_data, acc_mask], draw| {
-                            let [data, mask] = match draw {
+                        .fold([0, 0], |[acc_value, acc_mask], draw| {
+                            let [value, mask] = match draw {
                                 b' ' => [0, 0],
                                 b'.' => [0, 1],
                                 b'X' => [1, 1],
                                 c => panic!("invalid drawing character {}", c as char),
                             };
 
-                            [(acc_data << 1) | data, (acc_mask << 1) | mask]
+                            [(acc_value << 1) | value, (acc_mask << 1) | mask]
                         });
-                *data_byte = data;
+                *value_byte = value;
                 *mask_byte = mask;
             });
 
         Self {
-            data,
+            values,
             mask,
             upper_left_corner: [0, 0],
         }
@@ -100,7 +100,7 @@ impl<'sdl> Unassociated<'sdl> {
         //   pointed data is never changed.
         let pointer = unsafe {
             SDL_CreateCursor(
-                data.data[0].as_ptr().cast_mut(),
+                data.values[0].as_ptr().cast_mut(),
                 data.mask[0].as_ptr().cast_mut(),
                 (WIDTH * 8).try_into().unwrap(),
                 height,
