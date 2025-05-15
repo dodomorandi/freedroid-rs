@@ -1,5 +1,5 @@
 [workspace]
-resolver = "2"
+resolver = "3"
 members = [
     "freedroid",
     "sdl-sys",
@@ -8,9 +8,9 @@ members = [
 
 [workspace.package]
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 authors = ["Edoardo Morandi <morandidodo@gmail.com>"]
-rust-version = "1.77.0"
+rust-version = "1.85.0"
 
 [workspace.dependencies]
 bitflags = "2.3.1"

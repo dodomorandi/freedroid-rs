@@ -5,6 +5,7 @@
 #![expect(clippy::useless_transmute)]
 #![expect(clippy::missing_safety_doc)]
 #![expect(clippy::ptr_offset_with_cast)]
+#![expect(unsafe_op_in_unsafe_fn)]
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 

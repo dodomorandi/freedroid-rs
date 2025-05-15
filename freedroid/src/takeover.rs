@@ -975,12 +975,12 @@ impl crate::Data<'_> {
 
         self.takeover.flicker_color = !self.takeover.flicker_color;
 
-        let Self {
+        let &mut Self {
             takeover:
                 Takeover {
-                    activation_map,
-                    playground,
-                    display_column,
+                    ref mut activation_map,
+                    ref mut playground,
+                    ref mut display_column,
                     ref flicker_color,
                     ..
                 },

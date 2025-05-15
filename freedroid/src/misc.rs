@@ -467,9 +467,9 @@ impl crate::Data<'_> {
             return;
         }
 
-        let Misc {
-            now_sdl_ticks,
-            one_frame_delay,
+        let &mut Misc {
+            ref mut now_sdl_ticks,
+            ref mut one_frame_delay,
             ref one_frame_sdl_ticks,
             ..
         } = &mut self.misc;
