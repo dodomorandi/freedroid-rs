@@ -20,12 +20,12 @@ impl Rect {
     #[inline]
     #[must_use]
     pub fn as_ptr(&self) -> *const SDL_Rect {
-        &self.0
+        &raw const self.0
     }
 
     #[inline]
     pub fn as_mut_ptr(&mut self) -> *mut SDL_Rect {
-        &mut self.0
+        &raw mut self.0
     }
 
     #[inline]

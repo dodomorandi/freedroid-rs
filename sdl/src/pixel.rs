@@ -404,7 +404,9 @@ mod tests {
             colorkey: 0,
             alpha: 0,
         };
-        let pixel = raw_get_pixel(PixelsSlicePerBpp::Three(&data), 0, || &pixel_format);
+        let pixel = raw_get_pixel(PixelsSlicePerBpp::Three(&data), 0, || {
+            &raw const pixel_format
+        });
         assert_eq!(pixel, VALUE.0);
     }
 }
