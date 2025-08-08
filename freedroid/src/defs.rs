@@ -200,25 +200,25 @@ impl crate::Data<'_> {
         Self::cmd_is_active_r_static(sdl, input, vars, quit, Cmds::Fire)
     }
 
-    #[cfg(not(target_os = "android"))]
+    #[cfg(any(feature = "arcade-input", not(target_os = "android")))]
     #[inline]
     pub fn up_pressed_r(&mut self) -> bool {
         self.cmd_is_active_r(Cmds::Up)
     }
 
-    #[cfg(not(target_os = "android"))]
+    #[cfg(any(feature = "arcade-input", not(target_os = "android")))]
     #[inline]
     pub fn down_pressed_r(&mut self) -> bool {
         self.cmd_is_active_r(Cmds::Down)
     }
 
-    #[cfg(not(target_os = "android"))]
+    #[cfg(any(feature = "arcade-input", not(target_os = "android")))]
     #[inline]
     pub fn left_pressed_r(&mut self) -> bool {
         self.cmd_is_active_r(Cmds::Left)
     }
 
-    #[cfg(not(target_os = "android"))]
+    #[cfg(any(feature = "arcade-input", not(target_os = "android")))]
     #[inline]
     pub fn right_pressed_r(&mut self) -> bool {
         self.cmd_is_active_r(Cmds::Right)
@@ -252,7 +252,7 @@ impl crate::Data<'_> {
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_y_pressed(&mut self) -> bool {
-        self.key_is_pressed(u32_to_u16(SDLKey_SDLK_SPACE))
+        self.key_is_pressed(u32_to_u16(sdl_sys::SDLKey_SDLK_SPACE))
     }
 
     #[cfg(feature = "gcw0")]
@@ -276,7 +276,7 @@ impl crate::Data<'_> {
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_select_pressed(&mut self) -> bool {
-        self.key_is_pressed(u32_to_u16(SDLKey_SDLK_ESCAPE))
+        self.key_is_pressed(u32_to_u16(sdl_sys::SDLKey_SDLK_ESCAPE))
     }
 
     #[cfg(feature = "gcw0")]
@@ -313,7 +313,7 @@ impl crate::Data<'_> {
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_y_pressed_r(&mut self) -> bool {
-        self.key_is_pressed_r(u32_to_u16(SDLKey_SDLK_SPACE))
+        self.key_is_pressed_r(u32_to_u16(sdl_sys::SDLKey_SDLK_SPACE))
     }
 
     #[cfg(feature = "gcw0")]
@@ -337,7 +337,7 @@ impl crate::Data<'_> {
     #[cfg(feature = "gcw0")]
     #[inline]
     pub fn gcw0_select_pressed_r(&mut self) -> bool {
-        self.key_is_pressed(u32_to_u16(SDLKey_SDLK_ESCAPE))
+        self.key_is_pressed(u32_to_u16(sdl_sys::SDLKey_SDLK_ESCAPE))
     }
 
     #[cfg(feature = "gcw0")]

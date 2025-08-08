@@ -34,6 +34,7 @@ pub struct Menu<'sdl> {
     font_height: u16,
     background: Option<Surface<'sdl>>,
     quit: bool,
+    #[cfg(not(target_os = "android"))]
     pub quit_level_editor: bool,
     last_movekey_time: u32,
     action_directions: MenuActionDirections,
