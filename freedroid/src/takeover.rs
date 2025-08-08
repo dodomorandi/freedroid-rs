@@ -13,8 +13,8 @@ use rand::{
 use sdl::{Rect, Surface, convert::u8_to_usize};
 use sdl_sys::SDL_Color;
 use std::{
-    convert::Infallible,
     ffi::CStr,
+    fmt::{self, Display},
     ops::{Deref, DerefMut, Not},
 };
 
@@ -562,14 +562,14 @@ macro_rules! impl_try_from_to_color {
     ($($ty:ty),+) => {
         $(
             impl TryFrom<$ty> for Color {
-                type Error = Infallible;
+                type Error = InvalidColor;
 
                 fn try_from(value: $ty) -> Result<Self, Self::Error> {
                     Ok(match value {
                         0 => Color::Yellow,
                         1 => Color::Violet,
                         2 => Color::Draw,
-                        _ => panic!("invalid raw color value"),
+                        _ => return Err(InvalidColor),
                     })
                 }
             }
@@ -577,6 +577,15 @@ macro_rules! impl_try_from_to_color {
     }
 }
 impl_try_from_to_color!(u8, i8, u16, i16, u32, i32, u64, i64, usize, isize);
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct InvalidColor;
+
+impl Display for InvalidColor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("invalid raw color value")
+    }
+}
 
 impl From<Color> for usize {
     fn from(color: Color) -> Self {
@@ -600,7 +609,7 @@ enum ToElement {
 }
 
 impl TryFrom<u8> for ToElement {
-    type Error = Infallible;
+    type Error = InvalidToElement;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         use ToElement as T;
@@ -611,8 +620,17 @@ impl TryFrom<u8> for ToElement {
             3 => T::ColorSwapper,
             4 => T::Branch,
             5 => T::Gate,
-            _ => panic!("invalid raw ToElement value"),
+            _ => return Err(InvalidToElement),
         })
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+struct InvalidToElement;
+
+impl Display for InvalidToElement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("invalid raw ToElement value")
     }
 }
 
