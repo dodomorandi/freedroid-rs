@@ -68,7 +68,7 @@ impl<'sdl, const FREEABLE: bool> Generic<'sdl, FREEABLE> {
     }
 
     #[must_use]
-    pub fn format(&self) -> pixel::FormatRef {
+    pub fn format(&self) -> pixel::FormatRef<'_> {
         // SAFETY: format becomes null once SDL_FreeSurface is called, which is performed only on
         // drop.
         unsafe {
@@ -429,7 +429,7 @@ pub struct Usable<'a, 'sdl, const FREEABLE: bool>(&'a mut Generic<'sdl, FREEABLE
 
 impl<'a, 'sdl, const FREEABLE: bool> Usable<'a, 'sdl, FREEABLE> {
     #[must_use]
-    pub fn format(&self) -> pixel::FormatRef {
+    pub fn format(&self) -> pixel::FormatRef<'_> {
         self.0.format()
     }
 

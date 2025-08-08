@@ -14,7 +14,7 @@ pub struct Mixer;
 
 impl Mixer {
     #[must_use]
-    pub fn open_audio(&self) -> OpenAudioBuilder {
+    pub fn open_audio(&self) -> OpenAudioBuilder<'_> {
         OpenAudioBuilder::default()
     }
 
@@ -37,7 +37,7 @@ impl Mixer {
     }
 
     #[must_use]
-    pub fn load_wav_from_rwops(&self, rwops: RwOps) -> Option<Chunk> {
+    pub fn load_wav_from_rwops(&self, rwops: RwOps) -> Option<Chunk<'_>> {
         let ret = unsafe { Mix_LoadWAV_RW(rwops.into_inner().as_ptr(), 1) };
         NonNull::new(ret).map(|inner| Chunk {
             inner,

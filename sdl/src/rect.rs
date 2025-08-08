@@ -30,7 +30,7 @@ impl Rect {
 
     #[inline]
     #[must_use]
-    pub fn as_rect_ref(&self) -> Ref {
+    pub fn as_rect_ref(&self) -> Ref<'_> {
         Ref(&self.0)
     }
 

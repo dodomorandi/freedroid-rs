@@ -208,9 +208,9 @@ impl<'a, 'b: 'a, 'sdl, const FREEABLE: bool> Pixels<'a, 'b, 'sdl, FREEABLE> {
 }
 
 macro_rules! impl_pixel_raw_slice {
-    (@inner $name:ident, $ty:ident, $from_raw_parts:ident) => {
+    (@inner $name:ident, $ty:ident $(< $($lt:lifetime),+ >)?, $from_raw_parts:ident) => {
         impl<'a, 'b: 'a, 'sdl, const FREEABLE: bool> Pixels<'a, 'b, 'sdl, FREEABLE> {
-            fn $name(&self) -> $ty {
+            fn $name(&self) -> $ty $(< $($lt),+ >)? {
                 use $ty::*;
 
                 let buffer_size = self.surface.buffer_size();
@@ -235,17 +235,17 @@ macro_rules! impl_pixel_raw_slice {
         }
     };
 
-    ($name:ident, $ty:ident, mut) => {
-        impl_pixel_raw_slice!(@inner $name, $ty, from_raw_parts_mut);
+    ($name:ident, $ty:ident $(< $($lt:lifetime),+ >)?, mut) => {
+        impl_pixel_raw_slice!(@inner $name, $ty $(< $($lt),+ >)?, from_raw_parts_mut);
     };
 
-    ($name:ident, $ty:ident) => {
-        impl_pixel_raw_slice!(@inner $name, $ty, from_raw_parts);
+    ($name:ident, $ty:ident $(< $($lt:lifetime),+ >)?) => {
+        impl_pixel_raw_slice!(@inner $name, $ty $(< $($lt),+ >)?, from_raw_parts);
     };
 }
 
-impl_pixel_raw_slice!(raw_slice, PixelsSlicePerBpp);
-impl_pixel_raw_slice!(raw_slice_mut, PixelsSliceMutPerBpp, mut);
+impl_pixel_raw_slice!(raw_slice, PixelsSlicePerBpp<'_>);
+impl_pixel_raw_slice!(raw_slice_mut, PixelsSliceMutPerBpp<'_>, mut);
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum PixelsSlicePerBpp<'a> {

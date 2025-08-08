@@ -80,7 +80,7 @@ pub fn read_integral_from_string<'a, T>(
 
     let Ok((_, (_, out))) = space0::<_, ()>.and(f).parse(data).finish() else {
         panic!(
-            concat!("could not read {} {} of label {}"),
+            "could not read {} {} of label {}",
             type_name::<T>(),
             <&BStr>::from(data),
             <&BStr>::from(label),

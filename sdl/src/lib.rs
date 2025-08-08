@@ -161,7 +161,7 @@ where
         unsafe { sdl_sys::SDL_GetTicks() }
     }
 
-    pub fn cursor(&self) -> cursor::Unassociated {
+    pub fn cursor(&self) -> cursor::Unassociated<'_> {
         cursor::Unassociated::new()
     }
 

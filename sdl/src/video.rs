@@ -37,7 +37,7 @@ impl Video {
         height: c_int,
         bits_per_pixel: Option<NonZeroU8>,
         flags: VideoModeFlags,
-    ) -> Option<FrameBuffer> {
+    ) -> Option<FrameBuffer<'_>> {
         assert!(
             self.refs_to_frame_buffer.get() == 0,
             "Video::set_video_mode is called when references to video mode are alive"
