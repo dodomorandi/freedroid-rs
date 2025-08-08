@@ -1,24 +1,24 @@
 mod cheats;
 
 use crate::{
+    Sdl,
     array_c_string::ArrayCString,
     b_font::{char_width, font_height},
     defs::{
-        AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags, MenuAction, Status,
-        Themed, CREDITS_PIC_FILE, GRAPHICS_DIR_C,
+        AssembleCombatWindowFlags, CREDITS_PIC_FILE, Cmds, Criticality, DisplayBannerFlags,
+        GRAPHICS_DIR_C, MenuAction, Status, Themed,
     },
     sound::Sound,
-    Sdl,
 };
 #[cfg(not(target_os = "android"))]
 use crate::{
     b_font::print_string_font,
     cur_level,
-    defs::{MapTile, BYCOLOR, MAX_MAP_COLS, MAX_MAP_ROWS},
+    defs::{BYCOLOR, MAX_MAP_COLS, MAX_MAP_ROWS, MapTile},
     input::{CMD_STRINGS, KEY_STRINGS},
 };
 
-use sdl::{convert::u32_to_u16, Surface};
+use sdl::{Surface, convert::u32_to_u16};
 use sdl_sys::{
     SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT,
     SDLKey_SDLK_RIGHT, SDLKey_SDLK_UP,
@@ -571,8 +571,8 @@ impl<'sdl> crate::Data<'sdl> {
 
         self.clear_graph_mem();
         self.sdl.cursor().show(); // reactivate mouse-cursor for game
-                                  // Since we've faded out the whole scren, it can't hurt
-                                  // to have the top status bar redrawn...
+        // Since we've faded out the whole scren, it can't hurt
+        // to have the top status bar redrawn...
 
         self.graphics.banner_is_destroyed = true;
         self.vars.me.status = Status::Mobile;
@@ -1562,11 +1562,7 @@ impl<'sdl> crate::Data<'sdl> {
 }
 
 pub fn is_toggle_on(toggle: bool) -> &'static CStr {
-    if toggle.not() {
-        c"NO"
-    } else {
-        c"YES"
-    }
+    if toggle.not() { c"NO" } else { c"YES" }
 }
 
 #[must_use]

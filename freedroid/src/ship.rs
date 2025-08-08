@@ -2,19 +2,19 @@ use crate::{
     b_font::font_height,
     cur_level,
     defs::{
-        AlertLevel, AssembleCombatWindowFlags, DisplayBannerFlags, Droid, MenuAction, SoundType,
-        Status, DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, TEXT_STRETCH,
+        AlertLevel, AssembleCombatWindowFlags, DROID_ROTATION_TIME, DisplayBannerFlags, Droid,
+        MAXBLASTS, MAXBULLETS, MenuAction, SoundType, Status, TEXT_STRETCH,
     },
-    graphics::{scale_pic, Graphics},
+    graphics::{Graphics, scale_pic},
     map::get_map_brick,
     structs::{DruidSpec, Point, TextToBeDisplayed},
-    vars::{BRAIN_NAMES, CLASSES, CLASS_NAMES, DRIVE_NAMES, SENSOR_NAMES},
+    vars::{BRAIN_NAMES, CLASS_NAMES, CLASSES, DRIVE_NAMES, SENSOR_NAMES},
 };
 
 use arrayvec::ArrayString;
 use bitflags::bitflags;
 use log::{error, warn};
-use sdl::{rwops::RwOpsCapability, Rect, Rgba, Surface};
+use sdl::{Rect, Rgba, Surface, rwops::RwOpsCapability};
 use sdl_sys::SDL_Color;
 use std::ops::Not;
 

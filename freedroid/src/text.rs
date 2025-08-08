@@ -1,26 +1,27 @@
 use crate::{
-    b_font::{char_width, font_height, BFont},
+    FontCellOwner, Sdl,
+    b_font::{BFont, char_width, font_height},
     defs::{Cmds, PointerStates, SHOW_WAIT, TEXT_STRETCH},
     global::Global,
     graphics::Graphics,
     input::Input,
     structs::TextToBeDisplayed,
     vars::Vars,
-    FontCellOwner, Sdl,
 };
 
 use log::{error, info, trace};
 use rand::{seq::SliceRandom, thread_rng};
 use sdl::{
+    Event, Rect, Rgba, Surface,
     convert::i32_to_u8,
     event::{JoyButtonEventType, KeyboardEventType, MouseButtonEventType},
-    rect, Event, Rect, Rgba, Surface,
+    rect,
 };
 #[cfg(not(feature = "arcade-input"))]
 use sdl_sys::SDLKey_SDLK_DELETE;
 use sdl_sys::{
-    SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_RETURN, SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE,
-    SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
+    SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
+    SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_RETURN,
 };
 use std::{
     cell::Cell,
@@ -188,7 +189,7 @@ impl crate::Data<'_> {
             if self.key_is_pressed_r(SDLKey_SDLK_RETURN.try_into().unwrap()) {
                 // For GCW0, maybe we need a prompt to say [PRESS ENTER WHEN FINISHED], or any other key we may choose...
                 input[*curpos] = 0; // The last char is currently shown but, not entered into the string...
-                                    // 	  input[*curpos] = key; // Not sure which one would be expected by most users; the last blinking char is input or not?
+                // 	  input[*curpos] = key; // Not sure which one would be expected by most users; the last blinking char is input or not?
                 *finished = true;
             } else if self.up_pressed_r() {
                 /* Currently, the key will work ON RELEASE; we might change this to

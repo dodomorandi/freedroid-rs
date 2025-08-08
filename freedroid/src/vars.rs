@@ -1,5 +1,5 @@
 use crate::{
-    defs::{Droid, Explosion, Status, ALLBLASTTYPES, MAX_INFLU_POSITION_HISTORY},
+    defs::{ALLBLASTTYPES, Droid, Explosion, MAX_INFLU_POSITION_HISTORY, Status},
     structs::{BlastSpec, BulletSpec, DruidSpec, Finepoint, Gps, Influence, TextToBeDisplayed},
 };
 

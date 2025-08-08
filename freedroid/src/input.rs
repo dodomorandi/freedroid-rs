@@ -1,26 +1,26 @@
 #[cfg(target_os = "android")]
 use crate::graphics::Graphics;
 use crate::{
+    Sdl,
     defs::{Cmds, MenuAction, PointerStates},
     structs::Point,
     vars::Vars,
-    Sdl,
 };
 
 #[cfg(not(target_os = "android"))]
 use log::info;
 use sdl::{
+    Event, Joystick,
     convert::{i32_to_u8, u32_to_u16},
     event::{self, KeyboardEventType},
-    Event, Joystick,
+};
+use sdl_sys::{
+    SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
+    SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT, SDLKey_SDLK_RETURN, SDLKey_SDLK_RIGHT,
+    SDLKey_SDLK_SPACE, SDLKey_SDLK_UP, SDLMod,
 };
 #[cfg(feature = "gcw0")]
 use sdl_sys::{SDLKey_SDLK_BACKSPACE, SDLKey_SDLK_LALT, SDLKey_SDLK_LCTRL, SDLKey_SDLK_TAB};
-use sdl_sys::{
-    SDLKey_SDLK_DOWN, SDLKey_SDLK_ESCAPE, SDLKey_SDLK_LEFT, SDLKey_SDLK_RETURN, SDLKey_SDLK_RIGHT,
-    SDLKey_SDLK_SPACE, SDLKey_SDLK_UP, SDLMod, SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE,
-    SDL_BUTTON_RIGHT, SDL_BUTTON_WHEELDOWN, SDL_BUTTON_WHEELUP,
-};
 #[cfg(not(feature = "gcw0"))]
 use sdl_sys::{SDLKey_SDLK_F12, SDLKey_SDLK_PAUSE, SDLKey_SDLK_RSHIFT};
 #[cfg(not(target_os = "android"))]

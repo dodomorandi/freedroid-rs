@@ -1,16 +1,16 @@
 use crate::{
-    defs::{BulletKind, Criticality, SoundType, Themed, BYCOLOR, NUM_COLORS, SOUND_DIR_C},
+    Main, Sdl,
+    defs::{BYCOLOR, BulletKind, Criticality, NUM_COLORS, SOUND_DIR_C, SoundType, Themed},
     global::Global,
     map,
     misc::Misc,
-    Main, Sdl,
 };
 
 use log::{error, info, warn};
 use sdl::{
+    Mixer,
     mixer::{Chunk, Music, OpenAudio},
     rwops::RwOps,
-    Mixer,
 };
 use std::{array, ffi::CStr, ops::Not};
 

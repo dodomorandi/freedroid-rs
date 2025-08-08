@@ -1,4 +1,4 @@
-use crate::{input::Input, structs::Point, vars::Vars, Sdl};
+use crate::{Sdl, input::Input, structs::Point, vars::Vars};
 
 use bitflags::bitflags;
 use sdl::convert::{u32_to_isize, u32_to_u16};
@@ -528,7 +528,7 @@ pub const FD_DATADIR: &str = "."; // our local fallback
 
 // #ifndef LOCAL_DATADIR
 pub const LOCAL_DATADIR: &str = ".."; // local fallback
-                                      // #endif
+// #endif
 
 pub const GRAPHICS_DIR_C: &CStr = c"graphics/";
 pub const SOUND_DIR_C: &CStr = c"sound/";
@@ -650,15 +650,15 @@ pub const WAIT_LEVELEMPTY: f32 = 0.5; /* warte bevor Graufaerben (in seconds)*/
 pub const SLOWMO_FACTOR: f32 = 0.33; // slow-motion effect on last blast when level is going empty
 pub const WAIT_AFTER_KILLED: u32 = 2000; // time (in ms) to wait and still display pictures after the destruction of
 pub const SHOW_WAIT: u32 = 3500; // std amount of time to show something
-                                 // the players droid.  This is now measured in seconds and can be a float
+// the players droid.  This is now measured in seconds and can be a float
 pub const WAIT_TRANSFERMODE: f32 = 0.3; /* this is a "float" indicating the number of seconds the influence
-                                        stand still with space pressed, before switching into transfermode
-                                        This variable describes the amount in SECONDS */
+stand still with space pressed, before switching into transfermode
+This variable describes the amount in SECONDS */
 pub const WAIT_COLLISION: u8 = 1; // after a little collision with influ, enemys hold position for a while
-                                  // this variable describes the amount of time in SECONDS
+// this variable describes the amount of time in SECONDS
 pub const ENEMYMAXWAIT: u8 = 2; // after each robot has reached its current destination waypoint is waits a
-                                // while.  This variable describes the amount of time in SECONDS.  However,
-                                // the final wait time is a random number within [0,ENEMYMAXWAIT].
+// while.  This variable describes the amount of time in SECONDS.  However,
+// the final wait time is a random number within [0,ENEMYMAXWAIT].
 pub const FLASH_DURATION: f32 = 0.1; // in seconds
 
 /* direction definitions (fireing bullets and testing blockedness of positions) */
@@ -723,7 +723,7 @@ pub const MAXBULLETS: u8 = 100; /* maximum possible Bullets in the air */
 pub const MAXBLASTS: u8 = 100; /* max. possible Blasts visible */
 pub const AGGRESSIONMAX: u8 = 100;
 pub const ROBOT_MAX_WAIT_BETWEEN_SHOTS: f32 = 5.; // how long shoud each droid wait at most until
-                                                  // is considers fireing again?
+// is considers fireing again?
 
 /* Map-related defines:
     WARNING leave them here, they are required in struct.h

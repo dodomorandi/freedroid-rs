@@ -2,8 +2,8 @@
 use crate::menu::SHIP_EXT;
 use crate::{
     defs::{
-        self, Criticality, Direction, Droid, MapTile, Status, Themed, DIRECTIONS, MAP_DIR_C,
-        MAXWAYPOINTS, MAX_ALERTS_ON_LEVEL, MAX_LEVELS, MAX_REFRESHES_ON_LEVEL,
+        self, Criticality, DIRECTIONS, Direction, Droid, MAP_DIR_C, MAX_ALERTS_ON_LEVEL,
+        MAX_LEVELS, MAX_REFRESHES_ON_LEVEL, MAXWAYPOINTS, MapTile, Status, Themed,
     },
     find_subslice, map,
     misc::{
@@ -24,7 +24,7 @@ use defs::MAX_WP_CONNECTIONS;
 use log::trace;
 use log::{error, info, warn};
 use nom::{Finish, IResult, Parser};
-use rand::{seq::SliceRandom, thread_rng, Rng};
+use rand::{Rng, seq::SliceRandom, thread_rng};
 use sdl::Rect;
 #[cfg(not(target_os = "android"))]
 use std::ffi::CStr;

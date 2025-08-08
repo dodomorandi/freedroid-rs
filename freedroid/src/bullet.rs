@@ -1,12 +1,12 @@
 use std::ops::Not;
 
 use crate::{
+    Status,
     defs::{
-        BulletKind, Direction, Explosion, BULLET_COLL_DIST2, COLLISION_STEPSIZE, FLASH_DURATION,
+        BULLET_COLL_DIST2, BulletKind, COLLISION_STEPSIZE, Direction, Explosion, FLASH_DURATION,
         MAXBLASTS, MAXBULLETS,
     },
     structs::{Finepoint, Vect},
-    Status,
 };
 
 use log::info;

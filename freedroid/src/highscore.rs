@@ -2,14 +2,14 @@ use crate::{
     array_c_string::ArrayCString,
     b_font::{char_width, font_height},
     defs::{
-        self, AssembleCombatWindowFlags, Criticality, DisplayBannerFlags, Status, Themed, DATE_LEN,
-        GRAPHICS_DIR_C, HS_BACKGROUND_FILE, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN,
+        self, AssembleCombatWindowFlags, Criticality, DATE_LEN, DisplayBannerFlags, GRAPHICS_DIR_C,
+        HS_BACKGROUND_FILE, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN, Status, Themed,
     },
     graphics::Graphics,
 };
 
 use log::{info, warn};
-use sdl::{convert::u8_to_usize, Rect};
+use sdl::{Rect, convert::u8_to_usize};
 use std::{
     array, fmt,
     fs::File,

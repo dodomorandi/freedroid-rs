@@ -1,11 +1,11 @@
 use crate::{
-    defs::{
-        self, AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags, Status, Themed,
-        FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, PROGRESS_FILLER_FILE, PROGRESS_METER_FILE,
-    },
-    graphics::{scale_pic, Graphics, LoadBlockVidBppPicFlags},
-    input::CMD_STRINGS,
     ArrayCString, Global,
+    defs::{
+        self, AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags, FD_DATADIR,
+        GRAPHICS_DIR_C, LOCAL_DATADIR, PROGRESS_FILLER_FILE, PROGRESS_METER_FILE, Status, Themed,
+    },
+    graphics::{Graphics, LoadBlockVidBppPicFlags, scale_pic},
+    input::CMD_STRINGS,
 };
 
 use bstr::{BStr, ByteSlice};
@@ -595,10 +595,10 @@ impl crate::Data<'_> {
                 Criticality::Critical => {
                     if use_theme == Themed::UseTheme as i32 {
                         panic!(
-                        "file {} not found in theme-dir: graphics/{}_theme/, cannot run without it!",
-                        fname,
-                        global.game_config.theme_name.to_string_lossy(),
-                    );
+                            "file {} not found in theme-dir: graphics/{}_theme/, cannot run without it!",
+                            fname,
+                            global.game_config.theme_name.to_string_lossy(),
+                        );
                     } else {
                         panic!("file {fname} not found, cannot run without it!");
                     }

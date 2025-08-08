@@ -1,18 +1,17 @@
 use crate::{
+    Main,
     array_c_string::ArrayCString,
     b_font::{font_height, print_string_font, put_string_font},
     defs::{
-        AssembleCombatWindowFlags, BulletKind, DisplayBannerFlags, Status, BLINKENERGY,
-        CRY_SOUND_INTERVAL, FLASH_DURATION, LEFT_TEXT_LEN, MAXBULLETS, RIGHT_TEXT_LEN,
-        TRANSFER_SOUND_INTERVAL,
+        AssembleCombatWindowFlags, BLINKENERGY, BulletKind, CRY_SOUND_INTERVAL, DisplayBannerFlags,
+        FLASH_DURATION, LEFT_TEXT_LEN, MAXBULLETS, RIGHT_TEXT_LEN, Status, TRANSFER_SOUND_INTERVAL,
     },
-    graphics::{apply_filter, Graphics},
+    graphics::{Graphics, apply_filter},
     map::get_map_brick,
     structs::{Blast, CoarsePoint, Finepoint, TextToBeDisplayed},
     text,
     vars::Vars,
     view::screen_updater::{screen_needs_update, update_screen},
-    Main,
 };
 
 use arrayvec::ArrayString;

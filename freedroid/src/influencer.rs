@@ -1,16 +1,16 @@
 use crate::{
     cur_level,
     defs::{
-        self, Direction, Droid, Explosion, MapTile, SoundType, Status, ENEMYPHASES, MAXBLASTS,
-        PUSHSPEED, WAIT_COLLISION,
+        self, Direction, Droid, ENEMYPHASES, Explosion, MAXBLASTS, MapTile, PUSHSPEED, SoundType,
+        Status, WAIT_COLLISION,
     },
     map::get_map_brick,
     structs::{Bullet, Finepoint, Gps, TextToBeDisplayed},
 };
 
-use defs::{Cmds, BLINKENERGY, MAX_INFLU_POSITION_HISTORY, WAIT_TRANSFERMODE};
+use defs::{BLINKENERGY, Cmds, MAX_INFLU_POSITION_HISTORY, WAIT_TRANSFERMODE};
 use log::{info, warn};
-use rand::{thread_rng, Rng};
+use rand::{Rng, thread_rng};
 use std::ops::Not;
 
 #[derive(Debug, Clone, PartialEq)]

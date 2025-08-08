@@ -51,7 +51,7 @@ impl<const FREEABLE: bool> DerefMut for Guard<'_, '_, FREEABLE> {
 
 impl<const FREEABLE: bool> Drop for Guard<'_, '_, FREEABLE> {
     fn drop(&mut self) {
-        unsafe { SDL_UnlockSurface(self.0 .0.pointer.as_ptr()) }
+        unsafe { SDL_UnlockSurface(self.0.0.pointer.as_ptr()) }
     }
 }
 

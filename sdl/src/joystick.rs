@@ -1,8 +1,8 @@
 use std::{cell::RefCell, ffi::CStr, ops::Not, os::raw::c_int, ptr::NonNull, rc::Rc};
 
 use sdl_sys::{
-    SDL_Joystick, SDL_JoystickClose, SDL_JoystickEventState, SDL_JoystickName, SDL_JoystickNumAxes,
-    SDL_JoystickNumButtons, SDL_JoystickOpen, SDL_NumJoysticks, SDL_ENABLE,
+    SDL_ENABLE, SDL_Joystick, SDL_JoystickClose, SDL_JoystickEventState, SDL_JoystickName,
+    SDL_JoystickNumAxes, SDL_JoystickNumButtons, SDL_JoystickOpen, SDL_NumJoysticks,
 };
 
 type ActiveJoysticks = Rc<RefCell<Vec<c_int>>>;

@@ -1,5 +1,5 @@
 use std::{
-    ffi::{c_void, CStr},
+    ffi::{CStr, c_void},
     marker::PhantomData,
     mem,
     ops::Not,
@@ -12,7 +12,7 @@ use std::{
 use log::error;
 use sdl_sys::{IMG_Load_RW, IMG_isJPG, SDL_FreeRW, SDL_RWFromFile, SDL_RWFromMem, SDL_RWops};
 
-use crate::{sealed::Sealed, Surface};
+use crate::{Surface, sealed::Sealed};
 
 #[derive(Debug)]
 pub struct RwOps<'a> {

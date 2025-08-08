@@ -3,15 +3,15 @@ use crate::{
     b_font::font_height,
     defs::{
         self, AssembleCombatWindowFlags, BulletKind, Criticality, DisplayBannerFlags, Droid,
-        Explosion, Status, Themed, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAP_DIR_C,
-        MAXBULLETS, SHOW_WAIT, SLOWMO_FACTOR, TITLE_PIC_FILE, WAIT_AFTER_KILLED,
+        Explosion, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAP_DIR_C, MAXBULLETS, SHOW_WAIT,
+        SLOWMO_FACTOR, Status, TITLE_PIC_FILE, Themed, WAIT_AFTER_KILLED,
     },
     global::Global,
     graphics::Graphics,
     misc::{
         count_string_occurences, locate_string_in_data, read_and_malloc_string_from_data,
-        read_float_from_string, read_i32_from_string, read_string_from_string,
-        read_u16_from_string, read_u8_from_string,
+        read_float_from_string, read_i32_from_string, read_string_from_string, read_u8_from_string,
+        read_u16_from_string,
     },
     read_and_malloc_and_terminate_file,
     sound::Sound,
@@ -24,7 +24,7 @@ use crate::{
 use crate::input::wait_for_key_pressed;
 
 use bstr::ByteSlice;
-use clap::{crate_version, ArgAction, Parser};
+use clap::{ArgAction, Parser, crate_version};
 use log::{error, info, warn};
 use nom::Finish;
 use rand::{seq::IteratorRandom, thread_rng};
@@ -295,7 +295,7 @@ impl crate::Data<'_> {
         self.init_joy();
 
         self.init_game_data(b"freedroid.ruleset"); // load the default ruleset. This can be
-                                                   // overwritten from the mission file.
+        // overwritten from the mission file.
 
         self.update_progress(10);
 

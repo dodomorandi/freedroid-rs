@@ -1,21 +1,21 @@
 #[cfg(not(target_os = "android"))]
 use crate::vars::Vars;
 use crate::{
+    Sdl,
     defs::{
-        self, scale_point, Cmds, Criticality, DisplayBannerFlags, Droid, Explosion, SoundType,
-        Themed, BANNER_BLOCK_FILE, BLAST_BLOCK_FILE, BULLET_BLOCK_FILE, CONSOLE_BG_PIC1_FILE,
-        CONSOLE_BG_PIC2_FILE, CONSOLE_PIC_FILE, DIGITNUMBER, DIGIT_BLOCK_FILE, DROID_BLOCK_FILE,
-        ENEMYPHASES, FONT0_FILE, FONT1_FILE, FONT2_FILE, GRAPHICS_DIR_C, ICON_FILE, MAP_BLOCK_FILE,
-        NUM_COLORS, NUM_DECAL_PICS, NUM_MAP_BLOCKS, PARA_FONT_FILE, SHIP_OFF_PIC_FILE,
-        SHIP_ON_PIC_FILE, TAKEOVER_BG_PIC_FILE,
+        self, BANNER_BLOCK_FILE, BLAST_BLOCK_FILE, BULLET_BLOCK_FILE, CONSOLE_BG_PIC1_FILE,
+        CONSOLE_BG_PIC2_FILE, CONSOLE_PIC_FILE, Cmds, Criticality, DIGIT_BLOCK_FILE, DIGITNUMBER,
+        DROID_BLOCK_FILE, DisplayBannerFlags, Droid, ENEMYPHASES, Explosion, FONT0_FILE,
+        FONT1_FILE, FONT2_FILE, GRAPHICS_DIR_C, ICON_FILE, MAP_BLOCK_FILE, NUM_COLORS,
+        NUM_DECAL_PICS, NUM_MAP_BLOCKS, PARA_FONT_FILE, SHIP_OFF_PIC_FILE, SHIP_ON_PIC_FILE,
+        SoundType, TAKEOVER_BG_PIC_FILE, Themed, scale_point,
     },
     global::Global,
-    misc::{read_i16_from_string, read_i32_from_string, read_u16_from_string, read_u8_from_string},
+    misc::{read_i16_from_string, read_i32_from_string, read_u8_from_string, read_u16_from_string},
     read_and_malloc_and_terminate_file,
     structs::ThemeList,
     takeover::TO_BLOCK_FILE,
     vars::{ORIG_BLOCK_RECT, ORIG_DIGIT_RECT},
-    Sdl,
 };
 
 use arrayvec::ArrayString;
@@ -23,9 +23,9 @@ use bitflags::bitflags;
 use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
 use sdl::{
+    ColorKeyFlag, Cursor, FrameBuffer, Pixel, Rect, Rgba, RwOpsOwned, Surface, VideoModeFlags,
     cursor,
     rwops::{self, RwOps},
-    ColorKeyFlag, Cursor, FrameBuffer, Pixel, Rect, Rgba, RwOpsOwned, Surface, VideoModeFlags,
 };
 use std::{
     array, borrow::Cow, cell::RefCell, ffi::CStr, iter, ops::Not, path::Path, pin::Pin, rc::Rc,
@@ -609,7 +609,7 @@ impl crate::Data<'_> {
     ///
     /// timeout is in ms
     pub fn white_noise(&mut self, frame_buffer: &mut FrameBuffer, rect: &mut Rect, timeout: u32) {
-        use rand::{seq::SliceRandom, Rng};
+        use rand::{Rng, seq::SliceRandom};
         const NOISE_COLORS: u8 = 6;
         const NOISE_TILES: u8 = 8;
 

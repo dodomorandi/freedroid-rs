@@ -27,8 +27,8 @@ pub use pixel::Pixel;
 pub use rect::Rect;
 pub use rwops::RwOpsOwned;
 use sdl_sys::{
-    IMG_Load, SDL_GetError, SDL_InitSubSystem, SDL_PushEvent, SDL_Quit, SDL_WaitEvent,
-    SDL_WarpMouse, SDL_version, SDL_INIT_AUDIO, SDL_INIT_JOYSTICK,
+    IMG_Load, SDL_GetError, SDL_INIT_AUDIO, SDL_INIT_JOYSTICK, SDL_InitSubSystem, SDL_PushEvent,
+    SDL_Quit, SDL_WaitEvent, SDL_WarpMouse, SDL_version,
 };
 pub use surface::{ColorKeyFlag, FrameBuffer, Rgba, Surface};
 pub use video::{Video, VideoModeFlags};
@@ -76,7 +76,7 @@ where
 }
 
 mod private {
-    use sdl_sys::{SDL_VideoQuit, SDL_INIT_AUDIO, SDL_INIT_JOYSTICK, SDL_INIT_TIMER};
+    use sdl_sys::{SDL_INIT_AUDIO, SDL_INIT_JOYSTICK, SDL_INIT_TIMER, SDL_VideoQuit};
 
     use crate::joystick;
 
@@ -241,11 +241,7 @@ where
         self.mixer
             .get_or_try_init(|| unsafe {
                 let ret = SDL_InitSubSystem(SDL_INIT_AUDIO as u32);
-                if ret == 0 {
-                    Ok(Mixer)
-                } else {
-                    Err(())
-                }
+                if ret == 0 { Ok(Mixer) } else { Err(()) }
             })
             .ok()
     }
@@ -263,8 +259,8 @@ pub struct Builder<V, T, J, M> {
 static INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 #[must_use]
-pub fn init(
-) -> Builder<OnceCell<Video>, OnceCell<Timer>, OnceCell<joystick::System>, OnceCell<Mixer>> {
+pub fn init()
+-> Builder<OnceCell<Video>, OnceCell<Timer>, OnceCell<joystick::System>, OnceCell<Mixer>> {
     Builder {
         value: 0,
         video: OnceCell::new(),

@@ -1,8 +1,8 @@
 use std::{marker::PhantomData, os::raw::c_int, ptr::NonNull};
 
 use sdl_sys::{
-    SDL_CreateCursor, SDL_Cursor, SDL_FreeCursor, SDL_SetCursor, SDL_ShowCursor, SDL_DISABLE,
-    SDL_ENABLE,
+    SDL_CreateCursor, SDL_Cursor, SDL_DISABLE, SDL_ENABLE, SDL_FreeCursor, SDL_SetCursor,
+    SDL_ShowCursor,
 };
 
 pub struct Unassociated<'sdl>(PhantomData<&'sdl *const ()>);

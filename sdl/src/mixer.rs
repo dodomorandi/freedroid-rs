@@ -1,10 +1,10 @@
 use std::{ffi::CStr, marker::PhantomData, os::raw::c_int, ptr::NonNull};
 
 use sdl_sys::{
-    Mix_AllocateChannels, Mix_Chunk, Mix_CloseAudio, Mix_FreeChunk, Mix_FreeMusic, Mix_HaltMusic,
-    Mix_LoadMUS, Mix_LoadWAV_RW, Mix_Music, Mix_OpenAudio, Mix_PauseMusic, Mix_PlayChannelTimed,
-    Mix_PlayMusic, Mix_ResumeMusic, Mix_VolumeChunk, Mix_VolumeMusic, MIX_DEFAULT_CHANNELS,
-    MIX_DEFAULT_FORMAT, MIX_DEFAULT_FREQUENCY,
+    MIX_DEFAULT_CHANNELS, MIX_DEFAULT_FORMAT, MIX_DEFAULT_FREQUENCY, Mix_AllocateChannels,
+    Mix_Chunk, Mix_CloseAudio, Mix_FreeChunk, Mix_FreeMusic, Mix_HaltMusic, Mix_LoadMUS,
+    Mix_LoadWAV_RW, Mix_Music, Mix_OpenAudio, Mix_PauseMusic, Mix_PlayChannelTimed, Mix_PlayMusic,
+    Mix_ResumeMusic, Mix_VolumeChunk, Mix_VolumeMusic,
 };
 
 use crate::rwops::{RwOps, RwOpsCapability};

@@ -26,8 +26,8 @@ use array_c_string::ArrayCString;
 use arrayvec::ArrayVec;
 use b_font::BFont;
 use defs::{
-    AlertLevel, AssembleCombatWindowFlags, DisplayBannerFlags, Status, BYCOLOR,
-    DROID_ROTATION_TIME, MAXBLASTS, MAXBULLETS, MAX_ENEMYS_ON_SHIP, SHOW_WAIT, STANDARD_MISSION,
+    AlertLevel, AssembleCombatWindowFlags, BYCOLOR, DROID_ROTATION_TIME, DisplayBannerFlags,
+    MAX_ENEMYS_ON_SHIP, MAXBLASTS, MAXBULLETS, SHOW_WAIT, STANDARD_MISSION, Status,
 };
 use global::Global;
 use graphics::Graphics;
@@ -41,7 +41,7 @@ use menu::Menu;
 use misc::Misc;
 use once_cell::unsync::OnceCell;
 use qcell::{TCell, TCellOwner};
-use sdl::{convert::u8_to_usize, Rect};
+use sdl::{Rect, convert::u8_to_usize};
 use sound::Sound;
 use structs::{Blast, Bullet, Enemy, Level, Ship};
 use takeover::Takeover;
@@ -310,7 +310,7 @@ fn game_single_loop<'sdl>(data: &mut Data<'sdl>, sdl: &'sdl Sdl) -> ControlFlow<
         // also change his status and position and "phase" of rotation
         data.move_influence();
         data.move_enemys(); // move all the enemys:
-                            // also do attacks on influ and also move "phase" or their rotation
+        // also do attacks on influ and also move "phase" or their rotation
         data.check_influence_wall_collisions(); /* Testen ob der Weg nicht durch Mauern verstellt ist */
         data.check_influence_enemy_collision();
 

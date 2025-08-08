@@ -3,8 +3,8 @@ use std::ops::Not;
 use crate::{
     cur_level,
     defs::{
-        Droid, Explosion, Status, AGGRESSIONMAX, DECKCOMPLETEBONUS, ENEMYMAXWAIT, ENEMYPHASES,
-        MAXBULLETS, MAXWAYPOINTS, ROBOT_MAX_WAIT_BETWEEN_SHOTS, SLOWMO_FACTOR, WAIT_COLLISION,
+        AGGRESSIONMAX, DECKCOMPLETEBONUS, Droid, ENEMYMAXWAIT, ENEMYPHASES, Explosion, MAXBULLETS,
+        MAXWAYPOINTS, ROBOT_MAX_WAIT_BETWEEN_SHOTS, SLOWMO_FACTOR, Status, WAIT_COLLISION,
         WAIT_LEVELEMPTY,
     },
     structs::{Bullet, Finepoint},
@@ -12,8 +12,9 @@ use crate::{
 
 use log::warn;
 use rand::{
+    Rng,
     seq::{IteratorRandom, SliceRandom},
-    thread_rng, Rng,
+    thread_rng,
 };
 use sdl::convert::u8_to_usize;
 
@@ -369,10 +370,10 @@ impl crate::Data<'_> {
             if nth_enemy > num_wp {
                 if !warned {
                     warn!(
-                    "Less waypoints ({}) than enemys on level {}? ...cannot insert all droids on \
+                        "Less waypoints ({}) than enemys on level {}? ...cannot insert all droids on \
                      this level.",
-                    num_wp, cur_level_num
-                );
+                        num_wp, cur_level_num
+                    );
                 }
 
                 warned = true;

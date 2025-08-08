@@ -1,6 +1,6 @@
 use crate::{
     array_c_string::ArrayCString,
-    defs::{self, DisplayBannerFlags, Droid, MenuAction, Status, DROID_ROTATION_TIME, SHOW_WAIT},
+    defs::{self, DROID_ROTATION_TIME, DisplayBannerFlags, Droid, MenuAction, SHOW_WAIT, Status},
     graphics::Graphics,
     ship::{Page, ShowDroidPortraitFlags},
     structs::Point,
@@ -10,7 +10,7 @@ use rand::{
     seq::{IteratorRandom, SliceRandom},
     thread_rng,
 };
-use sdl::{convert::u8_to_usize, Rect, Surface};
+use sdl::{Rect, Surface, convert::u8_to_usize};
 use sdl_sys::SDL_Color;
 use std::{
     convert::Infallible,

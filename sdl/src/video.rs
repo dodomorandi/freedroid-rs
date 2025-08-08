@@ -5,19 +5,19 @@ use std::{
     num::NonZeroU8,
     ops::Not,
     os::raw::{c_char, c_int},
-    ptr::{null_mut, NonNull},
+    ptr::{NonNull, null_mut},
 };
 
 use bitflags::bitflags;
 use sdl_sys::{
-    SDL_GetVideoInfo, SDL_SetGamma, SDL_SetVideoMode, SDL_VideoDriverName, SDL_VideoInfo,
-    SDL_WM_SetCaption, SDL_WM_SetIcon, SDL_ANYFORMAT, SDL_ASYNCBLIT, SDL_DOUBLEBUF, SDL_FULLSCREEN,
-    SDL_HWACCEL, SDL_HWPALETTE, SDL_HWSURFACE, SDL_NOFRAME, SDL_OPENGL, SDL_OPENGLBLIT,
-    SDL_PREALLOC, SDL_RESIZABLE, SDL_RLEACCEL, SDL_RLEACCELOK, SDL_SRCALPHA, SDL_SRCCOLORKEY,
-    SDL_SWSURFACE,
+    SDL_ANYFORMAT, SDL_ASYNCBLIT, SDL_DOUBLEBUF, SDL_FULLSCREEN, SDL_GetVideoInfo, SDL_HWACCEL,
+    SDL_HWPALETTE, SDL_HWSURFACE, SDL_NOFRAME, SDL_OPENGL, SDL_OPENGLBLIT, SDL_PREALLOC,
+    SDL_RESIZABLE, SDL_RLEACCEL, SDL_RLEACCELOK, SDL_SRCALPHA, SDL_SRCCOLORKEY, SDL_SWSURFACE,
+    SDL_SetGamma, SDL_SetVideoMode, SDL_VideoDriverName, SDL_VideoInfo, SDL_WM_SetCaption,
+    SDL_WM_SetIcon,
 };
 
-use crate::{convert, pixel, FrameBuffer, Surface};
+use crate::{FrameBuffer, Surface, convert, pixel};
 
 #[derive(Debug)]
 pub struct Video {

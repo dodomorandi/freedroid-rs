@@ -2,7 +2,7 @@ use crate::{
     b_font::{font_height, print_string_font},
     cur_level,
     defs::{
-        AssembleCombatWindowFlags, Cmds, MapTile, MAXWAYPOINTS, MAX_WP_CONNECTIONS, NUM_MAP_BLOCKS,
+        AssembleCombatWindowFlags, Cmds, MAX_WP_CONNECTIONS, MAXWAYPOINTS, MapTile, NUM_MAP_BLOCKS,
     },
     structs::{Level, Waypoint},
     view::BLACK,
@@ -11,11 +11,11 @@ use crate::{
 use arrayvec::ArrayVec;
 use log::{info, warn};
 use nom::Finish;
-use sdl::{convert::u32_to_u16, Pixel};
+use sdl::{Pixel, convert::u32_to_u16};
 use sdl_sys::{
-    SDLKey_SDLK_F1, SDLKey_SDLK_KP0, SDLKey_SDLK_KP1, SDLKey_SDLK_KP2, SDLKey_SDLK_KP3,
-    SDLKey_SDLK_KP4, SDLKey_SDLK_KP5, SDLKey_SDLK_KP6, SDLKey_SDLK_KP7, SDLKey_SDLK_KP8,
-    SDLKey_SDLK_KP9, SDLKey_SDLK_KP_PLUS,
+    SDLKey_SDLK_F1, SDLKey_SDLK_KP_PLUS, SDLKey_SDLK_KP0, SDLKey_SDLK_KP1, SDLKey_SDLK_KP2,
+    SDLKey_SDLK_KP3, SDLKey_SDLK_KP4, SDLKey_SDLK_KP5, SDLKey_SDLK_KP6, SDLKey_SDLK_KP7,
+    SDLKey_SDLK_KP8, SDLKey_SDLK_KP9,
 };
 use std::{cmp::Ordering, ops::Not};
 

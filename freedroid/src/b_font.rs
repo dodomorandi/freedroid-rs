@@ -1,4 +1,4 @@
-use crate::{graphics::scale_pic, FontCell, FontCellOwner, Sdl};
+use crate::{FontCell, FontCellOwner, Sdl, graphics::scale_pic};
 
 use sdl::{ColorKeyFlag, Rect};
 use std::{ffi::CStr, fmt, rc::Rc};

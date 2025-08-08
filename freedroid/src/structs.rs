@@ -1,16 +1,16 @@
 use crate::{
     array_c_string::ArrayCString,
     defs::{
-        BulletKind, Droid, Explosion, MapTile, Status, DATE_LEN, MAXWAYPOINTS, MAX_ALERTS_ON_LEVEL,
-        MAX_DOORS_ON_LEVEL, MAX_INFLU_POSITION_HISTORY, MAX_LEVELS, MAX_LEVEL_RECTS, MAX_LIFTS,
-        MAX_LIFT_ROWS, MAX_MAP_ROWS, MAX_NAME_LEN, MAX_PHASES_IN_A_BULLET, MAX_REFRESHES_ON_LEVEL,
-        MAX_THEMES, MAX_WP_CONNECTIONS,
+        BulletKind, DATE_LEN, Droid, Explosion, MAX_ALERTS_ON_LEVEL, MAX_DOORS_ON_LEVEL,
+        MAX_INFLU_POSITION_HISTORY, MAX_LEVEL_RECTS, MAX_LEVELS, MAX_LIFT_ROWS, MAX_LIFTS,
+        MAX_MAP_ROWS, MAX_NAME_LEN, MAX_PHASES_IN_A_BULLET, MAX_REFRESHES_ON_LEVEL, MAX_THEMES,
+        MAX_WP_CONNECTIONS, MAXWAYPOINTS, MapTile, Status,
     },
     map,
 };
 
 use arrayvec::ArrayVec;
-use sdl::{convert::u8_to_usize, Rect, Surface};
+use sdl::{Rect, Surface, convert::u8_to_usize};
 use std::{
     ffi::{CStr, CString},
     num::NonZeroU8,

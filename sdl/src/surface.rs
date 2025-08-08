@@ -6,24 +6,23 @@ use std::{
     marker::PhantomData,
     ops::{Deref, DerefMut},
     os::raw::c_int,
-    ptr::{self, null_mut, NonNull},
+    ptr::{self, NonNull, null_mut},
 };
 
 use bitflags::bitflags;
 use sdl_sys::{
-    rotozoomSurface, zoomSurface, SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha,
-    SDL_FillRect, SDL_Flip, SDL_FreeSurface, SDL_GetClipRect, SDL_PixelFormat, SDL_Rect,
+    SDL_ASYNCBLIT, SDL_CreateRGBSurface, SDL_DisplayFormat, SDL_DisplayFormatAlpha, SDL_FillRect,
+    SDL_Flip, SDL_FreeSurface, SDL_GetClipRect, SDL_HWACCEL, SDL_HWSURFACE, SDL_PREALLOC,
+    SDL_PixelFormat, SDL_RLEACCEL, SDL_RLEACCELOK, SDL_Rect, SDL_SRCALPHA, SDL_SRCCOLORKEY,
     SDL_SaveBMP_RW, SDL_SetAlpha, SDL_SetClipRect, SDL_SetColorKey, SDL_Surface, SDL_UpdateRect,
-    SDL_UpdateRects, SDL_UpperBlit, SDL_bool_SDL_TRUE, SDL_ASYNCBLIT, SDL_HWACCEL, SDL_HWSURFACE,
-    SDL_PREALLOC, SDL_RLEACCEL, SDL_RLEACCELOK, SDL_SRCALPHA, SDL_SRCCOLORKEY,
+    SDL_UpdateRects, SDL_UpperBlit, SDL_bool_SDL_TRUE, rotozoomSurface, zoomSurface,
 };
 
 use crate::{
-    get_error,
+    Rect, get_error,
     pixel::{self, Pixel, Pixels},
     rect,
     rwops::RwOpsCapability,
-    Rect,
 };
 
 use self::lock::ResultMaybeLocked;
@@ -250,11 +249,7 @@ impl<'sdl, const FREEABLE: bool> Generic<'sdl, FREEABLE> {
                 color.0,
             )
         };
-        if result == 0 {
-            Ok(())
-        } else {
-            Err(result)
-        }
+        if result == 0 { Ok(()) } else { Err(result) }
     }
 
     pub fn update_rect(&mut self, rect: &Rect) {

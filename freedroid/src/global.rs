@@ -1,4 +1,4 @@
-use crate::{array_c_string::ArrayCString, structs::Config, FontCell};
+use crate::{FontCell, array_c_string::ArrayCString, structs::Config};
 
 use std::{fmt, rc::Rc};
 
