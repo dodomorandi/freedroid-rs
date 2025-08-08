@@ -7,7 +7,6 @@ use crate::{
     vars::Vars,
 };
 
-#[cfg(not(target_os = "android"))]
 use log::info;
 use sdl::{
     Event, Joystick,

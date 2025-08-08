@@ -16,7 +16,6 @@ use crate::{
 
 use arrayvec::ArrayVec;
 use bstr::ByteSlice;
-#[cfg(not(target_os = "android"))]
 use defs::MAX_DOORS_ON_LEVEL;
 #[cfg(not(target_os = "android"))]
 use defs::MAX_WP_CONNECTIONS;
