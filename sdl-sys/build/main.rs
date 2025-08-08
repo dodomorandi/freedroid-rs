@@ -1,4 +1,5 @@
 use std::env;
+use std::fs::File;
 use std::path::PathBuf;
 
 fn main() {
@@ -27,7 +28,7 @@ fn main() {
         println!("cargo:rustc-link-lib={lib}");
     }
 
-    let bindings = bindgen::Builder::default()
+    let bindings_builder = bindgen::Builder::default()
         .header("build/wrapper.h")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .clang_args(
@@ -39,6 +40,13 @@ fn main() {
             Some(value) => format!("-D{name}={value}"),
             None => format!("-D{name}"),
         }))
+        .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
+        .derive_debug(true)
+        .derive_default(true);
+
+    let normal_bindings = bindings_builder
+        .clone()
+        .derive_eq(true)
         .allowlist_var("SDL_.*")
         .allowlist_type("SDL_.*")
         .allowlist_function("SDL_.*")
@@ -55,15 +63,46 @@ fn main() {
         .allowlist_var("Mix_.*")
         .allowlist_type("Mix_.*")
         .allowlist_function("Mix_.*")
-        .default_macro_constant_type(bindgen::MacroTypeVariation::Signed)
-        .derive_debug(true)
-        .derive_default(true)
-        .derive_eq(true)
+        .blocklist_type("SDL_SysWMinfo.*")
+        .blocklist_type("SDL_AudioSpec")
         .generate()
-        .expect("Unable to generate bindings");
+        .expect("Unable to generate normal bindings");
+
+    let special_bindings = bindings_builder
+        .blocklist_var("SDL_.*")
+        .blocklist_function("SDL_.*")
+        .blocklist_var("IMG_.*")
+        .blocklist_type("IMG_.*")
+        .blocklist_function("IMG_.*")
+        .blocklist_var("SDLK_.*")
+        .blocklist_type("SDLK_.*")
+        .blocklist_function("SDLK_.*")
+        .blocklist_function("zoom.*")
+        .blocklist_function("rotozoom.*")
+        .blocklist_function("shrinkSurface")
+        .blocklist_function("rotateSurface90Degrees")
+        .blocklist_var("Mix_.*")
+        .blocklist_type("Mix_.*")
+        .blocklist_function("Mix_.*")
+        .blocklist_type("_XDisplay")
+        .blocklist_type("Display")
+        .blocklist_type("XID")
+        .blocklist_type("Window")
+        .blocklist_type("Uint(8|16|32)")
+        .blocklist_type("SDL_version")
+        .blocklist_item("SDL_SYSWM_.*")
+        .allowlist_type("SDL_SysWMinfo")
+        .allowlist_type("SDL_AudioSpec")
+        .generate()
+        .expect("Unable to generate special bindings");
 
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
-    bindings
-        .write_to_file(out_path.join("bindings.rs"))
-        .expect("Couldn't write bindings!");
+    let mut out_file =
+        File::create(out_path.join("bindings.rs")).expect("unable to create bindings file");
+    normal_bindings
+        .write(Box::new(&mut out_file))
+        .expect("Couldn't write normal bindings!");
+    special_bindings
+        .write(Box::new(&mut out_file))
+        .expect("Couldn't write special bindings!");
 }
