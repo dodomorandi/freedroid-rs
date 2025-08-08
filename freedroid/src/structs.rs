@@ -1,9 +1,9 @@
 use crate::{
     array_c_string::ArrayCString,
     defs::{
-        BulletKind, DATE_LEN, Droid, Explosion, MAX_ALERTS_ON_LEVEL, MAX_DOORS_ON_LEVEL,
+        BulletKind, Droid, Explosion, MAX_ALERTS_ON_LEVEL, MAX_DOORS_ON_LEVEL,
         MAX_INFLU_POSITION_HISTORY, MAX_LEVEL_RECTS, MAX_LEVELS, MAX_LIFT_ROWS, MAX_LIFTS,
-        MAX_MAP_ROWS, MAX_NAME_LEN, MAX_PHASES_IN_A_BULLET, MAX_REFRESHES_ON_LEVEL, MAX_THEMES,
+        MAX_MAP_ROWS, MAX_PHASES_IN_A_BULLET, MAX_REFRESHES_ON_LEVEL, MAX_THEMES,
         MAX_WP_CONNECTIONS, MAXWAYPOINTS, MapTile, Status,
     },
     map,
@@ -27,20 +27,6 @@ pub struct ThemeList {
     pub len: NonZeroU8,
     pub current: u8,
     pub names: [CString; MAX_THEMES],
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct HighscoreEntry {
-    pub name: [i8; u8_to_usize(MAX_NAME_LEN) + 5],
-    pub score: i64, /* use -1 for an empty entry */
-    pub date: [i8; u8_to_usize(DATE_LEN) + 5],
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Color {
-    pub rot: u8,
-    pub gruen: u8,
-    pub blau: u8,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -310,13 +296,4 @@ pub struct Ship {
     pub lifts: ArrayVec<Lift, MAX_LIFTS>,
     pub lift_row_rects: ArrayVec<Rect, MAX_LIFT_ROWS>, /* the lift-row rectangles */
     pub level_rects: [ArrayVec<Rect, MAX_LEVEL_RECTS>; MAX_LEVELS], /* level rectangles */
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Bar {
-    pub pos: Point,
-    pub len: i32,
-    pub hgt: i32,
-    pub oldval: i32,
-    pub col: i32,
 }
