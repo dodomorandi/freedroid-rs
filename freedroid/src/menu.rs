@@ -960,8 +960,8 @@ impl<'sdl> crate::Data<'sdl> {
             &mut self.misc,
             CREDITS_PIC_FILE,
             Some(GRAPHICS_DIR_C),
-            Themed::NoTheme as i32,
-            Criticality::Critical as i32,
+            Themed::NoTheme,
+            Criticality::Critical,
         )
         .unwrap();
         Self::display_image(self.sdl, &self.global, &mut self.graphics, image);

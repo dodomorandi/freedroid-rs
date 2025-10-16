@@ -713,8 +713,8 @@ impl crate::Data<'_> {
             misc,
             PARA_FONT_FILE.as_bytes(),
             Some(GRAPHICS_DIR_C),
-            Themed::NoTheme as i32,
-            Criticality::Critical as i32,
+            Themed::NoTheme,
+            Criticality::Critical,
         )
         .unwrap_or_else(|| panic!("font file named {PARA_FONT_FILE} was not found."));
 
@@ -730,8 +730,8 @@ impl crate::Data<'_> {
             misc,
             FONT0_FILE.as_bytes(),
             Some(GRAPHICS_DIR_C),
-            Themed::NoTheme as i32,
-            Criticality::Critical as i32,
+            Themed::NoTheme,
+            Criticality::Critical,
         )
         .unwrap_or_else(|| panic!("font file named {FONT0_FILE} was not found."));
         global.font0_b_font = Some(Self::load_font(
@@ -746,8 +746,8 @@ impl crate::Data<'_> {
             misc,
             FONT1_FILE.as_bytes(),
             Some(GRAPHICS_DIR_C),
-            Themed::NoTheme as i32,
-            Criticality::Critical as i32,
+            Themed::NoTheme,
+            Criticality::Critical,
         )
         .unwrap_or_else(|| panic!("font file named {FONT1_FILE} was not found."));
         global.font1_b_font = Some(Self::load_font(
@@ -762,8 +762,8 @@ impl crate::Data<'_> {
             misc,
             FONT2_FILE.as_bytes(),
             Some(GRAPHICS_DIR_C),
-            Themed::NoTheme as i32,
-            Criticality::Critical as i32,
+            Themed::NoTheme,
+            Criticality::Critical,
         )
         .unwrap_or_else(|| panic!("font file named {FONT2_FILE} was not found."));
         global.font2_b_font = Some(Self::load_font(
@@ -831,8 +831,8 @@ impl crate::Data<'_> {
                 misc,
                 ICON_FILE.as_bytes(),
                 Some(GRAPHICS_DIR_C),
-                Themed::NoTheme as i32,
-                Criticality::WarnOnly as i32,
+                Themed::NoTheme,
+                Criticality::WarnOnly,
             );
 
             if let Some(fpath) = fpath {
@@ -925,8 +925,8 @@ impl crate::Data<'_> {
                     &mut self.misc,
                     $file_name,
                     Some(GRAPHICS_DIR_C),
-                    Themed::UseTheme as i32,
-                    Criticality::Critical as i32,
+                    Themed::UseTheme,
+                    Criticality::Critical,
                 )
             };
         }
@@ -1042,8 +1042,8 @@ impl crate::Data<'_> {
                     &mut self.misc,
                     $file_name,
                     Some(GRAPHICS_DIR_C),
-                    Themed::NoTheme as i32,
-                    $criticality as i32,
+                    Themed::NoTheme,
+                    $criticality,
                 )
             };
 
@@ -1186,8 +1186,8 @@ impl crate::Data<'_> {
             &mut self.misc,
             b"config.theme",
             Some(GRAPHICS_DIR_C),
-            Themed::UseTheme as i32,
-            Criticality::Critical as i32,
+            Themed::UseTheme,
+            Criticality::Critical,
         )
         .expect("Unable to read file config.theme");
         let fpath = Path::new(

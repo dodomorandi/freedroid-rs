@@ -516,8 +516,8 @@ impl crate::Data<'_> {
         &'a mut self,
         fname: &[u8],
         subdir: Option<&CStr>,
-        use_theme: i32,
-        critical: i32,
+        use_theme: Themed,
+        critical: Criticality,
     ) -> Option<&'a CStr> {
         let Self { global, misc, .. } = self;
         Self::find_file_static(global, misc, fname, subdir, use_theme, critical)
@@ -528,25 +528,14 @@ impl crate::Data<'_> {
         misc: &'a mut Misc,
         fname: &[u8],
         subdir: Option<&CStr>,
-        use_theme: i32,
-        mut critical: i32,
+        use_theme: Themed,
+        critical: Criticality,
     ) -> Option<&'a CStr> {
         use std::fmt::Write;
 
-        if critical != Criticality::Ignore as i32
-            && critical != Criticality::WarnOnly as i32
-            && critical != Criticality::Critical as i32
-        {
-            warn!(
-                "WARNING: unknown critical-value passed to find_file(): {}. Assume CRITICAL",
-                critical
-            );
-            critical = Criticality::Critical as i32;
-        }
-
         let fname: &BStr = fname.into();
         let mut inner = |datadir| {
-            let theme_dir = if use_theme == Themed::UseTheme as i32 {
+            let theme_dir = if use_theme == Themed::UseTheme {
                 Cow::Owned(format!(
                     "{}_theme/",
                     global.game_config.theme_name.to_string_lossy(),
@@ -574,13 +563,10 @@ impl crate::Data<'_> {
         }
 
         if !found {
-            let Ok(critical) = critical.try_into() else {
-                panic!("ERROR in find_file(): Code should never reach this line!! Harakiri");
-            };
             // how critical is this file for the game:
             match critical {
                 Criticality::WarnOnly => {
-                    if use_theme == Themed::UseTheme as i32 {
+                    if use_theme == Themed::UseTheme {
                         warn!(
                             "file {} not found in theme-dir: graphics/{}_theme/",
                             fname,
@@ -593,7 +579,7 @@ impl crate::Data<'_> {
                 }
                 Criticality::Ignore => return None,
                 Criticality::Critical => {
-                    if use_theme == Themed::UseTheme as i32 {
+                    if use_theme == Themed::UseTheme {
                         panic!(
                             "file {} not found in theme-dir: graphics/{}_theme/, cannot run without it!",
                             fname,
@@ -617,8 +603,8 @@ impl crate::Data<'_> {
                 &mut self.misc,
                 PROGRESS_METER_FILE,
                 Some(GRAPHICS_DIR_C),
-                Themed::NoTheme as i32,
-                Criticality::Critical as i32,
+                Themed::NoTheme,
+                Criticality::Critical,
             );
             self.graphics.progress_meter_pic = self.graphics.load_block(
                 fpath,
@@ -637,8 +623,8 @@ impl crate::Data<'_> {
                 &mut self.misc,
                 PROGRESS_FILLER_FILE,
                 Some(GRAPHICS_DIR_C),
-                Themed::NoTheme as i32,
-                Criticality::Critical as i32,
+                Themed::NoTheme,
+                Criticality::Critical,
             );
             self.graphics.progress_filler_pic = self.graphics.load_block(
                 fpath,

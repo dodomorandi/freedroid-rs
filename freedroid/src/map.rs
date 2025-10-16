@@ -1110,8 +1110,8 @@ freedroid-discussion@lists.sourceforge.net\n\
             .find_file(
                 filename,
                 Some(MAP_DIR_C),
-                Themed::NoTheme as i32,
-                Criticality::Critical as i32,
+                Themed::NoTheme,
+                Criticality::Critical,
             )
             .unwrap();
         let fpath = Path::new(
@@ -1165,8 +1165,8 @@ freedroid-discussion@lists.sourceforge.net\n\
             .find_file(
                 filename,
                 Some(MAP_DIR_C),
-                Themed::NoTheme as i32,
-                Criticality::Critical as i32,
+                Themed::NoTheme,
+                Criticality::Critical,
             )
             .unwrap();
         let fpath = Path::new(
@@ -1304,8 +1304,8 @@ freedroid-discussion@lists.sourceforge.net\n\
             .find_file(
                 filename,
                 Some(MAP_DIR_C),
-                Themed::NoTheme as i32,
-                Criticality::Critical as i32,
+                Themed::NoTheme,
+                Criticality::Critical,
             )
             .unwrap();
         let fpath = Path::new(

@@ -267,8 +267,8 @@ impl crate::Data<'_> {
             &mut self.misc,
             TITLE_PIC_FILE,
             Some(GRAPHICS_DIR_C),
-            Themed::NoTheme as i32,
-            Criticality::Critical as i32,
+            Themed::NoTheme,
+            Criticality::Critical,
         )
         .unwrap();
         Self::display_image(self.sdl, &self.global, &mut self.graphics, image); // show title pic
@@ -673,8 +673,8 @@ impl crate::Data<'_> {
             &mut self.misc,
             pic_title,
             Some(GRAPHICS_DIR_C),
-            Themed::NoTheme as i32,
-            Criticality::Critical as i32,
+            Themed::NoTheme,
+            Criticality::Critical,
         )
         .unwrap();
         Self::display_image(self.sdl, &self.global, &mut self.graphics, image);
@@ -720,8 +720,8 @@ impl crate::Data<'_> {
             .find_file(
                 data_filename,
                 Some(MAP_DIR_C),
-                Themed::NoTheme as i32,
-                Criticality::Critical as i32,
+                Themed::NoTheme,
+                Criticality::Critical,
             )
             .unwrap();
         let fpath = Path::new(
@@ -1103,8 +1103,8 @@ impl MainMissionData {
             .find_file(
                 mission_name.as_bytes(),
                 Some(MAP_DIR_C),
-                Themed::NoTheme as i32,
-                Criticality::Critical as i32,
+                Themed::NoTheme,
+                Criticality::Critical,
             )
             .unwrap();
         let fpath = Path::new(

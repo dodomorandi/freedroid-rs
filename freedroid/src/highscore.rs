@@ -301,8 +301,8 @@ impl crate::Data<'_> {
             &mut self.misc,
             HS_BACKGROUND_FILE,
             Some(GRAPHICS_DIR_C),
-            Themed::NoTheme as i32,
-            Criticality::WarnOnly as i32,
+            Themed::NoTheme,
+            Criticality::WarnOnly,
         );
         if let Some(fpath) = fpath {
             Self::display_image(self.sdl, &self.global, &mut self.graphics, fpath);

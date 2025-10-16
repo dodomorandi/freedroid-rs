@@ -349,8 +349,8 @@ impl crate::Data<'_> {
                 misc,
                 filename_raw,
                 Some(SOUND_DIR_C),
-                Themed::NoTheme as i32,
-                Criticality::WarnOnly as i32,
+                Themed::NoTheme,
+                Criticality::WarnOnly,
             ) else {
                 error!(
                     "Error loading sound-file: {}",
@@ -457,8 +457,8 @@ impl<'a> Sound<'a> {
                 misc,
                 sample_filename.as_bytes(),
                 Some(SOUND_DIR_C),
-                Themed::NoTheme as i32,
-                Criticality::WarnOnly as i32,
+                Themed::NoTheme,
+                Criticality::WarnOnly,
             );
 
             let loaded_wav_file = &mut loaded_wav_files[sound_file_index];
@@ -488,8 +488,8 @@ impl<'a> Sound<'a> {
                 misc,
                 music_file,
                 Some(SOUND_DIR_C),
-                Themed::NoTheme as i32,
-                Criticality::WarnOnly as i32,
+                Themed::NoTheme,
+                Criticality::WarnOnly,
             );
             let music_song = &mut music_songs[music_file_index];
             if let Some(fpath) = fpath {
