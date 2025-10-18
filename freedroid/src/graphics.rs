@@ -1654,7 +1654,6 @@ bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct LoadBlockVidBppPicFlags: u8 {
         const INIT_ONLY = 0x1;
-        const FREE_ONLY = 0x2;
     }
 }
 
@@ -1673,11 +1672,6 @@ impl<'sdl> LoadBlockVidBppPic<'_, 'sdl> {
 
         if fpath.is_none() && pic.is_none() {
             /* we need some info.. */
-            return None;
-        }
-
-        if pic.is_some() && flags == LoadBlockVidBppPicFlags::FREE_ONLY {
-            *pic = None;
             return None;
         }
 
