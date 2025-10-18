@@ -4,7 +4,7 @@ use crate::{
     Sdl,
     defs::{
         self, BANNER_BLOCK_FILE, BLAST_BLOCK_FILE, BULLET_BLOCK_FILE, CONSOLE_BG_PIC1_FILE,
-        CONSOLE_BG_PIC2_FILE, CONSOLE_PIC_FILE, Cmds, Criticality, DIGIT_BLOCK_FILE, DIGITNUMBER,
+        CONSOLE_BG_PIC2_FILE, CONSOLE_PIC_FILE, Cmds, DIGIT_BLOCK_FILE, DIGITNUMBER,
         DROID_BLOCK_FILE, DisplayBannerFlags, Droid, ENEMYPHASES, Explosion, FONT0_FILE,
         FONT1_FILE, FONT2_FILE, GRAPHICS_DIR_C, ICON_FILE, MAP_BLOCK_FILE, NUM_COLORS,
         NUM_DECAL_PICS, NUM_MAP_BLOCKS, PARA_FONT_FILE, SHIP_OFF_PIC_FILE, SHIP_ON_PIC_FILE,
@@ -714,9 +714,7 @@ impl crate::Data<'_> {
             PARA_FONT_FILE.as_bytes(),
             Some(GRAPHICS_DIR_C),
             Themed::NoTheme,
-            Criticality::Critical,
-        )
-        .unwrap_or_else(|| panic!("font file named {PARA_FONT_FILE} was not found."));
+        );
 
         global.para_b_font = Some(Self::load_font(
             sdl,
@@ -731,9 +729,7 @@ impl crate::Data<'_> {
             FONT0_FILE.as_bytes(),
             Some(GRAPHICS_DIR_C),
             Themed::NoTheme,
-            Criticality::Critical,
-        )
-        .unwrap_or_else(|| panic!("font file named {FONT0_FILE} was not found."));
+        );
         global.font0_b_font = Some(Self::load_font(
             sdl,
             b_font,
@@ -747,9 +743,7 @@ impl crate::Data<'_> {
             FONT1_FILE.as_bytes(),
             Some(GRAPHICS_DIR_C),
             Themed::NoTheme,
-            Criticality::Critical,
-        )
-        .unwrap_or_else(|| panic!("font file named {FONT1_FILE} was not found."));
+        );
         global.font1_b_font = Some(Self::load_font(
             sdl,
             b_font,
@@ -763,9 +757,7 @@ impl crate::Data<'_> {
             FONT2_FILE.as_bytes(),
             Some(GRAPHICS_DIR_C),
             Themed::NoTheme,
-            Criticality::Critical,
-        )
-        .unwrap_or_else(|| panic!("font file named {FONT2_FILE} was not found."));
+        );
         global.font2_b_font = Some(Self::load_font(
             sdl,
             b_font,
@@ -826,13 +818,13 @@ impl crate::Data<'_> {
 
             /* if there's a window-manager */
             sdl.video.window_manager().set_caption(c"Freedroid", c"");
-            let fpath = Self::find_file_static(
+            let fpath = Self::try_find_file_static(
                 global,
                 misc,
                 ICON_FILE.as_bytes(),
                 Some(GRAPHICS_DIR_C),
                 Themed::NoTheme,
-                Criticality::WarnOnly,
+                true,
             );
 
             if let Some(fpath) = fpath {
@@ -926,7 +918,6 @@ impl crate::Data<'_> {
                     $file_name,
                     Some(GRAPHICS_DIR_C),
                     Themed::UseTheme,
-                    Criticality::Critical,
                 )
             };
         }
@@ -935,7 +926,7 @@ impl crate::Data<'_> {
             ($file_name:expr) => {{
                 let fpath = find_file!($file_name);
                 self.graphics.load_block(
-                    fpath,
+                    Some(fpath),
                     0,
                     0,
                     None,
@@ -997,7 +988,7 @@ impl crate::Data<'_> {
         //---------- get Takeover pics
         let fpath = find_file!(TO_BLOCK_FILE);
         self.takeover.to_blocks = self.graphics.load_block(
-            fpath,
+            Some(fpath),
             0,
             0,
             None,
@@ -1007,9 +998,9 @@ impl crate::Data<'_> {
 
         self.update_progress(60);
 
-        let path = find_file!(SHIP_ON_PIC_FILE).unwrap();
+        let path = find_file!(SHIP_ON_PIC_FILE);
         self.graphics.ship_on_pic = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
-        let path = find_file!(SHIP_OFF_PIC_FILE).unwrap();
+        let path = find_file!(SHIP_OFF_PIC_FILE);
         self.graphics.ship_off_pic = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
 
         // the following are not theme-specific and are therefore only loaded once!
@@ -1036,19 +1027,27 @@ impl crate::Data<'_> {
     #[allow(clippy::too_many_lines)]
     fn init_pictures_once(&mut self) {
         macro_rules! find_file {
-            ($file_name:expr, $criticality:expr) => {
+            ($file_name:expr) => {
                 Self::find_file_static(
                     &self.global,
                     &mut self.misc,
                     $file_name,
                     Some(GRAPHICS_DIR_C),
                     Themed::NoTheme,
-                    $criticality,
                 )
             };
+        }
 
-            ($file_name:expr) => {
-                find_file!($file_name, Criticality::Critical)
+        macro_rules! try_find_file {
+            ($file_name:expr, $log_issues:expr) => {
+                Self::try_find_file_static(
+                    &self.global,
+                    &mut self.misc,
+                    $file_name,
+                    Some(GRAPHICS_DIR_C),
+                    Themed::NoTheme,
+                    $log_issues,
+                )
             };
         }
 
@@ -1056,7 +1055,7 @@ impl crate::Data<'_> {
             ($file_name:expr) => {{
                 let fpath = find_file!($file_name);
                 self.graphics.load_block(
-                    fpath,
+                    Some(fpath),
                     0,
                     0,
                     None,
@@ -1093,16 +1092,16 @@ impl crate::Data<'_> {
 
         self.update_progress(80);
 
-        let path = find_file!(b"arrow_up.png").unwrap();
+        let path = find_file!(b"arrow_up.png");
         self.graphics.arrow_up = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
 
-        let path = find_file!(b"arrow_down.png").unwrap();
+        let path = find_file!(b"arrow_down.png");
         self.graphics.arrow_down = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
 
-        let path = find_file!(b"arrow_right.png").unwrap();
+        let path = find_file!(b"arrow_right.png");
         self.graphics.arrow_right = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
 
-        let path = find_file!(b"arrow_left.png").unwrap();
+        let path = find_file!(b"arrow_left.png");
         self.graphics.arrow_left = Some(self.sdl.load_image_from_c_str_path(path).unwrap());
         //---------- get Banner
         self.graphics.banner_pic = load_block_from_file!(BANNER_BLOCK_FILE);
@@ -1119,15 +1118,15 @@ impl crate::Data<'_> {
                 fname.clear();
                 fname.push_str(droid.druidname.to_str().unwrap());
                 fname.push_str(".jpg");
-                let mut fpath = find_file!(fname.as_bytes(), Criticality::Ignore);
-                // then try with .png
-                if fpath.is_none() {
+                let fpath = if let Some(fpath) = try_find_file!(fname.as_bytes(), false) {
+                    fpath
+                } else {
+                    // then try with .png
                     fname.truncate(droid.druidname.len());
                     fname.push_str(".png");
-                    fpath = find_file!(fname.as_bytes());
-                }
+                    find_file!(fname.as_bytes())
+                };
 
-                let fpath = fpath.expect("unable to find droid imag");
                 *packed_portrait = Self::load_raw_pic(fpath);
             });
 
@@ -1140,7 +1139,7 @@ impl crate::Data<'_> {
         self.graphics.pic999 = load_block_from_file!(fname.as_bytes());
 
         // get the Ashes pics
-        let fpath = find_file!(b"Ashes.png", Criticality::WarnOnly);
+        let fpath = try_find_file!(b"Ashes.png", true);
 
         self.graphics.load_block(
             fpath,
@@ -1187,9 +1186,7 @@ impl crate::Data<'_> {
             b"config.theme",
             Some(GRAPHICS_DIR_C),
             Themed::UseTheme,
-            Criticality::Critical,
-        )
-        .expect("Unable to read file config.theme");
+        );
         let fpath = Path::new(
             fpath
                 .to_str()

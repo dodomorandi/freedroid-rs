@@ -391,29 +391,6 @@ pub enum Themed {
     NoTheme = 0,
     UseTheme,
 }
-// find_file(): how important is the file in question:
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Criticality {
-    Ignore = 0, // ignore if not found and return NULL
-    WarnOnly,   // warn if not found and return NULL
-    Critical,   // Error-message and Terminate
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct InvalidCriticality;
-
-impl TryFrom<i32> for Criticality {
-    type Error = InvalidCriticality;
-
-    fn try_from(value: i32) -> Result<Self, Self::Error> {
-        match value {
-            0 => Ok(Criticality::Ignore),
-            1 => Ok(Criticality::WarnOnly),
-            2 => Ok(Criticality::Critical),
-            _ => Err(InvalidCriticality),
-        }
-    }
-}
 
 // The flags for DisplayBanner are:
 bitflags! {

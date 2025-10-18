@@ -2,8 +2,8 @@
 use crate::menu::SHIP_EXT;
 use crate::{
     defs::{
-        self, Criticality, DIRECTIONS, Direction, Droid, MAP_DIR_C, MAX_ALERTS_ON_LEVEL,
-        MAX_LEVELS, MAX_REFRESHES_ON_LEVEL, MAXWAYPOINTS, MapTile, Status, Themed,
+        self, DIRECTIONS, Direction, Droid, MAP_DIR_C, MAX_ALERTS_ON_LEVEL, MAX_LEVELS,
+        MAX_REFRESHES_ON_LEVEL, MAXWAYPOINTS, MapTile, Status, Themed,
     },
     find_subslice, map,
     misc::{
@@ -1106,14 +1106,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         //Now its time to start decoding the droids file.
         //For that, we must get it into memory first.
         //The procedure is the same as with LoadShip
-        let fpath = self
-            .find_file(
-                filename,
-                Some(MAP_DIR_C),
-                Themed::NoTheme,
-                Criticality::Critical,
-            )
-            .unwrap();
+        let fpath = self.find_file(filename, Some(MAP_DIR_C), Themed::NoTheme);
         let fpath = Path::new(
             fpath
                 .to_str()
@@ -1161,14 +1154,7 @@ freedroid-discussion@lists.sourceforge.net\n\
             b"*** Beginning of elevator rectangles ***";
 
         /* Now get the lift-connection data from "FILE.elv" file */
-        let fpath = self
-            .find_file(
-                filename,
-                Some(MAP_DIR_C),
-                Themed::NoTheme,
-                Criticality::Critical,
-            )
-            .unwrap();
+        let fpath = self.find_file(filename, Some(MAP_DIR_C), Themed::NoTheme);
         let fpath = Path::new(
             fpath
                 .to_str()
@@ -1300,14 +1286,7 @@ freedroid-discussion@lists.sourceforge.net\n\
         self.free_ship_memory(); // clear vestiges of previous ship data, if any
 
         /* Read the whole ship-data to memory */
-        let fpath = self
-            .find_file(
-                filename,
-                Some(MAP_DIR_C),
-                Themed::NoTheme,
-                Criticality::Critical,
-            )
-            .unwrap();
+        let fpath = self.find_file(filename, Some(MAP_DIR_C), Themed::NoTheme);
         let fpath = Path::new(
             fpath
                 .to_str()

@@ -5,8 +5,8 @@ use crate::{
     array_c_string::ArrayCString,
     b_font::{char_width, font_height},
     defs::{
-        AssembleCombatWindowFlags, CREDITS_PIC_FILE, Cmds, Criticality, DisplayBannerFlags,
-        GRAPHICS_DIR_C, MenuAction, Status, Themed,
+        AssembleCombatWindowFlags, CREDITS_PIC_FILE, Cmds, DisplayBannerFlags, GRAPHICS_DIR_C,
+        MenuAction, Status, Themed,
     },
     sound::Sound,
 };
@@ -961,9 +961,7 @@ impl<'sdl> crate::Data<'sdl> {
             CREDITS_PIC_FILE,
             Some(GRAPHICS_DIR_C),
             Themed::NoTheme,
-            Criticality::Critical,
-        )
-        .unwrap();
+        );
         Self::display_image(self.sdl, &self.global, &mut self.graphics, image);
         self.make_grid_on_screen(Some(&screen));
 

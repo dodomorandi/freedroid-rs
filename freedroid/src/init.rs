@@ -2,9 +2,9 @@ use crate::{
     array_c_string::ArrayCString,
     b_font::font_height,
     defs::{
-        self, AssembleCombatWindowFlags, BulletKind, Criticality, DisplayBannerFlags, Droid,
-        Explosion, FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAP_DIR_C, MAXBULLETS, SHOW_WAIT,
-        SLOWMO_FACTOR, Status, TITLE_PIC_FILE, Themed, WAIT_AFTER_KILLED,
+        self, AssembleCombatWindowFlags, BulletKind, DisplayBannerFlags, Droid, Explosion,
+        FD_DATADIR, GRAPHICS_DIR_C, LOCAL_DATADIR, MAP_DIR_C, MAXBULLETS, SHOW_WAIT, SLOWMO_FACTOR,
+        Status, TITLE_PIC_FILE, Themed, WAIT_AFTER_KILLED,
     },
     global::Global,
     graphics::Graphics,
@@ -268,9 +268,7 @@ impl crate::Data<'_> {
             TITLE_PIC_FILE,
             Some(GRAPHICS_DIR_C),
             Themed::NoTheme,
-            Criticality::Critical,
-        )
-        .unwrap();
+        );
         Self::display_image(self.sdl, &self.global, &mut self.graphics, image); // show title pic
         assert!(self.graphics.ne_screen.as_mut().unwrap().flip());
 
@@ -674,9 +672,7 @@ impl crate::Data<'_> {
             pic_title,
             Some(GRAPHICS_DIR_C),
             Themed::NoTheme,
-            Criticality::Critical,
-        )
-        .unwrap();
+        );
         Self::display_image(self.sdl, &self.global, &mut self.graphics, image);
         self.make_grid_on_screen(Some(&self.vars.screen_rect.clone()));
         self.vars.me.status = Status::Briefing;
@@ -716,14 +712,7 @@ impl crate::Data<'_> {
             b"Time in seconds for the animation of blast one :";
 
         /* Read the whole game data to memory */
-        let fpath = self
-            .find_file(
-                data_filename,
-                Some(MAP_DIR_C),
-                Themed::NoTheme,
-                Criticality::Critical,
-            )
-            .unwrap();
+        let fpath = self.find_file(data_filename, Some(MAP_DIR_C), Themed::NoTheme);
         let fpath = Path::new(
             fpath
                 .to_str()
@@ -1099,14 +1088,7 @@ impl MainMissionData {
         const END_OF_MISSION_DATA_STRING: &[u8] = b"*** End of Mission File ***";
 
         /* Read the whole mission data to memory */
-        let fpath = data
-            .find_file(
-                mission_name.as_bytes(),
-                Some(MAP_DIR_C),
-                Themed::NoTheme,
-                Criticality::Critical,
-            )
-            .unwrap();
+        let fpath = data.find_file(mission_name.as_bytes(), Some(MAP_DIR_C), Themed::NoTheme);
         let fpath = Path::new(
             fpath
                 .to_str()

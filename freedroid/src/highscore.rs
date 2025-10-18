@@ -2,7 +2,7 @@ use crate::{
     array_c_string::ArrayCString,
     b_font::{char_width, font_height},
     defs::{
-        self, AssembleCombatWindowFlags, Criticality, DATE_LEN, DisplayBannerFlags, GRAPHICS_DIR_C,
+        self, AssembleCombatWindowFlags, DATE_LEN, DisplayBannerFlags, GRAPHICS_DIR_C,
         HS_BACKGROUND_FILE, HS_EMPTY_ENTRY, MAX_HIGHSCORES, MAX_NAME_LEN, Status, Themed,
     },
     graphics::Graphics,
@@ -296,13 +296,13 @@ impl crate::Data<'_> {
     /// Display the high scores of the single player game.
     /// This function is actually a submenu of the `MainMenu`.
     pub fn show_highscores(&mut self) {
-        let fpath = Self::find_file_static(
+        let fpath = Self::try_find_file_static(
             &self.global,
             &mut self.misc,
             HS_BACKGROUND_FILE,
             Some(GRAPHICS_DIR_C),
             Themed::NoTheme,
-            Criticality::WarnOnly,
+            true,
         );
         if let Some(fpath) = fpath {
             Self::display_image(self.sdl, &self.global, &mut self.graphics, fpath);

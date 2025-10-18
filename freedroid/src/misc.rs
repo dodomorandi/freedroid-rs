@@ -1,8 +1,8 @@
 use crate::{
     ArrayCString, Global,
     defs::{
-        self, AssembleCombatWindowFlags, Cmds, Criticality, DisplayBannerFlags, FD_DATADIR,
-        GRAPHICS_DIR_C, LOCAL_DATADIR, PROGRESS_FILLER_FILE, PROGRESS_METER_FILE, Status, Themed,
+        self, AssembleCombatWindowFlags, Cmds, DisplayBannerFlags, FD_DATADIR, GRAPHICS_DIR_C,
+        LOCAL_DATADIR, PROGRESS_FILLER_FILE, PROGRESS_METER_FILE, Status, Themed,
     },
     graphics::{Graphics, LoadBlockVidBppPicFlags, scale_pic},
     input::CMD_STRINGS,
@@ -502,25 +502,19 @@ impl crate::Data<'_> {
     ///
     /// use current-theme subdir if "`use_theme`" =`USE_THEME`ME, otherw`NO_THEME`HEME
     ///
-    /// behavior on file-not-found depends on parameter "critical"
-    ///  IGNORE: just return NULL
-    ///  WARNONLY: warn and return NULL
-    ///  CRITICAL: Error-message and Terminate
+    /// returns the full pathname of the file.
     ///
-    /// returns pointer to _static_ string array `File_Path`, which
-    /// contains the full pathname of the file.
+    /// # Panics
     ///
-    /// !! do never try to free the returned string !!
-    /// or to keep using it after a new call to `find_file`!
+    /// Panics if the find is not found
     pub fn find_file<'a>(
         &'a mut self,
         fname: &[u8],
         subdir: Option<&CStr>,
         use_theme: Themed,
-        critical: Criticality,
-    ) -> Option<&'a CStr> {
+    ) -> &'a CStr {
         let Self { global, misc, .. } = self;
-        Self::find_file_static(global, misc, fname, subdir, use_theme, critical)
+        Self::find_file_static(global, misc, fname, subdir, use_theme)
     }
 
     pub fn find_file_static<'a>(
@@ -529,8 +523,59 @@ impl crate::Data<'_> {
         fname: &[u8],
         subdir: Option<&CStr>,
         use_theme: Themed,
-        critical: Criticality,
+    ) -> &'a CStr {
+        let (found, fname) = Self::find_file_static_common(global, misc, fname, subdir, use_theme);
+
+        if !found {
+            if use_theme == Themed::UseTheme {
+                panic!(
+                    "file {} not found in theme-dir: graphics/{}_theme/, cannot run without it!",
+                    fname,
+                    global.game_config.theme_name.to_string_lossy(),
+                );
+            } else {
+                panic!("file {fname} not found, cannot run without it!");
+            }
+        }
+
+        &misc.file_path
+    }
+
+    pub fn try_find_file_static<'a>(
+        global: &Global,
+        misc: &'a mut Misc,
+        fname: &[u8],
+        subdir: Option<&CStr>,
+        use_theme: Themed,
+        log_issues: bool,
     ) -> Option<&'a CStr> {
+        let (found, fname) = Self::find_file_static_common(global, misc, fname, subdir, use_theme);
+
+        if !found {
+            if log_issues {
+                if use_theme == Themed::UseTheme {
+                    warn!(
+                        "file {} not found in theme-dir: graphics/{}_theme/",
+                        fname,
+                        global.game_config.theme_name.to_string_lossy(),
+                    );
+                } else {
+                    warn!("file {} not found ", fname);
+                }
+            }
+            return None;
+        }
+
+        Some(&*misc.file_path)
+    }
+
+    fn find_file_static_common<'a>(
+        global: &Global,
+        misc: &mut Misc,
+        fname: &'a [u8],
+        subdir: Option<&CStr>,
+        use_theme: Themed,
+    ) -> (bool, &'a BStr) {
         use std::fmt::Write;
 
         let fname: &BStr = fname.into();
@@ -562,37 +607,7 @@ impl crate::Data<'_> {
             found = inner(FD_DATADIR);
         }
 
-        if !found {
-            // how critical is this file for the game:
-            match critical {
-                Criticality::WarnOnly => {
-                    if use_theme == Themed::UseTheme {
-                        warn!(
-                            "file {} not found in theme-dir: graphics/{}_theme/",
-                            fname,
-                            global.game_config.theme_name.to_string_lossy(),
-                        );
-                    } else {
-                        warn!("file {} not found ", fname);
-                    }
-                    return None;
-                }
-                Criticality::Ignore => return None,
-                Criticality::Critical => {
-                    if use_theme == Themed::UseTheme {
-                        panic!(
-                            "file {} not found in theme-dir: graphics/{}_theme/, cannot run without it!",
-                            fname,
-                            global.game_config.theme_name.to_string_lossy(),
-                        );
-                    } else {
-                        panic!("file {fname} not found, cannot run without it!");
-                    }
-                }
-            }
-        }
-
-        Some(&*misc.file_path)
+        (found, fname)
     }
 
     /// `show_progress`: display empty progress meter with given text
@@ -604,10 +619,9 @@ impl crate::Data<'_> {
                 PROGRESS_METER_FILE,
                 Some(GRAPHICS_DIR_C),
                 Themed::NoTheme,
-                Criticality::Critical,
             );
             self.graphics.progress_meter_pic = self.graphics.load_block(
-                fpath,
+                Some(fpath),
                 0,
                 0,
                 None,
@@ -624,10 +638,9 @@ impl crate::Data<'_> {
                 PROGRESS_FILLER_FILE,
                 Some(GRAPHICS_DIR_C),
                 Themed::NoTheme,
-                Criticality::Critical,
             );
             self.graphics.progress_filler_pic = self.graphics.load_block(
-                fpath,
+                Some(fpath),
                 0,
                 0,
                 None,

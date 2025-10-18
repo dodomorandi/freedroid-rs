@@ -1,6 +1,6 @@
 use crate::{
     Main, Sdl,
-    defs::{BYCOLOR, BulletKind, Criticality, NUM_COLORS, SOUND_DIR_C, SoundType, Themed},
+    defs::{BYCOLOR, BulletKind, NUM_COLORS, SOUND_DIR_C, SoundType, Themed},
     global::Global,
     map,
     misc::Misc,
@@ -344,13 +344,13 @@ impl crate::Data<'_> {
             }
         } else {
             // not using BYCOLOR mechanism: just play specified song
-            let Some(fpath) = Self::find_file_static(
+            let Some(fpath) = Self::try_find_file_static(
                 global,
                 misc,
                 filename_raw,
                 Some(SOUND_DIR_C),
                 Themed::NoTheme,
-                Criticality::WarnOnly,
+                true,
             ) else {
                 error!(
                     "Error loading sound-file: {}",
@@ -452,13 +452,13 @@ impl<'a> Sound<'a> {
 
         let iter = SOUND_SAMPLE_FILENAMES.iter().copied().enumerate().skip(1);
         for (sound_file_index, sample_filename) in iter {
-            let fpath = crate::Data::find_file_static(
+            let fpath = crate::Data::try_find_file_static(
                 global,
                 misc,
                 sample_filename.as_bytes(),
                 Some(SOUND_DIR_C),
                 Themed::NoTheme,
-                Criticality::WarnOnly,
+                true,
             );
 
             let loaded_wav_file = &mut loaded_wav_files[sound_file_index];
@@ -483,13 +483,13 @@ impl<'a> Sound<'a> {
         let mut music_songs: [_; NUM_COLORS] = array::from_fn(|_| None);
         let iter = MUSIC_FILES.iter().copied().enumerate();
         for (music_file_index, music_file) in iter {
-            let fpath = crate::Data::find_file_static(
+            let fpath = crate::Data::try_find_file_static(
                 global,
                 misc,
                 music_file,
                 Some(SOUND_DIR_C),
                 Themed::NoTheme,
-                Criticality::WarnOnly,
+                true,
             );
             let music_song = &mut music_songs[music_file_index];
             if let Some(fpath) = fpath {
