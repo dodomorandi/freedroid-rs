@@ -15,11 +15,12 @@ use sdl_sys::{
 
 use crate::{convert, keyboard::KeySym, system_window_manager};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 #[non_exhaustive]
 pub enum Type {
     /// Unused (do not remove)
+    #[default]
     None = convert::u32_to_u8(SDL_EventType_SDL_NOEVENT),
     /// Application loses/gains visibility
     ActiveEvent = convert::u32_to_u8(SDL_EventType_SDL_ACTIVEEVENT),
@@ -64,12 +65,6 @@ pub enum Type {
 
 // Just a compile-time check
 const _: [u8; Type::UserEvent8 as usize + 1] = [0u8; Type::MAX_EVENTS as usize];
-
-impl Default for Type {
-    fn default() -> Self {
-        Self::None
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, thiserror::Error)]
 #[error("invalid raw event type")]
@@ -689,8 +684,9 @@ impl From<JoyHat> for SDL_Event {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum JoyHatPosition {
+    #[default]
     Centered = 0x0,
     Up = 0x01,
     Right = 0x02,
@@ -700,12 +696,6 @@ pub enum JoyHatPosition {
     RightDown = Self::Right as isize | Self::Down as isize,
     LeftUp = Self::Left as isize | Self::Up as isize,
     LeftDown = Self::Left as isize | Self::Down as isize,
-}
-
-impl Default for JoyHatPosition {
-    fn default() -> Self {
-        Self::Centered
-    }
 }
 
 impl JoyHatPosition {
