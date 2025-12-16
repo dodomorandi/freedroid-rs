@@ -2,7 +2,6 @@ pub mod lock;
 
 use std::{
     cell::Cell,
-    convert::Infallible,
     ffi::c_void,
     marker::PhantomData,
     ops::{Deref, DerefMut},
@@ -181,13 +180,13 @@ impl<'sdl, const FREEABLE: bool> Generic<'sdl, FREEABLE> {
         if result < 0 {
             // Safety: no other SDL function will be used -- we are panicking.
             unsafe {
-                get_error::<_, Infallible>(|err| {
+                get_error(|err| -> ! {
                     panic!(
                         "SDL_UpperBlit returned an unexpected error: {}",
                         err.to_string_lossy(),
                     );
-                });
-            }
+                })
+            };
         }
     }
 
