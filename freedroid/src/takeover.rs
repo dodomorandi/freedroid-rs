@@ -1623,7 +1623,6 @@ impl crate::Data<'_> {
             if self.any_key_just_pressed() != 0 {
                 fast_forward = true;
             }
-            prev_count_tick += COUNT_TICK_LEN;
             self.process_capsules(); /* count down the lifetime of the capsules */
             self.process_capsules(); /* do it twice this time to be faster */
             self.animate_currents();
