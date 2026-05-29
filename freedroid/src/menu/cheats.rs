@@ -333,7 +333,7 @@ impl<'sdl> crate::Data<'sdl> {
                 &mut ne_screen,
                 X0,
                 Y0 + 20,
-                format_args!("Unrecognized robot-type: {}", input.to_str().unwrap(),),
+                format_args!("Unrecognized robot-type: {}", input.to_str().unwrap()),
             );
             self.getchar_raw();
             self.graphics.ne_screen = Some(ne_screen);
@@ -347,7 +347,7 @@ impl<'sdl> crate::Data<'sdl> {
                 &mut ne_screen,
                 X0,
                 Y0 + 20,
-                format_args!("You are now a {}. Have fun!\n", input.to_str().unwrap(),),
+                format_args!("You are now a {}. Have fun!\n", input.to_str().unwrap()),
             );
             self.getchar_raw();
         }

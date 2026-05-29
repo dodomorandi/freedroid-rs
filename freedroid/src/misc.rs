@@ -590,7 +590,7 @@ impl crate::Data<'_> {
             };
 
             misc.file_path.clear();
-            write!(misc.file_path, "{datadir}",).unwrap();
+            write!(misc.file_path, "{datadir}").unwrap();
             if let Some(subdir) = subdir {
                 write!(misc.file_path, "/{}", subdir.to_string_lossy()).unwrap();
             }
@@ -598,8 +598,7 @@ impl crate::Data<'_> {
 
             misc.file_path
                 .to_str()
-                .map(|file_path| Path::new(file_path).exists())
-                .unwrap_or(false)
+                .is_ok_and(|file_path| Path::new(file_path).exists())
         };
 
         let mut found = inner(LOCAL_DATADIR);

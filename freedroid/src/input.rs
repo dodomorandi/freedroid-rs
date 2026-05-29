@@ -542,11 +542,7 @@ impl crate::Data<'_> {
         // switch mouse-cursor visibility as a function of time of last activity
         input.show_cursor = sdl.ticks_ms() - input.last_mouse_event <= CURSOR_KEEP_VISIBLE;
 
-        loop {
-            let Some(event) = sdl.next_event() else {
-                break;
-            };
-
+        while let Some(event) = sdl.next_event() {
             match event {
                 Event::Quit => {
                     info!("User requested termination, terminating.");

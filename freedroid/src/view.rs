@@ -792,7 +792,7 @@ impl crate::Data<'_> {
                 i32::from(self.vars.full_user_rect.y())
                     + i32::from(self.vars.full_user_rect.height())
                     - i32::from(font_height(font0_b_font)),
-                format_args!("Deathcount: {:.0}", self.main.death_count,),
+                format_args!("Deathcount: {:.0}", self.main.death_count),
             );
         }
 
