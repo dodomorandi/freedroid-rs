@@ -1504,8 +1504,8 @@ pub fn struct_to_mem(level: &mut Level) -> Box<[u8]> {
     // Now in the loop each line of map data should be saved as a whole
     for i in 0..usize::from(y_len) {
         reset_level_map(level); // make sure all doors are closed
-        for j in 0..usize::from(x_len) {
-            write!(level_cursor, "{:02} ", level.map[i][j] as u8).unwrap();
+        for &map_tile in level.map[i].iter().take(usize::from(x_len)) {
+            write!(level_cursor, "{:02} ", map_tile as u8).unwrap();
         }
         writeln!(level_cursor).unwrap();
     }

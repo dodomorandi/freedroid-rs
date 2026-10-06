@@ -1327,7 +1327,7 @@ impl<'sdl> crate::Data<'sdl> {
             let all_themes = self.graphics.theme_list.as_ref().unwrap();
             let mut tnum = all_themes.current;
             if action == MenuAction::CLICK && action == MenuAction::RIGHT {
-                tnum = tnum.saturating_add(1) % all_themes.len.get();
+                tnum = tnum.saturating_add(1) % all_themes.len;
             } else {
                 tnum = tnum.checked_sub(1).unwrap_or(all_themes.len.get() - 1);
             }
