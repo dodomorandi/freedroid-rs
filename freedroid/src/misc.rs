@@ -527,15 +527,14 @@ impl crate::Data<'_> {
         let (found, fname) = Self::find_file_static_common(global, misc, fname, subdir, use_theme);
 
         if !found {
-            if use_theme == Themed::UseTheme {
-                panic!(
-                    "file {} not found in theme-dir: graphics/{}_theme/, cannot run without it!",
-                    fname,
-                    global.game_config.theme_name.to_string_lossy(),
-                );
-            } else {
-                panic!("file {fname} not found, cannot run without it!");
-            }
+            assert_ne!(
+                use_theme,
+                Themed::UseTheme,
+                "file {} not found in theme-dir: graphics/{}_theme/, cannot run without it!",
+                fname,
+                global.game_config.theme_name.to_string_lossy(),
+            );
+            panic!("file {fname} not found, cannot run without it!");
         }
 
         &misc.file_path

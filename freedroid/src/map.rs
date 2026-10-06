@@ -1036,19 +1036,17 @@ freedroid-discussion@lists.sourceforge.net\n\
                 }
                 list_index += 1;
             }
-            if list_index >= self.main.number_of_droid_types {
-                panic!(
-                    "unknown droid type: {} found in data file for level {}",
-                    String::from_utf8_lossy(type_indication_string),
-                    our_level_number,
-                );
-            } else {
-                info!(
-                    "Type indication string {} translated to type Nr.{}.",
-                    String::from_utf8_lossy(type_indication_string),
-                    list_index,
-                );
-            }
+            assert!(
+                list_index < self.main.number_of_droid_types,
+                "unknown droid type: {} found in data file for level {}",
+                String::from_utf8_lossy(type_indication_string),
+                our_level_number,
+            );
+            info!(
+                "Type indication string {} translated to type Nr.{}.",
+                String::from_utf8_lossy(type_indication_string),
+                list_index,
+            );
             list_of_types_allowed[different_random_types] = list_index.try_into().unwrap();
             different_random_types += 1;
 
